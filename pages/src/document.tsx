@@ -13,9 +13,10 @@
 
 import type { RouteTable } from "@spy4x/preact-ui-guide/routes"
 import { renderToString } from "preact-render-to-string"
+import { themeBootstrapScript } from "@spy4x/preact-signals/theme"
 import { SEOHead } from "@spy4x/preact-system/seo-head"
 import { renderRouteTable } from "./route-echo.ts"
-import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
+import { FAVICON, PAGE_DESCRIPTION, PAGE_TITLE, THEME_KEY } from "./site.ts"
 
 /** Feeds `og:site_name`. The demo has no other user-visible string of its own to name the site. */
 const SITE_NAME = "preact-components"
@@ -45,21 +46,16 @@ export interface DocumentOptions {
 }
 
 /**
- * The colour-scheme bootstrap.
+ * The theme bootstrap: `themeBootstrapScript` from `@spy4x/preact-signals/theme`, on the key the
+ * island's theme store uses.
  *
  * Runs before first paint, so a returning reader with `dark` stored never sees the light palette
- * flash. `ThemeToggle` reads the class back during hydration, which is why the island's first
- * render and the prerendered markup agree. Wrapped in `try` because storage throws in some
- * privacy modes; the page works without it either way.
+ * flash. It sets `color-scheme` on `<html>` with the `dark` class, so the browser's own blank frame
+ * and native controls follow the chosen theme rather than the `light dark` meta tag's OS answer
+ * (#446). It sits before the stylesheet link: a parser-blocking script after a stylesheet waits for
+ * that stylesheet, and this one needs nothing from it.
  */
-const THEME_BOOTSTRAP = `<script>
-      try {
-        var stored = localStorage.getItem("pc-theme")
-        if (stored === "dark" || (!stored && matchMedia("(prefers-color-scheme: dark)").matches)) {
-          document.documentElement.classList.add("dark")
-        }
-      } catch (error) {}
-    </script>`
+const THEME_BOOTSTRAP = `<script>${themeBootstrapScript({ storageKey: THEME_KEY })}</script>`
 
 /** `value` escaped for a double-quoted HTML attribute. */
 export function escapeAttribute(value: string): string {
@@ -102,9 +98,9 @@ export function renderDocument(
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     ${seoHead}
+    ${THEME_BOOTSTRAP}
     <link rel="icon" href="${FAVICON}">
     <link rel="stylesheet" href="${cssHref}">
-    ${THEME_BOOTSTRAP}
     ${renderRouteTable(routeTable)}
   </head>
   <body class="theme-base">

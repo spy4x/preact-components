@@ -53,3 +53,9 @@ export function normalizeBase(value: string): string {
   const withLeading = value.startsWith("/") ? value : `/${value}`
   return withLeading.endsWith("/") ? withLeading : `${withLeading}/`
 }
+
+/**
+ * Storage key of the reader's theme choice, shared by the bootstrap script in `<head>`
+ * (`document.tsx`) and the theme store the island attaches (`app.tsx`).
+ */
+export const THEME_KEY = "pc-theme"
