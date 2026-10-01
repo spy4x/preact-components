@@ -546,18 +546,23 @@ Four behaviours the copies got wrong, now in one place:
 `DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
 page on every render — even with an empty list, as a zero-height node rather than nothing at all —
-empty until `dependencies` is non-empty, the pattern `ui/`'s toasts and combobox use, so a screen reader reliably announces the
-text rather than meeting a region already holding it. A first render with a non-empty list scrolls
-the block into view, and so does a later render whose non-empty list has different content; a later
-render that replaces one non-empty list with an _equal_ one, without the
-list ever going empty in between (a caller that rebuilds the array from scratch on every render, a
-keystroke elsewhere, a timer), does not move the page; a render that replaces an _empty_ list with a
-non-empty one scrolls again, which is what a second blocked archive attempt does for `CrudEditor` —
-unchecking its archive checkbox empties `dependencies` before rechecking it repopulates it, even when
-the entities blocking the archive are the same both times. Scrolling stays inside the component
-rather than becoming a caller-controlled port, because every caller wants the same outcome and a
-port would only make each one write the same call back in.
-A row's actions menu is `@spy4x/preact-ui`'s `Dropdown` with `DropdownItem`s, returned from
+empty until `dependencies` is non-empty, the pattern `ui/`'s toasts and combobox use, so a screen
+reader reliably announces the text rather than meeting a region already holding it. Because the
+empty region is still a child of its parent, a flex or grid parent with a gap puts that gap before
+it, which shows as blank space under the element above. `CrudEditor` avoids this by taking the
+region's wrapper out of the flow while the list is empty; a caller that places
+`DeletionValidation` directly in a `Stack` or other gap-spaced parent does the same.
+
+A first render with a non-empty list scrolls the block into view, and so does a later render whose
+non-empty list has different content; a later render that replaces one non-empty list with an
+_equal_ one, without the list ever going empty in between (a caller that rebuilds the array from
+scratch on every render, a keystroke elsewhere, a timer), does not move the page; a render that
+replaces an _empty_ list with a non-empty one scrolls again, which is what a second blocked archive
+attempt does for `CrudEditor` — unchecking its archive checkbox empties `dependencies` before
+rechecking it repopulates it, even when the entities blocking the archive are the same both times.
+Scrolling stays inside the component rather than becoming a caller-controlled port, because every
+caller wants the same outcome and a port would only make each one write the same call back in. A
+row's actions menu is `@spy4x/preact-ui`'s `Dropdown` with `DropdownItem`s, returned from
 `CrudList`'s `actions` slot: this package once wrapped the two as `RowActions` and `RowAction`, but
 the wrapper only picked the three-dots icon and a label, and an item's red tone is `DropdownItem`'s
 `danger` now. The archive line is formatted with `timeAgo` and `formatTime` from
