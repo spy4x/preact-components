@@ -354,9 +354,7 @@ export function FileInput(
       {label !== undefined && label !== null && (
         <label for={id} class={cn("pc-label", disabled && "opacity-50")}>
           {label}
-          {required && (
-            <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">*</span>
-          )}
+          {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
         </label>
       )}
       <div
