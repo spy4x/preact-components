@@ -423,6 +423,16 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `watchForUpdate` (helper): Watch a registration for an update and report each waiting worker once. Import: `@spy4x/preact-system`
 - `WorkerLike` (type): The slice of `ServiceWorker` this package uses. Import: `@spy4x/preact-system`
 - `TwitterCard` (type): `twitter:card` value a page can publish. Import: `@spy4x/preact-system/head`
+- `DEFAULT_FORBIDDEN_PACKAGES` (constant): Import sources a screen must not use by default: signals stores and the router. Import: `@spy4x/preact-system/boundary`
+- `DEFAULT_FORBIDDEN_GLOBALS` (constant): Globals a screen must not read by default: each fetches, routes or reads the page. Import: `@spy4x/preact-system/boundary`
+- `BoundaryOptions` (type): What `boundaryPlugin` and `checkModule` forbid. Import: `@spy4x/preact-system/boundary`
+- `BoundaryViolation` (type): One place `checkModule` found a module breaking the boundary. Import: `@spy4x/preact-system/boundary`
+- `forbiddenImport` (helper): Why an import source is forbidden for a module at `filename`, or `null` when it is allowed. Import: `@spy4x/preact-system/boundary`
+- `BoundaryLintNode` (type): One node of Deno's lint syntax tree, as much of it as the rule reads. Import: `@spy4x/preact-system/boundary`
+- `BoundaryRuleContext` (type): What a rule gets from Deno's linter: the file it runs over, and a way to report. Import: `@spy4x/preact-system/boundary`
+- `BoundaryLintPlugin` (type): A Deno lint plugin, typed as far as `boundaryPlugin` builds one. Import: `@spy4x/preact-system/boundary`
+- `boundaryPlugin` (helper): Build the Deno lint plugin `ui` with one rule, `boundary`, from the lists in `options`. Import: `@spy4x/preact-system/boundary`
+- `checkModule` (helper): Check one module's source against the boundary and return every violation Deno reports. Import: `@spy4x/preact-system/boundary`
 
 ## @spy4x/preact-theme
 

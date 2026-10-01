@@ -11,7 +11,8 @@
     "./site-header": "./site-header.tsx",
     "./shell": "./shell.tsx",
     "./rail-shell": "./rail-shell.tsx",
-    "./state-init": "./state-init.tsx"
+    "./state-init": "./state-init.tsx",
+    "./boundary": "./boundary.ts"
   },
   "publish": {
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
