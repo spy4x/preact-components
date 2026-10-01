@@ -113,6 +113,26 @@ describe("Dropdown", () => {
     expect(html).toContain("right-0")
   })
 
+  it("gives the fallback summary a button's arrow cursor instead of a text cursor", () => {
+    const html = render(
+      <Dropdown trigger="Menu" triggerNamedByContent triggerClasses="p-0">item</Dropdown>,
+    )
+
+    expect((attrOf(html, /<summary[^>]*>/, "class") ?? "").split(" ")).toContain("cursor-default")
+  })
+
+  it("lets a cursor in the caller's trigger classes win over the fallback's arrow", () => {
+    const html = render(
+      <Dropdown trigger="Menu" triggerNamedByContent triggerClasses="cursor-pointer">
+        item
+      </Dropdown>,
+    )
+    const summaryClasses = (attrOf(html, /<summary[^>]*>/, "class") ?? "").split(" ")
+
+    expect(summaryClasses).toContain("cursor-pointer")
+    expect(summaryClasses).not.toContain("cursor-default")
+  })
+
   it("uses the caller's trigger classes instead of the default button", () => {
     const html = render(
       <Dropdown trigger="Menu" triggerNamedByContent triggerClasses="p-0">item</Dropdown>,

@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext, useEffect, useLayoutEffect, useRef } from "preact/hooks"
+import { readFallback } from "./dropdown-fallback.ts"
 import { buttonClasses } from "./button.tsx"
 
 /**
@@ -273,13 +274,10 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   const open = isOpen.value
 
   useLayoutEffect(() => {
-    const details = panelRef.current?.parentElement
-    if (details instanceof HTMLDetailsElement) {
-      const active = document.activeElement
-      // An open fallback reopens as the menu, whose open effect then moves focus into it.
-      if (details.open) isOpen.value = true
-      else focusTriggerOnUpgrade.current = active !== null && active === details.firstElementChild
-    }
+    const fallback = readFallback(panelRef.current?.parentElement, document.activeElement)
+    // An open fallback reopens as the menu, whose open effect then moves focus into it.
+    if (fallback?.open) isOpen.value = true
+    else if (fallback?.summaryFocused) focusTriggerOnUpgrade.current = true
     enhanced.value = true
   }, [])
 
@@ -428,7 +426,13 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     return (
       <details class={rootClasses}>
         <summary
-          class={cn(defaultTriggerClasses, "list-none [&::-webkit-details-marker]:hidden")}
+          // `cursor-default` first: a `<summary>` shows a text cursor where a `<button>` shows the
+          // arrow, and a cursor the caller's classes set still wins the merge.
+          class={cn(
+            "cursor-default",
+            defaultTriggerClasses,
+            "list-none [&::-webkit-details-marker]:hidden",
+          )}
           data-e2e={triggerDataE2E}
           aria-label={triggerLabel}
         >
