@@ -67,7 +67,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?` |
 | `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                        |
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                             |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order                                                                                                    |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order once its `Dropdown` has hydrated                                                                   |
 | `EmptyState`      | `empty-state`       | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`                                                                                  |
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                   |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                                          |
@@ -301,6 +301,16 @@ caller sizes the button through `class`. The other sizes render the same classes
 ```
 
 ## Dropdown
+
+It opens without JavaScript. The server renders a `<details>` whose `<summary>` is the trigger, so
+before hydration, or with scripts off, a click, Enter or Space opens the panel, Tab walks its items,
+and links and form posts inside it work. Hydration swaps that for the menu button before the
+browser paints: the hydrated markup, keyboard handling and roles are the menu's alone. A panel the
+visitor opened before hydration stays open, with focus on its first item, and a trigger that had
+focus keeps it. The fallback has no Escape and no arrow keys, and it does not close when focus or a
+click leaves it. A `DropdownItem` stays in the tab order until its `Dropdown` hydrates, because Tab
+is the only key that reaches it before then. An item a caller renders by hand, such as `Shell`'s
+form-post item, keeps whatever `tabindex` it sets.
 
 `vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
 bottom of the viewport and there is more room above, as it does for the last row of a long table.

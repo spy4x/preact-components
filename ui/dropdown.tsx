@@ -1,7 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { useSignal } from "@preact/signals"
-import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
+import { type ComponentChildren, createContext, type JSX } from "preact"
+import { useContext, useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
 
 /**
@@ -123,6 +123,12 @@ export function dropdownOpensUp(
   return trigger.top > below
 }
 
+/**
+ * Whether the {@link Dropdown} around an item has taken over from its no-JavaScript fallback.
+ * `true` outside any dropdown, so an item rendered on its own keeps the menu item's markup.
+ */
+const DropdownEnhanced = createContext(true)
+
 const itemClasses =
   "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
 /** Text colour of a {@link DropdownItemProps.danger} item, in both themes. */
@@ -153,6 +159,8 @@ export interface DropdownItemProps {
  *
  * The item is out of the tab order (`tabindex="-1"`): inside a menu the arrow keys move between
  * items and Tab leaves the menu altogether, which is the behaviour {@link Dropdown} implements.
+ * Before its dropdown hydrates, the item stays in the tab order instead: no script answers the
+ * arrow keys yet, so Tab is the only way a keyboard reaches it.
  * Focus is styled like hover, because focus now moves through these items without a pointer.
  *
  * @param props See {@link DropdownItemProps}.
@@ -161,6 +169,7 @@ export function DropdownItem(
   { href, onClick, disabled, danger, class: className, dataE2E, children }: DropdownItemProps,
 ): JSX.Element {
   const classes = cn(itemClasses, danger && dangerClasses, className)
+  const tabindex = useContext(DropdownEnhanced) ? -1 : undefined
 
   return href !== undefined
     ? (
@@ -168,7 +177,7 @@ export function DropdownItem(
         href={href}
         class={classes}
         role="menuitem"
-        tabindex={-1}
+        tabindex={tabindex}
         data-e2e={dataE2E}
         onClick={onClick}
       >
@@ -180,7 +189,7 @@ export function DropdownItem(
         type="button"
         class={classes}
         role="menuitem"
-        tabindex={-1}
+        tabindex={tabindex}
         disabled={disabled}
         data-e2e={dataE2E}
         onClick={onClick}
@@ -226,6 +235,14 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
  * Escape returns focus to the trigger; closing because focus left does not, because focus has
  * already gone where the user sent it.
  *
+ * **It opens without JavaScript.** The server renders a `<details>` whose `<summary>` is the
+ * trigger, so the browser itself opens and closes the panel before hydration or with scripts off,
+ * and links and form posts inside it work. The first layout effect swaps that for the menu button
+ * above before the browser paints, so the hydrated markup and accessibility tree are the menu
+ * button's alone. The swap carries over a panel the visitor already opened and a trigger that
+ * already had focus. The fallback has no Escape and no arrow keys: Enter or Space on the summary
+ * toggles it, and Tab walks its items.
+ *
  * @param props See {@link DropdownProps}.
  */
 export function Dropdown(props: DropdownProps): JSX.Element {
@@ -243,12 +260,37 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   } = props
 
   const isOpen = useSignal(false)
+  // `false` until the first layout effect: the server and the hydrating render draw the
+  // `<details>` fallback, so hydration matches the server's markup.
+  const enhanced = useSignal(false)
+  // Set when the fallback's summary had focus as it was swapped out, so the new trigger takes it.
+  const focusTriggerOnUpgrade = useRef(false)
   // Where an `"auto"` menu opened last. Starts down, which is what the server renders.
   const autoOpensUp = useSignal(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const open = isOpen.value
+
+  useLayoutEffect(() => {
+    const details = panelRef.current?.parentElement
+    if (details instanceof HTMLDetailsElement) {
+      const active = document.activeElement
+      // An open fallback reopens as the menu, whose open effect then moves focus into it.
+      if (details.open) isOpen.value = true
+      else focusTriggerOnUpgrade.current = active !== null && active === details.firstElementChild
+    }
+    enhanced.value = true
+  }, [])
+
+  // Reads the render's value, not the signal: the effect above sets the signal during the same
+  // flush, before the render that swaps the summary for the button.
+  const isEnhanced = enhanced.value
+  useLayoutEffect(() => {
+    if (!isEnhanced || !focusTriggerOnUpgrade.current) return
+    focusTriggerOnUpgrade.current = false
+    triggerRef.current?.focus()
+  }, [isEnhanced])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -359,9 +401,47 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     ? (horizontal === "left" ? "origin-bottom-left" : "origin-bottom-right")
     : (horizontal === "left" ? "origin-top-left" : "origin-top-right")
 
+  const rootClasses = cn("relative inline-flex text-left", containerClasses)
+  const defaultTriggerClasses = triggerClasses ?? buttonClasses("icon")
+  const panel = (
+    <div
+      ref={panelRef}
+      class={cn(
+        "absolute z-10 whitespace-nowrap rounded-md bg-surface shadow-popover ring-1 ring-subtle focus:outline-hidden",
+        horizontalClass,
+        verticalClass,
+        originClass,
+        // The fallback's `<details>` hides a closed panel on its own.
+        open || !isEnhanced ? "" : "hidden",
+        panelClasses,
+      )}
+      role="menu"
+      aria-orientation="vertical"
+      aria-label={menuLabel}
+      onClick={handlePanelClick}
+    >
+      <DropdownEnhanced.Provider value={isEnhanced}>{children}</DropdownEnhanced.Provider>
+    </div>
+  )
+
+  if (!isEnhanced) {
+    return (
+      <details class={rootClasses}>
+        <summary
+          class={cn(defaultTriggerClasses, "list-none [&::-webkit-details-marker]:hidden")}
+          data-e2e={triggerDataE2E}
+          aria-label={triggerLabel}
+        >
+          {trigger}
+        </summary>
+        {panel}
+      </details>
+    )
+  }
+
   return (
     <div
-      class={cn("relative inline-flex text-left", containerClasses)}
+      class={rootClasses}
       ref={rootRef}
       onKeyDown={handleKeyDown}
       onFocusOut={handleFocusOut}
@@ -370,7 +450,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
         ref={triggerRef}
         onClick={() => isOpen.value = !isOpen.value}
         type="button"
-        class={triggerClasses ?? buttonClasses("icon")}
+        class={defaultTriggerClasses}
         data-e2e={triggerDataE2E}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -378,23 +458,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
       >
         {trigger}
       </button>
-      <div
-        ref={panelRef}
-        class={cn(
-          "absolute z-10 whitespace-nowrap rounded-md bg-surface shadow-popover ring-1 ring-subtle focus:outline-hidden",
-          horizontalClass,
-          verticalClass,
-          originClass,
-          open ? "" : "hidden",
-          panelClasses,
-        )}
-        role="menu"
-        aria-orientation="vertical"
-        aria-label={menuLabel}
-        onClick={handlePanelClick}
-      >
-        {children}
-      </div>
+      {panel}
     </div>
   )
 }

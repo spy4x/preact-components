@@ -3,23 +3,46 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Dropdown, DropdownItem, dropdownOpensUp, nextMenuIndex } from "./dropdown.tsx"
 
+/** The value of `name` on the first tag in `html` that matches `tag`, unescaped, or `undefined`. */
+function attrOf(html: string, tag: RegExp, name: string): string | undefined {
+  const opening = html.match(tag)?.[0] ?? ""
+  return opening.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]?.replaceAll("&amp;", "&")
+}
+
 describe("Dropdown", () => {
-  it("starts closed, hiding the panel", () => {
+  it("server-renders a closed details whose summary is the trigger, so it opens without JavaScript", () => {
     const html = render(
       <Dropdown trigger="Menu" triggerNamedByContent>
         <DropdownItem href="/a">First</DropdownItem>
       </Dropdown>,
     )
 
-    expect(html).toContain("hidden")
-    expect(html).toContain('aria-expanded="false"')
+    expect(html).toMatch(
+      /^<details class="[^"]*"><summary[^>]*>Menu<\/summary><div[^>]*role="menu"/,
+    )
     expect(html).toContain("First")
+    expect(html.endsWith("</div></details>")).toBe(true)
   })
 
-  it("announces itself as a menu trigger", () => {
+  it("leaves the fallback's panel to the details, not to a hidden class", () => {
+    const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
+    const panelClasses = attrOf(html, /<div[^>]*role="menu"[^>]*>/, "class") ?? ""
+
+    expect(panelClasses).toContain("absolute")
+    expect(panelClasses.split(" ")).not.toContain("hidden")
+  })
+
+  it("hides the fallback summary's disclosure marker", () => {
+    const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
+    const summaryClasses = (attrOf(html, /<summary[^>]*>/, "class") ?? "").split(" ")
+
+    expect(summaryClasses).toContain("list-none")
+    expect(summaryClasses).toContain("[&::-webkit-details-marker]:hidden")
+  })
+
+  it("marks the panel as a vertical menu", () => {
     const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
 
-    expect(html).toContain('aria-haspopup="menu"')
     expect(html).toContain('role="menu"')
     expect(html).toContain('aria-orientation="vertical"')
   })
@@ -53,7 +76,7 @@ describe("Dropdown", () => {
       <Dropdown trigger={<svg />}>item</Dropdown>,
     )
 
-    expect(html).toContain('aria-haspopup="menu"')
+    expect(html).toContain("<summary")
   })
 
   it("opens the panel above the trigger when vertical is up", () => {
@@ -143,6 +166,18 @@ describe("DropdownItem", () => {
     )
 
     expect(html.match(/role="menuitem"/g)).toHaveLength(2)
+  })
+
+  it("keeps items in the tab order inside a server-rendered dropdown, where no arrow key works", () => {
+    const html = render(
+      <Dropdown trigger={<svg />} triggerLabel="Row actions">
+        <DropdownItem href="/edit">Edit</DropdownItem>
+        <DropdownItem onClick={() => {}}>Archive</DropdownItem>
+      </Dropdown>,
+    )
+
+    expect(html.match(/role="menuitem"/g)).toHaveLength(2)
+    expect(html).not.toContain("tabindex")
   })
 
   it("disables the button form", () => {
