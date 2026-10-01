@@ -200,6 +200,15 @@ export {
   type LightboxProps,
   wrapIndex,
 } from "./lightbox.tsx"
+export {
+  type ClickModifiers,
+  followLinkClick,
+  isPlainClick,
+  Link,
+  type LinkClickEvent,
+  type LinkClickTarget,
+  type LinkProps,
+} from "./link.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
 export {

@@ -643,6 +643,13 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `LightboxImage` (type): One image a `Lightbox` can show. Import: `@spy4x/preact-ui`
 - `LightboxProps` (type): Props of `Lightbox`. Import: `@spy4x/preact-ui`
 - `wrapIndex` (helper): Move `delta` steps through a sequence of `total` items, wrapping at either end. Import: `@spy4x/preact-ui`
+- `ClickModifiers` (type): The part of a `MouseEvent` `isPlainClick` reads. Import: `@spy4x/preact-ui`
+- `followLinkClick` (helper): Follow a link click through the `navigate` port when the page may take it over, and report whether it did. Import: `@spy4x/preact-ui`
+- `isPlainClick` (helper): Whether a click is one the page may take over: the primary button with no modifier. Import: `@spy4x/preact-ui`
+- `Link` (component): A real `<a href>` that hands plain clicks to a `navigate` port. Import: `@spy4x/preact-ui`
+- `LinkClickEvent` (type): The part of a `MouseEvent` `followLinkClick` reads and cancels. Import: `@spy4x/preact-ui`
+- `LinkClickTarget` (type): The anchor a click landed on, as `followLinkClick` needs it. Import: `@spy4x/preact-ui`
+- `LinkProps` (type): Props of `Link`. Import: `@spy4x/preact-ui`
 - `LoadingSkeleton` (component): Placeholder layout shown while a result loads. Import: `@spy4x/preact-ui`
 - `LoadingSkeletonProps` (type): Props of `LoadingSkeleton`. Import: `@spy4x/preact-ui`
 - `LoadingSpinner` (component): Inline spinner with an accessible live region. Import: `@spy4x/preact-ui`

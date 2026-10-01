@@ -56,9 +56,9 @@ const DROPDOWN_STATE = `(() => {
  * `ui/`'s browser checks: Dropdown's pointer and keyboard contract, ToggleSwitch, OnOffButtons,
  * `Field`, Tooltip, Combobox, Toastr, DateRangePicker's focus contract in both its day-only and
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
- * `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens, `FileInput`'s keyboard,
- * drag-and-drop, refusal, preview-revocation and plain-form-post contract, `useHotkeys` with
- * `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
+ * `Link`'s plain-click rule, `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens,
+ * `FileInput`'s keyboard, drag-and-drop, refusal, preview-revocation and plain-form-post contract,
+ * `useHotkeys` with `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -165,6 +165,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await refForwardingChecks(devtools)
   await busyButtonChecks(devtools)
   await busySubmitChecks(devtools)
+  await linkChecks(devtools)
 
   await copyBlockChecks(devtools)
   await copyBlockNeverClipsCheck(devtools)
@@ -14360,4 +14361,169 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
     `Enter ${afterIme.enter} → ${plainKeys.enter}, Escape ${afterIme.escape} → ` +
       `${plainKeys.escape}, dialog ${plainKeys.modal ? "open" : "closed"}`,
   )
+}
+
+/** The card the `Link` checks drive, and its two links. */
+const LINK_CARD = "#demo-Link"
+const ROUTED_LINK = `${LINK_CARD} [data-e2e="link-routed"]`
+const PLAIN_LINK = `${LINK_CARD} [data-e2e="link-plain"]`
+
+/** One mouse press the `Link` checks send: which button, and the CDP modifier bitmask. */
+interface LinkPress {
+  /** What the check's name calls this press. */
+  name: string
+  button: "left" | "middle"
+  /** CDP's bitmask: Alt 1, Ctrl 2, Meta 4, Shift 8. */
+  modifiers: number
+}
+
+/** What reached `document` for one press on a link, and what the card's `navigate` port saw. */
+interface LinkOutcome {
+  /** The link was there and the point aimed at lands on it. */
+  aimed: boolean
+  /** `click` for the primary button, `auxclick` for the middle one; `null` when nothing arrived. */
+  type: string | null
+  /** `defaultPrevented` as the event reached `document`, before the listener there cancelled it. */
+  prevented: boolean | null
+  /** How many more times `navigate` was called than before the press. */
+  navigations: number
+  /** Whether the page's URL changed: it must not, whatever the component did. */
+  navigated: boolean
+  /** Why no press was sent, when none was. */
+  reason: string
+}
+
+/**
+ * Press one mouse button once on a link, with modifiers, and report what reached `document`.
+ *
+ * A listener on `document` records `defaultPrevented` for `click` and `auxclick` and then cancels
+ * the event itself, so the page never really navigates, opens a tab or starts a download, whatever
+ * `Link` did. `document` is the last place the event reaches, so its reading is what the browser
+ * would have acted on.
+ */
+async function pressLink(devtools: Devtools, link: string, press: LinkPress): Promise<LinkOutcome> {
+  const failed = (reason: string): LinkOutcome => ({
+    aimed: false,
+    type: null,
+    prevented: null,
+    navigations: 0,
+    navigated: false,
+    reason,
+  })
+  if (!await centreInView(devtools, `document.querySelector('${link}')`)) {
+    return failed(`${link} is missing or the page did not come to rest on it`)
+  }
+  const aim = await devtools.evaluate<{ ok: boolean; x: number; y: number; reason: string }>(
+    `(() => {
+    const link = document.querySelector('${link}')
+    const rect = link.getBoundingClientRect()
+    const x = Math.round(rect.left + rect.width / 2)
+    const y = Math.round(rect.top + rect.height / 2)
+    const at = document.elementFromPoint(x, y)
+    const counter = document.querySelector('${LINK_CARD} [data-e2e="link-navigated"]')
+    globalThis.__linkPress = {
+      events: [],
+      href: location.href,
+      before: Number(/called (\\d+)/.exec(counter?.textContent ?? "")?.[1] ?? 0),
+    }
+    globalThis.__linkListener = (event) => {
+      if (event.target !== link && !link.contains(event.target)) return
+      globalThis.__linkPress.events.push({ type: event.type, prevented: event.defaultPrevented })
+      event.preventDefault()
+    }
+    document.addEventListener("click", globalThis.__linkListener)
+    document.addEventListener("auxclick", globalThis.__linkListener)
+    return {
+      ok: at === link,
+      x,
+      y,
+      reason: "the point at " + x + "," + y + " lands on " + (at ? at.tagName : "nothing"),
+    }
+  })()`,
+  ).catch(() => ({ ok: false, x: 0, y: 0, reason: "the page could not be read" }))
+  if (aim.ok) {
+    const buttons = press.button === "left" ? 1 : 4
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await devtools.send("Input.dispatchMouseEvent", {
+        type,
+        x: aim.x,
+        y: aim.y,
+        button: press.button,
+        buttons: type === "mousePressed" ? buttons : 0,
+        clickCount: 1,
+        modifiers: press.modifiers,
+      })
+    }
+    await poll(() => devtools.evaluate<boolean>(`globalThis.__linkPress.events.length > 0`), 2_000)
+  }
+  const outcome = await devtools.evaluate<Omit<LinkOutcome, "aimed" | "reason">>(`(() => {
+    document.removeEventListener("click", globalThis.__linkListener)
+    document.removeEventListener("auxclick", globalThis.__linkListener)
+    const record = globalThis.__linkPress
+    const counter = document.querySelector('${LINK_CARD} [data-e2e="link-navigated"]')
+    const after = Number(/called (\\d+)/.exec(counter?.textContent ?? "")?.[1] ?? 0)
+    const first = record.events[0] ?? { type: null, prevented: null }
+    return {
+      type: first.type,
+      prevented: first.prevented,
+      navigations: after - record.before,
+      navigated: location.href !== record.href,
+    }
+  })()`).catch(() => ({ type: null, prevented: null, navigations: 0, navigated: false }))
+  return { aimed: aim.ok, reason: aim.ok ? "" : aim.reason, ...outcome }
+}
+
+/** One line on what a {@link pressLink} saw, for a check's detail. */
+function describeLinkOutcome(outcome: LinkOutcome): string {
+  if (!outcome.aimed) return `no press was sent: ${outcome.reason}`
+  if (outcome.type === null) return "nothing reached document after the press"
+  return `${outcome.type} reached document with defaultPrevented=${outcome.prevented}, navigate ` +
+    `was called ${outcome.navigations} time(s), and the page ` +
+    (outcome.navigated ? "navigated away" : "stayed where it was")
+}
+
+/**
+ * `Link` takes over a plain click only when it has a `navigate` port, and leaves every modified
+ * and middle click to the browser. Each case is one real press through the browser's input
+ * pipeline; see {@link pressLink} for how the page is kept from really following the link.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function linkChecks(devtools: Devtools): Promise<void> {
+  const plain: LinkPress = { name: "a plain click", button: "left", modifiers: 0 }
+
+  const routed = await pressLink(devtools, ROUTED_LINK, plain)
+  check(
+    "a plain click on a Link with navigate calls navigate and cancels the browser's navigation",
+    routed.aimed && routed.type === "click" && routed.prevented === true &&
+      routed.navigations === 1 && !routed.navigated,
+    describeLinkOutcome(routed),
+  )
+
+  const bare = await pressLink(devtools, PLAIN_LINK, plain)
+  check(
+    "a plain click on a Link without navigate is left to the browser",
+    bare.aimed && bare.type === "click" && bare.prevented === false && !bare.navigated,
+    describeLinkOutcome(bare),
+  )
+
+  const leftAlone: LinkPress[] = [
+    { name: "a Ctrl click", button: "left", modifiers: 2 },
+    { name: "a Meta click", button: "left", modifiers: 4 },
+    { name: "a Shift click", button: "left", modifiers: 8 },
+    { name: "an Alt click", button: "left", modifiers: 1 },
+    { name: "a middle click", button: "middle", modifiers: 0 },
+  ]
+  for (const press of leftAlone) {
+    const outcome = await pressLink(devtools, ROUTED_LINK, press)
+    const type = press.button === "middle" ? "auxclick" : "click"
+    check(
+      `${press.name} on a Link with navigate is left to the browser and does not call navigate`,
+      outcome.aimed && outcome.type === type && outcome.prevented === false &&
+        outcome.navigations === 0 && !outcome.navigated,
+      describeLinkOutcome(outcome),
+    )
+  }
+
+  await pointerToCorner(devtools)
 }

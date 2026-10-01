@@ -255,7 +255,8 @@ const catalogue = {
     group: "foundations",
     package: "ui",
     title: "Buttons",
-    blurb: "Buttons in every look and size, and the buttons that copy, locate or export.",
+    blurb:
+      "Buttons in every look and size, the buttons that copy, locate or export, and a link that hands plain clicks to your router.",
     demos: buttonDemos,
   },
   layout: {
