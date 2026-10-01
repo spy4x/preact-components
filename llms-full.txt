@@ -1970,6 +1970,13 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   `system` is light. `set()` is the other caller-initiated read: it persists through the storage
   port, and a storage that refuses the write — a browser in private mode throws on `setItem` — is
   ignored rather than allowed to throw out of the click handler.
+- **`cycle()` is the three-step order for a theme button; `toggle()` only flips.** `toggle()` swaps
+  light and dark and never returns to `"system"`. `cycle()` goes from `"system"` to the opposite of
+  the OS theme, from an explicit theme that differs from the OS to the OS theme, and from one that
+  matches the OS back to `"system"`: a dark device goes system → light → dark → system, a light one
+  system → dark → light → system. Each step reads the OS theme at the moment of the call, so a
+  device that changes theme between clicks still gets a defined next step, and every step persists
+  through `set()`.
 - **`themeBootstrapScript` paints the store's theme before the bundle runs.** It returns the source
   of an inline `<head>` script that reads the same storage key, accepts the same values, resolves
   `"system"` through the same media query, toggles the same `dark` class and sets the same
