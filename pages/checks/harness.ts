@@ -647,6 +647,31 @@ export async function poll(predicate: () => Promise<boolean>, timeoutMs: number)
   return false
 }
 
+/**
+ * The page-side twin of {@link poll}, as source text to paste into an `evaluate` expression:
+ * `const until = ${PAGE_UNTIL}`, then `await until(() => condition, timeoutMs)`.
+ *
+ * It is for a probe that changes the page and reads the result inside one expression, where a
+ * fixed `setTimeout` used to stand in for "long enough". It resolves `true` as soon as `ready`
+ * returns a truthy value and `false` once `timeoutMs` (3 seconds unless given) has passed; a
+ * `ready` that throws counts as not ready yet. The caller still reads and reports the page's
+ * state afterwards, so a `false` shows up as the check's own failure with its own detail.
+ * Keep the budgets inside one expression well under {@link Devtools.callTimeoutMs}, or the
+ * whole call times out before the check can say what it saw.
+ */
+export const PAGE_UNTIL = `(async (ready, timeoutMs = 3000) => {
+  const deadline = Date.now() + timeoutMs
+  while (true) {
+    try {
+      if (ready()) return true
+    } catch {
+      // Not there yet.
+    }
+    if (Date.now() >= deadline) return false
+    await new Promise((done) => setTimeout(done, 20))
+  }
+})`
+
 /** The one thing {@link settledScroll} needs from a session: a page read. `Devtools` has it. */
 export interface PageReader {
   evaluate<T>(expression: string): Promise<T>
@@ -993,10 +1018,37 @@ export async function frameOverviewHydrates(devtools: Devtools, frame: string): 
     check("the guide's overview, loaded fresh in a frame, hydrates", false, "not within 15s")
     return false
   }
-  // Nothing on the overview should start a load after hydration; give anything that would a moment
-  // to show up in the list before reading it.
+  // A fixed wait on purpose: the callers prove that a script is NOT fetched, and there is no event
+  // for a load that never starts. Nothing on the overview should start one after hydration; this
+  // gives anything that would a second to show up in the list before the caller reads it.
   await new Promise((resolve) => setTimeout(resolve, 1_000))
   return true
+}
+
+/**
+ * Reload the shared page and wait until the island has hydrated it again.
+ *
+ * The load event is waited for from before the reload is sent, so a load that fires before the
+ * browser has answered the `Page.reload` command is still seen.
+ *
+ * @param devtools The connected session.
+ * @param ignoreCache Whether the reload bypasses the browser's cache.
+ * @param timeoutMs How long hydration may take after the load event.
+ * @returns Whether the page hydrated within `timeoutMs`.
+ */
+export async function reloadAndHydrate(
+  devtools: Devtools,
+  { ignoreCache = true, timeoutMs = 10_000 }: { ignoreCache?: boolean; timeoutMs?: number } = {},
+): Promise<boolean> {
+  const loaded = devtools.next("Page.loadEventFired")
+  // A reload that fails to send leaves `loaded` waiting with nobody to read its rejection.
+  loaded.catch(() => {})
+  await devtools.send("Page.reload", { ignoreCache })
+  await loaded
+  return await poll(
+    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+    timeoutMs,
+  )
 }
 
 /** What {@link readFrameScripts} reports about the scripts a frame's document fetched. */
@@ -1110,15 +1162,17 @@ interface ProtocolEvent {
 export class Devtools {
   /**
    * How long a single `send` waits for its reply before rejecting, unless the caller asks for a
-   * different budget. `verify.ts`'s browser phase carries its own overall deadline (`#239`), but
-   * that deadline can only fire *between* awaits — a single request the browser never answers (the
-   * process died mid-call, or wedged) would otherwise hang the one `await` forever and the phase
-   * deadline would never get a turn to run.
+   * different budget. `verify.ts`'s browser phase has a watchdog (#466) that stops it after 90
+   * seconds with no finished check and after 15 minutes in all, but the watchdog can only stop the
+   * run, not end a call: a single request the browser never answers (the process died mid-call, or
+   * wedged) would otherwise leave its `await` pending until the watchdog fired, and the report
+   * would blame the stall rather than the call that caused it.
    */
   static readonly DEFAULT_CALL_TIMEOUT_MS = 15_000
 
   /**
-   * The budget a `send` or `evaluate` gets when its caller names none. `verify.ts` multiplies it by
+   * The budget a `send`, an `evaluate`, a `next` or a `once` gets when its caller names none.
+   * `verify.ts` multiplies it by
    * `--cpu-throttle`: a slowed page can take longer than {@link Devtools.DEFAULT_CALL_TIMEOUT_MS}
    * to answer one healthy call — a theme contrast sweep took over 15s at a throttle of 4 (#466).
    */
@@ -1257,9 +1311,9 @@ export class Devtools {
    * Wait for the next protocol event with this method.
    *
    * @param method Event name, e.g. `Page.loadEventFired`.
-   * @param timeoutMs How long to wait before giving up.
+   * @param timeoutMs How long to wait before giving up — see {@link Devtools.callTimeoutMs}.
    */
-  async next(method: string, timeoutMs = 15_000): Promise<void> {
+  async next(method: string, timeoutMs = this.callTimeoutMs): Promise<void> {
     await this.once(method, timeoutMs)
   }
 
@@ -1271,9 +1325,12 @@ export class Devtools {
    * `requestId`, say, needed to release the request it names — needs this one instead.
    *
    * @param method Event name, e.g. `Fetch.requestPaused`.
-   * @param timeoutMs How long to wait before giving up.
+   * @param timeoutMs How long to wait before giving up — see {@link Devtools.callTimeoutMs}.
    */
-  async once<T = Record<string, unknown>>(method: string, timeoutMs = 15_000): Promise<T> {
+  async once<T = Record<string, unknown>>(
+    method: string,
+    timeoutMs = this.callTimeoutMs,
+  ): Promise<T> {
     if (this.#closed) throw this.#closed
 
     return await new Promise<T>((resolve, reject) => {
