@@ -418,8 +418,21 @@ async function lazyContentShown(devtools: Devtools): Promise<void> {
  * fetched from the page's own address and parsed there; it renders every page at once, so it holds
  * every card. Each package page is then opened, and every card's text, read the same way, is
  * compared with the served card of the same id. Text only: attributes and styles are not compared.
+ *
+ * It reloads the page first, so every card is as the server drew it rather than as an earlier block
+ * left it. The `theme` block clicks the OnOffButtons card's ON half and ends on the UI page. In a
+ * full run the `icons` block opens its own page next, which unmounts the UI page's cards, so they
+ * came back fresh; a run filtered with `--only=theme,ui-guide` skipped that, and the card read
+ * "value: true" against the served "value: undefined" (#515).
  */
 async function serverTextChecks(devtools: Devtools): Promise<void> {
+  await devtools.send("Page.reload", { ignoreCache: true })
+  await devtools.next("Page.loadEventFired")
+  const hydrated = await poll(
+    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
+    10_000,
+  )
+  if (!hydrated) throw new Error("the page did not hydrate within 10s of its reload")
   const drawnBy = JSON.stringify(
     Object.fromEntries(
       Object.entries(TEXT_DRAWN_IN_BROWSER).map(([id, { selector }]) => [id, selector]),
