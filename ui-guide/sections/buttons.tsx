@@ -198,13 +198,13 @@ function LinkDemo() {
       <Cluster>
         <Link
           href="#/system"
-          class="link"
+          class="pc-link"
           data-e2e="link-routed"
           navigate={(href) => navigated.value = [...navigated.value, href]}
         >
           Open the system page
         </Link>
-        <Link href="https://jsr.io/@spy4x/preact-ui" class="link" data-e2e="link-plain">
+        <Link href="https://jsr.io/@spy4x/preact-ui" class="pc-link" data-e2e="link-plain">
           The package on JSR
         </Link>
       </Cluster>
@@ -318,7 +318,7 @@ export const buttonDemos = {
           "The link has no look of its own; every other anchor attribute passes through.",
       },
     ],
-    snippet: `<Link href="/reports" navigate={router.navigate} class="link">Reports</Link>`,
+    snippet: `<Link href="/reports" navigate={router.navigate} class="pc-link">Reports</Link>`,
     render: () => <LinkDemo />,
   },
 } satisfies DemoFragment
