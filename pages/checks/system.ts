@@ -1510,8 +1510,9 @@ async function authFormModeLinkChecks(devtools: Devtools): Promise<void> {
           `${plain.location === before.location}`,
     )
 
-    // 2 is Ctrl and 4 is Meta, as `Input.dispatchMouseEvent` numbers them.
-    for (const [index, [key, modifiers]] of [["Ctrl", 2], ["Meta", 4]].entries()) {
+    // 1 is Alt, 2 is Ctrl, 4 is Meta and 8 is Shift, as `Input.dispatchMouseEvent` numbers them.
+    const modifierKeys = [["Ctrl", 2], ["Meta", 4], ["Shift", 8], ["Alt", 1]]
+    for (const [index, [key, modifiers]] of modifierKeys.entries()) {
       const aim = await shellAim(devtools, AUTH_MODE_LINK_SWITCH)
       if (aim?.onTarget) await shellPointerClick(devtools, aim, Number(modifiers))
       await poll(
