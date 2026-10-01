@@ -23,6 +23,7 @@
     "jsr:@std/path@1.1.6": "1.1.6",
     "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/path@^1.1.6": "1.1.6",
+    "jsr:@std/semver@1.0.8": "1.0.8",
     "jsr:@std/testing@1.0.20": "1.0.20",
     "jsr:@std/ulid@1.0.0": "1.0.0",
     "npm:@preact/signals-core@1.12.1": "1.12.1",
@@ -121,6 +122,9 @@
       "dependencies": [
         "jsr:@std/internal@^1.0.14"
       ]
+    },
+    "@std/semver@1.0.8": {
+      "integrity": "dc830e8b8b6a380c895d53fbfd1258dc253704ca57bbe1629ac65fd7830179b7"
     },
     "@std/testing@1.0.20": {
       "integrity": "21380ed438672762e4ec549cbf4fe41c5b68f5598773a30b64abe7375513e721",
@@ -369,6 +373,7 @@
       "jsr:@std/assert@1.0.19",
       "jsr:@std/expect@1.0.20",
       "jsr:@std/path@1.1.6",
+      "jsr:@std/semver@1.0.8",
       "jsr:@std/testing@1.0.20",
       "npm:@preact/signals-core@1.12.1",
       "npm:@preact/signals@2.5.1",
