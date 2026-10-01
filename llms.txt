@@ -423,6 +423,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `UpdateWatcher` (type): Tuning for `watchForUpdate`. Import: `@spy4x/preact-system`
 - `watchForUpdate` (helper): Watch a registration for an update and report each waiting worker once. Import: `@spy4x/preact-system`
 - `WorkerLike` (type): The slice of `ServiceWorker` this package uses. Import: `@spy4x/preact-system`
+- `AuthFormModeHrefs` (type): The page of each mode, for `AuthFormProps.modeHrefs`. Import: `@spy4x/preact-system/auth-form`
 - `TwitterCard` (type): `twitter:card` value a page can publish. Import: `@spy4x/preact-system/head`
 - `DEFAULT_FORBIDDEN_PACKAGES` (constant): Import sources a screen must not use by default: signals stores and the router. Import: `@spy4x/preact-system/boundary`
 - `DEFAULT_FORBIDDEN_GLOBALS` (constant): Globals a screen must not read by default: each fetches, routes or reads the page. Import: `@spy4x/preact-system/boundary`

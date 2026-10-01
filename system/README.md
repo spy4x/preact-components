@@ -28,7 +28,7 @@ Extracted from earlier source applications.
 
 | Component    | Subpath       | Ports / key props                                                                                                                                                                           |
 | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                                   |
+| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
 | `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                                                                                           |
 | `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
@@ -469,6 +469,16 @@ the control — some assistive technology reads both. `Field` has no way to keep
 `aria-describedby`/`aria-invalid` wiring without its own live paragraph, so avoiding the second
 announcement means dropping the always-present region's promptness or the field-level link, and a
 message heard twice costs less than a message a reader who tabs to the field later never hears.
+
+**`modeHrefs` makes the mode switch a link.** Without it, the switch is a `<button>` that calls
+`onModeChange`, and it is not rendered when `onModeChange` is missing, so a page served without
+JavaScript, or not yet hydrated, has no way from the sign-in form to the sign-up page. With
+`modeHrefs={{ "sign-in": "/sign-in", "sign-up": "/sign-up" }}`, the switch is an `<a href>` to the
+other mode's page in the server-rendered HTML, with the same look and the same `data-e2e`, and it is
+rendered whether or not `onModeChange` is given. Once hydrated, a plain click (the primary button,
+no modifier key) calls `onModeChange` and cancels the navigation when that callback is given; a
+Ctrl-, Meta-, Shift- or Alt-click is left to the browser, so the page opens in a new tab or window
+as a reader expects of any link. The plain-click rule is the one `Shell` uses for its links.
 
 **`names` renames the inputs without changing the callbacks.** By default the inputs are named
 `login`, `password` and `code`. An app whose action validates other field names — `username` and

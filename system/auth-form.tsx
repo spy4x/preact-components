@@ -92,7 +92,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
-import { Button } from "@spy4x/preact-ui/button"
+import { Button, buttonClasses } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
 import type { ComponentChildren, JSX } from "preact"
@@ -188,11 +188,39 @@ export interface AuthFormNames {
 
 const defaultNames: AuthFormNames = { login: "login", password: "password", code: "code" }
 
+/** The page of each mode, for {@link AuthFormProps.modeHrefs}. */
+export interface AuthFormModeHrefs {
+  /** The sign-in page; the switch links here from sign-up. */
+  "sign-in": string
+  /** The sign-up page; the switch links here from sign-in. */
+  "sign-up": string
+}
+
+/**
+ * Whether a click is one the page may take over: the primary button with no modifier. Ctrl or Meta
+ * opens a new tab, Shift a new window and Alt a download, so those stay the browser's.
+ *
+ * The same rule as `Shell`'s private copy; both give way to the shared `Link` planned in #454.
+ */
+function isPlainClick(event: MouseEvent): boolean {
+  return event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
+    !event.altKey
+}
+
 export interface AuthFormProps {
   /** Which screen to draw. */
   mode: AuthMode
-  /** Called when the reader picks the mode-switch control. Omit it to hide that control. */
+  /**
+   * Called when the reader picks the mode-switch control. Without `modeHrefs`, omitting it hides
+   * that control.
+   */
   onModeChange?: (mode: AuthMode) => void
+  /**
+   * Each mode's own page. When given, the mode switch is a link to the other mode's page, so it
+   * works before hydration and without `onModeChange`. A plain click still calls `onModeChange`,
+   * when given, instead of navigating; a Ctrl-, Meta-, Shift- or Alt-click is left to the browser.
+   */
+  modeHrefs?: AuthFormModeHrefs
   /** Which step of `mode` to draw. */
   step: AuthStep
   /**
@@ -251,6 +279,7 @@ export function AuthForm(
   {
     mode,
     onModeChange,
+    modeHrefs,
     step,
     onSignIn,
     onSignUp,
@@ -307,6 +336,9 @@ export function AuthForm(
       password: String(data.get(fieldNames.password) ?? ""),
     })
   }
+
+  const otherMode: AuthMode = mode === "sign-in" ? "sign-up" : "sign-in"
+  const switchLabel = mode === "sign-in" ? copy.switchToSignUp : copy.switchToSignIn
 
   const formLabel = step === "one-time-code"
     ? copy.submitCode
@@ -399,17 +431,32 @@ export function AuthForm(
               <Button type="submit" disabled={busy} data-e2e="auth-form-submit">
                 {mode === "sign-in" ? copy.signIn : copy.signUp}
               </Button>
-              {onModeChange && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  data-e2e="auth-form-mode-switch"
-                  onClick={() => onModeChange(mode === "sign-in" ? "sign-up" : "sign-in")}
-                >
-                  {mode === "sign-in" ? copy.switchToSignUp : copy.switchToSignIn}
-                </Button>
-              )}
+              {modeHrefs
+                ? (
+                  <a
+                    href={modeHrefs[otherMode]}
+                    class={buttonClasses("ghost", "sm")}
+                    data-e2e="auth-form-mode-switch"
+                    onClick={(event) => {
+                      if (!onModeChange || !isPlainClick(event) || event.defaultPrevented) return
+                      event.preventDefault()
+                      onModeChange(otherMode)
+                    }}
+                  >
+                    {switchLabel}
+                  </a>
+                )
+                : onModeChange && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-e2e="auth-form-mode-switch"
+                    onClick={() => onModeChange(otherMode)}
+                  >
+                    {switchLabel}
+                  </Button>
+                )}
             </div>
           </>
         )

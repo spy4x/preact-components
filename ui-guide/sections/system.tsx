@@ -922,6 +922,34 @@ function AuthFormNamesDemo() {
   )
 }
 
+/**
+ * One instance whose mode switch is a link to the other mode's page, so it works before the page's
+ * script has loaded. Once hydrated, a plain click calls `onModeChange` instead of navigating, and
+ * the line below counts those calls; a Ctrl- or Meta-click is the browser's.
+ */
+function AuthFormModeLinkDemo() {
+  const mode = useSignal<AuthMode>("sign-in")
+  const switches = useSignal(0)
+
+  return (
+    <Stack gap="sm" class="max-w-sm" data-e2e="auth-form-mode-link-demo">
+      <AuthForm
+        mode={mode.value}
+        step="credentials"
+        action={`/auth/${mode.value}`}
+        modeHrefs={{ "sign-in": "/auth/sign-in", "sign-up": "/auth/sign-up" }}
+        onModeChange={(next) => {
+          mode.value = next
+          switches.value += 1
+        }}
+      />
+      <p class={NOTE}>
+        onModeChange calls: <span data-e2e="auth-form-mode-link-switches">{switches.value}</span>
+      </p>
+    </Stack>
+  )
+}
+
 /** The two errors this card's buttons can set, kept next to each other for that reason. */
 const FORM_ERROR = "Wrong login or password"
 const FIELD_ERROR: AuthFormError = { message: "No account with that login", field: "login" }
@@ -1520,6 +1548,12 @@ useEffect(() => {
           "The inputs' name attributes, so a post without script sends the field names your API expects. The callbacks keep their shape.",
       },
       {
+        name: "modeHrefs",
+        type: '{ "sign-in": string; "sign-up": string }',
+        description:
+          "Each mode's page. The mode switch becomes a link that works without script; a plain click still calls onModeChange when given.",
+      },
+      {
         name: "action",
         type: "string",
         description: "Where the form posts when no script is running.",
@@ -1537,6 +1571,7 @@ useEffect(() => {
   mode={mode}
   step={step}
   onModeChange={setMode}
+  modeHrefs={{ "sign-in": "/sign-in", "sign-up": "/sign-up" }} // the switch is a link
   onSignIn={({ login, password }) => auth.signIn(login, password)}
   onSignUp={({ login, password }) => auth.signUp(login, password)}
   onOneTimeCode={(code) => auth.verify(code)}
@@ -1556,6 +1591,9 @@ useEffect(() => {
         </Part>
         <Part title="With the field names your API expects">
           <AuthFormNamesDemo />
+        </Part>
+        <Part title="With the mode switch as a link">
+          <AuthFormModeLinkDemo />
         </Part>
         <Part title="With a link below the form">
           <div class="max-w-sm" data-e2e="auth-form-footer-demo">
