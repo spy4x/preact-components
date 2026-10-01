@@ -344,8 +344,9 @@ And in wave eight:
   with every trigger hidden (#301).
 
 `verify` bounds itself: each browser launch attempt has its own deadline and is retried once, the
-browser phase has a five-minute deadline, a dead browser fails the run naming the last check that
-passed, and teardown runs on SIGINT, SIGTERM and SIGHUP as well: it closes the browser over
+browser phase stops after 90 seconds without a finished check or after 15 minutes in all
+(`pages/README.md`, "How long a run may take"), a dead browser fails the run naming the last check
+that passed, and teardown runs on SIGINT, SIGTERM and SIGHUP as well: it closes the browser over
 DevTools, then kills only processes whose command line carries this run's exact `--user-data-dir`.
 Chromium's crash-reporter processes carry no profile argument; they exit on their own shortly after
 the browser. `verify` fails when it finds no browser. `--static` leaves the browser phase out, and
