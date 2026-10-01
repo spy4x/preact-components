@@ -480,9 +480,15 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   ignored rather than allowed to throw out of the click handler.
 - **`themeBootstrapScript` paints the store's theme before the bundle runs.** It returns the source
   of an inline `<head>` script that reads the same storage key, accepts the same values, resolves
-  `"system"` through the same media query and toggles the same `dark` class as an attached
-  `createThemeStore`, so a reader who chose dark sees no light flash first. Pass both the same
-  `storageKey`, `systemQuery` and `defaultPreference`. The script never writes storage and never
+  `"system"` through the same media query, toggles the same `dark` class and sets the same
+  `color-scheme` on `<html>` as an attached `createThemeStore`, so a reader who chose dark sees no
+  light flash first. Pass both the same `storageKey`, `systemQuery` and `defaultPreference`.
+  `color-scheme` is what the browser paints its blank first frame, scrollbars and native controls
+  from before the stylesheet loads, so an app needs only
+  `<meta name="color-scheme" content="light dark">` and this script in `<head>`, and no
+  `:root { color-scheme }` rule of its own. Put the script before the stylesheet link, so a slow
+  stylesheet does not hold it back. A custom `apply` passed to the
+  store replaces both writes and has to set `color-scheme` itself. The script never writes storage and never
   throws; its options are written in as escaped string literals. A page that never attaches a store
   (a server-rendered embed with no islands) passes `followSystem: true`: the script then also
   listens for OS changes and repaints while the stored preference, read again on each change, is

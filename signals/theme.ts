@@ -53,7 +53,10 @@ export interface ThemePorts {
   storageKey?: string
   /** Media query watched for OS changes. Defaults to the dark-scheme query. */
   systemQuery?: string
-  /** Applies a resolved theme. Defaults to toggling the `dark` class on `documentElement`. */
+  /**
+   * Applies a resolved theme. Defaults to toggling the `dark` class on `documentElement` and setting
+   * its `style.colorScheme` to `"dark"` or `"light"`.
+   */
   apply?: (theme: Theme) => void
   /**
    * The preference used when storage holds none this version understands. Defaults to `"system"`.
@@ -104,11 +107,17 @@ function isThemePreference(value: unknown): value is ThemePreference {
   return value === ThemeValue.LIGHT || value === ThemeValue.DARK || value === ThemeValue.SYSTEM
 }
 
-/** Toggle the `dark` class on the document root, when there is a document. */
+/**
+ * Toggle the `dark` class on the document root and set its `color-scheme` to match, when there is a
+ * document. The class flips the tokens; `color-scheme` is what the browser paints its own canvas,
+ * scrollbars and native controls from, before and after the stylesheet loads.
+ */
 function applyToDocument(theme: Theme): void {
   const root = globalThis.document?.documentElement
   if (!root) return
-  root.classList.toggle("dark", theme === ThemeValue.DARK)
+  const dark = theme === ThemeValue.DARK
+  root.classList.toggle("dark", dark)
+  root.style.colorScheme = dark ? ThemeValue.DARK : ThemeValue.LIGHT
 }
 
 /** `localStorage` when this runtime has one. Some runtimes throw on the property, not on use. */
@@ -272,8 +281,9 @@ const scriptLiteral = jsonLdText
  * A theme store attaches only once the client bundle runs, so a page rendered dark for a reader who
  * chose dark would flash light until then. Render this string in a `<script>` element in `<head>`
  * (not a module, not deferred): it reads the same storage key as {@link createThemeStore}, accepts
- * the same values, resolves `"system"` through the same media query and toggles the same `dark`
- * class on `documentElement`. It never writes storage and never throws: a browser that refuses
+ * the same values, resolves `"system"` through the same media query, toggles the same `dark`
+ * class on `documentElement` and sets the same `style.colorScheme`, so the browser's own canvas
+ * matches the theme before the app's stylesheet has loaded. It never writes storage and never throws: a browser that refuses
  * storage reads gets the default preference.
  *
  * The options are written into the script as string literals, escaped so that none of them can end
@@ -296,17 +306,20 @@ export function themeBootstrapScript(options: ThemeBootstrapOptions = {}): strin
   const fallback = scriptLiteral(
     isThemePreference(options.defaultPreference) ? options.defaultPreference : ThemeValue.SYSTEM,
   )
+  // `color-scheme` is set next to the class, as the store's default `apply` does.
+  const set = `var r=document.documentElement;r.classList.toggle("dark",!!d);` +
+    `r.style.colorScheme=d?"dark":"light"`
   const paint = `(function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
     `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
     `var d=p==="dark"||(p==="system"&&typeof matchMedia==="function"&&matchMedia(${query}).matches);` +
-    `document.documentElement.classList.toggle("dark",!!d)}catch(e){}})()`
+    `${set}}catch(e){}})()`
   if (options.followSystem !== true) return paint
   // Older Safari has only `addListener` on a media query list.
   return paint +
     `;(function(){try{var m=matchMedia(${query});` +
     `var f=function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
     `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
-    `if(p==="system")document.documentElement.classList.toggle("dark",!!m.matches)}catch(e){}};` +
+    `if(p==="system"){var d=m.matches;${set}}}catch(e){}};` +
     `if(m.addEventListener)m.addEventListener("change",f);else if(m.addListener)m.addListener(f)` +
     `}catch(e){}})()`
 }

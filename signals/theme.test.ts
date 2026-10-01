@@ -513,9 +513,68 @@ describe("createThemeStore defaultPreference", () => {
   })
 })
 
+/**
+ * Run `body` with `globalThis.document` set to a {@link fakeDocument}, then remove it again.
+ *
+ * Throws rather than skipping when this runtime already has a document: the test is about the
+ * store reaching for the global one, and a real document here would make it prove nothing.
+ */
+function withGlobalDocument(body: (page: ReturnType<typeof fakeDocument>) => void): void {
+  if ("document" in globalThis) throw new Error("this runtime already has a globalThis.document")
+  const page = fakeDocument()
+  Object.defineProperty(globalThis, "document", { configurable: true, value: page.document })
+  try {
+    body(page)
+  } finally {
+    delete (globalThis as { document?: unknown }).document
+  }
+}
+
+describe("createThemeStore default apply", () => {
+  it("sets color-scheme with the dark class on attach and on every change", () => {
+    withGlobalDocument((page) => {
+      const media = fakeMedia(false)
+      const store = createThemeStore({ storage: fakeStorage(), media: media.source })
+      store.attach()
+      expect({ dark: page.classes.has("dark"), scheme: page.scheme() })
+        .toEqual({ dark: false, scheme: "light" })
+      store.set(ThemeValue.DARK)
+      expect({ dark: page.classes.has("dark"), scheme: page.scheme() })
+        .toEqual({ dark: true, scheme: "dark" })
+      store.set(ThemeValue.SYSTEM)
+      media.emit(true)
+      expect(page.scheme()).toBe("dark")
+      media.emit(false)
+      expect({ dark: page.classes.has("dark"), scheme: page.scheme() })
+        .toEqual({ dark: false, scheme: "light" })
+      store.dispose()
+    })
+  })
+})
+
+/**
+ * A stand-in for `document` whose root records its classes and its inline `color-scheme`, the two
+ * things the bootstrap script and the store's default `apply` write.
+ */
+function fakeDocument() {
+  const classes = new Set<string>()
+  const style = { colorScheme: "" }
+  const document = {
+    documentElement: {
+      classList: {
+        toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)),
+      },
+      style,
+    },
+  }
+  return { document, classes, scheme: () => style.colorScheme }
+}
+
 /** What one run of the bootstrap script did to the page. */
 interface BootstrapRun {
   dark: boolean
+  /** The root's inline `color-scheme` afterwards; `""` when the script never set it. */
+  scheme: string
   keysRead: string[]
   queriesAsked: string[]
   writes: number
@@ -534,14 +593,7 @@ function runBootstrap(
   const keysRead: string[] = []
   const queriesAsked: string[] = []
   let writes = 0
-  const classes = new Set<string>()
-  const document = {
-    documentElement: {
-      classList: {
-        toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)),
-      },
-    },
-  }
+  const { document, classes, scheme } = fakeDocument()
   const localStorage = {
     getItem: (key: string) => {
       keysRead.push(key)
@@ -558,7 +610,7 @@ function runBootstrap(
     matchMedia,
     document,
   )
-  return { dark: classes.has("dark"), keysRead, queriesAsked, writes }
+  return { dark: classes.has("dark"), scheme: scheme(), keysRead, queriesAsked, writes }
 }
 
 describe("themeBootstrapScript", () => {
@@ -604,10 +656,18 @@ describe("themeBootstrapScript", () => {
     )
     expect(run).toEqual({
       dark: false,
+      scheme: "light",
       keysRead: ["app-theme"],
       queriesAsked: ["(prefers-contrast: more)"],
       writes: 0,
     })
+  })
+
+  it("sets color-scheme to the theme it paints", () => {
+    expect(runBootstrap(undefined, { theme: "dark" }, false).scheme).toBe("dark")
+    expect(runBootstrap(undefined, { theme: "light" }, true).scheme).toBe("light")
+    expect(runBootstrap(undefined, { theme: "system" }, true).scheme).toBe("dark")
+    expect(runBootstrap(undefined, "refuse", false).scheme).toBe("light")
   })
 
   it("never writes storage", () => {
@@ -659,15 +719,8 @@ describe("themeBootstrapScript", () => {
   })
 
   it("paints light for a system preference when the browser has no matchMedia", () => {
-    const classes = new Set(["dark"])
-    const document = {
-      documentElement: {
-        classList: {
-          toggle: (name: string, on: boolean) =>
-            void (on ? classes.add(name) : classes.delete(name)),
-        },
-      },
-    }
+    const { document, classes } = fakeDocument()
+    classes.add("dark")
     new Function("localStorage", "matchMedia", "document", themeBootstrapScript())(
       fakeStorage({ theme: "system" }),
       undefined,
@@ -688,20 +741,13 @@ function runFollowing(
 ) {
   const storage = fakeStorage(stored)
   const media = fakeMedia(systemDark)
-  const classes = new Set<string>()
-  const document = {
-    documentElement: {
-      classList: {
-        toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)),
-      },
-    },
-  }
+  const { document, classes, scheme } = fakeDocument()
   new Function("localStorage", "matchMedia", "document", themeBootstrapScript(options))(
     storage,
     media.source,
     document,
   )
-  return { storage, media, dark: () => classes.has("dark") }
+  return { storage, media, dark: () => classes.has("dark"), scheme }
 }
 
 describe("themeBootstrapScript followSystem", () => {
@@ -718,6 +764,15 @@ describe("themeBootstrapScript followSystem", () => {
     const run = runFollowing({ followSystem: true }, {}, true)
     run.media.emit(false)
     expect(run.dark()).toBe(false)
+  })
+
+  it("sets color-scheme with the class on every OS change it repaints", () => {
+    const run = runFollowing({ followSystem: true }, { theme: "system" }, false)
+    expect(run.scheme()).toBe("light")
+    run.media.emit(true)
+    expect(run.scheme()).toBe("dark")
+    run.media.emit(false)
+    expect(run.scheme()).toBe("light")
   })
 
   it("leaves a stored light preference alone when the OS turns dark", () => {
@@ -771,7 +826,7 @@ describe("themeBootstrapScript followSystem", () => {
       matches: false,
       addListener: (listener: () => void) => void listeners.push(listener),
     }
-    const classes = new Set<string>()
+    const { document, classes } = fakeDocument()
     new Function(
       "localStorage",
       "matchMedia",
@@ -780,13 +835,7 @@ describe("themeBootstrapScript followSystem", () => {
     )(
       fakeStorage({ theme: "system" }),
       () => query,
-      {
-        documentElement: {
-          classList: {
-            toggle: (n: string, on: boolean) => void (on ? classes.add(n) : classes.delete(n)),
-          },
-        },
-      },
+      document,
     )
     query.matches = true
     for (const listener of listeners) listener()
@@ -794,7 +843,7 @@ describe("themeBootstrapScript followSystem", () => {
   })
 
   it("does nothing and does not throw when the browser has no matchMedia", () => {
-    const classes = new Set<string>()
+    const { document, classes } = fakeDocument()
     expect(() =>
       new Function(
         "localStorage",
@@ -804,13 +853,7 @@ describe("themeBootstrapScript followSystem", () => {
       )(
         fakeStorage({ theme: "system" }),
         undefined,
-        {
-          documentElement: {
-            classList: {
-              toggle: (n: string, on: boolean) => void (on ? classes.add(n) : classes.delete(n)),
-            },
-          },
-        },
+        document,
       )
     ).not.toThrow()
     expect(classes.has("dark")).toBe(false)
