@@ -5165,6 +5165,110 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await focusLeavesChecks(devtools)
   await fetchingComboboxCheck(devtools)
   await chosenHighlightCheck(devtools)
+  await imeComboboxCheck(devtools)
+}
+
+/**
+ * Press and release `key` as Safari sends the key press that ends an input method's composition:
+ * a real key press with keyCode 229 and `isComposing` false.
+ *
+ * @param devtools The connected session.
+ * @param key `"Enter"` or `"Escape"`.
+ */
+async function pressImeKey(devtools: Devtools, key: "Enter" | "Escape"): Promise<void> {
+  for (const type of ["rawKeyDown", "keyUp"]) {
+    await devtools.send("Input.dispatchKeyEvent", {
+      type,
+      key,
+      code: key,
+      windowsVirtualKeyCode: 229,
+      nativeVirtualKeyCode: 229,
+    })
+  }
+}
+
+/**
+ * Start recording every keydown the page sees, as `"<key> <keyCode> <isComposing>"`, into
+ * `globalThis.__verifyImeKeys`, so a press that arrived as something else reports itself instead
+ * of passing as ignored. Read and stop it with {@link TAKE_IME_KEYS}.
+ */
+const RECORD_IME_KEYS = `(() => {
+  globalThis.__verifyImeKeys = []
+  globalThis.__verifyImeListener = (event) => {
+    globalThis.__verifyImeKeys.push(event.key + " " + event.keyCode + " " + event.isComposing)
+  }
+  document.addEventListener("keydown", globalThis.__verifyImeListener, { capture: true })
+  return null
+})()`
+
+/** What {@link RECORD_IME_KEYS} recorded, joined by commas; the recording stops. */
+const TAKE_IME_KEYS = `(() => {
+  document.removeEventListener("keydown", globalThis.__verifyImeListener, { capture: true })
+  const keys = (globalThis.__verifyImeKeys ?? []).join(", ")
+  delete globalThis.__verifyImeKeys
+  delete globalThis.__verifyImeListener
+  return keys
+})()`
+
+/**
+ * An open Combobox ignores the Enter and Escape that end an input method's composition, and still
+ * answers a plain Enter and Escape.
+ *
+ * Safari sends the Enter that confirms a word with `isComposing` false and keyCode 229, so the
+ * presses here are real ones with keyCode 229. The highlight is first moved off the selection with
+ * ArrowDown, so a press that selected would change the field's value as well as close the list.
+ * Then a plain Enter has to select the highlighted row, and a plain Escape on the reopened list has
+ * to close it: the guard is not allowed to swallow every Enter and Escape.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function imeComboboxCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-coin"))
+  await scrollToParked(devtools)
+  const field = `globalThis.__verifyCombobox?.input ?? null`
+  const read = () => devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
+  // A press that selected or closed re-renders at once; give a wrong one time to show up.
+  const settle = () => new Promise((done) => setTimeout(done, 200))
+
+  const landing = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  await pressKey(devtools, "ArrowDown")
+  await settle()
+  const before = await read()
+
+  await devtools.evaluate<null>(RECORD_IME_KEYS)
+  await pressImeKey(devtools, "Enter")
+  await pressImeKey(devtools, "Escape")
+  await settle()
+  const keys = await devtools.evaluate<string>(TAKE_IME_KEYS)
+  const ime = await read()
+  check(
+    "Enter and Escape with keyCode 229 neither select an option nor close an open Combobox",
+    landing?.onTarget === true && before.expanded === "true" && before.activeText !== "" &&
+      keys === "Enter 229 false, Escape 229 false" && ime.expanded === "true" &&
+      ime.active === before.active && ime.inputValue === before.inputValue,
+    `the click ${landing?.onTarget === true ? "landed" : "missed"}; open ${before.expanded}, ` +
+      `highlight "${before.activeText}"; the page saw [${keys}]; then open ${ime.expanded}, ` +
+      `highlight ${before.active} → ${ime.active}, field "${before.inputValue}" → ` +
+      `"${ime.inputValue}"`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const entered = await read()
+  await pressKey(devtools, "ArrowDown")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const reopened = await read()
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const escaped = await read()
+  check(
+    "a plain Enter still selects the highlighted Combobox option and a plain Escape still closes",
+    entered.expanded === "false" && entered.inputValue === before.activeText &&
+      reopened.expanded === "true" && escaped.expanded === "false",
+    `Enter: open ${entered.expanded}, field "${entered.inputValue}" (highlight was ` +
+      `"${before.activeText}"); ArrowDown: open ${reopened.expanded}; Escape: open ${escaped.expanded}`,
+  )
 }
 
 /** One reading of the parked live region: what it is, what it holds, and what it has recorded. */
@@ -13957,6 +14061,10 @@ interface ShortcutsState {
   plain: number
   /** Presses the demo's `mod+i` binding counted. */
   combo: number
+  /** Presses the demo's `enter` binding counted. */
+  enter: number
+  /** Presses the demo's `esc` binding counted. */
+  escape: number
   /** The demo's text field's value. */
   field: string
   /** `data-e2e` of the focused element, or its tag name. */
@@ -13974,6 +14082,8 @@ const SHORTCUTS_STATE = `(() => {
     modal: dialog?.matches(":modal") === true,
     plain: Number(card.querySelector('[data-e2e="shortcuts-plain"]').textContent),
     combo: Number(card.querySelector('[data-e2e="shortcuts-combo"]').textContent),
+    enter: Number(card.querySelector('[data-e2e="shortcuts-enter"]').textContent),
+    escape: Number(card.querySelector('[data-e2e="shortcuts-escape"]').textContent),
     field: card.querySelector('[data-e2e="shortcuts-field"]').value,
     active: active?.getAttribute("data-e2e") ?? active?.tagName ?? "none",
     focusInDialog: dialog !== null && dialog.contains(active),
@@ -13994,7 +14104,9 @@ const SHORTCUTS_STATE = `(() => {
  * `i` has to run nothing, because the hook skips presses inside a dialog. After Escape, `?` has to
  * open the dialog again, which fails when the dialog's close never reaches the caller's `open`
  * state. Last, the card's checkbox turns the hook's `enabled` option off, and a plain `i` has to
- * stop counting; it is turned back on before the function returns.
+ * stop counting; it is turned back on before the function returns. With focus on the page itself,
+ * an Enter and an Escape sent with keyCode 229, as an input method's own presses arrive, have to run
+ * neither of the demo's Enter and Escape bindings, and a plain Enter and Escape then have to run both.
  *
  * `mod` is Control in the Linux browser `verify` drives; the check still reads the page's platform
  * and sends Command on an Apple one, so it tests the same combination the demo binds.
@@ -14117,4 +14229,33 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
   // Back on, so the card is left as the page loaded it.
   await devtools.evaluate<null>(`(${toggle}.click(), null)`)
   await settle()
+
+  // Safari's Enter that ends an input method's composition: keyCode 229, `isComposing` false. The
+  // presses land on the page itself, outside any field or dialog, where the demo's `enter` and
+  // `esc` bindings would run. A plain Enter and Escape after them has to run both.
+  await devtools.evaluate<null>(`(document.activeElement?.blur(), ${RECORD_IME_KEYS})`)
+  const beforeIme = await read()
+  await pressImeKey(devtools, "Enter")
+  await pressImeKey(devtools, "Escape")
+  await settle()
+  const keys = await devtools.evaluate<string>(TAKE_IME_KEYS)
+  const afterIme = await read()
+  check(
+    "useHotkeys runs no Enter or Escape binding for a key press with keyCode 229",
+    keys === "Enter 229 false, Escape 229 false" && afterIme.enter === beforeIme.enter &&
+      afterIme.escape === beforeIme.escape,
+    `the page saw [${keys}]; Enter ${beforeIme.enter} → ${afterIme.enter}, Escape ` +
+      `${beforeIme.escape} → ${afterIme.escape}`,
+  )
+  await pressKey(devtools, "Enter")
+  await pressKey(devtools, "Escape")
+  await settle()
+  const plainKeys = await read()
+  check(
+    "useHotkeys still runs the Enter and Escape bindings for a plain Enter and Escape",
+    plainKeys.enter === afterIme.enter + 1 && plainKeys.escape === afterIme.escape + 1 &&
+      !plainKeys.modal,
+    `Enter ${afterIme.enter} → ${plainKeys.enter}, Escape ${afterIme.escape} → ` +
+      `${plainKeys.escape}, dialog ${plainKeys.modal ? "open" : "closed"}`,
+  )
 }

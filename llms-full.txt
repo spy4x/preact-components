@@ -4217,6 +4217,9 @@ Every string it shows is a prop with an English default: `placeholder` (`"Select
 (`"No matches"`), `countMessage` (`"1 match"` / `"12 matches"`), `loadingMessage` (`"Loading…"`) and
 `clearLabel` (`"Clear selection"`).
 
+Enter and Escape pressed while an input method is still composing a word neither select an option
+nor close the list: the key belongs to the input method.
+
 **One live region, rendered with the field and never taken away.** Every combobox renders a single
 `role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, the
 server render included, and it is empty until the field has been used. Answers are put into it and
@@ -4984,7 +4987,8 @@ without AltGr runs only a binding that names Control and Alt.
 Key presses in a text field, a select or editable content are left alone, and so are presses
 inside a dialog, unless a binding sets `inFields` or `inDialogs`. A matched press has its default
 action cancelled unless the binding sets `preventDefault: false`. `options.enabled` switches every
-binding off at once.
+binding off at once. A key press an input method has taken, such as the Enter that confirms a word
+typed in Japanese, runs no binding.
 
 ```tsx
 const [open, setOpen] = useState(false)
