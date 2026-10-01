@@ -451,9 +451,9 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `preactThemeCss` (helper): Gives the app's stylesheet the `@spy4x/preact-*` design system before Tailwind compiles it. Import: `@spy4x/preact-theme/vite`
 - `RequireComponentCssOptions` (type): Options for `requireComponentCss`. Import: `@spy4x/preact-theme/vite`
 - `requireComponentCss` (helper): Fails `vite build` when the CSS it wrote lacks the library's classes. Import: `@spy4x/preact-theme/vite`
-- `NpmVersionMismatchError` (helper): Thrown when a library module pins an npm package at a version the app does not have. Import: `@spy4x/preact-theme/vite`
+- `NpmVersionMismatchError` (helper): Thrown when a library module asks for an npm package version the app does not have. Import: `@spy4x/preact-theme/vite`
 - `NpmSpecifiersOptions` (type): Options for `npmSpecifiers`. Import: `@spy4x/preact-theme/vite`
-- `npmSpecifiers` (helper): Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that package, and refuses one whose pinned version differs from the app's. Import: `@spy4x/preact-theme/vite`
+- `npmSpecifiers` (helper): Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that package, and refuses one whose version or range the app's copy does not satisfy. Import: `@spy4x/preact-theme/vite`
 
 ## @spy4x/preact-ui
 

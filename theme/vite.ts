@@ -21,6 +21,7 @@ import { COMPONENT_CLASSES } from "./component-classes.ts"
 import { INK_CSS } from "./ink-css.ts"
 import { PRESET_CSS } from "./preset-css.ts"
 import { TOKENS_CSS } from "./tokens-css.ts"
+import { canParse, satisfies, tryParse, tryParseRange } from "@std/semver"
 
 /** The part of Rollup's plugin context the hooks below call. */
 export interface VitePluginContext {
@@ -200,21 +201,45 @@ export function requireComponentCss(options: RequireComponentCssOptions = {}): V
   }
 }
 
-/** Thrown when a library module pins an npm package at a version the app does not have. */
+/** Thrown when a library module asks for an npm package version the app does not have. */
 export class NpmVersionMismatchError extends Error {
   override name = "NpmVersionMismatchError"
   /**
    * @param specifier The `npm:` specifier as the library's module wrote it.
    * @param resolvedVersion The version the app's copy of the package carries.
    * @param importer The module that imported it, when Vite knows.
+   * @param range The range the specifier asks for, such as `^2.5.1`, when it is not one exact
+   *   version; the message then names it.
    */
-  constructor(specifier: string, resolvedVersion: string, importer: string | undefined) {
+  constructor(
+    specifier: string,
+    resolvedVersion: string,
+    importer: string | undefined,
+    range?: string,
+  ) {
     super(
-      `${specifier} (imported by ${importer ?? "unknown"}) resolved to version ` +
-        `${resolvedVersion}. Pin the same version in the app's deno.json, or use a library ` +
-        `release pinned to the app's.`,
+      range === undefined
+        ? `${specifier} (imported by ${importer ?? "unknown"}) resolved to version ` +
+          `${resolvedVersion}. Pin the same version in the app's deno.json, or use a library ` +
+          `release pinned to the app's.`
+        : `${specifier} (imported by ${importer ?? "unknown"}) resolved to version ` +
+          `${resolvedVersion}, outside the range ${range}. Pin a version in that range in the ` +
+          `app's deno.json, or use a library release whose range includes the app's.`,
     )
   }
+}
+
+/**
+ * Whether the app's `actual` version answers the `wanted` part of a specifier. One exact version
+ * must match as written; anything else `@std/semver` parses as a range, such as `^2.5.1`, must
+ * contain `actual`. A `wanted` that is neither never matches.
+ */
+function versionMatches(actual: string, wanted: string): boolean {
+  if (actual === wanted) return true
+  if (canParse(wanted)) return false
+  const range = tryParseRange(wanted)
+  const version = tryParse(actual)
+  return range !== undefined && version !== undefined && satisfies(version, range)
 }
 
 /** Options for {@link npmSpecifiers}. */
@@ -279,13 +304,15 @@ async function resolvedVersion(
 
 /**
  * Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that
- * package, and refuses one whose pinned version differs from the app's.
+ * package, and refuses one whose version or range the app's copy does not satisfy.
  *
  * `@deno/vite-plugin` 1.0.6 turns `npm:@preact/signals@2.5.1` into an empty module id (it cuts a
  * scoped name at its first `@`) and drops the subpath of `npm:/preact@10.29.8/hooks`, so the build
  * fails. A page must load exactly one preact anyway, so each specifier resolves to the bare package
  * plus its subpath, and the build fails with {@link NpmVersionMismatchError} when the app's copy is
- * not the version the specifier names.
+ * not the version the specifier names. A specifier may name one exact version
+ * (`npm:@preact/signals@2.5.1`), which the app's copy must equal, or a range
+ * (`npm:@preact/signals@^2.5.1`, `npm:/preact@^10.29.8/hooks`), which it must fall inside.
  *
  * List it before `deno()` from `@deno/vite-plugin`, so it runs first.
  *
@@ -310,7 +337,10 @@ export function npmSpecifiers(options: NpmSpecifiersOptions): VitePlugin {
         bare,
         resolved.id,
       )
-      if (actual !== version) throw new NpmVersionMismatchError(source, actual, importer)
+      if (!versionMatches(actual, version)) {
+        const range = canParse(version) ? undefined : version
+        throw new NpmVersionMismatchError(source, actual, importer, range)
+      }
       return resolved
     },
   }

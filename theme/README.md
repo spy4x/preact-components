@@ -135,7 +135,9 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   `npm:@preact/signals@2.5.1`, to the app's own copy of that package. `@deno/vite-plugin` 1.0.6
   cuts a scoped name at its first `@` and drops a subpath, so without it the build fails
   (denoland/deno-vite-plugin#74); it goes away once that is fixed. It throws
-  `NpmVersionMismatchError` when the app's copy is not the version the library pins. It reads the
+  `NpmVersionMismatchError` when the app's copy is not the version the library asks for: a
+  specifier with one exact version (`@2.5.1`) needs that version, and one with a range (`@^2.5.1`)
+  needs a version inside it, and the error names the range. It reads the
   resolved package's `package.json` through the `readTextFile` it is given — `Deno.readTextFile`,
   or Node's `(path) => readFile(path, "utf8")` — so the module itself calls no Deno-only API. List
   it before `deno()`.
