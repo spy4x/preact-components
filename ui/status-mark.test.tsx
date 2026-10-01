@@ -86,8 +86,9 @@ describe("StatusMark", () => {
       const html = render(<StatusMark status={status} />)
       const shapeWrapper = html.match(/<span aria-hidden="true" class="([^"]*)"/)
       if (!shapeWrapper) throw new Error(`no aria-hidden shape wrapper for "${status}"`)
-      const tones = shapeWrapper[1].split(/\s+/).filter((name) => name.startsWith("text-"))
-      return [status, tones.join(" ")]
+      // The whole class string, so a raw class with a variant (`dark:text-green-400`) or of
+      // another kind (`fill-yellow-500`) beside the token fails too.
+      return [status, shapeWrapper[1].replace(/^shrink-0 /, "")]
     }))
     expect(actual).toEqual(expected)
   })
