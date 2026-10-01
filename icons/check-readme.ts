@@ -107,7 +107,7 @@ export const NOT_PORTED = ["upload"] as const
 /** This package's directory, for `+index.tsx` and `README.md`. */
 const HERE = new URL("./", import.meta.url).pathname
 
-/** One `export function IconX(props: IconProps): JSX.Element { … }` block, with its preceding JSDoc. */
+/** One `export function IconX(props: Icon…Props): JSX.Element { … }` block, with its preceding JSDoc. */
 export interface IconBlock {
   name: string
   doc: string
