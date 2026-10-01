@@ -225,6 +225,18 @@ function DataDisplayDemo() {
   )
 }
 
+/**
+ * The fills that carry a label, each with its own foreground: the class pair a label on that fill
+ * is drawn with. The warning and success foregrounds have no utility of their own, so they are read
+ * from their custom properties, as `SWUpdater` and the success toast read them.
+ */
+const LABELLED_FILLS: readonly (readonly [string, string])[] = [
+  ["bg-primary", "text-primary-foreground"],
+  ["bg-danger-fill", "text-danger-fill-foreground"],
+  ["bg-warning", "text-(--color-warning-foreground)"],
+  ["bg-success", "text-(--color-success-foreground)"],
+]
+
 /** Every colour atom the preset ships, on the element it was written for. */
 function ColourAtomsDemo() {
   return (
@@ -236,12 +248,27 @@ function ColourAtomsDemo() {
       </Stack>
 
       <Cluster>
-        {["bg-primary", "bg-primary-muted", "bg-danger", "bg-warning", "bg-success"].map((name) => (
-          <span key={name} class={`${name} rounded-primary px-2 py-1 text-xs text-white`}>
-            {name}
+        {LABELLED_FILLS.map(([fill, label]) => (
+          <span key={fill} class={`${fill} ${label} rounded-primary px-2 py-1 text-xs`}>
+            {fill}
           </span>
         ))}
       </Cluster>
+
+      <Stack gap="xs">
+        <Cluster>
+          {["bg-primary-muted", "bg-danger"].map((name) => (
+            <span key={name} class="inline-flex items-center gap-2 text-xs">
+              <span class={`${name} rounded-primary size-4`} aria-hidden="true" />
+              {name}
+            </span>
+          ))}
+        </Cluster>
+        <p class="text-muted text-xs">
+          These two fills are for marks, such as a bar or a dot, and carry no label: in the dark
+          palette no foreground token reads on them at 4.5:1. A danger label goes on bg-danger-fill.
+        </p>
+      </Stack>
 
       <Cluster>
         {["border-primary", "border-subtle", "border-control"].map((name) => (
@@ -256,7 +283,7 @@ function ColourAtomsDemo() {
         <span class="bg-surface border-subtle rounded-primary border px-2 py-1 text-xs">
           bg-surface — card
         </span>
-        <span class="rounded-primary bg-primary px-2 py-1 text-xs text-white">
+        <span class="rounded-primary bg-primary text-primary-foreground px-2 py-1 text-xs">
           rounded-primary
         </span>
       </Cluster>
@@ -501,6 +528,7 @@ export const surfaceDemos = {
       "bg-primary",
       "bg-primary-muted",
       "bg-danger",
+      "bg-danger-fill",
       "bg-warning",
       "bg-success",
       "border-primary",
@@ -509,12 +537,14 @@ export const surfaceDemos = {
       "bg-canvas",
       "bg-surface",
       "rounded-primary",
+      "text-primary-foreground",
+      "text-danger-fill-foreground",
     ],
     summary:
       "Paints text, fills, borders, the two surfaces and the corner radius from the theme's tokens.",
     wide: true,
     snippet: `<span class="text-danger">text-danger</span>
-<span class="bg-success rounded-primary px-2 py-1 text-xs text-white">bg-success</span>
+<span class="bg-success rounded-primary px-2 py-1 text-xs text-(--color-success-foreground)">bg-success</span>
 <span class="border-control border px-2 py-1 text-xs">border-control</span>
 <span class="bg-canvas border-subtle border px-2 py-1 text-xs">bg-canvas</span>`,
     render: () => <ColourAtomsDemo />,

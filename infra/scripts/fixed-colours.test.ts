@@ -34,9 +34,6 @@ const SKIPPED = [
  */
 export const ALLOWED: readonly string[] = [
   "theme/preset.css",
-  // The colour-atoms demo paints `text-white` on every fill it shows; the warning and success fills
-  // have no `text-warning-foreground` or `text-success-foreground` utility to swap it for.
-  "ui-guide/sections/surfaces.tsx",
 ]
 
 const ROOT = new URL("../../", import.meta.url)
@@ -60,7 +57,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
  * this number on purpose; the number may only go down, and a lane that converts a file lowers it
  * with the list.
  */
-const ALLOWED_COUNT = 2
+const ALLOWED_COUNT = 1
 
 describe("fixed colour classes in component source", () => {
   it("has an allow-list that has not grown", () => {
