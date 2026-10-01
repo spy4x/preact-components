@@ -23,7 +23,7 @@ describe("Card", () => {
   })
 
   it("stacks the caller's utilities after the shipped class", () => {
-    // `card` is a preset utility `tailwind-merge` does not know, so it never gets merged away; a
+    // `pc-card` is a preset utility `tailwind-merge` does not know, so it never gets merged away; a
     // caller's own Tailwind utility is appended. Overriding a preset declaration is the job of the
     // section-specific classes — see the `CardBody` case below.
     const html = render(<Card class="max-w-md p-6">x</Card>)

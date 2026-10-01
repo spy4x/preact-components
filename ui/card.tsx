@@ -69,7 +69,7 @@ export type CardHeaderProps =
 /**
  * Card surface.
  *
- * Emits the shipped `card` utility and nothing else, so it carries no opinion about padding,
+ * Emits the shipped `pc-card` utility and nothing else, so it carries no opinion about padding,
  * colour or width beyond the preset. Header, body and footer are all optional children.
  */
 export function Card({ children, class: className, ...rest }: CardProps): JSX.Element {
@@ -80,7 +80,7 @@ export function Card({ children, class: className, ...rest }: CardProps): JSX.El
  * Card header: a title plus a right-aligned action, or raw children.
  *
  * `children` win over `title`/`action` whenever they are present, because a caller carrying its own
- * header markup is the more specific intent. Both modes lay out through the shipped `card-header`
+ * header markup is the more specific intent. Both modes lay out through the shipped `pc-card-header`
  * utility, whose own `flex items-center justify-between` is what puts `action` on the right.
  */
 export function CardHeader(

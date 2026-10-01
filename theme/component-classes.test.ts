@@ -105,6 +105,23 @@ function scannedWords(content: string): string[] {
   ) => candidate)
 }
 
+/** The prefix every preset utility named after a plain word carries (#469). */
+const PREFIX = "pc-"
+
+/**
+ * The preset utilities that may stay unprefixed: those named inside a Tailwind utility namespace
+ * (`text-`, `bg-`, `border-`, …), which no app writes as an ordinary word, the `btn` family, and
+ * the deprecated `page-layout`. Any other name has to carry {@link PREFIX}.
+ */
+const NAMESPACED =
+  /^(?:(?:text|bg|border|rounded|ring|divide|decoration|shadow|font|pb|list)-|btn(?:-|$)|page-layout$)/
+
+/** Every `@utility` name `preset.css` defines, read from the file itself. */
+async function presetUtilityNames(): Promise<string[]> {
+  const css = await Deno.readTextFile(new URL("./preset.css", import.meta.url))
+  return [...css.matchAll(/^@utility ([\w-]+)/gm)].map(([, name]) => name ?? "")
+}
+
 describe("an app's own words", () => {
   it("emit none of the preset's rules", async () => {
     const words = scannedWords(APP_PAGE)
@@ -114,10 +131,27 @@ describe("an app's own words", () => {
     expect(await build(APP_ENTRY, words)).toBe(await build(APP_ENTRY, []))
   })
 
+  it("emit nothing for any preset utility's name without its prefix", async () => {
+    const names = await presetUtilityNames()
+    const prefixed = names.filter((name) => name.startsWith(PREFIX))
+    expect(prefixed.length).toBeGreaterThan(0)
+    const bare = prefixed.map((name) => name.slice(PREFIX.length))
+    expect(await build(APP_ENTRY, bare)).toBe(await build(APP_ENTRY, []))
+  })
+
   it("emit the prefixed rule once the app names it", async () => {
     expect(await build(APP_ENTRY, scannedWords(`<div class="pc-card">x</div>`))).toContain(
       ".pc-card",
     )
+  })
+})
+
+describe("preset.css utility names", () => {
+  it("prefixes every one outside a Tailwind namespace and the button family", async () => {
+    const unprefixed = (await presetUtilityNames()).filter((name) =>
+      !name.startsWith(PREFIX) && !NAMESPACED.test(name)
+    )
+    expect(unprefixed).toEqual([])
   })
 })
 

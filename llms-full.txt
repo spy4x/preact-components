@@ -3833,7 +3833,7 @@ Both classes had zero usages in the product they were extracted from — only it
 - `.h6` — use `text-base font-medium`.
 - `.btn-sm` — use `h-9 px-4` on the button.
 
-`card-header` and `btn-disabled` were added back from another source
+`card-header` (now `pc-card-header`) and `btn-disabled` were added back from another source
 application, where both are in use (`btn-disabled` replaces that app's
 `fieldset[disabled] .btn`).
 
