@@ -1,5 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import type { JSX } from "preact"
 import { render } from "preact-render-to-string"
 import { followLinkClick, isPlainClick, Link, type LinkClickEvent } from "./link.tsx"
 
@@ -106,7 +107,58 @@ describe("followLinkClick", () => {
   })
 })
 
+/** Press `Link`'s own anchor with `event`, the way the browser calls its click handler. */
+function pressAnchor(link: JSX.Element, event: LinkClickEvent): void {
+  const onClick = link.props.onClick as (event: LinkClickEvent) => void
+  onClick(event)
+}
+
 describe("Link", () => {
+  it("leaves a plain click to the browser when its target opens another browsing context", () => {
+    const port = recorder()
+    const event = click()
+
+    pressAnchor(Link({ href: "/a", target: "_blank", navigate: port.navigate }), event)
+
+    expect(event.cancelled).toBe(false)
+    expect(port.calls).toEqual([])
+  })
+
+  it("leaves a plain click on a download link to the browser", () => {
+    const port = recorder()
+    const event = click()
+
+    pressAnchor(Link({ href: "/a.csv", download: "", navigate: port.navigate }), event)
+
+    expect(event.cancelled).toBe(false)
+    expect(port.calls).toEqual([])
+  })
+
+  it("runs the caller's onClick first, so its preventDefault keeps navigate out", () => {
+    const port = recorder()
+    const event = click()
+    const link = Link({
+      href: "/a",
+      navigate: port.navigate,
+      onClick: (clicked) => clicked.preventDefault(),
+    })
+
+    pressAnchor(link, event)
+
+    expect(event.cancelled).toBe(true)
+    expect(port.calls).toEqual([])
+  })
+
+  it("routes a plain click through navigate from its own anchor", () => {
+    const port = recorder()
+    const event = click()
+
+    pressAnchor(Link({ href: "/a", navigate: port.navigate }), event)
+
+    expect(event.cancelled).toBe(true)
+    expect(port.calls).toEqual(["/a"])
+  })
+
   it("renders a real anchor with its href, class and other attributes", () => {
     const html = render(
       <Link href="/reports" class="underline" rel="nofollow" data-e2e="reports" navigate={() => {}}>
