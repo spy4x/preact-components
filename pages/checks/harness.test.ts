@@ -23,10 +23,12 @@ import {
   Devtools,
   DevtoolsClosedError,
   filteredRunLine,
+  PAGE_UNTIL,
   type PageReader,
   PhaseVerdict,
   phaseVerdict,
   poll,
+  reloadAndHydrate,
   Run,
   selectBlocks,
   settledScroll,
@@ -744,6 +746,73 @@ describe("Devtools", () => {
       expect(await waiting).toBeUndefined()
     })
   })
+  it("gives an event wait with no budget of its own the session's callTimeoutMs", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+      devtools.callTimeoutMs = 20
+
+      // Raced against a 1s timer: the old fixed 15s default would also reject with this message
+      // in the end, just not in time.
+      const within = async (waiting: Promise<unknown>) => {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const late = new Promise((done) => {
+          timer = setTimeout(() => done("still waiting after 1s"), 1_000)
+        })
+        try {
+          return await Promise.race([
+            waiting.catch((error: unknown) => (error as Error).message),
+            late,
+          ])
+        } finally {
+          clearTimeout(timer)
+        }
+      }
+      const waited = await within(devtools.next("Page.loadEventFired"))
+      const once = await within(devtools.once("Page.loadEventFired"))
+
+      expect(waited).toBe("timed out waiting for Page.loadEventFired")
+      expect(once).toBe("timed out waiting for Page.loadEventFired")
+    })
+  })
+
+  it("reloadAndHydrate sees a load event that arrives before the reload is answered", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+      devtools.callTimeoutMs = 200
+
+      // Handled at once, so a broken helper fails this test alone instead of the whole file.
+      const reloading = reloadAndHydrate(devtools, { timeoutMs: 200 }).then(
+        (value) => value,
+        (error: Error) => error.message,
+      )
+      const reload = JSON.parse(socket.sent[0])
+      expect(reload.method).toBe("Page.reload")
+      socket.onmessage?.({ data: JSON.stringify({ method: "Page.loadEventFired", params: {} }) })
+      socket.onmessage?.({ data: JSON.stringify({ id: reload.id, result: {} }) })
+
+      // Answer the hydration read once it is sent.
+      const answered = await poll(() => {
+        const read = socket.sent.map((data) => JSON.parse(data)).find((message) =>
+          message.method === "Runtime.evaluate"
+        )
+        if (!read) return Promise.resolve(false)
+        socket.onmessage?.({
+          data: JSON.stringify({ id: read.id, result: { result: { value: true } } }),
+        })
+        return Promise.resolve(true)
+      }, 200)
+
+      expect(answered).toBe(true)
+      expect(await reloading).toBe(true)
+    })
+  })
+
   it("evaluate rejects with the thrown value and the expression, not only Uncaught", async () => {
     const socket = new FakeSocket()
     await withFakeSocket(socket, async () => {
@@ -860,6 +929,32 @@ function scriptedPage(reads: readonly number[], scrollTo: number | null = 0) {
   }
   return { page, seen, scrollReads: () => next }
 }
+
+describe("PAGE_UNTIL", () => {
+  type Until = (ready: () => unknown, timeoutMs?: number) => Promise<boolean>
+  const until = new Function(`return ${PAGE_UNTIL}`)() as Until
+
+  it("resolves true once the condition holds, without waiting out the deadline", async () => {
+    let calls = 0
+    const started = Date.now()
+    const held = await until(() => ++calls >= 3, 2_000)
+
+    expect(held).toBe(true)
+    expect(calls).toBe(3)
+    expect(Date.now() - started).toBeLessThan(1_000)
+  })
+
+  it("treats a throwing condition as not ready yet, and resolves false at the deadline", async () => {
+    let calls = 0
+    const held = await until(() => {
+      calls++
+      throw new Error("not rendered yet")
+    }, 60)
+
+    expect(held).toBe(false)
+    expect(calls).toBeGreaterThan(1)
+  })
+})
 
 describe("settledScroll", () => {
   it("waits for an expected scroll that has not started yet instead of calling it settled", async () => {

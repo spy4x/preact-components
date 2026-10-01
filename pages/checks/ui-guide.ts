@@ -6,6 +6,7 @@ import {
   openGuidePage,
   poll,
   pressKey,
+  reloadAndHydrate,
   settledScroll,
 } from "./harness.ts"
 import { AUTHOR, PAGE_TITLE, REPOSITORY } from "../src/site.ts"
@@ -426,12 +427,7 @@ async function lazyContentShown(devtools: Devtools): Promise<void> {
  * "value: true" against the served "value: undefined" (#515).
  */
 async function serverTextChecks(devtools: Devtools): Promise<void> {
-  await devtools.send("Page.reload", { ignoreCache: true })
-  await devtools.next("Page.loadEventFired")
-  const hydrated = await poll(
-    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-    10_000,
-  )
+  const hydrated = await reloadAndHydrate(devtools)
   if (!hydrated) throw new Error("the page did not hydrate within 10s of its reload")
   const drawnBy = JSON.stringify(
     Object.fromEntries(
@@ -1020,12 +1016,7 @@ function clippedContent(devtools: Devtools): Promise<Record<string, number>> {
 async function coldDeepLinkCheck(devtools: Devtools): Promise<void> {
   const HREF = "#/crud/crud-editor"
   await devtools.evaluate(`(history.replaceState(null, "", ${JSON.stringify(HREF)}), null)`)
-  await devtools.send("Page.reload", { ignoreCache: true })
-  await devtools.next("Page.loadEventFired")
-  const hydrated = await poll(
-    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-    10_000,
-  )
+  const hydrated = await reloadAndHydrate(devtools)
   const landed = await poll(
     () =>
       devtools.evaluate<boolean>(`(() => {
@@ -1058,12 +1049,7 @@ async function coldDeepLinkCheck(devtools: Devtools): Promise<void> {
 async function coldFragmentCheck(devtools: Devtools): Promise<void> {
   const HREF = "#icons"
   await devtools.evaluate(`(history.replaceState(null, "", ${JSON.stringify(HREF)}), null)`)
-  await devtools.send("Page.reload", { ignoreCache: true })
-  await devtools.next("Page.loadEventFired")
-  const hydrated = await poll(
-    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-    10_000,
-  )
+  const hydrated = await reloadAndHydrate(devtools)
   const landed = await poll(
     () =>
       devtools.evaluate<boolean>(`(() => {
@@ -1117,12 +1103,10 @@ async function reloadAtTopCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate(`(scrollTo({ top: 8600, behavior: "instant" }), null)`)
   await settledScroll(devtools)
   const before = await devtools.evaluate<number>("scrollY")
-  await devtools.send("Page.reload", { ignoreCache: true })
-  await devtools.next("Page.loadEventFired")
-  const hydrated = await poll(
-    () => devtools.evaluate<boolean>("document.documentElement.dataset.hydrated === 'true'"),
-    10_000,
-  )
+  const hydrated = await reloadAndHydrate(devtools)
+  // A fixed wait on purpose: the check proves the page STAYS at its top, so it has to give a late
+  // restored scroll the time it would take to arrive; there is no condition to poll for a scroll
+  // that must never come.
   await devtools.evaluate(`new Promise((done) => setTimeout(done, 1200))`)
   const after = await devtools.evaluate<number>("scrollY")
   check(
@@ -1376,7 +1360,8 @@ async function searchShortcutChecks(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "icons")
   const aimed = await clickElement(devtools, FIELD)
   await pressKey(devtools, "Slash")
-  // A wrong open would move focus into the dialog; give it the frame it would take.
+  // A wrong open would move focus into the dialog; give it the frame it would take. A fixed wait on
+  // purpose: the check proves the search does NOT open, which no poll can wait for.
   await devtools.evaluate(
     `new Promise((done) => requestAnimationFrame(() => setTimeout(done, 50)))`,
   )

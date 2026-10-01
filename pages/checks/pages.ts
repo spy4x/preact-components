@@ -42,22 +42,40 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // The rest of the grammar, driven the way a reader drives it: the legacy bare fragment this page
   // shipped before hash routing and still resolves, a section route, and an unknown route falling
   // back to the landing page. The resolver's own unit tests cannot prove the island wired any of it.
-  const legacy = await devtools.evaluate<{
-    legacyMarked: boolean
-    legacyCurrent: string
-    legacyTitle: string
-  }>(
-    `(async () => {
-      const settle = () => new Promise((done) => setTimeout(done, 400))
-      location.hash = "#toggle-switch"
-      await settle()
-      return {
-        legacyMarked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
-        legacyCurrent: document.querySelector('a[aria-current="true"]')?.textContent ?? "",
-        legacyTitle: document.title,
-      }
-    })()`,
+  //
+  // Every step below polls for the state it asserts, like the deep link above, instead of reading
+  // the page a fixed 400ms after the hash changes: delaying the route by 1.5s made those fixed reads
+  // fail (#501). A poll only proves something when the page starts somewhere else, so each step
+  // starts from a state its own route has to change: the legacy fragment from an unknown route,
+  // which clears the mark the deep link above left on the same card.
+  const ROUTE_DEADLINE_MS = 5_000
+  const routeState = () =>
+    devtools.evaluate<{ marked: number; current: string; title: string; page: string }>(`({
+      marked: document.querySelectorAll("[data-deep-link]").length,
+      current: document.querySelector('a[aria-current="true"]')?.textContent ?? "",
+      title: document.title,
+      page: document.querySelector("[data-guide-page]")?.dataset.guidePage ?? "",
+    })`)
+  await devtools.evaluate<null>(`(location.hash = "#/nonsense", null)`)
+  const clearedBeforeLegacy = await poll(
+    async () => (await routeState()).marked === 0,
+    ROUTE_DEADLINE_MS,
   )
+  await devtools.evaluate<null>(`(location.hash = "#toggle-switch", null)`)
+  let legacyState = await routeState()
+  await poll(async () => {
+    legacyState = await routeState()
+    return legacyState.marked === 1 && legacyState.current === "ToggleSwitch" &&
+      legacyState.title.startsWith("ToggleSwitch")
+  }, ROUTE_DEADLINE_MS)
+  const legacy = {
+    legacyMarked: clearedBeforeLegacy &&
+      await devtools.evaluate<boolean>(
+        `document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link")`,
+      ),
+    legacyCurrent: legacyState.current,
+    legacyTitle: legacyState.title,
+  }
 
   // The section route's scroll used to be settled with the same fixed 400ms wait as every other step
   // here, and it once read the section's top edge at a fractional pixel in CI — `#225`. Waiting for
@@ -93,40 +111,31 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
         }
       })()`,
     )
-    return section.sectionTop >= 0 && section.sectionTop < 200
+    return section.sectionTop >= 0 && section.sectionTop < 200 && section.sectionMarked === 0 &&
+      section.sectionTitle.startsWith("Inputs")
   }, SECTION_SCROLL_DEADLINE_MS)
 
   // Mark a card again before the unknown route, so the assertion below is a *transition* — the mark
   // has to be there first and gone after — and not something a host with no listener at all would
   // satisfy by never marking anything.
-  const rest = await devtools.evaluate<{
-    markedBeforeUnknown: number
-    unknownMarked: number
-    unknownTitle: string
-    unknownChipCurrent: string
-    unknownPage: string
-  }>(
-    `(async () => {
-      const settle = () => new Promise((done) => setTimeout(done, 400))
-      const marked = () => document.querySelectorAll("[data-deep-link]").length
-      const current = () => document.querySelector('a[aria-current="true"]')?.textContent ?? ""
+  await devtools.evaluate<null>(`(location.hash = "#/inputs/toggle-switch", null)`)
+  await poll(async () => (await routeState()).marked === 1, ROUTE_DEADLINE_MS)
+  const markedBeforeUnknown = (await routeState()).marked
 
-      location.hash = "#/inputs/toggle-switch"
-      await settle()
-      const markedBeforeUnknown = marked()
-
-      location.hash = "#/nonsense"
-      await settle()
-
-      return {
-        markedBeforeUnknown,
-        unknownMarked: marked(),
-        unknownTitle: document.title,
-        unknownChipCurrent: current(),
-        unknownPage: document.querySelector("[data-guide-page]")?.dataset.guidePage ?? "",
-      }
-    })()`,
-  )
+  await devtools.evaluate<null>(`(location.hash = "#/nonsense", null)`)
+  let unknown = await routeState()
+  await poll(async () => {
+    unknown = await routeState()
+    return unknown.marked === 0 && unknown.current === "" && unknown.page === "ui" &&
+      unknown.title === `UI — ${PAGE_TITLE}`
+  }, ROUTE_DEADLINE_MS)
+  const rest = {
+    markedBeforeUnknown,
+    unknownMarked: unknown.marked,
+    unknownTitle: unknown.title,
+    unknownChipCurrent: unknown.current,
+    unknownPage: unknown.page,
+  }
 
   const routes = { ...legacy, ...section, ...rest }
   check(
@@ -161,13 +170,13 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // this is the routing half, so it sets the hash itself rather than trusting a file it does not
   // import to have left it there. `routes` above already ends on `#/nonsense`, which clears every
   // mark, so this also re-proves the canonical route marks a card again after that.
-  const outline = await devtools.evaluate<{ outline: string }>(`(async () => {
-    location.hash = "#/inputs/toggle-switch"
-    await new Promise((done) => setTimeout(done, 400))
-    return {
-      outline: getComputedStyle(document.querySelector("#demo-ToggleSwitch")).outlineWidth,
-    }
-  })()`)
+  await devtools.evaluate<null>(`(location.hash = "#/inputs/toggle-switch", null)`)
+  const readOutline = () =>
+    devtools.evaluate<string>(
+      `getComputedStyle(document.querySelector("#demo-ToggleSwitch")).outlineWidth`,
+    )
+  const outline = { outline: await readOutline() }
+  await poll(async () => (outline.outline = await readOutline()) === "2px", ROUTE_DEADLINE_MS)
   check(
     "the deep link outlines its card",
     outline.outline === "2px",

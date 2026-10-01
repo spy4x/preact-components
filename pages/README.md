@@ -136,8 +136,9 @@ last check that finished:
 - **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
   never stops, not a budget a healthy run comes near.
 
-Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call gets
-when its caller names none. Each launch attempt keeps its own 30-second deadline.
+Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call,
+or a wait for one DevTools event such as a page load, gets when its caller names none. Each launch
+attempt keeps its own 30-second deadline.
 
 How they were sized (#466), on a 16-core machine with other lanes running `verify` alongside, the
 load average noted at the start and end of each run:
