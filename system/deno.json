@@ -14,6 +14,13 @@
     "./state-init": "./state-init.tsx",
     "./boundary": "./boundary.ts"
   },
+  "imports": {
+    // Fresh is pinned here and nowhere else, for one test file only: `seo-head.fresh.test.tsx`
+    // renders `SEOHead` through Fresh's real `<Head>`, because how Fresh treats a head tag's `key`
+    // (it prints it as `data-key` and dedupes head tags by it) exists nowhere but in Fresh. No
+    // published file imports it; the test files are excluded from publishing below.
+    "fresh": "jsr:@fresh/core@2.3.3"
+  },
   "publish": {
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
     // of it is reachable from `exports`, and none of it is anything a consumer runs.
