@@ -21,6 +21,13 @@ function inputTag(html: string, name: string): string {
     ?.[0] ?? ""
 }
 
+/** The opening tag of the element carrying `data-e2e="auth-form-mode-switch"`, or `""`. */
+function modeSwitchTag(html: string): string {
+  return html.match(/<[a-z]+ [^>]*data-e2e="auth-form-mode-switch"[^>]*>/)?.[0] ?? ""
+}
+
+const hrefs = { "sign-in": "/sign-in", "sign-up": "/sign-up" }
+
 /** One attribute's value off an already-extracted tag, or `undefined`. */
 function attr(tag: string, name: string): string | undefined {
   return tag.match(new RegExp(`${name}="([^"]*)"`))?.[1]
@@ -83,11 +90,35 @@ describe("AuthForm", () => {
     expect(render(<AuthForm {...base} mode="sign-up" />)).toContain(">Sign up<")
   })
 
-  it("shows the mode-switch control only when onModeChange is supplied", () => {
+  it("without modeHrefs, shows the mode switch as a button only when onModeChange is supplied", () => {
     const withPort = render(<AuthForm {...base} onModeChange={() => {}} />)
     const withoutPort = render(<AuthForm {...base} />)
+    expect(modeSwitchTag(withPort)).toMatch(/^<button /)
+    expect(attr(modeSwitchTag(withPort), "type")).toBe("button")
     expect(withPort).toContain("Need an account? Sign up")
+    expect(withPort).not.toContain("<a")
     expect(withoutPort).not.toContain("Need an account? Sign up")
+  })
+
+  it("with modeHrefs, renders the mode switch as a link to the other mode's page", () => {
+    const signIn = render(<AuthForm {...base} modeHrefs={hrefs} onModeChange={() => {}} />)
+    const signUp = render(<AuthForm {...base} mode="sign-up" modeHrefs={hrefs} />)
+    expect(modeSwitchTag(signIn)).toMatch(/^<a /)
+    expect(attr(modeSwitchTag(signIn), "href")).toBe("/sign-up")
+    expect(attr(modeSwitchTag(signUp), "href")).toBe("/sign-in")
+    expect(signUp).toContain("Have an account? Sign in")
+  })
+
+  it("with modeHrefs, renders the mode-switch link even without onModeChange", () => {
+    const html = render(<AuthForm {...base} modeHrefs={hrefs} />)
+    expect(attr(modeSwitchTag(html), "href")).toBe("/sign-up")
+    expect(html).toContain("Need an account? Sign up")
+  })
+
+  it("draws the mode-switch link with the same classes as the mode-switch button", () => {
+    const button = render(<AuthForm {...base} onModeChange={() => {}} />)
+    const link = render(<AuthForm {...base} modeHrefs={hrefs} onModeChange={() => {}} />)
+    expect(attr(modeSwitchTag(link), "class")).toBe(attr(modeSwitchTag(button), "class"))
   })
 
   it("renders the one-time-code field with the right autocomplete and inputmode", () => {
