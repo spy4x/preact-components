@@ -8,8 +8,9 @@
 [![JSR](https://jsr.io/badges/@spy4x/preact-ui)](https://jsr.io/@spy4x/preact-ui)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Status: beta.** The API still changes between major versions, so pin an exact version. No screen
-reader has been run against the components yet ([#210](https://github.com/spy4x/preact-components/issues/210)).
+**Status: beta.** Breaking changes still ship often (1.0.0 to 3.0.0 took three days), and each
+one bumps the major version. No screen reader has been run against the components yet
+([#210](https://github.com/spy4x/preact-components/issues/210)).
 
 ```bash
 deno add jsr:@spy4x/preact-ui
