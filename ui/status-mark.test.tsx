@@ -67,6 +67,32 @@ describe("StatusMark", () => {
     }
   })
 
+  it("tones every status's shape with its own theme token class, never a raw palette class", () => {
+    // Fixed on purpose: a raw palette class (`text-green-600`) ignores an app's repainted theme,
+    // and a different token silently changes what a status means (#443).
+    const expected: Record<StatusMarkStatus, string> = {
+      ready: "text-success",
+      "in-use": "text-success",
+      beta: "text-muted",
+      wip: "text-warning",
+      paused: "text-muted",
+      archived: "text-muted",
+      "known-issue": "text-danger",
+      outcome: "text-foreground",
+      live: "text-success",
+      offline: "text-muted",
+    }
+    const actual = Object.fromEntries(STATUSES.map((status) => {
+      const html = render(<StatusMark status={status} />)
+      const shapeWrapper = html.match(/<span aria-hidden="true" class="([^"]*)"/)
+      if (!shapeWrapper) throw new Error(`no aria-hidden shape wrapper for "${status}"`)
+      // The whole class string, so a raw class with a variant (`dark:text-green-400`) or of
+      // another kind (`fill-yellow-500`) beside the token fails too.
+      return [status, shapeWrapper[1].replace(/^shrink-0 /, "")]
+    }))
+    expect(actual).toEqual(expected)
+  })
+
   it("renders a different SVG for every status, so the shapes are distinct", () => {
     const svgs = STATUSES.map((status) => {
       const html = render(<StatusMark status={status} />)
