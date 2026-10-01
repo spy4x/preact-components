@@ -1519,8 +1519,8 @@ spy4x/ts-libs, so every package reports failures in one shape: `validate`, `Vali
 
 ## `For` and `Show` live in the dependency, not here
 
-This package used to ship its own `<For>` and `<Show>`. The pinned `@preact/signals` 2.5.1 ships
-both, so ours are gone and the import moves:
+This package used to ship its own `<For>` and `<Show>`. `@preact/signals` ships both from
+2.5.1, the lowest version this library accepts, so ours are gone and the import moves:
 
 ```ts
 import { For, Show } from "@preact/signals/utils"
@@ -1879,7 +1879,8 @@ reached the component under its old name, both clocks ran, and a toast lived whi
 - **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
   forward: each one re-reads every parameter into its signal, and a parameter that has left the
   address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
-  `useSignalEffect` whose body reads no signal, and in the pinned `@preact/signals` 2.5.1 that is an
+  `useSignalEffect` whose body reads no signal, and in `@preact/signals` (2.5.1, and still in
+  2.11.2) that is an
   effect with an empty dependency list, so the address was read once at mount and never again: a
   pushed route left the filters showing the previous route's values while the address bar showed the
   new one. The effect is keyed on the router's search string now, and the `popstate` listener that
@@ -3204,7 +3205,7 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   replaces the two defaults; never pass a plain class such as `.sr-only` there, because Tailwind
   scans `vite.config.ts` itself and emits it, so the guard could never fail.
 - `npmSpecifiers()` resolves the `npm:` specifiers inside the library's modules, such as
-  `npm:@preact/signals@2.5.1`, to the app's own copy of that package. `@deno/vite-plugin` 1.0.6
+  `npm:@preact/signals@^2.5.1`, to the app's own copy of that package. `@deno/vite-plugin` 1.0.6
   cuts a scoped name at its first `@` and drops a subpath, so without it the build fails
   (denoland/deno-vite-plugin#74); it goes away once that is fixed. It throws
   `NpmVersionMismatchError` when the app's copy is not the version the library asks for: a

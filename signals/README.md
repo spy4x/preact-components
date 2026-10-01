@@ -53,8 +53,8 @@ spy4x/ts-libs, so every package reports failures in one shape: `validate`, `Vali
 
 ## `For` and `Show` live in the dependency, not here
 
-This package used to ship its own `<For>` and `<Show>`. The pinned `@preact/signals` 2.5.1 ships
-both, so ours are gone and the import moves:
+This package used to ship its own `<For>` and `<Show>`. `@preact/signals` ships both from
+2.5.1, the lowest version this library accepts, so ours are gone and the import moves:
 
 ```ts
 import { For, Show } from "@preact/signals/utils"
@@ -413,7 +413,8 @@ reached the component under its old name, both clocks ran, and a toast lived whi
 - **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
   forward: each one re-reads every parameter into its signal, and a parameter that has left the
   address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
-  `useSignalEffect` whose body reads no signal, and in the pinned `@preact/signals` 2.5.1 that is an
+  `useSignalEffect` whose body reads no signal, and in `@preact/signals` (2.5.1, and still in
+  2.11.2) that is an
   effect with an empty dependency list, so the address was read once at mount and never again: a
   pushed route left the filters showing the previous route's values while the address bar showed the
   new one. The effect is keyed on the router's search string now, and the `popstate` listener that

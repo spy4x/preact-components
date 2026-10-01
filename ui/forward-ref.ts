@@ -32,8 +32,9 @@ interface ForwardedType {
  * confirmed against `dist/preact.module.js` of the pinned version, where the same call site reads
  * `options.__b`; `preact/compat`'s own bundle patches `__b` for the same reason.
  *
- * `__b` is treated as stable within Preact 10 here, not guessed at: this workspace's own pinned
- * `@preact/signals` (2.5.1) hooks the same option under the same name for its own state
+ * `__b` is treated as stable within Preact 10 here, not guessed at: `@preact/signals`
+ * (checked in 2.5.1, the lowest version this library accepts) hooks the same option under the
+ * same name for its own state
  * (`DIFF = "__b"` in its `src/internal.d.ts`, declaring support through 10.x and 11 pre-releases),
  * `preact-render-to-string` (6.7.0, this workspace's renderer) hard-codes the same name in its own
  * `src/lib/constants.js`, and `preact/debug`'s bundle patches it too — the same hook
