@@ -91,7 +91,7 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
 }
 
 /** The code row of the gallery's card: how an app uses one glyph. */
-const GALLERY_SNIPPET = `import { IconSearch } from "@spy4x/preact-icons"
+const GALLERY_SNIPPET = `import { IconSearch, IconStar } from "@spy4x/preact-icons"
 
 <IconSearch class="size-5 text-muted" />
 <IconSearch aria-label="Search" />
