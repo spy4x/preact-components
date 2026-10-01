@@ -307,12 +307,18 @@ properties. No CSS fork, no `!important`:
 @import "@spy4x/preact-theme/tokens.css";
 @import "@spy4x/preact-theme/preset.css";
 
-/* After tokens.css, so this wins the cascade. */
-:root {
+@theme {
   --color-primary: oklch(0.55 0.18 255);
   --radius-primary: 0.25rem;
 }
 ```
+
+`tokens.css` puts every token in the cascade layer `theme.preact-tokens`, a sublayer of Tailwind's
+`theme` layer (#470). A layer's own rules outrank its sublayers, and `theme` is the lowest layer of
+all, so an app's own value always wins: in its `@theme` block as above, or in a plain `:root` rule,
+before or after the imports. The same holds against `tokens.css`'s `.dark` rule, so a value an app
+sets on `:root` applies to both palettes. The one token that ranks the other way is a name
+Tailwind's own theme also declares, so `tokens.css` declares none of them ("Fonts" below).
 
 (The two `@spy4x/preact-theme` ids are not real specifiers — see "Install" above for what
 actually resolves them: the entry string a build script hands to `compile()`, matched by
@@ -373,11 +379,11 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   `tokens.css` differs from its output, and `deno task --cwd theme generate` runs it.
 - In the dark palette `--color-primary` is near-black chrome, so `.dark` sets `--color-accent` to
   purple-900 itself, and the components keep their purple there. An app with a dark palette sets
-  `--color-accent` as well — on `:root` after `tokens.css`, which covers both palettes, or in its
-  own `.dark` rule. An app that sets `--color-primary` on `:root` after `tokens.css` also
-  overrides `.dark`'s near-black `--color-primary`, because the two selectors are equally specific
-  and the later rule wins. So in the dark palette the preset's `.btn-primary` takes the brand
-  colour, while the components follow `--color-accent`.
+  `--color-accent` as well — on `:root` or in its `@theme`, which covers both palettes, or in its
+  own `.dark` rule. An app that sets `--color-primary` on `:root` or in its `@theme` also
+  overrides `.dark`'s near-black `--color-primary`, because `tokens.css`'s layer ranks below the
+  app's rule whatever the selectors. So in the dark palette the preset's `.btn-primary` takes the
+  brand colour, while the components follow `--color-accent`.
 - The scale is worked out once, on `:root`, and inherited as colours: set the tokens on `:root`,
   not on a subtree. The scale's `@supports` block tests the maths it uses (`calc()`, `min()`,
   `max()`, `cos()` and `sin()` on channel keywords). A browser that cannot evaluate them skips
@@ -412,15 +418,18 @@ every one of those rules reads it first. The tone buttons (`.btn-danger`, `.btn-
 
 ### Fonts
 
-`tokens.css` declares `--font-sans`; it does not declare `--font-serif` or `--font-mono`. Both
-exist already — Tailwind 4 defines all three as part of its own default theme, so `font-serif` and
-`font-mono` utilities and a bare `<code>` element already resolve to a system stack with no
-declaration from this package. Redeclaring either in `:root` here would win the cascade over an
-app's own `@theme --font-mono`, the same problem the header comment in `tokens.css` explains for
-colour tokens — an app could not override it. #257 asked for the two tokens to exist for a
-proof-first site's use of monospace and serif text, not for this package to own their default
-value, so this package leaves both at Tailwind's own default and only names `--font-sans` as its
-one opinionated addition.
+`tokens.css` declares no font token. Tailwind 4 defines `--font-sans`, `--font-serif` and
+`--font-mono` in its own default theme, so the `font-*` utilities, a bare `<code>` element and
+`.theme-base`'s body font already resolve to a system stack with no declaration from this package.
+Tailwind's theme outranks `tokens.css`'s layer, so a font this file declared would never apply.
+Until 2.0.0 it declared `--font-sans` as `"Poppins", ui-sans-serif, system-ui, sans-serif`, which
+won over an app's own `@theme --font-sans` (#470). An app that wants that font sets it itself:
+
+```css
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+```
 
 ### Headings, weights, shapes and shadows
 
@@ -671,7 +680,8 @@ deno task --cwd theme test   # this package alone
 `integration/` compiles the shipped CSS with the real Tailwind 4 compiler and
 asserts the output: every class is emitted with declarations, atoms read tokens,
 the dark variant is class-scoped, an app's token override is still reachable
-after the preset, and the preset still works when `tokens.css` is skipped. The
+after the preset, `tokens.css` ranks below an app's own `@theme` tokens, and the preset still works
+when `tokens.css` is skipped. The
 Deno-side `@import` reader the compile needs is covered there too.
 
 That compile reads `HOME`, the preset and the Deno npm cache, so the root `test`

@@ -287,15 +287,19 @@ export const REGION_END = "/* #endregion accent-scale */"
 /**
  * `tokens` with the text between the region markers replaced by {@link accentScaleBlock}.
  *
+ * The block is indented to the start marker's own depth: the region sits inside `tokens.css`'s
+ * `@layer` rule (#470), and `deno fmt` indents it there, so an unindented block would never equal
+ * the formatted file.
+ *
  * @throws If either marker is missing.
  */
 export function withAccentScale(tokens: string): string {
   const start = tokens.indexOf(REGION_START)
   const end = tokens.indexOf(REGION_END)
   if (start < 0 || end < start) throw new Error("tokens.css has no accent-scale region markers")
-  return `${tokens.slice(0, start + REGION_START.length)}\n${accentScaleBlock()}\n${
-    tokens.slice(end)
-  }`
+  const indent = tokens.slice(tokens.lastIndexOf("\n", start) + 1, start)
+  const block = accentScaleBlock().split("\n").map((line) => `${indent}${line}`).join("\n")
+  return `${tokens.slice(0, start + REGION_START.length)}\n${block}\n${indent}${tokens.slice(end)}`
 }
 
 if (import.meta.main) {
