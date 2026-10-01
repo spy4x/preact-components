@@ -786,7 +786,11 @@ describe("Devtools", () => {
       const devtools = await connecting
       devtools.callTimeoutMs = 200
 
-      const reloading = reloadAndHydrate(devtools, { timeoutMs: 200 })
+      // Handled at once, so a broken helper fails this test alone instead of the whole file.
+      const reloading = reloadAndHydrate(devtools, { timeoutMs: 200 }).then(
+        (value) => value,
+        (error: Error) => error.message,
+      )
       const reload = JSON.parse(socket.sent[0])
       expect(reload.method).toBe("Page.reload")
       socket.onmessage?.({ data: JSON.stringify({ method: "Page.loadEventFired", params: {} }) })

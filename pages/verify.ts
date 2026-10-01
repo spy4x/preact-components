@@ -1286,6 +1286,7 @@ async function dialogLeftOpenDrill(devtools: Devtools): Promise<void> {
   const after = await readRecovered(devtools)
   const pressed = await escapesSeen(devtools)
 
+  // Proves the page does not move, so it waits out the whole hold rather than polling for a change.
   const HOLD_MS = 1_000
   let heldAtTop = after.scrollY === 0
   const holdDeadline = Date.now() + HOLD_MS
