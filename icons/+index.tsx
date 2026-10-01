@@ -807,6 +807,27 @@ export function IconCog6Tooth(props: IconProps): JSX.Element {
   )
 }
 
+/** Feather outline (stroke-2); Feather's "copy" (4.29.2), added in #495. */
+export function IconCopy(props: IconProps): JSX.Element {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      {...iconA11y(props)}
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      {iconTitle(props)}
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+}
+
 /** Heroicons v2 outline (stroke-1.5) · from template. */
 export function IconCpuChip(props: IconProps): JSX.Element {
   return (
@@ -1615,6 +1636,26 @@ export function IconPackage(props: IconProps): JSX.Element {
   )
 }
 
+/** Feather outline (stroke-2); Feather's "edit-2" (4.29.2), a plain pen, added in #495. */
+export function IconPen(props: IconProps): JSX.Element {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      {...iconA11y(props)}
+      class={`shrink-0 ${props.class || "size-5"}`}
+    >
+      {iconTitle(props)}
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+    </svg>
+  )
+}
+
 /** Heroicons v2 outline (stroke-1.5) · from template. */
 export function IconPencilSquare(props: IconProps): JSX.Element {
   return (
@@ -1854,13 +1895,22 @@ export function IconSpinner(props: IconProps): JSX.Element {
   )
 }
 
-/** Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons. */
-export function IconStar(props: IconProps): JSX.Element {
+/** Props of {@link IconStar}: the shared icon props plus a solid variant. */
+export interface IconStarProps extends IconProps {
+  /**
+   * Fills the star in the text colour, for a rating that is set. The stroke stays, so the filled
+   * star covers exactly the outline's footprint. Defaults to `false`, the outline.
+   */
+  filled?: boolean
+}
+
+/** Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons; `filled` for solid. */
+export function IconStar(props: IconStarProps): JSX.Element {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="none"
+      fill={props.filled ? "currentColor" : "none"}
       stroke="currentColor"
       stroke-width="2"
       stroke-linecap="round"

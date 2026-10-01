@@ -156,7 +156,7 @@ Install: `deno add jsr:@spy4x/preact-crud`
 
 ## @spy4x/preact-icons
 
-Merged icon set. 120 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+Merged icon set. 122 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
 
 Install: `deno add jsr:@spy4x/preact-icons`
 
@@ -196,6 +196,7 @@ Install: `deno add jsr:@spy4x/preact-icons`
 - `IconClock` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "clock" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconCode` (component): Feather outline (stroke-2); matches Feather's "code" exactly, not Heroicons. Import: `@spy4x/preact-icons`
 - `IconCog6Tooth` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconCopy` (component): Feather outline (stroke-2); Feather's "copy" (4.29.2), added in #495. Import: `@spy4x/preact-icons`
 - `IconCpuChip` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconCreditCard` (component): Heroicons v1 outline (stroke-2) · "credit-card" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconCursorArrowRays` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
@@ -232,6 +233,7 @@ Install: `deno add jsr:@spy4x/preact-icons`
 - `IconMinus` (component): Heroicons v2 outline (stroke 1.8); matches Heroicons v2's and Lucide's "minus" exactly. Import: `@spy4x/preact-icons`
 - `IconMoon` (component): Heroicons v2 outline (stroke-1.5) · "moon" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
 - `IconPackage` (component): Heroicons v1 outline (stroke-2) · "cube" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
+- `IconPen` (component): Feather outline (stroke-2); Feather's "edit-2" (4.29.2), a plain pen, added in #495. Import: `@spy4x/preact-icons`
 - `IconPencilSquare` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconPlus` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconQuote` (component): Lucide outline (stroke-2) · "quote" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
@@ -243,7 +245,8 @@ Install: `deno add jsr:@spy4x/preact-icons`
 - `IconShieldCheck` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconSparkle` (component): Heroicons v1 outline (stroke-2) · "sparkles" from heroicons@1.0.6 (#233). Import: `@spy4x/preact-icons`
 - `IconSpinner` (component): Lucide outline (stroke 2.5); matches Lucide's "loader-circle"/"loader-2" exactly. Import: `@spy4x/preact-icons`
-- `IconStar` (component): Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons. Import: `@spy4x/preact-icons`
+- `IconStarProps` (type): Props of `IconStar`: the shared icon props plus a solid variant. Import: `@spy4x/preact-icons`
+- `IconStar` (component): Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons; `filled` for solid. Import: `@spy4x/preact-icons`
 - `IconSun` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
 - `IconTag` (component): Feather outline (stroke 1.75) · matches Feather's "tag" exactly. Import: `@spy4x/preact-icons`
 - `IconTarget` (component): Lucide outline (stroke-2) · "target" from lucide-static@1.47.0 (#233). Import: `@spy4x/preact-icons`
