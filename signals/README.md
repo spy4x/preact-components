@@ -53,8 +53,8 @@ spy4x/ts-libs, so every package reports failures in one shape: `validate`, `Vali
 
 ## `For` and `Show` live in the dependency, not here
 
-This package used to ship its own `<For>` and `<Show>`. `@preact/signals` ships both from
-2.5.1, the lowest version this library accepts, so ours are gone and the import moves:
+This package used to ship its own `<For>` and `<Show>`. `@preact/signals` ships both (since
+2.1.0, so in every version this library accepts), so ours are gone and the import moves:
 
 ```ts
 import { For, Show } from "@preact/signals/utils"
