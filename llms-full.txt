@@ -2915,6 +2915,19 @@ from a cookie on the server for instance. The drawer below `lg` is not affected 
 menu button's name, the shared `aria-label` on both navigation landmarks, the skip link's text, the
 user menu panel's `aria-label`, and the collapse button's name (`"Toggle sidebar"`).
 
+### A control in a slot shows no band around its focus ring
+
+A `Button` and the other controls that draw a focus ring leave a 2px gap between the control and
+the ring, drawn in `--color-focus-offset`, which is the page colour unless a container sets it.
+`SiteHeader`'s bar and `Shell`'s header and drawer are white in light while the page is grey, so a
+caller's `Button` in `actions`, `status`, `sidebarTop` or `sidebarBottom` showed a grey band around
+its ring there. Both bars now set the gap to their own colour in each palette, with the class string
+`barFocusOffset` in `mobile-panel.ts`: `pc-focus-offset-surface` in light, the canvas colour in dark,
+where the bars are drawn in the page colour. `Shell`'s drawer and `SiteHeader`'s menu panel are
+drawn inside their bar's `<header>`, so they inherit the same gap.
+`Calendar` needs neither: its panel is the surface colour in both palettes, and its cells draw their
+gap with `ring-offset-surface` directly.
+
 ### Reusing `mobile-panel.ts`
 
 `Shell`'s drawer wires the same `detailsRef`, `triggerRef` and `onToggle={handleToggle}` from

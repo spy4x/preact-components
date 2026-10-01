@@ -142,6 +142,13 @@ describe("SiteHeader", () => {
     expect(panelTag).toContain("inset-x-0")
   })
 
+  it("sets the focus-ring gap inside the bar to the bar's colour in each palette", () => {
+    const html = render(<SiteHeader links={links} brand="Acme" />)
+    const headerTag = html.match(/<header class="[^"]*">/)?.[0] ?? ""
+    expect(headerTag).toContain("pc-focus-offset-surface")
+    expect(headerTag).toContain("dark:[--color-focus-offset:var(--color-canvas)]")
+  })
+
   it("prints no visible text beyond the caller's own brand, link labels and actions", () => {
     const html = render(
       <SiteHeader

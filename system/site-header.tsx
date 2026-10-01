@@ -16,7 +16,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconBars3, type IconProps, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
-import { useMobilePanel } from "./mobile-panel.ts"
+import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
 
 /** One entry of {@link SiteHeaderProps.links}. */
 export interface SiteHeaderLink {
@@ -145,6 +145,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
     <header
       class={cn(
         "relative border-b border-subtle bg-surface dark:bg-canvas",
+        barFocusOffset,
         className,
       )}
     >

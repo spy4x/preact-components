@@ -205,6 +205,13 @@ describe("Shell", () => {
     expect(html).not.toContain("/elsewhere")
   })
 
+  it("sets the focus-ring gap in the header to the header's colour in each palette", () => {
+    const html = render(<Shell brand="Acme" user={null} navItems={navItems}>Page</Shell>)
+    const header = html.match(/<header class="([^"]*)" data-e2e="shell-header">/)?.[1] ?? ""
+    expect(header).toContain("pc-focus-offset-surface")
+    expect(header).toContain("dark:[--color-focus-offset:var(--color-canvas)]")
+  })
+
   it("puts the skip link before any other link, targeting a focusable #shell content id", () => {
     const html = render(<Shell navItems={navItems} brand="Acme" user={null}>the page</Shell>)
     const skipLink = html.match(/<a[^>]*data-e2e="shell-skip-link"[^>]*>[^<]*<\/a>/)?.[0] ?? ""
