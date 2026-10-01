@@ -261,8 +261,9 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
 
   // URL → signals, re-read whenever the router's search string changes.
   //
-  // A plain effect keyed on that string, and not `useSignalEffect`: in the pinned
-  // `@preact/signals` 2.5.1 `useSignalEffect` is `useEffect(…, [])` whose body re-runs only when a
+  // A plain effect keyed on that string, and not `useSignalEffect`: in
+  // `@preact/signals` (2.5.1, and still in 2.11.2) `useSignalEffect` is `useEffect(…, [])`
+  // whose body re-runs only when a
   // signal it *read* changes, and this body reads none. So the filters used to be read out of the
   // address once, at mount, and a route pushed afterwards left them showing the previous route's
   // values while the address bar showed the new one.

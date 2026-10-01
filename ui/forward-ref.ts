@@ -27,25 +27,26 @@ interface ForwardedType {
  * `diff()`, for every vnode, which is also why `preact/hooks` chains its own state through this
  * exact hook rather than a documented one.
  *
- * Preact's source names it `options._diff` (`preact/src/diff/index.js`), but the published
- * package resolves to its built bundle, which carries the mangled property name instead —
- * confirmed against `dist/preact.module.js` of the pinned version, where the same call site reads
- * `options.__b`; `preact/compat`'s own bundle patches `__b` for the same reason.
+ * Preact's source names it `options._diff` (`preact/src/diff/index.js`), but the published package
+ * resolves to its built bundle, which carries the mangled property name instead — confirmed against
+ * `dist/preact.module.js` of 10.29.8, the lowest version this library accepts, where the same call
+ * site reads `options.__b`; `preact/compat`'s own bundle patches `__b` for the same reason.
  *
- * `__b` is treated as stable within Preact 10 here, not guessed at: this workspace's own pinned
- * `@preact/signals` (2.5.1) hooks the same option under the same name for its own state
- * (`DIFF = "__b"` in its `src/internal.d.ts`, declaring support through 10.x and 11 pre-releases),
+ * `__b` is treated as stable within Preact 10 here, not guessed at: `@preact/signals` (checked in
+ * 2.5.1 and 2.11.2) hooks the same option under the same name for its own state (`DIFF = "__b"` in
+ * its `src/internal.d.ts`, `src/internal.ts` in 2.11.2, declaring support through 10.x and 11
+ * pre-releases),
  * `preact-render-to-string` (6.7.0, this workspace's renderer) hard-codes the same name in its own
  * `src/lib/constants.js`, and `preact/debug`'s bundle patches it too — the same hook
  * {@link forwardRef}'s doc comment credits `preact/hooks` for chaining under.
  *
  * What would actually break this: a Preact release that mangles `_diff` to something other than
- * `__b`, or that changes how a function component receives `ref` (in which case delete this file
- * — Preact would be doing natively what it exists for). Neither is covered by any version range
- * this package or its dependents declare, and a Preact **major** is the likely place for either;
- * bumping the pinned `preact`/`preact/*` versions in this repo (a deliberate, single, exactly
- * pinned commit per `AGENTS.md`) is the moment to re-check both. It also assumes one single copy
- * of Preact in the module graph, the same assumption `preact/hooks` makes — two copies break
+ * `__b`, or that changes how a function component receives `ref` (in which case delete this file —
+ * Preact would be doing natively what it exists for). A Preact **major** is the likely place for
+ * either. The `^10.29.8` range this package publishes lets any Preact 10 minor in without a commit
+ * here, so a minor that did either would reach apps unchecked; the moments to re-check both are
+ * raising the range's lowest version and a new Preact major. It also assumes one single
+ * copy of Preact in the module graph, the same assumption `preact/hooks` makes — two copies break
  * `preact/hooks`' own state the same way, so this is not a new fragility this file introduces.
  *
  * The failure mode differs by where it happens. Inside this repository, the browser checks in
