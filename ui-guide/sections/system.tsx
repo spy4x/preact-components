@@ -1094,7 +1094,8 @@ const SHELL_DEMO_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
  *
  * Every port is wired to something visible: `navigate` moves `currentPath` and counts its calls,
  * the "New project" action counts presses, "Sign out" is a form post whose hydrated `onClick`
- * counts the submits it takes over, and the collapsed sidebar is kept in `localStorage`
+ * counts the submits it takes over, "Sign out everywhere" is a form post with no `onClick`, which
+ * the browser really sends, and the collapsed sidebar is kept in `localStorage`
  * through `makeStorage`, read once after mount so the server's markup and the first client render
  * agree. `pages/checks/system.ts` reads all four.
  */
@@ -1181,6 +1182,11 @@ function ShellDemo() {
             action: "/sign-out",
             onClick: () => signOuts.value++,
             dataE2E: "signout",
+          },
+          {
+            label: "Sign out everywhere",
+            action: "/sign-out-everywhere",
+            dataE2E: "signout-everywhere",
           },
         ]}
         status={
@@ -1398,6 +1404,7 @@ useEffect(() => {
   userMenuItems={[
     { label: "Your profile", href: "/profile" },
     { label: "Sign out", action: "/sign-out", onClick: () => auth.signOut(), dataE2E: "signout" },
+    { label: "Sign out everywhere", action: "/sign-out-everywhere" },
   ]}
   status={<ConnectionIndicator />}
 >

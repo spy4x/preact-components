@@ -5939,6 +5939,8 @@ async function shellItemActionCheck(devtools: Devtools): Promise<void> {
 /** The Shell card's "Sign out" item: a form post's submit button inside the user menu. */
 const SHELL_SIGN_OUT = SHELL + ' [data-e2e="signout"]'
 const SHELL_SIGN_OUTS = SHELL + ' [data-e2e="shell-demo-signouts"]'
+/** The card's "Sign out everywhere": a form post with no `onClick`, which the browser sends. */
+const SHELL_SIGN_OUT_EVERYWHERE = SHELL + ' [data-e2e="signout-everywhere"]'
 
 /** What the focused element is, in the user menu's terms. */
 function readShellMenuFocus(devtools: Devtools): Promise<string> {
@@ -5948,6 +5950,7 @@ function readShellMenuFocus(devtools: Devtools): Promise<string> {
       const active = document.activeElement
       if (!active) return "nothing"
       if (active.matches('${SHELL_SIGN_OUT}')) return "sign out"
+      if (active.matches('${SHELL_SIGN_OUT_EVERYWHERE}')) return "sign out everywhere"
       if (active.matches('${SHELL_USER_MENU_BUTTON}')) return "trigger"
       if (active.matches('${SHELL_USER_MENU_ITEM}')) return active.textContent.trim()
       return active.tagName.toLowerCase()
@@ -6014,7 +6017,9 @@ async function openShellUserMenu(devtools: Devtools): Promise<boolean> {
  * The user menu's form item (#457) — `{ action, onClick }`, drawn as a `<form method="post">`
  * whose submit button is the item — answers the menu's keys exactly like its link sibling: the
  * arrow keys, Home and End land on it, Escape closes the menu from it and hands focus back to the
- * trigger, and Enter and Space each submit it once, close the menu and return focus.
+ * trigger, and Enter and Space each submit it once, close the menu and return focus. An item
+ * with `action` and no `onClick` ("Sign out everywhere") is submitted with its post left alone,
+ * which is what a server-rendered app's sign-out relies on once the page has hydrated.
  *
  * The submit is read from a `document` listener rather than let through: it records whether the
  * form's own hydrated handler had already cancelled the post, then cancels it anyway, so a broken
@@ -6055,16 +6060,27 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
   try {
     const opened = await openShellUserMenu(devtools)
     const visited: string[] = [await readShellMenuFocus(devtools)]
-    for (const key of ["ArrowDown", "ArrowDown", "End", "Home", "ArrowUp"] as const) {
+    const keys = [
+      "ArrowDown",
+      "ArrowDown",
+      "ArrowDown",
+      "ArrowUp",
+      "Home",
+      "End",
+      "ArrowUp",
+    ] as const
+    for (const key of keys) {
       await pressKey(devtools, key)
       visited.push(await readShellMenuFocus(devtools))
     }
     const expected = [
       "Your profile",
       "sign out",
+      "sign out everywhere",
       "Your profile",
-      "sign out",
+      "sign out everywhere",
       "Your profile",
+      "sign out everywhere",
       "sign out",
     ]
     check(
@@ -6072,7 +6088,7 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
       opened && JSON.stringify(visited) === JSON.stringify(expected),
       !opened
         ? "the user menu never opened with focus on its first item"
-        : `focus after open, ArrowDown, ArrowDown, End, Home, ArrowUp: ${visited.join(" → ")}`,
+        : `focus after open, then ${keys.join(", ")}: ${visited.join(" → ")}`,
     )
 
     const tree = await readShellSignOutAXParent(devtools)
@@ -6093,7 +6109,7 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
 
     for (const key of ["Enter", "Space"] as const) {
       const reopened = await openShellUserMenu(devtools)
-      await pressKey(devtools, "End")
+      await pressKey(devtools, "ArrowDown")
       const onItem = (await readShellMenuFocus(devtools)) === "sign out"
       const before = Number(await taken())
       await read(devtools, "(globalThis.__shellSubmits = [], true)", false)
@@ -6112,11 +6128,38 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
           "and focus returns to the trigger",
         reopened && onItem && counted && seen === want && closed && focus === "trigger",
         !reopened || !onItem
-          ? `the menu did not open with End landing on the form item (focus: ${focus})`
+          ? `the menu did not open with ArrowDown landing on the form item (focus: ${focus})`
           : `onClick calls ${before} → ${await taken()}, submit events ${seen}, ` +
             `menu closed: ${closed}, focus: ${focus}`,
       )
     }
+
+    const reopened = await openShellUserMenu(devtools)
+    await pressKey(devtools, "End")
+    const onEverywhere = (await readShellMenuFocus(devtools)) === "sign out everywhere"
+    const before = Number(await taken())
+    await read(devtools, "(globalThis.__shellSubmits = [], true)", false)
+    if (onEverywhere) await pressKey(devtools, "Enter")
+    const submitted = await poll(async () => (await submits()) !== "[]", 3_000)
+    const closed = await poll(() => readShellUserMenuOpen(devtools).then((v) => !v), 3_000)
+    const seen = await submits()
+    const after = Number(await taken())
+    const want = JSON.stringify([
+      {
+        prevented: false,
+        method: "post",
+        action: "/sign-out-everywhere",
+        submitter: "signout-everywhere",
+      },
+    ])
+    check(
+      "Enter on a Shell user menu form item with no onClick submits it with the post not cancelled",
+      reopened && onEverywhere && submitted && seen === want && after === before && closed,
+      !reopened || !onEverywhere
+        ? "the menu did not open with End landing on the item with no onClick"
+        : `submit events ${seen}, the other item's onClick calls ${before} → ${after}, ` +
+          `menu closed: ${closed}`,
+    )
   } finally {
     await read(
       devtools,
