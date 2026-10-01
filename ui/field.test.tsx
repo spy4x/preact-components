@@ -15,7 +15,7 @@ describe("Field", () => {
     )
 
     expect(html.indexOf(">Email<")).toBeLessThan(html.indexOf("<input"))
-    expect(html).toContain('class="label"')
+    expect(html).toContain('class="pc-label"')
     expect(html).toContain('<div class="mt-2">')
   })
 
@@ -70,7 +70,7 @@ describe("Field", () => {
     expect(html).toContain('aria-describedby="email-error email-hint"')
     expect(html).toContain('id="email-error"')
     expect(html).toContain('id="email-hint"')
-    expect(html).toContain('class="input"')
+    expect(html).toContain('class="pc-input"')
   })
 
   it("throws instead of rendering undefined when the child is not one element", () => {
@@ -251,7 +251,7 @@ describe("Field label target", () => {
       </Field>,
     )
 
-    expect(html).toContain('class="label"')
+    expect(html).toContain('class="pc-label"')
     expect(html).not.toContain("for=")
     // The control still carries the id, so aria-describedby keeps working.
     expect(html).toContain('id="search"')
@@ -390,7 +390,7 @@ describe("Field around a self-labelling control", () => {
     // the control is named once, by the label that wraps it, and `Field`'s label is a visual heading
     // that claims nothing.
     expect(labelAssociations(html, "archive")).toEqual([0, 1])
-    expect(html).toContain('<label class="label gap-2 items-center"><input id="archive"')
+    expect(html).toContain('<label class="pc-label gap-2 items-center"><input id="archive"')
     expect(html).toContain('aria-describedby="archive-hint"')
   })
 
@@ -431,7 +431,7 @@ describe("Field around a self-labelling control", () => {
     // The field's own label is still rendered — it is the row's visual heading — but it is not the
     // element that names the group: the `<legend>` is, and each radio is named by the `<label>`
     // wrapping it. `radio.test.tsx` asserts those counts on this same composition.
-    expect(html.match(/<label class="label">/g)?.length).toBe(1)
+    expect(html.match(/<label class="pc-label">/g)?.length).toBe(1)
     expect(html).toContain("<legend")
     expect(html).toContain('id="notification-method"')
   })

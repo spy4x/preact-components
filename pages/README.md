@@ -305,8 +305,8 @@ as the numerator; and `--static`, which commits no package blocks at all, instea
 - **Browser** (headless Chromium over the DevTools Protocol, page served at the deployed base):
   hydration, Dropdown open/close, ToggleSwitch, OnOffButtons, the icon filter over the icon gallery,
   click-to-copy in the gallery, a click on every usage block's copy control putting that block's text
-  on the clipboard, typing into a class-chapter `.input` and toggling its `.checkbox`/`.radio`, the
-  `.scrollbar` scrolling, a toast pushed from the demo stack, a deep link marking/scrolling/titling,
+  on the clipboard, typing into a class-chapter `.pc-input` and toggling its `.pc-checkbox`/`.pc-radio`, the
+  `.pc-scrollbar` scrolling, a toast pushed from the demo stack, a deep link marking/scrolling/titling,
   the canonical demo route, a section route and an unknown route falling back to the landing page —
   the three of which are the hash-routing grammar, driven in the browser because the resolver's own
   tests cannot prove the island wired it up — the palette toggle, computed styles proving `preset.css` is live (`h-12` input, `radius-primary`

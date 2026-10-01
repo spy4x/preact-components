@@ -225,7 +225,7 @@ describe("Progress", () => {
     expect(html).toContain('role="progressbar"')
     expect(html).toContain('aria-labelledby="storage-label"')
     expect(html).toContain('id="storage-label"')
-    expect(html).toContain('class="kpi-label truncate"')
+    expect(html).toContain('class="pc-kpi-label truncate"')
   })
 
   it("renders the label's span id as the bar id plus a suffix", () => {
@@ -266,7 +266,7 @@ describe("Progress", () => {
     const html = render(<Progress value={66.7} showValue={false} />)
 
     expect(html).not.toContain("67%")
-    expect(html).not.toContain("num")
+    expect(html).not.toContain("pc-num")
   })
 
   it("shows no percentage for an unknown reading", () => {
@@ -279,7 +279,7 @@ describe("Progress", () => {
   it("renders no percentage for an unmeasurable reading", () => {
     const html = render(<Progress value={5} max={0} />)
 
-    expect(html).not.toContain("num")
+    expect(html).not.toContain("pc-num")
     expect(html).not.toContain("justify-between")
   })
 

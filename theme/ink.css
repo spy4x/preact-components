@@ -20,10 +20,10 @@
  * active nav" all at once; under ink, `--color-nav-active` carries a rail's current-item indicator
  * instead (a foreground/indicator colour — the surface a rail paints behind
  * its current item is `--color-surface-active` above, a separate token), and the focus rings of
- * `.btn`, `.input`, `.select` and `.textarea` read `--color-focus-ring`. Both are the same light
+ * `.btn`, `.pc-input`, `.pc-select` and `.pc-textarea` read `--color-focus-ring`. Both are the same light
  * neutral, not the accent. The accent still colours, under ink: `.btn-primary`'s fill, links
  * (`.btn-link`, `.text-primary`, `.border-primary`), `bg-primary`, checkboxes and radios,
- * `.btn-primary-outline` and `.bar`, because they read `--color-primary`/`--color-primary-muted`
+ * `.btn-primary-outline` and `.pc-bar`, because they read `--color-primary`/`--color-primary-muted`
  * directly. That is narrower than #257 asked ("the accent on the primary action alone"): moving
  * those is left for a later change.
  *

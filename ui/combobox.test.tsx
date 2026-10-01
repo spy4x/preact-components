@@ -1101,7 +1101,7 @@ describe("Combobox markup", () => {
 
     expect(html).toContain("w-64")
     expect(html).toContain("pl-9")
-    expect(html).toContain("input")
+    expect(html).toContain("pc-input")
     expect(html).toContain("max-h-40")
   })
 

@@ -136,7 +136,7 @@ describe("Section", () => {
     expect(id).toBeTruthy()
     expect(html).toBe(
       `<section aria-labelledby="${id}" class="flex flex-col gap-4">` +
-        `<header class="flex flex-col gap-1"><h2 id="${id}" class="h2">Billing</h2>` +
+        `<header class="flex flex-col gap-1"><h2 id="${id}" class="pc-h2">Billing</h2>` +
         `<p class="text-muted text-sm">Where invoices go.</p></header><p>body</p></section>`,
     )
   })
@@ -152,8 +152,8 @@ describe("Section", () => {
   })
 
   it("renders the heading at the level asked for, styled for that level", () => {
-    expect(render(<Section title="T" headingLevel={3} />)).toMatch(/<h3 id="[^"]+" class="h3">T/)
-    expect(render(<Section title="T" headingLevel={4} />)).toMatch(/<h4 id="[^"]+" class="h4">T/)
+    expect(render(<Section title="T" headingLevel={3} />)).toMatch(/<h3 id="[^"]+" class="pc-h3">T/)
+    expect(render(<Section title="T" headingLevel={4} />)).toMatch(/<h4 id="[^"]+" class="pc-h4">T/)
   })
 
   it("renders the element as names and keeps a caller's own label when it has no title", () => {

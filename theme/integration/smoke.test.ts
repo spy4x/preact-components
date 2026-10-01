@@ -84,7 +84,7 @@ const CANDIDATES = [
   "bg-surface",
   "bg-success",
   "bg-warning",
-  "bar",
+  "pc-bar",
   "border-control",
   "border-primary",
   "border-subtle",
@@ -101,36 +101,36 @@ const CANDIDATES = [
   "btn-success-outline",
   "btn-warning",
   "btn-warning-outline",
-  "card",
-  "card-body",
-  "card-footer",
-  "card-header",
-  "checkbox",
+  "pc-card",
+  "pc-card-body",
+  "pc-card-footer",
+  "pc-card-header",
+  "pc-checkbox",
   "dark:btn-primary",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "input",
-  "kpi",
-  "kpi-label",
-  "kpi-value",
-  "label",
-  "link",
+  "pc-h1",
+  "pc-h2",
+  "pc-h3",
+  "pc-h4",
+  "pc-h5",
+  "pc-input",
+  "pc-kpi",
+  "pc-kpi-label",
+  "pc-kpi-value",
+  "pc-label",
+  "pc-link",
   "list-ul",
-  "num",
+  "pc-num",
   "page-layout",
-  "radio",
+  "pc-radio",
   "rounded-primary",
-  "scrollbar",
-  "select",
+  "pc-scrollbar",
+  "pc-select",
   "text-danger",
   "text-muted",
   "text-primary",
   "text-success",
   "text-warning",
-  "textarea",
+  "pc-textarea",
   "theme-base",
 ]
 
@@ -570,13 +570,13 @@ function presetVocabulary(): Set<string> {
  *
  * Three restrictions, each closing a way a rule exempted itself:
  *
- *   - **Subject position only.** `.card option` styles a bare `option`; a class
+ *   - **Subject position only.** `.pc-card option` styles a bare `option`; a class
  *     above it exempts nothing.
  *   - **The subject's own class tokens only.** A class that appears just inside
  *     `:not()`, `:has()` or an attribute value is not a class the element
- *     carries, so `option:not(.card)`, `option:has(.card)` and
- *     `option[data-x=".card"]` are all still copies.
- *   - **Every branch, not some branch.** `:is(option, .card)` reaches a bare
+ *     carries, so `option:not(.pc-card)`, `option:has(.pc-card)` and
+ *     `option[data-x=".pc-card"]` are all still copies.
+ *   - **Every branch, not some branch.** `:is(option, .pc-card)` reaches a bare
  *     `option` through one of its alternatives, so it is not exempt — checking
  *     only whether a vocabulary class appears *somewhere* in the subject let it
  *     through.
@@ -595,7 +595,7 @@ function usesVocabulary(selector: string, vocabulary: Set<string>): boolean {
  * The subject shapes a compound can resolve to, one per `:is()` / `:where()`
  * alternative.
  *
- * `:is(option, .card)` is two subjects, not one: it reaches a bare `option`
+ * `:is(option, .pc-card)` is two subjects, not one: it reaches a bare `option`
  * through its first alternative, so the rule is a copy for that element. The
  * alternatives are expanded here rather than flattened away, which is what makes
  * the per-branch test above able to see the class-less one.
@@ -717,11 +717,11 @@ function classTokensOf(compound: string): string[] {
  * The compound a selector actually styles: its last one.
  *
  * The vocabulary exemption is a *subject-position* rule and nothing wider. The
- * library ships rules for `.card`, `.kpi`, `.label`, `.radio`, `.bg-surface` and
+ * library ships rules for `.pc-card`, `.pc-kpi`, `.pc-label`, `.pc-radio`, `.bg-surface` and
  * `.border-control`, and those rules style elements carrying that class — which
  * is a different question from the host chrome the gate owns. A class in
- * **ancestor** position is not that: `.card option` styles an `option` that
- * carries no library class at all, and `.card` being anywhere above it must not
+ * **ancestor** position is not that: `.pc-card option` styles an `option` that
+ * carries no library class at all, and `.pc-card` being anywhere above it must not
  * exempt the rule. Reading the whole selector for a class made every one of
  * those shapes invisible, including `.cardx option`, whose own class the scan
  * then absorbed into the vocabulary.
@@ -730,8 +730,8 @@ function classTokensOf(compound: string): string[] {
  * @returns The last compound, after any descendant or sibling combinator.
  */
 function subjectOf(selector: string): string {
-  // Depth-aware, not `split(/\s+/)`: `:is(option, .card)` is one subject, and a
-  // naive split hands back `.card)` — which happens to look like a library class
+  // Depth-aware, not `split(/\s+/)`: `:is(option, .pc-card)` is one subject, and a
+  // naive split hands back `.pc-card)` — which happens to look like a library class
   // and silently exempts the rule. The bracket-aware splitter is the same one
   // the emitted-selector reader uses.
   let spaced = selector.trim()
@@ -1294,12 +1294,12 @@ describe("theme preset", () => {
       "var(--color-primary, oklch(0.381 0.176 304.987))",
     )
     expect(declarationsOf(css, ".text-primary")).toContain("var(--color-primary-muted, ")
-    expect(declarationsOf(css, ".card")).toContain("var(--color-surface, oklch(1 0 0))")
-    expect(declarationsOf(css, ".input")).toContain("var(--color-border-control, ")
+    expect(declarationsOf(css, ".pc-card")).toContain("var(--color-surface, oklch(1 0 0))")
+    expect(declarationsOf(css, ".pc-input")).toContain("var(--color-border-control, ")
   })
 
   it("composes select from the input atom", async () => {
-    expect(declarationsOf(await preset(), ".select")).toContain(
+    expect(declarationsOf(await preset(), ".pc-select")).toContain(
       "height: calc(var(--spacing) * 12)",
     )
   })
@@ -1592,13 +1592,13 @@ describe("theme preset", () => {
    * The other side of the same predicate: a rule scoped to a class the preset
    * itself ships is the library styling its own component, not the host chrome
    * the gate owns. Without this scope the one-declaration rule is unusable —
-   * `.bg-surface`, `.card`, `.label`, `.radio` and `.kpi` all read a token a
+   * `.bg-surface`, `.pc-card`, `.pc-label`, `.pc-radio` and `.pc-kpi` all read a token a
    * gate also reads.
    */
   /*
    * The exemption is a *subject-position* rule, and this is the shape that
-   * proved it: `.card` is a class the preset ships, so reading the whole selector
-   * for one exempts `.card option` — which styles an `option` that carries no
+   * proved it: `.pc-card` is a class the preset ships, so reading the whole selector
+   * for one exempts `.pc-card option` — which styles an `option` that carries no
    * library class at all — and `.cardx option`, whose own class the scan then
    * absorbs into the vocabulary.
    */
@@ -1613,16 +1613,16 @@ describe("theme preset", () => {
     // An ancestor carrying a shipped class does not exempt the rule.
     for (
       const selector of [
-        ".card option",
-        "body .card option",
-        ".card>option",
-        ":where(.card) option",
+        ".pc-card option",
+        "body .pc-card option",
+        ".pc-card>option",
+        ":where(.pc-card) option",
         ".cardx option",
         ".zzqq-arbitrary option",
-        ".label select",
+        ".pc-label select",
       ]
     ) {
-      const css = `${gate} .card { color: var(--color-foreground, #fff); } ${copy(selector)}`
+      const css = `${gate} .pc-card { color: var(--color-foreground, #fff); } ${copy(selector)}`
       expect(unGatedCopiesOfGate(css, analyseGateFindings(css)), selector).toEqual([selector])
     }
 
@@ -1646,17 +1646,17 @@ describe("theme preset", () => {
 
     for (
       const selector of [
-        "option:not(.card)",
-        "option:has(.card)",
-        'option[data-x=".card"]',
+        "option:not(.pc-card)",
+        "option:has(.pc-card)",
+        'option[data-x=".pc-card"]',
         "option:not(.zzqq-nothing-ships-this)",
-        ":is(option, .card)",
-        ":where(option, .card)",
-        ":not(:is(option, .card))",
+        ":is(option, .pc-card)",
+        ":where(option, .pc-card)",
+        ":not(:is(option, .pc-card))",
         "option.zzqq-arbitrary",
       ]
     ) {
-      const css = `${gate} .card { color: var(--color-foreground, #fff); } ${copy(selector)}`
+      const css = `${gate} .pc-card { color: var(--color-foreground, #fff); } ${copy(selector)}`
       expect(unGatedCopiesOfGate(css, analyseGateFindings(css)), selector).toEqual([selector])
     }
   })
@@ -1672,7 +1672,7 @@ describe("theme preset", () => {
     const vocabulary = presetVocabulary()
 
     // Derived from `preset.css`, so the rule under test cannot join it.
-    expect(vocabulary.has("card")).toBe(true)
+    expect(vocabulary.has("pc-card")).toBe(true)
     expect(vocabulary.has("bg-surface")).toBe(true)
     expect(vocabulary.has(GATE_CLASS)).toBe(true)
     expect(vocabulary.has("zzqq-nothing-ships-this")).toBe(false)
@@ -1680,19 +1680,19 @@ describe("theme preset", () => {
 
     // Subject position only.
     expect(usesVocabulary(".bg-surface", vocabulary)).toBe(true)
-    expect(usesVocabulary(".card option", vocabulary)).toBe(false)
-    expect(usesVocabulary(".card .label", vocabulary)).toBe(true)
+    expect(usesVocabulary(".pc-card option", vocabulary)).toBe(false)
+    expect(usesVocabulary(".pc-card .pc-label", vocabulary)).toBe(true)
     expect(usesVocabulary("option", vocabulary)).toBe(false)
 
     // The subject's own tokens, not text inside a pseudo-class or a value.
-    expect(usesVocabulary("option:not(.card)", vocabulary)).toBe(false)
-    expect(usesVocabulary("option:has(.card)", vocabulary)).toBe(false)
-    expect(usesVocabulary('option[data-x=".card"]', vocabulary)).toBe(false)
+    expect(usesVocabulary("option:not(.pc-card)", vocabulary)).toBe(false)
+    expect(usesVocabulary("option:has(.pc-card)", vocabulary)).toBe(false)
+    expect(usesVocabulary('option[data-x=".pc-card"]', vocabulary)).toBe(false)
 
     // Every branch, not some branch.
-    expect(usesVocabulary(":is(option, .card)", vocabulary)).toBe(false)
-    expect(usesVocabulary(":where(option, .card)", vocabulary)).toBe(false)
-    expect(usesVocabulary(":is(.card, .bg-surface)", vocabulary)).toBe(true)
+    expect(usesVocabulary(":is(option, .pc-card)", vocabulary)).toBe(false)
+    expect(usesVocabulary(":where(option, .pc-card)", vocabulary)).toBe(false)
+    expect(usesVocabulary(":is(.pc-card, .bg-surface)", vocabulary)).toBe(true)
 
     // A class no rule ships cannot exempt the rule that introduces it.
     expect(usesVocabulary("option.zzqq-arbitrary", vocabulary)).toBe(false)

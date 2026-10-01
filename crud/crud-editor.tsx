@@ -430,9 +430,9 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       </PageTitle>
       {error.value !== "" && <p class="text-red-700">{error.value}</p>}
 
-      <form class="card" onSubmit={submit}>
+      <form class="pc-card" onSubmit={submit}>
         <fieldset disabled={state.busy}>
-          <div class="card-body">
+          <div class="pc-card-body">
             <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
               {props.children({ vm, vl })}
             </div>
@@ -454,18 +454,18 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
             </div>
           </div>
           {(canChange?.() ?? true) && (
-            <div class="card-footer">
+            <div class="pc-card-footer">
               {props.footerSlot?.({ vm, vl })}
               {props.mode === "edit" && archive !== undefined && (
                 <div class="flex gap-2 items-center">
                   <input
                     type="checkbox"
                     id={archiveId}
-                    class="checkbox"
+                    class="pc-checkbox"
                     checked={Boolean(vm.value.deletedAt)}
                     onChange={toggleArchive}
                   />
-                  <label for={archiveId} class="label">
+                  <label for={archiveId} class="pc-label">
                     {archive.label ?? "Is Archived?"} {vm.value.deletedAt
                       ? (
                         <span

@@ -18,8 +18,8 @@ describe("Card", () => {
   it("emits only the shipped card class", () => {
     const html = render(<Card>x</Card>)
 
-    expect(rootClass(html)).toBe("card")
-    expect(html).toBe('<div class="card">x</div>')
+    expect(rootClass(html)).toBe("pc-card")
+    expect(html).toBe('<div class="pc-card">x</div>')
   })
 
   it("stacks the caller's utilities after the shipped class", () => {
@@ -28,7 +28,7 @@ describe("Card", () => {
     // section-specific classes — see the `CardBody` case below.
     const html = render(<Card class="max-w-md p-6">x</Card>)
 
-    expect(rootClass(html)).toBe("card max-w-md p-6")
+    expect(rootClass(html)).toBe("pc-card max-w-md p-6")
   })
 
   it("passes through id, aria attributes and data-e2e", () => {
@@ -39,15 +39,15 @@ describe("Card", () => {
     )
 
     expect(html).toContain('<div id="invoice" aria-label="Invoice summary" data-e2e="invoice-card"')
-    expect(html).toContain('class="card"')
+    expect(html).toContain('class="pc-card"')
   })
 
   it("does not invent header, body or footer children", () => {
     const html = render(<Card>x</Card>)
 
-    expect(html).not.toContain("card-header")
-    expect(html).not.toContain("card-body")
-    expect(html).not.toContain("card-footer")
+    expect(html).not.toContain("pc-card-header")
+    expect(html).not.toContain("pc-card-body")
+    expect(html).not.toContain("pc-card-footer")
   })
 })
 
@@ -55,7 +55,7 @@ describe("CardHeader", () => {
   it("renders a title and a right-aligned action from the convenience props", () => {
     const html = render(<CardHeader title="Invoices" action={<button type="button">New</button>} />)
 
-    expect(rootClass(html)).toBe("card-header")
+    expect(rootClass(html)).toBe("pc-card-header")
     expect(html).toContain('<span class="text-lg font-semibold">Invoices</span>')
     expect(html).toContain(
       `<div class="flex items-center gap-2"><button type="button">New</button></div>`,
@@ -106,14 +106,14 @@ describe("CardHeader", () => {
       </CardHeader>,
     )
 
-    expect(rootClass(html)).toBe("card-header")
+    expect(rootClass(html)).toBe("pc-card-header")
     expect(html).toContain("<h3>Custom</h3>")
     expect(html).not.toContain("text-lg font-semibold")
   })
 
   it("merges a caller class on the header itself", () => {
     expect(rootClass(render(<CardHeader title="Invoices" class="py-2" />))).toBe(
-      "card-header py-2",
+      "pc-card-header py-2",
     )
   })
 
@@ -126,15 +126,15 @@ describe("CardHeader", () => {
 })
 
 describe("CardBody", () => {
-  it("emits only the shipped card-body class", () => {
+  it("emits only the shipped pc-card-body class", () => {
     const html = render(<CardBody>content</CardBody>)
 
-    expect(rootClass(html)).toBe("card-body")
+    expect(rootClass(html)).toBe("pc-card-body")
     expect(html).toContain("content")
   })
 
   it("lets the caller's class win over a conflicting utility", () => {
-    expect(rootClass(render(<CardBody class="p-0">content</CardBody>))).toBe("card-body p-0")
+    expect(rootClass(render(<CardBody class="p-0">content</CardBody>))).toBe("pc-card-body p-0")
   })
 
   it("passes through data-e2e", () => {
@@ -143,21 +143,21 @@ describe("CardBody", () => {
 })
 
 describe("CardFooter", () => {
-  it("emits only the shipped card-footer class", () => {
+  it("emits only the shipped pc-card-footer class", () => {
     const html = render(
       <CardFooter>
         <button type="button">Save</button>
       </CardFooter>,
     )
 
-    expect(rootClass(html)).toBe("card-footer")
+    expect(rootClass(html)).toBe("pc-card-footer")
     expect(html).toContain(`<button type="button">Save</button>`)
   })
 
   it("lets the caller's class win over a conflicting utility", () => {
     const html = render(<CardFooter class="justify-end">x</CardFooter>)
 
-    expect(rootClass(html)).toBe("card-footer justify-end")
+    expect(rootClass(html)).toBe("pc-card-footer justify-end")
   })
 })
 
@@ -173,9 +173,9 @@ describe("Card composition", () => {
       </Card>,
     )
 
-    expect(rootClass(html)).toBe("card max-w-md")
-    expect(html.indexOf("card-header")).toBeLessThan(html.indexOf("card-body"))
-    expect(html.indexOf("card-body")).toBeLessThan(html.indexOf("card-footer"))
+    expect(rootClass(html)).toBe("pc-card max-w-md")
+    expect(html.indexOf("pc-card-header")).toBeLessThan(html.indexOf("pc-card-body"))
+    expect(html.indexOf("pc-card-body")).toBeLessThan(html.indexOf("pc-card-footer"))
     expect(html).toContain("No invoices yet.")
     expect(html).toContain("Refresh")
   })
@@ -183,7 +183,7 @@ describe("Card composition", () => {
   it("renders a card that only has children and no sections", () => {
     const html = render(<Card>bare</Card>)
 
-    expect(html).toBe('<div class="card">bare</div>')
+    expect(html).toBe('<div class="pc-card">bare</div>')
   })
 })
 
@@ -191,6 +191,6 @@ describe("class composition", () => {
   it("emits the shipped class before the caller's, so a later utility wins", () => {
     const html = render(<CardHeader title="x" class="px-0" />)
 
-    expect(rootClass(html).split(" ")).toEqual(["card-header", "px-0"])
+    expect(rootClass(html).split(" ")).toEqual(["pc-card-header", "px-0"])
   })
 })

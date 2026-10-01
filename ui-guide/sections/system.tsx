@@ -1525,7 +1525,7 @@ useEffect(() => {
   error={error} // string, or { message, field: "login" | "password" | "code" }
   names={{ login: "username", code: "otp" }} // what a post without script sends
   action="/auth/sign-in"
-  footer={<a class="link" href="/sign-in">Back to sign in</a>}
+  footer={<a class="pc-link" href="/sign-in">Back to sign in</a>}
 />`,
     render: () => (
       <Stack gap="xl">
@@ -1544,7 +1544,7 @@ useEffect(() => {
               mode="sign-up"
               step="credentials"
               action="/auth/sign-up"
-              footer={<a class="link" href="#system">Back to sign in</a>}
+              footer={<a class="pc-link" href="#system">Back to sign in</a>}
             />
           </div>
         </Part>

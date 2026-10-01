@@ -3,7 +3,7 @@
  *
  * Every demo is the controlled form an app writes: a signal per field, `value` in,
  * `onInput`/`onChange` out, and `Field` owning the `id`/`for`/`aria-describedby` wiring. The classes
- * these components apply — `.input`, `.select`, `.checkbox`, `.radio` — are shown without the
+ * these components apply — `.pc-input`, `.pc-select`, `.pc-checkbox`, `.pc-radio` — are shown without the
  * components in the theme's `forms` section.
  */
 

@@ -244,7 +244,7 @@ describe("MoneyInput", () => {
     const html = render(
       <MoneyInput value={1250} currency="USD" class="max-w-xs" onChange={() => {}} />,
     )
-    expect(html).toContain("input max-w-xs")
+    expect(html).toContain("pc-input max-w-xs")
   })
 
   it("disables the visible control when disabled is set", () => {

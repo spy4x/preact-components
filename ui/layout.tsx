@@ -185,7 +185,7 @@ export function Page({ class: className, ...rest }: PageProps): JSX.Element {
 export type SectionHeadingLevel = 2 | 3 | 4
 
 /** The theme's heading class for each level, written out so Tailwind's scanner sees it. */
-const HEADING_CLASSES: Record<SectionHeadingLevel, string> = { 2: "h2", 3: "h3", 4: "h4" }
+const HEADING_CLASSES: Record<SectionHeadingLevel, string> = { 2: "pc-h2", 3: "pc-h3", 4: "pc-h4" }
 
 /**
  * The elements a {@link Section} may render as: ones that can hold its `<header>`. A list or a

@@ -159,12 +159,12 @@ export function Progress({
       {showHeader && (
         <div class="flex min-w-0 items-baseline justify-between gap-2">
           {label !== undefined && (
-            <span id={labelId} class="kpi-label truncate">
+            <span id={labelId} class="pc-kpi-label truncate">
               {label}
             </span>
           )}
           {showValue && fraction !== null && (
-            <span class="num shrink-0 text-xs font-semibold">
+            <span class="pc-num shrink-0 text-xs font-semibold">
               {formatProgressPercent(fraction)}
             </span>
           )}

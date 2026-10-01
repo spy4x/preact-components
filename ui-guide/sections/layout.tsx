@@ -88,7 +88,7 @@ export const layoutDemos = {
       },
     ],
     snippet: `<Cluster justify="between">
-  <h4 class="h3">Invoices</h4>
+  <h4 class="pc-h3">Invoices</h4>
   <Cluster>
     <Button variant="secondary">Export</Button>
     <Button>New invoice</Button>
@@ -97,7 +97,7 @@ export const layoutDemos = {
     render: () => (
       <Stack gap="xl">
         <Cluster justify="between">
-          <h4 class="h3">Invoices</h4>
+          <h4 class="pc-h3">Invoices</h4>
           <Cluster>
             <Button variant="secondary">Export</Button>
             <Button>New invoice</Button>

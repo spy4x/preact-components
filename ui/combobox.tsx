@@ -870,7 +870,7 @@ export function Combobox<T>({
       <div class="relative flex items-center">
         <input
           id={id}
-          class={cn("input font-normal tracking-normal pr-16", inputClass)}
+          class={cn("pc-input font-normal tracking-normal pr-16", inputClass)}
           type="text"
           role="combobox"
           value={inputValue}

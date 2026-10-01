@@ -108,7 +108,7 @@ const hintText = "mt-2 text-sm text-muted"
 /**
  * Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls.
  *
- * The layout is the one `theme/preset.css` styles the controls for: `.label` above, the control in
+ * The layout is the one `theme/preset.css` styles the controls for: `.pc-label` above, the control in
  * a `mt-2` block, then the error and the hint. `suffix` flips the first two, which is the "label
  * under the input" pattern of the source guide.
  *
@@ -208,7 +208,7 @@ export function Field(
   const labelElement = label === undefined || label === null
     ? null
     : (
-      <label for={labelTarget(labelFor, id)} class={cn("label", disabled && "opacity-50")}>
+      <label for={labelTarget(labelFor, id)} class={cn("pc-label", disabled && "opacity-50")}>
         {label}
         {required && <span aria-hidden="true" class="ml-1 text-red-700 dark:text-red-300">*</span>}
       </label>

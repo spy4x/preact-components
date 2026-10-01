@@ -86,7 +86,7 @@ export function DeletionValidation(
                     <div class="my-2 ml-4 space-x-2">
                       {dependency.values.map((item) => (
                         <div key={item.url} class="inline-block">
-                          <a class="link text-primary" href={item.url}>{item.title}</a>
+                          <a class="pc-link text-primary" href={item.url}>{item.title}</a>
                         </div>
                       ))}
                     </div>

@@ -99,22 +99,22 @@ function InkPaletteDemo() {
 /** The four-part surface: header, body, footer, all three edges from the tokens. */
 function CardDemo() {
   return (
-    <div class="card max-w-md">
-      <div class="card-header">
+    <div class="pc-card max-w-md">
+      <div class="pc-card-header">
         <div>
           <p class="font-medium">Meter 4417</p>
           <p class="text-xs text-muted">Last read 4 minutes ago</p>
         </div>
         <span class="text-xs text-muted">online</span>
       </div>
-      <div class="card-body">
+      <div class="pc-card-body">
         <p class="text-sm">
           The body holds the content. The header and the footer bring their own padding and the line
           between them, so the parts need no spacing classes.
         </p>
       </div>
-      <div class="card-footer">
-        <a class="link" href="#surfaces">Open the meter</a>
+      <div class="pc-card-footer">
+        <a class="pc-link" href="#surfaces">Open the meter</a>
         <span class="text-xs text-muted">No data leaves the device.</span>
       </div>
     </div>
@@ -122,13 +122,13 @@ function CardDemo() {
 }
 
 /**
- * `.scrollbar` is the only overflow rule in the preset: horizontal scrolling plus a 4px themed
+ * `.pc-scrollbar` is the only overflow rule in the preset: horizontal scrolling plus a 4px themed
  * scrollbar, so a wide table or a row of chips stays inside its card instead of widening the page.
  */
 function ScrollbarDemo() {
   return (
     <Stack gap="sm" class="max-w-md">
-      <div class="scrollbar flex gap-2" data-e2e="scrollbar">
+      <div class="pc-scrollbar flex gap-2" data-e2e="scrollbar">
         {[
           "January",
           "February",
@@ -158,21 +158,21 @@ function ScrollbarDemo() {
 /**
  * The type scale, on paragraphs rather than headings.
  *
- * `.h1`–`.h5` are typography utilities, not elements: applying them to real headings inside the
+ * `.pc-h1`–`.pc-h5` are typography utilities, not elements: applying them to real headings inside the
  * catalogue would nest a second document outline in a page that already has one.
  */
 function TypographyDemo() {
   return (
     <div class="page-layout">
-      <p class="h1">h1 — page title</p>
-      <p class="h2">h2 — section</p>
-      <p class="h3">h3 — sub-section</p>
-      <p class="h4">h4 — card title</p>
-      <p class="h5">h5 — field group</p>
+      <p class="pc-h1">h1 — page title</p>
+      <p class="pc-h2">h2 — section</p>
+      <p class="pc-h3">h3 — sub-section</p>
+      <p class="pc-h4">h4 — card title</p>
+      <p class="pc-h5">h5 — field group</p>
       <ul class="list-ul">
         <li>A bulleted list, with its markers inside.</li>
         <li>
-          <a class="link" href="#surfaces">A link</a>, underlined until the pointer is on it.
+          <a class="pc-link" href="#surfaces">A link</a>, underlined until the pointer is on it.
         </li>
       </ul>
       <p class="text-xs text-muted">
@@ -185,39 +185,39 @@ function TypographyDemo() {
 /**
  * Data display: the KPI tile and the two numeric conventions that go with it.
  *
- * `.bar` is a width-less bar — the caller sets the length, the preset sets the height, radius and
- * colour — and `.num` right-aligns a cell with tabular figures so a column of numbers lines up.
+ * `.pc-bar` is a width-less bar — the caller sets the length, the preset sets the height, radius and
+ * colour — and `.pc-num` right-aligns a cell with tabular figures so a column of numbers lines up.
  */
 function DataDisplayDemo() {
   return (
     <Stack class="max-w-md">
       <Grid minColumnWidth="sm">
-        <div class="kpi">
-          <span class="kpi-label">Consumed</span>
-          <span class="kpi-value">1 284</span>
-          <span class="bar" style={{ width: "72%" }} />
+        <div class="pc-kpi">
+          <span class="pc-kpi-label">Consumed</span>
+          <span class="pc-kpi-value">1 284</span>
+          <span class="pc-bar" style={{ width: "72%" }} />
         </div>
-        <div class="kpi">
-          <span class="kpi-label">Budget</span>
-          <span class="kpi-value">1 800</span>
-          <span class="bar" style={{ width: "100%" }} />
+        <div class="pc-kpi">
+          <span class="pc-kpi-label">Budget</span>
+          <span class="pc-kpi-value">1 800</span>
+          <span class="pc-bar" style={{ width: "100%" }} />
         </div>
       </Grid>
       <table class="w-full bg-transparent text-sm">
         <thead>
           <tr>
             <th scope="col" class="text-left font-normal text-muted">Month</th>
-            <th scope="col" class="num font-normal text-muted">Readings</th>
+            <th scope="col" class="pc-num font-normal text-muted">Readings</th>
           </tr>
         </thead>
         <tbody>
           <tr class="border-subtle border-b">
             <td class="py-1">January</td>
-            <td class="num py-1">1 284</td>
+            <td class="pc-num py-1">1 284</td>
           </tr>
           <tr>
             <td class="py-1">February</td>
-            <td class="num py-1">986</td>
+            <td class="pc-num py-1">986</td>
           </tr>
         </tbody>
       </table>
@@ -341,7 +341,7 @@ function WarmPaletteDemo() {
       style={WARM_TOKENS}
     >
       <Stack>
-        <h3 class="h3 font-heading" data-e2e="warm-heading">Winter readings</h3>
+        <h3 class="pc-h3 font-heading" data-e2e="warm-heading">Winter readings</h3>
         <p class="text-muted text-sm">
           The heading is serif and the weight is 600 because of <code>--font-heading</code> and{" "}
           <code>--font-weight-medium</code>. Nothing else was styled.
@@ -450,29 +450,36 @@ function TokenClassesDemo() {
 export const surfaceDemos = {
   "class-card": {
     title: "Card",
-    classes: ["card", "card-header", "card-body", "card-footer", "link", "text-muted"],
+    classes: [
+      "pc-card",
+      "pc-card-header",
+      "pc-card-body",
+      "pc-card-footer",
+      "pc-link",
+      "text-muted",
+    ],
     summary:
       "Frames a block of content, with an optional header and footer that bring their own padding and dividers.",
     wide: false,
-    snippet: `<div class="card">
-  <div class="card-header">
+    snippet: `<div class="pc-card">
+  <div class="pc-card-header">
     <p class="font-medium">Meter 4417</p>
     <span class="text-xs text-muted">online</span>
   </div>
-  <div class="card-body">…</div>
-  <div class="card-footer">
-    <a class="link" href={meterHref}>Open the meter</a>
+  <div class="pc-card-body">…</div>
+  <div class="pc-card-footer">
+    <a class="pc-link" href={meterHref}>Open the meter</a>
   </div>
 </div>`,
     render: () => <CardDemo />,
   },
   "class-scrollbar": {
     title: "Scroll container",
-    classes: ["scrollbar", "border-subtle", "rounded-primary", "text-muted"],
+    classes: ["pc-scrollbar", "border-subtle", "rounded-primary", "text-muted"],
     summary:
       "Lets a row wider than its box, such as a strip of chips, scroll sideways behind a thin themed scrollbar.",
     wide: false,
-    snippet: `<div class="scrollbar flex gap-3">
+    snippet: `<div class="pc-scrollbar flex gap-3">
   {months.map((month) => (
     <span class="rounded-primary border border-subtle px-3 py-1 text-sm">{month}</span>
   ))}
@@ -482,12 +489,12 @@ export const surfaceDemos = {
   "class-typography": {
     title: "Type scale",
     classes: [
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "link",
+      "pc-h1",
+      "pc-h2",
+      "pc-h3",
+      "pc-h4",
+      "pc-h5",
+      "pc-link",
       "list-ul",
       "page-layout",
       "text-muted",
@@ -496,27 +503,35 @@ export const surfaceDemos = {
       "Gives any element a heading size, a bulleted list style or a link style, whatever its tag.",
     wide: false,
     snippet: `<div class="page-layout">
-  <p class="h2">Section</p>
+  <p class="pc-h2">Section</p>
   <ul class="list-ul">
     <li>Disc markers, inside, one step down in size.</li>
-    <li><a class="link" href={reportHref}>A link that underlines itself</a></li>
+    <li><a class="pc-link" href={reportHref}>A link that underlines itself</a></li>
   </ul>
 </div>`,
     render: () => <TypographyDemo />,
   },
   "class-data-display": {
     title: "KPI tiles and numbers",
-    classes: ["kpi", "kpi-label", "kpi-value", "bar", "num", "border-subtle", "text-muted"],
+    classes: [
+      "pc-kpi",
+      "pc-kpi-label",
+      "pc-kpi-value",
+      "pc-bar",
+      "pc-num",
+      "border-subtle",
+      "text-muted",
+    ],
     summary:
       "Shows a headline number in a tile with an optional bar, and lines up a column of numbers in a table.",
     wide: false,
-    snippet: `<div class="kpi">
-  <span class="kpi-label">Consumed</span>
-  <span class="kpi-value">1 284</span>
-  <span class="bar" style="width: 72%" />
+    snippet: `<div class="pc-kpi">
+  <span class="pc-kpi-label">Consumed</span>
+  <span class="pc-kpi-value">1 284</span>
+  <span class="pc-bar" style="width: 72%" />
 </div>
 
-<td class="num">1 284</td>`,
+<td class="pc-num">1 284</td>`,
     render: () => <DataDisplayDemo />,
   },
   "class-colour-atoms": {
@@ -632,7 +647,7 @@ export const surfaceDemos = {
       "bg-selected-soft",
       "border-selected",
       "font-heading",
-      "h3",
+      "pc-h3",
       "ring-focus",
       "ring-offset-focus",
       "rounded-control",

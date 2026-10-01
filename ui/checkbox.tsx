@@ -5,7 +5,7 @@ import { forwardRef } from "./forward-ref.ts"
 /**
  * Checkbox with its own label.
  *
- * A real `<input type="checkbox">` with `.checkbox` on it, wrapped in a `.label`. The label is the
+ * A real `<input type="checkbox">` with `.pc-checkbox` on it, wrapped in a `.pc-label`. The label is the
  * input's parent, so the browser's own activation behaviour binds the two — no `for`/`id` pair and
  * no click handler reimplementing what the platform already does. Give it an `id` anyway when a
  * {@link Field} or a form describes it.
@@ -43,8 +43,8 @@ export const Checkbox: (
   ref,
 ) {
   return (
-    <label class={cn("label", "gap-2 items-center", labelClass)}>
-      <input {...rest} ref={ref} type="checkbox" class={cn("checkbox", className)} />
+    <label class={cn("pc-label", "gap-2 items-center", labelClass)}>
+      <input {...rest} ref={ref} type="checkbox" class={cn("pc-checkbox", className)} />
       {children}
     </label>
   )

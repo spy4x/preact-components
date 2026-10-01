@@ -211,7 +211,7 @@ function SearchBox(
       <input
         type="text"
         placeholder={placeholder ?? "Search"}
-        class="input pr-12"
+        class="pc-input pr-12"
         value={draft.value}
         onInput={(event) => draft.value = event.currentTarget.value}
       />
@@ -232,11 +232,11 @@ function StatusSelect(
   const wording = labels === undefined || labels === false ? {} : labels
   return (
     <div class="-mt-6">
-      <label class="label" for={id}>{wording.label ?? "Status"}</label>
+      <label class="pc-label" for={id}>{wording.label ?? "Status"}</label>
       <div>
         <select
           id={id}
-          class="input mt-1"
+          class="pc-input mt-1"
           value={status.value}
           // The two options below are the only values this select can report.
           onChange={(event) => status.value = event.currentTarget.value as CrudStatus}
