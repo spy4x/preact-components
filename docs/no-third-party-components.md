@@ -296,7 +296,7 @@ is the authority on this:
   contributed nothing after dedupe (a fork of another with byte-identical bodies throughout).
 - **Provenance is checked, not eyeballed.** `icons/provenance.ts` compares every exported glyph's
   geometry against the published Heroicons v1, Heroicons v2, Feather, Lucide and Simple Icons packs.
-  All 120 glyphs match a pack's glyph exactly. #233 got there by replacing the 32 glyphs that did
+  All 122 glyphs match a pack's glyph exactly. #233 got there by replacing the 32 glyphs that did
   not — 24 that matched no pack, 6 that matched one only nearly, and the 2 brand marks that matched
   Feather — with a pack's own drawing under the same export name and props; `icons/README.md` →
   "Provenance" lists each one with its old and new source.
@@ -306,11 +306,11 @@ is the authority on this:
   YouTube. Five are Simple Icons' drawings (CC0); LinkedIn is Feather's, because Simple Icons no
   longer ships LinkedIn's mark. Trademark constraints are independent of any icon licence: the pack's
   licence covers the drawing, and using a mark is still subject to its owner's brand guidelines.
-- All 120 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
+- All 122 glyphs are inline source in `icons/+index.tsx`, `{ class?: string }` prop surface, no
   codegen, no build step, no runtime dependency beyond Preact. The packs are pinned in
   `icons/deno.json` for `provenance.ts` alone and never reach a published consumer.
 
-> The glyph count above is the module's: `icons/+index.test.ts` asserts 120 exports, and
+> The glyph count above is the module's: `icons/+index.test.ts` asserts 122 exports, and
 > `deno task test` runs it. The source count is six, the ported set included — the section on
 > design-intent sources earlier in this document says why that set is a port of drawings and not of
 > a dependency.

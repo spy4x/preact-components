@@ -288,6 +288,24 @@ export function IconArrowDown(props: IconProps): JSX.Element {
   })
 })
 
+describe("repoGlyphs with a glyph's own props type", () => {
+  it("reads a glyph whose props extend IconProps, such as IconStar's", () => {
+    const source = `
+/** Feather outline (stroke-2). */
+export function IconStar(props: IconStarProps): JSX.Element {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={props.filled ? "currentColor" : "none"}>
+      <polygon points="12 2 15.09 8.26 22 9.27" />
+    </svg>
+  )
+}
+`
+    const glyphs = repoGlyphs(source)
+    expect(glyphs.map((glyph) => glyph.name)).toEqual(["IconStar"])
+    expect(glyphs[0].elements.map((element) => element.tag)).toEqual(["polygon"])
+  })
+})
+
 describe("exact vs near vs none — the mutation this check exists to catch", () => {
   // `IconArchive`'s own three elements, byte-identical to `lucide-static@1.47.0`'s `archive.svg`
   // (confirmed by hand and by `deno task --cwd icons provenance`, which reports this pair as an

@@ -70,7 +70,7 @@ describe("icon set", () => {
     // The number is the documented total in README.md — bump both when adding a glyph.
     // Deliberately a literal, never `Object.keys(icons).length`: a guard derived from the
     // module would shrink with the thing it polices and catch nothing.
-    expect(names.length).toBe(120)
+    expect(names.length).toBe(122)
     expect(new Set(names).size).toBe(names.length)
   })
 
@@ -198,6 +198,20 @@ describe("icon set", () => {
       })
     }
     expect(wrong).toEqual([])
+  })
+
+  it("fills IconStar solid in the text colour when filled, over the outline's own drawing", () => {
+    const outline = icons.IconStar({}) as unknown as VNode
+    const solid = icons.IconStar({ filled: true }) as unknown as VNode
+    expect(outline.props.fill).toBe("none")
+    expect(solid.props.fill).toBe("currentColor")
+    // The stroke stays, so the solid star covers the outline's footprint exactly rather than
+    // shrinking by half a stroke on every side.
+    expect(solid.props.stroke).toBe("currentColor")
+    expect(solid.props["stroke-width"]).toBe(outline.props["stroke-width"])
+    // Same glyph otherwise: only the root's fill differs.
+    const withoutFill = (node: VNode) => glyphKey({ ...node, props: { ...node.props, fill: "" } })
+    expect(withoutFill(solid)).toBe(withoutFill(outline))
   })
 
   it("keeps animated icons spinning whatever class the caller passes", () => {
