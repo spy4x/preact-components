@@ -121,6 +121,20 @@ const lightboxImages: LightboxImage[] = galleryImages.slice(0, 3)
 /** The one image {@link LightboxDemo}'s fourth button tries to open — undescribed, on purpose. */
 const undescribedLightboxImage: LightboxImage = { src: placeholder("6b7280"), alt: "  " }
 
+/** A 38-byte, 320×200 teal WebP, so the WebP card needs no asset and no network. */
+const tealWebp = "data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvP8ExAAdQyjYUsf+BiOh/AAA="
+
+/**
+ * The images {@link LightboxDemo}'s "controls below" button opens: a portrait image taller than a
+ * laptop screen (780×1688), and one sent as WebP with a grey SVG fallback, so the teal you see is
+ * the WebP source the browser chose.
+ */
+const belowLightboxImages: LightboxImage[] = [
+  { src: placeholder("9333ea", 780, 1688), alt: "A tall purple rectangle, 780 by 1688" },
+  { src: placeholder("6b7280"), webpSrc: tealWebp, alt: "A teal rectangle, sent as WebP" },
+  { src: placeholder("ea580c"), alt: "An orange rectangle" },
+]
+
 /**
  * `Lightbox` on its own, outside `ImageGallery`. The three buttons stand in for whatever trigger a
  * caller already has, each opening the dialog on a different position, so `index` and `open` are
@@ -130,6 +144,7 @@ const undescribedLightboxImage: LightboxImage = { src: placeholder("6b7280"), al
 function LightboxDemo() {
   const openIndex = useSignal<number | null>(null)
   const emptyOpen = useSignal(false)
+  const belowIndex = useSignal<number | null>(null)
 
   return (
     <Stack gap="sm">
@@ -151,6 +166,14 @@ function LightboxDemo() {
           onClick={() => emptyOpen.value = true}
         >
           Open with no description
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="lightbox-below-open"
+          onClick={() => belowIndex.value = 0}
+        >
+          Open with controls below
         </Button>
       </Cluster>
       <Lightbox
@@ -176,9 +199,19 @@ function LightboxDemo() {
           onIndexChange={() => {}}
         />
       </div>
+      <div data-e2e="lightbox-below">
+        <Lightbox
+          images={belowLightboxImages}
+          index={belowIndex.value ?? 0}
+          open={belowIndex.value !== null}
+          onClose={() => belowIndex.value = null}
+          onIndexChange={(next) => belowIndex.value = next}
+          controls="below"
+        />
+      </div>
       <DemoNote>
-        The last button opens nothing: its one image has no description, so there is nothing to
-        show.
+        The "no description" button opens nothing: its one image has no description, so there is
+        nothing to show.
       </DemoNote>
     </Stack>
   )
@@ -1410,13 +1443,24 @@ export const displayDemos = {
         type: "(index: number) => void",
         description: "Called when the reader moves to another image.",
       },
+      {
+        name: "controls",
+        type: `"overlay" | "below"`,
+        description: "Counter and previous/next over the image (default) or in a row below it.",
+      },
+      {
+        name: "images[].webpSrc",
+        type: "string",
+        description: "The image as WebP, offered first in a `<picture>` with `src` as fallback.",
+      },
     ],
     snippet: `<Lightbox
-  images={images}
+  images={[{ src: "/shot.png", webpSrc: "/shot.webp", alt: "A hero shot" }]}
   index={index}
   open={open}
   onClose={() => setOpen(false)}
   onIndexChange={setIndex}
+  controls="below"
 />`,
     render: () => <LightboxDemo />,
   },

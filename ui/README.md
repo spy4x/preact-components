@@ -74,13 +74,13 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
 | `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                    |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                                |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`                                                         |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                     |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                             |
 | `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                           |
 | `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                                             |
 | `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                      |
-| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`                                                                           |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`                                                              |
 | `Link`            | `link`              | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                           |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                                          |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`                                                                                                           |
@@ -955,6 +955,24 @@ image with no `alt` attribute still opens there, named `"Image"` — and, new he
 caption. Only a caller who also sets `fallbackAlt=""` turns that substitution off; only then can
 content mode produce a genuinely empty description, and only then does it get the same refusal
 `ImageGallery` and `Lightbox` apply to their own `images` prop.
+
+**`controls="below"` moves the counter and previous/next into one row under the image and its
+caption**; the default, `"overlay"`, floats them over the image as before. In the row layout the
+image is positioned inside the box the row leaves, so `max-h-full` has a height to resolve
+against and a 780×1688 image fits a 1440×900 window, `<picture>` or not.
+
+**An image with `webpSrc` renders inside a `<picture>`**, with that as its `image/webp` source and
+`src` as the fallback.
+
+**A sideways swipe on a touch screen pages**, like Left and Right: leftward for the next image,
+rightward for the previous. One finger, at least `SWIPE_MIN_PX` (50) CSS pixels sideways and more
+sideways than vertical; a pinch or a vertical drag does nothing. `swipeStep(dx, dy)` is that rule as a pure function: `1` for the next image, `-1` for the
+previous, `0` for no swipe.
+
+**Every control against an edge clears the phone's safe area**: it sits at
+`max(1rem, env(safe-area-inset-*))` from that edge. That is the old `1rem` wherever the inset is
+zero, and clears a 47px notch on a phone turned sideways on a page whose viewport meta carries
+`viewport-fit=cover`.
 
 ## ZoomableImages
 

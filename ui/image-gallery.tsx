@@ -49,6 +49,11 @@ export interface ImageGalleryProps {
    */
   counterLabel?: (position: number, total: number) => string
   /**
+   * Where the lightbox puts its counter and previous/next buttons: over the image (`"overlay"`, the
+   * default) or in a row below it (`"below"`).
+   */
+  controls?: "overlay" | "below"
+  /**
    * Extra utilities for the thumbnail strip, appended after its own and not merged into them. To
    * replace one of its own utilities, mark the replacement important with a trailing `!`.
    */
@@ -101,6 +106,7 @@ export function ImageGallery(
     previousLabel,
     nextLabel,
     counterLabel,
+    controls,
     class: className,
   }: ImageGalleryProps,
 ): JSX.Element {
@@ -134,6 +140,7 @@ export function ImageGallery(
         previousLabel={previousLabel}
         nextLabel={nextLabel}
         counterLabel={counterLabel}
+        controls={controls}
       />
     </>
   )

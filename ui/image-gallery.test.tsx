@@ -1,7 +1,9 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { options, type VNode } from "preact"
 import { render } from "preact-render-to-string"
 import { ImageGallery, type ImageGalleryImage, thumbnailKey } from "./image-gallery.tsx"
+import { Lightbox, type LightboxProps } from "./lightbox.tsx"
 
 const IMAGES: ImageGalleryImage[] = [
   { src: "https://acme.example/img/a.png", alt: "A hero" },
@@ -129,5 +131,23 @@ describe("ImageGallery", () => {
     const html = render(<ImageGallery images={IMAGES} class="scroll-smooth" />)
 
     expect(html).toContain("scroll-smooth")
+  })
+
+  it("threads controls through to the lightbox it renders", () => {
+    // The dialog is closed during a server render, so its HTML is the same for either value; the
+    // props the `Lightbox` element was created with are what show the value arrived.
+    const seen: LightboxProps[] = []
+    const previous = options.vnode
+    options.vnode = (vnode: VNode) => {
+      if (vnode.type === Lightbox) seen.push(vnode.props as unknown as LightboxProps)
+      previous?.(vnode)
+    }
+    try {
+      render(<ImageGallery images={IMAGES} controls="below" />)
+    } finally {
+      options.vnode = previous
+    }
+
+    expect(seen.map((props) => props.controls)).toEqual(["below"])
   })
 })

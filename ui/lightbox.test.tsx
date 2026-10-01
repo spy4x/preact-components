@@ -6,6 +6,7 @@ import {
   describedImages,
   Lightbox,
   type LightboxImage,
+  swipeStep,
   wrapIndex,
 } from "./lightbox.tsx"
 
@@ -62,6 +63,28 @@ describe("wrapIndex", () => {
 describe("counterText", () => {
   it("renders the position and total the issue asks for", () => {
     expect(counterText(3, 8)).toBe("3 of 8")
+  })
+})
+
+describe("swipeStep", () => {
+  it("answers the next image for a leftward swipe", () => {
+    expect(swipeStep(-80, 10)).toBe(1)
+  })
+
+  it("answers the previous image for a rightward swipe", () => {
+    expect(swipeStep(80, -10)).toBe(-1)
+  })
+
+  it("counts a sideways move of exactly 50px as a swipe", () => {
+    expect(swipeStep(-50, 0)).toBe(1)
+  })
+
+  it("ignores a sideways move shorter than 50px", () => {
+    expect(swipeStep(-49, 0)).toBe(0)
+  })
+
+  it("ignores a drag that travels further up or down than sideways", () => {
+    expect(swipeStep(-80, 90)).toBe(0)
   })
 })
 
@@ -229,5 +252,62 @@ describe("Lightbox", () => {
         <Lightbox images={IMAGES} index={0} open onClose={() => {}} onIndexChange={() => {}} />,
       ),
     ).toContain("<dialog")
+  })
+
+  it("offers webpSrc as an image/webp source inside a picture, with src as the fallback", () => {
+    const html = render(
+      <Lightbox
+        images={[{ ...IMAGES[0], webpSrc: "https://acme.example/img/a.webp" }]}
+        index={0}
+        open
+        onClose={() => {}}
+        onIndexChange={() => {}}
+      />,
+    )
+
+    expect(html).toMatch(
+      /<picture><source type="image\/webp" srcset="https:\/\/acme\.example\/img\/a\.webp"\/><img src="https:\/\/acme\.example\/img\/a\.png"/,
+    )
+  })
+
+  it("renders a bare image, with no picture, when the image has no webpSrc", () => {
+    const html = render(
+      <Lightbox images={IMAGES} index={0} open onClose={() => {}} onIndexChange={() => {}} />,
+    )
+
+    expect(html).not.toContain("<picture")
+    expect(html).toContain('<img src="https://acme.example/img/a.png"')
+  })
+
+  it("puts previous, the counter and next in one row after the caption with controls below", () => {
+    const html = render(
+      <Lightbox
+        images={IMAGES}
+        index={1}
+        open
+        onClose={() => {}}
+        onIndexChange={() => {}}
+        controls="below"
+      />,
+    )
+
+    const caption = html.indexOf(">A team</p>")
+    const previous = html.indexOf('aria-label="Previous image"')
+    const counter = html.indexOf(">2 of 3</p>")
+    const next = html.indexOf('aria-label="Next image"')
+    expect(caption).toBeGreaterThan(html.indexOf("<img"))
+    expect([caption < previous, previous < counter, counter < next]).toEqual([true, true, true])
+    // The row's buttons flow in it; none is positioned over the image.
+    expect(html).not.toMatch(/class="absolute[^"]*"[^>]*aria-label="(Previous|Next) image"/)
+  })
+
+  it("floats previous and next over the image by default", () => {
+    const html = render(
+      <Lightbox images={IMAGES} index={1} open onClose={() => {}} onIndexChange={() => {}} />,
+    )
+
+    expect(html).toMatch(/<button type="button" aria-label="Previous image" class="absolute /)
+    expect(html).toMatch(/<button type="button" aria-label="Next image" class="absolute /)
+    expect(html.indexOf('aria-label="Next image"')).toBeLessThan(html.indexOf("<img"))
   })
 })
