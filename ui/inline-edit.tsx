@@ -177,7 +177,7 @@ export function InlineEdit(
         <button
           ref={trigger}
           type="button"
-          class={buttonClasses("ghost", "md", "min-w-0 max-w-full justify-start px-2 py-1")}
+          class={buttonClasses("ghost", "md", "min-w-0 max-w-full justify-start! px-2! py-1!")}
           aria-label={editLabel(value)}
           disabled={disabled}
           onClick={start}

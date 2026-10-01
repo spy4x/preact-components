@@ -61,7 +61,7 @@
  * dropped — unless that substitution is itself turned off with `fallbackAlt=""`.
  */
 
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import { IconChevronLeft, IconChevronRight, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
@@ -155,7 +155,10 @@ export interface LightboxProps {
    * {@link counterText}: `` (position, total) => `${position} of ${total}` ``.
    */
   counterLabel?: (position: number, total: number) => string
-  /** Extra utilities for the dialog element. */
+  /**
+   * Extra utilities for the dialog element, appended after its own and not merged into them. To
+   * replace one of its own utilities, mark the replacement important with a trailing `!`.
+   */
   class?: string
 }
 
@@ -281,7 +284,7 @@ export function Lightbox(
       onClick={(event) => {
         if (event.target === dialogRef.current) dialogRef.current?.close()
       }}
-      class={cn(dialogClass, className)}
+      class={join(dialogClass, className)}
     >
       {
         /* Always present, empty until there is something to say — see the module doc. */
@@ -295,7 +298,7 @@ export function Lightbox(
             type="button"
             onClick={() => dialogRef.current?.close()}
             aria-label={closeLabel}
-            class={cn(controlClass, "top-4 right-4")}
+            class={join(controlClass, "top-4 right-4")}
           >
             <IconXMark class="size-8" />
           </button>
@@ -305,7 +308,7 @@ export function Lightbox(
                 type="button"
                 onClick={() => onIndexChange(wrapIndex(clampedIndex, total, -1))}
                 aria-label={previousLabel}
-                class={cn(controlClass, "top-1/2 left-4 -translate-y-1/2")}
+                class={join(controlClass, "top-1/2 left-4 -translate-y-1/2")}
               >
                 <IconChevronLeft class="size-8" />
               </button>
@@ -313,7 +316,7 @@ export function Lightbox(
                 type="button"
                 onClick={() => onIndexChange(wrapIndex(clampedIndex, total, 1))}
                 aria-label={nextLabel}
-                class={cn(controlClass, "top-1/2 right-4 -translate-y-1/2")}
+                class={join(controlClass, "top-1/2 right-4 -translate-y-1/2")}
               >
                 <IconChevronRight class="size-8" />
               </button>

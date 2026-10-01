@@ -97,13 +97,12 @@ describe("Button busy", () => {
 })
 
 describe("buttonClasses", () => {
-  it("merges a caller override over the variant utility", () => {
-    const classes = buttonClasses("outline", "md", "rounded-full px-8")
+  it("appends a caller's classes after its own, merging nothing", () => {
+    const classes = buttonClasses("outline", "md", "rounded-full! px-8!")
 
-    expect(classes).toContain("rounded-full")
-    expect(classes).toContain("px-8")
-    expect(classes).not.toContain("rounded-md")
-    expect(classes).not.toContain("px-3")
+    expect(classes.endsWith(" rounded-full! px-8!")).toBe(true)
+    expect(classes).toContain("rounded-md")
+    expect(classes).toContain("px-3")
   })
 
   it("keeps utilities from other groups", () => {

@@ -421,7 +421,7 @@ export function Overview(
                   textToCopy={USAGE_SNIPPET}
                   copy={copy}
                   copyLabel={labels.copyUsage}
-                  class="text-on-scrim-muted hover:bg-on-scrim hover:text-scrim-foreground"
+                  class="text-on-scrim-muted! hover:bg-on-scrim! hover:text-scrim-foreground!"
                 />
               </div>
               <pre class="overflow-x-auto p-4 text-xs leading-relaxed"><code>{USAGE_SNIPPET}</code></pre>
