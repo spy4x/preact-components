@@ -15,6 +15,22 @@ Publishing every package at one version, every time, removes that gap: a caret r
 version always resolves to the set published with it. The rule is a publishing discipline, not
 something a check enforces, so the steps below are the whole mechanism.
 
+## Why preact and signals are published as ranges
+
+`deno publish` rewrites a bare import to the value the root `deno.jsonc` import map gives it:
+`preact` in a source file becomes whatever `"preact"` maps to, in the import, in the JSX pragma it
+adds to every `.tsx` file, and in the dependency list JSR records. An app must load one copy of
+`preact` and one of `@preact/signals`, so those two, `preact/` and `@preact/signals-core` map to
+caret ranges (`npm:preact@^10.29.8`, `npm:@preact/signals@^2.5.1`), and an app on any later
+compatible version resolves the library's imports to its own copy (#370). Every other dependency
+stays an exact pin, published exactly. To see the imports a publish will write, read the debug
+log of a dry run:
+
+```bash
+DENO_LOG=debug deno publish --dry-run 2>&1 | grep -o 'Unfurled specifier: .*' |
+  sed 's/ from .* -> / -> /' | sort -u
+```
+
 A JSR version cannot be changed or deleted after it is published. Anything wrong in a published
 file stays wrong in that version for good.
 
