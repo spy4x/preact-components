@@ -6,15 +6,16 @@ import { followLinkClick } from "./link.tsx"
 /** Visual role of a {@link Button}. */
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "icon" | "danger"
 
-/**
- * Control height and text scale of a {@link Button}. `"none"` sets no padding, gap or text size
- * (and, on the `icon` variant, no box size), so the caller sizes the button with its own `class`.
- */
-export type ButtonSize = "sm" | "md" | "lg" | "none"
+/** Control height and text scale of a {@link Button}. */
+export type ButtonSize = "sm" | "md" | "lg"
 
 export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "class"> {
   variant?: ButtonVariant
-  size?: ButtonSize
+  /**
+   * `"none"` sets no padding, gap or text size (and, on the `icon` variant, no box size), so the
+   * caller sizes the button with its own `class`.
+   */
+  size?: ButtonSize | "none"
   /**
    * Plain utilities, appended after the button's own and not merged into them, so `tailwind-merge`
    * stays out of the bundle (#471). To replace one of the button's own utilities, mark the
@@ -63,7 +64,11 @@ export interface ButtonLinkProps extends
    */
   disabled?: boolean
   variant?: ButtonVariant
-  size?: ButtonSize
+  /**
+   * `"none"` sets no padding, gap or text size (and, on the `icon` variant, no box size), so the
+   * caller sizes the button with its own `class`.
+   */
+  size?: ButtonSize | "none"
   /** Plain utilities, appended after the button's own; see {@link ButtonProps.class}. */
   class?: string
   children?: ComponentChildren
@@ -89,16 +94,21 @@ const variantClasses: Record<ButtonVariant, string> = {
 }
 
 /** The gap sits with the size, so `"none"` leaves it out; the other sizes keep the same class list. */
-const gapClasses: Record<ButtonSize, string> = { sm: "gap-2", md: "gap-2", lg: "gap-2", none: "" }
+const gapClasses: Record<ButtonSize | "none", string> = {
+  sm: "gap-2",
+  md: "gap-2",
+  lg: "gap-2",
+  none: "",
+}
 
-const sizeClasses: Record<ButtonSize, string> = {
+const sizeClasses: Record<ButtonSize | "none", string> = {
   none: "",
   sm: "px-2 py-2 text-xs",
   md: "px-3 py-2 text-sm",
   lg: "px-4 py-2 text-base",
 }
 
-const iconSizeClasses: Record<ButtonSize, string> = {
+const iconSizeClasses: Record<ButtonSize | "none", string> = {
   none: "",
   sm: "size-8",
   md: "size-9",
@@ -121,7 +131,7 @@ const iconSizeClasses: Record<ButtonSize, string> = {
  */
 export function buttonClasses(
   variant: ButtonVariant = "primary",
-  size: ButtonSize = "md",
+  size: ButtonSize | "none" = "md",
   className?: string,
 ): string {
   return join(

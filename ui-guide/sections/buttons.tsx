@@ -25,8 +25,7 @@ const variants: Record<ButtonVariant, string> = {
   danger: "Danger",
 }
 
-/** The sizes that set padding; `"none"` has its own demo, since it leaves sizing to the caller. */
-const sizes: Record<Exclude<ButtonSize, "none">, string> = {
+const sizes: Record<ButtonSize, string> = {
   sm: "sm",
   md: "md",
   lg: "lg",
