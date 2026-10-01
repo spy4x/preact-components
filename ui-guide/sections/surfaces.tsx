@@ -372,13 +372,14 @@ function WarmPaletteDemo() {
 
 /** Every token class added for selection, focus, fills, shapes and shadows, on its own sample. */
 function TokenClassesDemo() {
-  const swatch = "rounded-control border-subtle border px-2 py-1 text-xs"
+  const outlined = "rounded-control border px-2 py-1 text-xs"
+  const swatch = `border-subtle ${outlined}`
   return (
     <Stack class="text-sm">
       <Cluster>
         <span class={`bg-selected text-selected-foreground ${swatch}`}>bg-selected</span>
         <span class={`bg-selected-soft text-selected ${swatch}`}>bg-selected-soft</span>
-        <span class={`border-selected text-selected border ${swatch}`}>border-selected</span>
+        <span class={`border-selected text-selected ${outlined}`}>border-selected</span>
         <span class={`bg-selected-hover text-selected-foreground ${swatch}`}>
           bg-selected-hover
         </span>
@@ -390,7 +391,7 @@ function TokenClassesDemo() {
       </Cluster>
       <Cluster>
         <span class={`bg-info text-info-foreground ${swatch}`}>bg-info</span>
-        <span class={`text-info border-info border ${swatch}`}>text-info</span>
+        <span class={`text-info border-info ${outlined}`}>text-info</span>
         <span class={`bg-danger-fill text-danger-foreground ${swatch}`}>bg-danger-fill</span>
         <span class={`bg-danger-fill-hover text-danger-foreground ${swatch}`}>
           bg-danger-fill-hover
@@ -399,7 +400,7 @@ function TokenClassesDemo() {
         <span class={`bg-accent-900 text-accent-foreground ${swatch}`}>text-accent-foreground</span>
       </Cluster>
       <Cluster>
-        <span class={`bg-danger-soft text-danger border-danger border ${swatch}`}>
+        <span class={`bg-danger-soft text-danger border-danger ${outlined}`}>
           bg-danger-soft
         </span>
         <span class={`bg-info-soft text-info ${swatch}`}>bg-info-soft</span>
