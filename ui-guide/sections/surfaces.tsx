@@ -346,7 +346,7 @@ function WarmPaletteDemo() {
           The heading is serif and the weight is 600 because of <code>--font-heading</code> and{" "}
           <code>--font-weight-medium</code>. Nothing else was styled.
         </p>
-        <div class="bg-surface border-subtle rounded-card shadow-raised border p-4">
+        <div class="bg-surface pc-focus-offset-surface border-subtle rounded-card shadow-raised border p-4">
           <Stack gap="sm">
             <p class="font-medium">Meter 4417</p>
             <p class="text-placeholder text-xs">A flat card: --shadow-raised is none.</p>
@@ -361,7 +361,7 @@ function WarmPaletteDemo() {
               </span>
             </Cluster>
             <span class="ring-2 ring-focus ring-offset-2 ring-offset-focus rounded-control w-fit px-2 py-1 text-xs">
-              A focus ring: accent, with a page-coloured gap
+              A focus ring: accent, with a card-coloured gap
             </span>
           </Stack>
         </div>
@@ -459,7 +459,7 @@ export const surfaceDemos = {
       "text-muted",
     ],
     summary:
-      "Frames a block of content, with an optional header and footer that bring their own padding and dividers.",
+      "Frames a block of content, with an optional header and footer that bring their own padding and dividers, and gives a focus ring inside it a gap in the card's colour (pc-focus-offset-surface does that for any other surface).",
     wide: false,
     snippet: `<div class="pc-card">
   <div class="pc-card-header">
@@ -639,6 +639,7 @@ export const surfaceDemos = {
     classes: [
       "bg-canvas",
       "bg-surface",
+      "pc-focus-offset-surface",
       "text-muted",
       "border-subtle",
       "rounded-card",

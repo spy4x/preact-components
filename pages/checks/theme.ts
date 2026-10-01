@@ -557,6 +557,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await statusFillColourChecks(devtools)
   await warningPairChecks(devtools)
   await selectionAndRingChecks(devtools)
+  await focusGapChecks(devtools)
   await dangerButtonClassChecks(devtools)
 }
 
@@ -662,6 +663,199 @@ async function dangerButtonClassChecks(devtools: Devtools): Promise<void> {
         reading.hoverFill === reading.hoverToken
     }),
     `${describe("light")}; ${describe("dark")}`,
+  )
+}
+
+/** Screenshot pixels beside a focused control, in one palette (#465). */
+interface FocusGapReading {
+  name: string
+  /** The 2px gap between the control and its ring. */
+  gap: number[]
+  /** The ring itself. */
+  ring: number[]
+  /** What the control sits on, 12px out, past the ring. */
+  ground: number[]
+  /** That container's colour as the stylesheet says it, read into sRGB. */
+  expected: number[]
+}
+
+/** WCAG contrast between two sRGB pixels. */
+function pixelContrast(a: number[], b: number[]): number {
+  const luminance = (rgb: number[]) => {
+    const [r = 0, g = 0, b = 0] = rgb.map((value) => {
+      const c = value / 255
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const x = luminance(a)
+  const y = luminance(b)
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+
+/** Whether two pixels match, allowing one step per channel for rounding. */
+function samePixel(a: number[], b: number[]): boolean {
+  return a.length === 3 && b.length === 3 &&
+    a.every((value, at) => Math.abs(value - (b[at] ?? -9)) <= 1)
+}
+
+/**
+ * Reads, from a real screenshot, the pixels beside one keyboard-focused control: its ring's gap,
+ * the ring, and the container 12px out. `side` is the edge that faces open container, away from
+ * any neighbouring control.
+ */
+async function focusGapPixels(
+  devtools: Devtools,
+  name: string,
+  element: string,
+  side: "left" | "right",
+  container: string,
+): Promise<FocusGapReading> {
+  // A real key press first, so the scripted focus below counts as keyboard focus. It goes before
+  // the scroll: the focus it moves can scroll the page, and the pixels are read where the page
+  // has come to rest.
+  await pressKey(devtools, "Tab")
+  if (!await centreInView(devtools, element)) {
+    throw new Error(`${name}: ${element} is not on the page`)
+  }
+  await pointerToCorner(devtools)
+  const at = await devtools.evaluate<
+    { y: number; edge: number; width: number; expected: number[] }
+  >(
+    `(async () => {
+      const element = ${element}
+      element.focus({ preventScroll: true })
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      const box = element.getBoundingClientRect()
+      const probe = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
+      probe.fillStyle = getComputedStyle(${container}).backgroundColor
+      probe.fillRect(0, 0, 1, 1)
+      return {
+        y: box.top + box.height / 2,
+        edge: ${side === "right" ? "box.right" : "box.left"},
+        width: innerWidth,
+        expected: Array.from(probe.getImageData(0, 0, 1, 1).data.slice(0, 3)),
+      }
+    })()`,
+  )
+  const { data } = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
+  const direction = side === "right" ? 1 : -1
+  const pixels = await devtools.evaluate<number[][]>(`(async () => {
+    const blob = await (await fetch("data:image/png;base64,${data}")).blob()
+    const bitmap = await createImageBitmap(blob)
+    const scale = bitmap.width / ${at.width}
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+    const context = canvas.getContext("2d")
+    context.drawImage(bitmap, 0, 0)
+    // The centre of the gap (1px out), of the ring (3px out) and of the container (12px out).
+    return [1, 3, 12].map((distance) => Array.from(context.getImageData(
+      Math.floor((${at.edge} + ${direction} * distance) * scale),
+      Math.floor(${at.y} * scale),
+      1,
+      1,
+    ).data.slice(0, 3)))
+  })()`)
+  await devtools.evaluate(`(document.activeElement?.blur(), null)`)
+  const [gap = [], ring = [], ground = []] = pixels
+  return { name, gap, ring, ground, expected: at.expected }
+}
+
+/**
+ * A focus ring's gap matches what the control sits on (#465): a keyboard-focused `Button` inside a
+ * `Card` shows its gap in the card's colour, so no band of page colour rings it; one inside the
+ * `EmptyState` box, which gets the colour from the `pc-focus-offset-surface` utility rather than
+ * from `.pc-card`, shows it in the surface colour; and a `Button` on the page shows its gap in the
+ * page colour, in light and dark. The pixels come from a real
+ * screenshot; the ring still stands 3:1 off the gap.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function focusGapChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const wasDark = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
+  const readings: (FocusGapReading & { palette: string })[] = []
+  for (const dark of [false, true]) {
+    await devtools.evaluate(`(async () => {
+      document.getElementById("focus-gap-still")?.remove()
+      const still = document.createElement("style")
+      still.id = "focus-gap-still"
+      still.textContent = "*, *::before, *::after { transition: none !important; }"
+      document.head.append(still)
+      document.documentElement.classList.toggle("dark", ${dark})
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    })()`)
+    const palette = dark ? "dark" : "light"
+    // The card demo's footer ends in its primary button; the space to its right is the card's.
+    const inCard =
+      `[...document.querySelectorAll("#demo-Card .pc-card .pc-card-footer button")].at(-1)`
+    readings.push({
+      palette,
+      ...await focusGapPixels(
+        devtools,
+        "Button inside a Card",
+        inCard,
+        "right",
+        `(${inCard}).closest(".pc-card")`,
+      ),
+    })
+    // EmptyState's box is no card: it draws the surface itself and takes the gap colour from the
+    // `pc-focus-offset-surface` utility alone. Its action button is centred, with box to its left.
+    const inSurface = `document.querySelector("#demo-EmptyState .pc-focus-offset-surface button")`
+    readings.push({
+      palette,
+      ...await focusGapPixels(
+        devtools,
+        "Button inside an EmptyState box",
+        inSurface,
+        "left",
+        `(${inSurface}).closest(".pc-focus-offset-surface")`,
+      ),
+    })
+    // The Button demo's first button starts its row; the space to its left is the demo's page.
+    const onPage = `document.querySelector("#demo-Button button:not(:disabled)")`
+    readings.push({
+      palette,
+      ...await focusGapPixels(
+        devtools,
+        "Button on the page",
+        onPage,
+        "left",
+        `(${onPage}).closest(".bg-canvas")`,
+      ),
+    })
+  }
+  await devtools.evaluate(`(() => {
+    document.getElementById("focus-gap-still")?.remove()
+    document.documentElement.classList.toggle("dark", ${wasDark})
+    return null
+  })()`)
+  const rgb = (pixel: number[]) => `rgb(${pixel.join(", ")})`
+  const describe = readings.map((reading) =>
+    `${reading.palette} ${reading.name}: gap ${rgb(reading.gap)}, container ${
+      rgb(reading.ground)
+    } (stylesheet ${rgb(reading.expected)}), ring ${rgb(reading.ring)} ${
+      pixelContrast(reading.ring, reading.gap).toFixed(2)
+    }:1 on the gap`
+  ).join("; ")
+  check(
+    "a keyboard-focused Button draws its ring's gap in the colour it sits on: the card's inside a " +
+      "Card, the surface's inside an EmptyState box (pc-focus-offset-surface), the page's outside " +
+      "both, in light and dark, with the ring 3:1 off that gap",
+    readings.length === 6 &&
+      readings.every((reading) =>
+        samePixel(reading.gap, reading.expected) && pixelContrast(reading.ring, reading.gap) >= 3
+      ) &&
+      // A card and the EmptyState box are one flat colour, so the pixel past the ring must match
+      // the gap too. The page behind the demos carries a dot grid, so there only the stylesheet's
+      // colour is held.
+      readings.filter((reading) => !reading.name.includes("page")).every((reading) =>
+        samePixel(reading.gap, reading.ground)
+      ),
+    describe,
   )
 }
 

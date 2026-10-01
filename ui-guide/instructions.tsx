@@ -65,6 +65,7 @@ export const documentedClasses: Record<string, string[]> = {
     "font-heading",
     "ring-focus",
     "ring-offset-focus",
+    "pc-focus-offset-surface",
     "ring-subtle",
     "ring-control",
     "divide-subtle",
