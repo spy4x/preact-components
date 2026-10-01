@@ -145,6 +145,47 @@ describe("Shell", () => {
     expect(html).toMatch(/<button[^>]*data-e2e="signout"[^>]*>Sign out<\/button>/)
   })
 
+  it("renders an action item as a role-less post form whose submit button is the menu item", () => {
+    const html = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Sign out", action: "/sign-out", dataE2E: "signout" }]}
+      >
+        page
+      </Shell>,
+    )
+    const form = html.match(/<form[^>]*>.*?<\/form>/)?.[0] ?? ""
+    const formTag = form.match(/<form[^>]*>/)?.[0] ?? ""
+    expect(attr(formTag, "method")).toBe("post")
+    expect(attr(formTag, "action")).toBe("/sign-out")
+    expect(attr(formTag, "role")).toBe("none")
+    const button = form.match(/<button[^>]*>Sign out<\/button>/)?.[0] ?? ""
+    expect(attr(button, "type")).toBe("submit")
+    expect(attr(button, "role")).toBe("menuitem")
+    expect(attr(button, "tabindex")).toBe("-1")
+    expect(attr(button, "data-e2e")).toBe("signout")
+    // The form sits inside the menu panel, so the arrow keys find its button with the others.
+    const menu = html.match(/<div[^>]*role="menu"[^>]*>.*?<\/div>/)?.[0] ?? ""
+    expect(menu).toContain(form)
+  })
+
+  it("prefers action over href, posting rather than linking", () => {
+    const html = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Sign out", action: "/sign-out", href: "/elsewhere" }]}
+      >
+        page
+      </Shell>,
+    )
+    expect(html).toMatch(/<form[^>]*action="\/sign-out"/)
+    expect(html).not.toContain("/elsewhere")
+  })
+
   it("puts the skip link before any other link, targeting a focusable #shell content id", () => {
     const html = render(<Shell navItems={navItems} brand="Acme" user={null}>the page</Shell>)
     const skipLink = html.match(/<a[^>]*data-e2e="shell-skip-link"[^>]*>[^<]*<\/a>/)?.[0] ?? ""

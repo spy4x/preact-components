@@ -1093,14 +1093,16 @@ const SHELL_DEMO_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
  * gets, so that is what this card shows too.
  *
  * Every port is wired to something visible: `navigate` moves `currentPath` and counts its calls,
- * the "New project" action counts presses, and the collapsed sidebar is kept in `localStorage`
+ * the "New project" action counts presses, "Sign out" is a form post whose hydrated `onClick`
+ * counts the submits it takes over, and the collapsed sidebar is kept in `localStorage`
  * through `makeStorage`, read once after mount so the server's markup and the first client render
- * agree. `pages/checks/system.ts` reads all three.
+ * agree. `pages/checks/system.ts` reads all four.
  */
 function ShellDemo() {
   const path = useSignal("/dashboard")
   const navigations = useSignal(0)
   const created = useSignal(0)
+  const signOuts = useSignal(0)
   const collapsed = useSignal(false)
   const workspace = useSignal("personal")
 
@@ -1174,7 +1176,12 @@ function ShellDemo() {
         user={{ name: "Ada Lovelace", email: "ada@example.com" }}
         userMenuItems={[
           { label: "Your profile", href: "/profile" },
-          { label: "Sign out", dataE2E: "signout" },
+          {
+            label: "Sign out",
+            action: "/sign-out",
+            onClick: () => signOuts.value++,
+            dataE2E: "signout",
+          },
         ]}
         status={
           <span class="text-xs text-muted" data-e2e="shell-status">
@@ -1193,6 +1200,9 @@ function ShellDemo() {
             </span>. "New project" presses:{" "}
             <span data-e2e="shell-demo-created">
               {created.value}
+            </span>. "Sign out" submits taken over:{" "}
+            <span data-e2e="shell-demo-signouts">
+              {signOuts.value}
             </span>.
           </p>
         </Stack>
@@ -1344,7 +1354,9 @@ export const systemDemos = {
       {
         name: "userMenuItems",
         type: "ShellUserMenuItem[]",
-        description: "Links and actions in the user menu.",
+        description: "Links, buttons and form posts in the user menu. An item with `action` is a " +
+          '`<form method="post">`, so it signs out without JavaScript; its `onClick` takes ' +
+          "the submit over once hydrated.",
       },
       {
         name: "status",
@@ -1385,7 +1397,7 @@ useEffect(() => {
   user={session ? { name: session.name, email: session.email } : null}
   userMenuItems={[
     { label: "Your profile", href: "/profile" },
-    { label: "Sign out", onClick: () => auth.signOut(), dataE2E: "signout" },
+    { label: "Sign out", action: "/sign-out", onClick: () => auth.signOut(), dataE2E: "signout" },
   ]}
   status={<ConnectionIndicator />}
 >
