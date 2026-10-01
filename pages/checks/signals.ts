@@ -1,7 +1,12 @@
-import { check, type Devtools, poll } from "./harness.ts"
+import { pageHref } from "@spy4x/preact-ui-guide/routes"
+import { check, type Devtools, inFreshFrame, poll } from "./harness.ts"
 
 /**
- * `signals/`'s browser checks: `useUrlFilters`, bound to the host page's own address bar.
+ * `signals/`'s browser checks: the theme store and its bootstrap script setting `color-scheme`
+ * (#446), then `useUrlFilters`, bound to the host page's own address bar.
+ *
+ * The demo page runs the real `themeBootstrapScript` in `<head>` and attaches a real
+ * `createThemeStore` behind the header's theme switch (`pages/src/document.tsx`, `pages/src/app.tsx`).
  *
  * The hook is two effects and nothing else, so no test in this repository can reach it — every unit
  * test renders to an HTML string and runs no effect. What this file drives is the section
@@ -26,6 +31,8 @@ import { check, type Devtools, poll } from "./harness.ts"
  * @param devtools The connected session, on a hydrated page.
  */
 export async function signalsChecks(devtools: Devtools): Promise<void> {
+  await themeSwitchColorSchemeCheck(devtools)
+  for (const stored of ["dark", "light"] as const) await bootstrapColorSchemeCheck(devtools, stored)
   await urlFilterChecks(devtools)
   check(
     "every URL-filter reading came back without a page exception",
@@ -33,6 +40,161 @@ export async function signalsChecks(devtools: Devtools): Promise<void> {
     pageErrors.length === 0
       ? "each expression this file evaluated returned a value, and every action settled"
       : pageErrors.join(" | "),
+  )
+}
+
+/** The demo's theme storage key, `THEME_KEY` in `pages/src/site.ts`. */
+const THEME_KEY = "pc-theme"
+
+/** What the root of a page reads for its theme at one instant. */
+interface SchemeReading {
+  /** Whether `<html>` carries the `dark` class. */
+  dark: boolean
+  /** `getComputedStyle(<html>).colorScheme`. `"normal"` when nothing set it. */
+  computed: string
+}
+
+/**
+ * Pressing the header's theme switch, which calls the attached store's `toggle`, moves the root's
+ * computed `color-scheme` with the `dark` class, both ways. The palette and the stored preference
+ * are put back afterwards.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function themeSwitchColorSchemeCheck(devtools: Devtools): Promise<void> {
+  const readings = await devtools.evaluate<SchemeReading[] | string>(`(async () => {
+    const root = document.documentElement
+    const button = document.querySelector('[data-e2e="theme-toggle"]')
+    if (!button) return "no theme switch on the page"
+    let stored = null
+    try { stored = localStorage.getItem(${JSON.stringify(THEME_KEY)}) } catch {}
+    const wasDark = root.classList.contains("dark")
+    const frame = () => new Promise((done) => requestAnimationFrame(() => setTimeout(done, 0)))
+    const read = () => ({ dark: root.classList.contains("dark"), computed: getComputedStyle(root).colorScheme })
+    const readings = []
+    for (let press = 0; press < 2; press++) {
+      button.click()
+      await frame()
+      readings.push(read())
+    }
+    if (root.classList.contains("dark") !== wasDark) { button.click(); await frame() }
+    try {
+      if (stored === null) localStorage.removeItem(${JSON.stringify(THEME_KEY)})
+      else localStorage.setItem(${JSON.stringify(THEME_KEY)}, stored)
+    } catch {}
+    return readings
+  })()`).catch((error) => String(error))
+  const ok = Array.isArray(readings) && readings.length === 2 &&
+    readings[0].dark !== readings[1].dark &&
+    readings.every((reading) => reading.computed === (reading.dark ? "dark" : "light"))
+  check(
+    "a press on the theme switch moves the root's color-scheme with the dark class, both ways",
+    ok,
+    Array.isArray(readings)
+      ? readings.map((reading, index) =>
+        `press ${index + 1}: dark class ${reading.dark}, color-scheme "${reading.computed}"`
+      ).join("; ")
+      : readings,
+  )
+}
+
+/**
+ * A fresh load of the page with `stored` saved paints `color-scheme: <stored>` on the root from the
+ * bootstrap script alone: read while the app's stylesheet request is held back, so no rule of the
+ * stylesheet's has applied, and the island, which waits for the stylesheet, has not hydrated.
+ *
+ * The load happens in a frame ({@link inFreshFrame}), so the shared page stays where it was. The
+ * stylesheet is paused with `Fetch.enable` rather than blocked, because a blocked request is a
+ * failed request the run's last check reports; the cache is disabled meanwhile, so the frame's
+ * request reaches the network and the pause, instead of being served from what the shared page
+ * already loaded.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param stored The preference saved before the load.
+ */
+async function bootstrapColorSchemeCheck(
+  devtools: Devtools,
+  stored: "dark" | "light",
+): Promise<void> {
+  const key = JSON.stringify(THEME_KEY)
+  const previous = await devtools.evaluate<string | null>(
+    `(() => { try { return localStorage.getItem(${key}) } catch { return null } })()`,
+  ).catch(() => null)
+  let detail = "(not read)"
+  let ok = false
+  try {
+    await devtools.evaluate(`(localStorage.setItem(${key}, ${JSON.stringify(stored)}), null)`)
+    await devtools.send("Network.setCacheDisabled", { cacheDisabled: true })
+    await devtools.send("Fetch.enable", {
+      patterns: [{
+        urlPattern: "*/assets/*.css",
+        resourceType: "Stylesheet",
+        requestStage: "Request",
+      }],
+    })
+    const paused = devtools.once<{ requestId: string }>("Fetch.requestPaused", 20_000)
+    // Handled here too, so a frame that never loads cannot leave this rejection unobserved.
+    paused.catch(() => {})
+    await inFreshFrame(
+      devtools,
+      {
+        id: "color-scheme-bootstrap-frame",
+        src: pageHref("overview"),
+        label: `color-scheme (${stored} stored)`,
+      },
+      async (frame) => {
+        const { requestId } = await paused
+        try {
+          // The stylesheet link comes after the script in <head>, so once the parser has reached it
+          // the script has run.
+          const parsed = await poll(
+            () =>
+              devtools.evaluate<boolean>(
+                `${frame}?.contentDocument?.querySelector('link[rel="stylesheet"]') != null`,
+              ).catch(() => false),
+            10_000,
+          )
+          const reading = await devtools.evaluate<
+            { inline: string; computed: string; dark: boolean; sheet: boolean; hydrated: boolean }
+          >(`(() => {
+            const doc = ${frame}.contentDocument
+            const root = doc.documentElement
+            return {
+              inline: root.style.colorScheme,
+              computed: ${frame}.contentWindow.getComputedStyle(root).colorScheme,
+              dark: root.classList.contains("dark"),
+              sheet: doc.querySelector('link[rel="stylesheet"]').sheet !== null,
+              hydrated: root.dataset.hydrated === "true",
+            }
+          })()`)
+          ok = parsed && !reading.sheet && !reading.hydrated && reading.computed === stored &&
+            reading.inline === stored && reading.dark === (stored === "dark")
+          detail = `head parsed ${parsed}; stylesheet applied ${reading.sheet}; hydrated ` +
+            `${reading.hydrated}; dark class ${reading.dark}; color-scheme inline ` +
+            `"${reading.inline}", computed "${reading.computed}"`
+        } finally {
+          await devtools.send("Fetch.continueRequest", { requestId }).catch(() => {})
+        }
+      },
+    )
+  } catch (error) {
+    detail = `threw: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    await devtools.send("Fetch.disable", {}).catch(() => {})
+    await devtools.send("Network.setCacheDisabled", { cacheDisabled: false }).catch(() => {})
+    await devtools.evaluate(`(() => {
+      try {
+        if (${JSON.stringify(previous)} === null) localStorage.removeItem(${key})
+        else localStorage.setItem(${key}, ${JSON.stringify(previous)})
+      } catch {}
+      return null
+    })()`).catch(() => {})
+  }
+  check(
+    `with ${stored} stored, the bootstrap script sets color-scheme: ${stored} before the stylesheet ` +
+      "applies",
+    ok,
+    detail,
   )
 }
 
