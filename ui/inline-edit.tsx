@@ -3,6 +3,7 @@ import { IconPencilSquare } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
+import { isImeKeyPress } from "./ime.ts"
 import { Input } from "./input.tsx"
 
 export interface InlineEditProps {
@@ -156,9 +157,7 @@ export function InlineEdit(
 
   function onKeyDown(event: JSX.TargetedKeyboardEvent<HTMLInputElement>): void {
     // An input method confirms or cancels a word with these keys; the word is not finished yet.
-    // Safari sends the Enter that ends a composition with `isComposing` false and keyCode 229, the
-    // code every browser gives a key press an input method has taken.
-    if (event.isComposing || event.keyCode === 229) return
+    if (isImeKeyPress(event)) return
     if (event.key === "Enter") {
       // Inside a form, Enter would submit it as well.
       event.preventDefault()
