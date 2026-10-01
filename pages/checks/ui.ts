@@ -15199,7 +15199,7 @@ async function themeTogglePlacementChecks(devtools: Devtools): Promise<void> {
 /**
  * Right after a press that moved ThemeToggle to auto: the hint comes up in the live region that
  * was there from the start, the button keeps its box and its focus, and the hint goes on its own
- * after its two seconds and not long before.
+ * after its two seconds: not before 1.5 seconds and not after 3.
  *
  * @param read Reads the card.
  * @param start A reading from before any press, for the boxes and the region.
@@ -15229,11 +15229,11 @@ async function hintAppearsAndGoes(
   const gone = await poll(async () => {
     const r = await read()
     return r.hint === "" && !r.hintShown
-  }, 5_000)
+  }, 3_500)
   const after = Date.now() - pressed
   check(
     `${when}, ThemeToggle's hint goes on its own after about two seconds`,
-    shown && gone && after >= 1_500,
+    shown && gone && after >= 1_500 && after <= 3_000,
     gone ? `gone ${after}ms after the press` : `still up ${after}ms after the press`,
   )
 }
