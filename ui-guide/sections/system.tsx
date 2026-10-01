@@ -1355,8 +1355,8 @@ export const systemDemos = {
         name: "userMenuItems",
         type: "ShellUserMenuItem[]",
         description: "Links, buttons and form posts in the user menu. An item with `action` is a " +
-          '`<form method="post">`, so it signs out without JavaScript; its `onClick` takes ' +
-          "the submit over once hydrated.",
+          'real `<form method="post">`, so it posts without client code; the menu itself still ' +
+          "needs JavaScript to open. Its `onClick`, if given, takes the submit over.",
       },
       {
         name: "status",

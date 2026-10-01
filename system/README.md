@@ -655,7 +655,8 @@ accessibility tree still lists the button as an item of the menu; the button car
 Escape and the close-on-activate reach it the same way. Given `onClick` too, a hydrated submit calls
 it and cancels the browser's own post, as `AuthForm` does. `action` wins over `href`. Without
 JavaScript the form is in the markup, but `Dropdown`'s trigger is a button that only a script opens,
-so a visitor cannot reach the item until the page hydrates.
+so a visitor cannot reach the item until the page hydrates; #496 tracks a `Dropdown` that opens
+without JavaScript.
 
 **The header and the drawer coexist without overlapping, and Escape stays scoped to whichever one is
 actually open.** The drawer's panel is positioned to start below the header's own height (`top-16`

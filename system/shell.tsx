@@ -87,9 +87,10 @@ export interface ShellUserMenuItem {
   /** Rendered as a link when given and {@link action} is not; a button when neither is given. */
   href?: string
   /**
-   * Rendered as a `<form method="post">` to this address, with the item as its submit button, so
-   * the post works before hydration and without JavaScript — a sign-out, for instance, which must
-   * not be a link. Takes precedence over {@link href}.
+   * Rendered as a `<form method="post">` to this address, with the item as its submit button: a
+   * real form post that needs no client code to reach the server once the menu is open — a
+   * sign-out, for instance, which must not be a link. The menu itself still needs JavaScript to
+   * open. Takes precedence over {@link href}.
    */
   action?: string
   /** The form's method when {@link action} is given. Only `"post"`, which is also the default. */
