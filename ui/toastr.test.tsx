@@ -57,7 +57,7 @@ describe("Toastr", () => {
     expect(
       render(<Toastr toasts={[{ id: 1, body: "hmm", type: "warning" }]} onDismiss={() => {}} />),
     )
-      .toContain("bg-yellow-700 text-scrim-foreground")
+      .toContain("bg-warning text-(--color-warning-foreground)")
   })
 
   it("falls back to the info variant", () => {
