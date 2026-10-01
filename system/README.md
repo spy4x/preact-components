@@ -28,7 +28,7 @@ Extracted from earlier source applications.
 
 | Component    | Subpath       | Ports / key props                                                                                                                                                                           |
 | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `action?`, `footer?`                                                             |
+| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                                   |
 | `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `jsonLd?`, `noindex?`, `twitterCard?`                                                                                           |
 | `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
@@ -469,6 +469,14 @@ the control — some assistive technology reads both. `Field` has no way to keep
 `aria-describedby`/`aria-invalid` wiring without its own live paragraph, so avoiding the second
 announcement means dropping the always-present region's promptness or the field-level link, and a
 message heard twice costs less than a message a reader who tabs to the field later never hears.
+
+**`names` renames the inputs without changing the callbacks.** By default the inputs are named
+`login`, `password` and `code`. An app whose action validates other field names — `username` and
+`otp`, say — passes `names={{ login: "username", code: "otp" }}`, and the native post then sends the
+fields under the names that action's schema expects, so the same form works with and without
+JavaScript. The submit handler reads `FormData` under the same names, and `onSignIn`, `onSignUp`
+and `onOneTimeCode` still receive `{ login, password }` and the code string. `error.field` keeps
+naming the field by its role (`"login"`, `"password"`, `"code"`), not by its `name`.
 
 **`login` and `password` are passed to the callback exactly as typed** — not trimmed, not cased,
 not otherwise normalised. `FormData` hands back the input's raw string and this component passes it

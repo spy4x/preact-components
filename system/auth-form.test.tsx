@@ -162,6 +162,19 @@ describe("AuthForm", () => {
     expect(html).toContain("Email or username") // the default, not overridden
   })
 
+  it("renames the credentials inputs from a partial names override, keeping the other default", () => {
+    const html = render(<AuthForm {...base} names={{ login: "username" }} />)
+    expect(attr(inputTag(html, "username"), "autocomplete")).toBe("username")
+    expect(attr(inputTag(html, "password"), "type")).toBe("password")
+    expect(html).not.toContain('name="login"')
+  })
+
+  it("renames the one-time-code input from a names override", () => {
+    const html = render(<AuthForm {...base} step="one-time-code" names={{ code: "otp" }} />)
+    expect(attr(inputTag(html, "otp"), "autocomplete")).toBe("one-time-code")
+    expect(html).not.toContain('name="code"')
+  })
+
   it('renders method="post" whether or not action is given', () => {
     const withAction = render(<AuthForm {...base} action="/auth/sign-in" />)
     const withoutAction = render(<AuthForm {...base} />)

@@ -172,6 +172,22 @@ const defaultLabels: AuthFormLabels = {
   busy: "Working…",
 }
 
+/**
+ * The `name` attribute of each input {@link AuthForm} renders, which is also the key a native post
+ * sends and the key the submit handler reads back from `FormData`. Override per key through the
+ * `names` prop so a form posts the field names its action's schema expects (`username`, `otp`).
+ */
+export interface AuthFormNames {
+  /** Name of the login/username input. */
+  login: string
+  /** Name of the password input. */
+  password: string
+  /** Name of the one-time-code input. */
+  code: string
+}
+
+const defaultNames: AuthFormNames = { login: "login", password: "password", code: "code" }
+
 export interface AuthFormProps {
   /** Which screen to draw. */
   mode: AuthMode
@@ -197,6 +213,11 @@ export interface AuthFormProps {
   error?: string | AuthFormError | null
   /** Copy overrides. */
   labels?: Partial<AuthFormLabels>
+  /**
+   * Input `name` overrides. They change what a native post sends and which `FormData` keys the
+   * submit handler reads; the callbacks still receive `{ login, password }` and the code string.
+   */
+  names?: Partial<AuthFormNames>
   /** Where the form posts natively before hydration, or when the matching callback is omitted. */
   action?: string
   /**
@@ -237,12 +258,14 @@ export function AuthForm(
     busy = false,
     error,
     labels,
+    names,
     action,
     footer,
     class: className,
   }: AuthFormProps,
 ): JSX.Element {
   const copy = { ...defaultLabels, ...labels }
+  const fieldNames = { ...defaultNames, ...names }
   const problem = normalizeError(error)
   const baseId = useId()
   const loginId = `${baseId}-login`
@@ -271,7 +294,7 @@ export function AuthForm(
     if (step === "one-time-code") {
       if (!onOneTimeCode) return // No callback: let the native post to `action` proceed.
       event.preventDefault()
-      onOneTimeCode(String(new FormData(form).get("code") ?? ""))
+      onOneTimeCode(String(new FormData(form).get(fieldNames.code) ?? ""))
       return
     }
 
@@ -280,8 +303,8 @@ export function AuthForm(
     event.preventDefault()
     const data = new FormData(form)
     submit({
-      login: String(data.get("login") ?? ""),
-      password: String(data.get("password") ?? ""),
+      login: String(data.get(fieldNames.login) ?? ""),
+      password: String(data.get(fieldNames.password) ?? ""),
     })
   }
 
@@ -320,7 +343,12 @@ export function AuthForm(
               required
               error={problem?.field === "login" ? problem.message : undefined}
             >
-              <Input name="login" autocomplete="username" required data-e2e="auth-form-login" />
+              <Input
+                name={fieldNames.login}
+                autocomplete="username"
+                required
+                data-e2e="auth-form-login"
+              />
             </Field>
             <Field
               id={passwordId}
@@ -334,7 +362,7 @@ export function AuthForm(
                     id={wiring.id}
                     aria-describedby={wiring["aria-describedby"]}
                     aria-invalid={problem?.field === "password" ? true : undefined}
-                    name="password"
+                    name={fieldNames.password}
                     type={showPassword ? "text" : "password"}
                     autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
                     required
@@ -400,7 +428,7 @@ export function AuthForm(
                   id={wiring.id}
                   aria-describedby={wiring["aria-describedby"]}
                   aria-invalid={problem?.field === "code" ? true : undefined}
-                  name="code"
+                  name={fieldNames.code}
                   inputmode="numeric"
                   autocomplete="one-time-code"
                   required

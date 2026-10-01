@@ -363,6 +363,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `AuthFormError` (type): One error `AuthForm` shows. Import: `@spy4x/preact-system`
 - `AuthFormErrorField` (type): Which field one `AuthFormError` names, when it names one. Import: `@spy4x/preact-system`
 - `AuthFormLabels` (type): Copy `AuthForm` renders. Import: `@spy4x/preact-system`
+- `AuthFormNames` (type): The `name` attribute of each input `AuthForm` renders, which is also the key a native post sends and the key the submit handler reads back from `FormData`. Import: `@spy4x/preact-system`
 - `AuthFormProps` (type): Props of `AuthForm`. Import: `@spy4x/preact-system`
 - `AuthMode` (type): Which screen `AuthForm` draws. Import: `@spy4x/preact-system`
 - `AuthStep` (type): Which step of a mode `AuthForm` draws. Import: `@spy4x/preact-system`

@@ -13,6 +13,7 @@ export {
   type AuthFormError,
   type AuthFormErrorField,
   type AuthFormLabels,
+  type AuthFormNames,
   type AuthFormProps,
   type AuthMode,
   type AuthStep,
