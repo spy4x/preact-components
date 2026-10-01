@@ -268,6 +268,20 @@ describe("npmSpecifiers", () => {
     )
   })
 
+  it("refuses an exact version that differs only in build metadata", async () => {
+    const error = await resolveId("npm:@preact/signals@2.5.1", {
+      resolves: { "@preact/signals": SIGNALS_FILE },
+      files: {
+        "/app/node_modules/@preact/signals/package.json": JSON.stringify({
+          name: "@preact/signals",
+          version: "2.5.1+local",
+        }),
+      },
+    }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NpmVersionMismatchError)
+    expect((error as Error).message).toContain("resolved to version 2.5.1+local. Pin the same")
+  })
+
   it("skips the version check for a specifier that names no version", async () => {
     const { result } = await resolveId("npm:@preact/signals", {
       resolves: { "@preact/signals": SIGNALS_FILE },
@@ -366,4 +380,80 @@ describe("npmSpecifiers", () => {
       `Cannot find the package.json of @preact/signals above ${SIGNALS_FILE}`,
     )
   })
+})
+
+/** One caret specifier the published packages write, and the app's copy it resolves to. */
+interface CaretForm {
+  specifier: string
+  bare: string
+  name: string
+  range: string
+  inRange: string
+  outOfRange: string
+}
+
+const CARET_FORMS: CaretForm[] = [
+  {
+    specifier: "npm:preact@^10.29.8",
+    bare: "preact",
+    name: "preact",
+    range: "^10.29.8",
+    inRange: "10.30.1",
+    outOfRange: "11.0.0",
+  },
+  {
+    specifier: "npm:/preact@^10.29.8/hooks",
+    bare: "preact/hooks",
+    name: "preact",
+    range: "^10.29.8",
+    inRange: "10.29.9",
+    outOfRange: "10.29.7",
+  },
+  {
+    specifier: "npm:@preact/signals@^2.5.1",
+    bare: "@preact/signals",
+    name: "@preact/signals",
+    range: "^2.5.1",
+    inRange: "2.6.0",
+    outOfRange: "3.0.0",
+  },
+  {
+    specifier: "npm:@preact/signals-core@^1.12.1",
+    bare: "@preact/signals-core",
+    name: "@preact/signals-core",
+    range: "^1.12.1",
+    inRange: "1.12.1",
+    outOfRange: "1.11.9",
+  },
+]
+
+/** Resolves `form` against an app whose copy of the package carries `version`. */
+function resolveCaret(form: CaretForm, version: string) {
+  const file = `/app/node_modules/${form.bare}/index.mjs`
+  return resolveId(form.specifier, {
+    resolves: { [form.bare]: file },
+    files: {
+      [`/app/node_modules/${form.name}/package.json`]: JSON.stringify({ name: form.name, version }),
+    },
+  })
+}
+
+describe("npmSpecifiers with a caret range", () => {
+  for (const form of CARET_FORMS) {
+    it(`accepts ${form.inRange} for ${form.specifier}`, async () => {
+      const { result, asked } = await resolveCaret(form, form.inRange)
+      expect(result).toEqual({ id: `/app/node_modules/${form.bare}/index.mjs` })
+      expect(asked[0][0]).toBe(form.bare)
+    })
+
+    it(`refuses ${form.outOfRange} for ${form.specifier}, naming the range`, async () => {
+      const error = await resolveCaret(form, form.outOfRange).catch((e: unknown) => e)
+      expect(error).toBeInstanceOf(NpmVersionMismatchError)
+      expect((error as Error).message).toBe(
+        `${form.specifier} (imported by /cache/jsr/preact-ui/button.tsx) resolved to version ` +
+          `${form.outOfRange}, outside the range ${form.range}. Pin a version in that range in ` +
+          `the app's deno.json, or use a library release whose range includes the app's.`,
+      )
+    })
+  }
 })
