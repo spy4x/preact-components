@@ -102,7 +102,7 @@ export interface FieldProps {
   class?: string
 }
 
-const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
+const errorText = "mt-2 text-sm text-danger"
 const hintText = "mt-2 text-sm text-muted"
 
 /**

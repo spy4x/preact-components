@@ -128,7 +128,7 @@ const dropZoneBase = cn(
 const dropZoneInteractive = "cursor-pointer hover:border-strong"
 const dropZoneDragging = "border-info bg-info-soft"
 const dropZoneDisabled = "cursor-not-allowed opacity-50"
-const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
+const errorText = "mt-2 text-sm text-danger"
 const hintText = "mt-2 text-sm text-muted"
 
 /**

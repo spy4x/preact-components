@@ -138,7 +138,7 @@ describe("ToggleField", () => {
     )
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain("The plan does not include archiving")
-    expect(html).toContain("text-red-700")
+    expect(html).toContain('class="mt-2 text-sm text-danger"')
   })
 
   it("renders no error paragraph for an empty error", () => {

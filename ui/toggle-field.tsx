@@ -74,7 +74,7 @@ export interface ToggleFieldProps {
 const labelText = "pc-label items-center gap-3"
 // The message classes are `Field`'s, character for character: a description on a switch row must not
 // look different from a hint on an input row.
-const errorText = "mt-2 text-sm text-red-700 dark:text-red-300"
+const errorText = "mt-2 text-sm text-danger"
 const hintText = "mt-2 text-sm text-muted"
 
 /**
