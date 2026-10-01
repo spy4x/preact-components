@@ -6,6 +6,12 @@ export interface EmptyStateProps {
   icon?: ComponentChildren
   /** Headline describing what is missing. */
   title?: string
+  /**
+   * Level of the title's heading, `<h1>` to `<h4>`. Defaults to `3`. Pick `1` when the empty state
+   * is the whole page (a 404 or a 500), so the page still has a top-level heading. The title looks
+   * the same at every level: the level is the page's outline, not a size.
+   */
+  headingLevel?: 1 | 2 | 3 | 4
   /** Second line, usually what the caller can do about it. */
   description?: string
   /** Caller-owned control (`Button`, link, …). Rendered under the copy. */
@@ -41,10 +47,11 @@ const iconBox =
  * @returns The placeholder, or `null` when every slot is absent.
  */
 export function EmptyState(
-  { icon, title, description, action, class: className }: EmptyStateProps,
+  { icon, title, headingLevel = 3, description, action, class: className }: EmptyStateProps,
 ): JSX.Element | null {
   const hasContent = Boolean(icon) || Boolean(title) || Boolean(description) || Boolean(action)
   if (!hasContent) return null
+  const Heading = `h${headingLevel}` as "h3"
 
   return (
     <div role="status" class={cn(box, className)}>
@@ -54,9 +61,9 @@ export function EmptyState(
         </span>
       )}
       {title && (
-        <h3 class="text-base font-medium text-foreground">
+        <Heading class="text-base font-medium text-foreground">
           {title}
-        </h3>
+        </Heading>
       )}
       {description && <p class="mt-1 text-sm text-muted">{description}</p>}
       {action && <div class="mt-4">{action}</div>}

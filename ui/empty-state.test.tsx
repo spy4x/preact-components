@@ -62,6 +62,20 @@ describe("EmptyState", () => {
     )
   })
 
+  it("draws the title as an h1 with the h3's look when headingLevel is 1", () => {
+    const html = render(<EmptyState title="Page not found" headingLevel={1} />)
+
+    expect(html).toContain('<h1 class="text-base font-medium text-foreground">Page not found</h1>')
+    expect(html).not.toContain("<h3")
+    expect(html.toLowerCase()).not.toContain("headinglevel")
+  })
+
+  it("keeps the title an h3 when headingLevel is not passed", () => {
+    expect(render(<EmptyState title="No invoices yet" />)).toContain(
+      '<h3 class="text-base font-medium text-foreground">No invoices yet</h3>',
+    )
+  })
+
   it("announces politely instead of impersonating an alert", () => {
     const html = render(<EmptyState title="No invoices yet" />)
 
