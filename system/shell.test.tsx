@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconBars3 } from "@spy4x/preact-icons"
+import { DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { Shell, type ShellNavItem, type ShellUser } from "./shell.tsx"
 
 const navItems: ShellNavItem[] = [
@@ -169,6 +170,24 @@ describe("Shell", () => {
     // The form sits inside the menu panel, so the arrow keys find its button with the others.
     const menu = html.match(/<div[^>]*role="menu"[^>]*>.*?<\/div>/)?.[0] ?? ""
     expect(menu).toContain(form)
+  })
+
+  it("draws the form item with the same classes as a DropdownItem button", () => {
+    const shell = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Sign out", action: "/sign-out" }]}
+      >
+        page
+      </Shell>,
+    )
+    const formButton = shell.match(/<form[^>]*>(<button[^>]*>)/)?.[1] ?? ""
+    const dropdownButton = render(<DropdownItem>Sign out</DropdownItem>)
+      .match(/<button[^>]*>/)?.[0] ?? ""
+    expect(attr(formButton, "class")).toBeTruthy()
+    expect(attr(formButton, "class")).toBe(attr(dropdownButton, "class"))
   })
 
   it("prefers action over href, posting rather than linking", () => {
