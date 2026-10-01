@@ -314,7 +314,7 @@ function FieldIssueDemo() {
           vl={vl}
           name="name"
           renderIssue={(issue: FieldIssue, type: string) => (
-            <p key={type} class="text-sm text-red-700 dark:text-red-400">
+            <p key={type} class="text-sm text-danger">
               {type}: {issue.message}
               {issue.payload !== undefined ? ` (see row ${issue.payload})` : ""}
             </p>
