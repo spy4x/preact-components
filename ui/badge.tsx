@@ -1,5 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
-import type { JSX } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 
 /**
  * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
@@ -18,6 +18,22 @@ export interface BadgeProps {
   /** Defaults to `"filled"`. */
   type?: BadgeType
   class?: string
+  /**
+   * Makes the whole badge a link: it renders an `<a>` with a keyboard focus ring, and its content is
+   * the link's accessible name. Leave it out for a static `<span>`. A plain `href`, with no
+   * navigation port: an app that routes on the client intercepts the click the way it does for any
+   * other link.
+   */
+  href?: string
+}
+
+/**
+ * A {@link Badge} with element content in place of `text` — a `StatusMark` beside a word, say, or a
+ * link inside the pill. A badge holds one or the other, never both.
+ */
+export interface BadgeElementProps extends Omit<BadgeProps, "text"> {
+  children: ComponentChildren
+  text?: undefined
 }
 
 /**
@@ -67,9 +83,29 @@ export function badgeClasses(
   return cn(base, palette[color], className)
 }
 
-/** Small status pill. Static — takes text, renders a `span`. */
-export function Badge(
-  { text, color = "purple", type = "filled", class: className }: BadgeProps,
-): JSX.Element {
-  return <span class={badgeClasses(color, type, className)}>{text}</span>
+/**
+ * A linked badge's focus ring and hover cue, the ring the other focusable components draw. A
+ * badge without `href` takes none of them, so its markup is what it always was.
+ */
+const linkClasses = "hover:underline underline-offset-4 focus-visible:outline-hidden " +
+  "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 " +
+  "focus-visible:ring-offset-focus"
+
+/**
+ * Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in
+ * an `<a>` when `href` is given, so the whole pill is the link.
+ */
+export function Badge(props: BadgeProps | BadgeElementProps): JSX.Element {
+  const { text, color = "purple", type = "filled", class: className, href } = props
+  const children = "children" in props ? props.children : undefined
+  // Element content usually means a shape beside a word, which needs a gap a single label does not.
+  const classes = badgeClasses(
+    color,
+    type,
+    cn(children !== undefined && "gap-1", href !== undefined && linkClasses, className),
+  )
+  const content = children ?? text
+  return href === undefined
+    ? <span class={classes}>{content}</span>
+    : <a href={href} class={classes}>{content}</a>
 }

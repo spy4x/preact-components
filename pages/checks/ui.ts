@@ -203,6 +203,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
+  await linkedBadgeFocusRingCheck(devtools)
   await primaryButtonFillCheck(devtools)
   await kanbanBoardChecks(devtools)
 
@@ -13127,6 +13128,107 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
     reading.chipColor === reading.grayColor && reading.chipRatio >= 4.5,
     `chip ${reading.chipColor}, grey badge ${reading.grayColor}, chip on its card ` +
       `${reading.chipRatio.toFixed(2)}:1`,
+  )
+}
+
+/** A keyboard-focused linked `Badge`'s ring, read in one palette. */
+interface LinkedBadgeRing {
+  /** Whether the badge was found, took focus, and matched `:focus-visible`. */
+  focusVisible: boolean
+  /** The badge's computed `box-shadow`, where Tailwind draws the offset gap and the ring. */
+  shadow: string
+  /** Whether a shadow layer spreads past the offset gap, which is the ring itself being drawn. */
+  ringDrawn: boolean
+  ring: number[]
+  offset: number[]
+  ground: number[]
+  /** The ring against its offset gap, and against what the badge sits on. */
+  onOffset: number
+  onGround: number
+}
+
+/**
+ * A keyboard-focused linked `Badge` (one given `href`) draws a focus ring that stands 3:1 off its
+ * offset gap and off the card behind it, in the light and the dark palette (#473). A static badge
+ * draws no ring, so this is the one interactive thing `href` adds.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function linkedBadgeFocusRingCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const read = async (dark: boolean): Promise<LinkedBadgeRing> => {
+    // A real key press first, so the scripted focus below counts as keyboard focus.
+    await pressKey(devtools, "Tab")
+    return await devtools.evaluate<LinkedBadgeRing>(`(async () => {
+      ${CONTRAST_HELPERS}
+      const frames = () =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      document.documentElement.classList.toggle("dark", ${dark})
+      const still = document.createElement("style")
+      still.textContent = "*, *::before, *::after { transition: none !important; }"
+      document.head.append(still)
+      try {
+        // The pill itself is the link, unlike the link inside the static badge beside it.
+        const badge = document.querySelector("#demo-Badge a[href].inline-flex")
+        if (!badge) {
+          return { focusVisible: false, shadow: "no linked badge", ringDrawn: false, ring: [],
+            offset: [], ground: [],
+            onOffset: 0, onGround: 0 }
+        }
+        badge.focus({ preventScroll: true })
+        await frames()
+        const style = getComputedStyle(badge)
+        const resolve = (value) => {
+          const probe = document.createElement("span")
+          probe.style.color = value
+          badge.append(probe)
+          const colour = getComputedStyle(probe).color
+          probe.remove()
+          return paint(colour)
+        }
+        const ring = resolve(style.getPropertyValue("--tw-ring-color"))
+        const offset = resolve(style.getPropertyValue("--tw-ring-offset-color"))
+        const ground = backdrop(badge.parentElement)
+        const reading = {
+          focusVisible: badge.matches(":focus-visible"),
+          shadow: style.boxShadow,
+          ringDrawn: [...style.boxShadow.matchAll(/0px 0px 0px (\\d+(?:\\.\\d+)?)px/g)]
+            .some(([, spread]) =>
+              Number(spread) > (parseFloat(style.getPropertyValue("--tw-ring-offset-width")) || 0)
+            ),
+          ring,
+          offset,
+          ground,
+          onOffset: ratio(ring, offset),
+          onGround: ratio(ring, ground),
+        }
+        badge.blur()
+        return reading
+      } finally {
+        still.remove()
+      }
+    })()`)
+  }
+  const wasDark = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
+  const light = await read(false)
+  const dark = await read(true)
+  await devtools.evaluate(`(document.documentElement.classList.toggle("dark", ${wasDark}), null)`)
+  const describe = (name: string, reading: LinkedBadgeRing) =>
+    `${name}: focus-visible ${reading.focusVisible}, ring drawn ${reading.ringDrawn}, ` +
+    `ring rgb(${reading.ring}) on offset ` +
+    `rgb(${reading.offset}) ${reading.onOffset.toFixed(2)}:1, on card rgb(${reading.ground}) ` +
+    `${reading.onGround.toFixed(2)}:1, box-shadow ${reading.shadow}`
+  check(
+    "a keyboard-focused linked Badge draws a ring that stands 3:1 off its offset gap and the " +
+      "card, in light and dark",
+    [light, dark].every((reading) =>
+      reading.focusVisible && reading.ringDrawn &&
+      reading.onOffset >= 3 &&
+      reading.onGround >= 3
+    ),
+    `${describe("light", light)}; ${describe("dark", dark)}`,
   )
 }
 

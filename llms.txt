@@ -485,9 +485,10 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `groupLabel` (helper): The accessible name of an `AvatarGroup`: what it is, and how many members it holds. Import: `@spy4x/preact-ui`
 - `GroupSplit` (type): How an `AvatarGroup` splits its members between the stack and the `+N` chip. Import: `@spy4x/preact-ui`
 - `groupSplit` (helper): Split a group's member count into the avatars that fit and the ones counted behind `+N`. Import: `@spy4x/preact-ui`
-- `Badge` (component): Small status pill. Import: `@spy4x/preact-ui`
+- `Badge` (component): Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in an `<a>` when `href` is given, so the whole pill is the link. Import: `@spy4x/preact-ui`
 - `badgeClasses` (helper): Compose a badge's class list without rendering one, so a pill that is not a `Badge` — a pressable chip, say — draws from the same palette. Import: `@spy4x/preact-ui`
 - `BadgeColor` (type): Palette entries a `Badge` can use. Import: `@spy4x/preact-ui`
+- `BadgeElementProps` (type): A `Badge` with element content in place of `text` — a `StatusMark` beside a word, say, or a link inside the pill. Import: `@spy4x/preact-ui`
 - `BadgeProps` (type): Props of `Badge`. Import: `@spy4x/preact-ui`
 - `BadgeType` (type): Whether a `Badge` is tinted (`filled`, the default) or only outlined. Import: `@spy4x/preact-ui`
 - `Button` (component): Native button with the library's variant and size vocabulary. Import: `@spy4x/preact-ui`
