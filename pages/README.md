@@ -97,8 +97,9 @@ deno task --cwd pages verify --cpu-throttle=6
 ```
 
 runs the page's main thread six times slower through Chromium's own CPU throttling, the same on
-every machine, and multiplies the browser phase's deadline by the same rate. Its last line starts
-`THROTTLED:`; CI never passes it. A full run at `6` took six minutes here.
+every machine, and multiplies the browser phase's limits by the same rate (see "How long a run may
+take" below). Its last line starts `THROTTLED:`; CI never passes it. A full run at `6` took six
+minutes here.
 
 The second loads every core of the machine, with its own deadline and a cap on its processes, while
 full runs go on in another terminal, noting `uptime` with each:
@@ -123,6 +124,41 @@ This is also the repository's browser test path, and CI runs it. `.github/workfl
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`, on a runner image that ships Google Chrome. The deploy job
 waits for that job, so a red check, a red publish dry-run or a red `verify` blocks the publish.
+
+### How long a run may take
+
+`verify` stops its browser phase on either of two limits, and names the block it was in and the
+last check that finished:
+
+- **No progress for 90 seconds**: no check finished and no block started. This is the limit a hang
+  meets, so a hung run dies about 90 seconds after its last check, however many checks came
+  before. It bounds the gap between two checks, not the run, so adding checks does not move it.
+- **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
+  never stops, not a budget a healthy run comes near.
+
+Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call gets
+when its caller names none. Each launch attempt keeps its own 30-second deadline.
+
+How they were sized (#466), on a 16-core machine with other lanes running `verify` alongside, the
+load average noted at the start and end of each run:
+
+| Run                                    | Load average | Browser phase                                            | Longest gap between two checks |
+| -------------------------------------- | ------------ | -------------------------------------------------------- | ------------------------------ |
+| unthrottled, before this change        | 2.4 → 12.5   | stopped at 300s, 313 of the `ui` block's 318 checks done | 6.6s                           |
+| unthrottled                            | 15.2 → 11.3  | 316s, 715/715                                            | 6.5s                           |
+| `--cpu-throttle=4`, before this change | 14.5 → 12.9  | 485s; `theme` stopped when one call ran past 15s         | 15s                            |
+| `--cpu-throttle=4`                     | 11.3 → 15.4  | 542s, 715/715                                            | 24s                            |
+
+The longest single step, a theme contrast sweep, took 24 seconds at a throttle of 4; 90 seconds
+is about fourteen times the longest unthrottled gap and also covers the slowest browser start (two
+30-second launch attempts, then hydration). The ceiling is about three times the unthrottled phase
+under load. The `ui` block is the largest (318 checks, 134s unthrottled, 204s at a throttle of 4),
+but no one check in it is slow: the KanbanBoard checks took 7s together, and the time is spread
+over real timers and smooth scrolls. The old single five-minute limit was simply smaller than a
+full run under load.
+
+When a run stops on either limit, read the named last check before raising a number: a stall
+after a check that usually takes a second is a hang to fix, not a limit to widen.
 
 ## How a build works
 
