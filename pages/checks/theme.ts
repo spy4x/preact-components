@@ -554,6 +554,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await canvasContrastCheck(devtools)
   await statusTextChecks(devtools)
   await statusFillChecks(devtools)
+  await statusFillColourChecks(devtools)
   await warningPairChecks(devtools)
   await selectionAndRingChecks(devtools)
   await dangerButtonClassChecks(devtools)
@@ -1188,10 +1189,21 @@ interface StatusTextReading {
 }
 
 /**
- * In the dark palette, `text-danger`, `text-warning` and `text-success` read at 4.5:1 or better on
- * `bg-surface` and on `bg-canvas` (#429). Each colour is the one the browser computed for the
- * utility class, drawn to a pixel and measured against the pixel of each background class. The
- * light palette is read too and reported, not held: #429 is about the dark palette.
+ * The dark palette's status text colours, as the browser computes them. #463 darkened the light
+ * ones and left these alone; the check below fails when one of them moves.
+ */
+const DARK_STATUS_TEXT: Record<string, string> = {
+  danger: "oklch(0.704 0.191 22.216)", // red-400
+  warning: "oklch(0.75 0.183 55.934)", // orange-400
+  success: "oklch(0.792 0.209 151.711)", // green-400
+}
+
+/**
+ * `text-danger`, `text-warning` and `text-success` read at 4.5:1 or better on `bg-surface` and on
+ * `bg-canvas`, in the dark palette (#429) and in the light one (#463). Each colour is the one the
+ * browser computed for the utility class, drawn to a pixel and measured against the pixel of each
+ * background class. The `Kpi` tones `positive`, `warning` and `negative` are these same three
+ * classes, on a card with no fill of its own.
  *
  * @param devtools The connected session, on any page of the guide.
  */
@@ -1228,12 +1240,115 @@ async function statusTextChecks(devtools: Devtools): Promise<void> {
       `text-${reading.tone} ${reading.text}: ${reading.onSurface.toFixed(2)}:1 on the surface, ` +
       `${reading.onCanvas.toFixed(2)}:1 on the canvas`
     ).join("; ")
+  for (const palette of ["light", "dark"] as const) {
+    check(
+      `in the ${palette} palette, text-danger, text-warning and text-success each read at 4.5:1 or ` +
+        "better on the surface and on the canvas",
+      read[palette].length === 3 &&
+        read[palette].every((reading) => reading.onSurface >= 4.5 && reading.onCanvas >= 4.5),
+      `${palette}: ${describe(read[palette])}`,
+    )
+  }
   check(
-    "in the dark palette, text-danger, text-warning and text-success each read at 4.5:1 or better " +
-      "on the surface and on the canvas",
+    "the dark palette's text-danger, text-warning and text-success keep their 400 shades",
     read.dark.length === 3 &&
-      read.dark.every((reading) => reading.onSurface >= 4.5 && reading.onCanvas >= 4.5),
-    `dark: ${describe(read.dark)}. Light, for reference: ${describe(read.light)}`,
+      read.dark.every((reading) => reading.text === DARK_STATUS_TEXT[reading.tone]),
+    read.dark.map((reading) =>
+      `text-${reading.tone} ${reading.text}, expected ${DARK_STATUS_TEXT[reading.tone]}`
+    ).join("; "),
+  )
+}
+
+/**
+ * Every fill a status colour paints, as the browser computes it in each palette before and after
+ * #463: darkening the light status text must not move a button, a toast or the update bar. Each
+ * entry is a probe's classes, the property read, and the colour expected in light and in dark.
+ * The danger toast's fill is `bg-danger-fill`, and the `SWUpdater` bar's is `bg-warning`.
+ */
+const STATUS_FILL_COLOURS = [
+  {
+    className: "btn btn-danger",
+    light: "oklch(0.577 0.245 27.325)", // red-600
+    dark: "oklch(0.505 0.213 27.518)", // red-700
+  },
+  {
+    className: "bg-danger-fill",
+    light: "oklch(0.577 0.245 27.325)",
+    dark: "oklch(0.505 0.213 27.518)",
+  },
+  {
+    className: "bg-danger-fill-hover",
+    light: "oklch(0.505 0.213 27.518)",
+    dark: "oklch(0.577 0.245 27.325)",
+  },
+  {
+    className: "btn btn-warning",
+    light: "oklch(0.646 0.222 41.116)", // orange-600, both palettes
+    dark: "oklch(0.646 0.222 41.116)",
+  },
+  {
+    className: "bg-warning",
+    light: "oklch(0.646 0.222 41.116)",
+    dark: "oklch(0.646 0.222 41.116)",
+  },
+  {
+    className: "btn btn-success",
+    light: "oklch(0.527 0.154 150.069)", // green-700, both palettes
+    dark: "oklch(0.527 0.154 150.069)",
+  },
+  {
+    className: "bg-success",
+    light: "oklch(0.527 0.154 150.069)",
+    dark: "oklch(0.527 0.154 150.069)",
+  },
+] as const
+
+/**
+ * The status fills keep their colour in both palettes (#463): the buttons, the danger, success and
+ * warning toasts and the `SWUpdater` bar draw the same fill they drew before the light status text
+ * was darkened. Each probe is read with the pointer off it, so a hover rule does not apply.
+ *
+ * @param devtools The connected session, on any page of the guide.
+ */
+async function statusFillColourChecks(devtools: Devtools): Promise<void> {
+  const read = await devtools.evaluate<{ className: string; light: string; dark: string }[]>(
+    `(() => {
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const fills = ${JSON.stringify(STATUS_FILL_COLOURS)}
+    const fillOf = (className) => {
+      const probe = document.createElement("div")
+      probe.className = className
+      document.body.append(probe)
+      const value = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return value
+    }
+    const readPalette = (dark) => {
+      root.classList.toggle("dark", dark)
+      return fills.map(({ className }) => fillOf(className))
+    }
+    const light = readPalette(false)
+    const dark = readPalette(true)
+    root.classList.toggle("dark", wasDark)
+    return fills.map(({ className }, index) => ({ className, light: light[index], dark: dark[index] }))
+  })()`,
+  )
+  const moved = read.flatMap((reading, index) => {
+    const expected = STATUS_FILL_COLOURS[index]
+    return (["light", "dark"] as const).flatMap((palette) =>
+      reading[palette] === expected[palette]
+        ? []
+        : [`${reading.className} in ${palette}: ${reading[palette]}, expected ${expected[palette]}`]
+    )
+  })
+  check(
+    "the status fills (.btn-danger, .btn-warning, .btn-success, the toasts' and the update bar's " +
+      "fills) keep their colours in light and dark",
+    read.length === STATUS_FILL_COLOURS.length && moved.length === 0,
+    moved.length
+      ? moved.join("; ")
+      : read.map((reading) => `${reading.className} ${reading.light} / ${reading.dark}`).join("; "),
   )
 }
 
