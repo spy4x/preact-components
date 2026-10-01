@@ -683,6 +683,7 @@ async function authFormChecks(devtools: Devtools): Promise<void> {
   await authFormToggleChecks(devtools)
   await authFormBusyChecks(devtools)
   await authFormNamesChecks(devtools)
+  await authFormModeLinkChecks(devtools)
   await authFormNoScriptChecks(devtools)
 }
 
@@ -1429,6 +1430,115 @@ async function authFormNamesChecks(devtools: Devtools): Promise<void> {
     `filled and submitted: ${submitted}, onOneTimeCode received ` +
       `${JSON.stringify(afterCode.code)} within 3s`,
   )
+}
+
+/** The card part whose `AuthForm` has `modeHrefs`, so its mode switch is a link. */
+const AUTH_MODE_LINK = `${AUTH_FORM} [data-e2e="auth-form-mode-link-demo"]`
+const AUTH_MODE_LINK_SWITCH = `${AUTH_MODE_LINK} a[data-e2e="auth-form-mode-switch"]`
+
+/** What the mode-link card and its click spy report, read in one round trip. */
+interface AuthModeLinkState {
+  /** The switch's `href` now, which names the mode it would switch to. */
+  href: string
+  /** The card's count of `onModeChange` calls. */
+  switches: string
+  location: string
+  /** Every click the spy saw on the switch: whether `AuthForm` had already cancelled it. */
+  clicks: boolean[]
+}
+
+const READ_AUTH_MODE_LINK = `(() => ({
+  href: document.querySelector('${AUTH_MODE_LINK_SWITCH}')?.getAttribute("href") ?? "",
+  switches: document.querySelector('${AUTH_MODE_LINK} [data-e2e="auth-form-mode-link-switches"]')
+    ?.textContent.trim() ?? "",
+  location: location.href,
+  clicks: [...(globalThis.__authModeLinkClicks ?? [])],
+}))()`
+
+const NO_AUTH_MODE_LINK: AuthModeLinkState = { href: "", switches: "", location: "", clicks: [] }
+
+/**
+ * `AuthForm`'s mode switch as a link (`modeHrefs`), driven with real mouse clicks: a plain click
+ * calls `onModeChange` and cancels the browser's navigation; a Ctrl-click and a Meta-click do
+ * neither.
+ *
+ * A `document` click listener, the last to see each click, records whether `AuthForm` had already
+ * cancelled it and then cancels it itself, so no click here really navigates or opens a tab
+ * (`AGENTS.md`, wave six). The card counts `onModeChange` calls, and the link's `href` moves to the
+ * other mode's page when the mode really changed.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function authFormModeLinkChecks(devtools: Devtools): Promise<void> {
+  await read(
+    devtools,
+    `(() => {
+      const clicks = []
+      const spy = (event) => {
+        const link = event.target.closest ? event.target.closest('${AUTH_MODE_LINK_SWITCH}') : null
+        if (!link) return
+        clicks.push(event.defaultPrevented)
+        event.preventDefault()
+      }
+      globalThis.__authModeLinkClicks = clicks
+      globalThis.__authModeLinkSpy = spy
+      document.addEventListener("click", spy)
+      return true
+    })()`,
+    false,
+  )
+
+  try {
+    await centreInView(devtools, `document.querySelector('${AUTH_MODE_LINK_SWITCH}')`)
+    const before = await read(devtools, READ_AUTH_MODE_LINK, NO_AUTH_MODE_LINK)
+    const plainAim = await shellAim(devtools, AUTH_MODE_LINK_SWITCH)
+    if (plainAim?.onTarget) await shellPointerClick(devtools, plainAim)
+    await poll(
+      async () => (await read(devtools, READ_AUTH_MODE_LINK, NO_AUTH_MODE_LINK)).clicks.length > 0,
+      3_000,
+    )
+    const plain = await read(devtools, READ_AUTH_MODE_LINK, NO_AUTH_MODE_LINK)
+    check(
+      "a plain click on AuthForm's mode-switch link calls onModeChange and cancels the page load",
+      Boolean(plainAim?.onTarget) && before.href === "/auth/sign-up" && plain.clicks[0] === true &&
+        Number(plain.switches) === Number(before.switches) + 1 && plain.href === "/auth/sign-in" &&
+        plain.location === before.location,
+      !plainAim?.onTarget
+        ? `the mode-switch link was not under the pointer: ${JSON.stringify(plainAim)}`
+        : `href ${before.href} → ${plain.href}, cancelled by AuthForm: ${plain.clicks[0]}, ` +
+          `onModeChange calls ${before.switches} → ${plain.switches}, location unchanged: ` +
+          `${plain.location === before.location}`,
+    )
+
+    // 2 is Ctrl and 4 is Meta, as `Input.dispatchMouseEvent` numbers them.
+    for (const [index, [key, modifiers]] of [["Ctrl", 2], ["Meta", 4]].entries()) {
+      const aim = await shellAim(devtools, AUTH_MODE_LINK_SWITCH)
+      if (aim?.onTarget) await shellPointerClick(devtools, aim, Number(modifiers))
+      await poll(
+        async () =>
+          (await read(devtools, READ_AUTH_MODE_LINK, NO_AUTH_MODE_LINK)).clicks.length > index + 1,
+        3_000,
+      )
+      const modified = await read(devtools, READ_AUTH_MODE_LINK, NO_AUTH_MODE_LINK)
+      check(
+        `a ${key}-click on AuthForm's mode-switch link leaves onModeChange uncalled and the ` +
+          "browser's default alone",
+        Boolean(aim?.onTarget) && modified.clicks[index + 1] === false &&
+          modified.switches === plain.switches && modified.href === plain.href,
+        !aim?.onTarget
+          ? `the mode-switch link was not under the pointer: ${JSON.stringify(aim)}`
+          : `cancelled by AuthForm: ${modified.clicks[index + 1]}, onModeChange calls ` +
+            `${plain.switches} → ${modified.switches}, href ${plain.href} → ${modified.href}`,
+      )
+    }
+  } finally {
+    await read(
+      devtools,
+      `(document.removeEventListener("click", globalThis.__authModeLinkSpy),
+        delete globalThis.__authModeLinkSpy, delete globalThis.__authModeLinkClicks, true)`,
+      false,
+    )
+  }
 }
 
 /**
