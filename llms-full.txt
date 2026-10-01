@@ -4071,6 +4071,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                   |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                                            |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                                                  |
+| `ThemeToggle`     | `theme-toggle`      | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark                                                     |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                             |
 | `ToggleChips`     | `toggle-chips`      | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                            |
 | `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                    |
@@ -5197,6 +5198,37 @@ Helpers:
 - `nextKanbanSlot(key, from, lengths)` is the arrow-key map on its own: where a picked-up card goes
   for a key, given each column's length without it.
 - `defaultKanbanLabels` holds the English strings `labels` overrides.
+
+## ThemeToggle
+
+One icon button for the theme preference, on the app's own `createThemeStore()`: the app creates
+the store, calls `attach()` in an effect, and hands it over. The prop is typed by shape,
+`ThemeToggleStore` (`preference`, `actual`, `cycle()`), because this package imports no store; a
+`createThemeStore()` result fits it as it is. A click calls `cycle()`, so the order
+is the store's: auto, then the opposite of the device, then the device's own theme, then auto again
+(a dark device goes auto → light → dark → auto). The icon shows the preference — `IconThemeAuto`,
+`IconSun` or `IconMoon` — and the accessible name says it, with the device's theme while on auto:
+"Theme: auto (dark)". Three states are more than `aria-pressed` can carry, so the name changes
+instead.
+
+The click back to auto often changes nothing on screen, so it shows an "Auto mode" hint under the
+button for `hintForMs` (2000 by default). The hint is the text of a polite live region rendered from
+the start, because a region inserted together with its text is often not announced. It sits out of
+the flow and takes no pointer events, so nothing moves and the button keeps focus. A click away from
+auto while the hint is up hides it at once, and the next switch to auto shows it again with a fresh
+timer. The hint sits under the button with their end edges aligned; when that would put it past
+either edge of the viewport, as with a button at the start of a row on a phone, it slides sideways
+to stay 8 px inside.
+
+`defaultThemeToggleLabels` holds the English words: the four accessible names (`autoLight`,
+`autoDark`, `light`, `dark`) and the hint. Pass any of them in `labels` to replace them.
+
+```tsx
+const theme = createThemeStore()
+useEffect(() => theme.attach(), [])
+
+<ThemeToggle store={theme} labels={{ hint: "Automatisch" }} />
+```
 
 ## Helpers
 

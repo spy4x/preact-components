@@ -45,8 +45,8 @@ Decisions already taken with that test, as worked examples:
   generic was left in the visible component).
 - Removed as a renamed copy of a generic component: `ConfidenceMeter`, which duplicated `Progress`.
 - Removed because its implementation was not good enough to share: `CompareChart`.
-- Removed while its logic stayed: the `ThemeToggle` button. The theme state lives in
-  `createThemeStore` in `signals/`, and each app draws its own button on top of it.
+- Brought back: the `ThemeToggle` button, now in `ui/` on top of `createThemeStore` from
+  `signals/` (owner decision, 2026-10-02, #517). It had been removed while its logic stayed.
 
 Code flows both ways. An app feeds `spy4x/ts-libs` and this library with anything a future project
 could reuse, and every app, old or new, imports from them instead of keeping its own copy. Each app

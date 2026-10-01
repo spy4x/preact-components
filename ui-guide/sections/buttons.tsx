@@ -7,9 +7,11 @@ import {
   Input,
   Link,
   Stack,
+  ThemeToggle,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
-import { useRef } from "preact/hooks"
+import { createThemeStore } from "@spy4x/preact-signals/theme"
+import { useEffect, useRef, useState } from "preact/hooks"
 import { IconPlus } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -259,6 +261,31 @@ function LinkDemo() {
   )
 }
 
+/**
+ * A theme store of the card's own, so pressing the demo never changes the guide's palette: it keeps
+ * nothing in storage and paints nothing (`apply` does nothing), and it reads the device's real
+ * colour scheme, so the cycle starts from the opposite of whatever the device asks for. The readout
+ * shows what an app's store would now paint.
+ */
+function ThemeToggleDemo() {
+  const [store] = useState(() => createThemeStore({ storage: null, apply: () => {} }))
+  useEffect(() => store.attach(), [store])
+  return (
+    <Stack gap="sm">
+      <Cluster>
+        <ThemeToggle store={store} />
+        <DemoNote e2e="theme-toggle-readout">
+          preference {store.preference.value}, an app would paint {store.actual.value}
+        </DemoNote>
+      </Cluster>
+      <Cluster justify="between" data-e2e="theme-toggle-header">
+        <span class="text-sm font-medium">At the end of a header</span>
+        <ThemeToggle store={store} />
+      </Cluster>
+    </Stack>
+  )
+}
+
 export const buttonDemos = {
   Button: {
     summary:
@@ -382,5 +409,40 @@ export const buttonDemos = {
     ],
     snippet: `<Link href="/reports" navigate={router.navigate} class="pc-link">Reports</Link>`,
     render: () => <LinkDemo />,
+  },
+  ThemeToggle: {
+    summary:
+      "One icon button that steps the theme through auto, the opposite of the device and the device's own, with an Auto mode hint on the switch back to auto.",
+    wide: false,
+    props: [
+      {
+        name: "store",
+        type: "ThemeToggleStore",
+        description:
+          "Your app's `createThemeStore()`; you call its `attach()`, the button calls `cycle()`.",
+      },
+      {
+        name: "labels",
+        type: "Partial<ThemeToggleLabels>",
+        default: "English",
+        description: "The accessible name for each state and the hint's text.",
+      },
+      {
+        name: "hintForMs",
+        type: "number",
+        default: "2000",
+        description: "How long the Auto mode hint stays up.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities appended to the wrapper around the button and its hint.",
+      },
+    ],
+    snippet: `const theme = createThemeStore()
+useEffect(() => theme.attach(), [])
+
+<ThemeToggle store={theme} />`,
+    render: () => <ThemeToggleDemo />,
   },
 } satisfies DemoFragment
