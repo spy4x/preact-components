@@ -78,11 +78,27 @@ export interface ShellUser {
   avatarUrl?: string
 }
 
-/** One entry of {@link ShellProps.userMenuItems}. */
+/**
+ * One entry of {@link ShellProps.userMenuItems}: a link (`href`), a form post (`action`), or a
+ * button (neither).
+ */
 export interface ShellUserMenuItem {
   label: string
-  /** Rendered as a link when given; a button otherwise. */
+  /** Rendered as a link when given and {@link action} is not; a button when neither is given. */
   href?: string
+  /**
+   * Rendered as a `<form method="post">` to this address, with the item as its submit button: a
+   * real form post that needs no client code to reach the server once the menu is open — a
+   * sign-out, for instance, which must not be a link. The menu itself still needs JavaScript to
+   * open. Takes precedence over {@link href}.
+   */
+  action?: string
+  /** The form's method when {@link action} is given. Only `"post"`, which is also the default. */
+  method?: "post"
+  /**
+   * Called on activation. On an {@link action} item it runs on submit, once hydrated, and cancels
+   * the browser's own post, so the app can sign out through its own client instead.
+   */
   onClick?: () => void
   /** `data-e2e` on the rendered menu item, for an app's end-to-end tests. */
   dataE2E?: string
@@ -154,6 +170,12 @@ const navActionClasses =
   "flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
 const iconButtonClasses =
   "flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-hover"
+/**
+ * `DropdownItem`'s own classes, which `ui/` does not export: a form item has to render its own
+ * submit button, because `DropdownItem`'s button is `type="button"` and cannot submit a form.
+ */
+const menuItemClasses =
+  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
 
 /**
  * Whether a click is one the page may take over: the primary button with no modifier. Ctrl or Meta
@@ -325,6 +347,44 @@ function ShellNavList(
 }
 
 /**
+ * One user menu item: a form post when it has an `action`, `DropdownItem`'s link or button
+ * otherwise.
+ *
+ * The form carries `role="none"`, so the accessibility tree keeps the submit button as the menu's
+ * own item, the way `Dropdown` expects its items to sit in a wrapper with no role of its own. The
+ * button carries `role="menuitem"` and `tabindex="-1"` like every `DropdownItem`, so `Dropdown`
+ * finds it for the arrow keys and closes on its click like any other item.
+ */
+function ShellUserMenuEntry({ item }: { item: ShellUserMenuItem }): JSX.Element {
+  const { label, href, action, method = "post", onClick, dataE2E } = item
+  if (action === undefined) {
+    return <DropdownItem href={href} onClick={onClick} dataE2E={dataE2E}>{label}</DropdownItem>
+  }
+  return (
+    <form
+      method={method}
+      action={action}
+      role="none"
+      onSubmit={(event) => {
+        if (!onClick) return
+        event.preventDefault()
+        onClick()
+      }}
+    >
+      <button
+        type="submit"
+        role="menuitem"
+        tabindex={-1}
+        class={menuItemClasses}
+        data-e2e={dataE2E}
+      >
+        {label}
+      </button>
+    </form>
+  )
+}
+
+/**
  * The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in
  * view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below
  * `lg` — see `mobile-panel.ts`.
@@ -461,14 +521,7 @@ export function Shell(props: ShellProps): JSX.Element {
               panelClasses="z-30"
             >
               {userMenuItems.map((item, index) => (
-                <DropdownItem
-                  key={`${index}-${item.label}`}
-                  href={item.href}
-                  onClick={item.onClick}
-                  dataE2E={item.dataE2E}
-                >
-                  {item.label}
-                </DropdownItem>
+                <ShellUserMenuEntry key={`${index}-${item.label}`} item={item} />
               ))}
             </Dropdown>
           )}

@@ -392,7 +392,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `ShellProps` (type): Props of `Shell`. Import: `@spy4x/preact-system`
 - `ShellSidebarPlace` (type): Where a sidebar slot is being drawn: the desktop sidebar, or the mobile drawer's copy of it. Import: `@spy4x/preact-system`
 - `ShellUser` (type): `ShellProps.user`, or `null` for a signed-out visitor — the user menu renders only then. Import: `@spy4x/preact-system`
-- `ShellUserMenuItem` (type): One entry of `ShellProps.userMenuItems`. Import: `@spy4x/preact-system`
+- `ShellUserMenuItem` (type): One entry of `ShellProps.userMenuItems`: a link (`href`), a form post (`action`), or a button (neither). Import: `@spy4x/preact-system`
 - `HeadTag` (type): A serialisable `<head>` element, in document order. Import: `@spy4x/preact-system`
 - `HeadTagName` (type): Which `<head>` element a `HeadTag` describes. Import: `@spy4x/preact-system`
 - `SEOHead` (component): Render the head tag set for a page. Import: `@spy4x/preact-system`

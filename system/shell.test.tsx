@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconBars3 } from "@spy4x/preact-icons"
+import { DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { Shell, type ShellNavItem, type ShellUser } from "./shell.tsx"
 
 const navItems: ShellNavItem[] = [
@@ -143,6 +144,65 @@ describe("Shell", () => {
     )
     expect(html).toMatch(/<a[^>]*data-e2e="profile"[^>]*>Profile<\/a>/)
     expect(html).toMatch(/<button[^>]*data-e2e="signout"[^>]*>Sign out<\/button>/)
+  })
+
+  it("renders an action item as a role-less post form whose submit button is the menu item", () => {
+    const html = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Sign out", action: "/sign-out", dataE2E: "signout" }]}
+      >
+        page
+      </Shell>,
+    )
+    const form = html.match(/<form[^>]*>.*?<\/form>/)?.[0] ?? ""
+    const formTag = form.match(/<form[^>]*>/)?.[0] ?? ""
+    expect(attr(formTag, "method")).toBe("post")
+    expect(attr(formTag, "action")).toBe("/sign-out")
+    expect(attr(formTag, "role")).toBe("none")
+    const button = form.match(/<button[^>]*>Sign out<\/button>/)?.[0] ?? ""
+    expect(attr(button, "type")).toBe("submit")
+    expect(attr(button, "role")).toBe("menuitem")
+    expect(attr(button, "tabindex")).toBe("-1")
+    expect(attr(button, "data-e2e")).toBe("signout")
+    // The form sits inside the menu panel, so the arrow keys find its button with the others.
+    const menu = html.match(/<div[^>]*role="menu"[^>]*>.*?<\/div>/)?.[0] ?? ""
+    expect(menu).toContain(form)
+  })
+
+  it("draws the form item with the same classes as a DropdownItem button", () => {
+    const shell = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Sign out", action: "/sign-out" }]}
+      >
+        page
+      </Shell>,
+    )
+    const formButton = shell.match(/<form[^>]*>(<button[^>]*>)/)?.[1] ?? ""
+    const dropdownButton = render(<DropdownItem>Sign out</DropdownItem>)
+      .match(/<button[^>]*>/)?.[0] ?? ""
+    expect(attr(formButton, "class")).toBeTruthy()
+    expect(attr(formButton, "class")).toBe(attr(dropdownButton, "class"))
+  })
+
+  it("prefers action over href, posting rather than linking", () => {
+    const html = render(
+      <Shell
+        navItems={navItems}
+        brand="Acme"
+        user={user}
+        userMenuItems={[{ label: "Sign out", action: "/sign-out", href: "/elsewhere" }]}
+      >
+        page
+      </Shell>,
+    )
+    expect(html).toMatch(/<form[^>]*action="\/sign-out"/)
+    expect(html).not.toContain("/elsewhere")
   })
 
   it("puts the skip link before any other link, targeting a focusable #shell content id", () => {

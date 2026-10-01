@@ -4925,6 +4925,7 @@ async function shellChecks(devtools: Devtools): Promise<void> {
     await shellLayoutChecks(devtools)
     await shellNavigatePortChecks(devtools)
     await shellItemActionCheck(devtools)
+    await shellUserMenuFormChecks(devtools)
     await shellCollapseChecks(devtools)
     await shellStickySidebarCheck(devtools)
   } finally {
@@ -5933,6 +5934,247 @@ async function shellItemActionCheck(devtools: Devtools): Promise<void> {
     onAction.isAction && pressed,
     `presses ${before} → ${await created()}`,
   )
+}
+
+/** The Shell card's "Sign out" item: a form post's submit button inside the user menu. */
+const SHELL_SIGN_OUT = SHELL + ' [data-e2e="signout"]'
+const SHELL_SIGN_OUTS = SHELL + ' [data-e2e="shell-demo-signouts"]'
+/** The card's "Sign out everywhere": a form post with no `onClick`, which the browser sends. */
+const SHELL_SIGN_OUT_EVERYWHERE = SHELL + ' [data-e2e="signout-everywhere"]'
+
+/** What the focused element is, in the user menu's terms. */
+function readShellMenuFocus(devtools: Devtools): Promise<string> {
+  return read(
+    devtools,
+    `(() => {
+      const active = document.activeElement
+      if (!active) return "nothing"
+      if (active.matches('${SHELL_SIGN_OUT}')) return "sign out"
+      if (active.matches('${SHELL_SIGN_OUT_EVERYWHERE}')) return "sign out everywhere"
+      if (active.matches('${SHELL_USER_MENU_BUTTON}')) return "trigger"
+      if (active.matches('${SHELL_USER_MENU_ITEM}')) return active.textContent.trim()
+      return active.tagName.toLowerCase()
+    })()`,
+    "(page unreadable)",
+  )
+}
+
+/** One accessibility-tree node, as much of it as {@link readShellSignOutAXParent} reads. */
+interface AXNodeReading {
+  nodeId: string
+  parentId?: string
+  ignored?: boolean
+  role?: { value?: string }
+}
+
+/**
+ * The form item's role and the role of its nearest ancestor Chromium does not ignore, asked of
+ * the accessibility tree rather than read off the markup: whether the `<form>` between the menu and
+ * its item shows up there is the platform's decision, not the DOM's. The menu must be open.
+ */
+async function readShellSignOutAXParent(
+  devtools: Devtools,
+): Promise<{ role: string; parentRole: string }> {
+  await devtools.send("DOM.enable")
+  await devtools.send("Accessibility.enable")
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 1,
+  })
+  const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
+    nodeId: root.nodeId,
+    selector: SHELL_SIGN_OUT,
+  })
+  if (nodeIds.length === 0) return { role: "(not found)", parentRole: "(not found)" }
+  const { nodes } = await devtools.send<{ nodes: AXNodeReading[] }>(
+    "Accessibility.getPartialAXTree",
+    { nodeId: nodeIds[0], fetchRelatives: true },
+  )
+  const byId = new Map(nodes.map((node) => [node.nodeId, node]))
+  // The item is the node the call was asked about; its ancestors follow it in the list.
+  const item = nodes.find((node) => node.role?.value === "menuitem") ?? nodes[0]
+  let parent = item?.parentId ? byId.get(item.parentId) : undefined
+  while (parent && (parent.ignored || parent.role?.value === "none")) {
+    parent = parent.parentId ? byId.get(parent.parentId) : undefined
+  }
+  return {
+    role: item?.role?.value ?? "(none)",
+    parentRole: parent ? `${parent.role?.value ?? "(none)"}` : "(none)",
+  }
+}
+
+/** Open the user menu and wait for `Dropdown` to move focus onto its first item. */
+async function openShellUserMenu(devtools: Devtools): Promise<boolean> {
+  await ensureShellClosed(devtools)
+  await focusAndClick(devtools, SHELL_USER_MENU_BUTTON)
+  return await poll(
+    () =>
+      read(devtools, `document.activeElement?.matches('${SHELL_USER_MENU_ITEM}') === true`, false),
+    3_000,
+  )
+}
+
+/**
+ * The user menu's form item (#457) — `{ action, onClick }`, drawn as a `<form method="post">`
+ * whose submit button is the item — answers the menu's keys exactly like its link sibling: the
+ * arrow keys, Home and End land on it, Escape closes the menu from it and hands focus back to the
+ * trigger, and Enter and Space each submit it once, close the menu and return focus. An item
+ * with `action` and no `onClick` ("Sign out everywhere") is submitted with its post left alone,
+ * which is what a server-rendered app's sign-out relies on once the page has hydrated.
+ *
+ * The submit is read from a `document` listener rather than let through: it records whether the
+ * form's own hydrated handler had already cancelled the post, then cancels it anyway, so a broken
+ * handler shows up as `prevented: false` instead of a real navigation away from the catalogue
+ * (`AGENTS.md`, wave six). The listener runs in the bubble phase, after Preact's own handler on the
+ * form, and is removed in a `finally`.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
+  await read(
+    devtools,
+    `(() => {
+      globalThis.__shellSubmits = []
+      globalThis.__shellSubmitListener = (event) => {
+        globalThis.__shellSubmits.push({
+          prevented: event.defaultPrevented,
+          method: event.target.getAttribute("method"),
+          action: event.target.getAttribute("action"),
+          submitter: event.submitter ? event.submitter.getAttribute("data-e2e") : null,
+        })
+        event.preventDefault()
+      }
+      document.addEventListener("submit", globalThis.__shellSubmitListener)
+      return true
+    })()`,
+    false,
+  )
+  const submits = () =>
+    read(
+      devtools,
+      "JSON.stringify(globalThis.__shellSubmits ?? null)",
+      "(page unreadable)",
+    )
+  const taken = () =>
+    read(devtools, `document.querySelector('${SHELL_SIGN_OUTS}')?.textContent.trim() ?? ""`, "")
+
+  try {
+    const opened = await openShellUserMenu(devtools)
+    const visited: string[] = [await readShellMenuFocus(devtools)]
+    const keys = [
+      "ArrowDown",
+      "ArrowDown",
+      "ArrowDown",
+      "ArrowUp",
+      "Home",
+      "End",
+      "ArrowUp",
+    ] as const
+    for (const key of keys) {
+      await pressKey(devtools, key)
+      visited.push(await readShellMenuFocus(devtools))
+    }
+    const expected = [
+      "Your profile",
+      "sign out",
+      "sign out everywhere",
+      "Your profile",
+      "sign out everywhere",
+      "Your profile",
+      "sign out everywhere",
+      "sign out",
+    ]
+    check(
+      "the arrow keys, Home and End move through Shell's user menu onto its form item and back",
+      opened && JSON.stringify(visited) === JSON.stringify(expected),
+      !opened
+        ? "the user menu never opened with focus on its first item"
+        : `focus after open, then ${keys.join(", ")}: ${visited.join(" → ")}`,
+    )
+
+    const tree = await readShellSignOutAXParent(devtools)
+    check(
+      "Chromium exposes Shell's form item as a menuitem whose nearest exposed ancestor is the menu",
+      opened && tree.role === "menuitem" && tree.parentRole === "menu",
+      `accessibility tree: item role ${tree.role}, nearest exposed ancestor ${tree.parentRole}`,
+    )
+
+    await pressKey(devtools, "Escape")
+    const escClosed = await poll(() => readShellUserMenuOpen(devtools).then((v) => !v), 3_000)
+    const escFocus = await readShellMenuFocus(devtools)
+    check(
+      "Escape on Shell's user menu form item closes the menu and returns focus to its trigger",
+      opened && visited.at(-1) === "sign out" && escClosed && escFocus === "trigger",
+      `closed: ${escClosed}, focus: ${escFocus}`,
+    )
+
+    for (const key of ["Enter", "Space"] as const) {
+      const reopened = await openShellUserMenu(devtools)
+      await pressKey(devtools, "ArrowDown")
+      const onItem = (await readShellMenuFocus(devtools)) === "sign out"
+      const before = Number(await taken())
+      await read(devtools, "(globalThis.__shellSubmits = [], true)", false)
+      // Pressed only on the item: a Space with focus anywhere else scrolls the page and leaves
+      // every later check in this block aiming at stale coordinates.
+      if (onItem) await pressKey(devtools, key)
+      const counted = await poll(async () => Number(await taken()) === before + 1, 3_000)
+      const closed = await poll(() => readShellUserMenuOpen(devtools).then((v) => !v), 3_000)
+      const focus = await readShellMenuFocus(devtools)
+      const seen = await submits()
+      const want = JSON.stringify([
+        { prevented: true, method: "post", action: "/sign-out", submitter: "signout" },
+      ])
+      check(
+        `${key} on Shell's user menu form item submits it once, its onClick cancels the post, ` +
+          "and focus returns to the trigger",
+        reopened && onItem && counted && seen === want && closed && focus === "trigger",
+        !reopened || !onItem
+          ? `the menu did not open with ArrowDown landing on the form item (focus: ${focus})`
+          : `onClick calls ${before} → ${await taken()}, submit events ${seen}, ` +
+            `menu closed: ${closed}, focus: ${focus}`,
+      )
+    }
+
+    const reopened = await openShellUserMenu(devtools)
+    await pressKey(devtools, "End")
+    const onEverywhere = (await readShellMenuFocus(devtools)) === "sign out everywhere"
+    const before = Number(await taken())
+    await read(devtools, "(globalThis.__shellSubmits = [], true)", false)
+    if (onEverywhere) await pressKey(devtools, "Enter")
+    const submitted = await poll(async () => (await submits()) !== "[]", 3_000)
+    const closed = await poll(() => readShellUserMenuOpen(devtools).then((v) => !v), 3_000)
+    const seen = await submits()
+    const after = Number(await taken())
+    const want = JSON.stringify([
+      {
+        prevented: false,
+        method: "post",
+        action: "/sign-out-everywhere",
+        submitter: "signout-everywhere",
+      },
+    ])
+    check(
+      "Enter on a Shell user menu form item with no onClick submits it with the post not cancelled",
+      reopened && onEverywhere && submitted && seen === want && after === before && closed,
+      !reopened || !onEverywhere
+        ? "the menu did not open with End landing on the item with no onClick"
+        : `submit events ${seen}, the other item's onClick calls ${before} → ${after}, ` +
+          `menu closed: ${closed}`,
+    )
+  } finally {
+    await read(
+      devtools,
+      `(() => {
+        if (globalThis.__shellSubmitListener) {
+          document.removeEventListener("submit", globalThis.__shellSubmitListener)
+        }
+        delete globalThis.__shellSubmitListener
+        delete globalThis.__shellSubmits
+        return true
+      })()`,
+      false,
+    )
+    await ensureShellClosed(devtools)
+  }
 }
 
 /** One reading of the collapse button, the sidebar it controls and what the card stored. */
