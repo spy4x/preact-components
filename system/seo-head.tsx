@@ -81,6 +81,9 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   if (head.twitterSite) {
     tags.push({ tag: "meta", attrs: { name: "twitter:site", content: head.twitterSite } })
   }
+  if (head.twitterCreator) {
+    tags.push({ tag: "meta", attrs: { name: "twitter:creator", content: head.twitterCreator } })
+  }
   tags.push(
     { tag: "meta", attrs: { name: "twitter:title", content: head.title } },
     { tag: "meta", attrs: { name: "twitter:description", content: head.description } },
@@ -97,6 +100,19 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   )
   if (head.ogImage) {
     tags.push({ tag: "meta", attrs: { property: "og:image", content: head.ogImage } })
+    // The size follows its image, as the Open Graph protocol lists structured properties.
+    if (head.imageWidth !== undefined) {
+      tags.push({
+        tag: "meta",
+        attrs: { property: "og:image:width", content: String(head.imageWidth) },
+      })
+    }
+    if (head.imageHeight !== undefined) {
+      tags.push({
+        tag: "meta",
+        attrs: { property: "og:image:height", content: String(head.imageHeight) },
+      })
+    }
   }
   if (head.siteName) {
     tags.push({ tag: "meta", attrs: { property: "og:site_name", content: head.siteName } })
