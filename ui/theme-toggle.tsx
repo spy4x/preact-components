@@ -3,7 +3,7 @@ import { IconMoon, IconSun, IconThemeAuto } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useLayoutEffect, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
-import { hintBubbleClasses } from "./hint-bubble.ts"
+import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
 
 /**
  * The slice of a theme store {@link ThemeToggle} reads, described by shape so this package imports
@@ -63,25 +63,6 @@ export interface ThemeToggleProps {
  * when it appears, and out of hit testing so it never takes a click.
  */
 const hintRegion = "pointer-events-none absolute top-full end-0 z-50 w-max pt-2"
-
-/** The least room, in pixels, the hint keeps from either edge of the viewport. */
-const viewportGutter = 8
-
-/**
- * How far to move a box sideways so it fits the viewport with {@link viewportGutter} to spare:
- * right when it starts past the left edge, left when it ends past the right one, `0` when it fits.
- *
- * @param left The box's left edge, in viewport pixels.
- * @param right The box's right edge, in viewport pixels.
- * @param width The viewport's width without its scrollbar.
- */
-function shiftIntoView(left: number, right: number, width: number): number {
-  if (left < viewportGutter) return viewportGutter - left
-  if (right > width - viewportGutter) {
-    return Math.max(width - viewportGutter - right, viewportGutter - left)
-  }
-  return 0
-}
 
 /**
  * One icon button that steps through the theme preference: auto → the opposite of the device →
