@@ -60,6 +60,7 @@ const SECTIONS_ON_PAGES: Record<string, string[]> = {
     "inputs",
     "fields",
     "enhanced-forms",
+    "billing",
   ],
   "page-icons": ["icons"],
   "page-theme": ["forms", "surfaces"],
