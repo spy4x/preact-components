@@ -26,6 +26,15 @@ import { useSignal } from "@preact/signals"
 import type { RefObject } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 
+/**
+ * The focus-ring gap for a bar drawn `bg-surface dark:bg-canvas`, as `SiteHeader` and `Shell` draw
+ * their bars; the menu panel and `Shell`'s drawer sit inside the bar and inherit it. A caller's control in a slot, such as a `Button` in `actions`,
+ * draws its ring's gap in `--color-focus-offset`; set to the bar's own colour in each palette, the
+ * gap shows no band of page colour around the focused control.
+ */
+export const barFocusOffset =
+  "pc-focus-offset-surface dark:[--color-focus-offset:var(--color-canvas)]"
+
 /** What {@link useMobilePanel} hands back to the component rendering the disclosure. */
 export interface MobilePanelController {
   /**

@@ -30,7 +30,7 @@ import { followLinkClick, isPlainClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"
-import { useMobilePanel } from "./mobile-panel.ts"
+import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
 
 /** One entry of {@link ShellProps.navItems}, or of one entry's own `children`. */
 export interface ShellNavItem {
@@ -441,7 +441,10 @@ export function Shell(props: ShellProps): JSX.Element {
       </a>
 
       <header
-        class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-subtle bg-surface px-4 dark:bg-canvas"
+        class={cn(
+          "sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-subtle bg-surface px-4 dark:bg-canvas",
+          barFocusOffset,
+        )}
         data-e2e="shell-header"
       >
         <details ref={detailsRef} class="group lg:hidden" onToggle={handleToggle}>
