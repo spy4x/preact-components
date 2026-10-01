@@ -136,7 +136,7 @@ export interface ReadmeClaims {
 export function parseIconBlocks(source: string): IconBlock[] {
   const blocks: IconBlock[] = []
   const pattern =
-    /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function (Icon\w+)\(props: IconProps\): JSX\.Element \{([\s\S]*?)\n\}\n/g
+    /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function (Icon\w+)\(props: Icon\w*Props\): JSX\.Element \{([\s\S]*?)\n\}\n/g
   for (const match of source.matchAll(pattern)) {
     blocks.push({ doc: match[1], name: match[2], body: match[3] })
   }
