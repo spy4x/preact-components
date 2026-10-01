@@ -6097,7 +6097,9 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
       const onItem = (await readShellMenuFocus(devtools)) === "sign out"
       const before = Number(await taken())
       await read(devtools, "(globalThis.__shellSubmits = [], true)", false)
-      await pressKey(devtools, key)
+      // Pressed only on the item: a Space with focus anywhere else scrolls the page and leaves
+      // every later check in this block aiming at stale coordinates.
+      if (onItem) await pressKey(devtools, key)
       const counted = await poll(async () => Number(await taken()) === before + 1, 3_000)
       const closed = await poll(() => readShellUserMenuOpen(devtools).then((v) => !v), 3_000)
       const focus = await readShellMenuFocus(devtools)
