@@ -3227,6 +3227,30 @@ async function lightboxOptionsChecks(devtools: Devtools): Promise<void> {
       `"${webp.alt}" → leftward → "${afterLeftward}" → rightward → "${afterRightward}"`,
     )
 
+    // Two fingers dragged sideways together, as a pinch or a two-finger pan does. Run after the
+    // one-finger swipes on purpose: afterwards Chromium's emulated touch list still reports one
+    // finger down, so a one-finger swipe sent later would do nothing either way.
+    const beforePinch = await altNow()
+    await devtools.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: centre.x, y: centre.y, id: 1 }, { x: centre.x, y: centre.y + 60, id: 2 }],
+    })
+    for (const step of [0.25, 0.5, 0.75, 1]) {
+      const x = Math.round(centre.x - 150 * step)
+      await devtools.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x, y: centre.y, id: 1 }, { x, y: centre.y + 60, id: 2 }],
+      })
+    }
+    await devtools.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+    const afterPinch = await holdsFor(async () => (await altNow()) === beforePinch, 500)
+    check(
+      "a two-finger sideways drag leaves the image where it was",
+      webp.open && beforePinch !== "" && afterPinch.held,
+      `"${beforePinch}" → two fingers 150px leftward → held: ${afterPinch.held}, now ` +
+        `"${await altNow()}"`,
+    )
+
     // A phone turned sideways: the notch's 47px on either side, the home indicator's 21px below.
     await devtools.send("Emulation.setDeviceMetricsOverride", {
       width: 844,

@@ -75,6 +75,10 @@ describe("swipeStep", () => {
     expect(swipeStep(80, -10)).toBe(-1)
   })
 
+  it("counts a sideways move of exactly 50px as a swipe", () => {
+    expect(swipeStep(-50, 0)).toBe(1)
+  })
+
   it("ignores a sideways move shorter than 50px", () => {
     expect(swipeStep(-49, 0)).toBe(0)
   })
