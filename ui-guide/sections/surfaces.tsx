@@ -265,8 +265,9 @@ function ColourAtomsDemo() {
           ))}
         </Cluster>
         <p class="text-muted text-xs">
-          These two fills are for marks, such as a bar or a dot, and carry no label: in the dark
-          palette no foreground token reads on them at 4.5:1. A danger label goes on bg-danger-fill.
+          These two fills are for marks, such as a bar or a dot, and carry no label: no one
+          foreground token reads on them at 4.5:1 in both palettes. A danger label goes on
+          bg-danger-fill.
         </p>
       </Stack>
 
