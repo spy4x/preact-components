@@ -1,4 +1,4 @@
-import { centreInView, check, type Devtools, poll } from "./harness.ts"
+import { centreInView, check, type Devtools, poll, settledScroll } from "./harness.ts"
 import { PAGE_TITLE } from "../src/site.ts"
 
 /**
@@ -13,29 +13,31 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
   // not the `#toggle-switch` this page shipped before hash routing. The hashchange listener is what
   // turns that hash into a mark, a scroll and a title, so removing the listener reds this check —
   // which is what makes it a detection rather than a restatement of the markup.
-  const deepLink = await devtools.evaluate<{
-    marked: boolean
-    current: string
-    title: string
-    scrolled: boolean
-  }>(
-    `(async () => {
-      location.hash = "#/inputs/toggle-switch"
-      await new Promise((done) => setTimeout(done, 800))
-      return {
-        marked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
-        current: document.querySelector('a[aria-current="true"]')?.textContent ?? "",
-        title: document.title,
-        scrolled: document.documentElement.scrollTop > 0,
-      }
-    })()`,
-  )
+  //
+  // The check polls for the state it asserts rather than reading it after a fixed wait: an 800ms
+  // wait failed once under `--cpu-throttle=4` (#466). The page starts at its top, so `scrolled`
+  // can only come from this route's own scroll, and the scroll is waited out before the next step.
+  await devtools.evaluate<null>(`(window.scrollTo({ top: 0, behavior: "instant" }), null)`)
+  await devtools.evaluate<null>(`(location.hash = "#/inputs/toggle-switch", null)`)
+  const DEEP_LINK_DEADLINE_MS = 10_000
+  let deepLink = { marked: false, current: "", title: "", scrolled: false }
+  const deepLinkShown = await poll(async () => {
+    deepLink = await devtools.evaluate<typeof deepLink>(`(() => ({
+      marked: document.querySelector("#demo-ToggleSwitch").hasAttribute("data-deep-link"),
+      current: document.querySelector('a[aria-current="true"]')?.textContent ?? "",
+      title: document.title,
+      scrolled: document.documentElement.scrollTop > 0,
+    }))()`)
+    return deepLink.marked && deepLink.scrolled && deepLink.current === "ToggleSwitch" &&
+      deepLink.title.startsWith("ToggleSwitch")
+  }, DEEP_LINK_DEADLINE_MS)
   check(
     "a deep link marks, scrolls to and titles its demo",
-    deepLink.marked && deepLink.scrolled && deepLink.current === "ToggleSwitch" &&
-      deepLink.title.startsWith("ToggleSwitch"),
-    `#/inputs/toggle-switch → ${deepLink.title}`,
+    deepLinkShown,
+    `#/inputs/toggle-switch → ${deepLink.title}; marked ${deepLink.marked}, scrolled ` +
+      `${deepLink.scrolled}, current "${deepLink.current}"`,
   )
+  await settledScroll(devtools, { from: 0 })
 
   // The rest of the grammar, driven the way a reader drives it: the legacy bare fragment this page
   // shipped before hash routing and still resolves, a section route, and an unknown route falling
