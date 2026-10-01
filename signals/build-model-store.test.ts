@@ -1360,6 +1360,20 @@ describe("buildModelStore remote events", () => {
     expect(store.state.value.list.map((r) => r.name)).toEqual(["One, newer", "Two", "Three"])
   })
 
+  it("takes the first row when an updated batch names one id twice", async () => {
+    const { impl } = queueFetch()
+    const store = buildTimedStore(impl)
+    await store.onWs([stampedRow(1, "One", EARLIER)], RemoteEvent.LIST)
+
+    // Both copies are newer than the held row, so only the first-wins rule decides which lands.
+    await store.onWs(
+      [stampedRow(1, "One, first", LATER), stampedRow(1, "One, second", LATER)],
+      RemoteEvent.UPDATED,
+    )
+
+    expect(store.state.value.list.map((r) => r.name)).toEqual(["One, first"])
+  })
+
   it("archives each row a deleted batch names and only those", async () => {
     const { impl } = queueFetch()
     const store = buildTimedStore(impl)
