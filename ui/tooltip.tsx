@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
+import { hintBubbleClasses } from "./hint-bubble.ts"
 
 /** Side of the trigger the tooltip is anchored to. */
 export type TooltipPlacement = "top" | "right" | "bottom" | "left"
@@ -62,8 +63,7 @@ const surfaceBase =
  * would leave dead space between the two, and a pointer crossing dead space leaves the wrapper:
  * the hint would vanish on the way to it, which is no better than not being hoverable at all.
  */
-const bubbleBase =
-  "block rounded-md bg-foreground px-2 py-1 text-xs text-canvas shadow-raised dark:bg-hover dark:text-foreground"
+const bubbleBase = hintBubbleClasses
 
 /**
  * Where the surface sits, and which of its sides carries the bridge back to the trigger.
