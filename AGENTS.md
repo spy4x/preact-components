@@ -458,10 +458,25 @@ export type BadgeProps = typeof badgeProps.infer
 
 ## Dependencies
 
-**Pin exactly. Never `^`, never `~`, never a floating tag.** The lockfile is committed; a version
-bump is its own commit with scope `deps`. Exact pinning is checked by hand with
-`grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' .`, which must
-return nothing. Whether these pins match `spy4x/template` and `spy4x/ts-libs` where the repos
+**Pin exactly. Never `^`, never `~`, never a floating tag** — with one exception. The lockfile is
+committed; a version bump is its own commit with scope `deps`.
+
+The exception (owner decision, #370): `preact`, `preact/`, `@preact/signals` and
+`@preact/signals-core` in the root `deno.jsonc` are caret ranges. An app must load one copy of
+each, and `deno publish` copies an import map value into every published import, so an exact pin
+there made every app on a newer compatible version load a second copy beside its own — two copies
+of signals split the reactive graph. The lockfile resolves each range to one exact version for
+this repository's own development and tests. Deno re-resolves a range to the newest version it
+allows whenever the set of dependencies in a config changes, so that resolution moves with any
+dependency edit; read the version in `deno.lock`, not in the range. No other dependency is a
+range. Exact pinning is checked by hand with this command, which must print nothing:
+
+```bash
+grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' . |
+  grep -vE '^(\./)?deno\.jsonc:[0-9]+:"npm:/?(preact|@preact/signals|@preact/signals-core)@\^$'
+```
+
+Whether these pins match `spy4x/template` and `spy4x/ts-libs` where the repos
 overlap is **not** checked by anything here — compare them by hand with
 `grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` run in each repo.
 

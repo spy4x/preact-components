@@ -75,13 +75,17 @@
     }
   },
   "imports": {
-    // Preact + signals, pinned exactly. Whether these match `spy4x/template` and
-    // `spy4x/ts-libs` is not checked by anything here — see AGENTS.md → Dependencies
-    // for the grep that compares lockfiles by hand.
-    "preact": "npm:preact@10.29.8",
-    "preact/": "npm:/preact@10.29.8/",
-    "@preact/signals": "npm:@preact/signals@2.5.1",
-    "@preact/signals-core": "npm:@preact/signals-core@1.12.1",
+    // Preact + signals: caret ranges, the one exception to exact pinning (#370). An app must
+    // load one copy of each — a second copy of signals splits the reactive graph — and
+    // `deno publish` copies these values into every published import, so an exact pin here
+    // made every app on a newer compatible version load two copies. `deno.lock` still resolves
+    // each range to one exact version for this repository's own development and tests. Whether
+    // these match `spy4x/template` and `spy4x/ts-libs` is not checked by anything here — see
+    // AGENTS.md → Dependencies for the grep that compares lockfiles by hand.
+    "preact": "npm:preact@^10.29.8",
+    "preact/": "npm:/preact@^10.29.8/",
+    "@preact/signals": "npm:@preact/signals@^2.5.1",
+    "@preact/signals-core": "npm:@preact/signals-core@^1.12.1",
     "wouter-preact": "npm:wouter-preact@3.9.0",
 
     // Stdlib
