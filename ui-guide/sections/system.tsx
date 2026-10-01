@@ -888,7 +888,7 @@ function AuthFormAutofillDemo() {
 }
 
 /**
- * One instance whose inputs post as `username`, `password` and `otp`, the names an API's schema
+ * One instance whose inputs post as `username`, `pass` and `otp`, the names an API's schema
  * might use. A credentials submit moves it to the code step, and the line below the form shows what
  * each callback received — the login and the code as typed, the password only by its length — so a
  * check can prove the renamed fields still reach the callbacks once the page has hydrated.
@@ -904,7 +904,7 @@ function AuthFormNamesDemo() {
       <AuthForm
         mode="sign-in"
         step={step.value}
-        names={{ login: "username", code: "otp" }}
+        names={{ login: "username", password: "pass", code: "otp" }}
         action="/auth/sign-in"
         onSignIn={(credentials) => {
           login.value = credentials.login

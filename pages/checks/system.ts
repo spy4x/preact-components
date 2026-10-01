@@ -1337,7 +1337,7 @@ async function authFormBusyChecks(devtools: Devtools): Promise<void> {
   )
 }
 
-/** The card part whose `AuthForm` posts as `username`, `password` and `otp`. */
+/** The card part whose `AuthForm` posts as `username`, `pass` and `otp`. */
 const AUTH_NAMES = `${AUTH_FORM} [data-e2e="auth-form-names-demo"]`
 
 /** What the renamed-fields card shows its callbacks received, read in one round trip. */
@@ -1389,9 +1389,9 @@ function fillAndSubmitNamed(devtools: Devtools, values: Record<string, string>):
 
 /**
  * A hydrated submit of an `AuthForm` whose inputs carry the names an API expects (`username`,
- * `otp`) still hands the typed values to `onSignIn` and `onOneTimeCode`: the submit handler reads
- * `FormData` under the renamed keys, not under the defaults. A handler still reading `login` or
- * `code` would hand the callbacks empty strings, which the card shows.
+ * `pass`, `otp`) still hands the typed values to `onSignIn` and `onOneTimeCode`: the submit handler
+ * reads `FormData` under the renamed keys, not under the defaults. A handler still reading `login`,
+ * `password` or `code` would hand the callbacks empty strings, which the card shows.
  */
 async function authFormNamesChecks(devtools: Devtools): Promise<void> {
   const login = "ada@example.com"
@@ -1399,7 +1399,7 @@ async function authFormNamesChecks(devtools: Devtools): Promise<void> {
   const code = "482916"
 
   const before = await read(devtools, AUTH_NAMES_STATE, NO_AUTH_NAMES)
-  const filled = await fillAndSubmitNamed(devtools, { username: login, password })
+  const filled = await fillAndSubmitNamed(devtools, { username: login, pass: password })
   const signedIn = await poll(
     () => read(devtools, `${AUTH_NAMES_STATE}?.names === "otp"`, false),
     3_000,
@@ -1408,7 +1408,7 @@ async function authFormNamesChecks(devtools: Devtools): Promise<void> {
 
   check(
     "a hydrated sign-in with renamed fields hands the typed login and password to onSignIn",
-    before.names === "username,password" && filled && signedIn &&
+    before.names === "username,pass" && filled && signedIn &&
       afterSignIn.login === login && afterSignIn.passwordLength === String(password.length),
     `inputs before: ${JSON.stringify(before.names)}, filled and submitted: ${filled}, ` +
       `reached the code step: ${signedIn}, onSignIn received login ` +
