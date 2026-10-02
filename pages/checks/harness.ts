@@ -986,7 +986,6 @@ export async function ringGapPixels(
  * - `paint(color)` draws a colour on white on a 1×1 canvas and reads back its sRGB bytes, so a
  *   computed style in any colour function (`oklch()`, relative colour syntax, `color-mix()`)
  *   resolves the way Chromium renders it, and a translucent colour shows as it would on white.
- *   `pixel` is the same function under the name `checks/theme.ts` uses.
  * - `backdrop(element)` composites every background from the root down to the element itself: the
  *   colour text inside it is really drawn on. It folds in each element's computed `opacity`: a
  *   layer whose element is at `opacity: 0.5` shows half of what is behind it.
@@ -994,6 +993,12 @@ export async function ringGapPixels(
  *   and the element or an ancestor has `opacity` below 1, the other is taken as a colour drawn
  *   inside that element and is faded through the same opacity first, so `opacity-50` on a line of
  *   text lowers its measured contrast as it lowers what a reader sees.
+ *
+ *   That holds only when `backdrop` is given the element that holds the text. Opacity on an
+ *   element between that one and the text is not measured, so passing an ancestor (a panel, a
+ *   parent) misses it. A colour passed to `ratio` is faded even if it is not drawn inside the
+ *   element. The fold rides on a hidden property of the returned array, so a copy of it (spread,
+ *   `.map`, `.slice`, a value returned from the page) silently measures without opacity.
  * - `contrast(a, b)` is `ratio` of two CSS colours, each painted on white. It knows no element, so
  *   it folds in no opacity.
  * - `luminance(rgb)` is WCAG relative luminance of one byte triple.
@@ -1009,7 +1014,6 @@ export const CONTRAST_HELPERS = `
     return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
   }
   const paint = (color) => paintLayers(["white", color])
-  const pixel = paint
   const asColor = (rgb, alpha = 1) => "rgb(" + rgb.join(" ") + " / " + alpha + ")"
   const renderStack = (layers, top) => {
     const draw = (index, base) => {
