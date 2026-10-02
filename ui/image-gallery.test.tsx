@@ -210,7 +210,7 @@ describe('ImageGallery with layout="strip"', () => {
     expect(html.match(/<ul class="([^"]*)"/)?.[1].split(" ")).toContain("p-1")
   })
 
-  it("renders each image's intrinsic size on its strip image, so the row reserves its height", () => {
+  it("renders each image's width and height on its strip image", () => {
     const sized = IMAGES.map((image) => ({ ...image, width: 1600, height: 900 }))
     const imgs = render(<ImageGallery images={sized} layout="strip" />).match(/<img [^>]*>/g) ?? []
 
