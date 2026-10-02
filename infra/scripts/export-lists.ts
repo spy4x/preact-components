@@ -20,11 +20,11 @@
  *    column names a subpath, that subpath must export every component the row names;
  * 4. the "Packages" table in `README.md` — it must link every published package's own README.
  *
- * "Component" is the catalogue's own rule, `isComponent` in `ui-guide/coverage.ts`: a function export
- * named in PascalCase. An exported enum or class is named like a component and is not one, so it
- * needs no row; the package README names it among its helpers instead. The catalogued packages are the ones the guide gives cards
- * to; `icons/` is left out on purpose, because its 122 glyphs are listed by the guide's gallery,
- * which reads them from the module.
+ * "Component" is the catalogue's own rule, `isComponent` in `ui-guide/component-kind.ts`: a
+ * function export named in PascalCase. An exported enum or class is named like a component and is
+ * not one, so it needs no row; the package README names it among its helpers instead. The
+ * catalogued packages are the ones the guide gives cards to; `icons/` is left out on purpose,
+ * because its 122 glyphs are listed by the guide's gallery, which reads them from the module.
  *
  * `export-lists.test.ts` runs this against the real tree, so `deno task check` fails on any drift.
  * Run it by hand for the list of problems:
@@ -34,7 +34,7 @@
  * ```
  */
 
-import { isComponent } from "../../ui-guide/coverage.ts"
+import { isComponent } from "../../ui-guide/component-kind.ts"
 
 const ROOT = new URL("../../", import.meta.url)
 
