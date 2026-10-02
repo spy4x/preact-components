@@ -6,6 +6,7 @@ import {
   inFreshFrame,
   MISSED,
   openGuidePage,
+  PAGE_UNTIL,
   pixelContrast,
   pointerToCorner,
   poll,
@@ -2027,6 +2028,8 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   // anything about a second tab: no check here opens one.
   const unasked = await devtools.evaluate<SWState>(`(async () => {
     navigator.serviceWorker.dispatchEvent(new Event("controllerchange"))
+    // A fixed wait, not a poll: it proves no reload is called, and an absence has no state to poll
+    // for.
     await new Promise((done) => setTimeout(done, 100))
     return ${READ_STATE}
   })()`)
@@ -2054,7 +2057,7 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   )
   const asked = await devtools.evaluate<SWState>(`(async () => {
     navigator.serviceWorker.dispatchEvent(new Event("controllerchange"))
-    await new Promise((done) => setTimeout(done, 100))
+    await ${PAGE_UNTIL}(() => document.querySelector('${RELOADS}').textContent.trim() !== "0")
     return ${READ_STATE}
   })()`)
 
@@ -7268,6 +7271,12 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
     `document.querySelector('${cell(CHOSEN)}')`,
   )
 
+  /** Wait until a day's colour transition, if one is running, has ended. */
+  const settledCell = (date: string) =>
+    devtools.evaluate<boolean>(`${PAGE_UNTIL}(() =>
+      document.querySelector('${cell(date)}').getAnimations().length === 0
+    )`)
+
   /** Move the pointer onto a day and read its background once the hover transition has ended. */
   const hoverBackground = async (date: string): Promise<string> => {
     const point = await read<{ x: number; y: number } | null>(
@@ -7293,7 +7302,7 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
         ),
       2_000,
     )
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    await settledCell(date)
     const background = await read(
       devtools,
       `getComputedStyle(document.querySelector('${cell(date)}')).backgroundColor`,
@@ -7339,7 +7348,7 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
     }).forEach(([name, value]) => document.documentElement.style.setProperty(name, value)), true)`,
     false,
   )
-  await new Promise((resolve) => setTimeout(resolve, 400))
+  await settledCell(CHOSEN)
   const chosenAtRest = await read(
     devtools,
     `getComputedStyle(document.querySelector('${cell(CHOSEN)}')).backgroundColor`,

@@ -7,6 +7,7 @@ import {
   type Devtools,
   MISSED,
   openGuidePage,
+  PAGE_UNTIL,
   pointerToCorner,
   poll,
   pressKey,
@@ -81,7 +82,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
       const switches = [...card.querySelectorAll('button[role="switch"]')]
       const before = switches[0].getAttribute("aria-checked")
       switches[0].click()
-      await new Promise((done) => setTimeout(done, 50))
+      await ${PAGE_UNTIL}(() => switches[0].getAttribute("aria-checked") !== before)
       return { count: switches.length, before, after: switches[0].getAttribute("aria-checked") }
     })()`,
   )
@@ -97,7 +98,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
       const off = [...card.querySelectorAll("button")].find((b) => b.textContent.includes("OFF"))
       const before = off.className
       off.click()
-      await new Promise((done) => setTimeout(done, 50))
+      await ${PAGE_UNTIL}(() => off.className !== before)
       return { before, after: off.className }
     })()`,
   )
@@ -117,7 +118,6 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
     afterDescribedBy: string
     errorText: string
   }>(`(async () => {
-    const settle = () => new Promise((done) => setTimeout(done, 30))
     const echo = () =>
       document.querySelector('#demo-Field [data-e2e="controlled-value"]').textContent.trim()
     const email = document.querySelector("#demo-Field input[type=email]")
@@ -130,7 +130,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
     const before = read()
     email.value = "ada@example.com"
     email.dispatchEvent(new Event("input", { bubbles: true }))
-    await settle()
+    await ${PAGE_UNTIL}(() => echo().includes("ada@example.com") && read().invalid === null)
 
     return {
       echoBefore,
@@ -306,7 +306,8 @@ async function busyButtonChecks(devtools: Devtools): Promise<void> {
 
   await pressKey(devtools, "Enter")
   await pressKey(devtools, "Space")
-  // A press that got through would re-render the counter at once; give it time to show up.
+  // A fixed wait, not a poll: it proves a press does nothing, and an absence has no state to poll
+  // for. A press that got through would re-render the counter at once; give it time to show up.
   await new Promise((done) => setTimeout(done, 200))
   const pressed = await devtools.evaluate<BusyState>(BUSY_STATE)
   check(
@@ -376,7 +377,8 @@ async function busySubmitChecks(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Enter")
   await devtools.evaluate<null>(`(${submit}.focus(), null)`)
   await pressKey(devtools, "Enter")
-  // A submission that got through would re-render the counter at once; give it time to show up.
+  // A fixed wait, not a poll: it proves a submission does not happen, and an absence has no state
+  // to poll for. One that got through would re-render the counter at once; give it time to show up.
   await new Promise((done) => setTimeout(done, 200))
   const again = await devtools.evaluate<BusySubmitState>(BUSY_SUBMIT_STATE)
   check(
@@ -748,13 +750,13 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
         expanded: trigger.getAttribute("aria-expanded"),
         hidden: panel.classList.contains("hidden"),
       })
-      const settle = () => new Promise((done) => setTimeout(done, 50))
+      const until = ${PAGE_UNTIL}
       const before = state()
       trigger.click()
-      await settle()
+      await until(() => state().expanded === "true" && !state().hidden)
       const open = state()
       trigger.click()
-      await settle()
+      await until(() => state().hidden)
       return { before, open, closed: state() }
     })()`,
   )
@@ -886,7 +888,10 @@ async function dropdownChecks(devtools: Devtools): Promise<void> {
     // A menu with no items is a failure this check should report, not an exception that takes the
     // rest of this file's checks down with it.
     items[items.length - 1]?.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await ${PAGE_UNTIL}(() => {
+      const state = ${DROPDOWN_STATE}
+      return state.hidden && state.onTrigger
+    })
     return ${DROPDOWN_STATE}
   })()`)
   check(
@@ -1516,12 +1521,18 @@ async function toastrChecks(devtools: Devtools): Promise<void> {
     const button = globalThis.__verifyToastr?.success ?? null
     const pushed = (button?.textContent ?? "").trim()
     button?.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await ${PAGE_UNTIL}(() => {
+      const state = ${TOASTR_STATE}
+      return state.toasts >= 1 && state.height > 0 && state.text.includes(pushed)
+    })
     return { ...(${TOASTR_STATE}), pushed }
   })()`)
   const cleared = await devtools.evaluate<ToastrState>(`(async () => {
     globalThis.__verifyToastr?.clear?.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await ${PAGE_UNTIL}(() => {
+      const state = ${TOASTR_STATE}
+      return state.toasts === 0 && state.height === 0
+    })
     return ${TOASTR_STATE}
   })()`)
 
@@ -1644,11 +1655,19 @@ async function toastrTitleCheck(devtools: Devtools): Promise<void> {
     if (missing.length > 0) {
       return { reason: "the Toastr card is missing " + missing.join(", "), readings: [] }
     }
+    const until = ${PAGE_UNTIL}
     parked.clear.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await until(() => region.children.length === 0)
     parked.success.click()
     titled.click()
-    await new Promise((done) => setTimeout(done, 450))
+    // The toasts fade in over 300ms; "painted" is read once every part of both is fully opaque.
+    await until(() =>
+      region.children.length >= 2 &&
+      [...region.children].every((toast) =>
+        [toast, ...toast.querySelectorAll("*")]
+          .every((el) => Number(getComputedStyle(el).opacity) > 0.99)
+      )
+    )
 
     const wants = ["Success", titled.dataset.title ?? ""]
     const toasts = [...region.children]
@@ -1685,7 +1704,7 @@ async function toastrTitleCheck(devtools: Devtools): Promise<void> {
       }
     })
     parked.clear.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await until(() => region.children.length === 0)
     return { reason: "", readings }
   })()`,
   )
@@ -1732,10 +1751,14 @@ async function toastrOwnHookCheck(devtools: Devtools): Promise<void> {
       return { reason: "the Toastr card is missing its live area or its success or clear button",
         detail: "", ok: false }
     }
+    const until = ${PAGE_UNTIL}
     parked.clear.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await until(() => region.children.length === 0)
     parked.success.click()
-    await new Promise((done) => setTimeout(done, 120))
+    await until(() =>
+      region.querySelector('[data-e2e="guide-toast-success"]')?.textContent
+        .includes("pushed by the demo stack")
+    )
     const hooked = [...region.querySelectorAll('[data-e2e="guide-toast-success"]')]
     const toast = hooked[0] ?? null
     const detail = hooked.length + " element(s) carry the hook" +
@@ -1748,7 +1771,7 @@ async function toastrOwnHookCheck(devtools: Devtools): Promise<void> {
       (toast.textContent ?? "").includes("pushed by the demo stack") &&
       region.getAttribute("data-e2e") === "guide-toastr"
     parked.clear.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await until(() => region.children.length === 0)
     return { reason: "", detail, ok }
   })()`,
   )
@@ -1800,10 +1823,15 @@ async function toastrWarningContrastCheck(devtools: Devtools): Promise<void> {
       return { reason: "the Toastr card is missing its live area, its warning button " +
         '(data-e2e="toast-warning") or its clear button' }
     }
+    const until = ${PAGE_UNTIL}
     parked.clear.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await until(() => region.children.length === 0)
     push.click()
-    await new Promise((done) => setTimeout(done, 450))
+    // Waits out the toast's 300ms entry fade, so its colours are read at full opacity.
+    await until(() => {
+      const arrived = region.querySelector('[data-e2e="guide-toast-warning"]')
+      return arrived !== null && arrived.getAnimations({ subtree: true }).length === 0
+    })
     const toast = region.querySelector('[data-e2e="guide-toast-warning"]')
     if (toast === null) {
       parked.clear.click()
@@ -1850,7 +1878,7 @@ async function toastrWarningContrastCheck(devtools: Devtools): Promise<void> {
     } finally {
       root.classList.toggle("dark", wasDark)
       parked.clear.click()
-      await new Promise((done) => setTimeout(done, 80))
+      await until(() => region.children.length === 0)
     }
   })()`)
   const passes = (reading: WarningToastReading | undefined) =>
@@ -1913,13 +1941,21 @@ async function toastrCornerChecks(devtools: Devtools): Promise<void> {
       )
       if (!radio) return false
       radio.click()
-      await new Promise((done) => setTimeout(done, 50))
+      // A corner is picked once the stack carries that corner's two offsets; "card" has none.
+      const [vertical, horizontal] = "${value}".split("-")
+      const stack = document.querySelector('#demo-Toastr [data-e2e="guide-toastr"]')
+      await ${PAGE_UNTIL}(() =>
+        horizontal === undefined ||
+        stack.classList.contains(vertical + "-8") && stack.classList.contains(horizontal + "-8")
+      )
       return radio.checked
     })()`)
   const clear = () =>
     devtools.evaluate<null>(`(async () => {
       document.querySelector('#demo-Toastr [data-e2e="toast-clear"]')?.click()
-      await new Promise((done) => setTimeout(done, 50))
+      await ${PAGE_UNTIL}(() =>
+        document.querySelector('#demo-Toastr [data-e2e="guide-toastr"]').children.length === 0
+      )
       return null
     })()`)
 
@@ -1947,7 +1983,8 @@ async function toastrCornerChecks(devtools: Devtools): Promise<void> {
             height: 0, enteringX: 0 }
           if (!toast) return empty
           const enteringX = parseFloat(getComputedStyle(toast).translate.split(" ")[0]) || 0
-          await new Promise((done) => setTimeout(done, 400))
+          // The box is read where the 300ms slide ends.
+          await ${PAGE_UNTIL}(() => toast.getAnimations({ subtree: true }).length === 0)
           const box = toast.getBoundingClientRect()
           return {
             found: true,
@@ -2086,11 +2123,18 @@ async function storeDelayChecks(devtools: Devtools): Promise<void> {
         : 'its default-duration readout (data-e2e="toast-default-duration")'
       return { ...blank, ok: false, reason: "the Toastr card is missing " + missing }
     }
+    const until = ${PAGE_UNTIL}
     clear.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await until((() => {
+      const state = ${TOASTR_STORE_AND_DOM}
+      return state.dom === 0 && state.store === 0
+    }))
     long.click()
     success.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await until((() => {
+      const state = ${TOASTR_STORE_AND_DOM}
+      return state.dom === 2 && state.store === 2
+    }))
     return {
       ...(${TOASTR_STORE_AND_DOM}),
       long: Number(long.dataset.duration ?? 0),
@@ -2144,7 +2188,10 @@ async function storeDelayChecks(devtools: Devtools): Promise<void> {
     const control = sticky?.querySelector("button") ?? null
     if (control === null) return { ...(${TOASTR_STORE_AND_DOM}), pressed: false }
     control.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await ${PAGE_UNTIL}((() => {
+      const state = ${TOASTR_STORE_AND_DOM}
+      return state.dom === 1 && state.store === 1
+    }))
     return { ...(${TOASTR_STORE_AND_DOM}), pressed: true }
   })()`)
 
@@ -2169,7 +2216,10 @@ async function storeDelayChecks(devtools: Devtools): Promise<void> {
 
   const emptied = await devtools.evaluate<StoreAndDom>(`(async () => {
     globalThis.__verifyToastr?.clear?.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await ${PAGE_UNTIL}((() => {
+      const state = ${TOASTR_STORE_AND_DOM}
+      return state.dom === 0 && state.store === 0
+    }))
     return ${TOASTR_STORE_AND_DOM}
   })()`)
 
@@ -2531,10 +2581,11 @@ async function pushAutoToast(devtools: Devtools): Promise<Pushed> {
         : 'its clear button (data-e2e="toast-clear")'
       return { ok: false, reason: "the Toastr card is missing " + missing, duration: 0, toasts: -1 }
     }
+    const until = ${PAGE_UNTIL}
     clear.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await until(() => region.children.length === 0)
     auto.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await until(() => region.children.length > 0)
     const duration = Number(auto.dataset.duration ?? 0)
     if (!Number.isFinite(duration) || duration <= 0) {
       return {
@@ -2609,12 +2660,15 @@ async function runThenAct(devtools: Devtools, share: number, act: string): Promi
       }
     }
 
+    const until = ${PAGE_UNTIL}
     clear.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await until(() => region.children.length === 0)
     const pushedAt = Date.now()
     auto.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await until(() => region.children.length > 0)
     const wait = Math.round(duration * ${share}) - (Date.now() - pushedAt)
+    // A deliberate pause, not a poll: the check needs the toast to have lived this share of its
+    // duration, and no state on the page marks that moment.
     if (wait > 0) await new Promise((done) => setTimeout(done, wait))
 
     const present = region.children.length > 0
@@ -3880,7 +3934,10 @@ async function modalChecks(devtools: Devtools): Promise<void> {
     }
     const before = Number(readout.dataset.step)
     next.click()
-    await new Promise((done) => setTimeout(done, 50))
+    await ${PAGE_UNTIL}(() =>
+      Number(document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')?.dataset.step) !==
+        before
+    )
     const fresh = document.querySelector('#demo-Modal [data-e2e="modal-close-step"]')
     return { ok: true, reason: "", before, after: Number(fresh?.dataset.step ?? NaN) }
   })()`)
@@ -5559,19 +5616,23 @@ async function imeComboboxCheck(devtools: Devtools): Promise<void> {
   await scrollToParked(devtools)
   const field = `globalThis.__verifyCombobox?.input ?? null`
   const read = () => devtools.evaluate<ComboboxReading>(COMBOBOX_STATE)
-  // A press that selected or closed re-renders at once; give a wrong one time to show up.
-  const settle = () => new Promise((done) => setTimeout(done, 200))
-
   const landing = await clickAt(devtools, await aimAt(devtools, field), field)
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const opened = await read()
   await pressKey(devtools, "ArrowDown")
-  await settle()
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(`${COMBOBOX_STATE}.active !== ${JSON.stringify(opened.active)}`),
+    3_000,
+  )
   const before = await read()
 
   await devtools.evaluate<null>(RECORD_IME_KEYS)
   await pressImeKey(devtools, "Enter")
   await pressImeKey(devtools, "Escape")
-  await settle()
+  // A fixed wait, not a poll: it proves the presses change nothing, and an absence has no state to
+  // poll for. A press that selected or closed re-renders at once; give a wrong one time to show up.
+  await new Promise((done) => setTimeout(done, 200))
   const keys = await devtools.evaluate<string>(TAKE_IME_KEYS)
   const ime = await read()
   check(
@@ -7304,7 +7365,7 @@ async function dateRangeChecks(devtools: Devtools): Promise<void> {
     const custom = globalThis.__verifyPicker?.panel
       ?.querySelector('[data-e2e="date-range-preset-custom"]') ?? null
     custom?.click()
-    await new Promise((done) => setTimeout(done, 80))
+    await ${PAGE_UNTIL}(() => (${PICKER_STATE}).customPressed === "true")
     return ${PICKER_STATE}
   })()`)
 
@@ -7726,6 +7787,8 @@ const FOCUS_SETTLE_FLOOR_MS = 400
  * settled.
  */
 async function settledActiveElement(devtools: Devtools, timeoutMs = 3_000): Promise<boolean> {
+  // A fixed floor, not a poll: it waits out a wrong refocus that may still come, an absence the
+  // JSDoc above explains.
   await new Promise((resolve) => setTimeout(resolve, FOCUS_SETTLE_FLOOR_MS))
   let previous: string | null = null
   return await poll(async () => {
@@ -8828,7 +8891,10 @@ async function nativePickerCheck(devtools: Devtools, mode: PickerMode): Promise<
     return { x, y, hit: document.elementFromPoint(x, y) === field }
   })()`)
   if (icon.hit) await clickAtPoint(devtools, icon)
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  await poll(
+    () => devtools.evaluate<boolean>(`${pickerFocus(mode)}.e2e === "date-range-from"`),
+    3_000,
+  )
   const clicked = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
   await devtools.evaluate<null>(`(() => {
     const field = ${fromField(mode)}
@@ -8836,8 +8902,9 @@ async function nativePickerCheck(devtools: Devtools, mode: PickerMode): Promise<
     field?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }))
     return null
   })()`)
-  // The component reads where focus went a tick after a focus-out with no target; give it the time
-  // to close the panel if it were going to.
+  // A fixed wait, not a poll: it proves the panel does not close, and an absence has no state to
+  // poll for. The component reads where focus went a tick after a focus-out with no target; give
+  // it the time to close the panel if it were going to.
   await new Promise((resolve) => setTimeout(resolve, 300))
   const blurred = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
 
@@ -8881,8 +8948,9 @@ async function nativePickerCheck(devtools: Devtools, mode: PickerMode): Promise<
 async function escapeFromPageCheck(devtools: Devtools, mode: PickerMode): Promise<void> {
   const opened = await mode.open(devtools)
   await devtools.evaluate<null>(`((document.activeElement)?.blur?.(), null)`)
-  // The focus-out handler reads where focus went a tick later; give it the time to close the panel
-  // if it were going to.
+  // A fixed wait, not a poll: it proves the panel stays open, and an absence has no state to poll
+  // for. The focus-out handler reads where focus went a tick later; give it the time to close the
+  // panel if it were going to.
   await new Promise((resolve) => setTimeout(resolve, 200))
   const before = await devtools.evaluate<PickerFocus>(pickerFocus(mode))
 
@@ -11086,7 +11154,9 @@ async function contactFormStaleSubmitCheck(devtools: Devtools): Promise<void> {
     return !reading.disabled && reading.region === ""
   }, 1_000)
 
-  // The demo's own submit resolves after 200ms; wait past it so the now-stale promise has settled.
+  // A fixed wait, not a poll: it proves the sending state does not come back, and an absence has no
+  // state to poll for. The demo's own submit resolves after 200ms; wait past it so the now-stale
+  // promise has settled.
   await new Promise((resolve) => setTimeout(resolve, 500))
   const stillIdle = await enhancedFormReading(devtools, card)
 
@@ -11591,13 +11661,18 @@ async function controlledFormFailureFocusCheck(devtools: Devtools): Promise<void
       async () => (await controlledMessage(devtools)) === "Saving your note…",
       1_000,
     )
-    await new Promise((resolve) => setTimeout(resolve, 150))
+    await poll(
+      async () =>
+        (await enhancedFormReading(devtools, CONTROLLED_CARD)).disabled &&
+        await regionHasFocus(devtools, CONTROLLED_CARD),
+      1_000,
+    )
     const during = await enhancedFormReading(devtools, CONTROLLED_CARD)
     const focusedDuring = await regionHasFocus(devtools, CONTROLLED_CARD)
     check(
       "the controlled EnhancedForm keeps its fieldset disabled while the caller's status is sending",
       saving && during.disabled,
-      `caller showed "Saving your note…": ${saving}; fieldset disabled 150ms later: ` +
+      `caller showed "Saving your note…": ${saving}; fieldset disabled while saving: ` +
         `${during.disabled}`,
     )
     check(
@@ -11805,7 +11880,7 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
   if (!cardPresent) return
 
   const read = await devtools.evaluate<MoneyInputReading>(`(async () => {
-    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const until = ${PAGE_UNTIL}
     const card = document.querySelector('${MONEY_INPUT_CARD}')
     const input = card.querySelector('#guide-money-input')
     const hidden = card.querySelector('input[type=hidden][name="guide-money-amount"]')
@@ -11825,12 +11900,15 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     // A real thousands separator, not just a decimal mark — proves grouping is understood, not
     // only decoded.
     setValue(input, "1.234,56")
-    await settle()
+    await until(() => echo().includes("123456") && hidden.value === "123456")
     const groupedParseEcho = echo()
     const groupedHiddenValue = hidden.value
 
     setValue(input, "abc")
-    await settle()
+    await until(() =>
+      status.textContent.trim() === "Enter a valid amount" &&
+      input.getAttribute("aria-invalid") === "true"
+    )
     const invalidEcho = echo()
     const invalidMessage = status.textContent.trim()
     const invalidAriaInvalid = input.getAttribute("aria-invalid")
@@ -11840,7 +11918,7 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     const invalidValidationMessage = input.validationMessage
 
     setValue(input, "")
-    await settle()
+    await until(() => echo().includes("(empty)") && status.textContent.trim() === "")
     const clearedEcho = echo()
     const clearedMessage = status.textContent.trim()
     const clearedAriaInvalid = input.getAttribute("aria-invalid")
@@ -11914,7 +11992,7 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
       midEditMessage: string
     }
   >(`(async () => {
-    const settle = () => new Promise((done) => setTimeout(done, 30))
+    const until = ${PAGE_UNTIL}
     const card = document.querySelector('${MONEY_INPUT_CARD}')
     const input = card.querySelector('#guide-money-input')
     const status = card.querySelector('#guide-money-input-status')
@@ -11929,12 +12007,12 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     }
 
     setValue(input, "3,50")
-    await settle()
+    await until(() => echo().includes("350"))
     const beforeUnresolvedEcho = echo()
     const beforeUnresolvedValue = input.value
 
     setValue(input, "not a number")
-    await settle()
+    await until(() => status.textContent.trim() === "Enter a valid amount")
     const midEditValue = input.value
     const midEditMessage = status.textContent.trim()
 
@@ -11950,7 +12028,8 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
   // A real blur — Tab through the browser's own input pipeline, not a dispatched `blur` event —
   // while the field's text is still refused. Text and message must stay exactly as they are.
   // `onBlur` runs synchronously on the DOM's own blur event, but the re-render it triggers is not
-  // synchronous with it — a short settle avoids reading the DOM before that render has landed.
+  // synchronous with it. A fixed wait, not a poll: it proves that render does not revert the text,
+  // and an absence has no state to poll for.
   await pressKey(devtools, "Tab")
   await new Promise((resolve) => setTimeout(resolve, 60))
   const afterRealBlur = await devtools.evaluate<{
@@ -11988,7 +12067,13 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
     return null
   })()`)
   await pressKey(devtools, "Tab")
-  await new Promise((resolve) => setTimeout(resolve, 60))
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.activeElement !== document.querySelector('${MONEY_INPUT_CARD} #guide-money-input')`,
+      ),
+    3_000,
+  )
 
   const beforeAdd = await devtools.evaluate<string>(
     `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
@@ -12004,6 +12089,15 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
   )
   if (addPoint.ok) {
     await clickAtPoint(devtools, addPoint)
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value !== ${
+            JSON.stringify(beforeAdd)
+          }`,
+        ),
+      3_000,
+    )
     const afterAdd = await devtools.evaluate<string>(
       `document.querySelector('${MONEY_INPUT_CARD} #guide-money-input').value`,
     )
@@ -12074,6 +12168,15 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
   )
   if (fixedSubmitPoint.ok) {
     await clickAtPoint(devtools, fixedSubmitPoint)
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `document.querySelector('${submitsSelector}').textContent !== ${
+            JSON.stringify(beforeBlockedSubmit)
+          }`,
+        ),
+      3_000,
+    )
     const afterFixedSubmit = await devtools.evaluate<string>(
       `document.querySelector('${submitsSelector}').textContent`,
     )
@@ -12197,7 +12300,15 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
       )
       if (submitPoint.ok) {
         await clickAtPoint(devtools, submitPoint)
-        await new Promise((resolve) => setTimeout(resolve, 60))
+        await poll(
+          () =>
+            devtools.evaluate<boolean>(
+              `/submits: [1-9]/.test(document.querySelector(
+                '${MONEY_INPUT_CARD} [data-e2e="money-input-submits"]',
+              ).textContent)`,
+            ).catch(() => false),
+          3_000,
+        )
         submitResult = await devtools.evaluate<string>(
           `document.querySelector(
             '${MONEY_INPUT_CARD} [data-e2e="money-input-submits"]',
@@ -13176,6 +13287,7 @@ async function inlineEditChecks(devtools: Devtools): Promise<void> {
   })()`)
   await pressKey(devtools, "Enter")
   await poll(() => devtools.evaluate<boolean>(`!${ok}.editing`), 2_000)
+  // A fixed wait, not a poll: it proves no save happens, and an absence has no state to poll for.
   // A save that got through would show its busy state and then change the echo; give it time.
   await new Promise((done) => setTimeout(done, 600))
   const blank = await devtools.evaluate<InlineEditState>(ok)
@@ -14044,7 +14156,9 @@ async function inlineEditInterruptionChecks(devtools: Devtools): Promise<void> {
     `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-saved"]').textContent.trim()`
   const remove = `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-remove"]')`
   const lock = `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-lock"]')`
-  // Long enough for the demo's 400ms save to finish and change the echo, had one started.
+  // Long enough for the demo's 400ms save to finish and change the echo, had one started. A fixed
+  // wait, not a poll: every caller proves a save does not happen, and an absence has no state to
+  // poll for.
   const saveWindow = () => new Promise((done) => setTimeout(done, 700))
   const open = async (text: string) => {
     await centreInView(devtools, trigger)
@@ -14577,6 +14691,8 @@ async function kanbanRefusedDropFocusCheck(devtools: Devtools): Promise<void> {
   await poll(() => devtools.evaluate<boolean>(`!${refuse}.checked`), 2_000)
   const frame = `new Promise((done) => requestAnimationFrame(done))`
   await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
+  // A fixed wait, not a poll: it proves the render does not steal focus, and an absence has no
+  // state to poll for.
   await new Promise((done) => setTimeout(done, 200))
   const after = await devtools.evaluate<{ onRefuse: boolean; focused: string }>(`({
     onRefuse: document.activeElement === ${refuse},
@@ -14614,6 +14730,9 @@ async function kanbanRefusedDropBlankClickCheck(devtools: Devtools): Promise<voi
     devtools,
     `document.querySelector('${KANBAN_CARD} [data-e2e="kanban-last-move"]')`,
   )
+  // A deliberate pause, not a poll: the board decides what a blur means a task later, in a timer
+  // (`onCardBlur`), and nothing on the page shows when that decision has run. A render before it
+  // would still find the card waiting for focus; a poll on focus alone measured exactly that.
   await new Promise((done) => setTimeout(done, 100))
   const blank = await devtools.evaluate<boolean>(`document.activeElement === document.body`)
   // A render the reader did not cause: `.click()` moves no focus.
@@ -14621,6 +14740,8 @@ async function kanbanRefusedDropBlankClickCheck(devtools: Devtools): Promise<voi
   await poll(() => devtools.evaluate<boolean>(`!${refuse}.checked`), 2_000)
   const frame = `new Promise((done) => requestAnimationFrame(done))`
   await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
+  // A fixed wait, not a poll: it proves the render does not steal focus, and an absence has no
+  // state to poll for.
   await new Promise((done) => setTimeout(done, 200))
   const after = await devtools.evaluate<KanbanState>(KANBAN_STATE)
 
@@ -14862,16 +14983,36 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
   const plainI: Chord = { key: "i", code: "KeyI", keyCode: 73, text: "i", modifiers: 0 }
   const modI: Chord = { key: "i", code: "KeyI", keyCode: 73, modifiers: apple ? 4 : 2 }
   const read = () => devtools.evaluate<ShortcutsState>(SHORTCUTS_STATE)
-  // A press that ran a handler re-renders the counts at once; give a wrong one time to show up.
+  // A fixed wait, not a poll, for the checks below that prove a press does nothing: an absence has
+  // no state to poll for. A press that ran a handler re-renders the counts at once; give a wrong
+  // one time to show up.
   const settle = () => new Promise((done) => setTimeout(done, 200))
+  // The toggle reaches useHotkeys through an effect, which leaves nothing on the page to poll for.
+  // Preact runs effects after the next paint, in a task after an animation frame; two such yields
+  // in the page are past it, however loaded the machine.
+  const effectsRan = () =>
+    devtools.evaluate<null>(`(async () => {
+      for (let k = 0; k < 2; k++) {
+        await new Promise((done) => requestAnimationFrame(() => setTimeout(done, 0)))
+      }
+      return null
+    })()`)
+  const until = (expression: string) =>
+    poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `(() => { const state = ${SHORTCUTS_STATE}; return ${expression} })()`,
+        ),
+      3_000,
+    )
 
   await devtools.evaluate<null>(`(${button}.focus(), null)`)
   const start = await read()
   await pressChord(devtools, plainI)
-  await settle()
+  await until(`state.plain === ${start.plain + 1}`)
   const afterPlain = await read()
   await pressChord(devtools, modI)
-  await settle()
+  await until(`state.combo === ${start.combo + 1}`)
   const afterCombo = await read()
   check(
     "useHotkeys runs mod+I's handler for mod+I and not for a plain I, and the reverse",
@@ -14950,7 +15091,7 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
   const toggle = `document.querySelector('#demo-ShortcutsDialog [data-e2e="shortcuts-enabled"]')`
   const wasOn = await devtools.evaluate<boolean>(`${toggle}?.checked === true`)
   await devtools.evaluate<null>(`(${toggle}.click(), null)`)
-  await settle()
+  await effectsRan()
   await devtools.evaluate<null>(`(${button}.focus(), null)`)
   const off = await read()
   await pressChord(devtools, plainI)
@@ -14963,7 +15104,7 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
   )
   // Back on, so the card is left as the page loaded it.
   await devtools.evaluate<null>(`(${toggle}.click(), null)`)
-  await settle()
+  await effectsRan()
 
   // Safari's Enter that ends an input method's composition: keyCode 229, `isComposing` false. The
   // presses land on the page itself, outside any field or dialog, where the demo's `enter` and
@@ -14984,7 +15125,7 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
   )
   await pressKey(devtools, "Enter")
   await pressKey(devtools, "Escape")
-  await settle()
+  await until(`state.enter === ${afterIme.enter + 1} && state.escape === ${afterIme.escape + 1}`)
   const plainKeys = await read()
   check(
     "useHotkeys still runs the Enter and Escape bindings for a plain Enter and Escape",
@@ -16340,6 +16481,8 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
     await click("fails")
     const firstPress = Date.now()
     await poll(async () => (await read("fails")).region === "Copy failed", 1_000)
+    // A deliberate pause, not a poll: the second press has to land 1s after the first, and no state
+    // on the page marks that moment.
     await new Promise((done) => setTimeout(done, Math.max(0, firstPress + 1_000 - Date.now())))
     await click("fails")
     await pointerToCorner(devtools)
@@ -16379,6 +16522,8 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
     const rejected = await devtools.evaluate<boolean>(`(async () => {
       if (!globalThis.__copySlowReject) return false
       globalThis.__copySlowReject(new DOMException("denied", "NotAllowedError"))
+      // A fixed wait, not a poll: it proves the late failure replaces nothing, and an absence has
+      // no state to poll for.
       await new Promise((done) => setTimeout(done, 150))
       await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
       return true
@@ -16797,9 +16942,18 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
         needs: 3,
       },
     ]
-    const settle = () => new Promise((done) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 400)))
-    )
+    // The palette switch starts its colour transitions on the next frames; read once every finite
+    // one on the page has finished. Infinite ones, a spinner's, never finish and are left out.
+    const until = ${PAGE_UNTIL}
+    const settle = async () => {
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      await until(() =>
+        document.getAnimations().every((animation) =>
+          animation.playState !== "running" ||
+          animation.effect?.getComputedTiming().endTime === Infinity
+        )
+      )
+    }
     try {
       root.classList.remove("dark")
       await settle()
