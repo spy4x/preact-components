@@ -15611,6 +15611,12 @@ async function themeToggleUnmountCheck(devtools: Devtools): Promise<void> {
 
 /** The `Dropdown` card's icon trigger, as the server renders it: the fallback's `<summary>`. */
 const DROPDOWN_FALLBACK_TRIGGER = '#demo-Dropdown summary[aria-label="Row actions"]'
+/**
+ * How many `Dropdown`s each card renders, so the no-script role check reads every one of them and
+ * notices one that stopped rendering its `<details>` fallback: the `Dropdown` card's four demos and
+ * `Shell`'s user menu.
+ */
+const DROPDOWN_FALLBACKS: Readonly<Record<string, number>> = { "demo-Dropdown": 4, "demo-Shell": 1 }
 /** The `Shell` card's user menu trigger; a `<summary>` before hydration, a `<button>` after. */
 const SHELL_MENU_TRIGGER = '#demo-Shell [data-e2e="shell-user-menu-button"]'
 /** The `Shell` card's form-post item with no `onClick`: a plain sign-out post. */
@@ -15695,12 +15701,17 @@ async function dropdownNoScriptChecks(devtools: Devtools): Promise<void> {
           node.hasAttribute("aria-orientation") ||
           (node === panel && node.hasAttribute("aria-label"))
         ).length
-        return items + " items, " + marked + " marked"
+        return details.closest("#demo-Dropdown, #demo-Shell").id + ": " + items + " items, " +
+          marked + " marked"
       })`).catch(() => [] as string[])
+    const perCard = (card: string) =>
+      fallbacks.filter((reading) => reading.startsWith(card + ": ")).length
     check(
       "with scripts off, no Dropdown panel or item announces a menu: no role, orientation or name " +
         "(#537)",
-      unhydrated && fallbacks.length >= 3 &&
+      unhydrated &&
+        Object.entries(DROPDOWN_FALLBACKS).every(([card, count]) => perCard(card) === count) &&
+        fallbacks.length === Object.values(DROPDOWN_FALLBACKS).reduce((a, b) => a + b) &&
         fallbacks.every((reading) => reading.endsWith(" 0 marked")),
       `${fallbacks.length} fallbacks: ${fallbacks.join("; ")}`,
     )

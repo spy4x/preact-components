@@ -253,7 +253,9 @@ describe("Shell", () => {
     expect(html).toContain("Navigation principale")
     expect(html).toContain("Aller au contenu")
     // `userMenu` names the hydrated menu panel only: the no-JavaScript fallback's panel is not a
-    // menu, so it carries no name (#537). `pages/checks/system.ts` reads the hydrated name.
+    // menu, so it carries no name (#537). The hydrated name is proven in a browser by "after
+    // hydration Shell's open user menu panel is a menu named by labels.userMenu" in
+    // `pages/checks/system.ts`, with the default label.
     expect(html).toContain('aria-label="Afficher le panneau"')
     expect(html).not.toContain("Toggle sidebar")
     expect(html).not.toContain("Skip to content")

@@ -6473,6 +6473,23 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
       `role and tabindex of sign out, sign out everywhere: ${items}`,
     )
 
+    // Shell names its menu through `Dropdown`'s `menuLabel`, which only the hydrated menu carries
+    // (#537); the card passes no `labels`, so the name is the default.
+    const panel = await read(
+      devtools,
+      `(() => {
+        const panel = document.querySelector('${SHELL_USER_MENU_BUTTON}')?.parentElement
+          ?.querySelector(":scope > div")
+        return panel ? panel.getAttribute("role") + ", " + panel.getAttribute("aria-label") : "no panel"
+      })()`,
+      "(page unreadable)",
+    )
+    check(
+      "after hydration Shell's open user menu panel is a menu named by labels.userMenu",
+      opened && panel === "menu, Account menu",
+      `role and aria-label of the open panel: ${panel}`,
+    )
+
     const tree = await readShellSignOutAXParent(devtools)
     check(
       "Chromium exposes Shell's form item as a menuitem whose nearest exposed ancestor is the menu",
@@ -6605,11 +6622,11 @@ async function shellUserMenuNoScriptKeyboardCheck(devtools: Devtools): Promise<v
       unhydrated ? roles : "the reload hydrated anyway, so this proves nothing",
     )
 
+    await centreInView(devtools, `document.querySelector('${SHELL_USER_MENU_SUMMARY}')`)
     await read(
       devtools,
       `(() => {
         const summary = document.querySelector('${SHELL_USER_MENU_SUMMARY}')
-        summary?.scrollIntoView({ block: "center", behavior: "instant" })
         summary?.focus()
         return document.activeElement === summary
       })()`,
