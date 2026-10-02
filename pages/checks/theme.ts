@@ -620,10 +620,10 @@ async function warningBorderChecks(devtools: Devtools): Promise<void> {
       const probe = document.createElement("div")
       probe.style.color = "var(--color-warning)"
       document.body.append(probe)
-      const token = pixel(getComputedStyle(probe).color)
+      const token = paint(getComputedStyle(probe).color)
       probe.remove()
       const border = getComputedStyle(warning).borderTopColor
-      const painted = pixel(border)
+      const painted = paint(border)
       return { found: true, border, matches: painted.every((value, at) => value === token[at]) }
     })()`)
   const wasDark = await devtools.evaluate<boolean>(
