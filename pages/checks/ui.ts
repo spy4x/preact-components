@@ -17336,7 +17336,12 @@ async function unsavedClick(devtools: Devtools, kind: string, modifiers = 0): Pr
   return ""
 }
 
-/** Two frames and a short pause: long enough for a dialog the click would open to be open. */
+/**
+ * Two frames and a short pause: long enough for a dialog the click would open to be open.
+ *
+ * A fixed wait, not a poll: every caller proves that no dialog opened, and an absence has no
+ * state to poll for. A check that expects the dialog polls for it instead.
+ */
 function unsavedSettle(devtools: Devtools): Promise<unknown> {
   return devtools.evaluate(`new Promise((done) =>
     requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => done(true), 150))))`)
