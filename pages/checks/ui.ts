@@ -16498,10 +16498,13 @@ interface PastDueReading {
 
 /**
  * The past-due `PlanCard` says so in words, twice: its status pill reads "Past due", and a warning
- * sentence sits on screen beside a warning icon. An active card shows no warning.
+ * sentence sits on screen beside a warning icon. A trial, active or canceled card shows no warning,
+ * and the catalogue shows each of those, so the count below covers all three.
  */
 async function planCardPastDueCheck(devtools: Devtools): Promise<void> {
-  const reading = await devtools.evaluate<PastDueReading & { activeWarnings: number }>(`(() => {
+  const reading = await devtools.evaluate<
+    PastDueReading & { healthy: string[]; healthyWarnings: number }
+  >(`(() => {
     const cards = [...document.querySelectorAll("#demo-PlanCard [data-status]")]
     const card = cards.find((each) => each.dataset.status === "3")
     const warning = card?.querySelector("[data-plan-warning]")
@@ -16516,16 +16519,18 @@ async function planCardPastDueCheck(devtools: Devtools): Promise<void> {
       text: warning?.textContent ?? "",
       shown: warning ? shown(warning) : false,
       icon: { shown: icon ? shown(icon) : false, hidden: icon?.getAttribute("aria-hidden") ?? null },
-      activeWarnings: cards.filter((each) => each.dataset.status === "2")
+      healthy: [...new Set(cards.map((each) => each.dataset.status)
+        .filter((status) => ["1", "2", "4"].includes(status)))].sort(),
+      healthyWarnings: cards.filter((each) => ["1", "2", "4"].includes(each.dataset.status))
         .filter((each) => each.querySelector("[data-plan-warning]")).length,
     }
   })()`)
 
   check(
-    "a past-due PlanCard warns in words beside a warning icon, and an active one does not",
+    "a past-due PlanCard warns in words beside a warning icon, and a trial, active or canceled one does not",
     reading.found && reading.status === "Past due" && reading.shown &&
       reading.text.includes("payment failed") && reading.icon.shown &&
-      reading.activeWarnings === 0,
+      reading.healthy.join() === "1,2,4" && reading.healthyWarnings === 0,
     JSON.stringify(reading),
   )
 }
@@ -16539,12 +16544,35 @@ interface BillingContrast {
 }
 
 /**
+ * How the checked billing interval is told apart from the unchecked one, in one palette. Its fill
+ * alone is 2.65:1 against the track in the dark palette, so the option also carries a check icon
+ * and bolder text.
+ */
+interface IntervalCue {
+  /** The checked option's fill against the toggle's track, reported but not required. */
+  fillVsTrack: number
+  checkedIcon: boolean
+  uncheckedIcon: boolean
+  /** The check icon's colour against the checked option's fill. */
+  iconRatio: number
+  checkedWeight: number
+  uncheckedWeight: number
+}
+
+/**
  * Every text the billing components draw reaches 4.5:1 on what it sits on, and the highlighted
  * plan's border and the warning's icon and border reach 3:1, in the light and the dark palette.
+ * The checked interval option shows a check icon at 3:1 and bolder text, and the unchecked one
+ * neither, so the choice never rests on the fill alone.
  */
 async function billingContrastCheck(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
-  const reading = await devtools.evaluate<{ light: BillingContrast[]; dark: BillingContrast[] }>(
+  const reading = await devtools.evaluate<{
+    light: BillingContrast[]
+    dark: BillingContrast[]
+    lightCue: IntervalCue
+    darkCue: IntervalCue
+  }>(
     `(async () => {
     ${CONTRAST_HELPERS}
     const root = document.documentElement
@@ -16574,6 +16602,24 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       ["upgrade message", upgrade.querySelector("p")],
     ]
     const edgeBehind = (element) => backdrop(element.parentElement)
+    const checked = pricing.querySelector("fieldset label:has(:checked)")
+    const unchecked = pricing.querySelector("fieldset label:not(:has(:checked))")
+    const iconShown = (label) => {
+      const icon = label.querySelector("svg")
+      if (!icon) return false
+      const rect = icon.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0 && getComputedStyle(icon).visibility === "visible"
+    }
+    const cue = () => ({
+      fillVsTrack: ratio(paint(getComputedStyle(checked).backgroundColor), backdrop(checked.parentElement)),
+      checkedIcon: iconShown(checked),
+      uncheckedIcon: iconShown(unchecked),
+      iconRatio: checked.querySelector("svg")
+        ? ratio(paint(getComputedStyle(checked.querySelector("svg")).color), backdrop(checked))
+        : 0,
+      checkedWeight: Number(getComputedStyle(checked).fontWeight),
+      uncheckedWeight: Number(getComputedStyle(unchecked).fontWeight),
+    })
     const measure = () => [
       ...texts.map(([name, element]) => ({
         name,
@@ -16611,10 +16657,12 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       root.classList.remove("dark")
       await settle()
       const light = measure()
+      const lightCue = cue()
       root.classList.add("dark")
       await settle()
       const dark = measure()
-      return { light, dark }
+      const darkCue = cue()
+      return { light, dark, lightCue, darkCue }
     } finally {
       root.classList.toggle("dark", wasDark)
     }
@@ -16627,6 +16675,13 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       `in the ${palette} palette every billing text reaches 4.5:1 and every edge and icon 3:1`,
       rows.length > 0 && rows.every((row) => row.ratio >= row.needs),
       rows.map((row) => `${row.name} ${row.ratio.toFixed(2)}`).join(", "),
+    )
+    const cue = reading[`${palette}Cue`]
+    check(
+      `in the ${palette} palette the checked billing interval shows a check icon at 3:1 and bolder text, and the unchecked one neither`,
+      cue.checkedIcon && !cue.uncheckedIcon && cue.iconRatio >= 3 &&
+        cue.checkedWeight > cue.uncheckedWeight,
+      JSON.stringify(cue),
     )
   }
 }
