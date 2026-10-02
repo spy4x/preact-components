@@ -124,13 +124,16 @@ function ImageGalleryDemo() {
   )
 }
 
-/** Five wide images for the strip, in five colours, so the row has something to scroll through. */
+/**
+ * Five wide images for the strip, in five colours, so the row has something to scroll through. Each
+ * passes its intrinsic `width` and `height`, so the row has its final height before they load.
+ */
 const stripImages: ImageGalleryImage[] = [
-  { src: placeholder("9333ea", 640, 360), alt: "A wide purple rectangle" },
-  { src: placeholder("2563eb", 640, 360), alt: "A wide blue rectangle" },
-  { src: placeholder("16a34a", 640, 360), alt: "A wide green rectangle" },
-  { src: placeholder("ea580c", 640, 360), alt: "A wide orange rectangle" },
-  { src: placeholder("0891b2", 640, 360), alt: "A wide cyan rectangle" },
+  { src: placeholder("9333ea", 640, 360), alt: "A wide purple rectangle", width: 640, height: 360 },
+  { src: placeholder("2563eb", 640, 360), alt: "A wide blue rectangle", width: 640, height: 360 },
+  { src: placeholder("16a34a", 640, 360), alt: "A wide green rectangle", width: 640, height: 360 },
+  { src: placeholder("ea580c", 640, 360), alt: "A wide orange rectangle", width: 640, height: 360 },
+  { src: placeholder("0891b2", 640, 360), alt: "A wide cyan rectangle", width: 640, height: 360 },
 ]
 
 /** The three described images, for the standalone `Lightbox` card below. */
@@ -1448,7 +1451,8 @@ export const displayDemos = {
       {
         name: "images",
         type: "ImageGalleryImage[]",
-        description: "Each with its `alt`; `thumbSrc` is the grid's small image.",
+        description:
+          "Each with its `alt`; `thumbSrc` is the grid's small image, `width` and `height` the strip's intrinsic size.",
       },
       {
         name: "layout",
@@ -1470,7 +1474,10 @@ export const displayDemos = {
   ]}
 />
 
-<ImageGallery layout="strip" images={caseStudyShots} />`,
+<ImageGallery
+  layout="strip"
+  images={[{ src: shot, alt: "The dashboard", width: 1600, height: 900 }]}
+/>`,
     render: () => <ImageGalleryDemo />,
   },
   Lightbox: {
