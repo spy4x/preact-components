@@ -16960,8 +16960,8 @@ function readStripFocus(devtools: Devtools): Promise<StripFocus> {
 
 /**
  * `ImageGallery`'s strip layout (#539): a real sideways wheel lands the row on an image's start
- * rather than where the wheel left it, Tab brings each image wholly into view, and Enter opens the
- * focused one in `Lightbox`.
+ * rather than where the wheel left it, Tab brings each image wholly into view, Enter opens the
+ * focused one in `Lightbox`, and a real mouse click on the half-shown next image opens it at once.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -17057,4 +17057,57 @@ async function imageGalleryStripChecks(devtools: Devtools): Promise<void> {
       ),
     3_000,
   )
+
+  // A real mouse press and release on the half-shown second image, the row at its start. Chromium
+  // focuses the button on the press; if that focus scrolled the row, the release would land on
+  // another element and no click would fire.
+  await centreInView(devtools, `document.querySelector('${GALLERY_STRIP_ROW}')`)
+  const peek = await devtools.evaluate<
+    { x: number; y: number; hit: boolean; label: string; reason: string }
+  >(`(() => {
+    const row = document.querySelector('${GALLERY_STRIP_ROW}')
+    const button = row?.querySelectorAll("button")[1]
+    if (!row || !button) return { x: 0, y: 0, hit: false, label: "", reason: "no second image" }
+    document.activeElement?.blur()
+    row.scrollTo({ left: 0, behavior: "instant" })
+    const box = button.getBoundingClientRect()
+    const area = row.getBoundingClientRect()
+    // The middle of the part of the second image the row shows, vertically in the image's middle.
+    // The row is centred in the viewport, below the guide's sticky header.
+    const x = Math.round((box.left + Math.min(box.right, area.left + row.clientWidth)) / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    return { x, y, hit: Boolean(under && button.contains(under)),
+      label: button.getAttribute("aria-label") ?? "",
+      reason: \`point \${x},\${y} hits \${under?.tagName ?? "nothing"}; image \${Math.round(box.left)}–\${Math.round(box.right)}, row ends \${Math.round(area.left + row.clientWidth)}\` }
+  })()`)
+  if (peek.hit) await clickAtPoint(devtools, peek)
+  const clickOpened = peek.hit && await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${GALLERY_STRIP} dialog')?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+  const clickShown = await devtools.evaluate<{ alt: string; scrollLeft: number }>(`({
+    alt: document.querySelector('${GALLERY_STRIP} dialog img')?.getAttribute("alt") ?? "",
+    scrollLeft: document.querySelector('${GALLERY_STRIP_ROW}')?.scrollLeft ?? -1,
+  })`)
+  check(
+    "a real mouse click on the half-shown second ImageGallery strip image opens that image at once",
+    peek.hit && clickOpened && clickShown.alt === peek.label,
+    `${peek.reason} → ${
+      clickOpened ? `open, showing "${clickShown.alt}"` : "still closed"
+    }, row scrollLeft ${clickShown.scrollLeft}, expected "${peek.label}"`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${GALLERY_STRIP} dialog')?.matches(":modal") !== true`,
+      ),
+    3_000,
+  )
+  await pointerToCorner(devtools)
 }
