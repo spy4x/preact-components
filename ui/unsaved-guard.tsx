@@ -33,7 +33,7 @@ export interface UnsavedLink {
  * The in-app address a click must be held back for while there are unsaved changes, as
  * `pathname + search + hash`; `null` when the browser or the link itself should handle the click.
  *
- * It returns `null` for a click a handler already cancelled, a button other than the main one, a
+ * It returns `null` for a click that is already cancelled, a button other than the main one, a
  * modifier key, a link with a `target` other than `_self`, a `download` link, a link marked
  * `data-unsaved-ok`, another origin, an address `owns` says the app's router does not handle (a
  * server route, an API path), and a link that only moves to a fragment of this same page,
@@ -104,6 +104,11 @@ export interface UnsavedGuardProps {
  * reloading the tab gets the browser's own question, and a plain click on an in-app link `owns`
  * accepts opens a dialog: "Leave" calls `onDiscard` and `navigate` with the link's address, and
  * "Stay" closes the dialog. A link marked `data-unsaved-ok` is never held back.
+ *
+ * The guard listens in the capture phase on `document`, so it decides before the link's own click
+ * handler, or any ancestor's, has run: the only earlier cancellation it sees is a capture listener
+ * on `window`. A link it holds back never reaches its own handler. Mark an in-page action link
+ * `data-unsaved-ok` to keep its handler working.
  *
  * The browser's Back button cannot be held back: the address has already changed when the page
  * hears of it.
