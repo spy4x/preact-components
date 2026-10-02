@@ -978,6 +978,76 @@ export async function ringGapPixels(
   return { gap, ring, ground, expected: at.expected, ...(error === undefined ? {} : { error }) }
 }
 
+/**
+ * In-page helpers that measure WCAG contrast the way the screen shows it, as source text to
+ * interpolate into a `Runtime.evaluate` expression. Every check file that measures contrast
+ * imports this one copy (#548).
+ *
+ * - `paint(color)` draws a colour on white on a 1×1 canvas and reads back its sRGB bytes, so a
+ *   computed style in any colour function (`oklch()`, relative colour syntax, `color-mix()`)
+ *   resolves the way Chromium renders it, and a translucent colour shows as it would on white.
+ *   `pixel` is the same function under the name `checks/theme.ts` uses.
+ * - `backdrop(element)` composites every background from the root down to the element itself: the
+ *   colour text inside it is really drawn on. It folds in each element's computed `opacity`: a
+ *   layer whose element is at `opacity: 0.5` shows half of what is behind it.
+ * - `ratio(a, b)` is the WCAG contrast of two byte triples. When one of them came from `backdrop`
+ *   and the element or an ancestor has `opacity` below 1, the other is taken as a colour drawn
+ *   inside that element and is faded through the same opacity first, so `opacity-50` on a line of
+ *   text lowers its measured contrast as it lowers what a reader sees.
+ * - `contrast(a, b)` is `ratio` of two CSS colours, each painted on white. It knows no element, so
+ *   it folds in no opacity.
+ * - `luminance(rgb)` is WCAG relative luminance of one byte triple.
+ */
+export const CONTRAST_HELPERS = `
+  const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
+  const paintLayers = (colors) => {
+    contrastCanvas.clearRect(0, 0, 1, 1)
+    for (const color of colors) {
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+    }
+    return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+  }
+  const paint = (color) => paintLayers(["white", color])
+  const pixel = paint
+  const asColor = (rgb, alpha = 1) => "rgb(" + rgb.join(" ") + " / " + alpha + ")"
+  const renderStack = (layers, top) => {
+    const draw = (index, base) => {
+      if (index === layers.length) return top ? paintLayers([asColor(base), asColor(top)]) : base
+      const { color, opacity } = layers[index]
+      const inner = draw(index + 1, paintLayers([asColor(base), color]))
+      return opacity < 1 ? paintLayers([asColor(base), asColor(inner, opacity)]) : inner
+    }
+    return draw(0, [255, 255, 255])
+  }
+  const backdrop = (element) => {
+    const layers = []
+    for (let node = element; node; node = node.parentElement) {
+      const style = getComputedStyle(node)
+      layers.unshift({ color: style.backgroundColor, opacity: Number(style.opacity) })
+    }
+    const behind = renderStack(layers, null)
+    if (layers.some((layer) => layer.opacity < 1)) {
+      Object.defineProperty(behind, "ink", { value: (color) => renderStack(layers, color) })
+    }
+    return behind
+  }
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.map((channel) => {
+      const s = channel / 255
+      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const ratio = (a, b) => {
+    const front = b.ink && !a.ink ? b.ink(a) : a
+    const back = a.ink && !b.ink ? a.ink(b) : b
+    const [x, y] = [luminance(front), luminance(back)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+  const contrast = (a, b) => ratio(paint(a), paint(b))
+`
+
 /** The parts of a DevTools `exceptionDetails` object the harness reads. */
 export interface ExceptionDetails {
   exceptionId?: number

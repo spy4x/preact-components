@@ -1,4 +1,11 @@
-import { centreInView, check, type Devtools, poll, settledScroll } from "./harness.ts"
+import {
+  centreInView,
+  check,
+  CONTRAST_HELPERS,
+  type Devtools,
+  poll,
+  settledScroll,
+} from "./harness.ts"
 
 /**
  * `crud/`'s browser checks: `CrudEditor`'s form-level message, driven on the `CrudEditor` catalogue
@@ -868,48 +875,6 @@ const SCHEMA_ISSUE = "SCHEMA on name"
 
 /** A danger colour no palette uses, which every issue message must follow once an app sets it. */
 const REPAINTED_DANGER = "rgb(0, 128, 0)"
-
-/**
- * WCAG contrast helpers evaluated inside the page: `paint` turns any CSS colour into the sRGB pixel
- * it paints on white, `backdrop` composites an element's ancestors' backgrounds up to the first
- * opaque one, and `ratio` is the WCAG contrast ratio of two pixels. A byte-identical copy of the
- * block in `pages/checks/ui.ts`, which does not export it; #548 tracks sharing one copy.
- */
-const CONTRAST_HELPERS = `
-  const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
-  const paintLayers = (colors) => {
-    contrastCanvas.clearRect(0, 0, 1, 1)
-    for (const color of colors) {
-      contrastCanvas.fillStyle = color
-      contrastCanvas.fillRect(0, 0, 1, 1)
-    }
-    return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
-  }
-  const paint = (color) => paintLayers(["white", color])
-  const backdrop = (element) => {
-    const layers = []
-    for (let node = element; node; node = node.parentElement) {
-      const color = getComputedStyle(node).backgroundColor
-      layers.unshift(color)
-      contrastCanvas.clearRect(0, 0, 1, 1)
-      contrastCanvas.fillStyle = color
-      contrastCanvas.fillRect(0, 0, 1, 1)
-      if (contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255) break
-    }
-    return paintLayers(["white", ...layers])
-  }
-  const luminance = (rgb) => {
-    const [r, g, b] = rgb.map((channel) => {
-      const s = channel / 255
-      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const ratio = (a, b) => {
-    const [x, y] = [luminance(a), luminance(b)]
-    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-  }
-`
 
 /** One issue message's text, measured in one palette. */
 interface IssueContrast {
