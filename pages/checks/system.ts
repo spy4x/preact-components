@@ -206,6 +206,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await calendarSelectionHoverChecks(devtools)
   await siteHeaderChecks(devtools)
   await shellChecks(devtools)
+  await shellUserMenuNoScriptKeyboardCheck(devtools)
   await barFocusGapChecks(devtools)
   await railShellChecks(devtools)
   // RailShell's no-script check reloads the page on an address whose hash names no guide page,
@@ -5055,6 +5056,8 @@ const SHELL_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
 const SHELL_SKIP_LINK = SHELL + ' [data-e2e="shell-skip-link"]'
 const SHELL_CONTENT = SHELL + ' [data-e2e="shell-content"]'
 const SHELL_USER_MENU_BUTTON = SHELL + ' [data-e2e="shell-user-menu-button"]'
+/** The same trigger as `Dropdown`'s no-JavaScript fallback renders it, before hydration. */
+const SHELL_USER_MENU_SUMMARY = SHELL + ' summary[data-e2e="shell-user-menu-button"]'
 /** Any item inside the user menu's own panel — where `Dropdown` moves focus once it opens. */
 const SHELL_USER_MENU_ITEM = SHELL + ' [role="menuitem"]'
 
@@ -6457,6 +6460,19 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
         : `focus after open, then ${keys.join(", ")}: ${visited.join(" → ")}`,
     )
 
+    const items = await read(
+      devtools,
+      `[...document.querySelectorAll('${SHELL_SIGN_OUT}, ${SHELL_SIGN_OUT_EVERYWHERE}')]
+        .map((item) => item.getAttribute("role") + " " + item.getAttribute("tabindex"))
+        .join(", ")`,
+      "(page unreadable)",
+    )
+    check(
+      "after hydration Shell's form items are menu items out of the tab order (#535)",
+      items === "menuitem -1, menuitem -1",
+      `role and tabindex of sign out, sign out everywhere: ${items}`,
+    )
+
     const tree = await readShellSignOutAXParent(devtools)
     check(
       "Chromium exposes Shell's form item as a menuitem whose nearest exposed ancestor is the menu",
@@ -6541,6 +6557,134 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
     )
     await ensureShellClosed(devtools)
   }
+}
+
+/**
+ * With scripts disabled, a keyboard alone signs out of `Shell` (#535): focus on the user menu's
+ * server-rendered `<summary>`, Enter opens it, Tab walks its items onto "Sign out everywhere", and
+ * Enter on that item sends `POST …/sign-out-everywhere`. The post is held with the Fetch domain and
+ * answered with 204 No Content, which leaves the browser on the page — the preview server has no
+ * such route. The same load also proves the fallback announces no menu (#537): the panel carries no
+ * `role="menu"` and no item carries `role="menuitem"` or `tabindex`.
+ *
+ * The summary is given focus by script because nothing on the page can be tabbed to it in a known
+ * number of steps; every later move is a real key press. Scripts come back, and the page is
+ * reloaded, waited on until it hydrates and scrolls still, in a `finally`, the same restoration
+ * `authFormNoScriptChecks` does.
+ *
+ * @param devtools The connected session, on the hydrated `system` page.
+ */
+async function shellUserMenuNoScriptKeyboardCheck(devtools: Devtools): Promise<void> {
+  let unhydrated = false
+  let roles = "(page unreadable)"
+  let opened = false
+  const stops: string[] = []
+  let request: { requestId: string; request: { method: string; url: string } } | null = null
+
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForLoad(devtools)
+    unhydrated = loaded &&
+      await read(devtools, `document.documentElement?.dataset.hydrated !== "true"`, false)
+
+    roles = await read(
+      devtools,
+      `(() => {
+        const details = document.querySelector('${SHELL_USER_MENU_SUMMARY}')?.parentElement
+        if (!(details instanceof HTMLDetailsElement)) return "no fallback summary"
+        const marked = details.querySelectorAll('[role="menu"], [role="menuitem"], [aria-orientation], [tabindex]')
+        const items = details.querySelectorAll('a, button')
+        return items.length + " items, " + marked.length + " with a menu role or tabindex"
+      })()`,
+      "(page unreadable)",
+    )
+    check(
+      "with scripts off, Shell's user menu carries no menu role, menuitem role or tabindex (#537)",
+      unhydrated && roles === "3 items, 0 with a menu role or tabindex",
+      unhydrated ? roles : "the reload hydrated anyway, so this proves nothing",
+    )
+
+    await read(
+      devtools,
+      `(() => {
+        const summary = document.querySelector('${SHELL_USER_MENU_SUMMARY}')
+        summary?.scrollIntoView({ block: "center", behavior: "instant" })
+        summary?.focus()
+        return document.activeElement === summary
+      })()`,
+      false,
+    )
+    await pressKey(devtools, "Enter")
+    opened = await poll(
+      () =>
+        read(
+          devtools,
+          `document.querySelector('${SHELL_USER_MENU_SUMMARY}')
+            ?.parentElement?.open === true`,
+          false,
+        ),
+      3_000,
+    )
+
+    for (let press = 0; opened && press < 5; press++) {
+      await pressKey(devtools, "Tab")
+      const stop = await readShellMenuFocus(devtools)
+      stops.push(stop)
+      if (stop === "sign out everywhere") break
+    }
+
+    await devtools.send("Fetch.enable", {
+      patterns: [{ urlPattern: "*sign-out-everywhere*", requestStage: "Request" }],
+    })
+    const paused = devtools.once<{ requestId: string; request: { method: string; url: string } }>(
+      "Fetch.requestPaused",
+      10_000,
+    ).catch(() => null)
+    if (stops.at(-1) === "sign out everywhere") {
+      await pressKey(devtools, "Enter")
+      request = await paused
+    }
+    if (request) {
+      await devtools.send("Fetch.fulfillRequest", {
+        requestId: request.requestId,
+        responseCode: 204,
+      })
+    }
+  } finally {
+    await devtools.send("Fetch.disable").catch(() => {})
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
+    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+    await waitForLoad(devtools)
+    const rehydrated = await poll(
+      () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
+      10_000,
+    )
+    const scrollSettled = await waitForScrollSettle(devtools)
+    check(
+      "the page rehydrates and holds still after Shell's no-script keyboard check",
+      rehydrated && scrollSettled,
+      `hydrated: ${rehydrated}, scroll settled: ${scrollSettled}`,
+    )
+  }
+
+  const method = request?.request.method ?? ""
+  const url = request?.request.url ?? ""
+  check(
+    "with scripts off, Enter opens Shell's user menu, Tab reaches sign out everywhere, and Enter " +
+      "on it sends POST …/sign-out-everywhere (#535)",
+    unhydrated && opened && stops.at(-1) === "sign out everywhere" && method === "POST" &&
+      url.endsWith("/sign-out-everywhere"),
+    !unhydrated
+      ? "the reload hydrated anyway, so this proves nothing about a page without scripts"
+      : !opened
+      ? "Enter on the focused summary did not open the menu"
+      : stops.at(-1) !== "sign out everywhere"
+      ? `Tab stops after opening: ${stops.join(" → ") || "none"}`
+      : request === null
+      ? `Tab stops ${stops.join(" → ")}, but Enter sent no request to sign-out-everywhere`
+      : `Tab stops ${stops.join(" → ")}; Enter sent ${method} ${url}`,
+  )
 }
 
 /** One reading of the collapse button, the sidebar it controls and what the card stored. */
