@@ -233,7 +233,7 @@ points at them and `aria-invalid` is set while there are any. `CheckboxField`'s 
   vm={vm} vl={vl} name="zoneId" label="Zone" placeholder="Select zone"
   options={zones.value.map((zone) => ({ value: zone.id, label: zone.name }))}
   renderIssue={(issue) => (
-    <p class="text-sm text-red-700 mt-2">
+    <p class="text-sm text-danger mt-2">
       {issue.message} <a class="btn-link" href={`/zones/${issue.payload}/edit`}>Go to it</a>
     </p>
   )}

@@ -298,6 +298,16 @@ describe("FieldIssues", () => {
     expect(name).not.toContain("already in use")
   })
 
+  it("draws the message in the danger colour an app can repaint", () => {
+    const vl = signal<ValidationModel<Form>>({
+      name: { SCHEMA: { message: "name must be non-empty" } },
+    })
+
+    expect(render(<FieldIssues vl={vl} name="name" />)).toContain(
+      'class="mt-2 text-sm text-danger"',
+    )
+  })
+
   it("renders every issue of one field", () => {
     const vl = signal<ValidationModel<Form>>({
       name: {

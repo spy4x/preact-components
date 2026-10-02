@@ -91,7 +91,7 @@ export function FieldIssues<M extends object>(
         issue === undefined
           ? null
           : renderIssue === undefined
-          ? <p key={type} class="mt-2 text-sm text-red-700 dark:text-red-300">{issue.message}</p>
+          ? <p key={type} class="mt-2 text-sm text-danger">{issue.message}</p>
           : <Fragment key={type}>{renderIssue(issue, type)}</Fragment>
       )}
     </>

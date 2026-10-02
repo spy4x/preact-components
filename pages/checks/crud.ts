@@ -17,6 +17,10 @@ import { centreInView, check, type Devtools, poll, settledScroll } from "./harne
  * And the `AssociationEditor` demo (#227): a save adds a row that its store still holds after the
  * re-render the save causes.
  *
+ * And the issue text (#526): a field row's issue on the `FieldIssues` demo, that demo's own
+ * `renderIssue` paragraph and `CrudEditor`'s form-level issue paint `--color-danger` at 4.5:1 or
+ * better in every palette and follow an app's repaint.
+ *
  * `CrudList`/`AssociationEditor` keyboard and focus behaviour has no check yet; anything behind a
  * ref, an effect or a key press that a string-rendering test cannot execute belongs here once it is
  * covered.
@@ -158,6 +162,7 @@ export async function crudChecks(devtools: Devtools): Promise<void> {
 
   await deletionValidationChecks(devtools)
   await associationEditorChecks(devtools)
+  await fieldIssueContrastCheck(devtools)
 }
 
 /** The card {@link associationEditorChecks} drives: the `AssociationEditor` catalogue demo. */
@@ -852,5 +857,229 @@ async function blockedArchiveChecks(devtools: Devtools): Promise<void> {
     `unticked=${unticked} text="${after.regionText}" below=${after.below} ` +
       `below in the flex parent=${after.outerBelow} form margin-bottom=${after.formMargin} ` +
       `same region=${after.same}`,
+  )
+}
+
+/** The card {@link fieldIssueContrastCheck} reads: the `FieldIssues` catalogue demo. */
+const FIELD_ISSUES_CARD = "#demo-FieldIssues"
+
+/** The message the demo's "Add a SCHEMA issue" button writes into the Name row. */
+const SCHEMA_ISSUE = "SCHEMA on name"
+
+/** A danger colour no palette uses, which every issue message must follow once an app sets it. */
+const REPAINTED_DANGER = "rgb(0, 128, 0)"
+
+/**
+ * WCAG contrast helpers evaluated inside the page: `paint` turns any CSS colour into the sRGB pixel
+ * it paints on white, `backdrop` composites an element's ancestors' backgrounds up to the first
+ * opaque one, and `ratio` is the WCAG contrast ratio of two pixels. A byte-identical copy of the
+ * block in `pages/checks/ui.ts`, which does not export it; #548 tracks sharing one copy.
+ */
+const CONTRAST_HELPERS = `
+  const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
+  const paintLayers = (colors) => {
+    contrastCanvas.clearRect(0, 0, 1, 1)
+    for (const color of colors) {
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+    }
+    return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+  }
+  const paint = (color) => paintLayers(["white", color])
+  const backdrop = (element) => {
+    const layers = []
+    for (let node = element; node; node = node.parentElement) {
+      const color = getComputedStyle(node).backgroundColor
+      layers.unshift(color)
+      contrastCanvas.clearRect(0, 0, 1, 1)
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+      if (contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255) break
+    }
+    return paintLayers(["white", ...layers])
+  }
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.map((channel) => {
+      const s = channel / 255
+      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const ratio = (a, b) => {
+    const [x, y] = [luminance(a), luminance(b)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+`
+
+/** One issue message's text, measured in one palette. */
+interface IssueContrast {
+  /** Which of the demo's two paragraphs this is. */
+  name: string
+  /** Whether the paragraph was found in the card. */
+  found: boolean
+  /** Against the card behind it, the palette's page canvas and its raised surface. */
+  onBackdrop: number
+  onCanvas: number
+  onSurface: number
+  /** Against ink's rail and active-row surfaces; the canvas figure again in the other palettes. */
+  onExtra: number
+  /** The paragraph's colour as the browser computes it. */
+  color: string
+  /** Whether that colour paints the same pixel as `--color-danger` in this palette. */
+  isDanger: boolean
+}
+
+/** Every palette's readings of both issue paragraphs, and their colours after a repaint. */
+interface IssueContrastReading {
+  light: IssueContrast[]
+  dark: IssueContrast[]
+  /** The opt-in dark `data-theme="ink"` palette. */
+  ink: IssueContrast[]
+  /** Each paragraph's colour, in light and in dark, while the root repaints `--color-danger`. */
+  repainted: { name: string; color: string; follows: boolean }[]
+}
+
+/**
+ * Issue text in `crud/` is drawn with `text-danger` (#526), like `ui/`'s field errors (#507). A
+ * field row's issue text, and `CrudEditor`'s form-level issue under the form:
+ * in the light, the dark and the ink palette it paints `--color-danger` at 4.5:1 or better against
+ * the card behind it, the canvas and the surface (in ink also its rail and active-row surfaces), and
+ * an app that repaints `--color-danger` gets its own colour, in light and in dark. The demo's custom
+ * `renderIssue` paragraph is held to the same, because the card teaches it as the way to render an
+ * issue. The field issue is added with the demo's own button and cleared with its Clear button
+ * after. The form-level issue is raised by making the `CrudEditor` demo's Notes equal its Name
+ * (the earlier checks in this file leave Name at "Alpha" and Notes at "Beta"), and Notes is put
+ * back to "Beta" after the reading.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
+  const added = await clickButtonByText(devtools, FIELD_ISSUES_CARD, "Add a SCHEMA issue")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `[...document.querySelectorAll('${FIELD_ISSUES_CARD} p')]
+          .some((p) => p.textContent.trim() === ${JSON.stringify(SCHEMA_ISSUE)})`,
+      ),
+    2_000,
+  )
+  await commitField(devtools, "Notes", "Alpha")
+  await waitForState(devtools, (reading) => reading.statusText === CROSS_FIELD_MESSAGE)
+
+  // The field row prints the bare message; the demo's `renderIssue` prefixes the issue type and
+  // appends the row its payload names.
+  const rowText = JSON.stringify(SCHEMA_ISSUE)
+  const customText = JSON.stringify(`SCHEMA: ${SCHEMA_ISSUE}`)
+  const reading = await devtools.evaluate<IssueContrastReading>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    const paragraphs = () => [...document.querySelectorAll('${FIELD_ISSUES_CARD} p')]
+    const messages = () => [
+      ["field row", paragraphs().find((p) => p.textContent.trim() === ${rowText}) ?? null],
+      ["renderIssue", paragraphs().find((p) => p.textContent.trim().startsWith(${customText})) ?? null],
+      ["CrudEditor form issue", document.querySelector('${CARD} [role="status"] p')],
+    ]
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = paint(getComputedStyle(probe).backgroundColor)
+      probe.remove()
+      return color
+    }
+    const settle = () => Promise.all(
+      messages().flatMap(([, element]) =>
+        element ? element.getAnimations().map((animation) => animation.finished.catch(() => {})) : []
+      ),
+    )
+    const same = (a, b) => a.every((channel, index) => channel === b[index])
+    const measure = (extras = ["--color-canvas"]) => {
+      const canvas = token("--color-canvas")
+      const surface = token("--color-surface")
+      const danger = token("--color-danger")
+      return messages().map(([name, element]) => {
+        if (!element) {
+          return { name, found: false, onBackdrop: 0, onCanvas: 0, onSurface: 0, onExtra: 0, color: "", isDanger: false }
+        }
+        const text = paint(getComputedStyle(element).color)
+        return {
+          name,
+          found: true,
+          onBackdrop: ratio(text, backdrop(element)),
+          onCanvas: ratio(text, canvas),
+          onSurface: ratio(text, surface),
+          onExtra: Math.min(...extras.map((extra) => ratio(text, token(extra)))),
+          color: getComputedStyle(element).color,
+          isDanger: same(text, danger),
+        }
+      })
+    }
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      root.setAttribute("data-theme", "ink")
+      await settle()
+      const ink = measure(["--color-surface-rail", "--color-surface-active"])
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+      await settle()
+      root.style.setProperty("--color-danger", ${JSON.stringify(REPAINTED_DANGER)})
+      await settle()
+      const wanted = paint(${JSON.stringify(REPAINTED_DANGER)})
+      const readRepainted = (palette) => messages().map(([name, element]) => {
+        const color = element ? getComputedStyle(element).color : "missing"
+        return { name: palette + " " + name, color, follows: element !== null && same(paint(color), wanted) }
+      })
+      const repaintedDark = readRepainted("dark")
+      root.classList.remove("dark")
+      await settle()
+      const repainted = [...readRepainted("light"), ...repaintedDark]
+      return { light, dark, ink, repainted }
+    } finally {
+      root.style.removeProperty("--color-danger")
+      root.classList.toggle("dark", wasDark)
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+    }
+  })()`)
+
+  await clickButtonByText(devtools, FIELD_ISSUES_CARD, "Clear")
+  await commitField(devtools, "Notes", "Beta")
+  await waitForState(devtools, (reading) => reading.statusText === "")
+
+  const lowest = (message: IssueContrast) =>
+    Math.min(message.onBackdrop, message.onCanvas, message.onSurface, message.onExtra)
+  const table = (messages: IssueContrast[]) =>
+    messages.map((message) =>
+      message.found
+        ? `${message.name} ${message.color} ${message.onBackdrop.toFixed(2)}/` +
+          `${message.onCanvas.toFixed(2)}/${message.onSurface.toFixed(2)}/` +
+          message.onExtra.toFixed(2)
+        : `${message.name} missing`
+    ).join(", ")
+  for (const palette of ["light", "dark", "ink"] as const) {
+    check(
+      `in the ${palette} palette every crud issue message paints --color-danger at 4.5:1 or ` +
+        "better on the card, canvas and surface" +
+        (palette === "ink" ? ", rail and active row" : ""),
+      added &&
+        reading[palette].every((message) =>
+          message.found && message.isDanger && lowest(message) >= 4.5
+        ),
+      `card/canvas/surface/${palette === "ink" ? "lower of rail and active" : "canvas"} — ` +
+        `${palette}: ${added ? table(reading[palette]) : "no Add a SCHEMA issue button"}`,
+    )
+  }
+  check(
+    "in the light and the dark palette every crud issue message follows an app's repainted " +
+      "--color-danger",
+    added && reading.repainted.every((message) => message.follows),
+    reading.repainted.map((message) => `${message.name} ${message.color}`).join(", "),
   )
 }
