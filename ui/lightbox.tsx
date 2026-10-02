@@ -80,7 +80,7 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconChevronLeft, IconChevronRight, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal.tsx"
 
 /** One image a {@link Lightbox} can show. */
@@ -294,8 +294,11 @@ export function Lightbox(
   // dialog with no image, no caption and no close control, since the content below only renders
   // when `current` is not `null`. Refusing here is the same rule as refusing to render an
   // undescribed image applied one level up, to the dialog itself rather than to one image in it.
+  //
+  // A layout effect, so the dialog is open as soon as the render the click started has run: a
+  // caller that reads `dialog[open]` right after its click must not wait for the next paint.
   const canOpen = open && total > 0
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     if (canOpen) {
