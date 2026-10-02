@@ -13,10 +13,14 @@ import {
 /** One package per catalogued id plus `cn`, each exporting one component from its own subpath. */
 function packages(): Record<string, PackageSurface> {
   const surfaces: Record<string, PackageSurface> = {
-    cn: { names: ["cn"], subpaths: {} },
+    cn: { names: ["cn"], components: [], subpaths: {} },
   }
   for (const id of CATALOGUED) {
-    surfaces[id] = { names: [`Widget`, `widgetHelper`], subpaths: { widget: [`Widget`] } }
+    surfaces[id] = {
+      names: [`Widget`, `widgetHelper`],
+      components: [`Widget`],
+      subpaths: { widget: [`Widget`] },
+    }
   }
   return surfaces
 }
@@ -151,6 +155,7 @@ describe("export lists", () => {
   it("reports a component the package README leaves out", () => {
     const surfaces = packages()
     surfaces.ui.names.push("Gadget")
+    surfaces.ui.components.push("Gadget")
     expect(exportListProblems(docs(), surfaces)).toEqual([
       "ui exports the component `Gadget`, and ui/README.md does not list it",
     ])
@@ -174,6 +179,31 @@ describe("export lists", () => {
       "ui/README.md says `widget` exports `Gadget`, and it does not",
       "ui/README.md lists the component `Gadget`, which ui does not export",
     ])
+  })
+
+  it("requires no Components row for an exported enum named like a component", () => {
+    const surfaces = packages()
+    surfaces.ui.names.push("Interval")
+    expect(exportListProblems(docs(), surfaces)).toEqual([])
+  })
+
+  it("reports a Components row for an export that is not a component", () => {
+    const surfaces = packages()
+    surfaces.ui.names.push("Interval")
+    const input = docs()
+    input.packageReadmes.ui += "\n| `Interval` | | |"
+    expect(exportListProblems(input, surfaces)).toEqual([
+      "ui/README.md lists `Interval` as a component, and it is not one: name it among the helpers " +
+      "instead",
+    ])
+  })
+
+  it("reads an exported enum as no component and a function component as one", async () => {
+    const { ui } = await readPackages()
+    expect(ui.names).toContain("BillingInterval")
+    expect(ui.components).not.toContain("BillingInterval")
+    expect(ui.components).not.toContain("SubscriptionStatus")
+    expect(ui.components).toContain("PricingTable")
   })
 
   it("reports a row whose subpath does not export its component", () => {

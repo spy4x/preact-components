@@ -15,15 +15,16 @@
  * 2. the `deno add` lines in `docs/usage.md`'s Install section — one line per published package,
  *    and no line for a package that does not exist;
  * 3. the "Components" table of each catalogued package's own README — the complete list. Its
- *    first column must name exactly the package's component-named exports, no more and no fewer —
+ *    first column must name exactly the package's components, no more and no fewer —
  *    every backticked name in that column counts, so a row may name several — and where the second
  *    column names a subpath, that subpath must export every component the row names;
  * 4. the "Packages" table in `README.md` — it must link every published package's own README.
  *
- * "Component-named" is the catalogue's own rule (`ui-guide/coverage.ts`): an initial capital and a
- * lower-case letter somewhere after it. The catalogued packages are the ones the guide gives cards
- * to; `icons/` is left out on purpose, because its 122 glyphs are listed by the guide's gallery,
- * which reads them from the module.
+ * "Component" is the catalogue's own rule, `isComponent` in `ui-guide/component-kind.ts`: a
+ * function export named in PascalCase. An exported enum or class is named like a component and is
+ * not one, so it needs no row; the package README names it among its helpers instead. The
+ * catalogued packages are the ones the guide gives cards to; `icons/` is left out on purpose,
+ * because its 122 glyphs are listed by the guide's gallery, which reads them from the module.
  *
  * `export-lists.test.ts` runs this against the real tree, so `deno task check` fails on any drift.
  * Run it by hand for the list of problems:
@@ -32,6 +33,8 @@
  * deno run --allow-read infra/scripts/export-lists.ts
  * ```
  */
+
+import { isComponent } from "../../ui-guide/component-kind.ts"
 
 const ROOT = new URL("../../", import.meta.url)
 
@@ -55,6 +58,8 @@ export const UNPUBLISHED_MEMBERS = ["pages"] as const
 export interface PackageSurface {
   /** Every value export, from the barrel and every subpath module. */
   names: string[]
+  /** The value exports that are components: functions named in PascalCase, not enums or classes. */
+  components: string[]
   /** Each subpath (`avatar` for `./avatar`) and the value exports of its module. */
   subpaths: Record<string, string[]>
 }
@@ -70,16 +75,6 @@ export interface Docs {
   maintaining: string
   /** Each package's `README.md`, keyed by package directory. */
   packageReadmes: Record<string, string>
-}
-
-/**
- * Whether a value export is named the way a component is: the rule `ui-guide/coverage.ts` applies.
- *
- * @param name Value export name.
- * @returns `true` for `LineChart` or `Map`; `false` for `cn` or `DEFAULT_AXIS_COLOR`.
- */
-export function isComponentName(name: string): boolean {
-  return /^[A-Z]/.test(name) && /[a-z]/.test(name)
 }
 
 /**
@@ -226,11 +221,16 @@ export function exportListProblems(
         }
       }
     }
-    const components = packages[id].names.filter(isComponentName)
+    const { components } = packages[id]
     for (const name of listed) {
-      if (!components.includes(name)) {
+      if (!packages[id].names.includes(name)) {
         problems.push(
           `${id}/README.md lists the component \`${name}\`, which ${id} does not export`,
+        )
+      } else if (!components.includes(name)) {
+        problems.push(
+          `${id}/README.md lists \`${name}\` as a component, and it is not one: name it among ` +
+            `the helpers instead`,
         )
       }
     }
@@ -266,14 +266,19 @@ export async function readPackages(): Promise<Record<string, PackageSurface>> {
     }
 
     const names = new Set<string>()
+    const components = new Set<string>()
     const subpaths: Record<string, string[]> = {}
     for (const [key, target] of Object.entries(config.exports as Record<string, string>)) {
       if (!/\.tsx?$/.test(target)) continue
-      const exported = Object.keys(await import(new URL(`${id}/${target}`, ROOT).href))
-      for (const name of exported) names.add(name)
+      const module = await import(new URL(`${id}/${target}`, ROOT).href)
+      const exported = Object.keys(module)
+      for (const name of exported) {
+        names.add(name)
+        if (isComponent(name, module[name])) components.add(name)
+      }
       if (key !== ".") subpaths[key.replace(/^\.\//, "")] = exported
     }
-    packages[id] = { names: [...names], subpaths }
+    packages[id] = { names: [...names], components: [...components], subpaths }
   }
   return packages
 }
