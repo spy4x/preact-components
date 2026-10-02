@@ -12309,6 +12309,9 @@ async function moneyInputPreHydrationChecks(devtools: Devtools): Promise<void> {
             ).catch(() => false),
           3_000,
         )
+        // A fixed wait, not a poll: it proves no second submit follows the first, and an absence
+        // has no state to poll for.
+        await new Promise((done) => setTimeout(done, 150))
         submitResult = await devtools.evaluate<string>(
           `document.querySelector(
             '${MONEY_INPUT_CARD} [data-e2e="money-input-submits"]',

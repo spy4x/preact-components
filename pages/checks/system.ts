@@ -2058,6 +2058,9 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   const asked = await devtools.evaluate<SWState>(`(async () => {
     navigator.serviceWorker.dispatchEvent(new Event("controllerchange"))
     await ${PAGE_UNTIL}(() => document.querySelector('${RELOADS}').textContent.trim() !== "0")
+    // A fixed wait, not a poll: it proves no second reload follows the first, and an absence has
+    // no state to poll for.
+    await new Promise((done) => setTimeout(done, 150))
     return ${READ_STATE}
   })()`)
 
