@@ -808,6 +808,176 @@ export async function readOr<T>(
   }
 }
 
+/** WCAG contrast between two sRGB pixels, each `[r, g, b]` in 0–255. */
+export function pixelContrast(a: number[], b: number[]): number {
+  const luminance = (rgb: number[]) => {
+    const [r = 0, g = 0, b = 0] = rgb.map((value) => {
+      const c = value / 255
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const x = luminance(a)
+  const y = luminance(b)
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+
+/**
+ * Whether two sRGB pixels match, allowing one step per channel for rounding. A pixel that was not
+ * read (an empty array) matches nothing, so a failed reading fails the comparison.
+ */
+export function samePixel(a: number[], b: number[]): boolean {
+  return a.length === 3 && b.length === 3 &&
+    a.every((value, at) => Math.abs(value - (b[at] ?? -9)) <= 1)
+}
+
+/** Which edge of a control faces open container, away from any neighbouring control. */
+export type RingGapSide = "left" | "right"
+
+/**
+ * Where {@link ringGapPixels} reads, in CSS pixels: the centre of the 2px gap (1px out), of the ring
+ * (3px out) and of the container past it (12px out), on a level with the control's middle.
+ *
+ * @param edge The x of the control's edge on `side`.
+ * @param y The y of the control's middle.
+ * @param side Which edge the points step out from.
+ * @returns The gap's point, the ring's, then the container's.
+ */
+export function ringGapProbePoints(edge: number, y: number, side: RingGapSide): ViewportPoint[] {
+  const direction = side === "right" ? 1 : -1
+  return [1, 3, 12].map((distance) => ({ x: edge + direction * distance, y }))
+}
+
+/** What {@link ringGapPixels} reads beside one keyboard-focused control, as sRGB pixels. */
+export interface RingGapPixels {
+  /** The 2px gap between the control and its ring, 1px out. */
+  gap: number[]
+  /** The ring itself, 3px out. */
+  ring: number[]
+  /** What the control sits on, 12px out, past the ring. */
+  ground: number[]
+  /** The container's background colour as the stylesheet says it, read into sRGB. */
+  expected: number[]
+  /**
+   * Why a pixel could not be read: the element was missing or could not be brought into view, or
+   * the page threw. Every pixel is then empty, so {@link samePixel} fails on it.
+   */
+  error?: string
+}
+
+/** The control {@link ringGapPixels} focuses, and what it sits on. */
+export interface RingGapTarget {
+  /** A page expression for the control; it may evaluate to `null`. */
+  element: string
+  /** A page expression for the element whose background the gap should show. */
+  container: string
+  /** The control's edge that faces open container. */
+  side: RingGapSide
+  /**
+   * Puts the control on screen with open container on `side`. Answering `false` means it could
+   * not, and nothing is read. Defaults to {@link centreInView} on `element`.
+   */
+  place?: () => Promise<unknown>
+}
+
+/**
+ * Reads, from a real screenshot, the pixels beside one keyboard-focused control: its focus ring's
+ * gap, the ring, and the container 12px out, plus the container's colour as the stylesheet says it.
+ * Shared by the ring-gap checks in `checks/theme.ts` and `checks/system.ts` (#534).
+ *
+ * A real Tab press goes first, so the scripted focus that follows counts as keyboard focus and
+ * `:focus-visible` matches. It goes before `place`, because the focus that press moves can scroll
+ * the page, and the pixels are read where the page has come to rest. The pointer is parked in the
+ * corner, so no hover style colours the reading. The screenshot is scaled to CSS pixels by its
+ * own width over the viewport's.
+ *
+ * It never throws for something the page does: a missing element, a placement that fails, or a
+ * page exception comes back as `error` with every pixel empty, so the caller's check fails with a
+ * reason and the caller's own cleanup (palette, transitions) still runs. A dead browser still
+ * throws {@link DevtoolsClosedError}.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param target The control, its container, its open side and how to place it.
+ * @returns The pixels read, or empty ones with an `error`.
+ */
+export async function ringGapPixels(
+  devtools: Devtools,
+  target: RingGapTarget,
+): Promise<RingGapPixels> {
+  const { element, container, side } = target
+  const failed = (error: string): RingGapPixels => ({
+    gap: [],
+    ring: [],
+    ground: [],
+    expected: [],
+    error,
+  })
+  const message = (error: unknown) => {
+    if (error instanceof DevtoolsClosedError) throw error
+    return error instanceof Error ? error.message : String(error)
+  }
+  await pressKey(devtools, "Tab")
+  const placed = await (target.place ?? (() => centreInView(devtools, element)))()
+  if (placed === false) return failed(`${element} could not be brought into view`)
+  await pointerToCorner(devtools)
+  let at: { y: number; edge: number; width: number; expected: number[] } | null
+  try {
+    at = await devtools.evaluate(
+      `(async () => {
+        const element = ${element}
+        if (!element) return null
+        element.focus({ preventScroll: true })
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+        const box = element.getBoundingClientRect()
+        const probe = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
+        probe.fillStyle = getComputedStyle(${container}).backgroundColor
+        probe.fillRect(0, 0, 1, 1)
+        return {
+          y: box.top + box.height / 2,
+          edge: ${side === "right" ? "box.right" : "box.left"},
+          width: innerWidth,
+          expected: Array.from(probe.getImageData(0, 0, 1, 1).data.slice(0, 3)),
+        }
+      })()`,
+    )
+  } catch (error) {
+    return failed(message(error))
+  }
+  if (at === null) return failed(`${element} is not on the page`)
+  const { data } = await devtools.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
+  const points = JSON.stringify(ringGapProbePoints(at.edge, at.y, side))
+  let pixels: number[][]
+  let error: string | undefined
+  try {
+    pixels = await devtools.evaluate<number[][]>(`(async () => {
+      const blob = await (await fetch("data:image/png;base64,${data}")).blob()
+      const bitmap = await createImageBitmap(blob)
+      const scale = bitmap.width / ${at.width}
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+      const context = canvas.getContext("2d")
+      context.drawImage(bitmap, 0, 0)
+      return ${points}.map(({ x, y }) => Array.from(context.getImageData(
+        Math.floor(x * scale),
+        Math.floor(y * scale),
+        1,
+        1,
+      ).data.slice(0, 3)))
+    })()`)
+  } catch (thrown) {
+    pixels = []
+    error = message(thrown)
+  }
+  try {
+    await devtools.evaluate(`(document.activeElement?.blur(), null)`)
+  } catch (thrown) {
+    error ??= message(thrown)
+  }
+  const [gap = [], ring = [], ground = []] = pixels
+  return { gap, ring, ground, expected: at.expected, ...(error === undefined ? {} : { error }) }
+}
+
 /** The parts of a DevTools `exceptionDetails` object the harness reads. */
 export interface ExceptionDetails {
   exceptionId?: number

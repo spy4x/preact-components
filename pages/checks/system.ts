@@ -5,10 +5,14 @@ import {
   inFreshFrame,
   MISSED,
   openGuidePage,
+  pixelContrast,
   pointerToCorner,
   poll,
   pressKey,
   readOr,
+  type RingGapPixels,
+  ringGapPixels,
+  samePixel,
   settledScroll,
 } from "./harness.ts"
 import { pageHref } from "@spy4x/preact-ui-guide/routes"
@@ -7239,45 +7243,15 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
   )
 }
 
-/** What {@link barGapPixels} reads beside one keyboard-focused control, as sRGB pixels. */
-interface BarGapReading {
+/** What {@link ringGapPixels} reads beside one control in a bar, in one palette. */
+interface BarGapReading extends RingGapPixels {
   name: string
   palette: string
-  /** The 2px gap between the control and its ring, 1px out. */
-  gap: number[]
-  /** The ring itself, 3px out. */
-  ring: number[]
-  /** The bar the control sits on, 12px out, past the ring. */
-  ground: number[]
-  /** The bar's background colour as the stylesheet says it, read into sRGB. */
-  expected: number[]
-}
-
-/** WCAG contrast between two sRGB pixels. */
-function barPixelContrast(a: number[], b: number[]): number {
-  const luminance = (rgb: number[]) => {
-    const [r = 0, g = 0, b = 0] = rgb.map((value) => {
-      const c = value / 255
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const x = luminance(a)
-  const y = luminance(b)
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-}
-
-/** Whether two pixels match, allowing one step per channel for rounding. */
-function sameBarPixel(a: number[], b: number[]): boolean {
-  return a.length === 3 && b.length === 3 &&
-    a.every((value, at) => Math.abs(value - (b[at] ?? -9)) <= 1)
 }
 
 /**
- * Focuses `element` after a real key press, so `:focus-visible` matches, and reads from a real
- * screenshot the pixels to its left: the ring's gap, the ring, and the bar 12px out. `place` puts
- * the element on screen with open bar to its left; it runs after the key press, because the focus
- * that press moves can scroll the page.
+ * Focuses `element` after a real key press and reads the pixels to its left: the ring's gap, the
+ * ring, and the bar 12px out. `place` puts the element on screen with open bar to its left.
  */
 async function barGapPixels(
   devtools: Devtools,
@@ -7287,54 +7261,11 @@ async function barGapPixels(
   container: string,
   place: () => Promise<unknown>,
 ): Promise<BarGapReading> {
-  await pressKey(devtools, "Tab")
-  await place()
-  await pointerToCorner(devtools)
-  const at = await read<{ y: number; edge: number; width: number; expected: number[] } | null>(
-    devtools,
-    `(async () => {
-      const element = ${element}
-      if (!element) return null
-      element.focus({ preventScroll: true })
-      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-      const box = element.getBoundingClientRect()
-      const probe = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
-      probe.fillStyle = getComputedStyle(${container}).backgroundColor
-      probe.fillRect(0, 0, 1, 1)
-      return {
-        y: box.top + box.height / 2,
-        edge: box.left,
-        width: innerWidth,
-        expected: Array.from(probe.getImageData(0, 0, 1, 1).data.slice(0, 3)),
-      }
-    })()`,
-    null,
-  )
-  if (at === null) return { name, palette, gap: [], ring: [], ground: [], expected: [] }
-  const { data } = await devtools.send<{ data: string }>("Page.captureScreenshot", {
-    format: "png",
-  })
-  const pixels = await read<number[][]>(
-    devtools,
-    `(async () => {
-      const blob = await (await fetch("data:image/png;base64,${data}")).blob()
-      const bitmap = await createImageBitmap(blob)
-      const scale = bitmap.width / ${at.width}
-      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
-      const context = canvas.getContext("2d")
-      context.drawImage(bitmap, 0, 0)
-      return [1, 3, 12].map((distance) => Array.from(context.getImageData(
-        Math.floor((${at.edge} - distance) * scale),
-        Math.floor(${at.y} * scale),
-        1,
-        1,
-      ).data.slice(0, 3)))
-    })()`,
-    [],
-  )
-  await read(devtools, `(document.activeElement?.blur(), null)`, null)
-  const [gap = [], ring = [], ground = []] = pixels
-  return { name, palette, gap, ring, ground, expected: at.expected }
+  return {
+    name,
+    palette,
+    ...await ringGapPixels(devtools, { element, container, side: "left", place }),
+  }
 }
 
 /**
@@ -7468,16 +7399,16 @@ async function barFocusGapChecks(devtools: Devtools): Promise<void> {
       "its ring's gap in the bar's own colour, in light and dark, with the ring 3:1 off that gap",
     readings.length === 6 &&
       readings.every((reading) =>
-        sameBarPixel(reading.gap, reading.expected) &&
-        sameBarPixel(reading.ground, reading.expected) &&
-        barPixelContrast(reading.ring, reading.gap) >= 3
+        samePixel(reading.gap, reading.expected) &&
+        samePixel(reading.ground, reading.expected) &&
+        pixelContrast(reading.ring, reading.gap) >= 3
       ),
     readings.map((reading) =>
       `${reading.palette} ${reading.name}: gap ${rgb(reading.gap)}, bar ${
         rgb(reading.ground)
       } (stylesheet ${rgb(reading.expected)}), ring ${rgb(reading.ring)} ${
-        barPixelContrast(reading.ring, reading.gap).toFixed(2)
-      }:1 on the gap`
+        pixelContrast(reading.ring, reading.gap).toFixed(2)
+      }:1 on the gap${reading.error ? ` (${reading.error})` : ""}`
     ).join("; "),
   )
 }

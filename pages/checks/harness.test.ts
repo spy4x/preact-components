@@ -27,9 +27,12 @@ import {
   type PageReader,
   PhaseVerdict,
   phaseVerdict,
+  pixelContrast,
   poll,
   reloadAndHydrate,
+  ringGapProbePoints,
   Run,
+  samePixel,
   selectBlocks,
   settledScroll,
 } from "./harness.ts"
@@ -1120,5 +1123,54 @@ describe("describeException", () => {
     expect(line).toContain(`script 4, exception 1, context 2`)
     expect(line).toContain(`x.js:1:26`)
     expect(line).not.toContain(`{"`)
+  })
+})
+
+describe("pixelContrast", () => {
+  it("rates black on white at 21:1 in either order", () => {
+    expect(pixelContrast([0, 0, 0], [255, 255, 255])).toBeCloseTo(21, 5)
+    expect(pixelContrast([255, 255, 255], [0, 0, 0])).toBeCloseTo(21, 5)
+  })
+
+  it("rates a pixel against itself at 1:1", () => {
+    expect(pixelContrast([120, 60, 200], [120, 60, 200])).toBe(1)
+  })
+
+  it("rates mid grey on white just under 4.5:1, as WCAG does", () => {
+    // #777777 on white is the textbook near-miss: 4.48:1.
+    expect(pixelContrast([0x77, 0x77, 0x77], [255, 255, 255])).toBeCloseTo(4.48, 2)
+  })
+})
+
+describe("samePixel", () => {
+  it("matches pixels one step apart in every channel", () => {
+    expect(samePixel([10, 20, 30], [11, 19, 31])).toBe(true)
+  })
+
+  it("rejects pixels two steps apart in one channel", () => {
+    expect(samePixel([10, 20, 30], [10, 22, 30])).toBe(false)
+  })
+
+  it("never matches a pixel that was not read", () => {
+    expect(samePixel([], [])).toBe(false)
+    expect(samePixel([], [10, 20, 30])).toBe(false)
+  })
+})
+
+describe("ringGapProbePoints", () => {
+  it("steps 1, 3 and 12 pixels out past a right edge, level with the middle", () => {
+    expect(ringGapProbePoints(100, 40, "right")).toEqual([
+      { x: 101, y: 40 },
+      { x: 103, y: 40 },
+      { x: 112, y: 40 },
+    ])
+  })
+
+  it("steps 1, 3 and 12 pixels out past a left edge, level with the middle", () => {
+    expect(ringGapProbePoints(100, 40, "left")).toEqual([
+      { x: 99, y: 40 },
+      { x: 97, y: 40 },
+      { x: 88, y: 40 },
+    ])
   })
 })
