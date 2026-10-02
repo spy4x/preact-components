@@ -75,13 +75,24 @@ const thumbImageClass = "size-20 object-cover sm:size-24"
  * The strip's row. It scrolls sideways and snaps each image's start to the row's start. The `p-1`
  * keeps a focused image's ring (2px, offset by 2px) inside the row, which would otherwise clip it,
  * and `scroll-px-1` snaps to that padding rather than to the row's edge. There is no smooth
- * scrolling: focus scrolls the row instantly, so the reduced-motion preference has nothing to stop.
+ * scrolling: the row moves instantly, so the reduced-motion preference has nothing to stop.
  */
 const stripListClass = "flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-auto p-1"
 /** One image of the strip: most of the row's width, so the next image peeks in at the edge. */
 const stripItemClass = "w-5/6 shrink-0 snap-start sm:w-2/3"
 const stripButtonClass = join(thumbButtonClass, "w-full")
 const stripImageClass = "block h-auto w-full"
+
+/**
+ * Bring a focused strip image wholly into view, its start on the row's snap point. Chromium scrolls
+ * a focused element only when none of it is visible, so Tab onto the half-shown next image would
+ * otherwise leave it half-shown. `inline: "start"` is the snap position itself, so snapping does not
+ * pull the row back; `block: "nearest"` moves the page only when the row is off screen. The scroll
+ * follows the row's own `scroll-behavior`, which the strip leaves instant.
+ */
+function revealInStrip(event: JSX.TargetedFocusEvent<HTMLButtonElement>): void {
+  event.currentTarget.scrollIntoView({ block: "nearest", inline: "start" })
+}
 
 /**
  * A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already
@@ -146,6 +157,7 @@ export function ImageGallery(
               aria-label={image.alt}
               onClick={() =>
                 setOpenIndex(index)}
+              onFocus={strip ? revealInStrip : undefined}
             >
               <img
                 src={strip ? image.src : image.thumbSrc ?? image.src}
