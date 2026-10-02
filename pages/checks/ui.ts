@@ -17308,6 +17308,37 @@ async function unsavedGuardChecks(devtools: Devtools): Promise<void> {
         : skipped.join("; "),
     )
 
+    // `href="#"` on a page the router owns: `new URL("…#").hash` is "", so only the "#" in the
+    // address tells it is a jump within the page. The probe on the link is the link's own handler.
+    const emptyMiss = await unsavedClick(devtools, "empty-hash")
+    await unsavedSettle(devtools)
+    const empty = await unsavedRead(devtools, "empty-hash")
+    if (empty.dialog.open) await unsavedDialogButton(devtools, "Stay")
+    check(
+      'a dirty UnsavedGuard leaves an href="#" link on its own page alone, and the link\'s own handler runs',
+      emptyMiss === "" && empty.probe?.reached === true && empty.probe.prevented === false &&
+        !empty.dialog.open && empty.dirty,
+      `${emptyMiss}probe ${JSON.stringify(empty.probe)}, dialog ${empty.dialog.open}, ` +
+        `dirty ${empty.dirty}`,
+    )
+
+    // A held-back address is forgotten when the changes go away some other way (a save), so the
+    // dialog does not come back on its own the next time the form turns dirty.
+    const resetMiss = await unsavedClick(devtools, "owned")
+    await poll(async () => (await unsavedRead(devtools, "owned")).dialog.open, 2_000)
+    const heldAgain = await unsavedRead(devtools, "owned")
+    await unsavedSetDirty(devtools, false)
+    await unsavedSetDirty(devtools, true)
+    await unsavedSettle(devtools)
+    const redirtied = await unsavedRead(devtools, "owned")
+    if (redirtied.dialog.open) await unsavedDialogButton(devtools, "Stay")
+    check(
+      "an UnsavedGuard turned clean while its dialog is open does not reopen it when dirty again",
+      resetMiss === "" && heldAgain.dialog.open && redirtied.dirty && !redirtied.dialog.open,
+      `${resetMiss}open before ${heldAgain.dialog.open}; clean then dirty again: dirty ` +
+        `${redirtied.dirty}, open ${redirtied.dialog.open}`,
+    )
+
     // A click another handler cancelled first is not the guard's: it neither opens the dialog nor
     // stops the click.
     await devtools.evaluate(`(() => {
@@ -17318,7 +17349,7 @@ async function unsavedGuardChecks(devtools: Devtools): Promise<void> {
     await unsavedSettle(devtools)
     const cancelled = await unsavedRead(devtools, "owned")
     check(
-      "a dirty UnsavedGuard leaves an owned link alone when an earlier handler already cancelled the click",
+      "a dirty UnsavedGuard leaves an owned link alone when a window capture listener already cancelled the click",
       cancelledMiss === "" && cancelled.probe?.reached === true && !cancelled.dialog.open,
       `${cancelledMiss}probe ${JSON.stringify(cancelled.probe)}, dialog ${cancelled.dialog.open}`,
     )
