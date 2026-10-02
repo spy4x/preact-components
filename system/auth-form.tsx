@@ -353,7 +353,7 @@ export function AuthForm(
            system/README.md's "A live region is always present and empty". */
       }
       <div role="alert" aria-live="assertive" aria-atomic="true">
-        {problem && <p class="text-sm text-red-700 dark:text-red-300">{problem.message}</p>}
+        {problem && <p class="text-sm text-danger">{problem.message}</p>}
       </div>
 
       {step === "credentials"

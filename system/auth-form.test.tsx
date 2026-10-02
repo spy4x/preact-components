@@ -143,6 +143,12 @@ describe("AuthForm", () => {
     expect(html).not.toContain("aria-invalid")
   })
 
+  it("draws the error message with the danger token, not a fixed red (#526)", () => {
+    const html = render(<AuthForm {...base} error="Wrong login or password" />)
+    expect(html).toContain('<p class="text-sm text-danger">Wrong login or password</p>')
+    expect(html).not.toMatch(/text-red-\d/)
+  })
+
   it("links a field-level error to its field, and marks the field aria-invalid", () => {
     const html = render(
       <AuthForm {...base} error={{ message: "No account with that login", field: "login" }} />,

@@ -654,9 +654,9 @@ const AUTH_STATE = `(() => {
 })()`
 
 /**
- * `AuthForm`'s browser checks: the password-manager markup, the always-present error region, the
- * focus move to the one-time-code field and its stability across an unrelated re-render, the mode
- * switch and the show/hide password toggle never submitting, a busy submit — including one started
+ * `AuthForm`'s browser checks: the password-manager markup, the always-present error region and the
+ * contrast of the message in it, the focus move to the one-time-code field and its stability across
+ * an unrelated re-render, the mode switch and the show/hide password toggle never submitting, a busy submit — including one started
  * with `form.requestSubmit()` — calling no callback, and a submit surviving disabled script
  * execution with no query string added to the URL.
  *
@@ -679,6 +679,7 @@ async function authFormChecks(devtools: Devtools): Promise<void> {
   await autofillChecks(devtools)
   await authFormModeSwitchChecks(devtools)
   await authFormErrorChecks(devtools)
+  await authFormErrorContrastCheck(devtools)
   await authFormFocusChecks(devtools)
   await authFormFocusStabilityChecks(devtools)
   await authFormToggleChecks(devtools)
@@ -1118,6 +1119,197 @@ async function authFormErrorChecks(devtools: Devtools): Promise<void> {
       return true
     })()`,
     false,
+  )
+}
+
+/**
+ * In-page helpers that measure WCAG contrast the way the screen shows it, the same source text
+ * `pages/checks/ui.ts` keeps for its own contrast checks. `paint(color)` draws a colour on a 1×1
+ * canvas and reads back its sRGB bytes, so a computed style in any colour function resolves the way
+ * Chromium renders it. `backdrop(element)` composites every background from the first opaque
+ * ancestor down to the element itself. `ratio(a, b)` takes two byte triples.
+ */
+const CONTRAST_HELPERS = `
+  const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
+  const paintLayers = (colors) => {
+    contrastCanvas.clearRect(0, 0, 1, 1)
+    for (const color of colors) {
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+    }
+    return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+  }
+  const paint = (color) => paintLayers(["white", color])
+  const backdrop = (element) => {
+    const layers = []
+    for (let node = element; node; node = node.parentElement) {
+      const color = getComputedStyle(node).backgroundColor
+      layers.unshift(color)
+      contrastCanvas.clearRect(0, 0, 1, 1)
+      contrastCanvas.fillStyle = color
+      contrastCanvas.fillRect(0, 0, 1, 1)
+      if (contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255) break
+    }
+    return paintLayers(["white", ...layers])
+  }
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.map((channel) => {
+      const s = channel / 255
+      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const ratio = (a, b) => {
+    const [x, y] = [luminance(a), luminance(b)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+`
+
+/** `AuthForm`'s error message, measured in one palette. */
+interface AuthErrorContrast {
+  /** Whether the message was found in the error region. */
+  found: boolean
+  /** Against the card behind it, the palette's page canvas and its raised surface. */
+  onBackdrop: number
+  onCanvas: number
+  onSurface: number
+  /** Against ink's rail and active-row surfaces; the canvas figure again in the other palettes. */
+  onExtra: number
+  /** The message's colour as the browser computes it. */
+  color: string
+  /** Whether that colour paints the same pixel as `--color-danger` in this palette. */
+  isDanger: boolean
+}
+
+/** Every palette's reading of the message, and its colour after an app repaints the token. */
+interface AuthErrorReading {
+  light: AuthErrorContrast
+  dark: AuthErrorContrast
+  /** The opt-in dark `data-theme="ink"` palette. */
+  ink: AuthErrorContrast
+  /** The colour in the light and the dark palette while the root sets {@link AUTH_REPAINTED}. */
+  repainted: { palette: string; color: string; follows: boolean }[]
+}
+
+/** A danger colour no palette uses, which the message must follow once an app sets it. */
+const AUTH_REPAINTED = "rgb(0, 128, 0)"
+
+/**
+ * `AuthForm`'s error message is drawn with `text-danger` (#526), the same proof
+ * `fieldErrorContrastCheck` in `pages/checks/ui.ts` gives `ui/`'s field errors (#507): in the light,
+ * the dark and the ink palette the message paints `--color-danger` and reaches 4.5:1 against the
+ * card behind it, the canvas and the surface (in ink also its rail and active-row surfaces), and an
+ * app that repaints `--color-danger` gets its own colour, in both palettes. The card's "set form
+ * error" button shows the message, and its "clear error" button empties the region afterwards.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function authFormErrorContrastCheck(devtools: Devtools): Promise<void> {
+  const message = `${AUTH_ALERT} p`
+  await click(devtools, AUTH_SET_FORM_ERROR)
+  await poll(
+    () =>
+      read(
+        devtools,
+        `${READ_AUTH_REGION}.text.includes(${JSON.stringify(AUTH_FORM_ERROR)})`,
+        false,
+      ),
+    3_000,
+  )
+
+  const reading = await devtools.evaluate<AuthErrorReading>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    const element = document.querySelector('${message}')
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = paint(getComputedStyle(probe).backgroundColor)
+      probe.remove()
+      return color
+    }
+    const settle = () => Promise.all(
+      element ? element.getAnimations().map((animation) => animation.finished.catch(() => {})) : [],
+    )
+    const same = (a, b) => a.every((channel, index) => channel === b[index])
+    const measure = (extras = ["--color-canvas"]) => {
+      if (!element) {
+        return { found: false, onBackdrop: 0, onCanvas: 0, onSurface: 0, onExtra: 0, color: "", isDanger: false }
+      }
+      const text = paint(getComputedStyle(element).color)
+      return {
+        found: true,
+        onBackdrop: ratio(text, backdrop(element)),
+        onCanvas: ratio(text, token("--color-canvas")),
+        onSurface: ratio(text, token("--color-surface")),
+        onExtra: Math.min(...extras.map((extra) => ratio(text, token(extra)))),
+        color: getComputedStyle(element).color,
+        isDanger: same(text, token("--color-danger")),
+      }
+    }
+    const repaintedIn = (palette) => {
+      const color = element ? getComputedStyle(element).color : "missing"
+      return {
+        palette,
+        color,
+        follows: element !== null && same(paint(color), paint(${JSON.stringify(AUTH_REPAINTED)})),
+      }
+    }
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      root.setAttribute("data-theme", "ink")
+      await settle()
+      const ink = measure(["--color-surface-rail", "--color-surface-active"])
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+      root.style.setProperty("--color-danger", ${JSON.stringify(AUTH_REPAINTED)})
+      await settle()
+      const repaintedDark = repaintedIn("dark")
+      root.classList.remove("dark")
+      await settle()
+      return { light, dark, ink, repainted: [repaintedIn("light"), repaintedDark] }
+    } finally {
+      root.style.removeProperty("--color-danger")
+      root.classList.toggle("dark", wasDark)
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+    }
+  })()`)
+
+  await click(devtools, AUTH_CLEAR_ERROR)
+  await poll(() => read(devtools, `${READ_AUTH_REGION}.text === ""`, false), 3_000)
+
+  const summary = (contrast: AuthErrorContrast) =>
+    contrast.found
+      ? `${contrast.color} ${contrast.onBackdrop.toFixed(2)}/${contrast.onCanvas.toFixed(2)}/` +
+        `${contrast.onSurface.toFixed(2)}/${contrast.onExtra.toFixed(2)}`
+      : "message missing"
+  for (const palette of ["light", "dark", "ink"] as const) {
+    const contrast = reading[palette]
+    check(
+      `in the ${palette} palette AuthForm's error message paints --color-danger at 4.5:1 or ` +
+        "better on the card, canvas and surface" +
+        (palette === "ink" ? ", rail and active row" : ""),
+      contrast.found && contrast.isDanger &&
+        Math.min(contrast.onBackdrop, contrast.onCanvas, contrast.onSurface, contrast.onExtra) >=
+          4.5,
+      `card/canvas/surface/${palette === "ink" ? "lower of rail and active" : "canvas"} — ` +
+        `${palette}: ${summary(contrast)}`,
+    )
+  }
+  check(
+    "in the light and the dark palette AuthForm's error message follows an app's repainted " +
+      "--color-danger",
+    reading.repainted.every((entry) => entry.follows),
+    reading.repainted.map((entry) => `${entry.palette} ${entry.color}`).join(", "),
   )
 }
 
