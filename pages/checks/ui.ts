@@ -12177,6 +12177,9 @@ async function moneyInputChecks(devtools: Devtools): Promise<void> {
         ),
       3_000,
     )
+    // A fixed wait, not a poll: it proves no second submit follows the first, and an absence has
+    // no state to poll for.
+    await new Promise((done) => setTimeout(done, 150))
     const afterFixedSubmit = await devtools.evaluate<string>(
       `document.querySelector('${submitsSelector}').textContent`,
     )
