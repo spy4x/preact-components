@@ -445,7 +445,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (826 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (829 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -797,6 +797,8 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ThemeToggleProps` (type): Props of `ThemeToggle`. Import: `@spy4x/preact-ui`
 - `ThemeToggleStore` (type): The slice of a theme store `ThemeToggle` reads, described by shape so this package imports no store: `createThemeStore()` from `@spy4x/preact-signals/theme` satisfies it as it is. Import: `@spy4x/preact-ui`
 - `failedAfterSrcChange` (helper): Carry an avatar's "this image failed" flag across a change of `src`. Import: `@spy4x/preact-ui/avatar`
+- `BillingIntervalValue` (type): A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast. Import: `@spy4x/preact-ui/billing`
+- `SubscriptionStatusValue` (type): A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast. Import: `@spy4x/preact-ui/billing`
 - `dropdownOpensUp` (helper): Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the trigger and the bottom of the viewport, and there is more room above the trigger than below. Import: `@spy4x/preact-ui/dropdown`
 - `enhancedFormMessage` (helper): The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run. Import: `@spy4x/preact-ui/enhanced-form`
 - `FieldLabelFor` (type): What `Field`'s own label points at through `for`. Import: `@spy4x/preact-ui/field`
