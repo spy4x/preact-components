@@ -17583,6 +17583,27 @@ async function imageGalleryStripNavChecks(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Escape")
   await poll(async () => !(await readLightbox()).open, 3_000)
 
+  // A page's test reads `dialog[open]` straight after its click: the dialog must open in the
+  // render that the click starts, not after the next paint. One microtask lets Preact's queued
+  // render run, and nothing later (no frame, no timer).
+  const openAfterClick = await devtools.evaluate<{ clicked: boolean; open: boolean }>(
+    `(async () => {
+    const button = document.querySelector('${row} li:nth-child(2) button')
+    button?.click()
+    await new Promise((resolve) => queueMicrotask(resolve))
+    return { clicked: button !== null,
+      open: document.querySelector('${GALLERY_NAV} dialog[open]') !== null }
+  })()`,
+  )
+  check(
+    "a click on a strip slide opens the lightbox before the next frame",
+    openAfterClick.clicked && openAfterClick.open,
+    JSON.stringify(openAfterClick),
+  )
+  await poll(async () => (await readLightbox()).open, 3_000)
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await readLightbox()).open, 3_000)
+
   const landscape = (await readStripNav(devtools, GALLERY_NAV)).widths[0] ?? 0
   try {
     await devtools.send("Emulation.setDeviceMetricsOverride", {
