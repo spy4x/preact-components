@@ -5,6 +5,7 @@
     ".": "./+index.ts",
     "./avatar": "./avatar.tsx",
     "./badge": "./badge.tsx",
+    "./billing": "./billing.tsx",
     "./button": "./button.tsx",
     "./card": "./card.tsx",
     "./checkbox": "./checkbox.tsx",

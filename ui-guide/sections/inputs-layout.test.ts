@@ -3,7 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { catalogueSections, demoRegistry } from "../registry.ts"
 
 /** The UI page's second half: the input sections. */
-const SECTIONS = ["inputs", "fields", "enhanced-forms"]
+const SECTIONS = ["inputs", "fields", "enhanced-forms", "billing"]
 
 const names = catalogueSections
   .filter((section) => SECTIONS.includes(section.id))

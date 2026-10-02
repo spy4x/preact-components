@@ -221,6 +221,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await primaryButtonFillCheck(devtools)
   await kanbanBoardChecks(devtools)
   await themeToggleChecks(devtools)
+  await billingChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -16446,5 +16447,429 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
       }
       return null
     })()`)
+  }
+}
+
+/** The pricing table's catalogue card. */
+const PRICING = "#demo-PricingTable"
+
+/** The interval toggle's label for `interval` (`month` or `year`) in the pricing card. */
+function intervalLabel(interval: "month" | "year"): string {
+  return `${PRICING} label:has(> input[data-pricing-interval="${interval}"])`
+}
+
+/** The "Choose" button of one plan in the pricing card. */
+function chooseButton(plan: string): string {
+  return `${PRICING} li[data-plan="${plan}"] button[type="submit"]`
+}
+
+/** What the pricing card shows: which interval is checked, which plans are on screen. */
+interface PricingState {
+  checked: string
+  visible: string[]
+  focused: string
+  focusRing: string
+}
+
+/** Reads the pricing card's checked interval, its plans on screen and the focused radio. */
+function pricingState(devtools: Devtools): Promise<PricingState> {
+  return devtools.evaluate<PricingState>(`(() => {
+    const card = document.querySelector('${PRICING}')
+    const checked = card?.querySelector("input[data-pricing-interval]:checked")
+    const focused = document.activeElement?.closest?.('${PRICING}')
+      ? document.activeElement.dataset.pricingInterval ?? document.activeElement.tagName
+      : "outside the card"
+    const label = document.activeElement?.closest?.("label")
+    return {
+      checked: checked ? checked.dataset.pricingInterval : "none",
+      visible: [...(card?.querySelectorAll("li[data-plan]") ?? [])]
+        .filter((item) => item.getBoundingClientRect().height > 0)
+        .map((item) => item.dataset.plan),
+      focused,
+      focusRing: label ? getComputedStyle(label).boxShadow : "no label",
+    }
+  })()`).catch(() => ({ checked: "unreadable", visible: [], focused: "", focusRing: "" }))
+}
+
+/**
+ * Every billing check: the interval toggle by keyboard, choosing a plan through `onChoose` and
+ * through the plain form post, the same toggle and post on a page that runs no script, the
+ * past-due warning, and the contrast of every new text in both palettes.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function billingChecks(devtools: Devtools): Promise<void> {
+  await pricingIntervalKeyboardCheck(devtools)
+  await pricingCallbackCheck(devtools)
+  await pricingFormPostCheck(devtools)
+  await pricingNoScriptChecks(devtools)
+  await planCardPastDueCheck(devtools)
+  await billingContrastCheck(devtools)
+}
+
+/**
+ * The pricing card's interval toggle moves with the arrow keys and shows only that interval's
+ * plans, with the free plan under both. A real click on "Monthly" gives the radio focus first, so
+ * the arrow keys reach it the way they do after Tab.
+ */
+async function pricingIntervalKeyboardCheck(devtools: Devtools): Promise<void> {
+  const monthly = await elementCenter(devtools, intervalLabel("month"))
+  if (monthly.ok) await clickAtPoint(devtools, monthly)
+  const before = await pricingState(devtools)
+  await pressKey(devtools, "ArrowRight")
+  await poll(async () => (await pricingState(devtools)).checked === "year", 2_000)
+  const yearly = await pricingState(devtools)
+  await pressKey(devtools, "ArrowLeft")
+  await poll(async () => (await pricingState(devtools)).checked === "month", 2_000)
+  const back = await pricingState(devtools)
+
+  check(
+    "the PricingTable interval toggle moves to yearly with ArrowRight and shows only yearly plans",
+    monthly.ok && before.checked === "month" &&
+      before.visible.join() === "free,pro-month,business-month" &&
+      yearly.checked === "year" && yearly.focused === "year" &&
+      yearly.visible.join() === "free,pro-year,business-year",
+    !monthly.ok
+      ? `could not aim at the Monthly option: ${monthly.reason}`
+      : `before ${JSON.stringify(before)}, after ArrowRight ${JSON.stringify(yearly)}`,
+  )
+  check(
+    "the PricingTable interval toggle draws a focus ring on the focused option",
+    // ring-2 with ring-offset-2 draws a 4px spread; no ring leaves only transparent 0px shadows.
+    yearly.focusRing.includes(" 0px 0px 0px 4px"),
+    `box-shadow of the focused option's label: ${yearly.focusRing}`,
+  )
+  check(
+    "the PricingTable interval toggle moves back to monthly with ArrowLeft",
+    back.checked === "month" && back.visible.join() === "free,pro-month,business-month",
+    JSON.stringify(back),
+  )
+}
+
+/**
+ * With `onChoose` given, a real click on a plan's "Choose" hands the plan to the callback and sends
+ * no request: the page stays where it is.
+ */
+async function pricingCallbackCheck(devtools: Devtools): Promise<void> {
+  const before = await devtools.evaluate<string>("location.href")
+  const button = await elementCenter(devtools, chooseButton("pro-month"))
+  const request = waitForRequest(devtools, "form-demo", 1_500)
+  if (button.ok) await clickAtPoint(devtools, button)
+  const sent = await request
+  const chosen = await devtools.evaluate<string>(
+    `document.querySelector('${PRICING} [data-e2e="pricing-chosen"]')?.textContent ?? ""`,
+  ).catch(() => "")
+  const after = await devtools.evaluate<string>("location.href").catch(() => "")
+
+  check(
+    "choosing a PricingTable plan with onChoose hands its plan to the callback and posts nothing",
+    button.ok && chosen === "pro-month" && sent === null && after === before,
+    !button.ok
+      ? `could not aim at Choose Pro: ${button.reason}`
+      : `callback got "${chosen}", request ${sent ? sent.method : "none"}, ` +
+        `location ${before} → ${after}`,
+  )
+}
+
+/**
+ * With `onChoose` switched off, a real click on "Choose" posts the plan's form: a POST to the
+ * form's action carrying `planId`. The page is reloaded and rehydrated afterwards.
+ */
+async function pricingFormPostCheck(devtools: Devtools): Promise<void> {
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+  try {
+    const toggle = await elementCenter(
+      devtools,
+      `${PRICING} [data-e2e="pricing-callback-toggle"]`,
+    )
+    if (toggle.ok) await clickAtPoint(devtools, toggle)
+    const off = await poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `document.querySelector('${PRICING} [data-e2e="pricing-callback-toggle"]')?.checked === false`,
+        ).catch(() => false),
+      2_000,
+    )
+    const button = await elementCenter(devtools, chooseButton("business-month"))
+    const request = waitForRequest(devtools, "form-demo", 10_000)
+    if (off && button.ok) await clickAtPoint(devtools, button)
+    const sent = off && button.ok ? await request : null
+    const body = sent ? await requestBody(devtools, sent) : ""
+    const navigated = sent !== null && await waitForNavigation(devtools)
+
+    check(
+      "choosing a PricingTable plan without onChoose posts its form with the plan's ID",
+      sent !== null && sent.method === "POST" && body === "planId=business-month" && navigated,
+      !off
+        ? "the onChoose toggle did not switch off"
+        : !button.ok
+        ? `could not aim at Choose Business: ${button.reason}`
+        : sent === null
+        ? "no request to form-demo/ was captured"
+        : `method ${sent.method}, body ${JSON.stringify(body)}, navigated ${navigated}`,
+    )
+  } finally {
+    await restoreHydratedPage(devtools, restoreUrl, "the plain PricingTable post")
+  }
+}
+
+/**
+ * On a page that runs no script, the pricing card's interval toggle still moves with the arrow
+ * keys and hides the other interval's plans (a CSS rule does it), and "Choose" posts the plan's
+ * form. Script execution is disabled before a reload, as `enhancedFormsNoScriptChecks` does.
+ */
+async function pricingNoScriptChecks(devtools: Devtools): Promise<void> {
+  const restoreUrl = await devtools.evaluate<string>("location.href").catch(() => "")
+  try {
+    await devtools.send("Emulation.setScriptExecutionDisabled", { value: true })
+    await devtools.send("Page.reload", { ignoreCache: true })
+    const loaded = await waitForNavigation(devtools)
+    const unhydrated = loaded &&
+      await devtools.evaluate<boolean>(`document.documentElement.dataset.hydrated !== "true"`)
+        .catch(() => false)
+
+    const monthly = await elementCenter(devtools, intervalLabel("month"))
+    if (monthly.ok) await clickAtPoint(devtools, monthly)
+    await pressKey(devtools, "ArrowRight")
+    await poll(async () => (await pricingState(devtools)).checked === "year", 2_000)
+    const yearly = await pricingState(devtools)
+
+    check(
+      "with no script running, the PricingTable interval toggle moves by keyboard and hides the " +
+        "other interval's plans",
+      unhydrated && monthly.ok && yearly.checked === "year" &&
+        yearly.visible.join() === "free,pro-year,business-year",
+      !unhydrated
+        ? "the fresh load still hydrated, so this proves nothing about a page with no script"
+        : !monthly.ok
+        ? `could not aim at the Monthly option: ${monthly.reason}`
+        : JSON.stringify(yearly),
+    )
+
+    const button = await elementCenter(devtools, chooseButton("pro-year"))
+    const request = waitForRequest(devtools, "form-demo", 10_000)
+    if (button.ok) await clickAtPoint(devtools, button)
+    const sent = button.ok ? await request : null
+    const body = sent ? await requestBody(devtools, sent) : ""
+    const navigated = sent !== null && await waitForNavigation(devtools)
+    const answer = navigated
+      ? await devtools.evaluate<string>(
+        `document.querySelector('[data-e2e="form-demo-answer"]')?.textContent ?? ""`,
+      ).catch(() => "")
+      : ""
+
+    check(
+      "with no script running, choosing a PricingTable plan posts its form with the plan's ID",
+      unhydrated && sent !== null && sent.method === "POST" && body === "planId=pro-year" &&
+        answer.includes("Thanks"),
+      !button.ok
+        ? `could not aim at Choose Pro (yearly): ${button.reason}`
+        : sent === null
+        ? "no request to form-demo/ was captured"
+        : `method ${sent.method}, body ${JSON.stringify(body)}, answer ${
+          JSON.stringify(answer.slice(0, 40))
+        }`,
+    )
+  } finally {
+    await restoreHydratedPage(devtools, restoreUrl, "the no-script PricingTable checks")
+  }
+}
+
+/** What the past-due `PlanCard` shows. */
+interface PastDueReading {
+  found: boolean
+  status: string
+  text: string
+  shown: boolean
+  icon: { shown: boolean; hidden: string | null }
+}
+
+/**
+ * The past-due `PlanCard` says so in words, twice: its status pill reads "Past due", and a warning
+ * sentence sits on screen beside a warning icon. A trial, active or canceled card shows no warning,
+ * and the catalogue shows each of those, so the count below covers all three.
+ */
+async function planCardPastDueCheck(devtools: Devtools): Promise<void> {
+  const reading = await devtools.evaluate<
+    PastDueReading & { healthy: string[]; healthyWarnings: number }
+  >(`(() => {
+    const cards = [...document.querySelectorAll("#demo-PlanCard [data-status]")]
+    const card = cards.find((each) => each.dataset.status === "3")
+    const warning = card?.querySelector("[data-plan-warning]")
+    const icon = warning?.querySelector("svg")
+    const shown = (element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility === "visible"
+    }
+    return {
+      found: Boolean(card),
+      status: card?.querySelector(".pc-card-header span")?.textContent ?? "",
+      text: warning?.textContent ?? "",
+      shown: warning ? shown(warning) : false,
+      icon: { shown: icon ? shown(icon) : false, hidden: icon?.getAttribute("aria-hidden") ?? null },
+      healthy: [...new Set(cards.map((each) => each.dataset.status)
+        .filter((status) => ["1", "2", "4"].includes(status)))].sort(),
+      healthyWarnings: cards.filter((each) => ["1", "2", "4"].includes(each.dataset.status))
+        .filter((each) => each.querySelector("[data-plan-warning]")).length,
+    }
+  })()`)
+
+  check(
+    "a past-due PlanCard warns in words beside a warning icon, and a trial, active or canceled one does not",
+    reading.found && reading.status === "Past due" && reading.shown &&
+      reading.text.includes("payment failed") && reading.icon.shown &&
+      reading.healthy.join() === "1,2,4" && reading.healthyWarnings === 0,
+    JSON.stringify(reading),
+  )
+}
+
+/** One measured text or edge of the billing cards, in one palette. */
+interface BillingContrast {
+  name: string
+  ratio: number
+  /** `3` for an edge or an icon, `4.5` for text. */
+  needs: number
+}
+
+/**
+ * How the checked billing interval is told apart from the unchecked one, in one palette. Its fill
+ * alone is 2.65:1 against the track in the dark palette, so the option also carries a check icon
+ * and bolder text.
+ */
+interface IntervalCue {
+  /** The checked option's fill against the toggle's track, reported but not required. */
+  fillVsTrack: number
+  checkedIcon: boolean
+  uncheckedIcon: boolean
+  /** The check icon's colour against the checked option's fill. */
+  iconRatio: number
+  checkedWeight: number
+  uncheckedWeight: number
+}
+
+/**
+ * Every text the billing components draw reaches 4.5:1 on what it sits on, and the highlighted
+ * plan's border and the warning's icon and border reach 3:1, in the light and the dark palette.
+ * The checked interval option shows a check icon at 3:1 and bolder text, and the unchecked one
+ * neither, so the choice never rests on the fill alone.
+ */
+async function billingContrastCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const reading = await devtools.evaluate<{
+    light: BillingContrast[]
+    dark: BillingContrast[]
+    lightCue: IntervalCue
+    darkCue: IntervalCue
+  }>(
+    `(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const pricing = document.querySelector('${PRICING}')
+    const plans = document.querySelector("#demo-PlanCard")
+    const upgrade = document.querySelector("#demo-UpgradePrompt")
+    const highlighted = pricing.querySelector('li[data-plan="pro-month"]')
+    const plain = pricing.querySelector('li[data-plan="free"]')
+    const pastDue = [...plans.querySelectorAll("[data-status]")]
+      .find((card) => card.dataset.status === "3")
+    const warning = pastDue.querySelector("[data-plan-warning]")
+    const texts = [
+      ["plan name", highlighted.querySelector("h4")],
+      ["plan description", highlighted.querySelector("p.text-sm")],
+      ["price", highlighted.querySelector(".text-3xl")],
+      ["per month", highlighted.querySelector(".text-3xl + span")],
+      ["feature", highlighted.querySelector("ul li")],
+      ["Most popular", highlighted.querySelector("span.bg-selected")],
+      ["checked interval", pricing.querySelector("fieldset label:has(:checked)")],
+      ["unchecked interval", pricing.querySelector("fieldset label:not(:has(:checked))")],
+      ["status pill", pastDue.querySelector(".pc-card-header span")],
+      ["plan card price", pastDue.querySelector(".text-xl")],
+      ["date line", plans.querySelector("[data-status='2'] .pc-card-body p.text-muted")],
+      ["warning", warning.querySelector("span")],
+      ["upgrade title", upgrade.querySelector("h4")],
+      ["upgrade message", upgrade.querySelector("p")],
+    ]
+    const edgeBehind = (element) => backdrop(element.parentElement)
+    const checked = pricing.querySelector("fieldset label:has(:checked)")
+    const unchecked = pricing.querySelector("fieldset label:not(:has(:checked))")
+    const iconShown = (label) => {
+      const icon = label.querySelector("svg")
+      if (!icon) return false
+      const rect = icon.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0 && getComputedStyle(icon).visibility === "visible"
+    }
+    const cue = () => ({
+      fillVsTrack: ratio(paint(getComputedStyle(checked).backgroundColor), backdrop(checked.parentElement)),
+      checkedIcon: iconShown(checked),
+      uncheckedIcon: iconShown(unchecked),
+      iconRatio: checked.querySelector("svg")
+        ? ratio(paint(getComputedStyle(checked.querySelector("svg")).color), backdrop(checked))
+        : 0,
+      checkedWeight: Number(getComputedStyle(checked).fontWeight),
+      uncheckedWeight: Number(getComputedStyle(unchecked).fontWeight),
+    })
+    const measure = () => [
+      ...texts.map(([name, element]) => ({
+        name,
+        ratio: element ? ratio(paint(getComputedStyle(element).color), backdrop(element)) : 0,
+        needs: 4.5,
+      })),
+      {
+        name: "highlighted plan border",
+        ratio: ratio(paint(getComputedStyle(highlighted).borderTopColor), edgeBehind(highlighted)),
+        needs: 3,
+      },
+      {
+        name: "highlighted against a plain plan's border",
+        ratio: ratio(
+          paint(getComputedStyle(highlighted).borderTopColor),
+          paint(getComputedStyle(plain).borderTopColor),
+        ),
+        needs: 1.5,
+      },
+      {
+        name: "warning border",
+        ratio: ratio(paint(getComputedStyle(warning).borderTopColor), edgeBehind(warning)),
+        needs: 3,
+      },
+      {
+        name: "warning icon",
+        ratio: ratio(paint(getComputedStyle(warning.querySelector("svg")).color), backdrop(warning)),
+        needs: 3,
+      },
+    ]
+    const settle = () => new Promise((done) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 400)))
+    )
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      const lightCue = cue()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      const darkCue = cue()
+      return { light, dark, lightCue, darkCue }
+    } finally {
+      root.classList.toggle("dark", wasDark)
+    }
+  })()`,
+  )
+
+  for (const palette of ["light", "dark"] as const) {
+    const rows = reading[palette]
+    check(
+      `in the ${palette} palette every billing text reaches 4.5:1 and every edge and icon 3:1`,
+      rows.length > 0 && rows.every((row) => row.ratio >= row.needs),
+      rows.map((row) => `${row.name} ${row.ratio.toFixed(2)}`).join(", "),
+    )
+    const cue = reading[`${palette}Cue`]
+    check(
+      `in the ${palette} palette the checked billing interval shows a check icon at 3:1 and bolder text, and the unchecked one neither`,
+      cue.checkedIcon && !cue.uncheckedIcon && cue.iconRatio >= 3 &&
+        cue.checkedWeight > cue.uncheckedWeight,
+      JSON.stringify(cue),
+    )
   }
 }

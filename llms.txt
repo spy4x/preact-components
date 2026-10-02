@@ -445,7 +445,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (819 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (828 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -494,6 +494,23 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `BadgeElementProps` (type): A `Badge` with element content in place of `text` — a `StatusMark` beside a word, say, or a link inside the pill. Import: `@spy4x/preact-ui`
 - `BadgeProps` (type): Props of `Badge`. Import: `@spy4x/preact-ui`
 - `BadgeType` (type): Whether a `Badge` is tinted (`filled`, the default) or only outlined. Import: `@spy4x/preact-ui`
+- `BillingHeadingLevel` (type): Heading level of a billing component's own heading. Import: `@spy4x/preact-ui`
+- `BillingInterval` (type): How often a plan bills. Import: `@spy4x/preact-ui`
+- `defaultPlanCardLabels` (helper): The English words `PlanCard` uses when a caller passes none. Import: `@spy4x/preact-ui`
+- `defaultPricingTableLabels` (helper): The English words `PricingTable` uses when a caller passes none. Import: `@spy4x/preact-ui`
+- `defaultUpgradePromptLabels` (helper): The English words `UpgradePrompt` uses when a caller passes none. Import: `@spy4x/preact-ui`
+- `PlanCard` (component): The current plan: its name, status, price and the date it renews or ends, with a "Manage billing" form that posts to the app's billing-portal route. Import: `@spy4x/preact-ui`
+- `PlanCardLabels` (type): Words `PlanCard` shows. Import: `@spy4x/preact-ui`
+- `PlanCardProps` (type): Props of `PlanCard`. Import: `@spy4x/preact-ui`
+- `PlanPrice` (type): A price: an amount in the currency's smallest unit, and how often it is charged. Import: `@spy4x/preact-ui`
+- `PricingPlan` (type): One plan of a `PricingTable`. Import: `@spy4x/preact-ui`
+- `PricingTable` (component): Plans side by side, each with its price, its features and a "Choose" button. Import: `@spy4x/preact-ui`
+- `PricingTableLabels` (type): Words `PricingTable` shows or announces. Import: `@spy4x/preact-ui`
+- `PricingTableProps` (type): Props of `PricingTable`. Import: `@spy4x/preact-ui`
+- `SubscriptionStatus` (type): Where a subscription stands. Import: `@spy4x/preact-ui`
+- `UpgradePrompt` (component): A short message and an upgrade link, shown in place of a feature the current plan does not include. Import: `@spy4x/preact-ui`
+- `UpgradePromptLabels` (type): Words `UpgradePrompt` shows. Import: `@spy4x/preact-ui`
+- `UpgradePromptProps` (type): Props of `UpgradePrompt`. Import: `@spy4x/preact-ui`
 - `Button` (component): Native button with the library's variant and size vocabulary, or a link that looks like one. Import: `@spy4x/preact-ui`
 - `buttonClasses` (helper): Compose the class list of a button without rendering one. Import: `@spy4x/preact-ui`
 - `ButtonLinkProps` (type): A `Button` that is a link: given `href`, it renders an `<a>` with the classes the same `variant`, `size` and `class` give a `<button>`. Import: `@spy4x/preact-ui`
@@ -780,6 +797,8 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ThemeToggleProps` (type): Props of `ThemeToggle`. Import: `@spy4x/preact-ui`
 - `ThemeToggleStore` (type): The slice of a theme store `ThemeToggle` reads, described by shape so this package imports no store: `createThemeStore()` from `@spy4x/preact-signals/theme` satisfies it as it is. Import: `@spy4x/preact-ui`
 - `failedAfterSrcChange` (helper): Carry an avatar's "this image failed" flag across a change of `src`. Import: `@spy4x/preact-ui/avatar`
+- `BillingIntervalValue` (type): A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast. Import: `@spy4x/preact-ui/billing`
+- `SubscriptionStatusValue` (type): A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast. Import: `@spy4x/preact-ui/billing`
 - `dropdownOpensUp` (helper): Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the trigger and the bottom of the viewport, and there is more room above the trigger than below. Import: `@spy4x/preact-ui/dropdown`
 - `enhancedFormMessage` (helper): The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run. Import: `@spy4x/preact-ui/enhanced-form`
 - `FieldLabelFor` (type): What `Field`'s own label points at through `for`. Import: `@spy4x/preact-ui/field`

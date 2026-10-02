@@ -29,6 +29,7 @@
 
 import type { ComponentChildren } from "preact"
 import { badgeDemos } from "./sections/badges.tsx"
+import { billingDemos } from "./sections/billing.tsx"
 import { buttonDemos } from "./sections/buttons.tsx"
 import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
@@ -233,6 +234,7 @@ export type SectionId =
   | "layout"
   | "display"
   | "enhanced-forms"
+  | "billing"
   | "feedback"
   | "inputs"
   | "fields"
@@ -306,6 +308,14 @@ const catalogue = {
     blurb:
       "Whole forms built on the `Fields` primitives above, that post on their own before a script has run and stay on the page once one has: `EnhancedForm` is the building block, shown with a sign-up form and a contact form built from it.",
     demos: enhancedFormDemos,
+  },
+  billing: {
+    group: "inputs",
+    package: "ui",
+    title: "Billing",
+    blurb:
+      "A pricing table, the current plan's card and an upgrade prompt. Every choice is a plain form that posts before any script runs; prices are integers in the currency's smallest unit.",
+    demos: billingDemos,
   },
   forms: {
     group: "surfaces",
@@ -460,6 +470,7 @@ export const demoRegistry: DemoRegistry = {
   ...layoutDemos,
   ...displayDemos,
   ...enhancedFormDemos,
+  ...billingDemos,
   ...feedbackDemos,
   ...inputDemos,
   ...fieldDemos,
