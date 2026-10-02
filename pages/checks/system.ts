@@ -1,6 +1,7 @@
 import {
   centreInView,
   check,
+  CONTRAST_HELPERS,
   type Devtools,
   inFreshFrame,
   MISSED,
@@ -1126,49 +1127,6 @@ async function authFormErrorChecks(devtools: Devtools): Promise<void> {
     false,
   )
 }
-
-/**
- * In-page helpers that measure WCAG contrast the way the screen shows it, the same source text
- * `pages/checks/ui.ts` keeps for its own contrast checks. `paint(color)` draws a colour on a 1×1
- * canvas and reads back its sRGB bytes, so a computed style in any colour function resolves the way
- * Chromium renders it. `backdrop(element)` composites every background from the first opaque
- * ancestor down to the element itself. `ratio(a, b)` takes two byte triples.
- */
-const CONTRAST_HELPERS = `
-  const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
-  const paintLayers = (colors) => {
-    contrastCanvas.clearRect(0, 0, 1, 1)
-    for (const color of colors) {
-      contrastCanvas.fillStyle = color
-      contrastCanvas.fillRect(0, 0, 1, 1)
-    }
-    return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
-  }
-  const paint = (color) => paintLayers(["white", color])
-  const backdrop = (element) => {
-    const layers = []
-    for (let node = element; node; node = node.parentElement) {
-      const color = getComputedStyle(node).backgroundColor
-      layers.unshift(color)
-      contrastCanvas.clearRect(0, 0, 1, 1)
-      contrastCanvas.fillStyle = color
-      contrastCanvas.fillRect(0, 0, 1, 1)
-      if (contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255) break
-    }
-    return paintLayers(["white", ...layers])
-  }
-  const luminance = (rgb) => {
-    const [r, g, b] = rgb.map((channel) => {
-      const s = channel / 255
-      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const ratio = (a, b) => {
-    const [x, y] = [luminance(a), luminance(b)]
-    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-  }
-`
 
 /** `AuthForm`'s error message, measured in one palette. */
 interface AuthErrorContrast {

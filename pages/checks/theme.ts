@@ -3,6 +3,7 @@ import { ACCENTS } from "../src/accent-switch.tsx"
 import {
   centreInView,
   check,
+  CONTRAST_HELPERS,
   type Devtools,
   inFreshFrame,
   openGuidePage,
@@ -2282,30 +2283,6 @@ async function accentChecks(devtools: Devtools): Promise<void> {
     `dark class ${agreement.dark}, toggle "${agreement.toggle}"`,
   )
 }
-
-/** Page-side drawing and WCAG contrast, as source text: colours are read back from pixels. */
-const CONTRAST_HELPERS = `
-  const pixel = (color) => {
-    const canvas = document.createElement("canvas")
-    canvas.width = canvas.height = 1
-    const context = canvas.getContext("2d", { colorSpace: "srgb" })
-    context.fillStyle = color
-    context.fillRect(0, 0, 1, 1)
-    return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3))
-  }
-  const luminance = (rgb) => {
-    const [r, g, b] = rgb.map((value) => {
-      const c = value / 255
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const contrast = (a, b) => {
-    const x = luminance(pixel(a))
-    const y = luminance(pixel(b))
-    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-  }
-`
 
 /**
  * The accent label and the danger label (#417).
