@@ -350,3 +350,12 @@ export {
   type ThemeToggleProps,
   type ThemeToggleStore,
 } from "./theme-toggle.tsx"
+export {
+  defaultUnsavedGuardLabels,
+  guardedHref,
+  type UnsavedClick,
+  UnsavedGuard,
+  type UnsavedGuardLabels,
+  type UnsavedGuardProps,
+  type UnsavedLink,
+} from "./unsaved-guard.tsx"

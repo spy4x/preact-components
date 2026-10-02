@@ -796,6 +796,13 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ThemeToggleLabels` (type): Words `ThemeToggle` shows or announces. Import: `@spy4x/preact-ui`
 - `ThemeToggleProps` (type): Props of `ThemeToggle`. Import: `@spy4x/preact-ui`
 - `ThemeToggleStore` (type): The slice of a theme store `ThemeToggle` reads, described by shape so this package imports no store: `createThemeStore()` from `@spy4x/preact-signals/theme` satisfies it as it is. Import: `@spy4x/preact-ui`
+- `defaultUnsavedGuardLabels` (helper): The English words of `UnsavedGuard`'s dialog. Import: `@spy4x/preact-ui`
+- `guardedHref` (helper): The in-app address a click must be held back for while there are unsaved changes, as `pathname + search + hash`; `null` when the browser or the link itself should handle the click. Import: `@spy4x/preact-ui`
+- `UnsavedClick` (type): The parts of a click that decide whether the browser would follow a link in this tab. Import: `@spy4x/preact-ui`
+- `UnsavedGuard` (component): Asks before a person leaves a page with unsaved changes. Import: `@spy4x/preact-ui`
+- `UnsavedGuardLabels` (type): Every word the guard's dialog shows. Import: `@spy4x/preact-ui`
+- `UnsavedGuardProps` (type): Props of `UnsavedGuard`. Import: `@spy4x/preact-ui`
+- `UnsavedLink` (type): The parts of a link that decide where it goes. Import: `@spy4x/preact-ui`
 - `failedAfterSrcChange` (helper): Carry an avatar's "this image failed" flag across a change of `src`. Import: `@spy4x/preact-ui/avatar`
 - `BillingIntervalValue` (type): A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast. Import: `@spy4x/preact-ui/billing`
 - `SubscriptionStatusValue` (type): A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast. Import: `@spy4x/preact-ui/billing`

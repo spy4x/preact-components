@@ -112,6 +112,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                        |
 | `Tooltip`         | `tooltip`           | `content`, `label`, `placement`, `focusable`                                                                                                                                                    |
 | `UpgradePrompt`   | `billing`           | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`)                                                                                                                     |
+| `UnsavedGuard`    | `unsaved-guard`     | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?` — asks before leaving with unsaved changes                                          |
 | `ZoomableImages`  | `zoomable-images`   | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                 |
 
 ## Usage
@@ -1309,6 +1310,38 @@ useEffect(() => theme.attach(), [])
 <ThemeToggle store={theme} labels={{ hint: "Automatisch" }} />
 ```
 
+## UnsavedGuard
+
+`UnsavedGuard` asks before a person leaves a page with changes they have not saved. While `when` is
+`true`, closing or reloading the tab gets the browser's own question (`beforeunload`), and a plain
+click on an in-app link opens a `ConfirmDialog`: "Leave" calls `onDiscard` and then `navigate` with
+the link's path, query and hash, and "Stay" closes the dialog. Its listeners exist only while `when`
+is `true`, and go when it turns `false` or the guard unmounts.
+
+A click is held back only when the browser would follow the link in this tab, to a page the app's
+router handles: the main button, no modifier key, no `target` but `_self`, no `download`, the same
+origin, an address `owns` accepts, and not a jump to a fragment of this same page (`href="#"`
+counts as one). Everything else is the browser's. A same-origin link `owns` rejects, such as a
+server-rendered page, is left to the browser, which asks through `beforeunload`.
+
+The guard listens in the capture phase on `document`, so it decides before the link's own click
+handler, or any ancestor's, has run. The only earlier cancellation it sees is a capture listener on
+`window`, and a link it holds back never reaches its own handler. Mark an in-page action link
+`data-unsaved-ok`, such as "Load the latest version" inside the form itself, and it is never held
+back.
+
+**The browser's Back button cannot be held back.** By the time the page hears of it the address has
+already changed, and no event lets a page refuse it.
+
+```tsx
+<UnsavedGuard
+  when={draft.value !== saved.value}
+  navigate={(href) => setLocation(href)}
+  owns={(url) => /^\/(notes|groups)(\/|$)/.test(url.pathname)}
+  onDiscard={() => draft.value = saved.value}
+/>
+```
+
 ## Billing
 
 `PricingTable`, `PlanCard` and `UpgradePrompt` take everything as props and fetch nothing, so they
@@ -1528,6 +1561,13 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### UnsavedGuard (`./unsaved-guard`)
+
+- `guardedHref(click, link, here, owns)` is the rule `UnsavedGuard` applies to a click: the in-app
+  address to hold back, as path, query and hash, or `null` when the browser or the link should
+  handle the click. `UnsavedClick` and `UnsavedLink` are the fields it reads.
+- `defaultUnsavedGuardLabels` holds the dialog's English words; `labels` replaces any of them.
 
 ## Tests
 
