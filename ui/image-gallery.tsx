@@ -89,9 +89,15 @@ const stripImageClass = "block h-auto w-full"
  * otherwise leave it half-shown. `inline: "start"` is the snap position itself, so snapping does not
  * pull the row back; `block: "nearest"` moves the page only when the row is off screen. The scroll
  * follows the row's own `scroll-behavior`, which the strip leaves instant.
+ *
+ * Only keyboard focus scrolls, which `:focus-visible` tells apart. A mouse press focuses the button
+ * before it is released; scrolling then would move the image out from under the pointer, the
+ * release would land on another element, and the click on the half-shown image would open nothing.
  */
 function revealInStrip(event: JSX.TargetedFocusEvent<HTMLButtonElement>): void {
-  event.currentTarget.scrollIntoView({ block: "nearest", inline: "start" })
+  const button = event.currentTarget
+  if (!button.matches(":focus-visible")) return
+  button.scrollIntoView({ block: "nearest", inline: "start" })
 }
 
 /**
