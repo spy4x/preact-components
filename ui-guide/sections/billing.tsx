@@ -194,14 +194,15 @@ export const billingDemos = {
       },
       {
         name: "defaultInterval",
-        type: "BillingInterval",
+        type: "BillingIntervalValue",
         default: "BillingInterval.Month",
         description: "The interval shown first.",
       },
       {
         name: "labels",
         type: "Partial<PricingTableLabels>",
-        description: "Replaces any of the English words.",
+        description:
+          "Replaces any of the English words; `intervals` and `per` merge key by key, and `chooseName` follows `choose` unless given.",
       },
     ],
     snippet: `<PricingTable
@@ -224,8 +225,9 @@ export const billingDemos = {
     props: [
       {
         name: "status",
-        type: "SubscriptionStatus",
-        description: "Trialing, active, past due, canceled or incomplete, shown in words.",
+        type: "SubscriptionStatusValue",
+        description:
+          "Trialing, active, past due, canceled or incomplete, shown in words; another package's same-valued enum passes too.",
       },
       {
         name: "periodEnd",
@@ -252,7 +254,8 @@ export const billingDemos = {
       {
         name: "labels",
         type: "Partial<PlanCardLabels>",
-        description: "Replaces any of the English words, the date lines as functions.",
+        description:
+          "Replaces any of the English words, the date lines as functions; `status` and `per` merge key by key.",
       },
     ],
     snippet: `<PlanCard
