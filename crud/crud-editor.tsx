@@ -428,7 +428,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       <PageTitle>
         {title ?? (props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`)}
       </PageTitle>
-      {error.value !== "" && <p class="text-red-700">{error.value}</p>}
+      {error.value !== "" && <p class="text-danger">{error.value}</p>}
 
       <form class="pc-card" onSubmit={submit}>
         <fieldset disabled={state.busy}>
@@ -449,7 +449,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
             }
             <div id={formIssueId} role="status" aria-live="polite" aria-atomic="true">
               {formMessages.map((issue, index) => (
-                <p key={index} class="text-sm text-red-700 mt-2">{issue.message}</p>
+                <p key={index} class="text-sm text-danger mt-2">{issue.message}</p>
               ))}
             </div>
           </div>

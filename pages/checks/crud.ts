@@ -17,8 +17,9 @@ import { centreInView, check, type Devtools, poll, settledScroll } from "./harne
  * And the `AssociationEditor` demo (#227): a save adds a row that its store still holds after the
  * re-render the save causes.
  *
- * And the `FieldIssues` demo (#526): a field row's issue text, and the demo's own `renderIssue`
- * paragraph, paint `--color-danger` at 4.5:1 or better in every palette and follow an app's repaint.
+ * And the issue text (#526): a field row's issue on the `FieldIssues` demo, that demo's own
+ * `renderIssue` paragraph and `CrudEditor`'s form-level issue paint `--color-danger` at 4.5:1 or
+ * better in every palette and follow an app's repaint.
  *
  * `CrudList`/`AssociationEditor` keyboard and focus behaviour has no check yet; anything behind a
  * ref, an effect or a key press that a string-rendering test cannot execute belongs here once it is
@@ -871,8 +872,8 @@ const REPAINTED_DANGER = "rgb(0, 128, 0)"
 /**
  * WCAG contrast helpers evaluated inside the page: `paint` turns any CSS colour into the sRGB pixel
  * it paints on white, `backdrop` composites an element's ancestors' backgrounds up to the first
- * opaque one, and `ratio` is the WCAG contrast ratio of two pixels. A copy of the same block in
- * `pages/checks/ui.ts` and `pages/checks/theme.ts`, which do not export theirs.
+ * opaque one, and `ratio` is the WCAG contrast ratio of two pixels. A byte-identical copy of the
+ * block in `pages/checks/ui.ts`, which does not export it; #548 tracks sharing one copy.
  */
 const CONTRAST_HELPERS = `
   const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
@@ -939,12 +940,16 @@ interface IssueContrastReading {
 }
 
 /**
- * A field row's issue text is drawn with `text-danger` (#526), like `ui/`'s field errors (#507):
+ * Issue text in `crud/` is drawn with `text-danger` (#526), like `ui/`'s field errors (#507). A
+ * field row's issue text, and `CrudEditor`'s form-level issue under the form:
  * in the light, the dark and the ink palette it paints `--color-danger` at 4.5:1 or better against
  * the card behind it, the canvas and the surface (in ink also its rail and active-row surfaces), and
  * an app that repaints `--color-danger` gets its own colour, in light and in dark. The demo's custom
  * `renderIssue` paragraph is held to the same, because the card teaches it as the way to render an
- * issue. The issue is added with the demo's own button and cleared with its Clear button after.
+ * issue. The field issue is added with the demo's own button and cleared with its Clear button
+ * after. The form-level issue is raised by making the `CrudEditor` demo's Notes equal its Name
+ * (the earlier checks in this file leave Name at "Alpha" and Notes at "Beta"), and Notes is put
+ * back to "Beta" after the reading.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -958,6 +963,8 @@ async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
       ),
     2_000,
   )
+  await commitField(devtools, "Notes", "Alpha")
+  await waitForState(devtools, (reading) => reading.statusText === CROSS_FIELD_MESSAGE)
 
   // The field row prints the bare message; the demo's `renderIssue` prefixes the issue type and
   // appends the row its payload names.
@@ -972,6 +979,7 @@ async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
     const messages = () => [
       ["field row", paragraphs().find((p) => p.textContent.trim() === ${rowText}) ?? null],
       ["renderIssue", paragraphs().find((p) => p.textContent.trim().startsWith(${customText})) ?? null],
+      ["CrudEditor form issue", document.querySelector('${CARD} [role="status"] p')],
     ]
     const token = (name) => {
       const probe = document.createElement("div")
@@ -1042,6 +1050,8 @@ async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
   })()`)
 
   await clickButtonByText(devtools, FIELD_ISSUES_CARD, "Clear")
+  await commitField(devtools, "Notes", "Beta")
+  await waitForState(devtools, (reading) => reading.statusText === "")
 
   const lowest = (message: IssueContrast) =>
     Math.min(message.onBackdrop, message.onCanvas, message.onSurface, message.onExtra)
@@ -1055,7 +1065,7 @@ async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
     ).join(", ")
   for (const palette of ["light", "dark", "ink"] as const) {
     check(
-      `in the ${palette} palette every crud field issue message paints --color-danger at 4.5:1 or ` +
+      `in the ${palette} palette every crud issue message paints --color-danger at 4.5:1 or ` +
         "better on the card, canvas and surface" +
         (palette === "ink" ? ", rail and active row" : ""),
       added &&
@@ -1067,7 +1077,7 @@ async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
     )
   }
   check(
-    "in the light and the dark palette every crud field issue message follows an app's repainted " +
+    "in the light and the dark palette every crud issue message follows an app's repainted " +
       "--color-danger",
     added && reading.repainted.every((message) => message.follows),
     reading.repainted.map((message) => `${message.name} ${message.color}`).join(", "),
