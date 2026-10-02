@@ -4047,7 +4047,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
 | `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                    |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`                                                         |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `layout?`                                              |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                     |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                             |
 | `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                           |
@@ -5009,6 +5009,18 @@ and `Lightbox` receive, so an index computed against the strip's own thumbnails 
 same image inside the dialog — the two never run the filter separately over two different starting
 arrays, which is what let them disagree in `ZoomableImages`'s own version of this bug before it was
 fixed there (see the `Lightbox` section above).
+
+`layout` chooses how the images sit. The default, `"grid"`, is the wrapping grid of small square
+thumbnails described above. `"strip"` is a hero or case-study row: one line of large, uncropped
+images, each most of the row's width, that scrolls sideways and snaps each image's start to the
+row's start (CSS scroll snapping, no script). The strip shows each image's full `src`; `thumbSrc` is
+for the grid. Every image is still a real button, so Tab moves through them and scrolls the focused
+one fully into view, and Enter or Space opens it in `Lightbox`. The row has no smooth scrolling, so
+there is no motion for the reduced-motion preference to stop.
+
+```tsx
+<ImageGallery layout="strip" images={caseStudyShots} />
+```
 
 ## MoneyDisplay and MoneyInput
 

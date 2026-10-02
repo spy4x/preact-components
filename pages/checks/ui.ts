@@ -199,6 +199,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await dropdownNoScriptChecks(devtools)
   await dropdownHydrationUpgradeChecks(devtools)
   await imageGalleryChecks(devtools)
+  await imageGalleryStripChecks(devtools)
   await lightboxRefusesEmptyCheck(devtools)
   await lightboxOptionsChecks(devtools)
   await zoomableImagesChecks(devtools)
@@ -16872,4 +16873,241 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       JSON.stringify(cue),
     )
   }
+}
+
+/** The `ImageGallery` card's strip, `layout="strip"`. */
+const GALLERY_STRIP = '#demo-ImageGallery [data-e2e="gallery-strip"]'
+const GALLERY_STRIP_ROW = `${GALLERY_STRIP} ul`
+
+/** Where the strip's row has scrolled to, and where each image's start sits within the row. */
+interface StripReading {
+  found: boolean
+  scrollLeft: number
+  /** The row's own scroll padding on the left, which is where a snapped image's start lands. */
+  paddingLeft: number
+  /** Each image's left edge, measured from the row's left edge. */
+  starts: number[]
+}
+
+/** Read {@link StripReading} in one round trip. */
+function readStrip(devtools: Devtools): Promise<StripReading> {
+  return devtools.evaluate<StripReading>(`(() => {
+    const row = document.querySelector('${GALLERY_STRIP_ROW}')
+    if (!row) return { found: false, scrollLeft: 0, paddingLeft: 0, starts: [] }
+    const left = row.getBoundingClientRect().left
+    return {
+      found: true,
+      scrollLeft: row.scrollLeft,
+      paddingLeft: parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0,
+      starts: [...row.children].map((item) => item.getBoundingClientRect().left - left),
+    }
+  })()`)
+}
+
+/**
+ * Wait until the strip's row stops scrolling sideways: three reads 100 ms apart that agree, after
+ * it has left `from`. `settledScroll` watches the page's vertical scroll, not a row's.
+ *
+ * @returns Whether the row left `from` and came to rest inside the budget.
+ */
+async function settledStrip(devtools: Devtools, from: number, timeoutMs = 3_000): Promise<boolean> {
+  const reads: number[] = []
+  return await poll(async () => {
+    reads.push((await readStrip(devtools)).scrollLeft)
+    const last = reads.slice(-3)
+    return last.length === 3 && last[0] !== from && last.every((value) => value === last[0])
+  }, timeoutMs)
+}
+
+/** The focused element, and whether it sits wholly inside the strip's row and the viewport. */
+interface StripFocus {
+  label: string
+  inStrip: boolean
+  insideRow: boolean
+  insideViewport: boolean
+  rect: string
+}
+
+/** Read {@link StripFocus}. */
+function readStripFocus(devtools: Devtools): Promise<StripFocus> {
+  return devtools.evaluate<StripFocus>(`(() => {
+    const row = document.querySelector('${GALLERY_STRIP_ROW}')
+    const active = document.activeElement
+    const inStrip = Boolean(row && active && row.contains(active))
+    if (!inStrip) {
+      return { label: active?.getAttribute("aria-label") || active?.tagName || "nothing",
+        inStrip, insideRow: false, insideViewport: false, rect: "" }
+    }
+    const box = active.getBoundingClientRect()
+    const area = row.getBoundingClientRect()
+    // The row's visible box, without its padding: the strip pads by 4px so a focus ring is not
+    // clipped, and an image half-hidden under that padding is not "fully in view".
+    const style = getComputedStyle(row)
+    const inner = {
+      left: area.left + parseFloat(style.paddingLeft) - 0.5,
+      right: area.left + row.clientWidth - parseFloat(style.paddingRight) + 0.5,
+    }
+    return {
+      label: active.getAttribute("aria-label"),
+      inStrip,
+      insideRow: box.left >= inner.left && box.right <= inner.right,
+      insideViewport: box.top >= -0.5 && box.bottom <= document.documentElement.clientHeight + 0.5 &&
+        box.left >= -0.5 && box.right <= document.documentElement.clientWidth + 0.5,
+      rect: \`\${Math.round(box.left)}–\${Math.round(box.right)} in row \${Math.round(inner.left)}–\${Math.round(inner.right)}, top \${Math.round(box.top)} bottom \${Math.round(box.bottom)}\`,
+    }
+  })()`)
+}
+
+/**
+ * `ImageGallery`'s strip layout (#539): a real sideways wheel lands the row on an image's start
+ * rather than where the wheel left it, Tab brings each image wholly into view, Enter opens the
+ * focused one in `Lightbox`, and a real mouse click on the half-shown next image opens it at once.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function imageGalleryStripChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('${GALLERY_STRIP_ROW}')`)
+  await devtools.evaluate<null>(
+    `(document.querySelector('${GALLERY_STRIP_ROW}')?.scrollTo({ left: 0, behavior: "instant" }), null)`,
+  )
+
+  // A real wheel, 60% of one image's width: without snapping the row would stop part-way through
+  // the first image; with it, the row lands on the second image's start.
+  const aim = await devtools.evaluate<{ x: number; y: number; delta: number } | null>(`(() => {
+    const row = document.querySelector('${GALLERY_STRIP_ROW}')
+    if (!row || !row.children[0]) return null
+    const box = row.getBoundingClientRect()
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2,
+      delta: Math.round(row.children[0].getBoundingClientRect().width * 0.6) }
+  })()`)
+  if (aim) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type: "mouseWheel",
+      x: aim.x,
+      y: aim.y,
+      deltaX: aim.delta,
+      deltaY: 0,
+    })
+  }
+  const moved = await settledStrip(devtools, 0)
+  const snapped = await readStrip(devtools)
+  const landedOn = snapped.starts.findIndex((start) => Math.abs(start - snapped.paddingLeft) <= 1)
+  check(
+    "a sideways wheel on the ImageGallery strip lands the row on an image's start, not part-way through one",
+    aim !== null && moved && landedOn >= 1,
+    aim === null
+      ? "the strip's row is not on the page"
+      : `wheel by ${aim.delta}px → scrollLeft ${snapped.scrollLeft}, came to rest ${moved}; ` +
+        `image starts ${
+          snapped.starts.map(Math.round).join(", ")
+        } against padding ${snapped.paddingLeft}`,
+  )
+
+  // Back to the start, the first image focused, then a real Tab press for each later image.
+  await devtools.evaluate<null>(`(() => {
+    const row = document.querySelector('${GALLERY_STRIP_ROW}')
+    row?.scrollTo({ left: 0, behavior: "instant" })
+    row?.querySelector("button")?.focus()
+    return null
+  })()`)
+  const total = snapped.starts.length
+  const seen: StripFocus[] = []
+  for (let step = 1; step < total; step++) {
+    const from = (await readStrip(devtools)).scrollLeft
+    await pressKey(devtools, "Tab")
+    await settledStrip(devtools, from, 1_500)
+    seen.push(await readStripFocus(devtools))
+  }
+  check(
+    "Tab moves through every ImageGallery strip image and brings each one wholly into view",
+    total >= 3 && seen.length === total - 1 &&
+      seen.every((focus) => focus.inStrip && focus.insideRow && focus.insideViewport),
+    seen.map((focus) =>
+      `${focus.label}: ${
+        focus.inStrip
+          ? `row ${focus.insideRow}, viewport ${focus.insideViewport} (${focus.rect})`
+          : "not in the strip"
+      }`
+    ).join("; ") || "no Tab was pressed",
+  )
+
+  const focused = seen.at(-1)
+  await pressKey(devtools, "Enter")
+  const opened = await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${GALLERY_STRIP} dialog')?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+  const shown = await devtools.evaluate<string>(
+    `document.querySelector('${GALLERY_STRIP} dialog img')?.getAttribute("alt") ?? ""`,
+  )
+  check(
+    "Enter on a focused ImageGallery strip image opens that image in the lightbox",
+    focused !== undefined && focused.inStrip && opened && shown === focused.label,
+    `focused "${focused?.label}", Enter → ${opened ? `open, showing "${shown}"` : "still closed"}`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${GALLERY_STRIP} dialog')?.matches(":modal") !== true`,
+      ),
+    3_000,
+  )
+
+  // A real mouse press and release on the half-shown second image, the row at its start. Chromium
+  // focuses the button on the press; if that focus scrolled the row, the release would land on
+  // another element and no click would fire.
+  await centreInView(devtools, `document.querySelector('${GALLERY_STRIP_ROW}')`)
+  const peek = await devtools.evaluate<
+    { x: number; y: number; hit: boolean; label: string; reason: string }
+  >(`(() => {
+    const row = document.querySelector('${GALLERY_STRIP_ROW}')
+    const button = row?.querySelectorAll("button")[1]
+    if (!row || !button) return { x: 0, y: 0, hit: false, label: "", reason: "no second image" }
+    document.activeElement?.blur()
+    row.scrollTo({ left: 0, behavior: "instant" })
+    const box = button.getBoundingClientRect()
+    const area = row.getBoundingClientRect()
+    // The middle of the part of the second image the row shows, vertically in the image's middle.
+    // The row is centred in the viewport, below the guide's sticky header.
+    const x = Math.round((box.left + Math.min(box.right, area.left + row.clientWidth)) / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    return { x, y, hit: Boolean(under && button.contains(under)),
+      label: button.getAttribute("aria-label") ?? "",
+      reason: \`point \${x},\${y} hits \${under?.tagName ?? "nothing"}; image \${Math.round(box.left)}–\${Math.round(box.right)}, row ends \${Math.round(area.left + row.clientWidth)}\` }
+  })()`)
+  if (peek.hit) await clickAtPoint(devtools, peek)
+  const clickOpened = peek.hit && await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${GALLERY_STRIP} dialog')?.matches(":modal") === true`,
+      ),
+    3_000,
+  )
+  const clickShown = await devtools.evaluate<{ alt: string; scrollLeft: number }>(`({
+    alt: document.querySelector('${GALLERY_STRIP} dialog img')?.getAttribute("alt") ?? "",
+    scrollLeft: document.querySelector('${GALLERY_STRIP_ROW}')?.scrollLeft ?? -1,
+  })`)
+  check(
+    "a real mouse click on the half-shown second ImageGallery strip image opens that image at once",
+    peek.hit && clickOpened && clickShown.alt === peek.label,
+    `${peek.reason} → ${
+      clickOpened ? `open, showing "${clickShown.alt}"` : "still closed"
+    }, row scrollLeft ${clickShown.scrollLeft}, expected "${peek.label}"`,
+  )
+
+  await pressKey(devtools, "Escape")
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `document.querySelector('${GALLERY_STRIP} dialog')?.matches(":modal") !== true`,
+      ),
+    3_000,
+  )
+  await pointerToCorner(devtools)
 }

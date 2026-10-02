@@ -445,7 +445,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (828 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (834 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -631,7 +631,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `FileRejection` (type): One file a `FileInput` refused, and why. Import: `@spy4x/preact-ui`
 - `matchesAccept` (helper): Whether `file` matches an `<input accept>`-style pattern list: comma-separated extensions (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`) — exactly the three shapes the browser's own file chooser filters by. Import: `@spy4x/preact-ui`
 - `honeypotField` (helper): A field simple bots fill in and people never see: off-screen rather than `display: none` or `type="hidden"`, since a scraper that already skips those two is exactly the bot this stops nothing against, and a sighted visitor tabbing past it never lands on it — `tabindex="-1"` keeps it out of the tab order on top of being off-screen, and `aria-hidden` keeps a screen reader from ever announcing it. Import: `@spy4x/preact-ui`
-- `ImageGallery` (component): A strip of thumbnails that opens the shared `Lightbox` on the one pressed. Import: `@spy4x/preact-ui`
+- `ImageGallery` (component): Thumbnails that open the shared `Lightbox` on the one pressed: a wrapping grid by default, or a sideways-scrolling, snapping row of large images with `layout="strip"`. Import: `@spy4x/preact-ui`
 - `ImageGalleryImage` (type): One image a gallery's strip can show, and hand to the lightbox it opens. Import: `@spy4x/preact-ui`
 - `ImageGalleryProps` (type): Props of `ImageGallery`. Import: `@spy4x/preact-ui`
 - `Input` (component): Controlled text input. Import: `@spy4x/preact-ui`

@@ -54,6 +54,13 @@ export interface ImageGalleryProps {
    */
   controls?: "overlay" | "below"
   /**
+   * How the images are laid out: a wrapping grid of small square thumbnails (`"grid"`, the default)
+   * or one row of large, uncropped images that scrolls sideways and snaps to each image
+   * (`"strip"`), for a hero or case-study gallery. The strip shows each image's full `src`, since
+   * its images are large; `thumbSrc` is for the grid.
+   */
+  layout?: "grid" | "strip"
+  /**
    * Extra utilities for the thumbnail strip, appended after its own and not merged into them. To
    * replace one of its own utilities, mark the replacement important with a trailing `!`.
    */
@@ -63,6 +70,35 @@ export interface ImageGalleryProps {
 const thumbButtonClass =
   "block cursor-pointer overflow-hidden rounded-md border border-subtle transition-opacity hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 const thumbImageClass = "size-20 object-cover sm:size-24"
+
+/**
+ * The strip's row. It scrolls sideways and snaps each image's start to the row's start. The `p-1`
+ * keeps a focused image's ring (2px, offset by 2px) inside the row, which would otherwise clip it,
+ * and `scroll-px-1` snaps to that padding rather than to the row's edge. There is no smooth
+ * scrolling: the row moves instantly, so the reduced-motion preference has nothing to stop.
+ */
+const stripListClass = "flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-auto p-1"
+/** One image of the strip: most of the row's width, so the next image peeks in at the edge. */
+const stripItemClass = "w-5/6 shrink-0 snap-start sm:w-2/3"
+const stripButtonClass = join(thumbButtonClass, "w-full")
+const stripImageClass = "block h-auto w-full"
+
+/**
+ * Bring a focused strip image wholly into view, its start on the row's snap point. Chromium scrolls
+ * a focused element only when none of it is visible, so Tab onto the half-shown next image would
+ * otherwise leave it half-shown. `inline: "start"` is the snap position itself, so snapping does not
+ * pull the row back; `block: "nearest"` moves the page only when the row is off screen. The scroll
+ * follows the row's own `scroll-behavior`, which the strip leaves instant.
+ *
+ * Only keyboard focus scrolls, which `:focus-visible` tells apart. A mouse press focuses the button
+ * before it is released; scrolling then would move the image out from under the pointer, the
+ * release would land on another element, and the click on the half-shown image would open nothing.
+ */
+function revealInStrip(event: JSX.TargetedFocusEvent<HTMLButtonElement>): void {
+  const button = event.currentTarget
+  if (!button.matches(":focus-visible")) return
+  button.scrollIntoView({ block: "nearest", inline: "start" })
+}
 
 /**
  * A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already
@@ -96,7 +132,8 @@ export function thumbnailKey(images: readonly { src: string }[], index: number):
 }
 
 /**
- * A strip of thumbnails that opens the shared {@link Lightbox} on the one pressed.
+ * Thumbnails that open the shared {@link Lightbox} on the one pressed: a wrapping grid by default,
+ * or a sideways-scrolling, snapping row of large images with `layout="strip"`.
  */
 export function ImageGallery(
   {
@@ -107,24 +144,32 @@ export function ImageGallery(
     nextLabel,
     counterLabel,
     controls,
+    layout = "grid",
     class: className,
   }: ImageGalleryProps,
 ): JSX.Element {
   const shown = describedImages(images)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const strip = layout === "strip"
 
   return (
     <>
-      <ul class={join("flex flex-wrap gap-3", className)}>
+      <ul class={join(strip ? stripListClass : "flex flex-wrap gap-3", className)}>
         {shown.map((image, index) => (
-          <li key={thumbnailKey(shown, index)}>
+          <li key={thumbnailKey(shown, index)} class={strip ? stripItemClass : undefined}>
             <button
               type="button"
-              class={thumbButtonClass}
+              class={strip ? stripButtonClass : thumbButtonClass}
               aria-label={image.alt}
-              onClick={() => setOpenIndex(index)}
+              onClick={() =>
+                setOpenIndex(index)}
+              onFocus={strip ? revealInStrip : undefined}
             >
-              <img src={image.thumbSrc ?? image.src} alt="" class={thumbImageClass} />
+              <img
+                src={strip ? image.src : image.thumbSrc ?? image.src}
+                alt=""
+                class={strip ? stripImageClass : thumbImageClass}
+              />
             </button>
           </li>
         ))}

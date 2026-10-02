@@ -105,15 +105,33 @@ function ImageGalleryDemo() {
   const shown = describedImages(galleryImages)
 
   return (
-    <Stack gap="sm">
-      <ImageGallery images={galleryImages} />
-      <DemoNote>
-        {galleryImages.length} images passed in, {shown.length}{" "}
-        shown: the one with a blank description is left out.
-      </DemoNote>
+    <Stack>
+      <Stack gap="sm">
+        <ImageGallery images={galleryImages} />
+        <DemoNote>
+          {galleryImages.length} images passed in, {shown.length}{" "}
+          shown: the one with a blank description is left out.
+        </DemoNote>
+      </Stack>
+      <Stack gap="sm" data-e2e="gallery-strip">
+        <ImageGallery images={stripImages} layout="strip" />
+        <DemoNote>
+          With layout="strip": one row of large images that scrolls sideways and snaps to each one.
+          Tab moves through them, and Enter opens the one in focus.
+        </DemoNote>
+      </Stack>
     </Stack>
   )
 }
+
+/** Five wide images for the strip, in five colours, so the row has something to scroll through. */
+const stripImages: ImageGalleryImage[] = [
+  { src: placeholder("9333ea", 640, 360), alt: "A wide purple rectangle" },
+  { src: placeholder("2563eb", 640, 360), alt: "A wide blue rectangle" },
+  { src: placeholder("16a34a", 640, 360), alt: "A wide green rectangle" },
+  { src: placeholder("ea580c", 640, 360), alt: "A wide orange rectangle" },
+  { src: placeholder("0891b2", 640, 360), alt: "A wide cyan rectangle" },
+]
 
 /** The three described images, for the standalone `Lightbox` card below. */
 const lightboxImages: LightboxImage[] = galleryImages.slice(0, 3)
@@ -1423,14 +1441,36 @@ export const displayDemos = {
     render: () => <TooltipDemo />,
   },
   ImageGallery: {
-    summary: "A row of thumbnails that opens each image full size in a lightbox.",
+    summary:
+      "Thumbnails, or a snapping row of large images, that open each image full size in a lightbox.",
     wide: true,
+    props: [
+      {
+        name: "images",
+        type: "ImageGalleryImage[]",
+        description: "Each with its `alt`; `thumbSrc` is the grid's small image.",
+      },
+      {
+        name: "layout",
+        type: `"grid" | "strip"`,
+        default: `"grid"`,
+        description: "A wrapping grid of thumbnails, or one row that scrolls sideways and snaps.",
+      },
+      {
+        name: "controls",
+        type: `"overlay" | "below"`,
+        default: `"overlay"`,
+        description: "Where the lightbox puts its counter and buttons.",
+      },
+    ],
     snippet: `<ImageGallery
   images={[
     { src: hero, alt: "A hero shot" },
     { src: team, alt: "The team", thumbSrc: teamThumb },
   ]}
-/>`,
+/>
+
+<ImageGallery layout="strip" images={caseStudyShots} />`,
     render: () => <ImageGalleryDemo />,
   },
   Lightbox: {
