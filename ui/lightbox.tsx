@@ -80,7 +80,7 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconChevronLeft, IconChevronRight, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal.tsx"
 
 /** One image a {@link Lightbox} can show. */
@@ -176,8 +176,11 @@ export interface LightboxProps {
   onClose: () => void
   /** Called with the new position when Left/Right or the previous/next buttons are used. */
   onIndexChange: (index: number) => void
-  /** Accessible name of the dialog. Defaults to `"Image viewer"`. */
-  label?: string
+  /**
+   * Accessible name of the dialog. Defaults to `"Image viewer"`. A function names the dialog after
+   * the image it shows, and the name follows Previous and Next: `(image) => image.alt`.
+   */
+  label?: string | ((image: LightboxImage, position: number, total: number) => string)
   /** Accessible name of the close control. Defaults to `"Close"`. */
   closeLabel?: string
   /** Accessible name of the previous control. Defaults to `"Previous image"`. */
@@ -196,6 +199,11 @@ export interface LightboxProps {
    * (the default), `"below"` puts them in one row under the image and its caption.
    */
   controls?: "overlay" | "below"
+  /**
+   * Whether the image's `alt` shows as a visible caption. Defaults to `true`. With `false` the
+   * caption is left out; the `alt` still names the image and is still announced with the counter.
+   */
+  caption?: boolean
   /**
    * Extra utilities for the dialog element, appended after its own and not merged into them. To
    * replace one of its own utilities, mark the replacement important with a trailing `!`.
@@ -262,6 +270,7 @@ export function Lightbox(
     nextLabel = "Next image",
     counterLabel = counterText,
     controls = "overlay",
+    caption = true,
     class: className,
   }: LightboxProps,
 ): JSX.Element {
@@ -285,8 +294,11 @@ export function Lightbox(
   // dialog with no image, no caption and no close control, since the content below only renders
   // when `current` is not `null`. Refusing here is the same rule as refusing to render an
   // undescribed image applied one level up, to the dialog itself rather than to one image in it.
+  //
+  // A layout effect, so the dialog is open as soon as the render the click started has run: a
+  // caller that reads `dialog[open]` right after its click must not wait for the next paint.
   const canOpen = open && total > 0
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     if (canOpen) {
@@ -372,7 +384,9 @@ export function Lightbox(
   return (
     <dialog
       ref={dialogRef}
-      aria-label={label}
+      aria-label={typeof label === "function"
+        ? current ? label(current, clampedIndex + 1, total) : "Image viewer"
+        : label}
       onClose={handleClose}
       onClick={(event) => {
         if (event.target === dialogRef.current) dialogRef.current?.close()
@@ -399,7 +413,7 @@ export function Lightbox(
             ? (
               <div class={columnClass}>
                 <div class={stageClass}>{picture(current, stageImageClass)}</div>
-                <p class={belowCaptionClass}>{current.alt}</p>
+                {caption && <p class={belowCaptionClass}>{current.alt}</p>}
                 {total > 1 && (
                   <div class={rowClass}>
                     <button
@@ -447,7 +461,7 @@ export function Lightbox(
                 )}
                 {counter && <p class={counterClass}>{counter}</p>}
                 {picture(current, imageClass)}
-                <p class={captionClass}>{current.alt}</p>
+                {caption && <p class={captionClass}>{current.alt}</p>}
               </>
             )}
         </>

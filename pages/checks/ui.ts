@@ -203,6 +203,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await imageGalleryChecks(devtools)
   await imageGalleryStripChecks(devtools)
   await imageGalleryStripSizeChecks(devtools)
+  await imageGalleryStripNavChecks(devtools)
   await lightboxRefusesEmptyCheck(devtools)
   await lightboxOptionsChecks(devtools)
   await zoomableImagesChecks(devtools)
@@ -17336,6 +17337,320 @@ async function imageGalleryStripSizeChecks(devtools: Devtools): Promise<void> {
       loading.slice(1).every((value) => value === "lazy"),
     JSON.stringify(loading),
   )
+}
+
+/** The `ImageGallery` card's strip with captions, a counter and Previous/Next. */
+const GALLERY_NAV = '#demo-ImageGallery [data-e2e="gallery-strip-nav"]'
+/** The same, with a portrait first image and so narrower slides. */
+const GALLERY_PORTRAIT = '#demo-ImageGallery [data-e2e="gallery-strip-portrait"]'
+
+/** One strip's navigation, read in one round trip. */
+interface StripNavReading {
+  found: boolean
+  counter: string
+  /** Each strip button outside the lightbox: its name and `aria-disabled`. */
+  buttons: { label: string; disabled: boolean }[]
+  focused: string
+  overflows: boolean
+  /** How far the counted slide's centre sits from the row's centre, in pixels. */
+  offCentre: number
+  /** Each slide's width. */
+  widths: number[]
+}
+
+/** Read {@link StripNavReading} for the strip under `card`. */
+function readStripNav(devtools: Devtools, card: string): Promise<StripNavReading> {
+  return devtools.evaluate<StripNavReading>(`(() => {
+    const row = document.querySelector('${card} ul')
+    const counter = document.querySelector('${card} p[aria-live]')
+    if (!row || !counter) {
+      return { found: false, counter: "", buttons: [], focused: "", overflows: false, offCentre: 0,
+        widths: [] }
+    }
+    const text = counter.textContent.trim()
+    const index = Number(text.split(" / ")[0]) - 1
+    const box = row.getBoundingClientRect()
+    const slide = row.children[index]?.getBoundingClientRect()
+    return {
+      found: true,
+      counter: text,
+      buttons: [...document.querySelectorAll('${card} button:not(ul button):not(dialog button)')]
+        .map((button) => ({ label: button.getAttribute("aria-label") ?? "",
+          disabled: button.getAttribute("aria-disabled") === "true" })),
+      focused: document.activeElement?.getAttribute("aria-label") ?? "",
+      overflows: row.scrollWidth > row.clientWidth + 1,
+      offCentre: slide
+        ? Math.abs(slide.left + slide.width / 2 - (box.left + row.clientWidth / 2))
+        : Infinity,
+      widths: [...row.children].map((item) => item.getBoundingClientRect().width),
+    }
+  })()`)
+}
+
+/**
+ * `ImageGallery`'s strip navigation (#567): real clicks on Next walk the counter to the last image
+ * with each counted slide centred in the row, Next then reads as disabled and keeps focus, Previous
+ * walks back, a real sideways wheel moves the counter, captions sit under their images, a WebP
+ * source is chosen, and a portrait first image narrows the slides so three fit a wide window, with
+ * Previous and Next shown only while the row overflows.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function imageGalleryStripNavChecks(devtools: Devtools): Promise<void> {
+  const row = `${GALLERY_NAV} ul`
+  const previous = `${GALLERY_NAV} button[aria-label="Previous slide"]:not(dialog button)`
+  const next = `${GALLERY_NAV} button[aria-label="Next slide"]:not(dialog button)`
+  await centreInView(devtools, `document.querySelector('${row}')`)
+  await devtools.evaluate<null>(
+    `(document.querySelector('${row}')?.scrollTo({ left: 0, behavior: "instant" }), null)`,
+  )
+  await poll(async () => (await readStripNav(devtools, GALLERY_NAV)).counter === "1 / 5", 2_000)
+  const start = await readStripNav(devtools, GALLERY_NAV)
+  check(
+    "an ImageGallery strip with navigation starts at 1 / 5 with Previous disabled and Next enabled",
+    start.found && start.counter === "1 / 5" && start.overflows &&
+      JSON.stringify(start.buttons) ===
+        JSON.stringify([{ label: "Previous slide", disabled: true }, {
+          label: "Next slide",
+          disabled: false,
+        }]),
+    JSON.stringify(start),
+  )
+
+  const forward: StripNavReading[] = []
+  for (let step = 2; step <= 5; step++) {
+    const point = await elementCenter(devtools, next)
+    if (!point.ok) {
+      forward.push({ ...start, counter: `no click: ${point.reason}` })
+      break
+    }
+    const from = await devtools.evaluate<number>(
+      `document.querySelector('${row}')?.scrollLeft ?? 0`,
+    )
+    await clickAtPoint(devtools, point)
+    await poll(
+      async () => (await readStripNav(devtools, GALLERY_NAV)).counter === `${step} / 5`,
+      2_000,
+    )
+    await poll(async () => {
+      const a = await devtools.evaluate<number>(`document.querySelector('${row}').scrollLeft`)
+      await new Promise((done) => setTimeout(done, 100))
+      const b = await devtools.evaluate<number>(`document.querySelector('${row}').scrollLeft`)
+      return a !== from && a === b
+    }, 2_000)
+    forward.push(await readStripNav(devtools, GALLERY_NAV))
+  }
+  check(
+    "real clicks on the ImageGallery strip's Next walk its counter from 2 / 5 to 5 / 5",
+    forward.map((reading) => reading.counter).join(",") === "2 / 5,3 / 5,4 / 5,5 / 5",
+    forward.map((reading) => reading.counter).join(", "),
+  )
+  check(
+    "each middle slide the strip's counter names sits centred in the row after Next",
+    forward.length === 4 && forward.slice(0, 3).every((reading) => reading.offCentre <= 1.5),
+    forward.map((reading) => `${reading.counter}: ${reading.offCentre.toFixed(1)}px`).join(", "),
+  )
+  const end = forward.at(-1)
+  check(
+    "at the strip's last image Next reads as disabled and keeps focus, and Previous is enabled",
+    end !== undefined && end.focused === "Next slide" &&
+      end.buttons.find((button) => button.label === "Next slide")?.disabled === true &&
+      end.buttons.find((button) => button.label === "Previous slide")?.disabled === false,
+    JSON.stringify(end),
+  )
+
+  const captions = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        const img = document.querySelectorAll('${row} img')[3]
+        return Boolean(img?.complete && img.currentSrc.startsWith("data:image/webp"))
+      })()`),
+    3_000,
+  )
+  const placed = await devtools.evaluate<{ count: number; under: boolean; texts: string[] }>(
+    `(() => {
+      const figures = [...document.querySelectorAll('${row} figure')]
+      return {
+        count: figures.length,
+        under: figures.every((figure) => {
+          const img = figure.querySelector("img")?.getBoundingClientRect()
+          const caption = figure.querySelector("figcaption")?.getBoundingClientRect()
+          return Boolean(img && caption && caption.top >= img.bottom - 0.5 &&
+            Math.abs(caption.left - img.left) <= 1)
+        }),
+        texts: figures.map((figure) =>
+          figure.querySelector("figcaption")?.textContent === figure.querySelector("img")?.alt
+            ? "same" : "differs"),
+      }
+    })()`,
+  )
+  check(
+    "each ImageGallery strip caption sits under its image and repeats its alt text",
+    placed.count === 5 && placed.under && placed.texts.every((text) => text === "same"),
+    JSON.stringify(placed),
+  )
+  check(
+    "an ImageGallery strip image with a webpSrc loads the WebP source",
+    captions,
+    await devtools.evaluate<string>(
+      `document.querySelectorAll('${row} img')[3]?.currentSrc.slice(0, 20) ?? "no image"`,
+    ),
+  )
+
+  const back: string[] = []
+  for (let step = 4; step >= 1; step--) {
+    const point = await elementCenter(devtools, previous)
+    if (!point.ok) {
+      back.push(`no click: ${point.reason}`)
+      break
+    }
+    await clickAtPoint(devtools, point)
+    await poll(
+      async () => (await readStripNav(devtools, GALLERY_NAV)).counter === `${step} / 5`,
+      2_000,
+    )
+    back.push((await readStripNav(devtools, GALLERY_NAV)).counter)
+  }
+  const home = await readStripNav(devtools, GALLERY_NAV)
+  check(
+    "real clicks on the ImageGallery strip's Previous walk its counter back to 1 / 5",
+    back.join(",") === "4 / 5,3 / 5,2 / 5,1 / 5" &&
+      home.buttons.find((button) => button.label === "Previous slide")?.disabled === true,
+    `${back.join(", ")}; ${JSON.stringify(home.buttons)}`,
+  )
+
+  await centreInView(devtools, `document.querySelector('${row}')`)
+  await devtools.evaluate<null>(
+    `(document.querySelector('${row}')?.scrollTo({ left: 0, behavior: "instant" }), null)`,
+  )
+  await poll(async () => (await readStripNav(devtools, GALLERY_NAV)).counter === "1 / 5", 2_000)
+  const aim = await devtools.evaluate<{ x: number; y: number; delta: number } | null>(`(() => {
+    const row = document.querySelector('${row}')
+    if (!row || !row.children[0]) return null
+    const box = row.getBoundingClientRect()
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2,
+      delta: Math.round(row.children[0].getBoundingClientRect().width * 0.6) }
+  })()`)
+  if (aim) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type: "mouseWheel",
+      x: aim.x,
+      y: aim.y,
+      deltaX: aim.delta,
+      deltaY: 0,
+    })
+  }
+  const wheeled = await poll(
+    async () => (await readStripNav(devtools, GALLERY_NAV)).counter === "2 / 5",
+    3_000,
+  )
+  check(
+    "a real sideways wheel on the ImageGallery strip moves its counter to 2 / 5",
+    aim !== null && wheeled,
+    `wheel ${JSON.stringify(aim)} → counter ${
+      (await readStripNav(devtools, GALLERY_NAV)).counter
+    }, ` +
+      `scrollLeft ${await devtools.evaluate<number>(
+        `document.querySelector('${row}').scrollLeft`,
+      )}`,
+  )
+
+  // The lightbox the strip opens: named after the open image, renamed by its own Next, which keeps
+  // its own name beside the strip's "Next slide", and with no second caption under the image.
+  const firstSlide = await elementCenter(devtools, `${row} li:first-child button`)
+  if (firstSlide.ok) await clickAtPoint(devtools, firstSlide)
+  const readLightbox = () =>
+    devtools.evaluate<{ open: boolean; name: string; captioned: boolean }>(`(() => {
+      const dialog = document.querySelector('${GALLERY_NAV} dialog')
+      const alt = dialog?.querySelector("img")?.alt ?? ""
+      return { open: dialog?.matches(":modal") === true, name: dialog?.getAttribute("aria-label") ?? "",
+        captioned: [...(dialog?.querySelectorAll("p") ?? [])].some((p) => p.textContent === alt) }
+    })()`)
+  await poll(async () => (await readLightbox()).open, 3_000)
+  const opened = await readLightbox()
+  await devtools.evaluate<null>(
+    `(document.querySelector('${GALLERY_NAV} dialog button[aria-label="Next image"]')?.click(), null)`,
+  )
+  await poll(async () => (await readLightbox()).name === "The dashboard", 2_000)
+  const renamed = await readLightbox()
+  check(
+    "the strip's lightbox is named after the open image, renamed by its Next image, and shows no second caption",
+    firstSlide.ok && opened.open && opened.name === "The sign-in screen" && !opened.captioned &&
+      renamed.name === "The dashboard" && !renamed.captioned,
+    `click ${firstSlide.ok || firstSlide.reason}; opened ${JSON.stringify(opened)}; after Next ` +
+      JSON.stringify(renamed),
+  )
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await readLightbox()).open, 3_000)
+
+  // A page's test reads `dialog[open]` straight after its click: the dialog must open in the
+  // render that the click starts, not after the next paint. One microtask lets Preact's queued
+  // render run, and nothing later (no frame, no timer).
+  const openAfterClick = await devtools.evaluate<{ clicked: boolean; open: boolean }>(
+    `(async () => {
+    const button = document.querySelector('${row} li:nth-child(2) button')
+    button?.click()
+    await new Promise((resolve) => queueMicrotask(resolve))
+    return { clicked: button !== null,
+      open: document.querySelector('${GALLERY_NAV} dialog[open]') !== null }
+  })()`,
+  )
+  check(
+    "a click on a strip slide opens the lightbox before the next frame",
+    openAfterClick.clicked && openAfterClick.open,
+    JSON.stringify(openAfterClick),
+  )
+  await poll(async () => (await readLightbox()).open, 3_000)
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await readLightbox()).open, 3_000)
+
+  const landscape = (await readStripNav(devtools, GALLERY_NAV)).widths[0] ?? 0
+  try {
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+    await centreInView(devtools, `document.querySelector('${GALLERY_PORTRAIT} ul')`)
+    await poll(async () => {
+      const reading = await readStripNav(devtools, GALLERY_PORTRAIT)
+      return reading.found && !reading.overflows && reading.buttons.length === 0
+    }, 3_000)
+    const wide = await readStripNav(devtools, GALLERY_PORTRAIT)
+    const wideLandscape = (await readStripNav(devtools, GALLERY_NAV)).widths[0] ?? 0
+    check(
+      "at 1440px a portrait-first ImageGallery strip has narrower slides, all three fit, and it shows no Previous or Next",
+      wide.found && wide.widths.length === 3 &&
+        wide.widths.every((width) => width < wideLandscape * 0.6) && !wide.overflows &&
+        wide.buttons.length === 0 && wide.counter === "1 / 3",
+      `portrait slides ${wide.widths.map(Math.round).join(", ")} against landscape ` +
+        `${Math.round(wideLandscape)}; overflows ${wide.overflows}; buttons ` +
+        `${wide.buttons.length}; counter ${wide.counter}`,
+    )
+
+    await devtools.send("Emulation.setDeviceMetricsOverride", {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+    await centreInView(devtools, `document.querySelector('${GALLERY_PORTRAIT} ul')`)
+    await poll(
+      async () => (await readStripNav(devtools, GALLERY_PORTRAIT)).buttons.length === 2,
+      3_000,
+    )
+    const narrow = await readStripNav(devtools, GALLERY_PORTRAIT)
+    check(
+      "at 390px the same portrait-first strip overflows and shows Previous and Next",
+      narrow.overflows && narrow.buttons.map((button) => button.label).join(",") ===
+          "Previous image,Next image",
+      `overflows ${narrow.overflows}; buttons ${JSON.stringify(narrow.buttons)}; landscape ` +
+        `slide at the default width ${Math.round(landscape)}`,
+    )
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride").catch(() => {})
+  }
 }
 
 const UNSAVED = "#demo-UnsavedGuard"

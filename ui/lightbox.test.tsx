@@ -88,6 +88,60 @@ describe("swipeStep", () => {
   })
 })
 
+describe("Lightbox naming and captions", () => {
+  it("names the dialog after the image it shows when label is a function", () => {
+    const html = render(
+      <Lightbox
+        images={IMAGES}
+        index={1}
+        open
+        onClose={() => {}}
+        onIndexChange={() => {}}
+        label={(image, position, total) => `${image.alt}, ${position} of ${total}`}
+      />,
+    )
+
+    expect(html).toMatch(/<dialog [^>]*aria-label="A team, 2 of 3"/)
+  })
+
+  it("leaves out the visible caption with caption={false}, in both layouts", () => {
+    for (const controls of ["overlay", "below"] as const) {
+      const html = render(
+        <Lightbox
+          images={IMAGES}
+          index={1}
+          open
+          onClose={() => {}}
+          onIndexChange={() => {}}
+          controls={controls}
+          caption={false}
+        />,
+      )
+
+      expect(html).not.toMatch(/<p [^>]*>A team<\/p>/)
+      expect(html).toContain('alt="A team"')
+      expect(html).toContain("A team — 2 of 3")
+    }
+  })
+
+  it("shows the visible caption by default, in both layouts", () => {
+    for (const controls of ["overlay", "below"] as const) {
+      const html = render(
+        <Lightbox
+          images={IMAGES}
+          index={1}
+          open
+          onClose={() => {}}
+          onIndexChange={() => {}}
+          controls={controls}
+        />,
+      )
+
+      expect(html).toMatch(/<p [^>]*>A team<\/p>/)
+    }
+  })
+})
+
 describe("Lightbox", () => {
   it("renders a closed dialog with an empty, always-present live region", () => {
     const html = render(

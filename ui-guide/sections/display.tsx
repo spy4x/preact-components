@@ -120,6 +120,42 @@ function ImageGalleryDemo() {
           Tab moves through them, and Enter opens the one in focus.
         </DemoNote>
       </Stack>
+      <Stack gap="sm" data-e2e="gallery-strip-nav">
+        <ImageGallery
+          images={stripNavImages}
+          layout="strip"
+          hero
+          captions
+          navigation
+          snap="center"
+          counterLabel={slashCounter}
+          stripPreviousLabel="Previous slide"
+          stripNextLabel="Next slide"
+          label={(image) => image.alt}
+          lightboxCaption={false}
+          controls="below"
+        />
+        <DemoNote>
+          With hero, captions, navigation and snap="center": the first image loads first, each
+          caption names its image, the counter follows the slide in the middle, and Previous slide
+          and Next slide scroll one slide. The lightbox is named after the open image and shows no
+          second caption. The fourth image is sent as WebP.
+        </DemoNote>
+      </Stack>
+      <Stack gap="sm" data-e2e="gallery-strip-portrait">
+        <ImageGallery
+          images={stripPortraitImages}
+          layout="strip"
+          navigation
+          snap="center"
+          slideWidth="orientation"
+          counterLabel={slashCounter}
+        />
+        <DemoNote>
+          With slideWidth="orientation" and portrait images: narrower slides. On a wide screen all
+          three fit, so Previous and Next are not shown.
+        </DemoNote>
+      </Stack>
     </Stack>
   )
 }
@@ -136,14 +172,44 @@ const stripImages: ImageGalleryImage[] = [
   { src: placeholder("0891b2", 640, 360), alt: "A wide cyan rectangle", width: 640, height: 360 },
 ]
 
+/** A 38-byte, 320×200 teal WebP, so the WebP demos need no asset and no network. */
+const tealWebp = "data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvP8ExAAdQyjYUsf+BiOh/AAA="
+
+/** The strip demos' counter wording, "2 / 5", in place of the default "2 of 5". */
+function slashCounter(position: number, total: number): string {
+  return `${position} / ${total}`
+}
+
+/**
+ * Five 16:10 images for the strip with captions and navigation. The fourth also has a WebP source,
+ * a teal image, so the teal you see is the source the browser chose over the grey fallback.
+ */
+const stripNavImages: ImageGalleryImage[] = [
+  { src: placeholder("9333ea", 640, 400), alt: "The sign-in screen", width: 640, height: 400 },
+  { src: placeholder("2563eb", 640, 400), alt: "The dashboard", width: 640, height: 400 },
+  { src: placeholder("16a34a", 640, 400), alt: "The invoice list", width: 640, height: 400 },
+  {
+    src: placeholder("6b7280", 640, 400),
+    webpSrc: tealWebp,
+    alt: "The settings page, sent as WebP",
+    width: 640,
+    height: 400,
+  },
+  { src: placeholder("0891b2", 640, 400), alt: "The billing page", width: 640, height: 400 },
+]
+
+/** Three phone-shaped images, for the strip whose slides follow the first image's orientation. */
+const stripPortraitImages: ImageGalleryImage[] = [
+  { src: placeholder("9333ea", 360, 780), alt: "A tall purple screen", width: 360, height: 780 },
+  { src: placeholder("2563eb", 360, 780), alt: "A tall blue screen", width: 360, height: 780 },
+  { src: placeholder("16a34a", 360, 780), alt: "A tall green screen", width: 360, height: 780 },
+]
+
 /** The three described images, for the standalone `Lightbox` card below. */
 const lightboxImages: LightboxImage[] = galleryImages.slice(0, 3)
 
 /** The one image {@link LightboxDemo}'s fourth button tries to open — undescribed, on purpose. */
 const undescribedLightboxImage: LightboxImage = { src: placeholder("6b7280"), alt: "  " }
-
-/** A 38-byte, 320×200 teal WebP, so the WebP card needs no asset and no network. */
-const tealWebp = "data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvP8ExAAdQyjYUsf+BiOh/AAA="
 
 /**
  * The images {@link LightboxDemo}'s "controls below" button opens: a portrait image taller than a
@@ -1452,13 +1518,63 @@ export const displayDemos = {
         name: "images",
         type: "ImageGalleryImage[]",
         description:
-          "Each with its `alt`; `thumbSrc` is the grid's small image, `width` and `height` the strip's intrinsic size.",
+          "Each with its `alt`; `thumbSrc` is the grid's small image, `width` and `height` the strip's intrinsic size, `webpSrc` a WebP source for the strip and the lightbox.",
       },
       {
         name: "layout",
         type: `"grid" | "strip"`,
         default: `"grid"`,
         description: "A wrapping grid of thumbnails, or one row that scrolls sideways and snaps.",
+      },
+      {
+        name: "hero",
+        type: "boolean",
+        default: "false",
+        description:
+          'Strip only: the first image loads eagerly with `fetchpriority="high"`, the rest lazily.',
+      },
+      {
+        name: "captions",
+        type: "boolean",
+        default: "false",
+        description: "Strip only: each image's `alt` as a visible caption under it.",
+      },
+      {
+        name: "navigation",
+        type: "boolean",
+        default: "false",
+        description:
+          "Strip only: a counter under the row, and Previous and Next while the row overflows.",
+      },
+      {
+        name: "snap",
+        type: `"start" | "center"`,
+        default: `"start"`,
+        description: "Strip only: where a slide snaps to.",
+      },
+      {
+        name: "slideWidth",
+        type: `"wide" | "orientation"`,
+        default: `"wide"`,
+        description: "Strip only: narrower slides when the first image is portrait.",
+      },
+      {
+        name: "stripPreviousLabel / stripNextLabel",
+        type: "string",
+        description:
+          "Strip only: names of the row's Previous and Next; default `previousLabel` and `nextLabel`.",
+      },
+      {
+        name: "label",
+        type: "string | ((image, position, total) => string)",
+        default: `"Image viewer"`,
+        description: "The lightbox's name; a function names it after the open image.",
+      },
+      {
+        name: "lightboxCaption",
+        type: "boolean",
+        default: "true",
+        description: "Whether the lightbox shows the image's `alt` as a visible caption.",
       },
       {
         name: "controls",
@@ -1477,6 +1593,16 @@ export const displayDemos = {
 <ImageGallery
   layout="strip"
   images={[{ src: shot, alt: "The dashboard", width: 1600, height: 900 }]}
+/>
+
+<ImageGallery
+  layout="strip"
+  hero
+  captions
+  navigation
+  snap="center"
+  counterLabel={(position, total) => \`\${position} / \${total}\`}
+  images={[{ src: shot, webpSrc: shotWebp, alt: "The dashboard", width: 1600, height: 900 }]}
 />`,
     render: () => <ImageGalleryDemo />,
   },
@@ -1500,6 +1626,18 @@ export const displayDemos = {
         name: "controls",
         type: `"overlay" | "below"`,
         description: "Counter and previous/next over the image (default) or in a row below it.",
+      },
+      {
+        name: "label",
+        type: "string | ((image, position, total) => string)",
+        default: `"Image viewer"`,
+        description: "The dialog's name; a function names it after the open image.",
+      },
+      {
+        name: "caption",
+        type: "boolean",
+        default: "true",
+        description: "Whether the image's `alt` shows as a visible caption.",
       },
       {
         name: "images[].webpSrc",
