@@ -139,6 +139,11 @@ export interface DropdownItemProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
   href?: string
   onClick?: () => void
+  /**
+   * The button form's `type`. `"submit"` makes the item the submit button of a `<form>` the caller
+   * wraps around it, for an action that posts. Ignored when `href` is set.
+   */
+  type?: "button" | "submit"
   /** Disables the button form. A disabled item is skipped by the arrow keys. */
   disabled?: boolean
   /** Renders the item in red, for an action that destroys or archives something. */
@@ -160,24 +165,31 @@ export interface DropdownItemProps {
  *
  * The item is out of the tab order (`tabindex="-1"`): inside a menu the arrow keys move between
  * items and Tab leaves the menu altogether, which is the behaviour {@link Dropdown} implements.
- * Before its dropdown hydrates, the item stays in the tab order instead: no script answers the
- * arrow keys yet, so Tab is the only way a keyboard reaches it.
+ * Before its dropdown hydrates, the item is a plain link or button instead: it carries no
+ * `role="menuitem"`, because no script answers the arrow keys yet, and it stays in the tab order,
+ * because Tab is the only way a keyboard reaches it.
+ *
+ * For an action that posts, wrap it in a `<form role="none">` and pass `type="submit"`: the form
+ * posts with or without JavaScript, and the item is still the menu's own once it hydrates.
  * Focus is styled like hover, because focus now moves through these items without a pointer.
  *
  * @param props See {@link DropdownItemProps}.
  */
 export function DropdownItem(
-  { href, onClick, disabled, danger, class: className, dataE2E, children }: DropdownItemProps,
+  { href, onClick, type = "button", disabled, danger, class: className, dataE2E, children }:
+    DropdownItemProps,
 ): JSX.Element {
   const classes = cn(itemClasses, danger && dangerClasses, className)
-  const tabindex = useContext(DropdownEnhanced) ? -1 : undefined
+  const enhanced = useContext(DropdownEnhanced)
+  const role = enhanced ? "menuitem" : undefined
+  const tabindex = enhanced ? -1 : undefined
 
   return href !== undefined
     ? (
       <a
         href={href}
         class={classes}
-        role="menuitem"
+        role={role}
         tabindex={tabindex}
         data-e2e={dataE2E}
         onClick={onClick}
@@ -187,9 +199,9 @@ export function DropdownItem(
     )
     : (
       <button
-        type="button"
+        type={type}
         class={classes}
-        role="menuitem"
+        role={role}
         tabindex={tabindex}
         disabled={disabled}
         data-e2e={dataE2E}
@@ -242,7 +254,9 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
  * above before the browser paints, so the hydrated markup and accessibility tree are the menu
  * button's alone. The swap carries over a panel the visitor already opened and a trigger that
  * already had focus. The fallback has no Escape and no arrow keys: Enter or Space on the summary
- * toggles it, and Tab walks its items.
+ * toggles it, and Tab walks its items. So it carries no menu roles either: no `role="menu"`,
+ * `aria-orientation` or menu name on the panel and no `role="menuitem"` on its items, which a
+ * screen reader would otherwise announce as a menu whose keys do nothing (#537).
  *
  * @param props See {@link DropdownProps}.
  */
@@ -413,9 +427,11 @@ export function Dropdown(props: DropdownProps): JSX.Element {
         open || !isEnhanced ? "" : "hidden",
         panelClasses,
       )}
-      role="menu"
-      aria-orientation="vertical"
-      aria-label={menuLabel}
+      // The fallback is a disclosure of plain links and buttons: no script answers a menu's keys
+      // there, so it announces no menu, and a role-less `<div>` takes no name.
+      role={isEnhanced ? "menu" : undefined}
+      aria-orientation={isEnhanced ? "vertical" : undefined}
+      aria-label={isEnhanced ? menuLabel : undefined}
       onClick={handlePanelClick}
     >
       <DropdownEnhanced.Provider value={isEnhanced}>{children}</DropdownEnhanced.Provider>

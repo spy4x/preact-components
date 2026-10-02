@@ -23,12 +23,12 @@ describe("ErrorState", () => {
     expect(html).toContain("Upload failed")
   })
 
-  it("uses the error palette", () => {
+  it("draws the panel with the danger tokens an app can repaint", () => {
     const html = render(<ErrorState message="Upload failed" />)
 
-    expect(html).toContain("border-red-500")
-    expect(html).toContain("bg-red-50")
-    expect(html).toContain("text-red-700")
+    expect(html).toContain("border-danger bg-danger-soft")
+    expect(html).toContain("text-danger")
+    expect(html).not.toMatch(/red-\d/)
   })
 
   it("appends a caller class", () => {

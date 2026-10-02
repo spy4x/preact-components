@@ -146,7 +146,7 @@ describe("Shell", () => {
     expect(html).toMatch(/<button[^>]*data-e2e="signout"[^>]*>Sign out<\/button>/)
   })
 
-  it("renders an action item as a role-less post form whose submit button is the menu item", () => {
+  it("renders an action item as a role-less post form whose submit button Tab reaches before hydration (#535)", () => {
     const html = render(
       <Shell
         navItems={navItems}
@@ -164,12 +164,16 @@ describe("Shell", () => {
     expect(attr(formTag, "role")).toBe("none")
     const button = form.match(/<button[^>]*>Sign out<\/button>/)?.[0] ?? ""
     expect(attr(button, "type")).toBe("submit")
-    expect(attr(button, "role")).toBe("menuitem")
-    expect(attr(button, "tabindex")).toBe("-1")
     expect(attr(button, "data-e2e")).toBe("signout")
-    // The form sits inside the menu panel, so the arrow keys find its button with the others.
-    const menu = html.match(/<div[^>]*role="menu"[^>]*>.*?<\/div>/)?.[0] ?? ""
-    expect(menu).toContain(form)
+    // The server renders `Dropdown`'s no-JavaScript fallback, where no arrow key works: the button
+    // is a plain one, in the tab order. Its menu role and `tabindex="-1"` come with hydration,
+    // which `pages/checks/system.ts` proves in a browser.
+    expect(attr(button, "role")).toBeUndefined()
+    expect(attr(button, "tabindex")).toBeUndefined()
+    // The form sits inside the fallback's panel, which carries no menu role either (#537).
+    const details = html.match(/<details[^>]*>(?:(?!<\/details>).)*?<form.*?<\/details>/)?.[0] ?? ""
+    expect(details).toContain(form)
+    expect(details).not.toContain('role="menu')
   })
 
   it("draws the form item with the same classes as a DropdownItem button", () => {
@@ -248,7 +252,10 @@ describe("Shell", () => {
     expect(html).toContain("Ouvrir le menu")
     expect(html).toContain("Navigation principale")
     expect(html).toContain("Aller au contenu")
-    expect(html).toContain('aria-label="Menu du compte"')
+    // `userMenu` names the hydrated menu panel only: the no-JavaScript fallback's panel is not a
+    // menu, so it carries no name (#537). The hydrated name is proven in a browser by "after
+    // hydration Shell's open user menu panel is a menu named by labels.userMenu" in
+    // `pages/checks/system.ts`, with the default label.
     expect(html).toContain('aria-label="Afficher le panneau"')
     expect(html).not.toContain("Toggle sidebar")
     expect(html).not.toContain("Skip to content")

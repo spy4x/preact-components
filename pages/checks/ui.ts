@@ -211,6 +211,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await toggleChipsChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
   await fieldErrorContrastCheck(devtools)
+  await errorStateDangerCheck(devtools)
   // The pill itself is the link, unlike the link inside the static badge beside it.
   await linkFocusRingCheck(devtools, {
     selector: "#demo-Badge a[href].inline-flex",
@@ -13663,6 +13664,137 @@ async function fieldErrorContrastCheck(devtools: Devtools): Promise<void> {
   )
 }
 
+/** The `ErrorState` panel's colours, read in one palette. */
+interface ErrorStatePanel {
+  /** Whether the panel was found in the catalogue. */
+  found: boolean
+  /** The message's contrast against the panel's own background, composited over the page. */
+  onPanel: number
+  /** The computed text, border and background colours, for the report. */
+  color: string
+  border: string
+  background: string
+  /** Whether text and border paint `--color-danger`, and the background `--color-danger-soft`. */
+  onTokens: boolean
+}
+
+/** The panel in every palette, and its colours after an app repaints both danger tokens. */
+interface ErrorStateReading {
+  light: ErrorStatePanel
+  dark: ErrorStatePanel
+  /** The opt-in dark `data-theme="ink"` palette. */
+  ink: ErrorStatePanel
+  /** In light and in dark, while the root repaints `--color-danger` and `--color-danger-soft`. */
+  repainted: { palette: string; follows: boolean; detail: string }[]
+}
+
+/** A soft danger background no palette uses, set beside {@link REPAINTED_DANGER} for the repaint. */
+const REPAINTED_DANGER_SOFT = "rgb(224, 255, 224)"
+
+/**
+ * `ErrorState` draws its panel with the danger tokens (#526): its text and border paint
+ * `--color-danger` and its background `--color-danger-soft` in the light, the dark and the ink
+ * palette, the message reaches 4.5:1 against that background, and an app that repaints the two
+ * tokens gets its own colours in the panel, in light and in dark.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function errorStateDangerCheck(devtools: Devtools): Promise<void> {
+  const reading = await devtools.evaluate<ErrorStateReading>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const wasTheme = root.getAttribute("data-theme")
+    const panel = document.querySelector('#demo-ErrorState [role="alert"]')
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.backgroundColor = "var(" + name + ")"
+      document.body.appendChild(probe)
+      const color = paint(getComputedStyle(probe).backgroundColor)
+      probe.remove()
+      return color
+    }
+    const settle = () =>
+      Promise.all(panel ? panel.getAnimations().map((animation) => animation.finished.catch(() => {})) : [])
+    const same = (a, b) => a.every((channel, index) => channel === b[index])
+    const measure = () => {
+      if (!panel) {
+        return { found: false, onPanel: 0, color: "", border: "", background: "", onTokens: false }
+      }
+      const style = getComputedStyle(panel)
+      const text = paint(style.color)
+      return {
+        found: true,
+        onPanel: ratio(text, backdrop(panel)),
+        color: style.color,
+        border: style.borderTopColor,
+        background: style.backgroundColor,
+        onTokens: same(text, token("--color-danger")) &&
+          same(paint(style.borderTopColor), token("--color-danger")) &&
+          same(paint(style.backgroundColor), token("--color-danger-soft")),
+      }
+    }
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      root.setAttribute("data-theme", "ink")
+      await settle()
+      const ink = measure()
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+      root.style.setProperty("--color-danger", ${JSON.stringify(REPAINTED_DANGER)})
+      root.style.setProperty("--color-danger-soft", ${JSON.stringify(REPAINTED_DANGER_SOFT)})
+      const danger = paint(${JSON.stringify(REPAINTED_DANGER)})
+      const soft = paint(${JSON.stringify(REPAINTED_DANGER_SOFT)})
+      const readRepainted = (palette) => {
+        if (!panel) return { palette, follows: false, detail: "missing" }
+        const style = getComputedStyle(panel)
+        return {
+          palette,
+          follows: same(paint(style.color), danger) && same(paint(style.borderTopColor), danger) &&
+            same(paint(style.backgroundColor), soft),
+          detail: palette + " text " + style.color + " border " + style.borderTopColor +
+            " background " + style.backgroundColor,
+        }
+      }
+      await settle()
+      const repaintedDark = readRepainted("dark")
+      root.classList.remove("dark")
+      await settle()
+      return { light, dark, ink, repainted: [readRepainted("light"), repaintedDark] }
+    } finally {
+      root.style.removeProperty("--color-danger")
+      root.style.removeProperty("--color-danger-soft")
+      root.classList.toggle("dark", wasDark)
+      if (wasTheme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", wasTheme)
+    }
+  })()`)
+
+  for (const palette of ["light", "dark", "ink"] as const) {
+    const panel = reading[palette]
+    check(
+      `in the ${palette} palette the ErrorState panel draws its text and border with ` +
+        "--color-danger and its background with --color-danger-soft, the text at 4.5:1 or better",
+      panel.found && panel.onTokens && panel.onPanel >= 4.5,
+      panel.found
+        ? `${panel.onPanel.toFixed(2)}:1 — text ${panel.color}, border ${panel.border}, ` +
+          `background ${panel.background}`
+        : "no ErrorState panel in the catalogue",
+    )
+  }
+  check(
+    "in the light and the dark palette the ErrorState panel follows an app's repainted " +
+      "--color-danger and --color-danger-soft",
+    reading.repainted.every((entry) => entry.follows),
+    reading.repainted.map((entry) => entry.detail).join("; "),
+  )
+}
+
 /** A keyboard-focused link's ring, read in one palette. */
 interface LinkedBadgeRing {
   /** Whether the link was found, took focus, and matched `:focus-visible`. */
@@ -15612,6 +15744,12 @@ async function themeToggleUnmountCheck(devtools: Devtools): Promise<void> {
 
 /** The `Dropdown` card's icon trigger, as the server renders it: the fallback's `<summary>`. */
 const DROPDOWN_FALLBACK_TRIGGER = '#demo-Dropdown summary[aria-label="Row actions"]'
+/**
+ * How many `Dropdown`s each card renders, so the no-script role check reads every one of them and
+ * notices one that stopped rendering its `<details>` fallback: the `Dropdown` card's four demos and
+ * `Shell`'s user menu.
+ */
+const DROPDOWN_FALLBACKS: Readonly<Record<string, number>> = { "demo-Dropdown": 4, "demo-Shell": 1 }
 /** The `Shell` card's user menu trigger; a `<summary>` before hydration, a `<button>` after. */
 const SHELL_MENU_TRIGGER = '#demo-Shell [data-e2e="shell-user-menu-button"]'
 /** The `Shell` card's form-post item with no `onClick`: a plain sign-out post. */
@@ -15652,7 +15790,7 @@ function fallbackOpen(selector: string): string {
   return `(() => {
     const summary = document.querySelector('${selector}')
     const details = summary?.parentElement
-    const panel = details?.querySelector('[role="menu"]')
+    const panel = details?.querySelector(":scope > div")
     return details instanceof HTMLDetailsElement && details.open && panel !== null &&
       panel !== undefined && panel.checkVisibility()
   })()`
@@ -15684,6 +15822,33 @@ async function dropdownNoScriptChecks(devtools: Devtools): Promise<void> {
     const closedAtFirst = !await devtools.evaluate<boolean>(fallbackOpen(DROPDOWN_FALLBACK_TRIGGER))
       .catch(() => true)
 
+    // Every Dropdown on the page, Shell's user menu among them, as the server rendered it.
+    const fallbacks = await devtools.evaluate<string[]>(`[...document.querySelectorAll("details")]
+      .filter((details) => details.closest("#demo-Dropdown, #demo-Shell") !== null &&
+        details.querySelector(":scope > summary + div.shadow-popover") !== null)
+      .map((details) => {
+        const panel = details.querySelector(":scope > div")
+        const items = panel.querySelectorAll("a, button").length
+        const marked = [panel, ...panel.querySelectorAll("*")].filter((node) =>
+          ["menu", "menuitem"].includes(node.getAttribute("role")) ||
+          node.hasAttribute("aria-orientation") ||
+          (node === panel && node.hasAttribute("aria-label"))
+        ).length
+        return details.closest("#demo-Dropdown, #demo-Shell").id + ": " + items + " items, " +
+          marked + " marked"
+      })`).catch(() => [] as string[])
+    const perCard = (card: string) =>
+      fallbacks.filter((reading) => reading.startsWith(card + ": ")).length
+    check(
+      "with scripts off, no Dropdown panel or item announces a menu: no role, orientation or name " +
+        "(#537)",
+      unhydrated &&
+        Object.entries(DROPDOWN_FALLBACKS).every(([card, count]) => perCard(card) === count) &&
+        fallbacks.length === Object.values(DROPDOWN_FALLBACKS).reduce((a, b) => a + b) &&
+        fallbacks.every((reading) => reading.endsWith(" 0 marked")),
+      `${fallbacks.length} fallbacks: ${fallbacks.join("; ")}`,
+    )
+
     const trigger = await elementCenter(devtools, DROPDOWN_FALLBACK_TRIGGER)
     if (trigger.ok) await clickAtPoint(devtools, trigger)
     const opened = trigger.ok &&
@@ -15705,7 +15870,7 @@ async function dropdownNoScriptChecks(devtools: Devtools): Promise<void> {
     await pressKey(devtools, "Tab")
     const focused = await devtools.evaluate<string>(`(() => {
       const first = document.querySelector('${DROPDOWN_FALLBACK_TRIGGER}')
-        ?.parentElement?.querySelector('[role="menuitem"]')
+        ?.parentElement?.querySelector(":scope > div :is(a, button)")
       return first && document.activeElement === first
         ? "first item"
         : (document.activeElement?.outerHTML ?? "nothing").slice(0, 80)
@@ -15884,6 +16049,29 @@ async function dropdownHydrationUpgradeChecks(devtools: Devtools): Promise<void>
         : escaped
         ? "aria-expanded false, focus on the trigger"
         : "the menu stayed open, or focus did not return",
+    )
+
+    // The roles the fallback leaves out (#537) are back once the menu has taken over.
+    const hydratedRoles = await devtools.evaluate<string>(`(() => {
+      const panel = document.querySelector('${hydratedTrigger}')?.parentElement
+        ?.querySelector(":scope > div")
+      if (!panel) return "no hydrated panel"
+      const items = [...panel.querySelectorAll("a, button")]
+      return [
+        panel.getAttribute("role"),
+        panel.getAttribute("aria-orientation"),
+        panel.getAttribute("aria-label"),
+        items.length + " items",
+        items.filter((item) =>
+          item.getAttribute("role") === "menuitem" && item.getAttribute("tabindex") === "-1"
+        ).length + " menuitems out of the tab order",
+      ].join(", ")
+    })()`).catch(() => "(page unreadable)")
+    check(
+      "after hydration a Dropdown's panel is a named vertical menu and every item a menuitem out " +
+        "of the tab order (#537)",
+      upgraded && /^menu, vertical, Row actions, (\d+) items, \1 menuitems/.test(hydratedRoles),
+      hydratedRoles,
     )
 
     const focused = await withLateBundle(() =>
