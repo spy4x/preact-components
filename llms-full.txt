@@ -3755,7 +3755,9 @@ dark. `bg-warning`, `bg-success`, `.btn-warning`, `.btn-success` and the on and 
 `--color-warning-fill` and `--color-success-fill` instead: orange-600 and green-700 in both
 palettes. An app that repaints `--color-danger`, `--color-warning` or `--color-success`, in either
 palette, sets the matching fill tokens too (`--color-danger-fill` and `--color-danger-fill-hover`,
-`--color-warning-fill`, `--color-success-fill`), or its fills keep the library's colours.
+`--color-warning-fill`, `--color-success-fill`), or its fills keep the library's colours. A
+repainted `--color-danger` also wants a matching `--color-danger-soft`, the background `ErrorState`
+draws its message on.
 `bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself. `--color-danger-soft` and `--color-info-soft` are the
 tinted backgrounds of an error or notice.
 
