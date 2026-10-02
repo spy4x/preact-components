@@ -5237,6 +5237,9 @@ async function shellEscapeRaceCheck(devtools: Devtools): Promise<void> {
   const stillOpen = await read(
     devtools,
     `(async () => {
+      // Let the close that ensureShellClosed caused finish its cleanup first. \`aria-expanded\`
+      // reads "false" one render before an effect-attached listener is removed, so without this
+      // wait a gated listener left over from the previous open could close the panel and pass.
       for (let k = 0; k < 2; k++) {
         await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
       }
