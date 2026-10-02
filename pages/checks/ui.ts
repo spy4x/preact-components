@@ -15651,7 +15651,7 @@ function fallbackOpen(selector: string): string {
   return `(() => {
     const summary = document.querySelector('${selector}')
     const details = summary?.parentElement
-    const panel = details?.querySelector('[role="menu"]')
+    const panel = details?.querySelector(":scope > div")
     return details instanceof HTMLDetailsElement && details.open && panel !== null &&
       panel !== undefined && panel.checkVisibility()
   })()`
@@ -15683,6 +15683,28 @@ async function dropdownNoScriptChecks(devtools: Devtools): Promise<void> {
     const closedAtFirst = !await devtools.evaluate<boolean>(fallbackOpen(DROPDOWN_FALLBACK_TRIGGER))
       .catch(() => true)
 
+    // Every Dropdown on the page, Shell's user menu among them, as the server rendered it.
+    const fallbacks = await devtools.evaluate<string[]>(`[...document.querySelectorAll("details")]
+      .filter((details) => details.closest("#demo-Dropdown, #demo-Shell") !== null &&
+        details.querySelector(":scope > summary + div.shadow-popover") !== null)
+      .map((details) => {
+        const panel = details.querySelector(":scope > div")
+        const items = panel.querySelectorAll("a, button").length
+        const marked = [panel, ...panel.querySelectorAll("*")].filter((node) =>
+          ["menu", "menuitem"].includes(node.getAttribute("role")) ||
+          node.hasAttribute("aria-orientation") ||
+          (node === panel && node.hasAttribute("aria-label"))
+        ).length
+        return items + " items, " + marked + " marked"
+      })`).catch(() => [] as string[])
+    check(
+      "with scripts off, no Dropdown panel or item announces a menu: no role, orientation or name " +
+        "(#537)",
+      unhydrated && fallbacks.length >= 3 &&
+        fallbacks.every((reading) => reading.endsWith(" 0 marked")),
+      `${fallbacks.length} fallbacks: ${fallbacks.join("; ")}`,
+    )
+
     const trigger = await elementCenter(devtools, DROPDOWN_FALLBACK_TRIGGER)
     if (trigger.ok) await clickAtPoint(devtools, trigger)
     const opened = trigger.ok &&
@@ -15704,7 +15726,7 @@ async function dropdownNoScriptChecks(devtools: Devtools): Promise<void> {
     await pressKey(devtools, "Tab")
     const focused = await devtools.evaluate<string>(`(() => {
       const first = document.querySelector('${DROPDOWN_FALLBACK_TRIGGER}')
-        ?.parentElement?.querySelector('[role="menuitem"]')
+        ?.parentElement?.querySelector(":scope > div :is(a, button)")
       return first && document.activeElement === first
         ? "first item"
         : (document.activeElement?.outerHTML ?? "nothing").slice(0, 80)
@@ -15883,6 +15905,29 @@ async function dropdownHydrationUpgradeChecks(devtools: Devtools): Promise<void>
         : escaped
         ? "aria-expanded false, focus on the trigger"
         : "the menu stayed open, or focus did not return",
+    )
+
+    // The roles the fallback leaves out (#537) are back once the menu has taken over.
+    const hydratedRoles = await devtools.evaluate<string>(`(() => {
+      const panel = document.querySelector('${hydratedTrigger}')?.parentElement
+        ?.querySelector(":scope > div")
+      if (!panel) return "no hydrated panel"
+      const items = [...panel.querySelectorAll("a, button")]
+      return [
+        panel.getAttribute("role"),
+        panel.getAttribute("aria-orientation"),
+        panel.getAttribute("aria-label"),
+        items.length + " items",
+        items.filter((item) =>
+          item.getAttribute("role") === "menuitem" && item.getAttribute("tabindex") === "-1"
+        ).length + " menuitems out of the tab order",
+      ].join(", ")
+    })()`).catch(() => "(page unreadable)")
+    check(
+      "after hydration a Dropdown's panel is a named vertical menu and every item a menuitem out " +
+        "of the tab order (#537)",
+      upgraded && /^menu, vertical, Row actions, (\d+) items, \1 menuitems/.test(hydratedRoles),
+      hydratedRoles,
     )
 
     const focused = await withLateBundle(() =>

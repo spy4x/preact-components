@@ -1122,6 +1122,13 @@ export const inputDemos = {
       { name: "href", type: "string", description: "Makes the item a link to this address." },
       { name: "onClick", type: "() => void", description: "What a button item does." },
       {
+        name: "type",
+        type: `"button" | "submit"`,
+        default: `"button"`,
+        description:
+          '`submit` makes the item the submit button of a `<form role="none">` around it, for an action that posts.',
+      },
+      {
         name: "disabled",
         type: "boolean",
         default: "false",
@@ -1137,13 +1144,25 @@ export const inputDemos = {
     ],
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
 <DropdownItem danger onClick={archive}>Archive</DropdownItem>
-<DropdownItem disabled onClick={archive}>Archive</DropdownItem>`,
+<DropdownItem disabled onClick={archive}>Archive</DropdownItem>
+<form method="post" action="/sign-out" role="none">
+  <DropdownItem type="submit">Sign out</DropdownItem>
+</form>`,
     render: () => (
       <div class="w-56" role="menu" aria-orientation="vertical" aria-label="Item shapes">
         <DropdownItem href="#inputs">A link, because it has an href</DropdownItem>
         <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
         <DropdownItem danger onClick={() => {}}>Destructive, through danger</DropdownItem>
         <DropdownItem disabled onClick={() => {}}>Disabled</DropdownItem>
+        <form
+          method="post"
+          action="form-demo/"
+          role="none"
+          onSubmit={(event) =>
+            event.preventDefault()}
+        >
+          <DropdownItem type="submit">A submit button, through type</DropdownItem>
+        </form>
       </div>
     ),
   },
