@@ -202,6 +202,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await dropdownHydrationUpgradeChecks(devtools)
   await imageGalleryChecks(devtools)
   await imageGalleryStripChecks(devtools)
+  await imageGalleryStripSizeChecks(devtools)
   await lightboxRefusesEmptyCheck(devtools)
   await lightboxOptionsChecks(devtools)
   await zoomableImagesChecks(devtools)
@@ -17228,6 +17229,113 @@ async function imageGalleryStripChecks(devtools: Devtools): Promise<void> {
     3_000,
   )
   await pointerToCorner(devtools)
+}
+
+/** What {@link imageGalleryStripSizeChecks} measures of the strip and its image-blocked copy. */
+interface StripSizeReading {
+  found: boolean
+  /** Each real strip image's `loading` attribute, `null` where it has none. */
+  loading: (string | null)[]
+  /** The real row's height, its first image loaded. */
+  rowHeight: number
+  firstLoaded: boolean
+  /** The copy's row height, its images never loaded. */
+  pendingRowHeight: number
+  /** Each copy image: whether it loaded, its rendered size, and its `width`/`height` attributes. */
+  pending: { loaded: boolean; width: number; height: number; attrW: number; attrH: number }[]
+}
+
+/**
+ * `ImageGallery`'s strip reserves each image's height before it loads (#560), and loads only the
+ * first image up front.
+ *
+ * The guide's strip images are `data:` URIs, which never reach the network and so cannot be held
+ * back. The check copies the rendered row next to itself, points each copied image at a same-origin
+ * image whose request `Fetch.enable` pauses, and measures the copy while its first image's request
+ * is held: the markup and classes are the component's own, only the sources differ.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function imageGalleryStripSizeChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('${GALLERY_STRIP_ROW}')`)
+  let reading: StripSizeReading | null = null
+  let paused = false
+  try {
+    await devtools.send("Fetch.enable", {
+      patterns: [{ urlPattern: "*strip-pending=*", requestStage: "Request" }],
+    })
+    const held = devtools.once<{ requestId: string }>("Fetch.requestPaused", 10_000)
+    held.catch(() => {})
+    // Each copied image asks for the Map card's tile, a real image the build ships, under a query
+    // no earlier load has cached. Every request the copy starts is held until `Fetch.disable`
+    // releases it to the preview server, which answers 200, so none ends as a failed request.
+    await devtools.evaluate<null>(`(() => {
+      const row = document.querySelector('${GALLERY_STRIP_ROW}')
+      if (!row) return null
+      const copy = row.cloneNode(true)
+      copy.dataset.e2e = "strip-pending-copy"
+      const stamp = Date.now()
+      copy.querySelectorAll("img").forEach((img, i) => {
+        img.src = new URL("map-demo/tile.png?strip-pending=" + stamp + "-" + i, document.baseURI).href
+      })
+      row.after(copy)
+      return null
+    })()`)
+    paused = await held.then(() => true, () => false)
+    reading = await devtools.evaluate<StripSizeReading>(`(() => {
+      const row = document.querySelector('${GALLERY_STRIP_ROW}')
+      const copy = document.querySelector('[data-e2e="strip-pending-copy"]')
+      if (!row || !copy) {
+        return { found: false, loading: [], rowHeight: 0, firstLoaded: false, pendingRowHeight: 0,
+          pending: [] }
+      }
+      const first = row.querySelector("img")
+      return {
+        found: true,
+        loading: [...row.querySelectorAll("img")].map((img) => img.getAttribute("loading")),
+        rowHeight: row.getBoundingClientRect().height,
+        firstLoaded: Boolean(first?.complete && first.naturalWidth > 0),
+        pendingRowHeight: copy.getBoundingClientRect().height,
+        pending: [...copy.querySelectorAll("img")].map((img) => {
+          const box = img.getBoundingClientRect()
+          return { loaded: img.complete && img.naturalWidth > 0, width: box.width,
+            height: box.height, attrW: Number(img.getAttribute("width")),
+            attrH: Number(img.getAttribute("height")) }
+        }),
+      }
+    })()`)
+  } finally {
+    await devtools.evaluate<null>(
+      `(document.querySelector('[data-e2e="strip-pending-copy"]')?.remove(), null)`,
+    ).catch(() => null)
+    await devtools.send("Fetch.disable", {}).catch(() => {})
+  }
+
+  const sized = reading?.pending ?? []
+  check(
+    "an ImageGallery strip whose images pass width and height has its final height before any image loads",
+    reading !== null && reading.found && paused && reading.firstLoaded && sized.length >= 3 &&
+      sized.every((image) =>
+        !image.loaded && image.attrW > 0 && image.attrH > 0 &&
+        Math.abs(image.height - image.width * image.attrH / image.attrW) <= 1
+      ) && Math.abs(reading.pendingRowHeight - reading.rowHeight) <= 1,
+    reading === null || !reading.found
+      ? "the strip's row is not on the page"
+      : `first request held ${paused}; loaded row ${reading.rowHeight.toFixed(1)}px (first image ` +
+        `loaded ${reading.firstLoaded}), blocked row ${reading.pendingRowHeight.toFixed(1)}px; ` +
+        sized.map((image) =>
+          `${image.width.toFixed(0)}×${image.height.toFixed(1)} for ${image.attrW}×${image.attrH}` +
+          `${image.loaded ? " (loaded)" : ""}`
+        ).join(", "),
+  )
+
+  const loading = reading?.loading ?? []
+  check(
+    'ImageGallery strip images after the first are loading="lazy", and the first is not',
+    loading.length >= 3 && loading[0] !== "lazy" &&
+      loading.slice(1).every((value) => value === "lazy"),
+    JSON.stringify(loading),
+  )
 }
 
 const UNSAVED = "#demo-UnsavedGuard"

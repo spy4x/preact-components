@@ -210,6 +210,33 @@ describe('ImageGallery with layout="strip"', () => {
     expect(html.match(/<ul class="([^"]*)"/)?.[1].split(" ")).toContain("p-1")
   })
 
+  it("renders each image's width and height on its strip image", () => {
+    const sized = IMAGES.map((image) => ({ ...image, width: 1600, height: 900 }))
+    const imgs = render(<ImageGallery images={sized} layout="strip" />).match(/<img [^>]*>/g) ?? []
+
+    expect(imgs).toHaveLength(3)
+    for (const img of imgs) {
+      expect(img).toContain('width="1600"')
+      expect(img).toContain('height="900"')
+    }
+  })
+
+  it("loads only the first strip image up front and every later one lazily", () => {
+    const imgs = render(<ImageGallery images={IMAGES} layout="strip" />).match(/<img [^>]*>/g) ?? []
+
+    expect(imgs).toHaveLength(3)
+    expect(imgs[0]).not.toContain("loading=")
+    expect(imgs[1]).toContain('loading="lazy"')
+    expect(imgs[2]).toContain('loading="lazy"')
+  })
+
+  it("leaves the grid's fixed-size thumbnails without a size or lazy loading", () => {
+    const sized = IMAGES.map((image) => ({ ...image, width: 1600, height: 900 }))
+    const html = render(<ImageGallery images={sized} />)
+
+    expect(html.slice(0, html.indexOf("<dialog"))).not.toMatch(/width=|height=|loading=/)
+  })
+
   it("keeps the caller's utilities on the strip's row", () => {
     const html = render(<ImageGallery images={IMAGES} layout="strip" class="max-w-xl" />)
 
