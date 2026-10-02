@@ -150,4 +150,71 @@ describe("ImageGallery", () => {
 
     expect(seen.map((props) => props.controls)).toEqual(["below"])
   })
+
+  it("keeps the default grid's markup and classes exactly as they were before the strip existed", () => {
+    // Rendered from the component as it stood before `layout` was added (#539), and pasted here: the
+    // default must not move by one class or one attribute.
+    const thumb =
+      "block cursor-pointer overflow-hidden rounded-md border border-subtle transition-opacity hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+    const before = `<ul class="flex flex-wrap gap-3">` +
+      `<li><button type="button" class="${thumb}" aria-label="A hero"><img src="a.png" alt class="size-20 object-cover sm:size-24"/></button></li>` +
+      `<li><button type="button" class="${thumb}" aria-label="A team"><img src="tb.png" alt class="size-20 object-cover sm:size-24"/></button></li>` +
+      `</ul>`
+    const images = [
+      { src: "a.png", alt: "A hero" },
+      { src: "b.png", alt: "A team", thumbSrc: "tb.png" },
+    ]
+
+    for (
+      const html of [
+        render(<ImageGallery images={images} />),
+        render(<ImageGallery images={images} layout="grid" />),
+      ]
+    ) {
+      expect(html.slice(0, html.indexOf("<dialog"))).toBe(before)
+    }
+  })
+})
+
+describe('ImageGallery with layout="strip"', () => {
+  it("lays the images out in one row that scrolls sideways and snaps to each image", () => {
+    const html = render(<ImageGallery images={IMAGES} layout="strip" />)
+    const list = html.match(/<ul class="([^"]*)"/)?.[1].split(" ") ?? []
+    const items = [...html.matchAll(/<li class="([^"]*)"/g)].map((match) => match[1].split(" "))
+
+    expect(list).toEqual(
+      expect.arrayContaining(["flex", "snap-x", "snap-mandatory", "overflow-x-auto"]),
+    )
+    expect(list).not.toContain("flex-wrap")
+    expect(items).toHaveLength(3)
+    for (const item of items) {
+      expect(item).toEqual(expect.arrayContaining(["snap-start", "shrink-0"]))
+    }
+  })
+
+  it("shows each full-size image uncropped, not the small square thumbnail", () => {
+    const html = render(<ImageGallery images={IMAGES} layout="strip" />)
+
+    expect(html).toContain('src="https://acme.example/img/b.png"')
+    expect(html).not.toContain("https://acme.example/thumb/b.png")
+    expect(html).not.toContain("object-cover")
+    expect(html).not.toContain("size-20")
+  })
+
+  it("keeps every image a real named button, with room for its focus ring inside the row", () => {
+    const html = render(<ImageGallery images={IMAGES} layout="strip" />)
+
+    expect((html.match(/<button type="button"/g) ?? []).length).toBe(3)
+    expect(html).toContain('aria-label="A team"')
+    expect(html).toContain("focus-visible:ring-2")
+    expect(html.match(/<ul class="([^"]*)"/)?.[1].split(" ")).toContain("p-1")
+  })
+
+  it("keeps the caller's utilities on the strip's row", () => {
+    const html = render(<ImageGallery images={IMAGES} layout="strip" class="max-w-xl" />)
+
+    expect(html.match(/<ul class="([^"]*)"/)?.[1].split(" ")).toEqual(
+      expect.arrayContaining(["snap-x", "max-w-xl"]),
+    )
+  })
 })
