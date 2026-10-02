@@ -81,7 +81,7 @@ describe("PricingTable", () => {
     expect(planItem(html, "pro-month")).toContain('aria-label="Choose Pro"')
   })
 
-  it("labels the highlighted plan in words and gives it the primary button", () => {
+  it("labels the highlighted plan in words and draws its border in the selected colour", () => {
     const html = render(<PricingTable plans={[free, proMonth]} />)
 
     expect(planItem(html, "pro-month")).toContain("Most popular")
