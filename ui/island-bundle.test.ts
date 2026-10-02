@@ -25,6 +25,15 @@ const TAILWIND_MERGE_MARKER = "oldstyle-nums"
 /** A ceiling on each component island, well under the ~28 KB `tailwind-merge` alone would add. */
 const ISLAND_CEILING_BYTES = 24_000
 
+/**
+ * Islands allowed more than {@link ISLAND_CEILING_BYTES}, each with its reason. `ImageGallery`'s
+ * strip measures its row for the counter and Previous/Next (#567), about 2.6 KB on top of the
+ * 23.2 KB it bundled before; with `tailwind-merge` it would still be over 50 KB.
+ */
+const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
+  "island-image-gallery.tsx": 27_000,
+}
+
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
 
 /**
@@ -65,7 +74,9 @@ describe("a browser bundle of a library component", () => {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
       const code = await bundle(fixture)
       expect(code).not.toContain(TAILWIND_MERGE_MARKER)
-      expect(new TextEncoder().encode(code).length).toBeLessThan(ISLAND_CEILING_BYTES)
+      expect(new TextEncoder().encode(code).length).toBeLessThan(
+        ISLAND_CEILINGS[fixture] ?? ISLAND_CEILING_BYTES,
+      )
     })
   }
 })

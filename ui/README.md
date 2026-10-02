@@ -75,13 +75,13 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
 | `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                    |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `layout?`                             |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `snap?`, `slideWidth?`                         |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                     |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                             |
 | `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                           |
 | `InlineEdit`      | `inline-edit`       | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`                                                                             |
 | `KanbanBoard`     | `kanban-board`      | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                      |
-| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`                                                              |
+| `Lightbox`        | `lightbox`          | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                        |
 | `Link`            | `link`              | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                           |
 | `LoadingSkeleton` | `loading-skeleton`  | `rows`                                                                                                                                                                                          |
 | `LoadingSpinner`  | `loading-spinner`   | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`                                                                                                           |
@@ -973,6 +973,13 @@ against and a 780×1688 image fits a 1440×900 window, `<picture>` or not.
 **An image with `webpSrc` renders inside a `<picture>`**, with that as its `image/webp` source and
 `src` as the fallback.
 
+**`label` can name the dialog after the image it shows.** A string (default `"Image viewer"`) names
+every image the same; a function, `(image, position, total) => string`, is called for the open
+image, so `label={(image) => image.alt}` names the dialog `"Screenshot 2 of 7"` and renames it on
+Previous and Next. **`caption={false}` leaves out the visible caption** in both layouts, for a page
+that already shows each image's description beside it; the `alt` still names the image and is still
+announced with the counter.
+
 **A sideways swipe on a touch screen pages**, like Left and Right: leftward for the next image,
 rightward for the previous. One finger, at least `SWIPE_MIN_PX` (50) CSS pixels sideways and more
 sideways than vertical; a pinch or a vertical drag does nothing. `swipeStep(dx, dy)` is that rule as a pure function: `1` for the next image, `-1` for the
@@ -1057,6 +1064,47 @@ carries `loading="lazy"`, so only the image a reader sees first loads up front.
 <ImageGallery
   layout="strip"
   images={[{ src: shot, alt: "The dashboard", width: 1600, height: 900 }]}
+/>
+```
+
+Five more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
+that sets none renders exactly what it did before they existed.
+
+- `hero` is for a strip that is the page's hero. Its first image loads with `loading="eager"` and
+  `fetchpriority="high"`, often the page's largest paint; every later one with `loading="lazy"` and
+  `decoding="async"`.
+- `captions` shows each image's `alt` under it, in a `<figcaption>`. The image then carries the same
+  `alt`, which names its button, and the button drops its `aria-label`: the visible caption and the
+  button's accessible name are the same text.
+- `navigation` adds a counter under the row, worded by `counterLabel` (`"2 of 5"` by default, the
+  lightbox's own wording), which follows the slide in view. Beside it, Previous and Next, named by
+  `previousLabel` and `nextLabel`, scroll the row by one slide; they render only while the row is
+  wider than its box, and the browser measures that again whenever the row or a slide changes size.
+  At either end a button stays focusable and is marked `aria-disabled`, so focus is not lost.
+- `snap="center"` snaps each slide to the row's centre instead of its start.
+- `slideWidth="orientation"` gives narrower slides, about a third of a wide row, when the first
+  image's `width` and `height` say it is portrait, so a row of phone screenshots does not fill the
+  column. A landscape first image keeps the wide slides.
+
+With `navigation`, the row carries `data-gallery-strip` and the counter `data-gallery-counter`,
+stable hooks for an app's own tests and styles. `stripPreviousLabel` and `stripNextLabel` name the
+row's buttons apart from the lightbox's (`"Previous screenshot"` on the page, `"Previous image"` in
+the dialog); they default to `previousLabel` and `nextLabel`. `label` and `lightboxCaption` are
+passed to the lightbox as its `label` and `caption`.
+
+An image's `webpSrc` is used by the strip as well as the lightbox: the strip image renders inside a
+`<picture>` with a WebP `<source>` and `src` as its fallback. The grid's small thumbnail stays a
+plain `<img>`.
+
+```tsx
+<ImageGallery
+  layout="strip"
+  hero
+  captions
+  navigation
+  snap="center"
+  counterLabel={(position, total) => `${position} / ${total}`}
+  images={[{ src: shot, webpSrc: shotWebp, alt: "The dashboard", width: 1600, height: 900 }]}
 />
 ```
 
@@ -1525,6 +1573,9 @@ components and tests means exactly that: nothing outside this package should bui
 
 - `thumbnailKey(images, index)` is exported for the package's own components and tests: a
   thumbnail's render key, its `src` plus how many times that `src` appeared earlier in the list.
+- `stripPosition(scroll)` is exported for the package's own components and tests: the slide a
+  strip's counter names for where its row has scrolled to, the first at the start, the last at the
+  end, and the nearest in between.
 
 ### Lightbox (`./lightbox`)
 

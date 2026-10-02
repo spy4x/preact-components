@@ -445,7 +445,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (834 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (838 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -812,6 +812,8 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `labelTarget` (helper): The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`. Import: `@spy4x/preact-ui/field`
 - `resolveLabels` (helper): Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it. Import: `@spy4x/preact-ui/file-input`
 - `classifyFiles` (helper): Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser. Import: `@spy4x/preact-ui/file-input`
+- `StripScroll` (type): Where a strip's row has scrolled to, as `stripPosition` reads it. Import: `@spy4x/preact-ui/image-gallery`
+- `stripPosition` (helper): The slide a strip's counter names, `0`-based, for where its row has scrolled to. Import: `@spy4x/preact-ui/image-gallery`
 - `thumbnailKey` (helper): A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already appeared earlier in `images`. Import: `@spy4x/preact-ui/image-gallery`
 - `backdropDismissesByDefault` (helper): Whether a click on the backdrop dismisses a `Modal` that says nothing about the policy. Import: `@spy4x/preact-ui/modal`
 - `supportsClosedBy` (helper): Whether a dialog implementation knows the `closedby` attribute. Import: `@spy4x/preact-ui/modal`
