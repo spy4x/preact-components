@@ -68,7 +68,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `DataTable`       | `data-table`        | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?` |
 | `DateRangePicker` | `date-range-picker` | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                        |
 | `Dropdown`        | `dropdown`          | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                             |
-| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `disabled`, `danger`, `class` — a `role="menuitem"`, out of the tab order once its `Dropdown` has hydrated                                                                   |
+| `DropdownItem`    | `dropdown`          | `href`, `onClick`, `type`, `disabled`, `danger`, `class` — a `role="menuitem"` out of the tab order once its `Dropdown` has hydrated, a plain link or button before                             |
 | `EmptyState`      | `empty-state`       | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`                                                                                  |
 | `EnhancedForm`    | `enhanced-form`     | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                   |
 | `ErrorState`      | `error-state`       | `message` (renders nothing when empty)                                                                                                                                                          |
@@ -309,9 +309,13 @@ and links and form posts inside it work. Hydration swaps that for the menu butto
 browser paints: the hydrated markup, keyboard handling and roles are the menu's alone. A panel the
 visitor opened before hydration stays open, with focus on its first item, and a trigger that had
 focus keeps it. The fallback has no Escape and no arrow keys, and it does not close when focus or a
-click leaves it. A `DropdownItem` stays in the tab order until its `Dropdown` hydrates, because Tab
-is the only key that reaches it before then. An item a caller renders by hand, such as `Shell`'s
-form-post item, keeps whatever `tabindex` it sets.
+click leaves it. So it announces no menu either (#537): until its `Dropdown` hydrates, the panel
+has no `role="menu"`, `aria-orientation` or `menuLabel` name, and a `DropdownItem` is a plain link
+or button with no `role="menuitem"`, in the tab order, because Tab is the only key that reaches it
+before then. Hydration puts the roles and the name back and takes the items out of the tab order.
+An item a caller renders by hand keeps whatever role and `tabindex` it sets. For an item that
+posts, wrap a `DropdownItem` with `type="submit"` in a `<form role="none">`, as `Shell`'s form-post
+item does: it follows the same rule and posts with or without JavaScript.
 
 `vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
 bottom of the viewport and there is more room above, as it does for the last row of a long table.

@@ -18,7 +18,7 @@ describe("Dropdown", () => {
     )
 
     expect(html).toMatch(
-      /^<details class="[^"]*"><summary[^>]*>Menu<\/summary><div[^>]*role="menu"/,
+      /^<details class="[^"]*"><summary[^>]*>Menu<\/summary><div class="/,
     )
     expect(html).toContain("First")
     expect(html.endsWith("</div></details>")).toBe(true)
@@ -26,7 +26,7 @@ describe("Dropdown", () => {
 
   it("leaves the fallback's panel to the details, not to a hidden class", () => {
     const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
-    const panelClasses = attrOf(html, /<div[^>]*role="menu"[^>]*>/, "class") ?? ""
+    const panelClasses = attrOf(html, /<div[^>]*>/, "class") ?? ""
 
     expect(panelClasses).toContain("absolute")
     expect(panelClasses.split(" ")).not.toContain("hidden")
@@ -40,11 +40,16 @@ describe("Dropdown", () => {
     expect(summaryClasses).toContain("[&::-webkit-details-marker]:hidden")
   })
 
-  it("marks the panel as a vertical menu", () => {
-    const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
+  it("server-renders the fallback panel with no menu role, orientation or name (#537)", () => {
+    const html = render(
+      <Dropdown trigger="Menu" triggerNamedByContent menuLabel="Row actions">item</Dropdown>,
+    )
+    const panel = html.match(/<div[^>]*>/)?.[0] ?? ""
 
-    expect(html).toContain('role="menu"')
-    expect(html).toContain('aria-orientation="vertical"')
+    expect(panel).toContain("absolute")
+    expect(panel).not.toContain("role=")
+    expect(panel).not.toContain("aria-orientation")
+    expect(panel).not.toContain("aria-label")
   })
 
   it("renders the trigger content", () => {
@@ -142,12 +147,6 @@ describe("Dropdown", () => {
     expect(html).not.toContain("rounded-md font-medium transition-colors")
   })
 
-  it("names the menu for assistive tech", () => {
-    expect(
-      render(<Dropdown trigger="Menu" triggerNamedByContent menuLabel="Actions">item</Dropdown>),
-    ).toContain('aria-label="Actions"')
-  })
-
   it("appends caller classes to the panel", () => {
     const html = render(
       <Dropdown trigger="Menu" triggerNamedByContent panelClasses="w-64">item</Dropdown>,
@@ -177,18 +176,7 @@ describe("DropdownItem", () => {
     expect(html).toContain('tabindex="-1"')
   })
 
-  it("fills a menu with menu items rather than children nothing marked", () => {
-    const html = render(
-      <Dropdown trigger={<svg />} triggerLabel="Row actions" menuLabel="Row actions">
-        <DropdownItem href="/edit">Edit</DropdownItem>
-        <DropdownItem onClick={() => {}}>Archive</DropdownItem>
-      </Dropdown>,
-    )
-
-    expect(html.match(/role="menuitem"/g)).toHaveLength(2)
-  })
-
-  it("keeps items in the tab order inside a server-rendered dropdown, where no arrow key works", () => {
+  it("renders plain links and buttons in the tab order inside a server-rendered dropdown, where no arrow key works (#537)", () => {
     const html = render(
       <Dropdown trigger={<svg />} triggerLabel="Row actions">
         <DropdownItem href="/edit">Edit</DropdownItem>
@@ -196,8 +184,18 @@ describe("DropdownItem", () => {
       </Dropdown>,
     )
 
-    expect(html.match(/role="menuitem"/g)).toHaveLength(2)
+    expect(html).toMatch(/<a href="\/edit" class="[^"]*">Edit<\/a>/)
+    expect(html).toMatch(/<button type="button" class="[^"]*">Archive<\/button>/)
+    expect(html).not.toContain("role=")
     expect(html).not.toContain("tabindex")
+  })
+
+  it("renders a submit button for type submit, so a form around it posts", () => {
+    const html = render(<DropdownItem type="submit">Sign out</DropdownItem>)
+
+    expect(html).toContain('type="submit"')
+    expect(html).toContain('role="menuitem"')
+    expect(html).toContain('tabindex="-1"')
   })
 
   it("disables the button form", () => {

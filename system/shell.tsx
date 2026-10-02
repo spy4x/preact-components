@@ -171,12 +171,6 @@ const navActionClasses =
   "flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
 const iconButtonClasses =
   "flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-hover"
-/**
- * `DropdownItem`'s own classes, which `ui/` does not export: a form item has to render its own
- * submit button, because `DropdownItem`'s button is `type="button"` and cannot submit a form.
- */
-const menuItemClasses =
-  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
 
 /** What every link in the navigation needs to follow a click: the port, and the drawer's close. */
 interface ShellLinkPorts {
@@ -343,8 +337,9 @@ function ShellNavList(
  *
  * The form carries `role="none"`, so the accessibility tree keeps the submit button as the menu's
  * own item, the way `Dropdown` expects its items to sit in a wrapper with no role of its own. The
- * button carries `role="menuitem"` and `tabindex="-1"` like every `DropdownItem`, so `Dropdown`
- * finds it for the arrow keys and closes on its click like any other item.
+ * button is a `DropdownItem` with `type="submit"`, so it follows its `Dropdown` like every other
+ * item: a plain submit button in the tab order before hydration, a `role="menuitem"` out of the tab
+ * order after, which `Dropdown` finds for the arrow keys and closes on its click (#535, #537).
  */
 function ShellUserMenuEntry({ item }: { item: ShellUserMenuItem }): JSX.Element {
   const { label, href, action, method = "post", onClick, dataE2E } = item
@@ -362,15 +357,7 @@ function ShellUserMenuEntry({ item }: { item: ShellUserMenuItem }): JSX.Element 
         onClick()
       }}
     >
-      <button
-        type="submit"
-        role="menuitem"
-        tabindex={-1}
-        class={menuItemClasses}
-        data-e2e={dataE2E}
-      >
-        {label}
-      </button>
+      <DropdownItem type="submit" dataE2E={dataE2E}>{label}</DropdownItem>
     </form>
   )
 }

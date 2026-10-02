@@ -682,13 +682,13 @@ that computed name into the trigger button's own accessible name, the same mecha
 draws a button, and `action` draws a `<form method="post" action>` whose submit button is the item.
 "Sign out" is the reason: it must be a POST, never a link a crawler or a cross-site page can follow,
 and a form posts in a server-rendered app before hydration. The form carries `role="none"`, so the
-accessibility tree still lists the button as an item of the menu; the button carries
-`role="menuitem"` and `tabindex="-1"` like every `DropdownItem`, so the arrow keys, Home, End,
-Escape and the close-on-activate reach it the same way. Given `onClick` too, a hydrated submit calls
-it and cancels the browser's own post, as `AuthForm` does. `action` wins over `href`. Without
-JavaScript the form is in the markup, but `Dropdown`'s trigger is a button that only a script opens,
-so a visitor cannot reach the item until the page hydrates; #496 tracks a `Dropdown` that opens
-without JavaScript.
+accessibility tree still lists the button as an item of the menu. The button is a `DropdownItem`
+with `type="submit"`, so it follows its `Dropdown` like every other item: once the page hydrates it
+is a `role="menuitem"` with `tabindex="-1"`, which the arrow keys, Home, End, Escape and the
+close-on-activate reach the same way; before that, or with scripts off, `Dropdown` is a plain
+disclosure, and the button is an ordinary submit button that Tab reaches and Enter posts (#535,
+#537). Given `onClick` too, a hydrated submit calls it and cancels the browser's own post, as
+`AuthForm` does. `action` wins over `href`.
 
 **The header and the drawer coexist without overlapping, and Escape stays scoped to whichever one is
 actually open.** The drawer's panel is positioned to start below the header's own height (`top-16`
