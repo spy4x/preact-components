@@ -1,5 +1,5 @@
 import { join } from "@spy4x/preact-cn/join"
-import { IconAlertTriangle, IconLockClosed } from "@spy4x/preact-icons"
+import { IconAlertTriangle, IconCheck, IconLockClosed } from "@spy4x/preact-icons"
 import { formatMoney } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
 import { useId, useState } from "preact/hooks"
@@ -12,9 +12,15 @@ export enum BillingInterval {
 }
 
 /**
- * Where a subscription stands. The members and their values are the ones proposed for
- * `SubscriptionStatus` in `@spy4x/billing` (spy4x/ts-libs#362), which this package does not
- * import, so the components stay usable with any billing provider.
+ * A billing interval: this package's enum, or the same number from an app's own enum, so an app
+ * passes its value without a cast.
+ */
+export type BillingIntervalValue = BillingInterval | 1 | 2
+
+/**
+ * Where a subscription stands. The members follow the five statuses spy4x/ts-libs#362 proposes for
+ * `@spy4x/billing`, numbered from 1 in the order it lists them. This package does not import that
+ * one, so the components stay usable with any billing provider.
  */
 export enum SubscriptionStatus {
   Trialing = 1,
@@ -24,6 +30,12 @@ export enum SubscriptionStatus {
   Incomplete = 5,
 }
 
+/**
+ * A subscription status: this package's enum, or the same number from another package's enum, such
+ * as `@spy4x/billing`'s, so an app passes its value without a cast.
+ */
+export type SubscriptionStatusValue = SubscriptionStatus | 1 | 2 | 3 | 4 | 5
+
 /** A price: an amount in the currency's smallest unit, and how often it is charged. */
 export interface PlanPrice {
   /** In `currency`'s smallest unit: `1200` is €12.00 for `EUR`. Formatted with `formatMoney`. */
@@ -31,7 +43,7 @@ export interface PlanPrice {
   /** ISO 4217 code, such as `"EUR"`. */
   currency: string
   /** How often the price is charged. Left out, the price has no "per month" or "per year". */
-  interval?: BillingInterval
+  interval?: BillingIntervalValue
 }
 
 /** One plan of a {@link PricingTable}. */
@@ -44,7 +56,7 @@ export interface PricingPlan extends PlanPrice {
   description?: string
   /** What the plan includes, one item per line. */
   features?: string[]
-  /** Draws this plan raised, with the `highlighted` label above its name. */
+  /** Draws this plan raised, with the `highlighted` label under its name. */
   highlighted?: boolean
 }
 
@@ -52,15 +64,25 @@ export interface PricingPlan extends PlanPrice {
 export interface PricingTableLabels {
   /** The interval toggle's group name, for screen readers. Defaults to `"Billing period"`. */
   intervalLegend: string
-  /** Each interval's option in the toggle. Defaults to `"Monthly"` and `"Yearly"`. */
-  intervals: Record<BillingInterval, string>
-  /** Text after a price. Defaults to `"per month"` and `"per year"`. */
-  per: Record<BillingInterval, string>
-  /** The label above the highlighted plan's name. Defaults to `"Most popular"`. */
+  /**
+   * Each interval's option in the toggle. Defaults to `"Monthly"` and `"Yearly"`. Merged key by key
+   * over the defaults, so a caller may pass one interval's word alone.
+   */
+  intervals: Partial<Record<1 | 2, string>>
+  /**
+   * Text after a price. Defaults to `"per month"` and `"per year"`, merged key by key. A price
+   * whose interval has no word shows none.
+   */
+  per: Partial<Record<1 | 2, string>>
+  /** The label under the highlighted plan's name. Defaults to `"Most popular"`. */
   highlighted: string
   /** The visible text of each plan's button. Defaults to `"Choose"`. */
   choose: string
-  /** Each plan's button's accessible name, from the plan's name. Defaults to `Choose <name>`. */
+  /**
+   * Each plan's button's accessible name, from the plan's name. Left out, it is `choose`, a space
+   * and the name, so overriding `choose` alone also renames the button; pass this when the language
+   * puts the words in another order.
+   */
   chooseName: (planName: string) => string
 }
 
@@ -93,7 +115,7 @@ export interface PricingTableProps {
   /** Name of the hidden field that carries the plan's ID. Defaults to `"planId"`. */
   fieldName?: string
   /** The interval shown first, when the plans have both. Defaults to monthly. */
-  defaultInterval?: BillingInterval
+  defaultInterval?: BillingIntervalValue
   /** BCP 47 locale the prices are formatted in. Defaults to `"en"`. */
   locale?: string
   /** Level of each plan's name heading. Defaults to `3`. */
@@ -115,7 +137,7 @@ const INTERVAL_KEYS: Record<BillingInterval, "month" | "year"> = {
  * Tailwind's scanner sees each class. The rule is CSS (`:has(:checked)` on the table), so the toggle
  * works on a page that runs no script.
  */
-const HIDDEN_UNLESS: Record<BillingInterval, string> = {
+const HIDDEN_UNLESS: Partial<Record<1 | 2, string>> = {
   [BillingInterval.Month]: "group-has-[[data-pricing-interval=year]:checked]/pricing:hidden",
   [BillingInterval.Year]: "group-has-[[data-pricing-interval=month]:checked]/pricing:hidden",
 }
@@ -148,9 +170,15 @@ export function PricingTable(
     class: className,
   }: PricingTableProps,
 ): JSX.Element {
-  const words = { ...defaultPricingTableLabels, ...labels }
+  const words = {
+    ...defaultPricingTableLabels,
+    ...labels,
+    intervals: { ...defaultPricingTableLabels.intervals, ...labels?.intervals },
+    per: { ...defaultPricingTableLabels.per, ...labels?.per },
+  }
+  const chooseName = labels?.chooseName ?? ((name: string) => `${words.choose} ${name}`)
   const groupName = useId()
-  const [interval, setInterval] = useState(defaultInterval)
+  const [interval, setInterval] = useState<BillingIntervalValue>(defaultInterval)
   const intervals = [BillingInterval.Month, BillingInterval.Year].filter((each) =>
     plans.some((plan) => plan.interval === each)
   )
@@ -166,7 +194,7 @@ export function PricingTable(
             {intervals.map((each) => (
               <label
                 key={each}
-                class="cursor-pointer rounded-md px-3 py-1 text-sm font-medium text-foreground has-[:checked]:bg-selected has-[:checked]:text-selected-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-focus"
+                class="group/option inline-flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 text-sm font-medium text-foreground has-[:checked]:bg-selected has-[:checked]:font-semibold has-[:checked]:text-selected-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-focus"
               >
                 <input
                   type="radio"
@@ -177,6 +205,7 @@ export function PricingTable(
                   checked={interval === each}
                   onChange={() => setInterval(each)}
                 />
+                <IconCheck class="hidden size-4 group-has-[:checked]/option:block" />
                 {words.intervals[each]}
               </label>
             ))}
@@ -196,6 +225,7 @@ export function PricingTable(
           >
             <div class="pc-card-body flex flex-1 flex-col gap-4">
               <div class="flex flex-col gap-1">
+                <Heading class="text-lg font-semibold">{plan.name}</Heading>
                 {plan.highlighted && (
                   <span
                     class={join(
@@ -206,20 +236,19 @@ export function PricingTable(
                     {words.highlighted}
                   </span>
                 )}
-                <Heading class="text-lg font-semibold">{plan.name}</Heading>
                 {plan.description && <p class="text-sm text-muted">{plan.description}</p>}
               </div>
               <p class="flex flex-wrap items-baseline gap-1">
                 <span class="text-3xl font-semibold">
                   {formatMoney(plan.amount, plan.currency, locale)}
                 </span>
-                {plan.interval !== undefined && (
+                {plan.interval !== undefined && words.per[plan.interval] && (
                   <span class="text-sm text-muted">{words.per[plan.interval]}</span>
                 )}
               </p>
               {plan.features && plan.features.length > 0 && (
                 <ul class="flex flex-col gap-2 text-sm">
-                  {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
+                  {plan.features.map((feature, index) => <li key={index}>{feature}</li>)}
                 </ul>
               )}
             </div>
@@ -238,7 +267,7 @@ export function PricingTable(
                 type="submit"
                 variant={plan.highlighted ? "primary" : "outline"}
                 class="w-full"
-                aria-label={words.chooseName(plan.name)}
+                aria-label={chooseName(plan.name)}
               >
                 {words.choose}
               </Button>
@@ -252,10 +281,14 @@ export function PricingTable(
 
 /** Words {@link PlanCard} shows. Each one has an English default. */
 export interface PlanCardLabels {
-  /** Each status, in words. Defaults to `"Trial"`, `"Active"`, `"Past due"`, `"Canceled"`, `"Incomplete"`. */
-  status: Record<SubscriptionStatus, string>
-  /** Text after the price. Defaults to `"per month"` and `"per year"`. */
-  per: Record<BillingInterval, string>
+  /**
+   * Each status, in words. Defaults to `"Trial"`, `"Active"`, `"Past due"`, `"Canceled"` and
+   * `"Incomplete"`, merged key by key, so a caller may pass some alone. A status with no word shows
+   * no pill rather than an empty one.
+   */
+  status: Partial<Record<1 | 2 | 3 | 4 | 5, string>>
+  /** Text after the price. Defaults to `"per month"` and `"per year"`, merged key by key. */
+  per: Partial<Record<1 | 2, string>>
   /** The date line of a trial, from the formatted date. Defaults to `Trial ends on <date>`. */
   trialEnds: (date: string) => string
   /** The date line of a plan that renews. Defaults to `Renews on <date>`. */
@@ -294,7 +327,8 @@ export const defaultPlanCardLabels: PlanCardLabels = {
 export interface PlanCardProps {
   /** The current plan's name, shown as the card's heading. */
   planName: string
-  status: SubscriptionStatus
+  /** Where the subscription stands: this package's enum, or the same number from another's. */
+  status: SubscriptionStatusValue
   /** The plan's price, shown under its name. Left out, the card shows none. */
   price?: PlanPrice
   /** When the current period ends: the renewal, the end of the trial, or the end of access. */
@@ -329,7 +363,7 @@ export interface PlanCardProps {
  */
 function dateLine(
   words: PlanCardLabels,
-  status: SubscriptionStatus,
+  status: SubscriptionStatusValue,
   cancelAtPeriodEnd: boolean,
   date: string,
 ): string | null {
@@ -369,8 +403,14 @@ export function PlanCard(
     class: className,
   }: PlanCardProps,
 ): JSX.Element {
-  const words = { ...defaultPlanCardLabels, ...labels }
+  const words = {
+    ...defaultPlanCardLabels,
+    ...labels,
+    status: { ...defaultPlanCardLabels.status, ...labels?.status },
+    per: { ...defaultPlanCardLabels.per, ...labels?.per },
+  }
   const Heading = `h${headingLevel}` as "h2"
+  const statusWord = words.status[status]
   const date = periodEnd &&
     dateLine(
       words,
@@ -388,7 +428,9 @@ export function PlanCard(
     <div class={join("pc-card", className)} data-status={status}>
       <div class="pc-card-header gap-2">
         <Heading class="text-lg font-semibold">{planName}</Heading>
-        <span class={join(pillClasses, "border-control text-muted")}>{words.status[status]}</span>
+        {statusWord && (
+          <span class={join(pillClasses, "border-control text-muted")}>{statusWord}</span>
+        )}
       </div>
       <div class="pc-card-body flex flex-col gap-2">
         {price && (
@@ -396,7 +438,7 @@ export function PlanCard(
             <span class="text-xl font-semibold">
               {formatMoney(price.amount, price.currency, locale)}
             </span>
-            {price.interval !== undefined && (
+            {price.interval !== undefined && words.per[price.interval] && (
               <span class="text-sm text-muted">{words.per[price.interval]}</span>
             )}
           </p>
@@ -405,7 +447,7 @@ export function PlanCard(
         {warning && (
           <p
             data-plan-warning
-            class="flex items-start gap-2 rounded-md border border-orange-700 px-3 py-2 text-sm text-foreground dark:border-orange-400"
+            class="flex items-start gap-2 rounded-md border border-[color:var(--color-warning,oklch(0.553_0.195_38.402))] px-3 py-2 text-sm text-foreground"
           >
             <IconAlertTriangle class="size-5 text-warning" />
             <span>{warning}</span>

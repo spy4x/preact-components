@@ -11,6 +11,19 @@ import {
   UpgradePrompt,
 } from "./billing.tsx"
 
+/** Another package's enums with the same values, the way `@spy4x/billing` would declare its own. */
+enum ForeignStatus {
+  Trialing = 1,
+  Active = 2,
+  PastDue = 3,
+  Canceled = 4,
+  Incomplete = 5,
+}
+enum ForeignInterval {
+  Month = 1,
+  Year = 2,
+}
+
 const free: PricingPlan = { id: "free", name: "Free", amount: 0, currency: "EUR" }
 const proMonth: PricingPlan = {
   id: "pro-month",
@@ -88,6 +101,20 @@ describe("PricingTable", () => {
     expect(planItem(html, "free")).not.toContain("Most popular")
     expect(planClass(html, "pro-month")).toContain("border-selected")
     expect(planClass(html, "free")).not.toContain("border-selected")
+  })
+
+  it("puts the highlighted label after the plan's heading, where heading navigation reaches it", () => {
+    const item = planItem(render(<PricingTable plans={[proMonth]} />), "pro-month")
+
+    expect(item.indexOf("</h3>")).toBeGreaterThan(-1)
+    expect(item.indexOf("Most popular")).toBeGreaterThan(item.indexOf("</h3>"))
+  })
+
+  it("marks the checked interval with a check icon and bolder text, not by its fill alone", () => {
+    const html = render(<PricingTable plans={[proMonth, proYear]} />)
+
+    expect(html.match(/hidden size-4 group-has-\[:checked\]\/option:block/g)?.length).toBe(2)
+    expect(html.match(/has-\[:checked\]:font-semibold/g)?.length).toBe(2)
   })
 
   it("draws no interval toggle when the plans have one interval", () => {
@@ -168,6 +195,37 @@ describe("PricingTable", () => {
     expect(html).not.toContain("Most popular")
   })
 
+  it("merges a partial interval label over the English defaults", () => {
+    const html = render(
+      <PricingTable plans={[proMonth, proYear]} labels={{ intervals: { 2: "Annual" } }} />,
+    )
+
+    expect(html).toContain("Monthly")
+    expect(html).toContain("Annual")
+    expect(html).not.toContain("Yearly")
+  })
+
+  it("names each button from a translated choose when chooseName is left out", () => {
+    const html = render(<PricingTable plans={[proMonth]} labels={{ choose: "Wählen" }} />)
+
+    expect(html).toContain('aria-label="Wählen Pro"')
+    expect(html).not.toContain("Choose")
+  })
+
+  it("accepts a same-valued interval enum from another package without a cast", () => {
+    const html = render(
+      <PricingTable
+        plans={[{ ...proMonth, interval: ForeignInterval.Month }, {
+          ...proYear,
+          interval: ForeignInterval.Year,
+        }]}
+        defaultInterval={ForeignInterval.Year}
+      />,
+    )
+
+    expect(html).toMatch(/value="year" data-pricing-interval="year" checked/)
+  })
+
   it("levels each plan's name heading as asked", () => {
     expect(render(<PricingTable plans={[free]} />)).toContain("<h3")
     expect(render(<PricingTable plans={[free]} headingLevel={2} />)).toContain("<h2")
@@ -241,6 +299,59 @@ describe("PlanCard", () => {
     expect(html).toContain("Incomplete")
     expect(html).toContain("Your first payment has not gone through.")
     expect(html).toContain(warningIcon)
+  })
+
+  it("shows no payment warning for a trial, active, ending or canceled plan", () => {
+    for (
+      const status of [
+        SubscriptionStatus.Trialing,
+        SubscriptionStatus.Active,
+        SubscriptionStatus.Canceled,
+      ]
+    ) {
+      for (const cancelAtPeriodEnd of [false, true]) {
+        const html = render(
+          <PlanCard {...base} status={status} cancelAtPeriodEnd={cancelAtPeriodEnd} />,
+        )
+        expect(html).not.toContain("data-plan-warning")
+        expect(html).not.toContain(warningIcon)
+      }
+    }
+  })
+
+  it("draws the warning's border in the warning colour token", () => {
+    const html = render(<PlanCard {...base} status={SubscriptionStatus.PastDue} />)
+
+    expect(html).toMatch(/data-plan-warning[^>]*border-\[color:var\(--color-warning/)
+  })
+
+  it("accepts a same-valued status enum from another package without a cast", () => {
+    const html = render(
+      <PlanCard
+        {...base}
+        status={ForeignStatus.PastDue}
+        price={{ amount: 1200, currency: "EUR", interval: ForeignInterval.Month }}
+      />,
+    )
+
+    expect(html).toContain("Past due")
+    expect(html).toContain("per month")
+  })
+
+  it("merges a partial status label over the English defaults", () => {
+    const labels = { status: { [SubscriptionStatus.PastDue]: "Überfällig" } }
+
+    expect(render(<PlanCard {...base} status={SubscriptionStatus.PastDue} labels={labels} />))
+      .toContain("Überfällig")
+    expect(render(<PlanCard {...base} status={SubscriptionStatus.Active} labels={labels} />))
+      .toContain(">Active<")
+  })
+
+  it("shows no empty pill for a status it has no word for", () => {
+    const html = render(<PlanCard {...base} status={6 as SubscriptionStatus} />)
+
+    expect(html).toContain("Pro")
+    expect(html).not.toMatch(/<span[^>]*><\/span>/)
   })
 
   it("shows the price with its interval when given", () => {
