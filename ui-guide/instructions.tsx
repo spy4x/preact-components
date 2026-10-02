@@ -77,6 +77,7 @@ export const documentedClasses: Record<string, string[]> = {
     "bg-danger-soft",
     "bg-info-soft",
     "border-danger",
+    "border-warning",
     "bg-surface-overlay",
     "bg-scrim-strong",
     "bg-on-scrim",

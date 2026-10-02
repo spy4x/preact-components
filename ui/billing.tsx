@@ -447,7 +447,7 @@ export function PlanCard(
         {warning && (
           <p
             data-plan-warning
-            class="flex items-start gap-2 rounded-md border border-[color:var(--color-warning,oklch(0.553_0.195_38.402))] px-3 py-2 text-sm text-foreground"
+            class="flex items-start gap-2 rounded-md border border-warning px-3 py-2 text-sm text-foreground"
           >
             <IconAlertTriangle class="size-5 text-warning" />
             <span>{warning}</span>

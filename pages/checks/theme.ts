@@ -577,6 +577,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   await selectionAndRingChecks(devtools)
   await focusGapChecks(devtools)
   await dangerButtonClassChecks(devtools)
+  await warningBorderChecks(devtools)
 }
 
 /** `.btn-danger`'s label on its fill, at rest and hovered, in one palette. */
@@ -587,6 +588,67 @@ interface DangerButtonReading {
   hoverToken: string
   onFill: number
   onHover: number
+}
+
+/** A warning border's colour, read in one palette (#556). */
+interface WarningBorderReading {
+  /** Whether the past-due `PlanCard`'s warning was on the page. */
+  found: boolean
+  /** Its computed top border colour. */
+  border: string
+  /** Whether that border paints the same pixel as `--color-warning`. */
+  matches: boolean
+}
+
+/**
+ * The past-due `PlanCard`'s warning box draws its border in `--color-warning` (#556), through the
+ * `border-warning` utility: in light and in dark the border paints the same pixel as the token, and
+ * once an app repaints `--color-warning` the border follows it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function warningBorderChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const read = (setup: string) =>
+    devtools.evaluate<WarningBorderReading>(`(async () => {
+      ${CONTRAST_HELPERS}
+      ${setup}
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      const warning = document.querySelector("#demo-PlanCard [data-plan-warning]")
+      if (!warning) return { found: false, border: "", matches: false }
+      const probe = document.createElement("div")
+      probe.style.color = "var(--color-warning)"
+      document.body.append(probe)
+      const token = pixel(getComputedStyle(probe).color)
+      probe.remove()
+      const border = getComputedStyle(warning).borderTopColor
+      const painted = pixel(border)
+      return { found: true, border, matches: painted.every((value, at) => value === token[at]) }
+    })()`)
+  const wasDark = await devtools.evaluate<boolean>(
+    `document.documentElement.classList.contains("dark")`,
+  )
+  const light = await read(`document.documentElement.classList.remove("dark")`)
+  const dark = await read(`document.documentElement.classList.add("dark")`)
+  const repainted = await read(
+    `document.documentElement.classList.remove("dark")
+    document.documentElement.style.setProperty("--color-warning", "rgb(0, 128, 0)")`,
+  )
+  await devtools.evaluate(`(() => {
+    document.documentElement.style.removeProperty("--color-warning")
+    document.documentElement.classList.toggle("dark", ${wasDark})
+    return null
+  })()`)
+  check(
+    "in light and dark, the past-due PlanCard's warning border paints --color-warning",
+    light.found && light.matches && dark.found && dark.matches,
+    `light ${light.border || "missing"}, dark ${dark.border || "missing"}`,
+  )
+  check(
+    "the past-due PlanCard's warning border follows a repainted --color-warning",
+    repainted.found && repainted.matches && repainted.border === "rgb(0, 128, 0)",
+    `--color-warning set to rgb(0, 128, 0): border ${repainted.border || "missing"}`,
+  )
 }
 
 /**
