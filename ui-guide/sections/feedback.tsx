@@ -9,6 +9,7 @@
 
 import {
   Button,
+  Checkbox,
   Cluster,
   ConfirmDialog,
   defaultToastDuration,
@@ -24,6 +25,7 @@ import {
   type ToastCorner,
   Toastr,
   type ToastVariant,
+  UnsavedGuard,
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
@@ -462,6 +464,65 @@ function ConfirmDialogDemo() {
   )
 }
 
+/** The demo's router owns the addresses under `unsaved-demo/`, and nothing else on this site. */
+const ownsUnsavedDemo = (url: URL) => url.pathname.includes("/unsaved-demo/")
+
+/**
+ * Links of every kind the guard looks at. A click the guard leaves alone reaches the wrapper, which
+ * cancels it and says where the browser would have gone, so trying a link never leaves the guide.
+ */
+function UnsavedGuardDemo() {
+  const dirty = useSignal(false)
+  const outcome = useSignal("nothing yet")
+  const link = "pc-link text-sm"
+
+  return (
+    <Stack gap="sm">
+      <Checkbox
+        checked={dirty.value}
+        onChange={(event) => dirty.value = event.currentTarget.checked}
+        data-e2e="unsaved-dirty"
+      >
+        Unsaved changes
+      </Checkbox>
+      <div
+        data-e2e="unsaved-links"
+        onClick={(event) => {
+          const anchor = (event.target as Element).closest("a")
+          if (!anchor || event.defaultPrevented) return
+          event.preventDefault()
+          outcome.value = `the browser follows ${anchor.getAttribute("href")}`
+        }}
+      >
+        <Cluster>
+          <a class={link} href="unsaved-demo/notes/2" data-unsaved="owned">In-app page</a>
+          <a class={link} href="unsaved-demo/notes/1" data-unsaved-ok data-unsaved="allowed">
+            Load the latest version
+          </a>
+          <a class={link} href="unsaved-demo/notes/3" target="_blank" data-unsaved="target">
+            New tab
+          </a>
+          <a class={link} href="unsaved-demo/export.csv" download data-unsaved="download">
+            Download
+          </a>
+          <a class={link} href="server-page/" data-unsaved="not-owned">Server page</a>
+          <a class={link} href="https://example.com/" data-unsaved="other-origin">
+            Another site
+          </a>
+          <a class={link} href="#demo-UnsavedGuard" data-unsaved="hash">This card</a>
+        </Cluster>
+      </div>
+      <DemoNote e2e="unsaved-outcome">Outcome: {outcome.value}</DemoNote>
+      <UnsavedGuard
+        when={dirty.value}
+        owns={ownsUnsavedDemo}
+        navigate={(href) => outcome.value = `navigate("${href}")`}
+        onDiscard={() => dirty.value = false}
+      />
+    </Stack>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -628,6 +689,42 @@ export const feedbackDemos = {
   onCancel={() => confirming.value = false}
 />`,
     render: () => <ConfirmDialogDemo />,
+  },
+  UnsavedGuard: {
+    summary:
+      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link.",
+    wide: true,
+    props: [
+      { name: "when", type: "boolean", description: "Whether there are unsaved changes." },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description: "The router port, called with the link's path, query and hash on Leave.",
+      },
+      {
+        name: "owns",
+        type: "(url: URL) => boolean",
+        description: "Which addresses the router handles; any other link is the browser's.",
+      },
+      {
+        name: "onDiscard",
+        type: "() => void",
+        description: "Called on Leave, before `navigate`, to drop the changes.",
+      },
+      {
+        name: "labels",
+        type: "Partial<UnsavedGuardLabels>",
+        description: "Replaces the dialog's English words: `title`, `message`, `leave`, `stay`.",
+      },
+    ],
+    snippet: `<UnsavedGuard
+  when={draft.value !== saved.value}
+  navigate={(href) => setLocation(href)}
+  owns={(url) => url.pathname.startsWith("/notes/")}
+  onDiscard={() => draft.value = saved.value}
+/>
+<a href="/notes/7?latest" data-unsaved-ok>Load the latest version</a>`,
+    render: () => <UnsavedGuardDemo />,
   },
   Toastr: {
     summary: "Short notifications stacked in a corner that go away on their own or when dismissed.",
