@@ -322,7 +322,7 @@ describe("PlanCard", () => {
   it("draws the warning's border in the warning colour token", () => {
     const html = render(<PlanCard {...base} status={SubscriptionStatus.PastDue} />)
 
-    expect(html).toMatch(/data-plan-warning[^>]*border-\[color:var\(--color-warning/)
+    expect(html).toMatch(/data-plan-warning[^>]*\bborder-warning\b/)
   })
 
   it("accepts a same-valued status enum from another package without a cast", () => {

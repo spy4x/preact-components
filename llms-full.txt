@@ -3758,7 +3758,8 @@ palette, sets the matching fill tokens too (`--color-danger-fill` and `--color-d
 `--color-warning-fill`, `--color-success-fill`), or its fills keep the library's colours. A
 repainted `--color-danger` also wants a matching `--color-danger-soft`, the background `ErrorState`
 draws its message on.
-`bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself. `--color-danger-soft` and `--color-info-soft` are the
+`bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself, and
+`border-warning` reads the warning text colour, `--color-warning`, for a warning box's outline. `--color-danger-soft` and `--color-info-soft` are the
 tinted backgrounds of an error or notice.
 
 The warning fill carries a dark label: `--color-warning-foreground` is gray-950, 5.62:1 on the

@@ -392,6 +392,7 @@ function TokenClassesDemo() {
       <Cluster>
         <span class={`bg-info text-info-foreground ${swatch}`}>bg-info</span>
         <span class={`text-info border-info ${outlined}`}>text-info</span>
+        <span class={`text-warning border-warning ${outlined}`}>border-warning</span>
         <span class={`bg-danger-fill text-danger-foreground ${swatch}`}>bg-danger-fill</span>
         <span class={`bg-danger-fill-hover text-danger-foreground ${swatch}`}>
           bg-danger-fill-hover
@@ -612,6 +613,8 @@ export const surfaceDemos = {
       "bg-danger-soft",
       "bg-info-soft",
       "border-danger",
+      "text-warning",
+      "border-warning",
       "bg-surface-overlay",
       "bg-scrim-strong",
       "bg-on-scrim",

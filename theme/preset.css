@@ -198,6 +198,10 @@
   border-color: var(--color-danger, oklch(0.505 0.213 27.518));
 }
 
+@utility border-warning {
+  border-color: var(--color-warning, oklch(0.553 0.195 38.402));
+}
+
 @utility bg-info-soft {
   background-color: var(--color-info-soft, oklch(0.97 0.014 254.604));
 }

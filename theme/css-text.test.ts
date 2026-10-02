@@ -193,7 +193,7 @@ describe("preset.css fallbacks, after #463", () => {
     const mismatched = fallbacks
       .filter(([, token, fallback]) => fallback !== root[token])
       .map(([usage, token]) => `${usage} (tokens.css: ${root[token]})`)
-    expect(fallbacks.length).toBe(12)
+    expect(fallbacks.length).toBe(13)
     expect(mismatched).toEqual([])
   })
 })
