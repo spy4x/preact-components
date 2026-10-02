@@ -36,7 +36,8 @@ export interface UnsavedLink {
  * It returns `null` for a click a handler already cancelled, a button other than the main one, a
  * modifier key, a link with a `target` other than `_self`, a `download` link, a link marked
  * `data-unsaved-ok`, another origin, an address `owns` says the app's router does not handle (a
- * server route, an API path), and a link that only moves to a fragment of this same page.
+ * server route, an API path), and a link that only moves to a fragment of this same page,
+ * including an empty one (`href="#"`).
  *
  * @param click The click, or any object with the same fields.
  * @param link The link that was clicked.
@@ -55,7 +56,10 @@ export function guardedHref(
   const page = new URL(here.href)
   const url = new URL(link.href, page)
   if (url.origin !== page.origin || !owns(url)) return null
-  if (url.pathname === page.pathname && url.search === page.search && url.hash !== "") return null
+  // `url.hash` is "" for an empty fragment too, so `href="#"` is found by the "#" in the address.
+  if (url.pathname === page.pathname && url.search === page.search && url.href.includes("#")) {
+    return null
+  }
   return `${url.pathname}${url.search}${url.hash}`
 }
 

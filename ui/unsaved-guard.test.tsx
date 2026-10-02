@@ -90,6 +90,13 @@ describe("guardedHref", () => {
       .toBeNull()
   })
 
+  it('leaves an empty fragment link, href="#", on this page', () => {
+    expect(guardedHref(plain, link({ href: "#" }), here, owns)).toBeNull()
+    expect(
+      guardedHref(plain, link({ href: "https://app.example/notes/7?tab=body#" }), here, owns),
+    ).toBeNull()
+  })
+
   it("holds back a fragment link to another query of the same path", () => {
     expect(
       guardedHref(
