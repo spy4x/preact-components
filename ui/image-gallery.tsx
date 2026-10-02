@@ -30,6 +30,14 @@ export interface ImageGalleryImage extends LightboxImage {
    * one image size for both does not have to repeat it.
    */
   thumbSrc?: string
+  /**
+   * The full image's intrinsic width in pixels, with `height`. A strip renders both on its `<img>`,
+   * so the browser reserves the image's height before it loads and nothing below the strip moves
+   * when it arrives. The grid ignores them: its thumbnails are fixed-size squares already.
+   */
+  width?: number
+  /** The full image's intrinsic height in pixels, with `width`. */
+  height?: number
 }
 
 export interface ImageGalleryProps {
@@ -81,6 +89,12 @@ const stripListClass = "flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-
 /** One image of the strip: most of the row's width, so the next image peeks in at the edge. */
 const stripItemClass = "w-5/6 shrink-0 snap-start sm:w-2/3"
 const stripButtonClass = join(thumbButtonClass, "w-full")
+/**
+ * `h-auto w-full` keeps a strip image responsive. With `width` and `height` on the `<img>`, the
+ * browser takes their ratio as the image's aspect ratio, so the row has its final height before any
+ * image has loaded. Every image after the first is `loading="lazy"`: only the one a reader sees first
+ * loads up front.
+ */
 const stripImageClass = "block h-auto w-full"
 
 /**
@@ -165,11 +179,18 @@ export function ImageGallery(
                 setOpenIndex(index)}
               onFocus={strip ? revealInStrip : undefined}
             >
-              <img
-                src={strip ? image.src : image.thumbSrc ?? image.src}
-                alt=""
-                class={strip ? stripImageClass : thumbImageClass}
-              />
+              {strip
+                ? (
+                  <img
+                    src={image.src}
+                    alt=""
+                    width={image.width}
+                    height={image.height}
+                    loading={index === 0 ? undefined : "lazy"}
+                    class={stripImageClass}
+                  />
+                )
+                : <img src={image.thumbSrc ?? image.src} alt="" class={thumbImageClass} />}
             </button>
           </li>
         ))}

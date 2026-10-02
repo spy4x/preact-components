@@ -75,7 +75,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
 | `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                    |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `layout?`                                              |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `layout?`                             |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                     |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                             |
 | `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                           |
@@ -1047,8 +1047,17 @@ for the grid. Every image is still a real button, so Tab moves through them and 
 one fully into view, and Enter or Space opens it in `Lightbox`. The row has no smooth scrolling, so
 there is no motion for the reduced-motion preference to stop.
 
+Give each strip image its intrinsic pixel size in `width` and `height`. The strip renders both on
+the `<img>`, so the browser reserves the image's height before it loads and nothing below a hero
+strip jumps down as the images arrive. Without them, the row has no height until the images load.
+The grid ignores both: its thumbnails are fixed-size squares. Every strip image after the first
+carries `loading="lazy"`, so only the image a reader sees first loads up front.
+
 ```tsx
-<ImageGallery layout="strip" images={caseStudyShots} />
+<ImageGallery
+  layout="strip"
+  images={[{ src: shot, alt: "The dashboard", width: 1600, height: 900 }]}
+/>
 ```
 
 ## MoneyDisplay and MoneyInput
