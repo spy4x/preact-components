@@ -6,6 +6,7 @@ import {
   inFreshFrame,
   MISSED,
   openGuidePage,
+  PAGE_UNTIL,
   pixelContrast,
   pointerToCorner,
   poll,
@@ -2027,6 +2028,8 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   // anything about a second tab: no check here opens one.
   const unasked = await devtools.evaluate<SWState>(`(async () => {
     navigator.serviceWorker.dispatchEvent(new Event("controllerchange"))
+    // A fixed wait, not a poll: it proves no reload is called, and an absence has no state to poll
+    // for.
     await new Promise((done) => setTimeout(done, 100))
     return ${READ_STATE}
   })()`)
@@ -2054,7 +2057,10 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   )
   const asked = await devtools.evaluate<SWState>(`(async () => {
     navigator.serviceWorker.dispatchEvent(new Event("controllerchange"))
-    await new Promise((done) => setTimeout(done, 100))
+    await ${PAGE_UNTIL}(() => document.querySelector('${RELOADS}').textContent.trim() !== "0")
+    // A fixed wait, not a poll: it proves no second reload follows the first, and an absence has
+    // no state to poll for.
+    await new Promise((done) => setTimeout(done, 150))
     return ${READ_STATE}
   })()`)
 
@@ -5231,6 +5237,9 @@ async function shellEscapeRaceCheck(devtools: Devtools): Promise<void> {
   const stillOpen = await read(
     devtools,
     `(async () => {
+      // Let the close that ensureShellClosed caused finish its cleanup first. \`aria-expanded\`
+      // reads "false" one render before an effect-attached listener is removed, so without this
+      // wait a gated listener left over from the previous open could close the panel and pass.
       for (let k = 0; k < 2; k++) {
         await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
       }
@@ -7268,6 +7277,12 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
     `document.querySelector('${cell(CHOSEN)}')`,
   )
 
+  /** Wait until a day's colour transition, if one is running, has ended. */
+  const settledCell = (date: string) =>
+    devtools.evaluate<boolean>(`${PAGE_UNTIL}(() =>
+      document.querySelector('${cell(date)}').getAnimations().length === 0
+    )`)
+
   /** Move the pointer onto a day and read its background once the hover transition has ended. */
   const hoverBackground = async (date: string): Promise<string> => {
     const point = await read<{ x: number; y: number } | null>(
@@ -7293,7 +7308,7 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
         ),
       2_000,
     )
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    await settledCell(date)
     const background = await read(
       devtools,
       `getComputedStyle(document.querySelector('${cell(date)}')).backgroundColor`,
@@ -7339,7 +7354,7 @@ async function calendarSelectionHoverChecks(devtools: Devtools): Promise<void> {
     }).forEach(([name, value]) => document.documentElement.style.setProperty(name, value)), true)`,
     false,
   )
-  await new Promise((resolve) => setTimeout(resolve, 400))
+  await settledCell(CHOSEN)
   const chosenAtRest = await read(
     devtools,
     `getComputedStyle(document.querySelector('${cell(CHOSEN)}')).backgroundColor`,
