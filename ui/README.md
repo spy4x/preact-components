@@ -93,7 +93,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Page`               | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                             |
 | `PageTitle`          | `page-title`        | `children`, `class`                                                                                                                                                                             |
 | `Pagination`         | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                             |
-| `PlanCard`           | `billing`           | `planName`, `status` (`SubscriptionStatus`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `locale?`, `timeZone?` (default `"UTC"`), `labels?`             |
+| `PlanCard`           | `billing`           | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `locale?`, `timeZone?` (default `"UTC"`), `labels?`        |
 | `PricingTable`       | `billing`           | `plans` (`PricingPlan[]`, amounts in the smallest unit), `onChoose?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan        |
 | `Progress`           | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                         |
 | `Radio`              | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                        |
@@ -102,7 +102,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Select`             | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                                                  |
 | `ShortcutsDialog`    | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                |
 | `Stack`              | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                               |
-| `SubscriptionStatus` | `billing`           | not a component: the enum `PlanCard` takes, with the members and values `@spy4x/billing` proposes                                                                                               |
+| `SubscriptionStatus` | `billing`           | not a component: the enum `PlanCard` takes, numbered from 1 in the order `@spy4x/billing` proposes                                                                                              |
 | `StatusMark`         | `status-mark`       | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                      |
 | `Table`              | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                   |
 | `Tabs`               | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                                            |
@@ -1297,10 +1297,11 @@ useEffect(() => theme.attach(), [])
 
 ## Billing
 
-`PricingTable`, `PlanCard` and `UpgradePrompt` take everything as props and fetch nothing. Their
-types follow `@spy4x/billing` (spy4x/ts-libs#362) without importing it, so they work with any
-provider: `SubscriptionStatus` has that package's members and values. Amounts are integers in the
-currency's smallest unit, formatted with `formatMoney` from `@spy4x/platform`.
+`PricingTable`, `PlanCard` and `UpgradePrompt` take everything as props and fetch nothing, so they
+work with any provider. `SubscriptionStatus` numbers, from 1, the five statuses spy4x/ts-libs#362
+proposes for `@spy4x/billing`, in its order. `status` and `interval` also take the plain numbers, so
+an app passes a same-valued enum of its own, or that package's, without a cast. Amounts are integers
+in the currency's smallest unit, formatted with `formatMoney` from `@spy4x/platform`.
 
 `PricingTable` lists each price as its own plan: a plan sold monthly and yearly is two entries with
 two IDs, and a plan with no `interval` (a free plan) shows under both. Every "Choose" is a
@@ -1308,8 +1309,9 @@ two IDs, and a plan with no `interval` (a free plan) shows under both. Every "Ch
 before any script runs; `onChoose` takes the submit over once one does. When the plans have both
 intervals, a monthly/yearly toggle sits above them. It is a pair of native radio buttons, so Tab
 reaches it and the arrow keys move it, and a CSS `:has(:checked)` rule hides the other interval's
-plans, so it works with no script too. The highlighted plan is raised and labelled "Most popular"
-in words.
+plans, so it works with no script too. The checked option shows a check icon and bolder text, so
+the choice does not rest on its fill. The highlighted plan is raised and labelled "Most popular" in
+words, right after its heading.
 
 `PlanCard` shows the current plan, its status in words, and a date line chosen by status ("Renews
 on", "Ends on", "Trial ends on", "Ended on"). A past-due or incomplete plan shows a warning sentence
@@ -1320,8 +1322,12 @@ to `manageAction`, the app's route that opens the provider's portal. The date is
 `UpgradePrompt` is a short message and a link, in place of a feature the plan does not include.
 
 Each component's English words are in `defaultPricingTableLabels`, `defaultPlanCardLabels` and
-`defaultUpgradePromptLabels`; pass any of them in `labels` to replace them. The date lines are
-functions of the formatted date, so a translation can put the date where its language needs it.
+`defaultUpgradePromptLabels`; pass any of them in `labels` to replace them. The per-interval and
+per-status words (`intervals`, `per`, `status`) merge key by key over the English ones, so a caller
+may pass one word alone, and a status with no word shows no pill rather than an empty one. Each
+"Choose" button's accessible name is `choose` and the plan's name unless `chooseName` says
+otherwise, for a language that orders them differently. The date lines are functions of the
+formatted date, so a translation can put the date where its language needs it.
 
 ```tsx
 <PricingTable plans={plans} action="/billing/checkout" onChoose={(plan) => checkout(plan.id)} />
@@ -1358,7 +1364,9 @@ components and tests means exactly that: nothing outside this package should bui
 
 - `BillingInterval` (`Month`, `Year`) is how often a plan bills.
 - `SubscriptionStatus` (`Trialing`, `Active`, `PastDue`, `Canceled`, `Incomplete`) is where a
-  subscription stands, with the values `@spy4x/billing` proposes.
+  subscription stands, numbered from 1.
+- `BillingIntervalValue` and `SubscriptionStatusValue` are the types `interval` and `status` take:
+  the enum or its plain numbers, so another package's same-valued enum passes without a cast.
 - `defaultPricingTableLabels`, `defaultPlanCardLabels` and `defaultUpgradePromptLabels` are the
   English words of each component; a translation replaces any of them through `labels`.
 
