@@ -464,8 +464,12 @@ function ConfirmDialogDemo() {
   )
 }
 
-/** The demo's router owns the addresses under `unsaved-demo/`, and nothing else on this site. */
-const ownsUnsavedDemo = (url: URL) => url.pathname.includes("/unsaved-demo/")
+/**
+ * The demo's router owns the addresses under `unsaved-demo/` and this catalogue page itself, so the
+ * fragment links below are left alone for being fragments, not for being someone else's page.
+ */
+const ownsUnsavedDemo = (url: URL) =>
+  url.pathname.includes("/unsaved-demo/") || url.pathname === globalThis.location?.pathname
 
 /**
  * Links of every kind the guard looks at. A click the guard leaves alone reaches the wrapper, which
@@ -510,6 +514,7 @@ function UnsavedGuardDemo() {
             Another site
           </a>
           <a class={link} href="#demo-UnsavedGuard" data-unsaved="hash">This card</a>
+          <a class={link} href="#" data-unsaved="empty-hash">An action link (#)</a>
         </Cluster>
       </div>
       <DemoNote e2e="unsaved-outcome">Outcome: {outcome.value}</DemoNote>
