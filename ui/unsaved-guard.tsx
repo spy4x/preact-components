@@ -127,10 +127,8 @@ export function UnsavedGuard(
     }
     const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault()
     const onClick = (event: MouseEvent) => {
-      const link = event.target instanceof Element
-        ? event.target.closest("a[href], area[href]")
-        : null
-      if (!(link instanceof HTMLAnchorElement || link instanceof HTMLAreaElement)) return
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null
+      if (!(link instanceof HTMLAnchorElement)) return
       const to = guardedHref(
         event,
         {
