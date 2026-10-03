@@ -226,6 +226,45 @@ describe("PricingTable", () => {
     expect(html).toMatch(/value="year" data-pricing-interval="year" checked/)
   })
 
+  it("says what one price buys after it, with its interval", () => {
+    const html = render(
+      <PricingTable plans={[{ ...proMonth, unit: "member" }, { ...proYear, unit: "member" }]} />,
+    )
+
+    expect(planItem(html, "pro-month")).toContain(
+      '€12.00</span><span class="text-sm text-muted">per member / month</span>',
+    )
+    expect(planItem(html, "pro-year")).toContain(">per member / year</span>")
+  })
+
+  it("says what one price buys with no interval when the plan has none", () => {
+    const item = planItem(render(<PricingTable plans={[{ ...free, unit: "seat" }]} />), "free")
+
+    expect(item).toContain(">per seat</span>")
+  })
+
+  it("renders a plan with no unit exactly as before, beside one with a unit", () => {
+    const before = render(<PricingTable plans={[proMonth, proYear]} />)
+    const after = render(<PricingTable plans={[{ ...proMonth, unit: "member" }, proYear]} />)
+
+    expect(planItem(after, "pro-year")).toBe(planItem(before, "pro-year"))
+    expect(planItem(after, "pro-year")).toContain(">per year</span>")
+  })
+
+  it("words the per-unit text with a translated perUnit label", () => {
+    const html = render(
+      <PricingTable
+        plans={[{ ...proMonth, unit: "Mitglied" }]}
+        labels={{
+          perUnit: (unit, interval) => `pro ${unit} und ${interval === 1 ? "Monat" : "Jahr"}`,
+        }}
+      />,
+    )
+
+    expect(planItem(html, "pro-month")).toContain(">pro Mitglied und Monat</span>")
+    expect(html).not.toContain("per Mitglied")
+  })
+
   it("levels each plan's name heading as asked", () => {
     expect(render(<PricingTable plans={[free]} />)).toContain("<h3")
     expect(render(<PricingTable plans={[free]} headingLevel={2} />)).toContain("<h2")
