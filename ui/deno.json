@@ -34,6 +34,7 @@
     "./modal": "./modal.tsx",
     "./money-display": "./money-display.tsx",
     "./money-input": "./money-input.tsx",
+    "./notice": "./notice.tsx",
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./page-title": "./page-title.tsx",
     "./pagination": "./pagination.tsx",
