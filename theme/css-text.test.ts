@@ -128,6 +128,8 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-info": `oklch(0.546 0.245 262.881)`,
   "--color-info-foreground": `oklch(0.97 0.014 254.604)`,
   "--color-info-soft": `oklch(0.97 0.014 254.604)`,
+  "--color-warning-soft": `oklch(0.98 0.016 73.684)`,
+  "--color-success-soft": `oklch(0.982 0.018 155.826)`,
   "--radius-card": `0.75rem`,
   "--shadow-raised": `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)`,
   "--shadow-popover": `0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`,
@@ -165,6 +167,8 @@ const EXPECTED_DARK_TOKENS: Record<string, string> = {
   "--color-danger-fill-hover": `oklch(0.577 0.245 27.325)`,
   "--color-danger-soft": `color-mix(in oklab, oklch(0.505 0.213 27.518) 30%, transparent)`,
   "--color-info-soft": `color-mix(in oklab, oklch(0.546 0.245 262.881) 25%, transparent)`,
+  "--color-warning-soft": `color-mix(in oklab, oklch(0.553 0.195 38.402) 30%, transparent)`,
+  "--color-success-soft": `color-mix(in oklab, oklch(0.448 0.119 151.328) 30%, transparent)`,
   "--color-info": `oklch(0.707 0.165 254.624)`,
   "--color-info-foreground": `oklch(0.282 0.091 267.935)`,
 }
@@ -193,7 +197,7 @@ describe("preset.css fallbacks, after #463", () => {
     const mismatched = fallbacks
       .filter(([, token, fallback]) => fallback !== root[token])
       .map(([usage, token]) => `${usage} (tokens.css: ${root[token]})`)
-    expect(fallbacks.length).toBe(13)
+    expect(fallbacks.length).toBe(14)
     expect(mismatched).toEqual([])
   })
 })

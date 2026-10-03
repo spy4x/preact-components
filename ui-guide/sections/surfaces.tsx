@@ -405,6 +405,12 @@ function TokenClassesDemo() {
           bg-danger-soft
         </span>
         <span class={`bg-info-soft text-info ${swatch}`}>bg-info-soft</span>
+        <span class={`bg-warning-soft border-warning ${outlined}`}>
+          bg-warning-soft
+        </span>
+        <span class={`bg-success-soft border-success ${outlined}`}>
+          bg-success-soft
+        </span>
         <span class={`bg-danger-fill text-danger-fill-foreground ${swatch}`}>
           text-danger-fill-foreground
         </span>
@@ -612,9 +618,12 @@ export const surfaceDemos = {
       "text-danger-fill-foreground",
       "bg-danger-soft",
       "bg-info-soft",
+      "bg-warning-soft",
+      "bg-success-soft",
       "border-danger",
       "text-warning",
       "border-warning",
+      "border-success",
       "bg-surface-overlay",
       "bg-scrim-strong",
       "bg-on-scrim",

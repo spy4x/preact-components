@@ -536,8 +536,11 @@ palette, sets the matching fill tokens too (`--color-danger-fill` and `--color-d
 repainted `--color-danger` also wants a matching `--color-danger-soft`, the background `ErrorState`
 draws its message on.
 `bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself, and
-`border-warning` reads the warning text colour, `--color-warning`, for a warning box's outline. `--color-danger-soft` and `--color-info-soft` are the
-tinted backgrounds of an error or notice.
+`border-warning` and `border-success` read the warning and success text colours, `--color-warning`
+and `--color-success`, for a box's outline. `--color-danger-soft`, `--color-info-soft`,
+`--color-warning-soft` and `--color-success-soft` are the tinted backgrounds of an error or a
+`Notice`: the 50 step of each hue in light, the text hue at 25–30% over the page in dark. A
+repainted `--color-info`, `--color-warning` or `--color-success` wants its matching soft token too.
 
 The warning fill carries a dark label: `--color-warning-foreground` is gray-950, 5.62:1 on the
 orange-600 fill, where orange-50 read 3.37:1. `.btn-warning` and the `SWUpdater` bar draw it, and

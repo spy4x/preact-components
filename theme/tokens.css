@@ -122,6 +122,8 @@
     --color-info: oklch(0.546 0.245 262.881); /* blue-600 */
     --color-info-foreground: oklch(0.97 0.014 254.604); /* blue-50 */
     --color-info-soft: oklch(0.97 0.014 254.604); /* blue-50: a tinted background */
+    --color-warning-soft: oklch(0.98 0.016 73.684); /* orange-50: a tinted background */
+    --color-success-soft: oklch(0.982 0.018 155.826); /* green-50: a tinted background */
 
     /* Geometry. */
     --radius-primary: 0.5rem; /* rounded-lg */
@@ -183,6 +185,8 @@
     --color-danger-fill-hover: oklch(0.577 0.245 27.325); /* red-600 */
     --color-danger-soft: color-mix(in oklab, oklch(0.505 0.213 27.518) 30%, transparent);
     --color-info-soft: color-mix(in oklab, oklch(0.546 0.245 262.881) 25%, transparent);
+    --color-warning-soft: color-mix(in oklab, oklch(0.553 0.195 38.402) 30%, transparent);
+    --color-success-soft: color-mix(in oklab, oklch(0.448 0.119 151.328) 30%, transparent);
     --color-info: oklch(0.707 0.165 254.624); /* blue-400: AA as text on the canvas */
     --color-info-foreground: oklch(0.282 0.091 267.935); /* blue-950: AA on the blue-400 fill */
   }
