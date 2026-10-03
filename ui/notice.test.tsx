@@ -25,6 +25,9 @@ describe("Notice", () => {
   it("renders nothing for an action that is an empty list", () => {
     expect(render(<Notice action={[]} />)).toBe("")
     expect(render(<Notice action={[null, false]} />)).toBe("")
+    expect(render(<Notice title="Trial ends soon" action={[]} />)).not.toContain(
+      '<div class="shrink-0">',
+    )
   })
 
   it("renders a body list that holds an item", () => {
