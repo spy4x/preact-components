@@ -190,6 +190,7 @@ export function PricingTable(
     ...labels,
     intervals: { ...defaultPricingTableLabels.intervals, ...labels?.intervals },
     per: { ...defaultPricingTableLabels.per, ...labels?.per },
+    perUnit: labels?.perUnit ?? defaultPricingTableLabels.perUnit,
   }
   const chooseName = labels?.chooseName ?? ((name: string) => `${words.choose} ${name}`)
   const groupName = useId()

@@ -265,6 +265,14 @@ describe("PricingTable", () => {
     expect(html).not.toContain("per Mitglied")
   })
 
+  it("falls back to the English per-unit text when a translation leaves it undefined", () => {
+    const html = render(
+      <PricingTable plans={[{ ...proMonth, unit: "member" }]} labels={{ perUnit: undefined }} />,
+    )
+
+    expect(planItem(html, "pro-month")).toContain(">per member / month</span>")
+  })
+
   it("levels each plan's name heading as asked", () => {
     expect(render(<PricingTable plans={[free]} />)).toContain("<h3")
     expect(render(<PricingTable plans={[free]} headingLevel={2} />)).toContain("<h2")
