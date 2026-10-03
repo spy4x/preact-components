@@ -22,6 +22,11 @@ describe("Notice", () => {
     expect(render(<Notice>{[[], null, false]}</Notice>)).toBe("")
   })
 
+  it("renders nothing for an action that is an empty list", () => {
+    expect(render(<Notice action={[]} />)).toBe("")
+    expect(render(<Notice action={[null, false]} />)).toBe("")
+  })
+
   it("renders a body list that holds an item", () => {
     expect(render(<Notice>{[null, <p key="plan">Plan ends</p>]}</Notice>)).toContain(
       "<p>Plan ends</p>",

@@ -81,7 +81,8 @@ export function Notice(
     NoticeProps,
 ): JSX.Element | null {
   const hasBody = !isEmpty(children)
-  if (!title && !hasBody && !action) return null
+  const hasAction = !isEmpty(action)
+  if (!title && !hasBody && !hasAction) return null
 
   return (
     <div
@@ -98,7 +99,7 @@ export function Notice(
         {title && <p class="font-medium">{title}</p>}
         {hasBody && <div class={title ? "mt-1" : undefined}>{children}</div>}
       </div>
-      {action && <div class="shrink-0">{action}</div>}
+      {hasAction && <div class="shrink-0">{action}</div>}
     </div>
   )
 }
