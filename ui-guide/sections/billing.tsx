@@ -25,7 +25,10 @@ import type { DemoFragment } from "../registry.ts"
 /** Where every form in this section posts while no callback takes it over. */
 const FORM_DEMO_ACTION = "form-demo/"
 
-/** The pricing card's plans: a free plan under both intervals, and two paid plans per interval. */
+/**
+ * The pricing card's plans: a free plan under both intervals, and two paid plans per interval.
+ * Business is priced per seat, so the card shows a per-unit price beside flat ones.
+ */
 const DEMO_PLANS: PricingPlan[] = [
   {
     id: "free",
@@ -62,6 +65,7 @@ const DEMO_PLANS: PricingPlan[] = [
     amount: 4900,
     currency: "EUR",
     interval: BillingInterval.Month,
+    unit: "seat",
     features: ["Everything in Pro", "Single sign-on", "Priority support"],
   },
   {
@@ -71,6 +75,7 @@ const DEMO_PLANS: PricingPlan[] = [
     amount: 49000,
     currency: "EUR",
     interval: BillingInterval.Year,
+    unit: "seat",
     features: ["Everything in Pro", "Single sign-on", "Priority support"],
   },
 ]
@@ -174,7 +179,7 @@ export const billingDemos = {
         name: "plans",
         type: "PricingPlan[]",
         description:
-          "Each price its own entry, with an amount in the smallest unit; one with no `interval` shows under both.",
+          'Each price its own entry, with an amount in the smallest unit; one with no `interval` shows under both, and one with a `unit` reads "per seat / month".',
       },
       {
         name: "onChoose",
@@ -202,7 +207,7 @@ export const billingDemos = {
         name: "labels",
         type: "Partial<PricingTableLabels>",
         description:
-          "Replaces any of the English words; `intervals` and `per` merge key by key, and `chooseName` follows `choose` unless given.",
+          "Replaces any of the English words; `intervals` and `per` merge key by key, `perUnit` words a plan with a `unit`, and `chooseName` follows `choose` unless given.",
       },
     ],
     snippet: `<PricingTable
@@ -212,6 +217,8 @@ export const billingDemos = {
       interval: BillingInterval.Month, highlighted: true },
     { id: "pro-year", name: "Pro", amount: 12000, currency: "EUR",
       interval: BillingInterval.Year, highlighted: true },
+    { id: "team-month", name: "Team", amount: 900, currency: "EUR",
+      interval: BillingInterval.Month, unit: "member" },
   ]}
   action="/billing/checkout"
   onChoose={(plan) => startCheckout(plan.id)}
