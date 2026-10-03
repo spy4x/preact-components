@@ -445,7 +445,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (838 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (841 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -708,6 +708,9 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `MoneyInputProps` (type): Props of `MoneyInput`. Import: `@spy4x/preact-ui`
 - `MoneyInputRangeMessage` (type): A `MoneyInputProps.rangeMessage` function. Import: `@spy4x/preact-ui`
 - `resolveMoneyInputEdit` (helper): The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result. Import: `@spy4x/preact-ui`
+- `Notice` (component): A banner for a message that is not an error: a trial that ends soon, a plan that will lapse, a change that was saved. Import: `@spy4x/preact-ui`
+- `NoticeProps` (type): Props of `Notice`. Import: `@spy4x/preact-ui`
+- `NoticeTone` (type): What a `Notice` is about: news (`info`), something to act on (`warning`), or a success. Import: `@spy4x/preact-ui`
 - `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
 - `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
 - `PageTitle` (component): Page heading with the library's `pc-h1` typography inlined. Import: `@spy4x/preact-ui`

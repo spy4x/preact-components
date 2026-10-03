@@ -19,6 +19,8 @@ import {
   LoadingSkeleton,
   LoadingSpinner,
   Modal,
+  Notice,
+  type NoticeTone,
   RadioGroup,
   type SpinnerSize,
   Stack,
@@ -47,6 +49,13 @@ const toastVariants: Record<ToastVariant, string> = {
   error: "error",
   info: "info",
   warning: "warning",
+}
+
+/** One notice per tone — a tone with no entry does not compile. */
+const noticeTones: Record<NoticeTone, { title: string; body: string }> = {
+  info: { title: "Scheduled maintenance", body: "Sync pauses for ten minutes on Sunday at 02:00." },
+  warning: { title: "Your trial ends in 3 days", body: "Add a payment method to keep your data." },
+  success: { title: "Export ready", body: "The file is in your downloads." },
 }
 
 /**
@@ -565,6 +574,55 @@ export const feedbackDemos = {
         <ErrorState message="The report could not be generated: no accounts are connected." />
         <ErrorState message="" />
         <DemoNote>The second one has an empty message, so nothing shows.</DemoNote>
+      </Stack>
+    ),
+  },
+  Notice: {
+    summary: "A banner for news that is not an error: a trial that ends soon, a change that saved.",
+    wide: true,
+    props: [
+      {
+        name: "tone",
+        type: `"info" | "warning" | "success"`,
+        default: `"info"`,
+        description: "The border, the tint and the glyph.",
+      },
+      { name: "title", type: "string", description: "The first line, in a heavier weight." },
+      { name: "children", type: "ComponentChildren", description: "The body under the title." },
+      { name: "action", type: "ComponentChildren", description: "A button or link beside it." },
+      {
+        name: "urgent",
+        type: "boolean",
+        default: `false`,
+        description:
+          'Interrupts the screen reader (`role="alert"`). Without it the notice is a polite status.',
+      },
+    ],
+    snippet: `<Notice
+  tone="warning"
+  title="Your trial ends in 3 days"
+  action={<Button size="sm">Add a payment method</Button>}
+>
+  Add a payment method to keep your data.
+</Notice>
+
+// Something the reader must hear now:
+<Notice tone="warning" urgent title="Payment failed" />`,
+    render: () => (
+      <Stack>
+        {entries(noticeTones).map(([tone, { title, body }]) => (
+          <Notice
+            key={tone}
+            tone={tone}
+            title={title}
+            data-tone={tone}
+            action={tone === "warning"
+              ? <Button size="sm">Add a payment method</Button>
+              : undefined}
+          >
+            {body}
+          </Notice>
+        ))}
       </Stack>
     ),
   },

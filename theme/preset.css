@@ -202,8 +202,20 @@
   border-color: var(--color-warning, oklch(0.553 0.195 38.402));
 }
 
+@utility border-success {
+  border-color: var(--color-success, oklch(0.448 0.119 151.328));
+}
+
 @utility bg-info-soft {
   background-color: var(--color-info-soft, oklch(0.97 0.014 254.604));
+}
+
+@utility bg-warning-soft {
+  background-color: var(--color-warning-soft, oklch(0.98 0.016 73.684));
+}
+
+@utility bg-success-soft {
+  background-color: var(--color-success-soft, oklch(0.982 0.018 155.826));
 }
 
 @utility text-foreground {

@@ -266,6 +266,7 @@ export {
   type MoneyInputRangeMessage,
   resolveMoneyInputEdit,
 } from "./money-input.tsx"
+export { Notice, type NoticeProps, type NoticeTone } from "./notice.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
