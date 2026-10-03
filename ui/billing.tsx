@@ -58,6 +58,11 @@ export interface PricingPlan extends PlanPrice {
   features?: string[]
   /** Draws this plan raised, with the `highlighted` label under its name. */
   highlighted?: boolean
+  /**
+   * What one price buys, in the caller's language, such as `"member"` or `"seat"`. Set, the text
+   * after the price comes from the `perUnit` label (`"per member / month"`) in place of `per`.
+   */
+  unit?: string
 }
 
 /** Words {@link PricingTable} shows or announces. Each one has an English default. */
@@ -74,6 +79,12 @@ export interface PricingTableLabels {
    * whose interval has no word shows none.
    */
   per: Partial<Record<1 | 2, string>>
+  /**
+   * Text after the price of a plan with a `unit`, from the unit and the plan's interval. Defaults to
+   * `"per member / month"`, `"per member / year"`, or `"per member"` with no interval. It replaces
+   * `per` for that plan, so a translation that changes `per` changes this too.
+   */
+  perUnit: (unit: string, interval?: BillingIntervalValue) => string
   /** The label under the highlighted plan's name. Defaults to `"Most popular"`. */
   highlighted: string
   /** The visible text of each plan's button. Defaults to `"Choose"`. */
@@ -91,6 +102,10 @@ export const defaultPricingTableLabels: PricingTableLabels = {
   intervalLegend: "Billing period",
   intervals: { [BillingInterval.Month]: "Monthly", [BillingInterval.Year]: "Yearly" },
   per: { [BillingInterval.Month]: "per month", [BillingInterval.Year]: "per year" },
+  perUnit: (unit, interval) =>
+    interval === undefined
+      ? `per ${unit}`
+      : `per ${unit} / ${interval === BillingInterval.Month ? "month" : "year"}`,
   highlighted: "Most popular",
   choose: "Choose",
   chooseName: (planName) => `Choose ${planName}`,
@@ -175,6 +190,7 @@ export function PricingTable(
     ...labels,
     intervals: { ...defaultPricingTableLabels.intervals, ...labels?.intervals },
     per: { ...defaultPricingTableLabels.per, ...labels?.per },
+    perUnit: labels?.perUnit ?? defaultPricingTableLabels.perUnit,
   }
   const chooseName = labels?.chooseName ?? ((name: string) => `${words.choose} ${name}`)
   const groupName = useId()
@@ -242,9 +258,15 @@ export function PricingTable(
                 <span class="text-3xl font-semibold">
                   {formatMoney(plan.amount, plan.currency, locale)}
                 </span>
-                {plan.interval !== undefined && words.per[plan.interval] && (
-                  <span class="text-sm text-muted">{words.per[plan.interval]}</span>
-                )}
+                {plan.unit
+                  ? (
+                    <span class="text-sm text-muted">
+                      {words.perUnit(plan.unit, plan.interval)}
+                    </span>
+                  )
+                  : plan.interval !== undefined && words.per[plan.interval] && (
+                    <span class="text-sm text-muted">{words.per[plan.interval]}</span>
+                  )}
               </p>
               {plan.features && plan.features.length > 0 && (
                 <ul class="flex flex-col gap-2 text-sm">

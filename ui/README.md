@@ -94,7 +94,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                                                                             |
 | `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                             |
 | `PlanCard`        | `billing`           | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `locale?`, `timeZone?` (default `"UTC"`), `labels?`        |
-| `PricingTable`    | `billing`           | `plans` (`PricingPlan[]`, amounts in the smallest unit), `onChoose?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan        |
+| `PricingTable`    | `billing`           | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan      |
 | `Progress`        | `progress`          | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                         |
 | `Radio`           | `radio`             | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                        |
 | `RadioGroup`      | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                              |
@@ -1416,7 +1416,8 @@ intervals, a monthly/yearly toggle sits above them. It is a pair of native radio
 reaches it and the arrow keys move it, and a CSS `:has(:checked)` rule hides the other interval's
 plans, so it works with no script too. The checked option shows a check icon and bolder text, so
 the choice does not rest on its fill. The highlighted plan is raised and labelled "Most popular" in
-words, right after its heading.
+words, right after its heading. A plan with a `unit` (`"member"`, in the caller's language) says
+what one price buys: "€9.00 per member / month" in place of "€9.00 per month".
 
 `PlanCard` shows the current plan, its status in words, and a date line chosen by status ("Renews
 on", "Ends on", "Trial ends on", "Ended on"). A past-due or incomplete plan shows a warning sentence
@@ -1429,7 +1430,9 @@ to `manageAction`, the app's route that opens the provider's portal. The date is
 Each component's English words are in `defaultPricingTableLabels`, `defaultPlanCardLabels` and
 `defaultUpgradePromptLabels`; pass any of them in `labels` to replace them. The per-interval and
 per-status words (`intervals`, `per`, `status`) merge key by key over the English ones, so a caller
-may pass one word alone, and a status with no word shows no pill rather than an empty one. Each
+may pass one word alone, and a status with no word shows no pill rather than an empty one. A
+plan's per-unit text comes from `perUnit`, a function of the unit and the interval, so a
+translation can order the words its own way; it replaces `per` for that plan. Each
 "Choose" button's accessible name is `choose` and the plan's name unless `chooseName` says
 otherwise, for a language that orders them differently. The date lines are functions of the
 formatted date, so a translation can put the date where its language needs it.
