@@ -16,8 +16,10 @@ export interface NoticeProps
   /** A caller-owned control (`Button`, link, form) beside the text, or under it on a narrow row. */
   action?: ComponentChildren
   /**
-   * Announces the notice at once, interrupting the screen reader (`role="alert"`). Leave it off
-   * for anything that can wait: the default `role="status"` is read when the reader is idle.
+   * Renders `role="alert"` instead of the default `role="status"`. Screen readers announce an alert
+   * even when it appears together with its text, so use this for a notice that appears while the
+   * reader is on the page and must be heard. A status notice that mounts with its text, such as a
+   * server-rendered one, is often not announced at all; the reader finds it while reading the page.
    */
   urgent?: boolean
   class?: string
@@ -54,6 +56,16 @@ function Glyph({ tone }: { tone: NoticeTone }): JSX.Element {
 }
 
 /**
+ * Whether children render nothing: `undefined`, `null`, a boolean, `""`, or an array (an empty
+ * `.map()`, say) holding only such values.
+ */
+function isEmpty(children: ComponentChildren): boolean {
+  if (Array.isArray(children)) return children.every(isEmpty)
+  return children === undefined || children === null || typeof children === "boolean" ||
+    children === ""
+}
+
+/**
  * A banner for a message that is not an error: a trial that ends soon, a plan that will lapse, a
  * change that was saved. Errors belong to `ErrorState`.
  *
@@ -68,8 +80,7 @@ export function Notice(
   { tone = "info", title, children, action, urgent = false, class: className, ...rest }:
     NoticeProps,
 ): JSX.Element | null {
-  const hasBody = children !== undefined && children !== null && children !== false &&
-    children !== ""
+  const hasBody = !isEmpty(children)
   if (!title && !hasBody && !action) return null
 
   return (

@@ -16,6 +16,18 @@ describe("Notice", () => {
     expect(render(<Notice>{null}</Notice>)).toBe("")
   })
 
+  it("renders nothing for a body that is an empty list", () => {
+    const rows: string[] = []
+    expect(render(<Notice>{rows.map((row) => <p key={row}>{row}</p>)}</Notice>)).toBe("")
+    expect(render(<Notice>{[[], null, false]}</Notice>)).toBe("")
+  })
+
+  it("renders a body list that holds an item", () => {
+    expect(render(<Notice>{[null, <p key="plan">Plan ends</p>]}</Notice>)).toContain(
+      "<p>Plan ends</p>",
+    )
+  })
+
   it("announces itself politely as a status by default", () => {
     const html = render(<Notice title="Trial ends soon" />)
 
