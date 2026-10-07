@@ -709,9 +709,9 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `MoneyInputProps` (type): Props of `MoneyInput`. Import: `@spy4x/preact-ui`
 - `MoneyInputRangeMessage` (type): A `MoneyInputProps.rangeMessage` function. Import: `@spy4x/preact-ui`
 - `resolveMoneyInputEdit` (helper): The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result. Import: `@spy4x/preact-ui`
-- `Notice` (component): A banner for a message that is not an error: a trial that ends soon, a plan that will lapse, a change that was saved. Import: `@spy4x/preact-ui`
+- `Notice` (component): A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed. Import: `@spy4x/preact-ui`
 - `NoticeProps` (type): Props of `Notice`. Import: `@spy4x/preact-ui`
-- `NoticeTone` (type): What a `Notice` is about: news (`info`), something to act on (`warning`), or a success. Import: `@spy4x/preact-ui`
+- `NoticeTone` (type): What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`). Import: `@spy4x/preact-ui`
 - `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
 - `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
 - `PageTitle` (component): Page heading with the library's `pc-h1` typography inlined. Import: `@spy4x/preact-ui`

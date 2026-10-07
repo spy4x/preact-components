@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { IconExclamationCircle } from "@spy4x/preact-icons"
 import { Notice, type NoticeTone } from "./notice.tsx"
 
 /** The root element's opening tag, where the role, the tone classes and caller attributes sit. */
@@ -55,6 +56,7 @@ describe("Notice", () => {
       info: "border-info bg-info-soft",
       warning: "border-warning bg-warning-soft",
       success: "border-success bg-success-soft",
+      danger: "border-danger bg-danger-soft",
     }
     for (const [tone, classes] of Object.entries(tones) as [NoticeTone, string][]) {
       const html = render(<Notice tone={tone} title="Heads up" />)
@@ -69,7 +71,7 @@ describe("Notice", () => {
   })
 
   it("shows a different glyph per tone, hidden from assistive tech", () => {
-    const glyphs = (["info", "warning", "success"] as const).map((tone) => {
+    const glyphs = (["info", "warning", "success", "danger"] as const).map((tone) => {
       const html = render(<Notice tone={tone} title="Heads up" />)
       const svg = html.match(/<svg[^>]*>.*?<\/svg>/)?.[0] ?? ""
       expect(svg).toContain('aria-hidden="true"')
@@ -78,7 +80,29 @@ describe("Notice", () => {
     })
 
     expect(glyphs.every((drawing) => drawing.length > 0)).toBe(true)
-    expect(new Set(glyphs).size).toBe(3)
+    expect(new Set(glyphs).size).toBe(4)
+  })
+
+  it("draws the danger tone with an exclamation-circle glyph and foreground text", () => {
+    const html = render(<Notice tone="danger" title="Payment failed">Update your card.</Notice>)
+    const svg = html.match(/<svg[^>]*>.*?<\/svg>/)?.[0] ?? ""
+
+    expect(rootTag(html)).toContain("border-danger bg-danger-soft")
+    expect(rootTag(html)).toContain("text-foreground")
+    expect(svg).toContain("text-danger")
+    expect(svg).toContain(
+      render(<IconExclamationCircle />).match(/ d="([^"]*)"/)?.[1] ??
+        "no exclamation-circle drawing",
+    )
+  })
+
+  it("keeps the danger tone a polite status unless urgent", () => {
+    expect(rootTag(render(<Notice tone="danger" title="Payment failed" />))).toContain(
+      'role="status"',
+    )
+    expect(rootTag(render(<Notice tone="danger" urgent title="Payment failed" />))).toContain(
+      'role="alert"',
+    )
   })
 
   it("keeps body text in the foreground colour so it reads on every tint", () => {
