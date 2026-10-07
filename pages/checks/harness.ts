@@ -808,17 +808,22 @@ export async function readOr<T>(
   }
 }
 
+/** One sRGB channel, 0–255, decoded to linear light, 0–1: the gamma step of WCAG luminance. */
+export function linearChannel(value: number): number {
+  const c = value / 255
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+}
+
+/** WCAG relative luminance of one sRGB pixel `[r, g, b]` in 0–255: 0 is black, 1 is white. */
+export function relativeLuminance(rgb: number[]): number {
+  const [r = 0, g = 0, b = 0] = rgb.map(linearChannel)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
 /** WCAG contrast between two sRGB pixels, each `[r, g, b]` in 0–255. */
 export function pixelContrast(a: number[], b: number[]): number {
-  const luminance = (rgb: number[]) => {
-    const [r = 0, g = 0, b = 0] = rgb.map((value) => {
-      const c = value / 255
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const x = luminance(a)
-  const y = luminance(b)
+  const x = relativeLuminance(a)
+  const y = relativeLuminance(b)
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
 
@@ -981,29 +986,36 @@ export async function ringGapPixels(
 /**
  * In-page helpers that measure WCAG contrast the way the screen shows it, as source text to
  * interpolate into a `Runtime.evaluate` expression. Every check file that measures contrast
- * imports this one copy (#548).
+ * imports this one copy (#548, #559). The maths is {@link linearChannel}, {@link relativeLuminance}
+ * and {@link pixelContrast} themselves, put into the page as their own source, so the unit tests of
+ * those functions test what the page runs.
  *
+ * - `seen(element, color?, { outside }?)` answers what a reader sees of a colour `element` draws:
+ *   `{ text, ground }`, two plain `[r, g, b]` byte triples. `ground` composites every background
+ *   from the root down to `element`, and `text` is `color` (by default the element's computed
+ *   `color`) laid on top of that. Each layer folds in its element's computed `opacity`, so
+ *   `opacity-50` on the element or on any ancestor fades the text the way the screen does, and a
+ *   translucent `color` is laid over the real ground rather than over white. Pass the element that
+ *   holds the text or draws the mark, never a container: opacity on an element below the one passed
+ *   is not seen. `{ outside: true }` is for a mark drawn outside the element's box, over what it
+ *   sits on (a focus ring, a border edge, a fill against its track): the element's own background
+ *   is left out of `ground`, its opacity is not.
+ * - `seenRatio(element, color?, options?)` is `ratio` of what `seen` returns.
+ * - `textHolders(root)` lists `root` and every element inside it that holds a non-blank text node
+ *   of its own: the elements to hand to `seen` when a container holds the text further down.
  * - `paint(color)` draws a colour on white on a 1×1 canvas and reads back its sRGB bytes, so a
  *   computed style in any colour function (`oklch()`, relative colour syntax, `color-mix()`)
- *   resolves the way Chromium renders it, and a translucent colour shows as it would on white.
- * - `backdrop(element)` composites every background from the root down to the element itself: the
- *   colour text inside it is really drawn on. It folds in each element's computed `opacity`: a
- *   layer whose element is at `opacity: 0.5` shows half of what is behind it.
- * - `ratio(a, b)` is the WCAG contrast of two byte triples. When one of them came from `backdrop`
- *   and the element or an ancestor has `opacity` below 1, the other is taken as a colour drawn
- *   inside that element and is faded through the same opacity first, so `opacity-50` on a line of
- *   text lowers its measured contrast as it lowers what a reader sees.
- *
- *   That holds only when `backdrop` is given the element that holds the text. Opacity on an
- *   element between that one and the text is not measured, so passing an ancestor (a panel, a
- *   parent) misses it. A colour passed to `ratio` is faded even if it is not drawn inside the
- *   element. The fold rides on a hidden property of the returned array, so a copy of it (spread,
- *   `.map`, `.slice`, a value returned from the page) silently measures without opacity.
+ *   resolves the way Chromium renders it. It is for a colour with no element, such as a token.
+ * - `ratio(a, b)` is the WCAG contrast of two byte triples; `relativeLuminance(rgb)` is the WCAG
+ *   relative luminance of one; `linearChannel(value)` decodes one sRGB channel to linear light.
  * - `contrast(a, b)` is `ratio` of two CSS colours, each painted on white. It knows no element, so
- *   it folds in no opacity.
- * - `luminance(rgb)` is WCAG relative luminance of one byte triple.
+ *   it folds in no opacity: use it for tokens, and `seen` for anything an element draws.
  */
 export const CONTRAST_HELPERS = `
+  ${linearChannel}
+  ${relativeLuminance}
+  ${pixelContrast}
+  const ratio = pixelContrast
   const contrastCanvas = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true })
   const paintLayers = (colors) => {
     contrastCanvas.clearRect(0, 0, 1, 1)
@@ -1014,42 +1026,37 @@ export const CONTRAST_HELPERS = `
     return [...contrastCanvas.getImageData(0, 0, 1, 1).data.slice(0, 3)]
   }
   const paint = (color) => paintLayers(["white", color])
+  const contrast = (a, b) => ratio(paint(a), paint(b))
   const asColor = (rgb, alpha = 1) => "rgb(" + rgb.join(" ") + " / " + alpha + ")"
-  const renderStack = (layers, top) => {
-    const draw = (index, base) => {
-      if (index === layers.length) return top ? paintLayers([asColor(base), asColor(top)]) : base
-      const { color, opacity } = layers[index]
-      const inner = draw(index + 1, paintLayers([asColor(base), color]))
-      return opacity < 1 ? paintLayers([asColor(base), asColor(inner, opacity)]) : inner
-    }
-    return draw(0, [255, 255, 255])
-  }
-  const backdrop = (element) => {
+  const seen = (element, color, { outside = false } = {}) => {
+    const styleOf = (node) => node.ownerDocument.defaultView.getComputedStyle(node)
     const layers = []
     for (let node = element; node; node = node.parentElement) {
-      const style = getComputedStyle(node)
-      layers.unshift({ color: style.backgroundColor, opacity: Number(style.opacity) })
+      const style = styleOf(node)
+      const own = outside && node === element
+      layers.unshift({ color: own ? "transparent" : style.backgroundColor, opacity: Number(style.opacity) })
     }
-    const behind = renderStack(layers, null)
-    if (layers.some((layer) => layer.opacity < 1)) {
-      Object.defineProperty(behind, "ink", { value: (color) => renderStack(layers, color) })
+    const top = color ?? styleOf(element).color
+    // Paints layer by layer from the root; a layer below opacity 1 is drawn on its own and then
+    // laid over what is behind it at that opacity, as a browser composites an opacity group.
+    const render = (withTop) => {
+      const draw = (index, base) => {
+        if (index === layers.length) return withTop ? paintLayers([asColor(base), top]) : base
+        const { color, opacity } = layers[index]
+        const inner = draw(index + 1, paintLayers([asColor(base), color]))
+        return opacity < 1 ? paintLayers([asColor(base), asColor(inner, opacity)]) : inner
+      }
+      return draw(0, [255, 255, 255])
     }
-    return behind
+    return { text: render(true), ground: render(false) }
   }
-  const luminance = (rgb) => {
-    const [r, g, b] = rgb.map((channel) => {
-      const s = channel / 255
-      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const seenRatio = (element, color, options) => {
+    const { text, ground } = seen(element, color, options)
+    return ratio(text, ground)
   }
-  const ratio = (a, b) => {
-    const front = b.ink && !a.ink ? b.ink(a) : a
-    const back = a.ink && !b.ink ? a.ink(b) : b
-    const [x, y] = [luminance(front), luminance(back)]
-    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-  }
-  const contrast = (a, b) => ratio(paint(a), paint(b))
+  const textHolders = (root) => [root, ...root.querySelectorAll("*")].filter((element) =>
+    [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim())
+  )
 `
 
 /** The parts of a DevTools `exceptionDetails` object the harness reads. */
