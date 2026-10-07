@@ -594,8 +594,7 @@ export const feedbackDemos = {
     ),
   },
   Notice: {
-    summary:
-      "A banner for a page-wide message: a trial that ends soon, a change that saved, a failed payment.",
+    summary: "A page-wide banner: a trial that ends soon, a change that saved, a failed payment.",
     wide: true,
     props: [
       {

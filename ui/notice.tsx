@@ -34,8 +34,8 @@ export interface NoticeProps
 }
 
 /**
- * Each tone draws from its theme tokens: the border from the tone's text colour
- * (`--color-info`, `--color-warning`, `--color-success`, `--color-danger`), the background from its soft tint
+ * Each tone draws from its theme tokens: the border from the tone's text colour (`--color-info`,
+ * `--color-warning`, `--color-success`, `--color-danger`), the background from its soft tint
  * (`--color-info-soft`, …), so an app that repaints them sees the panel follow, in both palettes.
  * The text stays `text-foreground`, which reads at 4.5:1 or better on every tint; the tone's
  * colour is on the border and the glyph only.
@@ -77,9 +77,12 @@ function isEmpty(children: ComponentChildren): boolean {
 }
 
 /**
- * A banner for a page-wide message: a trial that ends soon, a plan that will lapse, a change that
- * was saved, or a failure the reader must act on, such as a payment that did not go through. Content
- * that failed to load belongs to `ErrorState`, the panel shown in its place.
+ * A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with
+ * `tone="danger"`, a failure the reader must act on, such as a payment that failed.
+ *
+ * Which component for a failure: a page-wide failure the reader must act on (a payment failed)
+ * is a `Notice` with `tone="danger"`; content that failed to load is an `ErrorState`, shown in
+ * its place.
  *
  * Every string is a prop: the component owns layout and tone, never copy. With no title, no body
  * and no action it renders `null`, so a caller can pass a possibly-empty notice straight through.
