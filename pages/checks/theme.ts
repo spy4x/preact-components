@@ -12,6 +12,7 @@ import {
   pointerToCorner,
   poll,
   pressKey,
+  relativeLuminance,
   type RingGapPixels,
   ringGapPixels,
   samePixel,
@@ -455,6 +456,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       browserRing: string
       ratio: number
     }>(`(async () => {
+      ${CONTRAST_HELPERS}
       const root = document.documentElement
       const { wasDark, wasTheme, wasScheme } = window.__inkFocusRingRestore
       delete window.__inkFocusRingRestore
@@ -495,55 +497,12 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       button.parentElement.appendChild(reference)
       const browserRing = getComputedStyle(reference).outlineColor
 
-      // Chromium's computed-style serialization keeps a colour in whatever colour function it was
-      // authored in rather than always converting to rgb() — this repository's tokens are oklch(),
-      // so getComputedStyle can hand back "oklch(L C H)" as readily as "rgb(r g b)". WCAG's relative
-      // luminance wants linear-light RGB either way, so this parses both forms down to it: rgb()
-      // through the usual sRGB gamma decode, oklch()/oklab() through the linear-sRGB matrix from
-      // the OKLab colour space's own definition (Björn Ottosson's oklab.org write-up), which is
-      // already linear-light and skips the gamma step.
-      function linearRgb(color) {
-        const oklchMatch = color.match(
-          /oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)/,
-        )
-        const oklabMatch = color.match(
-          /oklab\\(([\\d.]+)\\s+(-?[\\d.]+)\\s+(-?[\\d.]+)/,
-        )
-        let L, a, b
-        if (oklchMatch) {
-          const [, l, c, h] = oklchMatch.map(Number)
-          L = l
-          a = c * Math.cos(h * Math.PI / 180)
-          b = c * Math.sin(h * Math.PI / 180)
-        } else if (oklabMatch) {
-          ;[, L, a, b] = oklabMatch.map(Number)
-        } else {
-          const [r, g, bl] = color.match(/[\\d.]+/g).slice(0, 3).map(Number).map((channel) => {
-            const s = channel / 255
-            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-          })
-          return [r, g, bl]
-        }
-        const l_ = L + 0.3963377774 * a + 0.2158037573 * b
-        const m_ = L - 0.1055613458 * a - 0.0638541728 * b
-        const s_ = L - 0.0894841775 * a - 1.2914855480 * b
-        const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3
-        return [
-          4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-          -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-          -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
-        ]
-      }
-      function luminance(color) {
-        const [r, g, b] = linearRgb(color).map((channel) => Math.max(0, Math.min(1, channel)))
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b
-      }
-      function contrast(background) {
-        const lighter = Math.max(luminance(outlineColor), luminance(background))
-        const darker = Math.min(luminance(outlineColor), luminance(background))
-        return (lighter + 0.05) / (darker + 0.05)
-      }
-      const ratio = Math.min(contrast(pageBackground), contrast(cardBackground))
+      // The page is measured as a bare colour; the card as what the outline is really drawn on,
+      // outside the button's box, with every opacity on the way folded in.
+      const outlineRatio = Math.min(
+        contrast(outlineColor, pageBackground),
+        seenRatio(button, outlineColor, { outside: true }),
+      )
 
       button.parentElement.remove()
       root.classList.toggle("dark", wasDark)
@@ -551,7 +510,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
       if (wasTheme === null) root.removeAttribute("data-theme")
       else root.setAttribute("data-theme", wasTheme)
 
-      return { outlineColor, pageBackground, cardBackground, browserRing, ratio }
+      return { outlineColor, pageBackground, cardBackground, browserRing, ratio: outlineRatio }
     })()`)
     check(
       `${palette.name}, a focused .btn.${buttonClass}'s outline clears 3:1 contrast against the ` +
@@ -686,12 +645,15 @@ async function dangerButtonClassChecks(devtools: Devtools): Promise<void> {
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
       })()`)
       await pointerToCorner(devtools)
-      const rest = await devtools.evaluate<{ label: string; fill: string }>(`(async () => {
+      const rest = await devtools.evaluate<{ label: string; fill: string; ratio: number }>(
+        `(async () => {
+        ${CONTRAST_HELPERS}
         const button = document.getElementById("danger-class-check")
         button.style.transition = "none"
         const style = getComputedStyle(button)
-        return { label: style.color, fill: style.backgroundColor }
-      })()`)
+        return { label: style.color, fill: style.backgroundColor, ratio: seenRatio(button) }
+      })()`,
+      )
       await devtools.send("Input.dispatchMouseEvent", {
         type: "mouseMoved",
         x: centre.x,
@@ -716,8 +678,8 @@ async function dangerButtonClassChecks(devtools: Devtools): Promise<void> {
           fill,
           hoverFill,
           hoverToken,
-          onFill: contrast(label, fill),
-          onHover: hoverFill ? contrast(getComputedStyle(button).color, hoverFill) : 0,
+          onFill: ${rest.ratio},
+          onHover: hoverFill ? seenRatio(button) : 0,
         }
       })()`)
     }
@@ -914,20 +876,9 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
       still.textContent = "*, *::before, *::after { transition: none !important; }"
       document.head.append(still)
       await frames()
-      const opaque = (colour) => {
-        const probe = document.createElement("canvas").getContext("2d")
-        probe.fillStyle = "rgba(0, 0, 0, 0)"
-        probe.fillStyle = colour
-        probe.fillRect(0, 0, 1, 1)
-        return probe.getImageData(0, 0, 1, 1).data[3] === 255
-      }
-      const ground = (element) => {
-        for (let at = element.parentElement; at; at = at.parentElement) {
-          const colour = getComputedStyle(at).backgroundColor
-          if (opaque(colour)) return colour
-        }
-        return getComputedStyle(document.body).backgroundColor
-      }
+      // What a mark drawn outside the element's box sits on, every layer and opacity folded in.
+      const ground = (element) =>
+        "rgb(" + seen(element, undefined, { outside: true }).ground.join(" ") + ")"
       const resolve = (value) => {
         const probe = document.createElement("span")
         probe.style.color = value
@@ -937,8 +888,12 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
         return colour
       }
       const edge = (name, element, colour) => {
-        const behind = ground(element)
-        return { name, colour, ground: behind, ratio: contrast(colour, behind) }
+        return {
+          name,
+          colour,
+          ground: ground(element),
+          ratio: seenRatio(element, colour, { outside: true }),
+        }
       }
       const track = document.querySelector('#demo-ToggleSwitch [role="switch"][aria-checked="true"]')
       const half = [...document.querySelectorAll("#demo-OnOffButtons button")]
@@ -947,9 +902,11 @@ async function selectionAndRingChecks(devtools: Devtools): Promise<void> {
       if (track) fills.push(edge("ToggleSwitch on track", track, getComputedStyle(track).backgroundColor))
       if (half) fills.push(edge("chosen OnOffButtons half", half, getComputedStyle(half).backgroundColor))
       const labelOnFill = half
-        ? contrast(getComputedStyle(half).color, getComputedStyle(half).backgroundColor)
+        ? seenRatio(half)
         : 0
-      const hoverOnGround = half ? contrast(resolve("var(--color-selected-hover)"), ground(half)) : 0
+      const hoverOnGround = half
+        ? seenRatio(half, resolve("var(--color-selected-hover)"), { outside: true })
+        : 0
 
       const token = resolve("var(--color-ring)")
       const rings = []
@@ -1149,9 +1106,9 @@ async function warningPairChecks(devtools: Devtools): Promise<void> {
           const box = dismiss.getBoundingClientRect()
           return {
             fill,
-            text: contrast(style(bar.querySelector("span")).color, fill),
-            dismiss: contrast(style(dismiss).color, fill),
-            reload: contrast(style(reload).color, style(reload).backgroundColor),
+            text: seenRatio(bar.querySelector("span")),
+            dismiss: seenRatio(dismiss),
+            reload: seenRatio(reload),
             x: box.left + box.width / 2,
             y: box.top + box.height / 2,
           }
@@ -1171,15 +1128,9 @@ async function warningPairChecks(devtools: Devtools): Promise<void> {
           const bar = doc.querySelector('${quiet} [role="status"] > div')
           const dismiss = bar.querySelectorAll("button")[1]
           const hovered = dismiss.matches(":hover")
-          const style = view.getComputedStyle(dismiss)
-          // The hover fill is a translucent tint: lay it over the bar's fill, as the browser does.
-          const layer = document.createElement("canvas").getContext("2d", { colorSpace: "srgb" })
-          layer.fillStyle = view.getComputedStyle(bar).backgroundColor
-          layer.fillRect(0, 0, 1, 1)
-          layer.fillStyle = style.backgroundColor
-          layer.fillRect(0, 0, 1, 1)
-          const [r, g, b] = layer.getImageData(0, 0, 1, 1).data
-          return { ratio: contrast(style.color, "rgb(" + r + ", " + g + ", " + b + ")"), hovered }
+          // The hover fill is a translucent tint: \`seen\` lays it over the bar's fill, as the
+          // browser does.
+          return { ratio: seenRatio(dismiss), hovered }
         })()`)
         await pointerToCorner(devtools)
         await devtools.evaluate(`(() => {
@@ -1229,8 +1180,7 @@ async function warningPairChecks(devtools: Devtools): Promise<void> {
       await pointerToCorner(devtools)
       const rest = await devtools.evaluate<number>(`(() => {
         ${CONTRAST_HELPERS}
-        const style = getComputedStyle(document.getElementById("warning-class-check"))
-        return contrast(style.color, style.backgroundColor)
+        return seenRatio(document.getElementById("warning-class-check"))
       })()`)
       await devtools.send("Input.dispatchMouseEvent", {
         type: "mouseMoved",
@@ -1243,8 +1193,7 @@ async function warningPairChecks(devtools: Devtools): Promise<void> {
         ${CONTRAST_HELPERS}
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
         const button = document.getElementById("warning-class-check")
-        const style = getComputedStyle(button)
-        return { ratio: contrast(style.color, style.backgroundColor), hovered: button.matches(":hover") }
+        return { ratio: seenRatio(button), hovered: button.matches(":hover") }
       })()`)
       const reading = bar[palette]
       if (reading) {
@@ -1339,8 +1288,9 @@ async function statusFillChecks(devtools: Devtools): Promise<void> {
         const style = getComputedStyle(probe)
         const fill = style.backgroundColor
         const label = style.color
+        const ratio = seenRatio(probe)
         probe.remove()
-        return { name, fill, label, ratio: contrast(label, fill), floor }
+        return { name, fill, label, ratio, floor }
       })
     }
     const result = { dark: readPalette(true), light: readPalette(false) }
@@ -1535,15 +1485,15 @@ async function statusFillColourChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The luminance of the pixel at a viewport point, read from a real screenshot. A native checkbox or
- * radio is drawn by the browser from `color-scheme`, not from any style a computed-style read can
- * see, so the pixels are the only proof of what a reader gets.
+ * The sRGB pixel at an element's centre, read from a real screenshot. A native checkbox or radio is
+ * drawn by the browser from `color-scheme`, not from any style a computed-style read can see, so
+ * the pixels are the only proof of what a reader gets.
  *
  * @param devtools The connected session.
  * @param element A JavaScript expression for the element; its centre is sampled.
- * @returns The WCAG relative luminance there, 0 (black) to 1 (white).
+ * @returns The pixel there, `[r, g, b]` in 0–255.
  */
-async function luminanceAtCentre(devtools: Devtools, element: string): Promise<number> {
+async function pixelAtCentre(devtools: Devtools, element: string): Promise<number[]> {
   if (!await centreInView(devtools, element)) throw new Error(`${element} is not on the page`)
   const point = await devtools.evaluate<{ x: number; y: number; width: number }>(`(() => {
     const box = (${element}).getBoundingClientRect()
@@ -1552,24 +1502,19 @@ async function luminanceAtCentre(devtools: Devtools, element: string): Promise<n
   const { data } = await devtools.send<{ data: string }>("Page.captureScreenshot", {
     format: "png",
   })
-  return await devtools.evaluate<number>(`(async () => {
+  return await devtools.evaluate<number[]>(`(async () => {
     const blob = await (await fetch("data:image/png;base64,${data}")).blob()
     const bitmap = await createImageBitmap(blob)
     const scale = bitmap.width / ${point.width}
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
     const context = canvas.getContext("2d")
     context.drawImage(bitmap, 0, 0)
-    const [r, g, b] = context.getImageData(
+    return [...context.getImageData(
       Math.round(${point.x} * scale),
       Math.round(${point.y} * scale),
       1,
       1,
-    ).data
-    const linear = (channel) => {
-      const s = channel / 255
-      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-    }
-    return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+    ).data.slice(0, 3)]
   })()`)
 }
 
@@ -1592,48 +1537,36 @@ export async function darkControlsChecks(devtools: Devtools): Promise<void> {
     return was
   })()`)
   try {
-    const checkbox = await luminanceAtCentre(
-      devtools,
-      `document.querySelector("#demo-Checkbox input.pc-checkbox")`,
+    const checkbox = relativeLuminance(
+      await pixelAtCentre(devtools, `document.querySelector("#demo-Checkbox input.pc-checkbox")`),
     )
     check(
       "in the dark palette an unticked Checkbox is drawn dark, not as a white box",
       checkbox < 0.2,
-      `luminance at the box's centre ${checkbox.toFixed(3)} (white is 1)`,
+      `relative brightness at the box's centre ${checkbox.toFixed(3)} (white is 1)`,
     )
-    const radio = await luminanceAtCentre(
-      devtools,
-      `[...document.querySelectorAll("#demo-Radio input.pc-radio")].find((radio) => !radio.checked)`,
+    const radio = relativeLuminance(
+      await pixelAtCentre(
+        devtools,
+        `[...document.querySelectorAll("#demo-Radio input.pc-radio")].find((radio) => !radio.checked)`,
+      ),
     )
     check(
       "in the dark palette an unpicked Radio is drawn dark, not as a white disc",
       radio < 0.2,
-      `luminance at the disc's centre ${radio.toFixed(3)} (white is 1)`,
+      `relative brightness at the disc's centre ${radio.toFixed(3)} (white is 1)`,
     )
 
     const progress = await devtools.evaluate<{ fill: string; track: string; ratio: number }>(
       `(() => {
+      ${CONTRAST_HELPERS}
       const fill = document.querySelector("#demo-Progress [role=progressbar] .bg-primary")
       const track = fill.parentElement
-      const channels = (element) => {
-        const probe = document.createElement("canvas").getContext("2d")
-        probe.fillStyle = getComputedStyle(element).backgroundColor
-        probe.fillRect(0, 0, 1, 1)
-        return [...probe.getImageData(0, 0, 1, 1).data.slice(0, 3)]
-      }
-      const luminance = (rgb) => {
-        const [r, g, b] = rgb.map((channel) => {
-          const s = channel / 255
-          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-        })
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b
-      }
-      const a = luminance(channels(fill))
-      const b = luminance(channels(track))
       return {
         fill: getComputedStyle(fill).backgroundColor,
         track: getComputedStyle(track).backgroundColor,
-        ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+        // The fill is drawn over the track, outside the fill's own box.
+        ratio: seenRatio(fill, getComputedStyle(fill).backgroundColor, { outside: true }),
       }
     })()`,
     )
@@ -1712,6 +1645,7 @@ async function canvasContrastCheck(devtools: Devtools): Promise<void> {
     for (const page of guidePages) {
       await openGuidePage(devtools, page.id)
       const read = await devtools.evaluate<{ lines: number; failures: string[] }>(`(async () => {
+      ${CONTRAST_HELPERS}
       // Put back afterwards: the header's theme switch reads the store, not the class, and a later
       // check expects the two to agree.
       const wasDark = document.documentElement.classList.contains("dark")
@@ -1720,42 +1654,6 @@ async function canvasContrastCheck(devtools: Devtools): Promise<void> {
       const finite = document.getAnimations()
         .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
       await Promise.all(finite.map((animation) => animation.finished.catch(() => {})))
-      const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })
-      const rgba = (color) => {
-        context.clearRect(0, 0, 1, 1)
-        context.fillStyle = "#000"
-        context.fillStyle = color
-        context.fillRect(0, 0, 1, 1)
-        return [...context.getImageData(0, 0, 1, 1).data]
-      }
-      const luminance = ([r, g, b]) => {
-        const linear = (channel) => {
-          const s = channel / 255
-          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
-      }
-      // What the text really sits on: each translucent layer (a scrim, an overlay) is laid over
-      // whatever is behind it, up to the first opaque one. A scrim block would otherwise read as
-      // the page beneath it.
-      const behind = (element) => {
-        const layers = []
-        for (let at = element; at; at = at.parentElement) {
-          const colour = rgba(getComputedStyle(at).backgroundColor)
-          if (colour[3] === 0) continue
-          layers.push(colour)
-          if (colour[3] === 255) break
-        }
-        let result = layers.length && layers[layers.length - 1][3] === 255
-          ? layers.pop()
-          : rgba(getComputedStyle(document.body).backgroundColor)
-        while (layers.length) {
-          const top = layers.pop()
-          const alpha = top[3] / 255
-          result = [0, 1, 2].map((i) => top[i] * alpha + result[i] * (1 - alpha)).concat([255])
-        }
-        return result
-      }
       const failures = []
       let lines = 0
       for (const element of document.querySelectorAll(".ui-guide *")) {
@@ -1763,16 +1661,11 @@ async function canvasContrastCheck(devtools: Devtools): Promise<void> {
         if (!own || !element.checkVisibility()) continue
         if (element.closest('[data-card-part="demo"], pre, .sr-only')) continue
         lines++
-        const ground = behind(element)
-        // A translucent text colour is laid over what it sits on before it is measured.
-        const ink = rgba(getComputedStyle(element).color)
-        const opacity = ink[3] / 255
-        const shown = [0, 1, 2].map((i) => ink[i] * opacity + ground[i] * (1 - opacity))
-        const a = luminance(shown)
-        const b = luminance(ground)
-        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
-        if (ratio < 4.5) {
-          failures.push('"' + element.textContent.trim().slice(0, 30) + '" ' + ratio.toFixed(2) + ":1")
+        // Every translucent layer (a scrim, an overlay), a translucent text colour and any opacity
+        // are laid over what is behind them before the text is measured.
+        const shown = seenRatio(element)
+        if (shown < 4.5) {
+          failures.push('"' + element.textContent.trim().slice(0, 30) + '" ' + shown.toFixed(2) + ":1")
         }
       }
       document.documentElement.classList.toggle("dark", wasDark)
@@ -1864,9 +1757,11 @@ const GAMUT_ACCENTS = {
  * Page-side OKLab helpers, as source text. `oklabOfComputed` converts a computed `oklch(L C H)`
  * string; `oklabOfPixel` draws the colour on a 1x1 sRGB canvas, reads the pixel back and converts
  * that, so the difference between the two is what clipping to the screen's gamut cost.
- * `whiteContrastOfPixel` is white text's WCAG contrast on that drawn pixel.
+ * `whiteContrastOfPixel` is white text's WCAG contrast on that drawn pixel. It carries
+ * {@link CONTRAST_HELPERS}, so a page expression takes one or the other, never both.
  */
 const OKLAB_HELPERS = `
+  ${CONTRAST_HELPERS}
   const oklabOfComputed = (color) => {
     const [l, c, h] = numbers(color)
     if (!color.startsWith("oklch(")) throw new Error("expected an oklch() colour, got " + color)
@@ -1880,10 +1775,7 @@ const OKLAB_HELPERS = `
     pixelContext.clearRect(0, 0, 1, 1)
     pixelContext.fillStyle = color
     pixelContext.fillRect(0, 0, 1, 1)
-    const [r, g, b] = [...pixelContext.getImageData(0, 0, 1, 1).data].slice(0, 3).map((v) => {
-      const x = v / 255
-      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
-    })
+    const [r, g, b] = [...pixelContext.getImageData(0, 0, 1, 1).data].slice(0, 3).map(linearChannel)
     const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
     const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
     const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
@@ -1894,16 +1786,7 @@ const OKLAB_HELPERS = `
     ]
   }
   const oklabDistance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
-  const whiteContrastOfPixel = (color) => {
-    pixelContext.clearRect(0, 0, 1, 1)
-    pixelContext.fillStyle = color
-    pixelContext.fillRect(0, 0, 1, 1)
-    const [r, g, b] = [...pixelContext.getImageData(0, 0, 1, 1).data].slice(0, 3).map((v) => {
-      const x = v / 255
-      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
-    })
-    return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05)
-  }
+  const whiteContrastOfPixel = (color) => contrast(color, "white")
 `
 
 /**
@@ -2329,7 +2212,7 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
       return {
         label: style.color,
         fill: style.backgroundColor,
-        contrast: contrast(style.color, style.backgroundColor),
+        contrast: seenRatio(danger),
         hover,
       }
     }
@@ -2398,11 +2281,11 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
     const label = getComputedStyle(button).color
     result.fill = getComputedStyle(button).backgroundColor
     result.label = label
-    result.fillContrast = contrast(label, result.fill)
+    result.fillContrast = seenRatio(button)
     result.hoverContrast = contrast(label, resolve("var(--color-accent-800)"))
     root.classList.toggle("dark", true)
     await settle(button)
-    result.darkFillContrast = contrast(getComputedStyle(button).color, getComputedStyle(button).backgroundColor)
+    result.darkFillContrast = seenRatio(button)
     style.remove()
     root.classList.toggle("dark", wasDark)
     await settle(button)

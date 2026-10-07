@@ -19,16 +19,19 @@ import {
   centreInView,
   type CheckBlock,
   connect,
+  CONTRAST_HELPERS,
   describeException,
   Devtools,
   DevtoolsClosedError,
   filteredRunLine,
+  linearChannel,
   PAGE_UNTIL,
   type PageReader,
   PhaseVerdict,
   phaseVerdict,
   pixelContrast,
   poll,
+  relativeLuminance,
   reloadAndHydrate,
   ringGapProbePoints,
   Run,
@@ -1139,6 +1142,44 @@ describe("pixelContrast", () => {
   it("rates mid grey on white just under 4.5:1, as WCAG does", () => {
     // #777777 on white is the textbook near-miss: 4.48:1.
     expect(pixelContrast([0x77, 0x77, 0x77], [255, 255, 255])).toBeCloseTo(4.48, 2)
+  })
+})
+
+describe("linearChannel", () => {
+  it("maps 0 to 0 and 255 to 1", () => {
+    expect(linearChannel(0)).toBe(0)
+    expect(linearChannel(255)).toBeCloseTo(1, 10)
+  })
+
+  it("decodes a dark channel on the straight segment and a lighter one on the curve", () => {
+    // 10/255 sits below the knee of the sRGB curve, so it is divided by 12.92; 128/255 is above.
+    expect(linearChannel(10)).toBeCloseTo(10 / 255 / 12.92, 10)
+    expect(linearChannel(128)).toBeCloseTo(0.2158605, 6)
+  })
+})
+
+describe("relativeLuminance", () => {
+  it("rates black at 0 and white at 1", () => {
+    expect(relativeLuminance([0, 0, 0])).toBe(0)
+    expect(relativeLuminance([255, 255, 255])).toBeCloseTo(1, 10)
+  })
+
+  it("weights green most and blue least, as WCAG does", () => {
+    expect(relativeLuminance([255, 0, 0])).toBeCloseTo(0.21, 2)
+    expect(relativeLuminance([0, 255, 0])).toBeCloseTo(0.72, 2)
+    expect(relativeLuminance([0, 0, 255])).toBeCloseTo(0.07, 2)
+  })
+})
+
+describe("CONTRAST_HELPERS", () => {
+  it("puts the tested maths into the page as its own source", () => {
+    for (const fn of [linearChannel, relativeLuminance, pixelContrast]) {
+      expect(CONTRAST_HELPERS).toContain(String(fn))
+    }
+  })
+
+  it("calls no Object.defineProperty, so no colour carries a hidden property", () => {
+    expect(CONTRAST_HELPERS).not.toContain("defineProperty")
   })
 })
 

@@ -1,4 +1,4 @@
-import { check, type Devtools, PAGE_UNTIL, pointerToCorner } from "./harness.ts"
+import { check, CONTRAST_HELPERS, type Devtools, PAGE_UNTIL, pointerToCorner } from "./harness.ts"
 
 /**
  * Every glyph's caption fits its cell on a phone: a long name wraps between its words rather than
@@ -71,6 +71,7 @@ async function glyphPaintCheck(devtools: Devtools): Promise<void> {
   await pointerToCorner(devtools)
   for (const theme of ["light", "dark"] as const) {
     const read = await devtools.evaluate<GlyphPaint>(`(async () => {
+      ${CONTRAST_HELPERS}
       const root = document.documentElement
       const wasDark = root.classList.contains("dark")
       root.classList.toggle("dark", ${theme === "dark"})
@@ -78,26 +79,14 @@ async function glyphPaintCheck(devtools: Devtools): Promise<void> {
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
         const canvas = document.createElement("canvas")
         canvas.width = canvas.height = 1
-        const paint = canvas.getContext("2d", { willReadFrequently: true })
+        const probe = canvas.getContext("2d", { willReadFrequently: true })
         // Any CSS colour, oklch included, as sRGB channels and alpha.
         const rgba = (css) => {
-          paint.clearRect(0, 0, 1, 1)
-          paint.fillStyle = "#000"
-          paint.fillStyle = css
-          paint.fillRect(0, 0, 1, 1)
-          return [...paint.getImageData(0, 0, 1, 1).data]
-        }
-        const luminance = ([r, g, b]) => {
-          const linear = (c) => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-          return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
-        }
-        // The first opaque background at or above an element: what it is drawn on.
-        const behind = (element) => {
-          for (let at = element; at; at = at.parentElement) {
-            const colour = rgba(getComputedStyle(at).backgroundColor)
-            if (colour[3] === 255) return colour
-          }
-          return rgba(getComputedStyle(root).backgroundColor)
+          probe.clearRect(0, 0, 1, 1)
+          probe.fillStyle = "#000"
+          probe.fillStyle = css
+          probe.fillRect(0, 0, 1, 1)
+          return [...probe.getImageData(0, 0, 1, 1).data]
         }
         const cells = [...document.querySelectorAll("#icons [data-icon]")]
         const faults = []
@@ -136,9 +125,7 @@ async function glyphPaintCheck(devtools: Devtools): Promise<void> {
             }
           }
           if (painted === 0) faults.push({ name, fault: "paints nothing" })
-          const ink = luminance(rgba(getComputedStyle(svg).color))
-          const ground = luminance(behind(cell))
-          minRatio = Math.min(minRatio, (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05))
+          minRatio = Math.min(minRatio, seenRatio(svg))
         }
         return {
           total: cells.length,

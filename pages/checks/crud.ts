@@ -972,7 +972,7 @@ async function fieldIssueContrastCheck(devtools: Devtools): Promise<void> {
         return {
           name,
           found: true,
-          onBackdrop: ratio(text, backdrop(element)),
+          onBackdrop: seenRatio(element),
           onCanvas: ratio(text, canvas),
           onSurface: ratio(text, surface),
           onExtra: Math.min(...extras.map((extra) => ratio(text, token(extra)))),

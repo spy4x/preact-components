@@ -2,6 +2,7 @@ import { guidePages } from "@spy4x/preact-ui-guide/registry"
 import {
   centreInView,
   check,
+  CONTRAST_HELPERS,
   type Devtools,
   openGuidePage,
   poll,
@@ -100,6 +101,7 @@ async function colourAtomLabelsCheck(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "theme")
   for (const palette of ["light", "dark"] as const) {
     const labels = await devtools.evaluate<PaintedLabel[]>(`(async () => {
+      ${CONTRAST_HELPERS}
       const root = document.documentElement
       const wasDark = root.classList.contains("dark")
       root.classList.toggle("dark", ${palette === "dark"})
@@ -107,18 +109,14 @@ async function colourAtomLabelsCheck(devtools: Devtools): Promise<void> {
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
         const canvas = document.createElement("canvas")
         canvas.width = canvas.height = 1
-        const paint = canvas.getContext("2d", { willReadFrequently: true })
+        const probe = canvas.getContext("2d", { willReadFrequently: true })
         // Any CSS colour, oklch included, as sRGB channels and alpha.
         const rgba = (css) => {
-          paint.clearRect(0, 0, 1, 1)
-          paint.fillStyle = "#000"
-          paint.fillStyle = css
-          paint.fillRect(0, 0, 1, 1)
-          return [...paint.getImageData(0, 0, 1, 1).data]
-        }
-        const luminance = ([r, g, b]) => {
-          const linear = (c) => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-          return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+          probe.clearRect(0, 0, 1, 1)
+          probe.fillStyle = "#000"
+          probe.fillStyle = css
+          probe.fillRect(0, 0, 1, 1)
+          return [...probe.getImageData(0, 0, 1, 1).data]
         }
         const demo = document.querySelector('#demo-class-colour-atoms [data-card-part="demo"]')
         if (!demo) return []
@@ -129,10 +127,7 @@ async function colourAtomLabelsCheck(devtools: Devtools): Promise<void> {
           const style = getComputedStyle(element)
           const fill = rgba(style.backgroundColor)
           if (!text || fill[3] !== 255) return []
-          const ink = luminance(rgba(style.color))
-          const ground = luminance(fill)
-          const ratio = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05)
-          return [{ text, ratio: Math.round(ratio * 100) / 100 }]
+          return [{ text, ratio: Math.round(seenRatio(element) * 100) / 100 }]
         })
       } finally {
         root.classList.toggle("dark", wasDark)

@@ -1867,7 +1867,7 @@ async function toastrWarningContrastCheck(devtools: Devtools): Promise<void> {
         label: rgb(paint(getComputedStyle(toast).color)),
         labelToken: token("--color-warning-foreground"),
         ratio: labels.length < 3 ? 0 : Math.min(
-          ...labels.map((el) => ratio(paint(getComputedStyle(el).color), backdrop(el))),
+          ...labels.map((el) => seenRatio(el)),
         ),
         opacity,
         canvas: token("--color-canvas"),
@@ -9025,26 +9025,21 @@ async function darkDateIconCheck(devtools: Devtools, mode: PickerMode): Promise<
       format: "png",
     })
     const read = await devtools.evaluate<{ icon: number; field: number }>(`(async () => {
+      ${CONTRAST_HELPERS}
       const blob = await (await fetch("data:image/png;base64,${data}")).blob()
       const bitmap = await createImageBitmap(blob)
       const scale = bitmap.width / ${box.width}
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
       const context = canvas.getContext("2d")
       context.drawImage(bitmap, 0, 0)
-      const linear = (channel) => {
-        const s = channel / 255
-        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-      }
-      const luminance = (x, y) => {
-        const [r, g, b] = context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1)
-          .data
-        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
-      }
+      const lightAt = (x, y) => relativeLuminance([
+        ...context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data.slice(0, 3),
+      ])
       let icon = 0
       for (let x = ${box.right} - 32; x <= ${box.right} - 4; x++) {
-        for (let y = ${box.top} + 4; y <= ${box.bottom} - 4; y++) icon = Math.max(icon, luminance(x, y))
+        for (let y = ${box.top} + 4; y <= ${box.bottom} - 4; y++) icon = Math.max(icon, lightAt(x, y))
       }
-      const field = luminance(${box.left} + (${box.right} - ${box.left}) * 0.65, (${box.top} + ${box.bottom}) / 2)
+      const field = lightAt(${box.left} + (${box.right} - ${box.left}) * 0.65, (${box.top} + ${box.bottom}) / 2)
       return { icon, field }
     })()`)
 
@@ -13495,15 +13490,16 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
       const surface = token("--color-surface")
       return badges.map((badge) => {
         const text = paint(getComputedStyle(badge).color)
-        const behind = backdrop(badge)
+        const shown = seen(badge)
+        const behind = shown.ground
         paintLayers([getComputedStyle(badge).backgroundColor])
         const filled = contrastCanvas.getImageData(0, 0, 1, 1).data[3] === 255
         return {
           name: badge.textContent.trim(),
           color: getComputedStyle(badge).color,
-          onBackdrop: ratio(text, behind),
-          onCanvas: filled ? ratio(text, behind) : ratio(text, canvas),
-          onSurface: filled ? ratio(text, behind) : ratio(text, surface),
+          onBackdrop: ratio(shown.text, behind),
+          onCanvas: filled ? ratio(shown.text, behind) : ratio(text, canvas),
+          onSurface: filled ? ratio(shown.text, behind) : ratio(text, surface),
           filled,
         }
       })
@@ -13521,7 +13517,7 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
         dark,
         chipColor: chip ? getComputedStyle(chip).color : "no unpressed chip",
         grayColor: grayBadge ? getComputedStyle(grayBadge).color : "no gray badge",
-        chipRatio: chip ? ratio(paint(getComputedStyle(chip).color), backdrop(chip)) : 0,
+        chipRatio: chip ? seenRatio(chip) : 0,
       }
     } finally {
       root.classList.toggle("dark", wasDark)
@@ -13668,7 +13664,7 @@ async function fieldErrorContrastCheck(devtools: Devtools): Promise<void> {
         return {
           name,
           found: true,
-          onBackdrop: ratio(text, backdrop(element)),
+          onBackdrop: seenRatio(element),
           onCanvas: ratio(text, canvas),
           onSurface: ratio(text, surface),
           onExtra: Math.min(...extras.map((extra) => ratio(text, token(extra)))),
@@ -13806,7 +13802,7 @@ async function errorStateDangerCheck(devtools: Devtools): Promise<void> {
       const text = paint(style.color)
       return {
         found: true,
-        onPanel: ratio(text, backdrop(panel)),
+        onPanel: panel.querySelector("p") ? seenRatio(panel.querySelector("p")) : 0,
         color: style.color,
         border: style.borderTopColor,
         background: style.backgroundColor,
@@ -13933,12 +13929,12 @@ async function noticeToneCheck(devtools: Devtools): Promise<void> {
         return { tone, found: false, text: 0, glyph: 0, onTokens: false, detail: "missing" }
       }
       const style = getComputedStyle(panel)
-      const behind = backdrop(panel)
+      const lines = glyph.nextElementSibling ? textHolders(glyph.nextElementSibling) : []
       return {
         tone,
-        found: true,
-        text: ratio(paint(style.color), behind),
-        glyph: ratio(paint(getComputedStyle(glyph).color), behind),
+        found: lines.length > 0,
+        text: lines.length ? Math.min(...lines.map((line) => seenRatio(line))) : 0,
+        glyph: seenRatio(glyph),
         onTokens: same(paint(style.borderTopColor), token("--color-" + tone)) &&
           same(paint(style.backgroundColor), token("--color-" + tone + "-soft")),
         detail: "text " + style.color + ", border " + style.borderTopColor + ", background " +
@@ -14037,17 +14033,19 @@ async function linkFocusRingCheck(devtools: Devtools, target: FocusRingTarget): 
         link.focus({ preventScroll: true })
         await frames()
         const style = getComputedStyle(link)
-        const resolve = (value) => {
+        const colourOf = (value) => {
           const probe = document.createElement("span")
           probe.style.color = value
           link.append(probe)
           const colour = getComputedStyle(probe).color
           probe.remove()
-          return paint(colour)
+          return colour
         }
-        const ring = resolve(style.getPropertyValue("--tw-ring-color"))
-        const offset = resolve(style.getPropertyValue("--tw-ring-offset-color"))
-        const ground = backdrop(link.parentElement)
+        const ringColour = colourOf(style.getPropertyValue("--tw-ring-color"))
+        const ring = paint(ringColour)
+        const offset = paint(colourOf(style.getPropertyValue("--tw-ring-offset-color")))
+        const shown = seen(link, ringColour, { outside: true })
+        const ground = shown.ground
         const reading = {
           focusVisible: link.matches(":focus-visible"),
           shadow: style.boxShadow,
@@ -14059,7 +14057,7 @@ async function linkFocusRingCheck(devtools: Devtools, target: FocusRingTarget): 
           offset,
           ground,
           onOffset: ratio(ring, offset),
-          onGround: ratio(ring, ground),
+          onGround: ratio(shown.text, ground),
         }
         link.blur()
         return reading
@@ -14158,7 +14156,7 @@ async function primaryButtonFillCheck(devtools: Devtools): Promise<void> {
         fill,
         onCanvas: ratio(painted, paint(token("--color-canvas"))),
         onSurface: ratio(painted, paint(token("--color-surface"))),
-        label: ratio(paint(getComputedStyle(button).color), painted),
+        label: seenRatio(button),
         isStep900: fill === token("--color-accent-900"),
       }
     }
@@ -14226,7 +14224,7 @@ async function primaryButtonFillCheck(devtools: Devtools): Promise<void> {
         hovered: button.matches(":hover"),
         fill,
         onCanvas: ratio(painted, paint(token("--color-canvas"))),
-        label: ratio(paint(getComputedStyle(button).color), painted),
+        label: seenRatio(button),
       }
     })()`)
     check(
@@ -15639,8 +15637,7 @@ async function themeToggleHintContrast(
     const wasDark = root.classList.contains("dark")
     const read = (dark) => {
       root.classList.toggle("dark", dark)
-      const text = paint(getComputedStyle(bubble).color)
-      const fill = backdrop(bubble)
+      const { text, ground: fill } = seen(bubble)
       return { text, fill, ratio: ratio(text, fill) }
     }
     const light = read(false)
@@ -16514,8 +16511,8 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
         ),
       )
       const measure = () => ({
-        label: ratio(paint(getComputedStyle(label).color), backdrop(titled)),
-        cross: ratio(paint(getComputedStyle(cross).color), backdrop(icon)),
+        label: seenRatio(label),
+        cross: seenRatio(cross),
         labelColor: getComputedStyle(label).color,
       })
       try {
@@ -17007,7 +17004,8 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       ["upgrade title", upgrade.querySelector("h4")],
       ["upgrade message", upgrade.querySelector("p")],
     ]
-    const edgeBehind = (element) => backdrop(element.parentElement)
+    const edgeRatio = (element) =>
+      seenRatio(element, getComputedStyle(element).borderTopColor, { outside: true })
     const checked = pricing.querySelector("fieldset label:has(:checked)")
     const unchecked = pricing.querySelector("fieldset label:not(:has(:checked))")
     const iconShown = (label) => {
@@ -17017,11 +17015,11 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       return rect.width > 0 && rect.height > 0 && getComputedStyle(icon).visibility === "visible"
     }
     const cue = () => ({
-      fillVsTrack: ratio(paint(getComputedStyle(checked).backgroundColor), backdrop(checked.parentElement)),
+      fillVsTrack: seenRatio(checked, getComputedStyle(checked).backgroundColor, { outside: true }),
       checkedIcon: iconShown(checked),
       uncheckedIcon: iconShown(unchecked),
       iconRatio: checked.querySelector("svg")
-        ? ratio(paint(getComputedStyle(checked.querySelector("svg")).color), backdrop(checked))
+        ? seenRatio(checked.querySelector("svg"))
         : 0,
       checkedWeight: Number(getComputedStyle(checked).fontWeight),
       uncheckedWeight: Number(getComputedStyle(unchecked).fontWeight),
@@ -17029,12 +17027,12 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
     const measure = () => [
       ...texts.map(([name, element]) => ({
         name,
-        ratio: element ? ratio(paint(getComputedStyle(element).color), backdrop(element)) : 0,
+        ratio: element ? seenRatio(element) : 0,
         needs: 4.5,
       })),
       {
         name: "highlighted plan border",
-        ratio: ratio(paint(getComputedStyle(highlighted).borderTopColor), edgeBehind(highlighted)),
+        ratio: edgeRatio(highlighted),
         needs: 3,
       },
       {
@@ -17047,12 +17045,12 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       },
       {
         name: "warning border",
-        ratio: ratio(paint(getComputedStyle(warning).borderTopColor), edgeBehind(warning)),
+        ratio: edgeRatio(warning),
         needs: 3,
       },
       {
         name: "warning icon",
-        ratio: ratio(paint(getComputedStyle(warning.querySelector("svg")).color), backdrop(warning)),
+        ratio: seenRatio(warning.querySelector("svg")),
         needs: 3,
       },
     ]

@@ -2,6 +2,7 @@ import { pageHref } from "@spy4x/preact-ui-guide/routes"
 import {
   centreInView,
   check,
+  CONTRAST_HELPERS,
   type Devtools,
   frameOverviewHydrates,
   inFreshFrame,
@@ -101,41 +102,18 @@ export async function chartsChecks(devtools: Devtools): Promise<void> {
 async function barsDarkContrastCheck(devtools: Devtools): Promise<void> {
   await centreInView(devtools, BARS)
   const bars = await devtools.evaluate<{ label: string; ratio: number }[]>(`(async () => {
+    ${CONTRAST_HELPERS}
     const root = document.documentElement
     const wasDark = root.classList.contains("dark")
     root.classList.add("dark")
     try {
       for (const animation of document.getAnimations()) animation.finish()
       await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-      const canvas = document.createElement("canvas")
-      canvas.width = canvas.height = 1
-      const paint = canvas.getContext("2d", { willReadFrequently: true })
-      // Any CSS colour, oklch included, as sRGB channels and alpha.
-      const rgba = (css) => {
-        paint.clearRect(0, 0, 1, 1)
-        paint.fillStyle = "#000"
-        paint.fillStyle = css
-        paint.fillRect(0, 0, 1, 1)
-        return [...paint.getImageData(0, 0, 1, 1).data]
-      }
-      const luminance = ([r, g, b]) => {
-        const linear = (c) => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
-      }
-      // The first opaque background at or above an element: what it is drawn on.
-      const behind = (element) => {
-        for (let at = element; at; at = at.parentElement) {
-          const colour = rgba(getComputedStyle(at).backgroundColor)
-          if (colour[3] === 255) return colour
-        }
-        return rgba(getComputedStyle(root).backgroundColor)
-      }
       return [...${BARS}.querySelectorAll("tr")].map((row) => {
         const bar = row.querySelector("td span span") ?? row.querySelector("td [style*='background'] span")
-        const fill = luminance(rgba(getComputedStyle(bar).backgroundColor))
-        const ground = luminance(behind(bar.parentElement))
-        const ratio = (Math.max(fill, ground) + 0.05) / (Math.min(fill, ground) + 0.05)
-        return { label: row.querySelector("th").textContent.trim(), ratio: Math.round(ratio * 100) / 100 }
+        // The fill is drawn over the track and whatever is behind it, not over the bar's own box.
+        const shown = seenRatio(bar, getComputedStyle(bar).backgroundColor, { outside: true })
+        return { label: row.querySelector("th").textContent.trim(), ratio: Math.round(shown * 100) / 100 }
       })
     } finally {
       root.classList.toggle("dark", wasDark)
