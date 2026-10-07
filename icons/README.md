@@ -1,6 +1,6 @@
 # `@spy4x/preact-icons`
 
-Merged icon set. 122 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+Merged icon set. 123 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
 
 ```tsx
 import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
@@ -25,8 +25,8 @@ export interface IconProps {
   `width`/`height` attributes.
 - Colour comes from `currentColor`, so an icon inherits the text colour of its container.
 - `shrink-0` is always applied, on top of a per-icon default size — `size-5` (83 glyphs) unless
-  the glyph already shipped elsewhere as `size-6` (38 glyphs). One glyph, `IconUpwork`, defaults to
-  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 121
+  the glyph already shipped elsewhere as `size-6` (39 glyphs). One glyph, `IconUpwork`, defaults to
+  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 122
   draw on a 24-unit `viewBox`, `IconLockClosedFilled` on Heroicons v1 solid's 20-unit one — so
   `IconUpwork` renders 20 × 20 at its default.
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
@@ -60,12 +60,12 @@ surface; mixing them is visible at small sizes.
 
 | Family                         | Count | Notes                                                                                                                                                                        |
 | ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Heroicons (v1 or v2)           | 72    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
+| Heroicons (v1 or v2)           | 73    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
 | Feather and/or Lucide outlines | 26    | round caps and joins; 17 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
 | Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
 | Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-The table is a partition of all 122 glyphs: every row above is disjoint from every other, the
+The table is a partition of all 123 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
@@ -113,18 +113,21 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 122 glyphs, **all 122 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Of the 123 glyphs, **all 123 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
 or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 32
 replaced in #233 also the upstream file name and version.
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
 
-Three glyphs were added after the merge, straight from a pack rather than from a source app:
+Four glyphs were added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
 ([issue #381](https://github.com/spy4x/preact-components/issues/381)); `IconCopy` is Feather's
 `copy` and `IconPen` Feather's `edit-2`, a plain pen
 ([issue #495](https://github.com/spy4x/preact-components/issues/495)). Both are Feather drawings
-so they sit next to `IconStar`, Feather's `star`, at the same `stroke-2` weight.
+so they sit next to `IconStar`, Feather's `star`, at the same `stroke-2` weight. `IconExclamationCircle` is
+Heroicons v2's `exclamation-circle` (24, outline), the glyph of `Notice`'s danger tone
+([issue #552](https://github.com/spy4x/preact-components/issues/552)), drawn at `stroke-1.5` like
+`IconInformationCircle` beside it.
 
 ### Brand marks
 
