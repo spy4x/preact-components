@@ -127,6 +127,7 @@ function ImageGalleryDemo() {
           hero
           captions
           navigation
+          navigationVariant="ghost"
           snap="center"
           counterLabel={slashCounter}
           stripPreviousLabel="Previous slide"
@@ -138,8 +139,9 @@ function ImageGalleryDemo() {
         <DemoNote>
           With hero, captions, navigation and snap="center": the first image loads first, each
           caption names its image, the counter follows the slide in the middle, and Previous slide
-          and Next slide scroll one slide. The lightbox is named after the open image and shows no
-          second caption. The fourth image is sent as WebP.
+          and Next slide scroll one slide; navigationVariant="ghost" leaves them transparent inside
+          their border. The lightbox is named after the open image and shows no second caption. The
+          fourth image is sent as WebP.
         </DemoNote>
       </Stack>
       <Stack gap="sm" data-e2e="gallery-strip-portrait">

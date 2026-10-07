@@ -75,7 +75,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Field`           | `field`             | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                           |
 | `FileInput`       | `file-input`        | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                          |
 | `Grid`            | `layout`            | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                    |
-| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `snap?`, `slideWidth?`                         |
+| `ImageGallery`    | `image-gallery`     | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`   |
 | `Input`           | `input`             | native input attrs, `class`; forwards `ref`                                                                                                                                                     |
 | `InputButton`     | `input-button`      | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                             |
 | `Kbd`             | `kbd`               | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                           |
@@ -1093,6 +1093,12 @@ row's buttons apart from the lightbox's (`"Previous screenshot"` on the page, `"
 the dialog); they default to `previousLabel` and `nextLabel`. `label` and `lightboxCaption` are
 passed to the lightbox as its `label` and `caption`.
 
+`navigationVariant` sets how Previous and Next look. `"outline"`, the default, fills them with the
+surface colour behind a control border. `"ghost"` is `Button`'s ghost variant with the same border:
+transparent, for a page whose other secondary buttons are transparent, and filled on hover like
+every other button. Both class lists come from `stripNavigationClasses`, and every class in them is
+already in `COMPONENT_CLASSES`, so an app's `@source inline(...)` needs nothing new.
+
 An image's `webpSrc` is used by the strip as well as the lightbox: the strip image renders inside a
 `<picture>` with a WebP `<source>` and `src` as its fallback. The grid's small thumbnail stays a
 plain `<img>`.
@@ -1580,6 +1586,10 @@ components and tests means exactly that: nothing outside this package should bui
 - `stripPosition(scroll)` is exported for the package's own components and tests: the slide a
   strip's counter names for where its row has scrolled to, the first at the start, the last at the
   end, and the nearest in between.
+- `stripNavigationClasses(variant)` is the full class list of the strip's Previous/Next buttons for
+  a `navigationVariant` (`StripNavigationVariant`, `"outline"` by default). An app that lists the
+  classes this library renders, for its stylesheet or a test that each one has a rule, imports it
+  instead of copying the string.
 
 ### Lightbox (`./lightbox`)
 
