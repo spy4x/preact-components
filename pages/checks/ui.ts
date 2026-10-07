@@ -13883,14 +13883,17 @@ interface NoticePanel {
   glyph: number
   /** Whether the border paints `--color-<tone>` and the background `--color-<tone>-soft`. */
   onTokens: boolean
+  /** Whether the glyph paints `--color-<tone>`, not the text colour or a neighbouring token. */
+  glyphOnToken: boolean
   /** The computed colours, for the report. */
   detail: string
 }
 
 /**
  * `Notice` draws each tone — info, warning, success and danger — from its tokens (#572, #552): the
- * border paints `--color-<tone>` and the background `--color-<tone>-soft` in the light, the dark
- * and the ink palette; its text reaches 4.5:1 and its glyph 3:1 against that background.
+ * border and the glyph paint `--color-<tone>` and the background `--color-<tone>-soft` in the
+ * light, the dark and the ink palette; its text reaches 4.5:1 and its glyph 3:1 against that
+ * background.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -13926,7 +13929,15 @@ async function noticeToneCheck(devtools: Devtools): Promise<void> {
       const panel = document.querySelector('#demo-Notice [data-tone="' + tone + '"]')
       const glyph = panel?.querySelector("svg")
       if (!panel || !glyph) {
-        return { tone, found: false, text: 0, glyph: 0, onTokens: false, detail: "missing" }
+        return {
+          tone,
+          found: false,
+          text: 0,
+          glyph: 0,
+          onTokens: false,
+          glyphOnToken: false,
+          detail: "missing",
+        }
       }
       const style = getComputedStyle(panel)
       const lines = glyph.nextElementSibling ? textHolders(glyph.nextElementSibling) : []
@@ -13937,6 +13948,7 @@ async function noticeToneCheck(devtools: Devtools): Promise<void> {
         glyph: seenRatio(glyph),
         onTokens: same(paint(style.borderTopColor), token("--color-" + tone)) &&
           same(paint(style.backgroundColor), token("--color-" + tone + "-soft")),
+        glyphOnToken: same(paint(getComputedStyle(glyph).color), token("--color-" + tone)),
         detail: "text " + style.color + ", border " + style.borderTopColor + ", background " +
           style.backgroundColor + ", glyph " + getComputedStyle(glyph).color,
       }
@@ -13964,10 +13976,11 @@ async function noticeToneCheck(devtools: Devtools): Promise<void> {
   for (const palette of ["light", "dark", "ink"] as const) {
     for (const panel of reading[palette]) {
       check(
-        `in the ${palette} palette the ${panel.tone} Notice draws its border with ` +
+        `in the ${palette} palette the ${panel.tone} Notice draws its border and its glyph with ` +
           `--color-${panel.tone} and its background with --color-${panel.tone}-soft, its text at ` +
           "4.5:1 or better and its glyph at 3:1 or better",
-        panel.found && panel.onTokens && panel.text >= 4.5 && panel.glyph >= 3,
+        panel.found && panel.onTokens && panel.glyphOnToken && panel.text >= 4.5 &&
+          panel.glyph >= 3,
         panel.found
           ? `text ${panel.text.toFixed(2)}:1, glyph ${panel.glyph.toFixed(2)}:1 — ${panel.detail}`
           : `no ${panel.tone} Notice in the catalogue`,
