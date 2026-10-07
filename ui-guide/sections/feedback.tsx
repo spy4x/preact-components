@@ -52,10 +52,26 @@ const toastVariants: Record<ToastVariant, string> = {
 }
 
 /** One notice per tone — a tone with no entry does not compile. */
-const noticeTones: Record<NoticeTone, { title: string; body: string }> = {
+const noticeTones: Record<NoticeTone, {
+  title: string
+  body: string
+  /** The action's label, and its `href` when the action is a link rather than a button. */
+  action?: string
+  href?: string
+}> = {
   info: { title: "Scheduled maintenance", body: "Sync pauses for ten minutes on Sunday at 02:00." },
-  warning: { title: "Your trial ends in 3 days", body: "Add a payment method to keep your data." },
+  warning: {
+    title: "Your trial ends in 3 days",
+    body: "Add a payment method to keep your data.",
+    action: "Add a payment method",
+  },
   success: { title: "Export ready", body: "The file is in your downloads." },
+  danger: {
+    title: "Payment failed",
+    body: "Your card was declined, so the plan renews on the free tier.",
+    action: "Update card",
+    href: "#demo-Notice",
+  },
 }
 
 /**
@@ -578,12 +594,13 @@ export const feedbackDemos = {
     ),
   },
   Notice: {
-    summary: "A banner for news that is not an error: a trial that ends soon, a change that saved.",
+    summary:
+      "A banner for a page-wide message: a trial that ends soon, a change that saved, a failed payment.",
     wide: true,
     props: [
       {
         name: "tone",
-        type: `"info" | "warning" | "success"`,
+        type: `"info" | "warning" | "success" | "danger"`,
         default: `"info"`,
         description: "The border, the tint and the glyph.",
       },
@@ -606,19 +623,27 @@ export const feedbackDemos = {
   Add a payment method to keep your data.
 </Notice>
 
-// Something the reader must hear now:
-<Notice tone="warning" urgent title="Payment failed" />`,
+// A failure the reader must act on, heard now:
+<Notice
+  tone="danger"
+  urgent
+  title="Payment failed"
+  action={<Button size="sm" href="/billing">Update card</Button>}
+>
+  Your card was declined, so the plan renews on the free tier.
+</Notice>`,
     render: () => (
       <Stack>
-        {entries(noticeTones).map(([tone, { title, body }]) => (
+        {entries(noticeTones).map(([tone, { title, body, action, href }]) => (
           <Notice
             key={tone}
             tone={tone}
             title={title}
             data-tone={tone}
-            action={tone === "warning"
-              ? <Button size="sm">Add a payment method</Button>
-              : undefined}
+            action={action &&
+              (href
+                ? <Button size="sm" href={href}>{action}</Button>
+                : <Button size="sm">{action}</Button>)}
           >
             {body}
           </Notice>

@@ -1,9 +1,17 @@
 import { cn } from "@spy4x/preact-cn"
-import { IconAlertTriangle, IconCheckCircle, IconInformationCircle } from "@spy4x/preact-icons"
+import {
+  IconAlertTriangle,
+  IconCheckCircle,
+  IconExclamationCircle,
+  IconInformationCircle,
+} from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 
-/** What a {@link Notice} is about: news (`info`), something to act on (`warning`), or a success. */
-export type NoticeTone = "info" | "warning" | "success"
+/**
+ * What a {@link Notice} is about: news (`info`), something to act on soon (`warning`), a success,
+ * or a failure the reader must act on now (`danger`).
+ */
+export type NoticeTone = "info" | "warning" | "success" | "danger"
 
 export interface NoticeProps
   extends Omit<JSX.HTMLAttributes<HTMLDivElement>, "title" | "role" | "class" | "icon"> {
@@ -27,7 +35,7 @@ export interface NoticeProps
 
 /**
  * Each tone draws from its theme tokens: the border from the tone's text colour
- * (`--color-info`, `--color-warning`, `--color-success`), the background from its soft tint
+ * (`--color-info`, `--color-warning`, `--color-success`, `--color-danger`), the background from its soft tint
  * (`--color-info-soft`, …), so an app that repaints them sees the panel follow, in both palettes.
  * The text stays `text-foreground`, which reads at 4.5:1 or better on every tint; the tone's
  * colour is on the border and the glyph only.
@@ -36,12 +44,14 @@ const toneClasses: Record<NoticeTone, string> = {
   info: "border-info bg-info-soft",
   warning: "border-warning bg-warning-soft",
   success: "border-success bg-success-soft",
+  danger: "border-danger bg-danger-soft",
 }
 
 const glyphClasses: Record<NoticeTone, string> = {
   info: "size-5 text-info",
   warning: "size-5 text-warning",
   success: "size-5 text-success",
+  danger: "size-5 text-danger",
 }
 
 /**
@@ -52,6 +62,7 @@ function Glyph({ tone }: { tone: NoticeTone }): JSX.Element {
   const className = glyphClasses[tone]
   if (tone === "warning") return <IconAlertTriangle class={className} />
   if (tone === "success") return <IconCheckCircle class={className} />
+  if (tone === "danger") return <IconExclamationCircle class={className} />
   return <IconInformationCircle class={className} />
 }
 
@@ -66,8 +77,9 @@ function isEmpty(children: ComponentChildren): boolean {
 }
 
 /**
- * A banner for a message that is not an error: a trial that ends soon, a plan that will lapse, a
- * change that was saved. Errors belong to `ErrorState`.
+ * A banner for a page-wide message: a trial that ends soon, a plan that will lapse, a change that
+ * was saved, or a failure the reader must act on, such as a payment that did not go through. Content
+ * that failed to load belongs to `ErrorState`, the panel shown in its place.
  *
  * Every string is a prop: the component owns layout and tone, never copy. With no title, no body
  * and no action it renders `null`, so a caller can pass a possibly-empty notice straight through.

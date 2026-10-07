@@ -13888,9 +13888,9 @@ interface NoticePanel {
 }
 
 /**
- * `Notice` draws each tone from its tokens (#572): the border paints `--color-<tone>` and the
- * background `--color-<tone>-soft` in the light, the dark and the ink palette; its text reaches
- * 4.5:1 and its glyph 3:1 against that background.
+ * `Notice` draws each tone — info, warning, success and danger — from its tokens (#572, #552): the
+ * border paints `--color-<tone>` and the background `--color-<tone>-soft` in the light, the dark
+ * and the ink palette; its text reaches 4.5:1 and its glyph 3:1 against that background.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -13901,7 +13901,7 @@ async function noticeToneCheck(devtools: Devtools): Promise<void> {
     const root = document.documentElement
     const wasDark = root.classList.contains("dark")
     const wasTheme = root.getAttribute("data-theme")
-    const tones = ["info", "warning", "success"]
+    const tones = ["info", "warning", "success", "danger"]
     const token = (name) => {
       const probe = document.createElement("div")
       probe.style.backgroundColor = "var(" + name + ")"
