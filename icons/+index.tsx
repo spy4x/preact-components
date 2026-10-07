@@ -958,6 +958,31 @@ export function IconEllipsisVertical(props: IconProps): JSX.Element {
   )
 }
 
+/**
+ * Heroicons v2 outline (stroke-1.5); Heroicons v2's "exclamation-circle" (2.2.0), added for the
+ * danger tone of `Notice` (#552).
+ */
+export function IconExclamationCircle(props: IconProps): JSX.Element {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      {...iconA11y(props)}
+      class={`shrink-0 ${props.class || "size-6"}`}
+    >
+      {iconTitle(props)}
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+      />
+    </svg>
+  )
+}
+
 /** Feather outline (stroke 1.75) · matches Feather's "external-link" exactly. */
 export function IconExternal(props: IconProps): JSX.Element {
   return (

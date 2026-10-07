@@ -156,7 +156,7 @@ Install: `deno add jsr:@spy4x/preact-crud`
 
 ## @spy4x/preact-icons
 
-Merged icon set. 122 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+Merged icon set. 123 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
 
 Install: `deno add jsr:@spy4x/preact-icons`
 
@@ -203,6 +203,7 @@ Install: `deno add jsr:@spy4x/preact-icons`
 - `IconDocument` (component): Heroicons v2 outline (stroke-1.5) · "document" from heroicons@2.2.0 (#233). Import: `@spy4x/preact-icons`
 - `IconDollar` (component): Heroicons v2 outline (stroke-2); matches Heroicons v2's "currency-dollar" exactly, not v1. Import: `@spy4x/preact-icons`
 - `IconEllipsisVertical` (component): Heroicons v2 outline (stroke-1.5) · from template. Import: `@spy4x/preact-icons`
+- `IconExclamationCircle` (component): Heroicons v2 outline (stroke-1.5); Heroicons v2's "exclamation-circle" (2.2.0), added for the danger tone of `Notice` (#552). Import: `@spy4x/preact-icons`
 - `IconExternal` (component): Feather outline (stroke 1.75) · matches Feather's "external-link" exactly. Import: `@spy4x/preact-icons`
 - `IconEye` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
 - `IconEyeOff` (component): Heroicons v1 outline (stroke-2) · from template. Import: `@spy4x/preact-icons`
