@@ -14156,7 +14156,7 @@ async function primaryButtonFillCheck(devtools: Devtools): Promise<void> {
         fill,
         onCanvas: ratio(painted, paint(token("--color-canvas"))),
         onSurface: ratio(painted, paint(token("--color-surface"))),
-        label: ratio(paint(getComputedStyle(button).color), painted),
+        label: seenRatio(button),
         isStep900: fill === token("--color-accent-900"),
       }
     }
@@ -14224,7 +14224,7 @@ async function primaryButtonFillCheck(devtools: Devtools): Promise<void> {
         hovered: button.matches(":hover"),
         fill,
         onCanvas: ratio(painted, paint(token("--color-canvas"))),
-        label: ratio(paint(getComputedStyle(button).color), painted),
+        label: seenRatio(button),
       }
     })()`)
     check(
