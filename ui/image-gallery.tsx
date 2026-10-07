@@ -31,7 +31,7 @@ import { join } from "@spy4x/preact-cn/join"
 import { IconChevronLeft, IconChevronRight } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
-import { Button } from "./button.tsx"
+import { buttonClasses } from "./button.tsx"
 import {
   counterText,
   describedImages,
@@ -118,6 +118,13 @@ export interface ImageGalleryProps {
    */
   navigation?: boolean
   /**
+   * Strip only: how the Previous/Next buttons look. `"outline"` (the default) fills them with the
+   * surface colour behind a control border; `"ghost"` keeps the same border on a transparent
+   * button, for a page whose other secondary buttons are transparent. Both darken on hover. The
+   * whole class list is {@link stripNavigationClasses}.
+   */
+  navigationVariant?: StripNavigationVariant
+  /**
    * Strip only: where a slide snaps to, the row's start (`"start"`, the default) or its centre
    * (`"center"`).
    */
@@ -172,6 +179,26 @@ const captionClass = "text-sm text-muted"
 const navRowClass = "flex items-center gap-3"
 const navCounterClass = "mx-auto text-sm text-muted tabular-nums"
 const navButtonClass = "size-10 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+
+/** How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`. */
+export type StripNavigationVariant = "outline" | "ghost"
+
+/**
+ * The full class list of the strip's Previous/Next buttons for a `navigationVariant`.
+ *
+ * Exported so an app that lists the classes this library renders (for its own stylesheet, or a test
+ * that every class has a rule) can import the list instead of copying it. `"ghost"` is `Button`'s
+ * ghost variant plus the outline's `border border-control`, so the transparent button keeps its
+ * edge and `Button`'s `hover:bg-hover`.
+ *
+ * @param variant Defaults to `"outline"`, what the strip renders when no variant is given.
+ * @returns The `class` attribute value of each button.
+ */
+export function stripNavigationClasses(variant: StripNavigationVariant = "outline"): string {
+  return variant === "ghost"
+    ? buttonClasses("ghost", "none", join("border border-control", navButtonClass))
+    : buttonClasses("outline", "none", navButtonClass)
+}
 const stripButtonClass = join(thumbButtonClass, "w-full")
 /**
  * `h-auto w-full` keeps a strip image responsive. With `width` and `height` on the `<img>`, the
@@ -310,6 +337,7 @@ export function ImageGallery(
     hero = false,
     captions = false,
     navigation = false,
+    navigationVariant,
     snap = "start",
     slideWidth = "wide",
     class: className,
@@ -326,6 +354,10 @@ export function ImageGallery(
     atEnd: false,
   })
   const navigates = strip && navigation && shown.length > 1
+  // A plain `<button>` rather than `Button`, so the class list it renders is the one
+  // `stripNavigationClasses` exports, by construction rather than by keeping two calls in step. No
+  // default here: the function's own default is the strip's, and its test pins it.
+  const navButtonClasses = stripNavigationClasses(navigationVariant)
 
   const first = shown[0]
   const portrait = slideWidth === "orientation" && first?.width !== undefined &&
@@ -450,18 +482,17 @@ export function ImageGallery(
             {list}
             <div class={navRowClass}>
               {nav.overflows && (
-                <Button
-                  variant="outline"
-                  size="none"
-                  class={navButtonClass}
+                <button
                   aria-label={stripPreviousLabel}
                   aria-disabled={nav.atStart ? "true" : undefined}
                   onClick={() => {
                     if (!nav.atStart) scrollByOne(-1)
                   }}
+                  type="button"
+                  class={navButtonClasses}
                 >
                   <IconChevronLeft class="size-5" />
-                </Button>
+                </button>
               )}
               <p
                 class={navCounterClass}
@@ -472,18 +503,17 @@ export function ImageGallery(
                 {counterLabel(nav.position + 1, shown.length)}
               </p>
               {nav.overflows && (
-                <Button
-                  variant="outline"
-                  size="none"
-                  class={navButtonClass}
+                <button
                   aria-label={stripNextLabel}
                   aria-disabled={nav.atEnd ? "true" : undefined}
                   onClick={() => {
                     if (!nav.atEnd) scrollByOne(1)
                   }}
+                  type="button"
+                  class={navButtonClasses}
                 >
                   <IconChevronRight class="size-5" />
-                </Button>
+                </button>
               )}
             </div>
           </div>

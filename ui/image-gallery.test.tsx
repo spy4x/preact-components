@@ -5,6 +5,7 @@ import { render } from "preact-render-to-string"
 import {
   ImageGallery,
   type ImageGalleryImage,
+  stripNavigationClasses,
   stripPosition,
   thumbnailKey,
 } from "./image-gallery.tsx"
@@ -412,6 +413,35 @@ describe('ImageGallery with layout="strip" and navigation', () => {
     ) {
       expect(beforeDialog(html)).not.toContain("<p")
     }
+  })
+})
+
+describe("stripNavigationClasses", () => {
+  /** Shared by both variants: `Button`'s base with `size="none"`. */
+  const base =
+    "inline-flex items-center justify-center rounded-md font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+
+  it("keeps the outline buttons' classes exactly as they were before the variant existed", () => {
+    // Rendered from the component at 3.4.0, before `navigationVariant`: the strip's buttons were
+    // `<Button variant="outline" size="none">` with this class list.
+    const before = `${base} border border-control bg-surface text-foreground hover:bg-hover ` +
+      "size-10 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+
+    expect(stripNavigationClasses()).toBe(before)
+    expect(stripNavigationClasses("outline")).toBe(before)
+  })
+
+  it("gives the ghost buttons a transparent fill, a control border and a hover fill", () => {
+    const classes = stripNavigationClasses("ghost").split(" ")
+
+    expect(classes).toEqual(
+      expect.arrayContaining(["bg-transparent", "border", "border-control", "hover:bg-hover"]),
+    )
+    expect(classes).not.toContain("bg-surface")
+    expect(stripNavigationClasses("ghost")).toBe(
+      `${base} bg-transparent text-foreground hover:bg-hover border border-control ` +
+        "size-10 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+    )
   })
 })
 

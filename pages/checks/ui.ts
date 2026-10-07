@@ -1,5 +1,6 @@
 import { guidePages } from "@spy4x/preact-ui-guide/registry"
 import { IconMoon, IconSun, IconThemeAuto } from "@spy4x/preact-icons"
+import { stripNavigationClasses } from "@spy4x/preact-ui/image-gallery"
 import {
   centreInView,
   check,
@@ -17520,6 +17521,26 @@ async function imageGalleryStripNavChecks(devtools: Devtools): Promise<void> {
           disabled: false,
         }]),
     JSON.stringify(start),
+  )
+
+  // The card sets navigationVariant="ghost" (#571): each button carries the exported class list,
+  // paints no fill of its own and keeps a visible border.
+  const look = await devtools.evaluate<{ classes: string; background: string; border: string }[]>(
+    `[...document.querySelectorAll('${GALLERY_NAV} button:not(ul button):not(dialog button)')]
+      .map((button) => {
+        const style = getComputedStyle(button)
+        return { classes: button.getAttribute("class") ?? "", background: style.backgroundColor,
+          border: style.borderTopWidth + " " + style.borderTopStyle }
+      })`,
+  )
+  check(
+    'navigationVariant="ghost" renders the strip\'s Previous and Next transparent inside a border',
+    look.length === 2 &&
+      look.every((button) =>
+        button.classes === stripNavigationClasses("ghost") &&
+        button.background === "rgba(0, 0, 0, 0)" && button.border === "1px solid"
+      ),
+    JSON.stringify(look),
   )
 
   const forward: StripNavReading[] = []

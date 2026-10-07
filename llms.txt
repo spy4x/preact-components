@@ -815,6 +815,8 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `labelTarget` (helper): The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`. Import: `@spy4x/preact-ui/field`
 - `resolveLabels` (helper): Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it. Import: `@spy4x/preact-ui/file-input`
 - `classifyFiles` (helper): Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser. Import: `@spy4x/preact-ui/file-input`
+- `StripNavigationVariant` (type): How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`. Import: `@spy4x/preact-ui/image-gallery`
+- `stripNavigationClasses` (helper): The full class list of the strip's Previous/Next buttons for a `navigationVariant`. Import: `@spy4x/preact-ui/image-gallery`
 - `StripScroll` (type): Where a strip's row has scrolled to, as `stripPosition` reads it. Import: `@spy4x/preact-ui/image-gallery`
 - `stripPosition` (helper): The slide a strip's counter names, `0`-based, for where its row has scrolled to. Import: `@spy4x/preact-ui/image-gallery`
 - `thumbnailKey` (helper): A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already appeared earlier in `images`. Import: `@spy4x/preact-ui/image-gallery`
