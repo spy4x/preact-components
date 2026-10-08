@@ -197,8 +197,8 @@ describe("TagInput", () => {
     const html = render(
       <TagInput ariaLabel="Tags" value={["a", "b"]} onChange={() => {}} disabled />,
     )
-    expect(html).toMatch(/<input[^>]*disabled/)
-    expect(html.match(/<button[^>]*disabled/g)?.length).toBe(2)
+    expect(html).toMatch(/<input[^>]*\sdisabled(?=[\s>\/])/)
+    expect(html.match(/<button[^>]*\sdisabled(?=[\s>])/g)?.length).toBe(2)
   })
 
   it("gives every remove button and the text field a 44 px target, and lets chips wrap", () => {
