@@ -513,7 +513,7 @@ export function SortableList<Item extends SortableItem>(
   const dragging = held !== null && held.pointer !== null
 
   return (
-    <div class={cn(dragging && "select-none", className)}>
+    <div class={cn(dragging && "select-none", className) || undefined}>
       <ul ref={listRef} class={listClass}>
         {items.map((item, index) => {
           const isHeld = held?.id === item.id
