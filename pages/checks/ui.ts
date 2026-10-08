@@ -18165,8 +18165,13 @@ async function sortableListChecks(devtools: Devtools): Promise<void> {
     await sortableKeyboardCheck(devtools)
     await sortableEscapeCheck(devtools)
     await sortableTabAwayCheck(devtools)
+    await sortableEnterCheck(devtools)
+    await sortableReaderClickCheck(devtools)
+    await sortableItemsChangeCheck(devtools)
+    await sortableContextMenuCheck(devtools)
     await sortableMouseDragCheck(devtools)
     await sortableTouchDragCheck(devtools)
+    await sortableTouchCancelCheck(devtools)
     await sortableTouchScrollCheck(devtools)
     await sortableEdgeScrollCheck(devtools)
   } finally {
@@ -18306,6 +18311,195 @@ async function sortableTabAwayCheck(devtools: Devtools): Promise<void> {
   )
 }
 
+/** Whether the handle of the row with this id says it is pressed. */
+function sortablePressed(devtools: Devtools, id: string): Promise<string | null> {
+  return devtools.evaluate<string | null>(
+    `${sortablePart(id, "handle")}.getAttribute("aria-pressed")`,
+  )
+}
+
+/** Enter picks the second item up, ArrowDown moves it and Enter drops it: `onMove` hears `1 to 2`. */
+async function sortableEnterCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("call", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Picked up Call")`),
+    2_000,
+  )
+  const pressed = await sortablePressed(devtools, "call")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Call")`),
+    2_000,
+  )
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[2] === "call"`), 2_000)
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const released = await sortablePressed(devtools, "call")
+
+  check(
+    "Enter picks a SortableList item up and drops it: onMove hears 1 to 2 once, focus stays on its handle",
+    after.lastMove.endsWith("1, the last 1 to 2") && after.focused === "call" &&
+      after.live === "Dropped Call the plumber at position 3 of 5." && pressed === "true" &&
+      released === "false",
+    `onMove "${after.lastMove}", focus ${after.focused}, live "${after.live}", aria-pressed ` +
+      `${pressed} → ${released}`,
+  )
+}
+
+/**
+ * A click with no pointer behind it, as a screen reader sends in its reading mode, picks the first
+ * item up and a second one drops it; a real mouse click with no drag does nothing.
+ */
+async function sortableReaderClickCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  const at = await sortablePoint(devtools, sortablePart("bins", "handle"))
+  for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: at.x,
+      y: at.y,
+      button: type === "mouseMoved" ? "none" : "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+    })
+  }
+  await sortableFrames(devtools)
+  const clicked = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const clickedPressed = await sortablePressed(devtools, "bins")
+
+  const milk = sortablePart("milk", "handle")
+  await devtools.evaluate<null>(`(${milk}.focus(), ${milk}.click(), null)`)
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Picked up Buy milk")`),
+    2_000,
+  )
+  const pressed = await sortablePressed(devtools, "milk")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Buy milk")`),
+    2_000,
+  )
+  await devtools.evaluate<null>(`(${milk}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[1] === "milk"`), 2_000)
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "a mouse click on a SortableList handle, with no drag, picks nothing up",
+    !clicked.live.startsWith("Picked up") && clickedPressed === "false" &&
+      clicked.lastMove.endsWith("0, the last none yet"),
+    `live "${clicked.live}", aria-pressed ${clickedPressed}, onMove "${clicked.lastMove}"`,
+  )
+  check(
+    "a screen reader's click on a SortableList handle picks the item up, and a second drops it",
+    pressed === "true" && after.lastMove.endsWith("1, the last 0 to 1") &&
+      after.live === "Dropped Buy milk at position 2 of 5." && after.focused === "milk",
+    `aria-pressed ${pressed}, onMove "${after.lastMove}", live "${after.live}", focus ` +
+      `${after.focused}`,
+  )
+}
+
+/**
+ * The caller swaps the list's order while an item is held from the keyboard: the hold ends as a
+ * cancel and nothing reaches `onMove`.
+ */
+async function sortableItemsChangeCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("milk", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowDown")
+  await pressKey(devtools, "Space")
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[1] === "milk"`), 2_000)
+  await devtools.evaluate<null>(`(${sortablePart("plants", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowUp")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Water")`),
+    2_000,
+  )
+  // The demo's Reset puts the first order back; clicked from script, so focus stays on the handle.
+  await devtools.evaluate<null>(
+    `(document.querySelector('${SORTABLE_CARD} [data-e2e="sortable-reset"]').click(), null)`,
+  )
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await sortableFrames(devtools)
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const pressed = await sortablePressed(devtools, "plants")
+
+  check(
+    "changing a SortableList's items while one is held cancels the hold and calls nothing",
+    after.live.startsWith("Cancelled. Water the plants") &&
+      after.lastMove.endsWith("0, the last none yet") &&
+      JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST) && pressed === "false",
+    `live "${after.live}", onMove "${after.lastMove}", order ${JSON.stringify(after.order)}, ` +
+      `aria-pressed ${pressed}`,
+  )
+}
+
+/** A long press's context menu is blocked on a handle, and only there. */
+async function sortableContextMenuCheck(devtools: Devtools): Promise<void> {
+  const blocked = (target: string) =>
+    devtools.evaluate<boolean>(
+      `!${target}.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }))`,
+    )
+  const onHandle = await blocked(sortablePart("milk", "handle"))
+  const onBody = await blocked(sortablePart("milk", "body"))
+
+  check(
+    "a SortableList handle blocks the context menu a long press would open, and its row body does not",
+    onHandle && !onBody,
+    `handle blocked ${onHandle}, body blocked ${onBody}`,
+  )
+}
+
+/** A finger dragging a handle that the browser then cancels puts the item back and reports nothing. */
+async function sortableTouchCancelCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  const from = await sortablePoint(devtools, sortablePart("milk", "handle"))
+  const id = 13
+  await devtools.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ ...from, id }],
+  })
+  for (let step = 1; step <= 8; step++) {
+    await devtools.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: from.x, y: from.y + step * 12, id }],
+    })
+    await sortableFrames(devtools)
+  }
+  const held = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await devtools.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] })
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `JSON.stringify(${SORTABLE_STATE}.drawn) === '${JSON.stringify(SORTABLE_FIRST)}'`,
+      ),
+    2_000,
+  )
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "a cancelled touch drag of a SortableList handle puts the item back and calls nothing",
+    held.live.startsWith("Moved Buy milk") &&
+      after.live === "Cancelled. Buy milk is back at position 1 of 5." &&
+      after.lastMove.endsWith("0, the last none yet") &&
+      JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST),
+    `while held "${held.live}", after "${after.live}", onMove "${after.lastMove}", order ` +
+      `${JSON.stringify(after.order)}`,
+  )
+}
+
 /** The middle of an element in viewport coordinates, from a page expression. */
 async function sortablePoint(
   devtools: Devtools,
@@ -18364,11 +18558,14 @@ async function sortableMouseDragCheck(devtools: Devtools): Promise<void> {
     `drawn ${JSON.stringify(during.drawn)}, onMove "${during.lastMove}", live "${during.live}"`,
   )
   check(
-    "releasing a mouse drag of a SortableList handle calls onMove once with 0 to 3",
+    "releasing a mouse drag of a SortableList handle calls onMove once with 0 to 3 and keeps focus on its handle",
     dropped.lastMove.endsWith("1, the last 0 to 3") &&
       JSON.stringify(dropped.order) === `["call","bins","plants","milk","post"]` &&
-      dropped.live === "Dropped Buy milk at position 4 of 5.",
-    `onMove "${dropped.lastMove}", order ${JSON.stringify(dropped.order)}, live "${dropped.live}"`,
+      dropped.live === "Dropped Buy milk at position 4 of 5." && dropped.focused === "milk",
+    `onMove "${dropped.lastMove}", order ${
+      JSON.stringify(dropped.order)
+    }, live "${dropped.live}", ` +
+      `focus ${dropped.focused}`,
   )
 }
 
@@ -18413,12 +18610,12 @@ async function sortableTouchDragCheck(devtools: Devtools): Promise<void> {
   const dropped = await devtools.evaluate<SortableState>(SORTABLE_STATE)
 
   check(
-    "dragging a SortableList handle by touch calls onMove once with 4 to 1 and leaves the page put",
+    "dragging a SortableList handle by touch calls onMove once with 4 to 1, leaves the page put and focuses its handle",
     dropped.lastMove.endsWith("1, the last 4 to 1") &&
       JSON.stringify(dropped.order) === `["milk","post","call","bins","plants"]` &&
-      dropped.scrollY === scrolled,
+      dropped.scrollY === scrolled && dropped.focused === "post",
     `onMove "${dropped.lastMove}", order ${JSON.stringify(dropped.order)}, scrollY ` +
-      `${scrolled} → ${dropped.scrollY}, live "${dropped.live}"`,
+      `${scrolled} → ${dropped.scrollY}, live "${dropped.live}", focus ${dropped.focused}`,
   )
 }
 
@@ -18495,12 +18692,12 @@ async function sortableEdgeScrollCheck(devtools: Devtools): Promise<void> {
     `scrollY ${before.scrollY} → ${held.scrollY}, live "${held.live}"`,
   )
   check(
-    "Escape during a SortableList mouse drag puts the item back and reports no move",
+    "Escape during a SortableList mouse drag puts the item back, keeps focus on its handle and reports no move",
     JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST) &&
       JSON.stringify(after.drawn) === JSON.stringify(SORTABLE_FIRST) &&
       after.lastMove.endsWith("0, the last none yet") &&
-      after.live === "Cancelled. Buy milk is back at position 1 of 5.",
+      after.live === "Cancelled. Buy milk is back at position 1 of 5." && after.focused === "milk",
     `order ${JSON.stringify(after.order)}, drawn ${JSON.stringify(after.drawn)}, onMove ` +
-      `"${after.lastMove}", live "${after.live}"`,
+      `"${after.lastMove}", live "${after.live}", focus ${after.focused}`,
   )
 }
