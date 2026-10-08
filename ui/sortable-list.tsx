@@ -249,7 +249,7 @@ export function SortableList<Item extends SortableItem>(
   /** The latest held item, for window listeners and timers that outlive a render. */
   const heldRef = useRef<Held | null>(null)
   const press = useRef<Press | null>(null)
-  /** The handle to keep focused after a keyboard drop, until focus goes somewhere else. */
+  /** The handle to keep focused after a drop or a cancel, until focus goes somewhere else. */
   const pendingFocus = useRef<string | null>(null)
   const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   /** The latest render's props, for listeners that outlive the render that added them. */
@@ -343,8 +343,8 @@ export function SortableList<Item extends SortableItem>(
     cancel()
   }, [order])
 
-  // After a keyboard drop the caller's new order can re-insert the row, which takes focus off its
-  // handle: put it back. A keyboard-held row also stays in view as it moves.
+  // After a drop or a cancel the caller's new order can re-insert the row, which takes focus off
+  // its handle: put it back. A keyboard-held row also stays in view as it moves.
   useLayoutEffect(() => {
     if (held !== null && held.pointer === null) {
       handleOf(held.id)?.scrollIntoView?.({ block: "nearest" })
@@ -415,6 +415,24 @@ export function SortableList<Item extends SortableItem>(
     moveTo(Math.min(Math.max(now.to + step, 0), now.boxes.length - 1), null)
   }
 
+  /**
+   * A click with no pointer behind it (`detail` 0) is how a screen reader in its default reading
+   * mode presses a button, so it picks the item up and, once moved, drops it. Keyboard Space and
+   * Enter are handled on keydown and never get here; a mouse click is a press without a drag.
+   */
+  const onHandleClick = (event: MouseEvent, id: string) => {
+    if (event.detail !== 0) return
+    const now = heldRef.current
+    if (now === null) {
+      pendingFocus.current = null
+      pickUp(id, null)
+      return
+    }
+    if (now.id !== id || now.pointer !== null) return
+    pendingFocus.current = id
+    drop()
+  }
+
   /** Follow the pointer at viewport height `y`: the held row's offset and its drop index. */
   const follow = (y: number) => {
     const now = heldRef.current
@@ -480,30 +498,36 @@ export function SortableList<Item extends SortableItem>(
         const list = listRef.current
         if (list === null || !pickUp(current.id, 0)) return endPress()
         pendingFocus.current = null
+        // A touch never focuses the button it drags; the drop keeps focus on this handle.
+        handleOf(current.id)?.focus({ preventScroll: true })
         current.startInList = current.y - list.getBoundingClientRect().top
         edgeScroll(stop.signal)
       }
-      // A mouse drag would otherwise select the text it passes over.
-      e.preventDefault()
       follow(e.clientY)
     }, options)
     globalThis.addEventListener("pointerup", (e: PointerEvent) => {
       if (!mine(e)) return
-      const dragging = press.current?.startInList !== null
+      const current = press.current
       endPress()
-      if (dragging) drop()
+      if (current === null || current.startInList === null) return
+      pendingFocus.current = current.id
+      drop()
     }, options)
     globalThis.addEventListener("pointercancel", (e: PointerEvent) => {
       if (!mine(e)) return
-      const dragging = press.current?.startInList !== null
+      const current = press.current
       endPress()
-      if (dragging) cancel()
+      if (current === null || current.startInList === null) return
+      pendingFocus.current = current.id
+      cancel()
     }, options)
     globalThis.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || press.current?.startInList === null) return
+      const current = press.current
+      if (e.key !== "Escape" || current === null || current.startInList === null) return
       e.preventDefault()
       e.stopPropagation()
       endPress()
+      pendingFocus.current = current.id
       cancel()
     }, { signal: stop.signal, capture: true })
   }
@@ -534,9 +558,13 @@ export function SortableList<Item extends SortableItem>(
                 data-sortable-handle=""
                 aria-label={text.handle(itemLabel(item))}
                 aria-describedby={instructionsId}
+                aria-pressed={isHeld ? "true" : "false"}
                 class={cn(handleClass, dragging && "cursor-grabbing")}
                 onKeyDown={(event) => onHandleKeyDown(event, item.id)}
                 onPointerDown={(event) => onHandlePointerDown(event, item.id)}
+                onClick={(event) => onHandleClick(event, item.id)}
+                // A long press on a touch screen would otherwise open the browser's menu mid-drag.
+                onContextMenu={(event) => event.preventDefault()}
                 onBlur={() => onHandleBlur(item.id)}
               >
                 <IconBars3 class="size-5" />

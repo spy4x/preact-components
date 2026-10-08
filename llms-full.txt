@@ -5346,11 +5346,16 @@ after it.
   the one element with `touch-action: none`, so a finger anywhere else on the list scrolls the page
   as usual. While an item is held, it follows the pointer and the other rows slide out of its way;
   near the top or bottom of the scrolling area (the nearest scrolling ancestor, or the page) the
-  area scrolls. Escape, or a touch the browser cancels, puts the item back.
+  area scrolls. Escape, or a touch the browser cancels, puts the item back. A long press on a
+  handle opens no browser menu.
 - **Keyboard**: each handle is a button and a tab stop. Space or Enter picks the item up, the arrow
   keys move it, Space or Enter drops it, and Escape puts it back. Moving focus away while holding
-  an item, with Tab or a click elsewhere, also puts it back. Focus stays on the handle after the
-  drop.
+  an item, with Tab or a click elsewhere, also puts it back. Focus stays on the handle after a
+  drop or a cancel, by any input. A held handle has `aria-pressed="true"`.
+- **Screen readers**: a reader's default reading mode may keep the arrow keys for itself, so they
+  never reach the page. Pressing the handle there (a click with no pointer) picks the item up and
+  pressing it again drops it; the reader then needs its focus or forms mode for the arrows to move
+  the item.
 - **Announcements**: a polite live region says when an item is picked up, each new position, the
   drop and a cancel. Each handle is named `Reorder <item>` and is a 44 px target. `labels`
   overrides any of these strings; `itemLabel` names an item in them and is required, because only

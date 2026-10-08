@@ -86,6 +86,13 @@ describe("SortableList", () => {
     expect(html).toContain('class="sr-only">Espacio</span>')
   })
 
+  it("marks every handle as not pressed before anything is picked up", () => {
+    const handles = list().match(/<button [^>]*data-sortable-handle[^>]*>/g) ?? []
+
+    expect(handles.length).toBe(3)
+    for (const handle of handles) expect(handle).toContain('aria-pressed="false"')
+  })
+
   it("shifts no row before anything is picked up", () => {
     expect(list()).not.toContain("translateY")
   })
