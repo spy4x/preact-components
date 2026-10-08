@@ -18164,6 +18164,7 @@ async function sortableListChecks(devtools: Devtools): Promise<void> {
   try {
     await sortableKeyboardCheck(devtools)
     await sortableEscapeCheck(devtools)
+    await sortableTabAwayCheck(devtools)
     await sortableMouseDragCheck(devtools)
     await sortableTouchDragCheck(devtools)
     await sortableTouchScrollCheck(devtools)
@@ -18268,6 +18269,40 @@ async function sortableEscapeCheck(devtools: Devtools): Promise<void> {
     }, live "${moving.live}"; after Escape drawn ` +
       `${JSON.stringify(after.drawn)}, onMove "${after.lastMove}", focus ${after.focused}, live ` +
       `"${after.live}"`,
+  )
+}
+
+/** Tab away from a keyboard-held item puts it back and reports no move. */
+async function sortableTabAwayCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("call", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Call")`),
+    2_000,
+  )
+  await pressKey(devtools, "Tab")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `JSON.stringify(${SORTABLE_STATE}.drawn) === '${JSON.stringify(SORTABLE_FIRST)}'`,
+      ),
+    2_000,
+  )
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "Tab away from a keyboard-held SortableList item puts it back and reports no move",
+    JSON.stringify(after.drawn) === JSON.stringify(SORTABLE_FIRST) &&
+      after.lastMove.endsWith("0, the last none yet") && after.focused !== "call" &&
+      after.live === "Cancelled. Call the plumber is back at position 2 of 5.",
+    `drawn ${JSON.stringify(after.drawn)}, onMove "${after.lastMove}", focus ${after.focused}, ` +
+      `live "${after.live}"`,
   )
 }
 
