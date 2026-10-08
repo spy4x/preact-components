@@ -1,6 +1,6 @@
 /**
  * The `ui/` controls that are not plain form fields: the two switches, the dropdown, the searchable
- * select, the labelled switch row, the file picker, and the date range picker, day-only and
+ * select, the tag field, the labelled switch row, the file picker, and the date range picker, day-only and
  * `withTime`.
  *
  * A card shows the markup the server render produces. The three decisions a card's status line
@@ -30,6 +30,7 @@ import {
   OnOffButtons,
   rangeForPreset,
   Stack,
+  TagInput,
   ToggleField,
   ToggleSwitch,
 } from "@spy4x/preact-ui"
@@ -686,6 +687,44 @@ function ComboboxDemo() {
   )
 }
 
+/** Tags a task already uses elsewhere: what the tag field suggests. */
+const usedTags = ["work", "home", "errand", "waiting", "someday", "phone"]
+
+/**
+ * The tag field inside `Field`, with suggestions and the tags it holds reported back, and a disabled
+ * one. Typing, picking, removing and the focus that returns to the field afterwards are driven in a
+ * browser by `pages/checks/ui.ts`.
+ */
+function TagInputDemo() {
+  const tags = useSignal<string[]>(["work"])
+
+  return (
+    <Grid minColumnWidth="md" gap="lg">
+      <Variant title="In a Field, with suggestions">
+        <Stack gap="sm">
+          <Field id="guide-tag-input" label="Tags" hint="Enter or a comma adds a tag.">
+            <TagInput
+              value={tags.value}
+              onChange={(next) => tags.value = next}
+              suggestions={usedTags}
+            />
+          </Field>
+          <Note e2e="controlled-value">tags: {tags.value.join(", ") || "(none)"}</Note>
+        </Stack>
+      </Variant>
+      <Variant title="Disabled">
+        <TagInput
+          id="guide-tag-input-disabled"
+          label="Tags"
+          value={["work", "phone"]}
+          onChange={() => {}}
+          disabled
+        />
+      </Variant>
+    </Grid>
+  )
+}
+
 /**
  * Six labelled switch rows: plain, described and required, and the read-only, disabled and failing
  * shapes. The card's report is the caller's own state after `onToggle`, which is the whole
@@ -1225,6 +1264,55 @@ export const inputDemos = {
   emptyMessage={(query) => \`No city matches “\${query}”\`}
 />`,
     render: () => <ComboboxDemo />,
+  },
+  TagInput: {
+    summary:
+      "A text field that collects several tags, typed or picked from suggestions, each shown as a removable chip.",
+    wide: true,
+    props: [
+      { name: "value", type: "readonly string[]", description: "The chosen tags, in order." },
+      {
+        name: "onChange",
+        type: "(value: string[]) => void",
+        description: "Called with the whole list after a tag is added or removed.",
+      },
+      {
+        name: "suggestions",
+        type: "readonly string[]",
+        default: "[]",
+        description: "Tags to offer while typing; chosen ones are hidden.",
+      },
+      {
+        name: "label / ariaLabel",
+        type: "ComponentChildren / string",
+        description: "A visible label, or a name with none; inside `Field`, leave both out.",
+      },
+      {
+        name: "error",
+        type: "string | null",
+        description: "A message under the field; inside `Field`, pass it to `Field` instead.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description: "No typing, no removing.",
+      },
+      {
+        name: "removeLabel",
+        type: "(tag: string) => string",
+        default: "`Remove tag ${tag}`",
+        description: "Name of each chip's remove button.",
+      },
+    ],
+    snippet: `<Field id="task-tags" label="Tags">
+  <TagInput
+    value={tags.value}
+    onChange={(next) => tags.value = next}
+    suggestions={["work", "home", "errand"]}
+  />
+</Field>`,
+    render: () => <TagInputDemo />,
   },
   DateRangePicker: {
     summary:
