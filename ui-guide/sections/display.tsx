@@ -55,6 +55,7 @@ import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
+import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
 import type { DemoFragment } from "../registry.ts"
 
 /**
@@ -1770,6 +1771,45 @@ useHotkeys(bindings)
 />`,
     render: () => <KanbanBoardDemo />,
   },
+  SortableList: {
+    summary:
+      "A list a reader reorders by dragging a handle, by touch or mouse, or from the keyboard; it reports each move through `onMove` and never reorders the data itself.",
+    wide: false,
+    props: [
+      {
+        name: "items",
+        type: "{ id: string }[]",
+        description: "The items, in the order they are shown.",
+      },
+      {
+        name: "onMove",
+        type: "(from: number, to: number) => void",
+        description: "Called once per drop that changes the order, with the old and new index.",
+      },
+      {
+        name: "itemLabel",
+        type: "(item) => string",
+        description:
+          "An item's name: its handle reads `Reorder <name>`, and so do the announcements.",
+      },
+      {
+        name: "labels",
+        type: "Partial<SortableListLabels>",
+        description: "Overrides for the handle name, the instructions and every announcement.",
+      },
+    ],
+    snippet: `<SortableList
+  items={tasks.value}
+  renderItem={(task) => task.title}
+  itemLabel={(task) => task.title}
+  onMove={(from, to) => {
+    const next = [...tasks.value]
+    next.splice(to, 0, ...next.splice(from, 1))
+    tasks.value = next
+  }}
+/>`,
+    render: () => <SortableListDemo />,
+  },
 } satisfies DemoFragment
 
 /** One card of the `KanbanBoard` demo. */
@@ -1838,6 +1878,54 @@ function KanbanBoardDemo() {
             Reset
           </Button>
         </Cluster>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/** One row of the `SortableList` demo. */
+interface DemoChore extends SortableItem {
+  title: string
+}
+
+const sortableChores: readonly DemoChore[] = [
+  { id: "milk", title: "Buy milk" },
+  { id: "call", title: "Call the plumber" },
+  { id: "bins", title: "Take the bins out" },
+  { id: "plants", title: "Water the plants" },
+  { id: "post", title: "Post the parcel" },
+]
+
+/** The list with its own items, the last move `onMove` reported, and a reset. */
+function SortableListDemo() {
+  const chores = useSignal<readonly DemoChore[]>(sortableChores)
+  const last = useSignal("none yet")
+
+  return (
+    <Stack gap="sm">
+      <SortableList
+        items={chores.value}
+        renderItem={(chore) => chore.title}
+        itemLabel={(chore) => chore.title}
+        onMove={(from, to) => {
+          last.value = `${from} to ${to}`
+          const next = [...chores.value]
+          next.splice(to, 0, ...next.splice(from, 1))
+          chores.value = next
+        }}
+      />
+      <Cluster justify="between">
+        <DemoNote e2e="sortable-last-move">Last move through onMove: {last.value}</DemoNote>
+        <Button
+          variant="outline"
+          data-e2e="sortable-reset"
+          onClick={() => {
+            chores.value = sortableChores
+            last.value = "none yet"
+          }}
+        >
+          Reset
+        </Button>
       </Cluster>
     </Stack>
   )
