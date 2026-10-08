@@ -88,9 +88,12 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Modal`           | `modal`             | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                          |
 | `MoneyDisplay`    | `money-display`     | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                     |
 | `MoneyInput`      | `money-input`       | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                                                        |
+| `MoreMenu`        | `page-header`       | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                      |
 | `Notice`          | `notice`            | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`; `status` without it), `data-*`; renders nothing when empty     |
 | `OnOffButtons`    | `on-off-buttons`    | `value`, `amount`, `onSwitch`                                                                                                                                                                   |
 | `Page`            | `layout`            | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                             |
+| `PageAction`      | `page-header`       | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`; the icon alone on a phone                                                                           |
+| `PageHeader`      | `page-header`       | `title` (one line, truncated), `heading?` (in place of the title), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`                                               |
 | `PageTitle`       | `page-title`        | `children`, `class`                                                                                                                                                                             |
 | `Pagination`      | `pagination`        | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                             |
 | `PlanCard`        | `billing`           | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `locale?`, `timeZone?` (default `"UTC"`), `labels?`        |
@@ -100,6 +103,9 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`      | `radio`             | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                              |
 | `Section`         | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                            |
 | `Select`          | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                                                  |
+| `SettingGroup`    | `setting-row`       | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                      |
+| `SettingList`     | `setting-row`       | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                    |
+| `SettingRow`      | `setting-row`       | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                      |
 | `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                |
 | `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                               |
 | `StatusMark`      | `status-mark`       | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                      |
@@ -1617,6 +1623,12 @@ components and tests means exactly that: nothing outside this package should bui
   `navigate(href)` and returns `true`; otherwise it does nothing and returns `false`. Call it from
   the click handler of an anchor of your own — a button drawn as a link, say — to give it the same
   behaviour.
+
+### PageHeader (`./page-header`)
+
+- `TOUCH_TARGET` is the class list that gives a small button a 44 px touch target on a phone and
+  the library's own 36 px from `sm` up. `PageHeader`, `PageAction` and `MoreMenu` use it; add it to
+  the `class` of any other small button a thumb has to hit, such as a settings row's Edit.
 
 ### Pagination (`./pagination`)
 
