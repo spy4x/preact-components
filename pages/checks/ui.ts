@@ -13445,6 +13445,11 @@ const TAG_INPUT_STATE = `(() => {
     activeSelected: active?.getAttribute("aria-selected") ?? null,
     focused: document.activeElement === input,
     status: (root.querySelector('[role="status"]')?.textContent ?? "").trim(),
+    statusRaw: root.querySelector('[role="status"]')?.textContent ?? "",
+    optionHeight: listbox === null || listbox.hidden
+      ? 0
+      : Math.min(...[...listbox.querySelectorAll('[role="option"]')]
+        .map((option) => Math.round(option.getBoundingClientRect().height))),
     echo: card.querySelector('[data-e2e="controlled-value"]')?.textContent.trim() ?? "",
   }
 })()`
@@ -13461,6 +13466,10 @@ interface TagInputState {
   activeSelected: string | null
   focused: boolean
   status: string
+  /** The live region's text untrimmed: a repeat announcement differs from the last one only here. */
+  statusRaw: string
+  /** The shortest suggestion row's height in px; 0 while the listbox is hidden. */
+  optionHeight: number
   echo: string
 }
 
@@ -13485,8 +13494,9 @@ async function pressTagKey(devtools: Devtools, key: "Comma" | "Backspace"): Prom
 
 /**
  * `TagInput`, driven with real clicks and key presses on its card: Enter and a comma add the typed
- * word, a word already there in another case is refused, the arrow keys walk the suggestions with
- * the chosen tags left out and Enter picks one, a chip's named remove button takes it away and
+ * word, a word already there in another case is refused and announced again when typed again,
+ * Escape with no suggestion showing keeps the typed text, the arrow keys walk the 44 px suggestion
+ * rows with the chosen tags left out and Enter picks one, a chip's named remove button takes it away and
  * gives focus back to the text field, Backspace in the empty field removes the last chip, and at a
  * 375 px wide viewport the chips wrap inside the field with every target 44 px.
  *
@@ -13508,6 +13518,8 @@ async function tagInputChecks(devtools: Devtools): Promise<void> {
         activeSelected: null,
         focused: false,
         status: "",
+        statusRaw: "",
+        optionHeight: 0,
         echo: "",
       } satisfies TagInputState)
   const chipsAre = (expected: string[]) => async () =>
@@ -13550,6 +13562,36 @@ async function tagInputChecks(devtools: Devtools): Promise<void> {
       `${duplicate.chips.join(", ")} with field "${duplicate.value}", said "${duplicate.status}"`,
   )
 
+  await typeInto(devtools, "WORK")
+  await pressTagKey(devtools, "Comma")
+  await poll(async () => (await read()).statusRaw !== duplicate.statusRaw, 2_000)
+  const again = await read()
+  check(
+    "TagInput announces a duplicate typed a second time in a row, by changing its live region again",
+    again.statusRaw !== duplicate.statusRaw && again.status === "WORK is already added" &&
+      again.chips.join("|") === "work|Urgent|phone" && again.value === "",
+    `region ${JSON.stringify(duplicate.statusRaw)} → ${JSON.stringify(again.statusRaw)}; chips ` +
+      `${again.chips.join(", ")} with field "${again.value}"`,
+  )
+
+  await typeInto(devtools, "newtag")
+  await poll(async () => (await read()).value === "newtag", 2_000)
+  const unmatched = await read()
+  await pressKey(devtools, "Escape")
+  // Given time to go wrong: a field that drops the text on Escape empties within a frame or two.
+  await poll(async () => (await read()).value !== "newtag", 300)
+  const escaped = await read()
+  check(
+    "Escape in TagInput with no suggestion showing leaves the typed text in the field",
+    unmatched.expanded === "false" && unmatched.options.length === 0 &&
+      escaped.value === "newtag" && escaped.chips.join("|") === "work|Urgent|phone",
+    `typed "${unmatched.value}" with expanded ${unmatched.expanded} and ` +
+      `${unmatched.options.length} suggestions; after Escape the field holds "${escaped.value}"`,
+  )
+  // Clear the six letters, one Backspace each; a seventh would take a chip.
+  for (let letter = 0; letter < "newtag".length; letter++) await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read()).value === "", 2_000)
+
   await pressKey(devtools, "ArrowDown")
   await poll(async () => (await read()).active !== null, 2_000)
   const first = await read()
@@ -13571,6 +13613,11 @@ async function tagInputChecks(devtools: Devtools): Promise<void> {
         picked.chips.join(", ")
       }, ` +
       `expanded ${picked.expanded}`,
+  )
+  check(
+    "every TagInput suggestion row is a 44 px target",
+    first.optionHeight >= 44,
+    `shortest row ${first.optionHeight} px over ${first.options.length} suggestions`,
   )
 
   const remove = `[...document.querySelectorAll('#demo-TagInput ul[aria-label="Tags"] button')]
