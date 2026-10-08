@@ -62,7 +62,8 @@ const DROPDOWN_STATE = `(() => {
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
  * `Link`'s plain-click rule, `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens,
  * `FileInput`'s keyboard, drag-and-drop, refusal, preview-revocation and plain-form-post contract,
- * `useHotkeys` with `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
+ * `useHotkeys` with `ShortcutsDialog`, `TagInput`'s keys, chips and focus return, and — last —
+ * Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -215,6 +216,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await inlineEditInterruptionChecks(devtools)
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
+  await tagInputChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
   await fieldErrorContrastCheck(devtools)
   await errorStateDangerCheck(devtools)
@@ -13414,6 +13416,254 @@ async function toggleChipsChecks(devtools: Devtools): Promise<void> {
       `${cleared.status.Done}; "${moved.echo}" → "${cleared.echo}"`,
   )
 }
+
+/**
+ * Reads the `TagInput` card's tag field in one round trip, or `null` when the card lost it.
+ *
+ * The chips are read from the list named "Tags", the suggestions from the listbox the input's
+ * `aria-controls` names, and the highlighted row from its `aria-activedescendant`, so every value
+ * here is what assistive technology is pointed at rather than what a class name suggests.
+ */
+const TAG_INPUT_STATE = `(() => {
+  const card = document.querySelector("#demo-TagInput")
+  const input = card?.querySelector("#guide-tag-input") ?? null
+  if (input === null) return null
+  const root = input.closest("div.relative")
+  const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "")
+  const activeId = input.getAttribute("aria-activedescendant")
+  const active = activeId === null ? null : document.getElementById(activeId)
+  return {
+    chips: [...root.querySelectorAll('ul[aria-label="Tags"] > li')].map((li) => li.textContent.trim()),
+    removeNames: [...root.querySelectorAll('ul[aria-label="Tags"] button')]
+      .map((button) => button.getAttribute("aria-label")),
+    value: input.value,
+    expanded: input.getAttribute("aria-expanded"),
+    options: listbox === null || listbox.hidden
+      ? []
+      : [...listbox.querySelectorAll('[role="option"]')].map((option) => option.textContent.trim()),
+    active: active?.textContent.trim() ?? null,
+    activeSelected: active?.getAttribute("aria-selected") ?? null,
+    focused: document.activeElement === input,
+    status: (root.querySelector('[role="status"]')?.textContent ?? "").trim(),
+    echo: card.querySelector('[data-e2e="controlled-value"]')?.textContent.trim() ?? "",
+  }
+})()`
+
+/** A {@link TAG_INPUT_STATE} read. */
+interface TagInputState {
+  chips: string[]
+  removeNames: string[]
+  value: string
+  expanded: string | null
+  /** The suggestions on screen; empty while the listbox is hidden. */
+  options: string[]
+  active: string | null
+  activeSelected: string | null
+  focused: boolean
+  status: string
+  echo: string
+}
+
+/** The tag field of the card, as a page expression. */
+const TAG_INPUT = `document.querySelector("#demo-TagInput #guide-tag-input")`
+
+/**
+ * Press a key the shared table in `harness.ts` does not describe, through the browser's own input
+ * pipeline: the comma that adds a tag, and Backspace.
+ *
+ * @param devtools The connected session; the key goes to whatever the page has focused.
+ * @param key Which of the two.
+ */
+async function pressTagKey(devtools: Devtools, key: "Comma" | "Backspace"): Promise<void> {
+  const press = key === "Comma"
+    ? { key: ",", code: "Comma", windowsVirtualKeyCode: 188, nativeVirtualKeyCode: 188, text: "," }
+    : { key: "Backspace", code: "Backspace", windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8 }
+  await devtools.send("Input.dispatchKeyEvent", { type: "keyDown", ...press })
+  const { text: _text, ...up } = press as typeof press & { text?: string }
+  await devtools.send("Input.dispatchKeyEvent", { type: "keyUp", ...up })
+}
+
+/**
+ * `TagInput`, driven with real clicks and key presses on its card: Enter and a comma add the typed
+ * word, a word already there in another case is refused, the arrow keys walk the suggestions with
+ * the chosen tags left out and Enter picks one, a chip's named remove button takes it away and
+ * gives focus back to the text field, Backspace in the empty field removes the last chip, and at a
+ * 375 px wide viewport the chips wrap inside the field with every target 44 px.
+ *
+ * None of this reaches a string render: the key handler, the focus moved after a removal and the
+ * wrapping are all the browser's. The card starts with the one tag `work` and is put back to it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tagInputChecks(devtools: Devtools): Promise<void> {
+  const read = async () =>
+    await devtools.evaluate<TagInputState | null>(TAG_INPUT_STATE) ??
+      ({
+        chips: [],
+        removeNames: [],
+        value: "missing",
+        expanded: null,
+        options: [],
+        active: null,
+        activeSelected: null,
+        focused: false,
+        status: "",
+        echo: "",
+      } satisfies TagInputState)
+  const chipsAre = (expected: string[]) => async () =>
+    (await read()).chips.join("|") === expected.join("|")
+
+  await centreInView(devtools, TAG_INPUT)
+  await pointerToCorner(devtools)
+  const landing = await clickAt(devtools, await aimAt(devtools, TAG_INPUT), TAG_INPUT)
+  await poll(async () => (await read()).focused, 2_000)
+  const start = await read()
+
+  await typeInto(devtools, "Urgent")
+  await pressKey(devtools, "Enter")
+  await poll(chipsAre(["work", "Urgent"]), 2_000)
+  const entered = await read()
+  check(
+    "typing a word and pressing Enter adds it to TagInput as a chip and empties the field",
+    landing?.onTarget === true && start.chips.join("|") === "work" &&
+      entered.chips.join("|") === "work|Urgent" && entered.value === "" && entered.focused &&
+      entered.echo === "tags: work, Urgent" && entered.status === "Added tag Urgent",
+    `click ${landing?.onTarget ? "landed" : `missed (${landing?.tag ?? "nothing"})`}; chips ` +
+      `${start.chips.join(", ")} → ${entered.chips.join(", ")}; field "${entered.value}", ` +
+      `"${entered.echo}", said "${entered.status}"`,
+  )
+
+  await typeInto(devtools, "phone")
+  await pressTagKey(devtools, "Comma")
+  await poll(chipsAre(["work", "Urgent", "phone"]), 2_000)
+  const comma = await read()
+  await typeInto(devtools, "WORK")
+  await pressTagKey(devtools, "Comma")
+  await poll(async () => (await read()).value === "", 2_000)
+  const duplicate = await read()
+  check(
+    "a comma adds the typed word, and TagInput refuses a tag it holds in another case",
+    comma.chips.join("|") === "work|Urgent|phone" && comma.value === "" &&
+      duplicate.chips.join("|") === "work|Urgent|phone" && duplicate.value === "" &&
+      duplicate.status === "WORK is already added",
+    `after "phone," ${comma.chips.join(", ")} with field "${comma.value}"; after "WORK," ` +
+      `${duplicate.chips.join(", ")} with field "${duplicate.value}", said "${duplicate.status}"`,
+  )
+
+  await pressKey(devtools, "ArrowDown")
+  await poll(async () => (await read()).active !== null, 2_000)
+  const first = await read()
+  await pressKey(devtools, "ArrowDown")
+  await poll(async () => (await read()).active !== first.active, 2_000)
+  const second = await read()
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).chips.length === 4, 2_000)
+  const picked = await read()
+  check(
+    "ArrowDown walks TagInput's suggestions without the chosen tags, and Enter picks one",
+    first.expanded === "true" &&
+      !first.options.some((option) => ["work", "phone"].includes(option)) &&
+      first.active === first.options[0] && first.activeSelected === "true" &&
+      second.active === first.options[1] && picked.chips.at(-1) === first.options[1] &&
+      picked.expanded === "false" && picked.focused,
+    `suggestions ${first.options.join(", ")}; active ${first.active} (selected ` +
+      `${first.activeSelected}) → ${second.active}; chips after Enter ${
+        picked.chips.join(", ")
+      }, ` +
+      `expanded ${picked.expanded}`,
+  )
+
+  const remove = `[...document.querySelectorAll('#demo-TagInput ul[aria-label="Tags"] button')]
+    .find((button) => button.getAttribute("aria-label") === "Remove tag Urgent")`
+  await devtools.evaluate<null>(`(${remove}?.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).chips.includes("Urgent"), 2_000)
+  const removed = await read()
+  check(
+    "each TagInput chip's remove button is named after it, and a press returns focus to the field",
+    picked.removeNames.join("|") === picked.chips.map((chip) => `Remove tag ${chip}`).join("|") &&
+      !removed.chips.includes("Urgent") && removed.chips.length === 3 && removed.focused &&
+      removed.status === "Removed tag Urgent" && removed.expanded === "false",
+    `names ${picked.removeNames.join(", ")}; chips ${removed.chips.join(", ")}, focus ` +
+      `${removed.focused ? "on the field" : "elsewhere"}, said "${removed.status}"`,
+  )
+
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read()).chips.length === 2, 2_000)
+  const backspaced = await read()
+  check(
+    "Backspace in TagInput's empty field removes the last chip",
+    backspaced.chips.join("|") === removed.chips.slice(0, -1).join("|") && backspaced.focused,
+    `${removed.chips.join(", ")} → ${backspaced.chips.join(", ")}`,
+  )
+
+  await typeInto(devtools, "groceries, appointments, reading-list, someday-maybe, waiting-for,")
+  await poll(async () => (await read()).chips.length === 7, 2_000)
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: 375,
+    height: 812,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  let fit: TagInputFit | null = null
+  try {
+    await new Promise((done) => setTimeout(done, 200))
+    fit = await devtools.evaluate<TagInputFit | null>(TAG_INPUT_FIT)
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+  check(
+    "at 375 px TagInput's chips wrap inside the field, and every remove button and the field are 44 px",
+    fit !== null && fit.chips === 7 && fit.rows > 1 && fit.inside && fit.pageWidth <= 375 &&
+      fit.smallestButton >= 44 && fit.inputHeight >= 44,
+    fit === null
+      ? "the card lost its tag field"
+      : `${fit.chips} chips on ${fit.rows} rows, ${fit.inside ? "inside" : "outside"} the field; ` +
+        `page ${fit.pageWidth} px wide; smallest button ${fit.smallestButton} px, field ` +
+        `${fit.inputHeight} px`,
+  )
+
+  // Back to the card's starting value, one Backspace per extra chip.
+  await devtools.evaluate<null>(`(${TAG_INPUT}.focus(), null)`)
+  for (let extra = (await read()).chips.length - 1; extra > 0; extra--) {
+    await pressTagKey(devtools, "Backspace")
+  }
+  await poll(chipsAre(["work"]), 2_000)
+  await pressKey(devtools, "Escape")
+}
+
+/** How the card's tag field lays out, read by {@link TAG_INPUT_FIT}. */
+interface TagInputFit {
+  chips: number
+  /** How many distinct rows the chips sit on. */
+  rows: number
+  /** Every chip lies inside the field's box. */
+  inside: boolean
+  /** The page's scroll width: wider than the viewport means a sideways scroll. */
+  pageWidth: number
+  /** The smaller side of the smallest remove button, rounded. */
+  smallestButton: number
+  inputHeight: number
+}
+
+/** Measures {@link TagInputFit} off the card's tag field, or `null` when the card lost it. */
+const TAG_INPUT_FIT = `(() => {
+  const input = document.querySelector("#demo-TagInput #guide-tag-input")
+  if (input === null) return null
+  const field = input.parentElement.getBoundingClientRect()
+  const chips = [...input.parentElement.querySelectorAll('ul[aria-label="Tags"] > li')]
+    .map((chip) => chip.getBoundingClientRect())
+  const buttons = [...input.parentElement.querySelectorAll('ul[aria-label="Tags"] button')]
+    .map((button) => button.getBoundingClientRect())
+  return {
+    chips: chips.length,
+    rows: new Set(chips.map((box) => Math.round(box.top))).size,
+    inside: chips.every((box) => box.left >= field.left - 0.5 && box.right <= field.right + 0.5),
+    pageWidth: document.documentElement.scrollWidth,
+    smallestButton: Math.round(Math.min(...buttons.map((box) => Math.min(box.width, box.height)))),
+    inputHeight: Math.round(input.getBoundingClientRect().height),
+  }
+})()`
 
 /** One outline badge's label contrast, measured in one palette. */
 interface BadgeContrast {
