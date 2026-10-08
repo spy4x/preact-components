@@ -289,6 +289,16 @@ export { StatusMark, type StatusMarkProps, type StatusMarkStatus } from "./statu
 export { Table, type TableProps } from "./table.tsx"
 export { nextTabIndex, type TabItem, Tabs, type TabsProps } from "./tabs.tsx"
 export {
+  addTags,
+  type AddTagsResult,
+  splitTagText,
+  TagInput,
+  type TagInputKeyAction,
+  tagInputKeyAction,
+  type TagInputProps,
+  tagSuggestions,
+} from "./tag-input.tsx"
+export {
   defaultToastDuration,
   resolveDuration,
   type ToastCorner,

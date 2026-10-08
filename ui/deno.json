@@ -43,6 +43,7 @@
     "./status-mark": "./status-mark.tsx",
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",
+    "./tag-input": "./tag-input.tsx",
     "./toastr": "./toastr.tsx",
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
