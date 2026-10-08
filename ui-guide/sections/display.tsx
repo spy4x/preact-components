@@ -1900,6 +1900,7 @@ const sortableChores: readonly DemoChore[] = [
 function SortableListDemo() {
   const chores = useSignal<readonly DemoChore[]>(sortableChores)
   const last = useSignal("none yet")
+  const count = useSignal(0)
 
   return (
     <Stack gap="sm">
@@ -1909,19 +1910,23 @@ function SortableListDemo() {
         itemLabel={(chore) => chore.title}
         onMove={(from, to) => {
           last.value = `${from} to ${to}`
+          count.value++
           const next = [...chores.value]
           next.splice(to, 0, ...next.splice(from, 1))
           chores.value = next
         }}
       />
       <Cluster justify="between">
-        <DemoNote e2e="sortable-last-move">Last move through onMove: {last.value}</DemoNote>
+        <DemoNote e2e="sortable-last-move">
+          Moves through onMove: {count.value}, the last {last.value}
+        </DemoNote>
         <Button
           variant="outline"
           data-e2e="sortable-reset"
           onClick={() => {
             chores.value = sortableChores
             last.value = "none yet"
+            count.value = 0
           }}
         >
           Reset
