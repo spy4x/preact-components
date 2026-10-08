@@ -1285,17 +1285,18 @@ is empty or matches the value, in which case the field closes without calling `o
 ## TagInput
 
 A text field that collects several tags. Enter or a comma adds the typed text as a tag, trimmed;
-a tag the list already holds, in any case, is not added twice. Backspace in the empty field removes
+a tag the list already holds, in any case or Unicode encoding, is not added twice. Backspace in the empty field removes
 the last tag. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
 
-The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys. Chosen tags
-are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
+The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys, with rows
+44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
 arrow key chose a suggestion first. Escape on an open list closes it and drops the typed text, as in
-`Combobox`. Text still in the field when focus leaves it is not added.
+`Combobox`; with no list showing, Escape leaves the text alone. Text still in the field when focus leaves it is not added.
 
 Each chip's remove button is named `"Remove tag <name>"` and is 44 px square, and so is the text
 field's height. After a removal focus goes back to the text field. Additions, removals and refused
-duplicates are announced through one polite live region rendered with the field. Every string is a
+duplicates are announced through one polite live region rendered with the field, the same message
+twice in a row included. Every string is a
 prop with an English default: `placeholder`, `removeLabel`, `tagsLabel`, `suggestionsLabel`,
 `addedMessage`, `removedMessage` and `duplicateMessage`.
 

@@ -15,9 +15,12 @@ import {
 import { isImeKeyPress } from "./ime.ts"
 import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 
-/** The comparison key of a tag: trimmed and lower-cased, so `" Work"` and `"work"` are one tag. */
+/**
+ * The comparison key of a tag: trimmed, composed to NFC and lower-cased, so `" Work"` and `"work"`
+ * are one tag, and so are a typed `"é"` and the `"e"` plus combining accent a macOS paste carries.
+ */
 function tagKey(text: string): string {
-  return text.trim().toLowerCase()
+  return text.trim().normalize("NFC").toLowerCase()
 }
 
 /** What {@link addTags} did with the texts it was given. */
@@ -36,7 +39,8 @@ export interface AddTagsResult {
  *
  * Case-insensitive on purpose: `"Work"` and `"work"` are the same tag to a person, and a list
  * holding both reads as a mistake. The spelling that arrived first is kept. Comparison is
- * `toLowerCase()` and nothing more: accents are kept, so `"résumé"` and `"resume"` stay two tags.
+ * `normalize("NFC")` then `toLowerCase()` and nothing more: accents are kept, so `"résumé"` and
+ * `"resume"` stay two tags, while two encodings of the same `"résumé"` are one.
  *
  * @param tags The current tags.
  * @param texts Texts to add, in order; a later one is compared against the earlier ones too.
@@ -67,11 +71,13 @@ export function addTags(tags: readonly string[], texts: readonly string[]): AddT
  * Android keyboard, whose key events carry no key name.
  *
  * @param text The input's whole text.
- * @returns The finished parts, trimmed with blanks dropped, and the unfinished rest as typed.
+ * @returns The finished parts, trimmed with blanks dropped, and the unfinished rest: as typed when
+ *   there was no comma, without its leading spaces after one, so `"a, b"` leaves `"b"`.
  */
 export function splitTagText(text: string): { tags: string[]; rest: string } {
   const parts = text.split(",")
-  const rest = parts.pop() ?? ""
+  const last = parts.pop() ?? ""
+  const rest = parts.length > 0 ? last.trimStart() : last
   return { tags: parts.map((part) => part.trim()).filter((part) => part !== ""), rest }
 }
 
@@ -322,14 +328,23 @@ export function TagInput({
     const result = addTags(value, texts)
     if (result.added.length > 0) onChange([...result.tags])
     const said = [...result.added.map(addedMessage), ...result.duplicates.map(duplicateMessage)]
-    if (said.length > 0) announcement.value = said.join(". ")
+    if (said.length > 0) announce(said.join(". "))
+  }
+
+  /**
+   * Say `text` in the live region. The same words twice in a row would leave the region's DOM as it
+   * is, and a screen reader announces nothing; a trailing no-break space, added on every other
+   * repeat, makes each one a change without changing what is read.
+   */
+  const announce = (text: string) => {
+    announcement.value = announcement.value === text ? `${text}\u00a0` : text
   }
 
   const removeAt = (index: number) => {
     const tag = value[index]
     if (tag === undefined) return
     onChange(value.filter((_, position) => position !== index))
-    announcement.value = removedMessage(tag)
+    announce(removedMessage(tag))
     if (inputRef.current && document.activeElement !== inputRef.current) {
       quietFocus.current = true
       inputRef.current.focus()
@@ -347,7 +362,9 @@ export function TagInput({
     if (isImeKeyPress(event)) return
     const action = tagInputKeyAction(
       event,
-      { activeIndex: active, isOpen: isOpen.value },
+      // What is on screen, not the open flag: typing sets the flag even when nothing matches, and
+      // Escape must not drop the typed text while no list is showing.
+      { activeIndex: active, isOpen: shown },
       visible.length,
       draft.value,
     )
@@ -362,7 +379,7 @@ export function TagInput({
       setDraft("")
     } else if (action.removeLast) {
       removeAt(value.length - 1)
-    } else if (!action.state.isOpen && isOpen.value) {
+    } else if (!action.state.isOpen && shown) {
       // Closing drops the query with the list, as in `Combobox`.
       setDraft("")
     }
@@ -457,7 +474,11 @@ export function TagInput({
               role="option"
               aria-selected={isActive}
               data-active={isActive || undefined}
-              class={listboxOptionClass({ active: isActive, selected: false, disabled: false })}
+              // 44 px rows, a touch target as tall as the chips' remove buttons.
+              class={cn(
+                listboxOptionClass({ active: isActive, selected: false, disabled: false }),
+                "min-h-11",
+              )}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 add([suggestion])

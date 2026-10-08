@@ -40,6 +40,12 @@ describe("addTags", () => {
   it("keeps accents apart, so résumé and resume are two tags", () => {
     expect(addTags(["résumé"], ["resume"]).added).toEqual(["resume"])
   })
+
+  it("treats a decomposed résumé, as a macOS paste carries it, as the typed one", () => {
+    expect(addTags(["r\u00e9sum\u00e9"], ["re\u0301sume\u0301"]).duplicates).toEqual([
+      "re\u0301sume\u0301",
+    ])
+  })
 })
 
 describe("splitTagText", () => {
@@ -48,7 +54,11 @@ describe("splitTagText", () => {
   })
 
   it("finishes every part before the last comma", () => {
-    expect(splitTagText("a, b,, c")).toEqual({ tags: ["a", "b"], rest: " c" })
+    expect(splitTagText("a, b,, c")).toEqual({ tags: ["a", "b"], rest: "c" })
+  })
+
+  it("keeps the leading spaces of text that has no comma", () => {
+    expect(splitTagText("  wor")).toEqual({ tags: [], rest: "  wor" })
   })
 
   it("leaves an empty rest after a trailing comma", () => {
@@ -116,6 +126,10 @@ describe("tagInputKeyAction", () => {
     expect(tagInputKeyAction({ ...key(","), metaKey: true }, closed, 0, "x")).toBeUndefined()
   })
 
+  it("leaves a comma typed with Alt to the field, for keyboards that need Alt to type one", () => {
+    expect(tagInputKeyAction({ ...key(","), altKey: true }, closed, 0, "x")).toBeUndefined()
+  })
+
   it("leaves a letter to the field", () => {
     expect(tagInputKeyAction(key("a"), closed, 0, "")).toBeUndefined()
   })
@@ -155,6 +169,14 @@ describe("TagInput", () => {
     expect(html).toContain('aria-autocomplete="list"')
     expect(html).toMatch(/<ul id="tags-listbox" role="listbox" aria-label="Suggestions" hidden/)
     expect(html).toContain('<li id="tags-option-0" role="option" aria-selected="false"')
+  })
+
+  it("gives every suggestion row a 44 px target", () => {
+    const html = render(
+      <TagInput ariaLabel="Tags" value={[]} onChange={() => {}} suggestions={["a", "b"]} />,
+    )
+    const rows = [...html.matchAll(/<li [^>]*role="option"[^>]*class="([^"]*)"/g)]
+    expect(rows.map((row) => row[1].split(" ").includes("min-h-11"))).toEqual([true, true])
   })
 
   it("leaves chosen tags out of the suggestion list", () => {
