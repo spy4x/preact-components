@@ -181,6 +181,8 @@ interface Held {
   from: number
   to: number
   boxes: SortableBox[]
+  /** The items' ids at pick-up, joined: a different order or membership invalidates the indexes. */
+  order: string
   /** For a drag, how far the held row follows the pointer from where it was; `null` by keyboard. */
   pointer: number | null
 }
@@ -210,6 +212,11 @@ const rowHeldClass = "z-10 shadow-popover ring-2 ring-(--color-selected-text)"
 const handleClass =
   "inline-flex size-11 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-md text-muted hover:bg-canvas hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
 const bodyClass = "min-w-0 flex-1"
+
+/** The items' ids in order, as one string to compare. */
+function orderOf(items: readonly SortableItem[]): string {
+  return items.map((item) => item.id).join("\n")
+}
 
 /** The nearest ancestor that scrolls vertically, or `null` when only the page does. */
 function scrollParent(element: HTMLElement): HTMLElement | null {
@@ -281,10 +288,11 @@ export function SortableList<Item extends SortableItem>(
   }
 
   const pickUp = (id: string, pointer: number | null): boolean => {
-    const from = latest.current.items.findIndex((item) => item.id === id)
+    const { items } = latest.current
+    const from = items.findIndex((item) => item.id === id)
     const boxes = measure()
-    if (from === -1 || boxes.length !== latest.current.items.length) return false
-    setHeld({ id, from, to: from, boxes, pointer })
+    if (from === -1 || boxes.length !== items.length) return false
+    setHeld({ id, from, to: from, boxes, order: orderOf(items), pointer })
     setAnnouncement(latest.current.text.pickedUp(placeOf(id, from)))
     return true
   }
@@ -325,13 +333,12 @@ export function SortableList<Item extends SortableItem>(
     clearTimeout(blurTimer.current)
   }, [])
 
-  // The caller changed the list under a held item: its indexes no longer mean anything.
-  const order = items.map((item) => item.id).join("\n")
-  const lastOrder = useRef(order)
-  useEffect(() => {
-    if (lastOrder.current === order) return
-    lastOrder.current = order
-    if (heldRef.current === null) return
+  // The caller changed the list under a held item: its indexes no longer mean anything. A layout
+  // effect, so the check runs in the same commit and never lands after a later pick-up.
+  const order = orderOf(items)
+  useLayoutEffect(() => {
+    const now = heldRef.current
+    if (now === null || now.order === order) return
     endPress()
     cancel()
   }, [order])
@@ -438,8 +445,9 @@ export function SortableList<Item extends SortableItem>(
         Math.min(area?.bottom ?? globalThis.innerHeight, globalThis.innerHeight),
       )
       if (step !== 0) {
-        if (parent === null) globalThis.scrollBy(0, step)
-        else parent.scrollTop += step
+        // Instant: a page with smooth scrolling would otherwise restart a smooth scroll every frame.
+        const scroller = parent ?? globalThis
+        scroller.scrollBy({ top: step, behavior: "instant" })
         follow(current.lastY)
       }
       requestAnimationFrame(frame)
