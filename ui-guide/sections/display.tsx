@@ -53,6 +53,7 @@ import { useId } from "preact/hooks"
 import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
+import { pageHeaderDemos } from "./page-header.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import type { DemoFragment } from "../registry.ts"
@@ -1112,6 +1113,7 @@ export const displayDemos = {
       </Stack>
     ),
   },
+  ...pageHeaderDemos,
   MoneyDisplay: {
     summary:
       "Shows an amount kept in a currency's smallest unit, with that currency's own decimals.",
