@@ -148,6 +148,8 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   worker's cache after it and a deploy changes both the worker's bytes, so browsers see an update,
   and the cache name, so the old cache is dropped. Pass Vite's `build`, `[deno()]` as `plugins`,
   and `Deno.readDir` and `Deno.readFile`. `buildIdOf(files)` is the hash, exported for a test.
+  In an app with a client and a server build (Fresh), run it on the client build only:
+  `{ ...serviceWorker(options), applyToEnvironment: (env) => env.name === "client" }`.
 
 The plugins are typed structurally, so this package does not depend on `vite`; an object they
 return is accepted by Vite's `plugins` array as it is.
