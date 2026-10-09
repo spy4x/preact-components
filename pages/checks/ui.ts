@@ -6695,6 +6695,38 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await fetchingComboboxCheck(devtools)
   await chosenHighlightCheck(devtools)
   await imeComboboxCheck(devtools)
+  await comboboxRowHeightCheck(devtools)
+}
+
+/**
+ * Every Combobox option row is a 44 px touch target, measured off the open popup's real boxes.
+ *
+ * The rows come from the listbox pieces `Combobox` shares with `TagInput`, so this holds the shared
+ * class as well as the component. The list is closed again with Escape, so the next check starts
+ * from a closed field.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function comboboxRowHeightCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-coin"))
+  await scrollToParked(devtools)
+  const field = `globalThis.__verifyCombobox?.input ?? null`
+  const landing = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const rows = await devtools.evaluate<number[]>(
+    `[...(globalThis.__verifyCombobox?.list?.querySelectorAll('[role="option"]') ?? [])]
+      .map((row) => row.getBoundingClientRect().height)`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+  const shortest = rows.length === 0 ? 0 : Math.min(...rows)
+  check(
+    "every Combobox option row is at least 44 px tall",
+    landing?.onTarget === true && rows.length > 0 && shortest >= 44,
+    landing?.onTarget !== true
+      ? "the click never landed on the field, so no popup was measured"
+      : `shortest row ${shortest} px over ${rows.length} options`,
+  )
 }
 
 /**

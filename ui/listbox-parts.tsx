@@ -4,11 +4,12 @@ import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 
 /*
+ * `min-h-11` makes every row a 44 px touch target, as tall as the library's other touch targets.
  * Base classes first. `cn` resolves conflicts last-wins, so a state class has to come after the
  * base to win: the highlighted row repaints the background, the selected row repaints the text.
  */
 const optionClasses =
-  "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
+  "flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
 const activeOptionClasses = "bg-hover font-semibold"
 const selectedOptionClasses =
   "bg-selected-soft font-medium text-selected hover:bg-selected-soft-hover"
