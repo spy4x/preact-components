@@ -8004,15 +8004,15 @@ function readConflicts(devtools: Devtools, root = CONFLICT_INLINE): Promise<Conf
 }
 
 /**
- * Start counting `unhandledrejection` events on the page, once. A callback's rejected promise that
- * a component leaves uncaught lands here.
+ * Count `unhandledrejection` events on the page from zero, so one check never pays for another's
+ * failure. A callback's rejected promise that a component leaves uncaught lands here.
  */
 function countUnhandledRejections(devtools: Devtools): Promise<unknown> {
   return devtools.evaluate(`(() => {
     if (globalThis.__unhandled === undefined) {
-      globalThis.__unhandled = 0
       addEventListener("unhandledrejection", () => globalThis.__unhandled++)
     }
+    globalThis.__unhandled = 0
     return null
   })()`)
 }
@@ -8204,7 +8204,6 @@ function focusInstallButton(devtools: Devtools, name: string, label: string): Pr
  */
 async function installPromptChecks(devtools: Devtools): Promise<void> {
   await centreInView(devtools, `document.querySelector('${INSTALL_CARD}')`)
-  await countUnhandledRejections(devtools)
   const before = await readInstall(devtools, "prompt")
   await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer"]`)
   await poll(async () => (await readInstall(devtools, "prompt")).shown === "prompt", 2_000)
@@ -8218,6 +8217,7 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
 
   // An event whose dialog fails to open replaces the good one.
   await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer-broken"]`)
+  await countUnhandledRejections(devtools)
   const focusedBroken = await focusInstallButton(devtools, "prompt", "Install")
   await pressKey(devtools, "Enter")
   await poll(async () => (await readInstall(devtools, "prompt")).shown === "", 2_000)
@@ -8252,6 +8252,7 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
   )
 
   await click(devtools, `${INSTALL_CARD} [data-e2e="install-fail-next"]`)
+  await countUnhandledRejections(devtools)
   await focusInstallButton(devtools, "ios", "Not now")
   await pressKey(devtools, "Enter")
   await poll(async () => (await readInstall(devtools, "ios")).failed !== "", 2_000)
