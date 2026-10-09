@@ -2,17 +2,14 @@
  * The guide's search: every page and card name, filtered as you type, in a modal dialog.
  *
  * The index is built from the registry, so a card added to a section is searchable with no second
- * edit. The keyboard follows the library's own combobox (`comboboxKey`, `comboboxKeyAction` from
- * `@spy4x/preact-ui/combobox`): the arrows move through the results, Home and End jump to either end,
- * Enter opens the highlighted one, and Escape closes the dialog. `/` and Ctrl+K (⌘K on a Mac) open
- * it from anywhere on the page that is not a text field.
+ * edit. The dialog, its keys and its hotkeys (`/` and Ctrl+K, ⌘K on a Mac) are the library's own
+ * `CommandPalette`; this file keeps only the guide's index and its ranking.
  */
 
-import { cn } from "@spy4x/preact-cn"
-import { IconSearch, IconXMark } from "@spy4x/preact-icons"
-import { comboboxKey, comboboxKeyAction, type ComboboxState, fold } from "@spy4x/preact-ui/combobox"
+import { fold } from "@spy4x/preact-ui/combobox"
+import { CommandPalette, type CommandPaletteOption } from "@spy4x/preact-ui/command-palette"
 import type { JSX } from "preact"
-import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useMemo } from "preact/hooks"
 import {
   cardLabel,
   catalogueSections,
@@ -91,16 +88,16 @@ export function searchIndex(registry: PartialDemoRegistry, guidePlace = "Guide")
  * @param query What the reader typed.
  * @param limit The most results to return.
  */
-export function searchEntries(
-  entries: readonly SearchEntry[],
+export function searchEntries<Entry extends SearchEntry>(
+  entries: readonly Entry[],
   query: string,
   limit = 12,
-): SearchEntry[] {
+): Entry[] {
   const needle = fold(query.trim())
   if (needle === "") {
     return entries.filter((entry) => entry.kind === SearchKind.PAGE).slice(0, limit)
   }
-  const rank = (entry: SearchEntry): number => {
+  const rank = (entry: Entry): number => {
     const label = fold(entry.label)
     if (label === needle) return 0
     if (label.startsWith(needle)) return 1
@@ -155,177 +152,37 @@ const KIND_WORD: Record<SearchKind, keyof SearchKindWords> = {
   [SearchKind.CLASSES]: "classes",
 }
 
+/** A search entry as the palette lists it. */
+type SearchOption = SearchEntry & CommandPaletteOption
+
 /**
- * The header's search button and the dialog it opens.
+ * The header's search button and the dialog it opens: the library's `CommandPalette` over the
+ * guide's index.
  *
  * @param props See {@link GuideSearchProps}.
  */
 export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Element {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const input = useRef<HTMLInputElement>(null)
-  const trigger = useRef<HTMLButtonElement>(null)
-  const id = useId()
-  const [query, setQuery] = useState("")
-  const [state, setState] = useState<ComboboxState>({ activeIndex: 0, isOpen: true })
-  const results = searchEntries(entries, query)
-
-  const open = () => {
-    setQuery("")
-    setState({ activeIndex: 0, isOpen: true })
-    dialog.current?.showModal()
-    input.current?.focus()
-  }
-  const choose = (entry: SearchEntry | undefined) => {
-    if (!entry) return
-    dialog.current?.close()
-    go(entry.href)
-  }
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null
-      const typing = target?.closest("input, textarea, select, [contenteditable]") !== null &&
-        target !== null
-      const shortcut = (event.key === "k" || event.key === "K") && (event.ctrlKey || event.metaKey)
-      if (!shortcut && (event.key !== "/" || typing || event.altKey || event.ctrlKey)) return
-      if (dialog.current?.open) return
-      event.preventDefault()
-      open()
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [])
-
-  const onKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
-    const key = comboboxKey(event)
-    if (key === undefined) return
-    if (key === "Escape") {
-      event.preventDefault()
-      dialog.current?.close()
-      return
-    }
-    const action = comboboxKeyAction(key, state, results.length)
-    if (action.preventDefault) event.preventDefault()
-    if (action.select >= 0) return choose(results[action.select])
-    setState({ activeIndex: action.state.activeIndex, isOpen: true })
-  }
-
-  const listbox = `${id}-results`
-  const option = (index: number) => `${id}-result-${index}`
-  const active = results.length === 0 ? -1 : Math.min(state.activeIndex, results.length - 1)
-
+  const options = useMemo<SearchOption[]>(
+    () =>
+      entries.map((entry) => ({
+        ...entry,
+        id: `${entry.label} ${entry.href}`,
+        hint: labels.searchKinds[KIND_WORD[entry.kind]],
+      })),
+    [entries, labels.searchKinds],
+  )
   return (
-    <>
-      <button
-        ref={trigger}
-        type="button"
-        onClick={open}
-        aria-haspopup="dialog"
-        aria-label={labels.searchPlaceholder}
-        data-e2e="ui-guide-search-open"
-        class={cn(
-          // An icon button on a phone, like the header's other controls; a field-shaped button
-          // with its placeholder and shortcut from `sm`.
-          "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground",
-          "sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:text-muted sm:hover:border-control lg:w-72",
-        )}
-      >
-        <IconSearch class="size-5 shrink-0 sm:size-4" />
-        <span class="hidden flex-1 text-left sm:inline">{labels.searchPlaceholder}</span>
-        <kbd class="hidden rounded border border-subtle px-1 font-sans text-xs text-muted sm:inline">
-          /
-        </kbd>
-      </button>
-      <dialog
-        ref={dialog}
-        aria-label={labels.search}
-        data-e2e="ui-guide-search"
-        onClose={() => trigger.current?.focus()}
-        onClick={(event) => {
-          // A click on the backdrop lands on the dialog element itself.
-          if (event.target === dialog.current) dialog.current?.close()
-        }}
-        class={cn(
-          "mx-auto mt-16 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-subtle bg-surface p-0 text-foreground shadow-2xl",
-          "backdrop:bg-scrim backdrop:backdrop-blur-sm",
-        )}
-      >
-        <div class="flex items-center gap-2 border-b border-subtle px-4">
-          <IconSearch class="size-4 shrink-0 text-muted" />
-          <input
-            ref={input}
-            type="search"
-            role="combobox"
-            aria-expanded="true"
-            aria-controls={listbox}
-            aria-autocomplete="list"
-            aria-activedescendant={active >= 0 ? option(active) : undefined}
-            aria-label={labels.search}
-            placeholder={labels.searchPlaceholder}
-            autocomplete="off"
-            spellcheck={false}
-            value={query}
-            onInput={(event) => {
-              setQuery(event.currentTarget.value)
-              setState({ activeIndex: 0, isOpen: true })
-            }}
-            onKeyDown={onKeyDown}
-            class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"
-          />
-          {
-            /* Escape and a backdrop click close it too, but a phone has neither a key nor much
-            backdrop: the button is the way out a reader can see. */
-          }
-          <button
-            type="button"
-            aria-label={labels.closeSearch}
-            data-e2e="ui-guide-search-close"
-            onClick={() => dialog.current?.close()}
-            class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
-          >
-            <IconXMark class="size-5" />
-          </button>
-        </div>
-        <ul
-          id={listbox}
-          role="listbox"
-          aria-label={labels.search}
-          class="max-h-96 overflow-y-auto bg-transparent p-2"
-        >
-          {results.length === 0
-            ? (
-              <li role="presentation" class="px-3 py-6 text-center text-sm text-muted">
-                {labels.searchEmpty}
-              </li>
-            )
-            : results.map((entry, index) => (
-              <li
-                key={`${entry.label} ${entry.href}`}
-                id={option(index)}
-                role="option"
-                aria-selected={index === active}
-                onClick={() => choose(entry)}
-                onMouseMove={() =>
-                  index !== active && setState({ activeIndex: index, isOpen: true })}
-                class={cn(
-                  "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
-                  index === active &&
-                    "bg-selected-soft text-selected",
-                )}
-              >
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium [overflow-wrap:anywhere]">
-                    {entry.label}
-                  </span>
-                  <span class="block text-xs text-muted">{entry.detail}</span>
-                </span>
-                <span class="shrink-0 text-xs text-muted">
-                  {labels.searchKinds[KIND_WORD[entry.kind]]}
-                </span>
-              </li>
-            ))}
-        </ul>
-      </dialog>
-    </>
+    <CommandPalette
+      options={options}
+      filter={(all, query) => searchEntries(all, query)}
+      onSelect={(option) => go(option.href)}
+      dataE2E="ui-guide-search"
+      labels={{
+        search: labels.search,
+        placeholder: labels.searchPlaceholder,
+        close: labels.closeSearch,
+        empty: labels.searchEmpty,
+      }}
+    />
   )
 }
