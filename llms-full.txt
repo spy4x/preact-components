@@ -2432,9 +2432,9 @@ client-side route change what a page load does by itself. Without it, focus stay
 was pressed, the tab keeps the previous page's title, and a screen reader announces nothing.
 
 ```tsx
-function Layout({ head, children }: { head: HeadStore; children: ComponentChildren }) {
+function Layout({ store, children }: { store: HeadStore; children: ComponentChildren }) {
   const [path] = useLocation()
-  useRouteAnnouncer({ path, title: head.value.title })
+  useRouteAnnouncer({ path, title: store.head.value.title })
   return <RailShell items={items} currentPath={path}>{children}</RailShell>
 }
 ```
@@ -2445,6 +2445,9 @@ function Layout({ head, children }: { head: HeadStore; children: ComponentChildr
   document's first `<main>` unless you pass a ref, and gives the target `tabindex="-1"` when it has
   no `tabindex`, so script can focus it and Tab still skips it. `Shell` and `RailShell` both render
   that `<main>`.
+- **A focused heading shows the browser's focus ring.** That is intended: after a keyboard press
+  the ring shows a sighted keyboard user where they landed. `Shell` and `RailShell` give their
+  `<main>` `focus:outline-none`, so a page with no `<h1>` shows no ring when focus lands there.
 - **The first render moves nothing.** On a page load the reader starts at the top of the document,
   where the skip link is; only a later path change moves focus.
 - **The title comes from the head store.** Pass the same `title` that `SEOHead` publishes, so there
