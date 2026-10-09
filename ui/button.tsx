@@ -1,6 +1,9 @@
 import { join } from "@spy4x/preact-cn/join"
-import type { ComponentChildren, JSX, Ref, VNode } from "preact"
+import type { ComponentChildren, JSX, Ref, RefObject, VNode } from "preact"
+import { useCallback } from "preact/hooks"
 import { forwardRef } from "./forward-ref.ts"
+import { HotkeyHint } from "./hotkey-hint.tsx"
+import { ariaKeyShortcuts, type HotkeyProps, useApplePlatform, useHotkeyClick } from "./hotkeys.ts"
 import { followLinkClick } from "./link.tsx"
 
 /** Visual role of a {@link Button}. */
@@ -9,7 +12,8 @@ export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "ico
 /** Control height and text scale of a {@link Button}. */
 export type ButtonSize = "sm" | "md" | "lg"
 
-export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "class"> {
+export interface ButtonProps
+  extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "class">, HotkeyProps {
   variant?: ButtonVariant
   /**
    * `"none"` sets no padding, gap or text size (and, on the `icon` variant, no box size), so the
@@ -38,11 +42,13 @@ export interface ButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonEle
  * `variant`, `size` and `class` give a `<button>`. A separate interface rather than a union inside
  * {@link ButtonProps}, so an `interface` that extends `ButtonProps` keeps compiling.
  */
-export interface ButtonLinkProps extends
-  Omit<
-    JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
-    "class" | "href" | "target" | "download" | "onClick" | "size"
-  > {
+export interface ButtonLinkProps
+  extends
+    Omit<
+      JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
+      "class" | "href" | "target" | "download" | "onClick" | "size"
+    >,
+    HotkeyProps {
   /** Where the link goes. Rendered as a real `href`, so the link works before any script runs. */
   href: string
   /**
@@ -167,9 +173,23 @@ function isLinkProps(props: ButtonProps | ButtonLinkProps): props is ButtonLinkP
 /** A disabled link's dimming: `:disabled` never matches an `<a>`, so it is written out. */
 const disabledLinkClasses = "pointer-events-none opacity-50"
 
+/** What a {@link Button} with a `hotkey` adds to its element: the announcement and the hint. */
+interface HotkeyParts {
+  /** The `aria-keyshortcuts` value, or `undefined` without a hotkey. */
+  shortcuts: string | undefined
+  /** The `Kbd` hint, or `null`. */
+  hint: VNode | null
+}
+
+/** The {@link HotkeyParts} of a button without a hotkey. */
+const NO_HOTKEY: HotkeyParts = { shortcuts: undefined, hint: null }
+
 /** The `<a>` a {@link Button} renders when it is given `href`. */
 function renderLink(
   {
+    hotkey: _hotkey,
+    hotkeyHint: _hotkeyHint,
+    kbdLabels: _kbdLabels,
     variant = "primary",
     size = "md",
     class: className,
@@ -183,10 +203,12 @@ function renderLink(
     ...rest
   }: ButtonLinkProps,
   ref: Ref<HTMLAnchorElement> | null,
+  { shortcuts, hint }: HotkeyParts,
 ): VNode {
   if (disabled) {
     return (
       <a
+        aria-keyshortcuts={shortcuts}
         {...rest}
         ref={ref}
         role="link"
@@ -194,11 +216,13 @@ function renderLink(
         class={buttonClasses(variant, size, join(disabledLinkClasses, className))}
       >
         {children}
+        {hint}
       </a>
     )
   }
   return (
     <a
+      aria-keyshortcuts={shortcuts}
       {...rest}
       ref={ref}
       href={href}
@@ -211,6 +235,7 @@ function renderLink(
       }}
     >
       {children}
+      {hint}
     </a>
   )
 }
@@ -218,6 +243,9 @@ function renderLink(
 /** The native `<button>` a {@link Button} renders without `href`. */
 function renderButton(
   {
+    hotkey: _hotkey,
+    hotkeyHint: _hotkeyHint,
+    kbdLabels: _kbdLabels,
     variant = "primary",
     size = "md",
     class: className,
@@ -228,17 +256,26 @@ function renderButton(
     ...rest
   }: ButtonProps,
   ref: Ref<HTMLButtonElement> | null,
+  { shortcuts, hint }: HotkeyParts,
 ): VNode {
   if (!busy) {
     return (
-      <button {...rest} ref={ref} type={type} class={buttonClasses(variant, size, className)}>
+      <button
+        aria-keyshortcuts={shortcuts}
+        {...rest}
+        ref={ref}
+        type={type}
+        class={buttonClasses(variant, size, className)}
+      >
         {children}
+        {hint}
       </button>
     )
   }
 
   return (
     <button
+      aria-keyshortcuts={shortcuts}
       {...rest}
       ref={ref}
       type={type}
@@ -249,6 +286,7 @@ function renderButton(
     >
       <BusySpinner />
       {variant === "icon" ? null : busyLabel ?? children}
+      {hint}
     </button>
   )
 }
@@ -292,9 +330,54 @@ export const Button: ButtonOverloads = forwardRef<
   HTMLButtonElement | HTMLAnchorElement,
   ButtonProps | ButtonLinkProps
 >("Button", function Button(props, ref) {
+  if (props.hotkey !== undefined) return <HotkeyButton {...props} forwardedRef={ref} />
   return isLinkProps(props)
-    ? renderLink(props, ref as Ref<HTMLAnchorElement> | null)
-    : renderButton(props, ref as Ref<HTMLButtonElement> | null)
+    ? renderLink(props, ref as Ref<HTMLAnchorElement> | null, NO_HOTKEY)
+    : renderButton(props, ref as Ref<HTMLButtonElement> | null, NO_HOTKEY)
   // One implementation takes either form's ref, which a ref typed for one element cannot be
   // assigned to; the overloads are what tie each form to its own element's ref.
 }) as ButtonOverloads
+
+/**
+ * One callback ref that fills the button's own ref and the caller's, kept stable across renders
+ * so Preact does not detach and reattach the caller's ref each time.
+ */
+function useMergedRef<Node>(
+  own: RefObject<Node>,
+  theirs: Ref<Node> | null,
+): (node: Node | null) => void {
+  return useCallback((node: Node | null) => {
+    own.current = node
+    if (typeof theirs === "function") theirs(node)
+    else if (theirs !== null) theirs.current = node
+  }, [own, theirs])
+}
+
+/**
+ * A {@link Button} with a `hotkey`: its own component, so a button without one runs no hook and
+ * renders exactly the element it always has. Turning `hotkey` on or off therefore remounts the
+ * element.
+ */
+function HotkeyButton(
+  { forwardedRef, ...props }: (ButtonProps | ButtonLinkProps) & {
+    forwardedRef: Ref<HTMLButtonElement | HTMLAnchorElement> | null
+  },
+): VNode {
+  const { hotkey, hotkeyHint, kbdLabels, variant } = props
+  const link = isLinkProps(props)
+  // A disabled or busy button binds nothing. A `disabled` given as a signal still binds, and
+  // `clickByHotkey` refuses the press then, as it does for a disabled `<fieldset>` around it.
+  const idle = props.disabled !== true && (link || (props as ButtonProps).busy !== true)
+  const own = useHotkeyClick<HTMLButtonElement | HTMLAnchorElement>(hotkey, { enabled: idle })
+  const apple = useApplePlatform()
+  const ref = useMergedRef(own, forwardedRef)
+  const parts: HotkeyParts = {
+    shortcuts: hotkey === undefined ? undefined : ariaKeyShortcuts(hotkey, apple),
+    hint: hotkey !== undefined && (hotkeyHint ?? variant !== "icon")
+      ? <HotkeyHint keys={hotkey} apple={apple} labels={kbdLabels} />
+      : null,
+  }
+  return link
+    ? renderLink(props, ref as Ref<HTMLAnchorElement>, parts)
+    : renderButton(props as ButtonProps, ref as Ref<HTMLButtonElement>, parts)
+}
