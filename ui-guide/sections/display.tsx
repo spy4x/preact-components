@@ -37,6 +37,7 @@ import {
   Pagination,
   Progress,
   type ProgressTone,
+  type Shortcut,
   ShortcutsDialog,
   Stack,
   type TabItem,
@@ -997,8 +998,8 @@ function ZoomableImagesDemo() {
   )
 }
 
-/** Combinations `Kbd` draws, each on both platforms. */
-const kbdCombos = ["mod+k", "mod+shift+p", "alt+up", "?", "esc"]
+/** Combinations `Kbd` draws, each on both platforms; the last is a sequence of two presses. */
+const kbdCombos = ["mod+k", "mod+shift+p", "alt+up", "?", "esc", "g t"]
 
 /**
  * Each combination twice, with `apple={false}` and `apple`, so the card shows both faces whatever
@@ -1084,6 +1085,11 @@ function ShortcutsDialogDemo() {
     },
   ]
   useHotkeys(bindings, { enabled: enabled.value })
+  // `useHotkeys` takes one press, so this sequence is listed but bound to nothing here.
+  const listed: Shortcut[] = [
+    ...bindings,
+    { keys: "g t", description: "A two-key sequence, listed only", group: "This demo" },
+  ]
   return (
     <Stack>
       <Cluster align="end">
@@ -1112,7 +1118,7 @@ function ShortcutsDialogDemo() {
       <ShortcutsDialog
         open={open.value}
         onClose={() => open.value = false}
-        shortcuts={bindings}
+        shortcuts={listed}
       />
     </Stack>
   )
@@ -1707,13 +1713,14 @@ export const displayDemos = {
   },
   Kbd: {
     summary:
-      "Shows a key or a key combination, with ⌘ on Apple platforms and Ctrl elsewhere, and names each glyph for screen readers.",
+      "Shows a key, a key combination or a sequence of presses, with ⌘ on Apple platforms and Ctrl elsewhere, and names each glyph for screen readers.",
     wide: false,
     props: [
       {
         name: "keys",
         type: "string",
-        description: "A combination such as `mod+k`, written the way `useHotkeys` takes it.",
+        description:
+          'A combination such as `mod+k`, written the way `useHotkeys` takes it, or a sequence such as `g t`, read as "G then T".',
       },
       {
         name: "apple",
@@ -1728,6 +1735,7 @@ export const displayDemos = {
     ],
     snippet: `<Kbd keys="mod+k" />
 <Kbd keys="mod+shift+p" apple />
+<Kbd keys="g t" />
 <Kbd>Tab</Kbd>`,
     render: () => <KbdDemo />,
   },
@@ -1740,7 +1748,8 @@ export const displayDemos = {
       {
         name: "shortcuts",
         type: "Shortcut[]",
-        description: "`{ keys, description, group? }` rows; the same array `useHotkeys` takes.",
+        description:
+          "`{ keys, description, group? }` rows; the same array `useHotkeys` takes. `keys` may be a sequence such as `g t`.",
       },
       {
         name: "title",
@@ -1755,8 +1764,10 @@ const bindings = [
   { keys: "mod+k", description: "Search", group: "Navigation", handler: openSearch },
 ]
 useHotkeys(bindings)
+// A sequence row, bound by a sequence matcher of your own
+const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Navigation" }]
 
-<ShortcutsDialog open={open.value} onClose={() => open.value = false} shortcuts={bindings} />`,
+<ShortcutsDialog open={open.value} onClose={() => open.value = false} shortcuts={rows} />`,
     render: () => <ShortcutsDialogDemo />,
   },
   KanbanBoard: {
