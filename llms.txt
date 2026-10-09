@@ -625,7 +625,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ComboboxState` (type): Highlighted-or-not plus open-or-not of one combobox. Import: `@spy4x/preact-ui`
 - `defaultGetLabel` (helper): The identity rule for item text: `String(item)`. Import: `@spy4x/preact-ui`
 - `filterItems` (helper): Filter a list down to the items matching a query, in the order they arrived. Import: `@spy4x/preact-ui`
-- `fold` (helper): Fold a string for searching: Unicode-decompose, drop the combining marks, then lower-case. Import: `@spy4x/preact-ui`
+- `fold` (helper): Fold text for matching: accents removed and lower-cased. Import: `@spy4x/preact-ui`
 - `leavesCombobox` (helper): Whether a focus change **out of the input** closes the popup. Import: `@spy4x/preact-ui`
 - `listboxContent` (helper): Split a filtered list into "options to render" and "message to announce". Import: `@spy4x/preact-ui`
 - `matchesQuery` (helper): Whether one item matches a query. Import: `@spy4x/preact-ui`

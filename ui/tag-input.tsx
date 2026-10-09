@@ -474,11 +474,7 @@ export function TagInput({
               role="option"
               aria-selected={isActive}
               data-active={isActive || undefined}
-              // 44 px rows, a touch target as tall as the chips' remove buttons.
-              class={cn(
-                listboxOptionClass({ active: isActive, selected: false, disabled: false }),
-                "min-h-11",
-              )}
+              class={listboxOptionClass({ active: isActive, selected: false, disabled: false })}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 add([suggestion])

@@ -1855,7 +1855,11 @@ components and tests means exactly that: nothing outside this package should bui
 ### Combobox (`./combobox`)
 
 - `fold(value)` folds text for searching: accents are removed and the text is lower-cased, so
-  `"São"` and `"sao"` fold alike, whatever the host locale.
+  `"São"` and `"sao"` fold alike, whatever the host locale. It is `fold` from
+  `@spy4x/platform/universal/text`, re-exported: marks after Latin, Greek and Cyrillic letters go,
+  while vowel signs in Devanagari, Thai and similar scripts stay, so `"का"` does not find `"कि"`.
+  Hangul syllables and kana compare as whole composed characters, so a half-typed syllable such as
+  `"하"` does not find `"한국"`, and `"か"` does not find `"が"`.
 - `matchesQuery(item, query, getLabel)` answers whether an item's folded text contains the folded,
   trimmed query; an empty query matches everything. `filterItems(items, query, getLabel)` keeps the
   matching items in their original order. Use them to filter a list the way `Combobox` does.

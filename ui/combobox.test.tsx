@@ -152,6 +152,14 @@ describe("filterItems", () => {
   it("folds diacritics in both the label and the query", () => {
     expect(filterItems(["São Paulo", "Santiago"], "sao")).toEqual(["São Paulo"])
   })
+
+  it("keeps Hindi vowel signs, so का does not suggest कि", () => {
+    expect(filterItems(["कि", "का"], "का")).toEqual(["का"])
+  })
+
+  it("folds stroked letters, so da nang finds Đà Nẵng", () => {
+    expect(filterItems(["Đà Nẵng", "Hà Nội"], "da nang")).toEqual(["Đà Nẵng"])
+  })
 })
 
 describe("nextComboboxState", () => {
