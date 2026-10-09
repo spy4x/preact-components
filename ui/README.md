@@ -1533,9 +1533,13 @@ dot, and its action is the card's one primary control, in the footer. While cons
 buttons that control is the same element, so when a press completes a step in place, focus stays on
 it and it offers the next step. When the control changes element (a button, then a link), focus
 moves to the new one; when the footer goes away (the next step has no action), focus moves to the
-card's heading. Once every step is done the control becomes Finish, which calls `onDismiss`, and a
-status region announces `completeMessage`. After `onDismiss` the app stops rendering the card and
-moves focus somewhere sensible, since the control that had it is gone.
+card's heading. Neither happens once the user has moved focus elsewhere or clicked away. A step
+whose button opens a dialog should close that dialog before it marks the step done: the dialog
+returns focus to the control that opened it, and once the step is done that control may have
+become a link or gone, so focus falls to the page. Once every step is done the control becomes
+Finish, which calls `onDismiss`, and a status region announces `completeMessage`. After `onDismiss`
+the app stops rendering the card and moves focus somewhere sensible, since the control that had it
+is gone.
 
 ## Billing
 

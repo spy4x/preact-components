@@ -95,8 +95,9 @@ function defaultProgressLabel(done: number, total: number): string {
  * actions are buttons it is the same element, so focus simply stays on it. When the control has to
  * change element — a button followed by a link — an effect moves focus to the new control, and
  * when the footer goes away — the next step has no action, or every step is done and there is no
- * `onDismiss` — it moves focus to the card's heading. Either move happens only when focus was in the
- * footer and fell to the page. Once every step is done the control becomes Finish, which calls
+ * `onDismiss` — it moves focus to the card's heading. Either move happens only when the footer's
+ * focused control was itself removed; once the user has moved focus elsewhere, or clicked empty
+ * space, a later step change leaves focus alone. Once every step is done the control becomes Finish, which calls
  * `onDismiss`, and a status region announces `completeMessage`.
  *
  * @param props See {@link OnboardingChecklistProps}.
@@ -222,9 +223,17 @@ export function OnboardingChecklist(
           data-onboarding-footer=""
           onFocusIn={() => footerHadFocus.current = true}
           onFocusOut={(event) => {
-            // A control removed while focused may report a blur with no new target; keep the flag
-            // then, so the effect above can hand focus on.
-            if (event.relatedTarget !== null) footerHadFocus.current = false
+            if (event.relatedTarget !== null) {
+              footerHadFocus.current = false
+              return
+            }
+            // No new target: either the control was removed while focused, or the user clicked
+            // empty space. Only a removed control has left the page, so a microtask later the
+            // flag is kept for removal alone, and the effect above hands focus on only then.
+            const left = event.target as Element
+            queueMicrotask(() => {
+              if (left.isConnected) footerHadFocus.current = false
+            })
           }}
         >
           {action?.href !== undefined
