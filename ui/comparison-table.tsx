@@ -119,13 +119,13 @@ const CELL = "border-b border-subtle px-3 py-3 sm:px-4"
  * A comparison of capabilities across products, for a public page: a legend, a real `<table>`
  * and the method and fit that make it trustworthy.
  *
- * The title is drawn above the scrolling box, where it never scrolls or clips, and repeated as the
- * table's visually hidden caption. The table has a column header per product (`scope="col"`) and a row header per
- * capability (`scope="row"`). Every cell shows an icon and a visible "Yes", "Partial" or "No", so
- * colour is never the only signal, and the caller's own column says "Ours" under its name besides
- * being tinted. It renders on the server and needs no JavaScript. On a narrow screen the table
- * scrolls sideways inside its own focusable container with the capability column held in place;
- * the page itself never scrolls sideways.
+ * The title is drawn above the scrolling box, where it never scrolls or clips, and repeated as
+ * the table's visually hidden caption. The table has a column header per product (`scope="col"`)
+ * and a row header per capability (`scope="row"`). Every cell shows an icon and a visible "Yes",
+ * "Partial" or "No", so colour is never the only signal, and the caller's own column says "Ours"
+ * under its name besides being tinted. It renders on the server and needs no JavaScript. On a
+ * narrow screen the table scrolls sideways inside its own focusable container with the capability
+ * column held in place; the page itself never scrolls sideways.
  *
  * @throws When a row's `values` and `products` differ in length: a missing value would shift every
  * later cell under the wrong product.
@@ -160,7 +160,12 @@ export function ComparisonTable(
 
   return (
     <div class={cn("flex min-w-0 max-w-full flex-col gap-4", className)}>
-      <p id={titleId} class="font-semibold text-foreground" data-e2e="comparison-title">
+      <p
+        id={titleId}
+        aria-hidden="true"
+        class="font-semibold text-foreground"
+        data-e2e="comparison-title"
+      >
         {caption}
       </p>
       <ul aria-label={words.legend} class="flex flex-wrap gap-x-6 gap-y-2 text-sm">

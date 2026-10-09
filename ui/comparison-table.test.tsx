@@ -30,10 +30,11 @@ function bodyCells(html: string): string[] {
 }
 
 describe("ComparisonTable", () => {
-  it("shows the title above the scrolling box and names the table and the box with it", () => {
+  it("puts the title above the box, hidden from screen readers, naming box and table", () => {
     const html = table()
-    const title = html.match(/<p id="([^"]+)" [^>]*>How our app compares<\/p>/)
+    const title = html.match(/<p id="([^"]+)" aria-hidden="true" [^>]*>How our app compares<\/p>/)
     expect(title).not.toBeNull()
+    expect(html.split(`id="${title![1]}"`).length).toBe(2)
     expect(html.indexOf(title![0])).toBeLessThan(html.indexOf('role="region"'))
     expect(html).toContain(`<div role="region" aria-labelledby="${title![1]}" tabindex="0"`)
     expect(html).toMatch(
