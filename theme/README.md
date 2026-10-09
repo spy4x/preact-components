@@ -410,11 +410,12 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   OKLab. A warm accent's dark fill (step 600) can sit fairly close to the danger button's red;
   white text on it comes first. `pages/checks/theme.ts` measures, in a browser, the purple steps,
   the gamut, and white-label contrast for four accents.
-- **A light accent fills the `Button` from one token.** `--color-accent-foreground`, the label on an accent fill,
-  is white or a near-black (`oklch(0.1 0 0)`), whichever reads better on the accent: an accent
-  whose relative luminance is above 0.18 takes the near-black one. With that label every fill and
-  hover the primary `Button` draws, in both palettes, holds 4.5:1. So an app with a bright brand
-  colour sets that one token and nothing else, and deletes any steps it copied by hand:
+- **A light accent fills the `Button` from one token.** `--color-accent-foreground`, the label on
+  an accent fill, is white or a near-black (`oklch(0.1 0 0)`), whichever reads better on the
+  accent: an accent whose relative luminance is above 0.18 takes the near-black one. With that
+  label every fill and hover the primary `Button` draws, in both palettes, holds 4.5:1. So an app
+  with a bright brand colour sets that one token and nothing else, and deletes any steps it copied
+  by hand:
 
   ```css
   @theme {
