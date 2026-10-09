@@ -50,8 +50,9 @@ export interface ModalProps {
    * 1)}` safe: it reads the step the parent has now.
    *
    * Escape is the one path with an exception, and only on a platform that ignores `closedby` (no
-   * shipping WebKit): there the platform closes the dialog itself, so the port is notified and its
-   * refusal cannot be honoured — see the support contract on {@link Modal}.
+   * shipping WebKit): there the platform closes the dialog itself before the port can answer. A
+   * dialog whose `open` prop the caller holds is shown again after a refusal, with a brief flash; an
+   * uncontrolled one closes — see the support contract on {@link Modal}.
    */
   onClose?: () => boolean | void
   /**
@@ -167,11 +168,13 @@ export interface ModalProps {
  *
  * Component-initiated closes are unaffected and stay refusable everywhere: a refused header control
  * or backdrop click keeps the dialog open on every platform, because nothing has closed it yet. Two
- * consequences of the fallback, stated plainly. On a platform that ignores `closedby` a refusing port
- * is still notified — it is how the caller learns the dialog went — but its refusal is not honoured,
- * because it cannot be. And a caller that owns `open` itself must move that flag to `false` when
- * told, or its own state will claim an open dialog the platform has closed; this component cannot
- * settle a flag it does not own. Which of the two branches ran is decided at effect time from
+ * consequences of the fallback, stated plainly. On a platform that ignores `closedby` the platform
+ * closes the dialog before the port answers. A caller that owns `open` and refuses gets its dialog
+ * back: once the platform's `close` event fires, `showModal()` puts it in the top layer again, so the
+ * refusal holds after a one-frame flash and focus moves into the dialog a second time; the scroll
+ * lock is never released. An uncontrolled dialog has nobody holding it open, so there the refusal is
+ * not honoured and the dialog closes. A caller that owns `open` and accepts must move that flag to
+ * `false`, or its own state will claim an open dialog the platform has closed. Which of the two branches ran is decided at effect time from
  * `HTMLDialogElement.prototype`, so the rendered markup never varies — the attribute is always there.
  *
  * The numbers behind this paragraph are reported, not reproducible from the tree, exactly as the
@@ -357,10 +360,25 @@ export function Modal(
     // settled closed. That is what stops a refusing port from being left believing an open dialog
     // that the browser has already closed. The lifecycle cleanup then runs as for any other close:
     // scroll lock released, focus restored.
+    //
+    // A caller that owns `open` and refused keeps the dialog: the platform's close cannot be stopped,
+    // but it can be undone. `close` fires as a task after `cancel`, and `showModal()` on the closed
+    // element puts it back in the top layer. The scroll lock was never released, because `isOpen`
+    // never changed. `disposed` stops a re-show on an element this effect no longer owns.
+    let disposed = false
+    const reshow = () => {
+      if (disposed || !dialog.isConnected || dialog.open) return
+      dialog.showModal()
+    }
     const onCancel = platformCloseHandler({
       refusalHolds: escapeStrategy.refusalHolds,
       onClose: () => latest.current.onClose?.(),
       settleOpen,
+      reopen: () => {
+        if (!latest.current.controlled) return false
+        dialog.addEventListener("close", reshow, { once: true })
+        return true
+      },
     })
 
     const unbindEscape = bindEscapeClose(dialog, escapeStrategy, {
@@ -369,6 +387,8 @@ export function Modal(
     })
 
     return () => {
+      disposed = true
+      dialog.removeEventListener("close", reshow)
       unbindEscape()
       lock.release()
 
@@ -825,25 +845,33 @@ export interface PlatformCloseDeps {
   onClose?: () => boolean | void
   /** Settle the component's own open state. A no-op for a caller-owned (`open` prop) dialog. */
   settleOpen: (open: boolean) => void
+  /**
+   * Undo the platform's close after the port refused it. Returns whether it will: `true` for a
+   * caller-owned (`open` prop) dialog, which is shown again once the platform has closed it.
+   */
+  reopen?: () => boolean
 }
 
 /**
  * Build the handler for a close the platform performs itself: Escape where `closedby` is ignored.
  *
- * This is the branch that removes the state desync the issue measured. The port is **told, never
- * asked**, because there is nothing left to ask: `cancel` is not cancelable — `preventDefault()`
- * inside it is a no-op — and the dialog closes whatever the port answers. Discarding that answer is
- * the point: reporting a refusal here is what left a caller believing an open dialog that the
- * browser had already closed. So the component's own open state follows the dialog instead. Where the
- * refusal could hold, the keydown path is in charge and this handler is never registered.
+ * This is the branch that removes the state desync the issue measured. The port cannot stop the
+ * close: `cancel` is not cancelable — `preventDefault()` inside it is a no-op — and the dialog closes
+ * whatever the port answers. So an accepted close settles the component's own open state, and a
+ * refused one is undone where it can be: a caller-owned (`open` prop) dialog is shown again through
+ * `reopen`, because the caller still renders it open. An uncontrolled dialog has no caller holding it
+ * open, so its state follows the dialog closed. Where the refusal could hold, the keydown path is in
+ * charge and this handler is never registered.
  *
- * @param deps The strategy's verdict, the close port and the state setter.
+ * @param deps The strategy's verdict, the close port, the state setter and the re-show.
  * @returns The `cancel` listener.
  */
 export function platformCloseHandler(deps: PlatformCloseDeps): () => void {
   return () => {
-    deps.onClose?.()
-    if (!deps.refusalHolds) deps.settleOpen(false)
+    const answer = deps.onClose?.()
+    if (deps.refusalHolds) return
+    if (answer === false && deps.reopen?.() === true) return
+    deps.settleOpen(false)
   }
 }
 

@@ -518,6 +518,50 @@ describe("platformCloseHandler", () => {
 
     expect(settled).toEqual([])
   })
+
+  it("shows a caller-owned dialog again after a refused platform close, and settles nothing", () => {
+    // Safari's Escape on a busy ConfirmDialog: the platform closes it, the port refuses, and the
+    // caller still renders it open, so the dialog has to come back rather than vanish.
+    const seen: unknown[] = []
+    platformCloseHandler({
+      refusalHolds: false,
+      onClose: () => false,
+      settleOpen: (open) => seen.push(open),
+      reopen: () => {
+        seen.push("reopen")
+        return true
+      },
+    })()
+
+    expect(seen).toEqual(["reopen"])
+  })
+
+  it("does not show the dialog again after an accepted platform close", () => {
+    const seen: unknown[] = []
+    platformCloseHandler({
+      refusalHolds: false,
+      onClose: () => {},
+      settleOpen: (open) => seen.push(open),
+      reopen: () => {
+        seen.push("reopen")
+        return true
+      },
+    })()
+
+    expect(seen).toEqual([false])
+  })
+
+  it("settles an uncontrolled dialog closed when its refusal cannot be undone", () => {
+    const seen: unknown[] = []
+    platformCloseHandler({
+      refusalHolds: false,
+      onClose: () => false,
+      settleOpen: (open) => seen.push(open),
+      reopen: () => false,
+    })()
+
+    expect(seen).toEqual([false])
+  })
 })
 
 describe("backdropClickDismisses", () => {

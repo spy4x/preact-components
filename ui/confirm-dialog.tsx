@@ -55,7 +55,9 @@ export interface ConfirmDialogProps {
    * shows `Button`'s busy state — a spinner, `aria-busy`, presses ignored, focus kept — and the
    * dialog refuses every way of cancelling: the cancel button is disabled, and Escape, the header
    * dismiss control and a backdrop click do not reach `onCancel`. The request is already sent, so a
-   * cancel could not take it back. Clear it, or unmount the dialog, when the work settles.
+   * cancel could not take it back. On a browser that ignores `closedby` (shipping Safari), Escape
+   * closes the dialog before anything can refuse it, and `Modal` shows it again at once: it stays
+   * open after a brief flash. Clear `busy`, or unmount the dialog, when the work settles.
    */
   busy?: boolean
   /** Shown on the confirm button while `busy`, such as `"Deleting…"`. Left out, its label stays. */
