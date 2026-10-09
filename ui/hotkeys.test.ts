@@ -2,7 +2,13 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { h } from "preact"
 import { render } from "preact-render-to-string"
-import { type HotkeyBinding, type HotkeyPress, pickHotkey, useHotkeys } from "./hotkeys.ts"
+import {
+  ariaKeyShortcuts,
+  type HotkeyBinding,
+  type HotkeyPress,
+  pickHotkey,
+  useHotkeys,
+} from "./hotkeys.ts"
 
 /** A binding that does nothing, overridden field by field. */
 function binding(keys: string, fields: Partial<HotkeyBinding> = {}): HotkeyBinding {
@@ -63,5 +69,40 @@ describe("useHotkeys", () => {
       return h("p", null, "page")
     }
     expect(() => render(h(Page, null))).toThrow('The hotkey "g i" holds a sequence')
+  })
+})
+
+describe("ariaKeyShortcuts", () => {
+  it("writes a letter in upper case, as aria-keyshortcuts names it", () => {
+    expect(ariaKeyShortcuts("n", false)).toBe("N")
+  })
+
+  it("writes mod as Control outside Apple platforms and as Meta on them", () => {
+    expect(ariaKeyShortcuts("mod+k", false)).toBe("Control+K")
+    expect(ariaKeyShortcuts("mod+k", true)).toBe("Meta+K")
+  })
+
+  it("puts the modifiers first, in the order Control, Alt, Shift, Meta", () => {
+    expect(ariaKeyShortcuts("meta+shift+alt+ctrl+s", false)).toBe("Control+Alt+Shift+Meta+S")
+  })
+
+  it("names keys the way KeyboardEvent.key spells them", () => {
+    expect(ariaKeyShortcuts("esc", false)).toBe("Escape")
+    expect(ariaKeyShortcuts("shift+pagedown", false)).toBe("Shift+PageDown")
+    expect(ariaKeyShortcuts("up", false)).toBe("ArrowUp")
+    expect(ariaKeyShortcuts("f2", false)).toBe("F2")
+  })
+
+  it("writes the space bar as Space and the plus key as Plus", () => {
+    expect(ariaKeyShortcuts("shift+space", false)).toBe("Shift+Space")
+    expect(ariaKeyShortcuts("mod++", false)).toBe("Control+Plus")
+  })
+
+  it("keeps a symbol as it is", () => {
+    expect(ariaKeyShortcuts("?", false)).toBe("?")
+  })
+
+  it("throws on a combination useHotkeys could not read either", () => {
+    expect(() => ariaKeyShortcuts("g i", false)).toThrow("sequence")
   })
 })

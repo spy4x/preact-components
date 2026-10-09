@@ -1,7 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { type ComponentChildren, Fragment, type JSX } from "preact"
-import { useEffect, useState } from "preact/hooks"
-import { isApplePlatform, parseHotkey } from "@spy4x/platform/browser/hotkeys"
+import { parseHotkey } from "@spy4x/platform/browser/hotkeys"
+import { useApplePlatform } from "./hotkeys.ts"
 
 /**
  * The words {@link Kbd} shows or reads out for a key. Each has an English default in
@@ -166,10 +166,9 @@ const keyClass =
  * The platform is never read during render: see {@link KbdProps.apple}.
  */
 export function Kbd({ keys, children, apple, labels, class: className }: KbdProps): JSX.Element {
-  const detected = useAppleDetection(apple)
+  const isApple = useApplePlatform(apple)
   if (keys === undefined) return <kbd class={cn(keyClass, className)}>{children}</kbd>
 
-  const isApple = apple ?? detected
   const faces = keyFaces(keys, isApple, { ...KBD_LABELS, ...labels })
   if (faces.length === 1) return <KeyCap face={faces[0]} class={className} />
   return (
@@ -198,16 +197,4 @@ function KeyCap({ face, class: className }: { face: KeyFace; class?: string }): 
       <span class="sr-only">{face.name}</span>
     </kbd>
   )
-}
-
-/**
- * Whether this browser is an Apple platform, read in an effect so a server render and the first
- * browser render agree. Skips the read when the caller already said.
- */
-function useAppleDetection(apple: boolean | undefined): boolean {
-  const [detected, setDetected] = useState(false)
-  useEffect(() => {
-    if (apple === undefined) setDetected(isApplePlatform())
-  }, [apple])
-  return detected
 }

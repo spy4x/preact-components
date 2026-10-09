@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "preact/hooks"
+import type { RefObject } from "preact"
+import { useEffect, useRef, useState } from "preact/hooks"
 import {
   isApplePlatform,
   isTypingTarget,
@@ -6,6 +7,7 @@ import {
   parseHotkey,
 } from "@spy4x/platform/browser/hotkeys"
 import { isImeKeyPress } from "./ime.ts"
+import type { KbdLabels } from "./kbd.tsx"
 
 /**
  * One keyboard shortcut for {@link useHotkeys}: a combination, what it does and how it is listed.
@@ -136,4 +138,147 @@ export function useHotkeys(
     document.addEventListener("keydown", listener)
     return () => document.removeEventListener("keydown", listener)
   }, [enabled, apple])
+}
+
+/**
+ * The props a component takes to bind a key to its own button: `hotkey` binds it and announces it,
+ * and a `Kbd` hint inside the button shows it.
+ */
+export interface HotkeyProps {
+  /**
+   * A combination such as `"n"`, `"shift+n"` or `"mod+k"`, written the way `useHotkeys` takes it.
+   * Pressing it clicks the button while the button is mounted, enabled and shown; a press in a text
+   * field does nothing, and so does one outside a dialog that holds the button. It also sets
+   * `aria-keyshortcuts`.
+   */
+  hotkey?: string
+  /**
+   * Whether a `Kbd` hint inside the button shows the key. Defaults to `true`, but to `false` on an
+   * icon-only button, which has no room for one. The hint is never shown on a screen whose main
+   * pointer is coarse, such as a phone, and screen readers skip it: they read `aria-keyshortcuts`.
+   */
+  hotkeyHint?: boolean
+  /** The words the hint shows for a key; see `KBD_LABELS`. */
+  kbdLabels?: Partial<KbdLabels>
+}
+
+/** ARIA's name of each key whose `KeyboardEvent.key` value is not its character in upper case. */
+const ARIA_KEYS: Readonly<Record<string, string>> = {
+  " ": "Space",
+  "+": "Plus",
+  escape: "Escape",
+  enter: "Enter",
+  tab: "Tab",
+  backspace: "Backspace",
+  delete: "Delete",
+  insert: "Insert",
+  home: "Home",
+  end: "End",
+  pageup: "PageUp",
+  pagedown: "PageDown",
+  arrowup: "ArrowUp",
+  arrowdown: "ArrowDown",
+  arrowleft: "ArrowLeft",
+  arrowright: "ArrowRight",
+  contextmenu: "ContextMenu",
+}
+
+/**
+ * A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the
+ * `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key`
+ * names them, joined by `+`.
+ *
+ * `mod` becomes `Meta` on Apple platforms and `Control` elsewhere. A letter is upper case, the space
+ * bar is `Space`, a named key keeps its `KeyboardEvent.key` spelling (`ArrowUp`, `PageDown`), and
+ * the `+` key is `Plus`, because a bare `+` would read as the separator.
+ *
+ * @param keys The combination, such as `"mod+shift+k"`.
+ * @param apple Whether `mod` means Command.
+ * @throws {Error} When the combination cannot be read.
+ */
+export function ariaKeyShortcuts(keys: string, apple: boolean): string {
+  const hotkey = parseHotkey(keys)
+  const parts: string[] = []
+  if (hotkey.ctrl || (hotkey.mod && !apple)) parts.push("Control")
+  if (hotkey.alt) parts.push("Alt")
+  if (hotkey.shift) parts.push("Shift")
+  if (hotkey.meta || (hotkey.mod && apple)) parts.push("Meta")
+  parts.push(ARIA_KEYS[hotkey.key] ?? hotkey.key.toUpperCase())
+  return parts.join("+")
+}
+
+/** The open modal `<dialog>`, or `null`; `null` too in a browser that cannot match `:modal`. */
+function openModal(): Element | null {
+  try {
+    return document.querySelector("dialog:modal")
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Click an element for a key press, the way a hotkey should: only when the reader could have
+ * clicked it themselves. Returns whether it clicked; when it did, it also cancelled the key press's
+ * default action, so no other hotkey listener runs for it.
+ *
+ * It does nothing when the element is gone, disabled (`disabled`, or `aria-disabled="true"` as a
+ * busy `Button` sets), inert, not rendered (inside a closed `<details>`, a hidden tab panel or a
+ * closed dialog), or outside the dialog the press landed in. While a modal dialog is open, only an
+ * element inside it is clicked.
+ *
+ * @param element The element to click, such as the button a hotkey belongs to.
+ * @param event The key press.
+ */
+export function clickByHotkey(element: HTMLElement | null, event: KeyboardEvent): boolean {
+  if (element === null || !element.isConnected) return false
+  if (element.matches(":disabled, [aria-disabled='true']")) return false
+  if (element.closest("[inert]") !== null || element.getClientRects().length === 0) return false
+  const target = event.target instanceof Element ? event.target : null
+  const scope = target?.closest(DIALOG_SELECTOR) ?? openModal()
+  if (scope !== null && !scope.contains(element)) return false
+  event.preventDefault()
+  element.click()
+  return true
+}
+
+/**
+ * Bind a key to one element: pressing it clicks the element through {@link clickByHotkey}. Returns
+ * the ref to put on that element. With `keys` left out, or `enabled` false, nothing listens.
+ *
+ * A press in a text field, a select or editable content does nothing, so typing the key never
+ * clicks anything.
+ *
+ * @param keys The combination, such as `"n"` or `"mod+enter"`.
+ * @param options See {@link UseHotkeysOptions}.
+ */
+export function useHotkeyClick<Target extends HTMLElement>(
+  keys: string | undefined,
+  options: UseHotkeysOptions = {},
+): RefObject<Target> {
+  const ref = useRef<Target>(null)
+  useHotkeys(
+    keys === undefined ? [] : [{
+      keys,
+      inDialogs: true,
+      preventDefault: false,
+      handler: (event) => void clickByHotkey(ref.current, event),
+    }],
+    { ...options, enabled: keys !== undefined && (options.enabled ?? true) },
+  )
+  return ref
+}
+
+/**
+ * Whether this browser is an Apple platform, for drawing or announcing `mod` as Command. Read in an
+ * effect, so a server render and the first browser render agree on `false`. When `apple` is given,
+ * that is the answer and nothing is read.
+ *
+ * @param apple The caller's answer, when it has one.
+ */
+export function useApplePlatform(apple?: boolean): boolean {
+  const [detected, setDetected] = useState(false)
+  useEffect(() => {
+    if (apple === undefined) setDetected(isApplePlatform())
+  }, [apple])
+  return apple ?? detected
 }
