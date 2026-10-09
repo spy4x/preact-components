@@ -80,7 +80,13 @@ function PageActionDemo() {
   return (
     <Stack>
       <div class="flex items-center gap-2">
-        <PageAction label="New task" Icon={IconPlus} onClick={() => presses.value++} />
+        <PageAction
+          label="New task"
+          Icon={IconPlus}
+          onClick={() => presses.value++}
+          hotkey="p"
+          dataE2E="page-action-hotkey"
+        />
         <PageAction
           label="Export"
           Icon={IconDownload}
@@ -89,7 +95,9 @@ function PageActionDemo() {
           variant="secondary"
         />
       </div>
-      <DemoNote>Pressed {presses.value} times. On a phone each shows its icon alone.</DemoNote>
+      <DemoNote e2e="page-action-presses">
+        Pressed {presses.value} times; P presses New task. On a phone each shows its icon alone.
+      </DemoNote>
     </Stack>
   )
 }
@@ -199,8 +207,13 @@ export const pageHeaderDemos = {
         default: `"primary"`,
         description: "The button's look.",
       },
+      {
+        name: "hotkey",
+        type: "string",
+        description: "A key that presses the action, shown in a hint, as `Button`'s does.",
+      },
     ],
-    snippet: `<PageAction label="New task" Icon={IconPlus} onClick={addTask} />
+    snippet: `<PageAction label="New task" Icon={IconPlus} onClick={addTask} hotkey="p" />
 <PageAction label="Export" Icon={IconDownload} href="/export" variant="secondary" />`,
     render: () => <PageActionDemo />,
   },
