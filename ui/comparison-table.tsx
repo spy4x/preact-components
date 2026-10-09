@@ -61,7 +61,10 @@ export const defaultComparisonTableLabels: ComparisonTableLabels = {
 }
 
 export interface ComparisonTableProps {
-  /** The table's caption, its accessible name. */
+  /**
+   * The table's title. It is drawn above the scrolling box, so a phone shows all of it, and it is
+   * also the table's visually hidden `<caption>`, its accessible name.
+   */
   caption: ComponentChildren
   /** The products compared, one column each. The first is the caller's own and is highlighted. */
   products: readonly string[]
@@ -116,7 +119,8 @@ const CELL = "border-b border-subtle px-3 py-3 sm:px-4"
  * A comparison of capabilities across products, for a public page: a legend, a real `<table>`
  * and the method and fit that make it trustworthy.
  *
- * The table has a caption, a column header per product (`scope="col"`) and a row header per
+ * The title is drawn above the scrolling box, where it never scrolls or clips, and repeated as the
+ * table's visually hidden caption. The table has a column header per product (`scope="col"`) and a row header per
  * capability (`scope="row"`). Every cell shows an icon and a visible "Yes", "Partial" or "No", so
  * colour is never the only signal, and the caller's own column says "Ours" under its name besides
  * being tinted. It renders on the server and needs no JavaScript. On a narrow screen the table
@@ -125,6 +129,8 @@ const CELL = "border-b border-subtle px-3 py-3 sm:px-4"
  *
  * @throws When a row's `values` and `products` differ in length: a missing value would shift every
  * later cell under the wrong product.
+ * @throws {RangeError} When `checkedOn` is an invalid date (`new Date("x")`), from
+ * `Intl.DateTimeFormat`, and when `locale` or `timeZone` is not one `Intl` knows.
  */
 export function ComparisonTable(
   {
@@ -141,7 +147,7 @@ export function ComparisonTable(
   }: ComparisonTableProps,
 ): JSX.Element {
   const words = { ...defaultComparisonTableLabels, ...labels }
-  const captionId = useId()
+  const titleId = useId()
   for (const row of rows) {
     if (row.values.length !== products.length) {
       throw new Error(
@@ -154,6 +160,9 @@ export function ComparisonTable(
 
   return (
     <div class={cn("flex min-w-0 max-w-full flex-col gap-4", className)}>
+      <p id={titleId} class="font-semibold text-foreground" data-e2e="comparison-title">
+        {caption}
+      </p>
       <ul aria-label={words.legend} class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
         {VALUES.map((value) => (
           <li key={value} class="inline-flex items-center gap-2">
@@ -164,18 +173,13 @@ export function ComparisonTable(
       </ul>
       <div
         role="region"
-        aria-labelledby={captionId}
+        aria-labelledby={titleId}
         tabIndex={0}
         data-e2e="comparison-scroller"
         class="max-w-full overflow-x-auto rounded-lg bg-surface ring-1 ring-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
       >
         <table class="min-w-full border-separate border-spacing-0 text-sm [&_tbody>tr:last-child>*]:border-b-0">
-          <caption
-            id={captionId}
-            class="px-3 py-3 text-left font-semibold text-foreground sm:px-4"
-          >
-            {caption}
-          </caption>
+          <caption class="sr-only">{caption}</caption>
           <thead>
             <tr>
               <th scope="col" class={cn(CELL, STICKY, "font-medium text-muted")}>

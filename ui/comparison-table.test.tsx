@@ -3,7 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { type ComparisonRow, ComparisonTable } from "./comparison-table.tsx"
 
-const products = ["Tally", "Ledgerly", "Countwise"]
+const products = ["Our app", "Product A", "Product B"]
 const rows: ComparisonRow[] = [
   { capability: "Offline mode", values: ["yes", "partial", "no"] },
   { capability: "Export to CSV", values: ["yes", "yes", "partial"], note: "all fields" },
@@ -13,7 +13,7 @@ const checkedOn = new Date("2026-10-01T00:00:00Z")
 function table(extra: Partial<Parameters<typeof ComparisonTable>[0]> = {}): string {
   return render(
     <ComparisonTable
-      caption="How Tally compares"
+      caption="How our app compares"
       products={products}
       rows={rows}
       checkedOn={checkedOn}
@@ -30,14 +30,21 @@ function bodyCells(html: string): string[] {
 }
 
 describe("ComparisonTable", () => {
-  it("names the table with a caption and heads every column and every row", () => {
+  it("shows the title above the scrolling box and names the table and the box with it", () => {
     const html = table()
-    expect(html).toMatch(/<table class="[^"]*"><caption [^>]*>How Tally compares<\/caption>/)
+    const title = html.match(/<p id="([^"]+)" [^>]*>How our app compares<\/p>/)
+    expect(title).not.toBeNull()
+    expect(html.indexOf(title![0])).toBeLessThan(html.indexOf('role="region"'))
+    expect(html).toContain(`<div role="region" aria-labelledby="${title![1]}" tabindex="0"`)
+    expect(html).toMatch(
+      /<table class="[^"]*"><caption class="sr-only">How our app compares<\/caption>/,
+    )
+  })
+
+  it("heads every column and every row", () => {
+    const html = table()
     expect(html.match(/<th scope="col"/g)?.length).toBe(products.length + 1)
     expect(html.match(/<th scope="row"/g)?.length).toBe(rows.length)
-    const scroller = html.match(/<div role="region" aria-labelledby="([^"]+)" tabindex="0"/)
-    expect(scroller).not.toBeNull()
-    expect(html).toContain(`<caption id="${scroller![1]}"`)
   })
 
   it("gives every cell a text label beside its icon, in the order of the values", () => {
@@ -59,7 +66,7 @@ describe("ComparisonTable", () => {
 
   it("highlights the first product's column and says in words that it is ours", () => {
     const html = table()
-    expect(html).toMatch(/<th scope="col" class="[^"]*bg-selected-soft[^"]*" data-ours>Tally/)
+    expect(html).toMatch(/<th scope="col" class="[^"]*bg-selected-soft[^"]*" data-ours>Our app/)
     expect(html).toContain(">Ours</span>")
     // In each body row, the first value cell is tinted and no other is.
     const tinted = [...html.matchAll(/<\/th>(<td [^>]*>)/g)].map((match) => match[1])
@@ -114,6 +121,10 @@ describe("ComparisonTable", () => {
       ]
     ) expect(html).toContain(word)
     expect(html).not.toMatch(/>(Yes|Partial|No|Legend|Capability|Ours|Method|Fit)</)
+  })
+
+  it("throws a RangeError for an invalid checkedOn date", () => {
+    expect(() => table({ checkedOn: new Date("x") })).toThrow(RangeError)
   })
 
   it("refuses a row whose values do not match the products one for one", () => {
