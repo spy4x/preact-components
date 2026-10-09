@@ -167,6 +167,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   )
 
   await refForwardingChecks(devtools)
+  await roundCheckboxChecks(devtools)
   await busyButtonChecks(devtools)
   await busySubmitChecks(devtools)
   await linkChecks(devtools)
@@ -464,6 +465,103 @@ async function refForwardingChecks(devtools: Devtools): Promise<void> {
         : `clicking the trigger left focus on ${after.label} instead of the target`,
     )
   }
+}
+
+/** The round boxes in the `Checkbox` card, by their `data-e2e` marks. */
+const ROUND_CHECK = '#demo-Checkbox [data-e2e="round-check"]'
+const ROUND_MIXED = '#demo-Checkbox [data-e2e="round-mixed"]'
+const ROUND_DISABLED = '#demo-Checkbox [data-e2e="round-disabled"]'
+const SQUARE_CHECK = '#demo-Checkbox [data-e2e="ref-target"]'
+
+/** What one round box looks like right now, read off its computed style. */
+interface RoundBoxLook {
+  found: boolean
+  checked: boolean
+  /** Its corner radius as a share of its width; 0.5 or more is a circle. */
+  roundness: number
+  fill: string
+  /** The tick's (or bar's) `display`, `rotate` and right border width. */
+  mark: { display: string; rotate: string; right: string }
+  opacity: string
+  outline: { style: string; width: string }
+  focused: boolean
+}
+
+/** Read a round box's look; `found: false` when the card lost it. */
+function readRoundBox(devtools: Devtools, selector: string): Promise<RoundBoxLook> {
+  return devtools.evaluate<RoundBoxLook>(`(() => {
+    const box = document.querySelector('${selector}')
+    if (!box) return { found: false }
+    const style = getComputedStyle(box)
+    const after = getComputedStyle(box, "::after")
+    return {
+      found: true,
+      checked: box.checked,
+      roundness: parseFloat(style.borderTopLeftRadius) / box.getBoundingClientRect().width,
+      fill: style.backgroundColor,
+      mark: { display: after.display, rotate: after.rotate, right: after.borderRightWidth },
+      opacity: style.opacity,
+      outline: { style: style.outlineStyle, width: style.outlineWidth },
+      focused: document.activeElement === box,
+    }
+  })()`)
+}
+
+/**
+ * `Checkbox` with `shape="round"`: a circle the browser does not draw, so its tick, its bar while
+ * indeterminate, its dimming while disabled and its focus outline all have to be proven on the
+ * painted page. Clicking the label and pressing Space still toggle it, because it is still a
+ * native checkbox.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function roundCheckboxChecks(devtools: Devtools): Promise<void> {
+  const before = await readRoundBox(devtools, ROUND_CHECK)
+  await devtools.evaluate<null>(
+    `(document.querySelector('${ROUND_CHECK}')?.closest("label")?.click(), null)`,
+  )
+  await poll(async () => (await readRoundBox(devtools, ROUND_CHECK)).checked, 2_000)
+  const ticked = await readRoundBox(devtools, ROUND_CHECK)
+  check(
+    "a round Checkbox is a circle with no tick, and a click on its label ticks it and shows the tick",
+    before.found && !before.checked && before.roundness >= 0.5 && before.mark.display === "none" &&
+      ticked.checked && ticked.mark.display === "block" && ticked.mark.rotate === "45deg" &&
+      ticked.mark.right !== "0px" && ticked.fill !== before.fill,
+    JSON.stringify({ before, ticked }),
+  )
+
+  // Focus the square box above it, then Tab: a real key press, so the round box matches
+  // `:focus-visible` and draws the browser's focus outline.
+  await devtools.evaluate<null>(`(document.querySelector('${SQUARE_CHECK}')?.focus(), null)`)
+  await pressKey(devtools, "Tab")
+  const focused = await readRoundBox(devtools, ROUND_CHECK)
+  await pressKey(devtools, "Space")
+  await poll(async () => !(await readRoundBox(devtools, ROUND_CHECK)).checked, 2_000)
+  const spaced = await readRoundBox(devtools, ROUND_CHECK)
+  check(
+    "Tab reaches a round Checkbox with a visible focus outline, and Space unticks it",
+    focused.focused && focused.outline.style !== "none" && parseFloat(focused.outline.width) > 0 &&
+      !spaced.checked,
+    JSON.stringify({ focused, spaced }),
+  )
+
+  const mixed = await readRoundBox(devtools, ROUND_MIXED)
+  check(
+    "an indeterminate round Checkbox draws a flat bar, not a tick",
+    mixed.found && mixed.mark.display === "block" && /^(none|0deg)$/.test(mixed.mark.rotate) &&
+      mixed.mark.right === "0px" && mixed.fill !== before.fill,
+    JSON.stringify(mixed),
+  )
+
+  await devtools.evaluate<null>(
+    `(document.querySelector('${ROUND_DISABLED}')?.closest("label")?.click(), null)`,
+  )
+  const disabled = await readRoundBox(devtools, ROUND_DISABLED)
+  check(
+    "a disabled round Checkbox is dimmed and stays ticked when its label is clicked",
+    disabled.found && disabled.checked && parseFloat(disabled.opacity) < 1,
+    JSON.stringify(disabled),
+  )
 }
 
 /** The checkmark path {@link CopyButton} swaps in for its own glyph while `copied` is true. */

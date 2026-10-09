@@ -25,7 +25,7 @@ import {
   ToggleChips,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
-import { useRef } from "preact/hooks"
+import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
 
@@ -262,10 +262,19 @@ function SelectDemo() {
  * The "Focus via ref" button proves `Checkbox` forwards its `ref` to the native `<input>`, the same
  * way {@link InputDemo}'s does; see there for why the check drives a button rather than reading the
  * ref directly.
+ *
+ * The round boxes show `shape="round"` ticked by a click, indeterminate, and disabled.
  */
 function CheckboxDemo() {
   const archived = useSignal(false)
+  const done = useSignal(false)
   const archivedRef = useRef<HTMLInputElement>(null)
+  const mixedRef = useRef<HTMLInputElement>(null)
+  // `indeterminate` is a property with no attribute, so a server render cannot carry it: set it
+  // once the box is in the page.
+  useEffect(() => {
+    if (mixedRef.current) mixedRef.current.indeterminate = true
+  }, [])
   return (
     <Stack gap="sm">
       <Checkbox
@@ -277,8 +286,23 @@ function CheckboxDemo() {
       >
         Show archived rows
       </Checkbox>
+      <Checkbox
+        shape="round"
+        name="guide-checkbox-round"
+        checked={done.value}
+        onChange={(event) => done.value = event.currentTarget.checked}
+        data-e2e="round-check"
+      >
+        Water the plants
+      </Checkbox>
+      <Checkbox ref={mixedRef} shape="round" data-e2e="round-mixed">
+        Some subtasks done
+      </Checkbox>
+      <Checkbox shape="round" checked disabled data-e2e="round-disabled">
+        Done, locked
+      </Checkbox>
       <p class="text-xs text-muted" data-e2e="controlled-value">
-        archived: {archived.value ? "on" : "off"}
+        archived: {archived.value ? "on" : "off"} · plants: {done.value ? "done" : "to do"}
       </p>
       <Cluster>
         <Button
@@ -577,13 +601,21 @@ export const fieldDemos = {
     render: () => <SelectDemo />,
   },
   Checkbox: {
-    summary: "A checkbox and its text, where clicking either one ticks the box.",
+    summary: "A square or round checkbox and its text, where clicking either one ticks the box.",
     wide: false,
     snippet: `<Checkbox
   checked={archived.value}
   onChange={(event) => archived.value = event.currentTarget.checked}
 >
   Show archived
+</Checkbox>
+
+<Checkbox
+  shape="round"
+  checked={done.value}
+  onChange={(event) => done.value = event.currentTarget.checked}
+>
+  Water the plants
 </Checkbox>`,
     render: () => <CheckboxDemo />,
   },
