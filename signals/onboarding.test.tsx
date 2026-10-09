@@ -95,7 +95,7 @@ describe("createOnboardingState", () => {
     expect(state.visible.value).toBe(true)
   })
 
-  it("leaves visible as it was when the port's write throws", () => {
+  it("leaves visible as it was when a synchronous write throws", () => {
     const state = createOnboardingState({
       steps: signal(facts(false)),
       dismissed: {
@@ -108,6 +108,73 @@ describe("createOnboardingState", () => {
 
     expect(() => state.dismiss()).toThrow("storage is full")
     expect(state.visible.value).toBe(true)
+  })
+
+  it("hides at once on an asynchronous write, and stays hidden when it resolves", async () => {
+    const saved = Promise.withResolvers<void>()
+    const writes: boolean[] = []
+    const state = createOnboardingState({
+      steps: signal(facts(false)),
+      dismissed: {
+        read: () => false,
+        write: (value) => {
+          writes.push(value)
+          return saved.promise
+        },
+      },
+    })
+
+    const dismissing = state.dismiss()
+    expect(writes).toEqual([true])
+    expect(state.visible.value).toBe(false)
+
+    saved.resolve()
+    await dismissing
+    expect(dismissing).toBeInstanceOf(Promise)
+    expect(state.visible.value).toBe(false)
+  })
+
+  it("shows it again and rejects the caller's await when an asynchronous write fails", async () => {
+    const unhandled: unknown[] = []
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      unhandled.push(event.reason)
+      event.preventDefault()
+    }
+    globalThis.addEventListener("unhandledrejection", onUnhandled)
+    try {
+      const state = createOnboardingState({
+        steps: signal(facts(false)),
+        dismissed: { read: () => false, write: () => Promise.reject(new Error("server said 500")) },
+      })
+
+      const dismissing = state.dismiss()
+      expect(state.visible.value).toBe(false)
+      await expect(dismissing).rejects.toThrow("server said 500")
+      expect(state.visible.value).toBe(true)
+
+      // Unhandled rejections are reported after the microtask queue drains, so wait one task.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(unhandled).toEqual([])
+    } finally {
+      globalThis.removeEventListener("unhandledrejection", onUnhandled)
+    }
+  })
+
+  it("keeps the latest choice when an earlier asynchronous write fails after it", async () => {
+    const first = Promise.withResolvers<void>()
+    let calls = 0
+    const state = createOnboardingState({
+      steps: signal(facts(false)),
+      dismissed: { read: () => false, write: () => calls++ === 0 ? first.promise : undefined },
+    })
+
+    const dismissing = state.dismiss()
+    state.reset()
+    state.dismiss()
+    first.reject(new Error("server said 500"))
+    await expect(dismissing).rejects.toThrow("server said 500")
+
+    expect(state.visible.value).toBe(false)
   })
 
   it("picks the same next step that OnboardingChecklist marks as current", () => {

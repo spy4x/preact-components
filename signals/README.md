@@ -426,15 +426,27 @@ steps as a signal of `{ id, done }` (the checklist's own steps fit) and a `dismi
   `OnboardingChecklist` marks as current; a test holds the two to that rule.
 - `allDone`: `true` when no step is left, which includes an empty list.
 - `progress`: `{ done, total }`.
-- `dismiss()` and `reset()`: write `true` or `false` through the port, then change `visible`. A port
-  that throws leaves `visible` as it was.
+- `dismiss()` and `reset()`: write `true` or `false` through the port and change `visible`.
+
+The port's `read()` is synchronous: an app that keeps the flag on the server loads it before it
+creates the store. Its `write()` may be either:
+
+- **Synchronous**, such as `localStorage`. The write runs first and `visible` changes after it, so a
+  write that throws leaves `visible` as it was, and the error reaches the caller of `dismiss()`.
+- **Asynchronous**, such as a request that saves a user setting. `visible` changes at once, so the
+  card goes away without waiting for the network. If the promise rejects, `visible` changes back
+  (unless a later `dismiss()` or `reset()` has run), and the promise that `dismiss()` returns rejects with the same error. Catch it and tell the user:
+  a dropped promise is an unhandled rejection.
 
 ```tsx
 const onboarding = createOnboardingState({ steps, dismissed: settingsPort })
 
 {
   onboarding.visible.value && (
-    <OnboardingChecklist steps={steps.value} onDismiss={onboarding.dismiss} />
+    <OnboardingChecklist
+      steps={steps.value}
+      onDismiss={() => Promise.resolve(onboarding.dismiss()).catch(showSaveError)}
+    />
   )
 }
 ```

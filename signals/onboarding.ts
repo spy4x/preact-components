@@ -17,12 +17,20 @@ export interface OnboardingStepFact {
   done: boolean
 }
 
-/** Where the "dismissed" flag lives: `localStorage`, a user setting on the server, or memory. */
+/**
+ * Where the "dismissed" flag lives: `localStorage`, a user setting on the server, or memory.
+ *
+ * `read()` is synchronous, so an app that keeps the flag on the server loads it before it creates
+ * the store. `write()` may be synchronous or return a promise; see {@link OnboardingState.dismiss}.
+ */
 export interface OnboardingDismissedPort {
   /** The stored flag. Called once, when the store is created. */
   read(): boolean
-  /** Store the flag. Called by `dismiss()` and `reset()`. */
-  write(value: boolean): void
+  /**
+   * Store the flag. Called by `dismiss()` and `reset()`. A throw, or a rejected promise, means the
+   * flag was not saved.
+   */
+  write(value: boolean): void | Promise<void>
 }
 
 /** What {@link createOnboardingState} takes. */
@@ -52,17 +60,29 @@ export interface OnboardingState {
   allDone: ReadonlySignal<boolean>
   /** Done steps and all steps, for a progress bar. */
   progress: ReadonlySignal<OnboardingProgress>
-  /** Hide the onboarding: writes `true` through the port, then `visible` turns `false`. */
-  dismiss(): void
-  /** Show it again: writes `false` through the port, then `visible` turns `true`. */
-  reset(): void
+  /**
+   * Hide the onboarding by writing `true` through the port.
+   *
+   * A synchronous write runs first and `visible` turns `false` after it, so a write that throws
+   * leaves `visible` as it was and the error reaches the caller. When the write returns a promise,
+   * `visible` turns `false` at once and turns back if the promise rejects, unless a later
+   * `dismiss()` or `reset()` has run; the returned promise rejects with the same error. Catch it: a caller that drops the promise gets an unhandled
+   * rejection.
+   *
+   * @returns The write's promise, settled after `visible` is restored on failure, or nothing for a
+   * synchronous write.
+   */
+  dismiss(): void | Promise<void>
+  /** Show the onboarding again: writes `false`, as {@link OnboardingState.dismiss} does `true`. */
+  reset(): void | Promise<void>
 }
 
 /**
  * Create an onboarding store over the app's step facts and a port for the dismissed flag.
  *
- * The port is written before `visible` changes, so a port that throws leaves `visible` as it was
- * and the caller sees the error.
+ * A synchronous port is written before `visible` changes, so a port that throws leaves `visible` as
+ * it was. An asynchronous port changes `visible` at once and restores it when its promise rejects;
+ * `dismiss()` and `reset()` return that promise, so the caller sees the error either way.
  *
  * @example
  * ```ts
@@ -87,9 +107,21 @@ export function createOnboardingState(options: OnboardingStateOptions): Onboardi
     total: steps.value.length,
   }))
 
-  function setDismissed(value: boolean): void {
-    port.write(value)
+  /** Counts calls to {@link setDismissed}, so a failed write knows whether a later one came. */
+  let writes = 0
+
+  function setDismissed(value: boolean): void | Promise<void> {
+    const previous = dismissed.value
+    const write = ++writes
+    const saving = port.write(value)
     dismissed.value = value
+    if (saving === undefined) return
+    // One chain, returned to the caller, so a rejection is unhandled only if the caller drops it.
+    return saving.then(undefined, (error: unknown) => {
+      // A later dismiss() or reset() owns `visible` now; undo only when this write was the last.
+      if (write === writes) dismissed.value = previous
+      throw error
+    })
   }
 
   return {
