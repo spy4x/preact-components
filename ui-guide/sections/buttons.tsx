@@ -8,6 +8,7 @@ import {
   Link,
   Stack,
   ThemeToggle,
+  useSucceeded,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { createThemeStore } from "@spy4x/preact-signals/theme"
@@ -163,6 +164,65 @@ function BusyButtonDemo() {
       </Button>
       <DemoNote>
         confirmed {confirmations.value} {confirmations.value === 1 ? "time" : "times"}
+      </DemoNote>
+    </Cluster>
+  )
+}
+
+/**
+ * `useSucceeded` behind a busy "Save": "Succeed" and "Fail" end the save, standing in for a
+ * request. The count moves only on a save that succeeds; a failure, and dismissing its error
+ * afterwards, leave it alone, and it starts at 0 because mounting does not count.
+ * `pages/checks/ui.ts` drives all four buttons.
+ */
+function SucceededDemo() {
+  const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+  const [saved, setSaved] = useState(0)
+  useSucceeded(pending, failed, () => setSaved((count) => count + 1))
+  return (
+    <Cluster>
+      <Button
+        busy={pending}
+        busyLabel="Saving…"
+        data-e2e="succeeded-save"
+        onClick={() => {
+          setFailed(null)
+          setPending(true)
+        }}
+      >
+        Save
+      </Button>
+      <Button
+        variant="outline"
+        disabled={!pending}
+        data-e2e="succeeded-ok"
+        onClick={() => setPending(false)}
+      >
+        Succeed
+      </Button>
+      <Button
+        variant="outline"
+        disabled={!pending}
+        data-e2e="succeeded-fail"
+        onClick={() => {
+          setFailed("Save failed")
+          setPending(false)
+        }}
+      >
+        Fail
+      </Button>
+      <Button
+        variant="ghost"
+        disabled={failed === null}
+        data-e2e="succeeded-dismiss"
+        onClick={() => setFailed(null)}
+      >
+        Dismiss error
+      </Button>
+      <DemoNote e2e="succeeded-count">
+        saved {saved} {saved === 1 ? "time" : "times"}
+        {failed === null ? "" : ` · ${failed}`}
       </DemoNote>
     </Cluster>
   )
@@ -425,12 +485,14 @@ export const buttonDemos = {
 <Button href="/reports" navigate={router.navigate}>Reports</Button>
 <Button href="/book" size="none" class="px-6 py-3">Book a call</Button>
 <Button hotkey="n" onClick={addNote}>New note</Button>
-<Button hotkey="mod+enter" onClick={send}>Send</Button>`,
+<Button hotkey="mod+enter" onClick={send}>Send</Button>
+useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
     render: () => (
       <Stack gap="lg">
         <ButtonMatrix />
         <ButtonClickDemo />
         <BusyButtonDemo />
+        <SucceededDemo />
         <BusySubmitDemo />
         <ButtonLinkDemo />
         <HotkeyButtonDemo />

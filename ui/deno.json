@@ -55,6 +55,7 @@
     "./tooltip": "./tooltip.tsx",
     "./zoomable-images": "./zoomable-images.tsx",
     "./hotkeys": "./hotkeys.ts",
+    "./use-succeeded": "./use-succeeded.ts",
     "./kbd": "./kbd.tsx",
     "./shortcuts-dialog": "./shortcuts-dialog.tsx",
     "./inline-edit": "./inline-edit.tsx",

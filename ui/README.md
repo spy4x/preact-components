@@ -1913,6 +1913,19 @@ components and tests means exactly that: nothing outside this package should bui
   handle the click. `UnsavedClick` and `UnsavedLink` are the fields it reads.
 - `defaultUnsavedGuardLabels` holds the dialog's English words; `labels` replaces any of them.
 
+### useSucceeded (`./use-succeeded`)
+
+- `useSucceeded(pending, failed, onDone)` runs `onDone` once when an action ends well: when
+  `pending` goes from `true` to `false` while `failed` is falsy. Use it to close a dialog or clear a
+  field after a save. Mounting with `pending` already `false` does not run it, a failure does not,
+  and clearing the failure later does not either. `failed` takes a boolean, a message or an `Error`;
+  any truthy value is a failure. A signal is a type error: pass its `.value`. A new `onDone` on
+  every render does not run it again.
+  Set `failed` in the same update that turns `pending` false, never later: a failure that arrives a
+  render afterwards finds a success already counted. An action that starts and ends inside one
+  batched update never runs it, because the hook never sees `pending` as `true`.
+  The `Button` card's "Save" demo uses it.
+
 ## Tests
 
 `deno task test` from the repo root. Tests render each component with
