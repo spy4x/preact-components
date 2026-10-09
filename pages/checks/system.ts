@@ -7244,9 +7244,59 @@ async function railShellChooseCheck(devtools: Devtools): Promise<void> {
   )
 }
 
+/**
+ * Remember the address and start recording the fragment each `hashchange` event carries, before a
+ * check presses RailShell's skip link, which moves the address to `#<main's id>`.
+ *
+ * `hashchange` is a queued task, so it can reach the guide after the check has already put the
+ * address back. The guide re-reads `location.hash` on that event, and when the two skip-link checks
+ * met it in different orders it saw its own page's address come back and scrolled the page to the
+ * top — after the `navigateLink` block had centred the card, so every link aimed at sat 2 000
+ * pixels below the viewport (measured in GitHub Actions, where four runs on 2026-10-09 failed
+ * that way). {@link restoreRailShellAddress} waits for the event instead.
+ *
+ * @returns The address to put back.
+ */
+async function watchRailShellAddress(devtools: Devtools): Promise<string> {
+  return await read(
+    devtools,
+    `(() => {
+      const seen = () => { globalThis.__railShellHashSeen = location.hash }
+      seen()
+      globalThis.__railShellHashWatch = seen
+      addEventListener("hashchange", seen)
+      return location.href
+    })()`,
+    "",
+  )
+}
+
+/**
+ * Put back the address {@link watchRailShellAddress} remembered, once every listener — the guide's
+ * among them, since it was added earlier — has been handed the `hashchange` for the current
+ * fragment, so no event can arrive after the address is restored.
+ */
+async function restoreRailShellAddress(devtools: Devtools, address: string): Promise<void> {
+  await poll(
+    () => read(devtools, `globalThis.__railShellHashSeen === location.hash`, false),
+    3_000,
+  )
+  await read(
+    devtools,
+    `(() => {
+      removeEventListener("hashchange", globalThis.__railShellHashWatch)
+      delete globalThis.__railShellHashWatch
+      delete globalThis.__railShellHashSeen
+      ${address ? `history.replaceState(history.state, "", ${JSON.stringify(address)})` : ""}
+      return 0
+    })()`,
+    0,
+  )
+}
+
 /** The skip link, activated with a real Enter press, moves focus to the shell's `<main>`. */
 async function railShellSkipLinkCheck(devtools: Devtools): Promise<void> {
-  const restoreUrl = await read(devtools, "location.href", "")
+  const restoreUrl = await watchRailShellAddress(devtools)
   try {
     const focused = await read(
       devtools,
@@ -7273,13 +7323,7 @@ async function railShellSkipLinkCheck(devtools: Devtools): Promise<void> {
       focused ? `document.activeElement is main: ${reached}` : "the skip link could not be focused",
     )
   } finally {
-    if (restoreUrl) {
-      await read(
-        devtools,
-        `history.replaceState(history.state, "", ${JSON.stringify(restoreUrl)})`,
-        0,
-      )
-    }
+    await restoreRailShellAddress(devtools, restoreUrl)
   }
 }
 
@@ -7575,7 +7619,7 @@ async function railShellHeaderBannerCheck(devtools: Devtools): Promise<void> {
  * `<main>`, the next real Tab press lands after `<main>`, never back in the header or the rail.
  */
 async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
-  const restoreUrl = await read(devtools, "location.href", "")
+  const restoreUrl = await watchRailShellAddress(devtools)
   const focusSkipLink = () =>
     read(
       devtools,
@@ -7652,13 +7696,7 @@ async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
     )
   } finally {
     await read(devtools, `(document.activeElement?.blur(), 0)`, 0)
-    if (restoreUrl) {
-      await read(
-        devtools,
-        `history.replaceState(history.state, "", ${JSON.stringify(restoreUrl)})`,
-        0,
-      )
-    }
+    await restoreRailShellAddress(devtools, restoreUrl)
   }
 }
 
