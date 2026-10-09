@@ -199,7 +199,7 @@ describe("Toastr", () => {
     expect(countOccurrences(html, "Undo")).toBe(1)
   })
 
-  it("puts the action inside the toast's live element, before its dismiss control", () => {
+  it("puts the action before the toast's dismiss control", () => {
     const html = render(
       <Toastr
         toasts={[{ id: 1, body: "Note deleted", action: { label: "Undo", onAction: () => {} } }]}
