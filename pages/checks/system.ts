@@ -220,6 +220,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await syncStatusChecks(devtools)
   await conflictChooserChecks(devtools)
   await installPromptChecks(devtools)
+  await routeAnnouncerChecks(devtools)
   await serviceWorkerChecks(devtools)
   check(
     "every reading this file took came back without a page exception",
@@ -8281,5 +8282,119 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
     "an app already running standalone is offered nothing",
     standalone.shown === "" && standalone.state === "mode: installed, dismissed: false",
     JSON.stringify(standalone),
+  )
+}
+
+/** The host page's `useRouteAnnouncer` demo (`pages/src/route-announcer-demo.tsx`). */
+const ROUTE_DEMO = '[data-e2e="route-demo"]'
+
+/** What the route demo shows, and where focus and the tab title are. */
+interface RouteReading {
+  /** The path the demo shows, or `""` when the demo is not on the page. */
+  path: string
+  /**
+   * Where focus is: `heading` (the demo page's `<h1>`), `page` (the demo page itself), `go-<route>`
+   * (one of its buttons), or the focused element's tag name.
+   */
+  focus: string
+  /** The `<h1>`'s `tabindex`, `none` when it has none, `""` when there is no `<h1>`. */
+  headingTabindex: string
+  /** The demo page's `tabindex`, `none` when it has none. */
+  pageTabindex: string
+  /** `document.title`. */
+  title: string
+}
+
+/** Read the route demo in one round trip. */
+function readRoute(devtools: Devtools): Promise<RouteReading> {
+  return read(
+    devtools,
+    `(() => {
+    const page = document.querySelector('${ROUTE_DEMO} [data-e2e="route-demo-page"]')
+    const heading = page?.querySelector("h1")
+    const active = document.activeElement
+    const go = active?.getAttribute("data-e2e")?.replace("route-demo-", "")
+    return {
+      path: document.querySelector('${ROUTE_DEMO} [data-e2e="route-demo-path"]')?.textContent ?? "",
+      focus: active && active === heading ? "heading" : active && active === page ? "page"
+        : go?.startsWith("go-") ? go : active?.tagName ?? "",
+      headingTabindex: heading ? heading.getAttribute("tabindex") ?? "none" : "",
+      pageTabindex: page?.getAttribute("tabindex") ?? "none",
+      title: document.title,
+    }
+  })()`,
+    { path: "", focus: "", headingTabindex: "", pageTabindex: "", title: "" },
+  )
+}
+
+/**
+ * Focus one of the demo's route buttons and press Enter on it, the way a keyboard reader follows a
+ * link, then wait until the demo shows that route's path.
+ *
+ * @returns Whether the button took focus and the demo then showed `path`.
+ */
+async function goToRoute(devtools: Devtools, route: string, path: string): Promise<boolean> {
+  const focused = await devtools.evaluate<boolean>(`(() => {
+    const button = document.querySelector('${ROUTE_DEMO} [data-e2e="route-demo-go-${route}"]')
+    button?.focus()
+    return Boolean(button) && document.activeElement === button
+  })()`)
+  if (!focused) return false
+  await pressKey(devtools, "Enter")
+  const shown = await poll(async () => (await readRoute(devtools)).path === path, 2_000)
+  await nextFrames(devtools)
+  return shown
+}
+
+/**
+ * `useRouteAnnouncer` on the host page's demo: the first render moves nothing, a query-string change
+ * keeps focus on the control pressed, and a path change titles the tab and moves focus to the new
+ * page's `<h1>`, or to the page when it has none.
+ *
+ * The System page is opened from another page first, so the demo mounts inside this block and its
+ * first render is the one read; a run that reached it with the demo already mounted would read
+ * whatever an earlier block left behind.
+ *
+ * @param devtools The connected session, on the system page.
+ */
+async function routeAnnouncerChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "overview")
+  const titleBefore = await read(devtools, "document.title", "")
+  await openGuidePage(devtools, "system")
+  await poll(async () => (await readRoute(devtools)).path === "/inbox", 2_000)
+  await nextFrames(devtools)
+  const first = await readRoute(devtools)
+  check(
+    "useRouteAnnouncer moves no focus on the first render and leaves the heading untouched",
+    first.path === "/inbox" && first.focus !== "heading" && first.focus !== "page" &&
+      first.headingTabindex === "none" && first.pageTabindex === "none",
+    JSON.stringify({ first, titleBefore }),
+  )
+
+  const queried = await goToRoute(devtools, "filter", "/inbox?filter=open")
+  const query = await readRoute(devtools)
+  check(
+    "useRouteAnnouncer keeps focus on the pressed control when only the query string changes",
+    queried && query.focus === "go-filter" && query.headingTabindex === "none" &&
+      query.title === "Inbox — route demo",
+    JSON.stringify(query),
+  )
+
+  const toSettings = await goToRoute(devtools, "settings", "/settings")
+  const settings = await readRoute(devtools)
+  check(
+    "useRouteAnnouncer titles the tab and focuses the page itself when the new page has no h1",
+    toSettings && settings.focus === "page" && settings.pageTabindex === "-1" &&
+      settings.title === "Settings — route demo",
+    JSON.stringify(settings),
+  )
+
+  const toInbox = await goToRoute(devtools, "inbox", "/inbox")
+  const inbox = await readRoute(devtools)
+  check(
+    "useRouteAnnouncer titles the tab and focuses the new page's h1 on a path change",
+    toInbox && inbox.focus === "heading" && inbox.headingTabindex === "-1" &&
+      inbox.title === "Inbox — route demo",
+    JSON.stringify(inbox),
   )
 }
