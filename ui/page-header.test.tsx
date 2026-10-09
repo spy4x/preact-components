@@ -1,14 +1,68 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { type ComponentChildren, Fragment, isValidElement, type VNode } from "preact"
 import { IconPlus } from "@spy4x/preact-icons"
 import { DropdownItem } from "./dropdown.tsx"
 import { MoreMenu, PageAction, PageHeader, TOUCH_TARGET } from "./page-header.tsx"
 
+/** A click as `followLinkClick` reads it, recording whether it was cancelled. */
+function click(modifiers: { ctrlKey?: boolean } = {}) {
+  return {
+    button: 0,
+    ctrlKey: modifiers.ctrlKey ?? false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+    defaultPrevented: false,
+    preventDefault() {
+      this.defaultPrevented = true
+    },
+  }
+}
+
+type Click = ReturnType<typeof click>
+
+/**
+ * The anchor a component draws for `href`: the first element in its tree whose props carry that
+ * `href`, rendered one level down (it is a `Button`), so its `onClick` is the one the browser runs.
+ */
+function anchorFor(tree: ComponentChildren, href: string): VNode<{ onClick?: (e: Click) => void }> {
+  const queue: ComponentChildren[] = [tree]
+  while (queue.length > 0) {
+    const node = queue.shift()
+    if (Array.isArray(node)) {
+      queue.push(...node)
+      continue
+    }
+    if (!isValidElement(node)) continue
+    const props = node.props as { href?: string; children?: ComponentChildren }
+    if (props.href === href && typeof node.type === "function") {
+      return (node.type as (p: unknown) => VNode<{ onClick?: (e: Click) => void }>)(node.props)
+    }
+    if (typeof node.type === "function" && node.type !== Fragment) {
+      queue.push((node.type as (p: unknown) => ComponentChildren)(node.props))
+    } else queue.push(props.children)
+  }
+  throw new Error(`no element with href ${href}`)
+}
+
+/** Presses the anchor with a plain click and a Ctrl click, and returns what `navigate` received. */
+function pressBoth(anchor: VNode<{ onClick?: (e: Click) => void }>, routed: string[]) {
+  const plain = click()
+  anchor.props.onClick?.(plain)
+  const afterPlain = [...routed]
+  const ctrl = click({ ctrlKey: true })
+  anchor.props.onClick?.(ctrl)
+  return { afterPlain, afterCtrl: [...routed], ctrlCancelled: ctrl.defaultPrevented }
+}
+
 describe("PageHeader", () => {
   it("draws the title as the page's one-line h1, with its full text as the tooltip", () => {
     const html = render(<PageHeader title="Notes" subtitle="Personal" />)
-    expect(html).toMatch(/<h1 class="truncate[^"]*" title="Notes"[^>]*>Notes<\/h1>/)
+    expect(html).toMatch(
+      /<h1 [^>]*title="Notes"[^>]*><span class="block truncate">Notes<\/span><\/h1>/,
+    )
     expect(html).toContain(">Personal</p>")
   })
 
@@ -24,7 +78,7 @@ describe("PageHeader", () => {
     const html = render(
       <PageHeader title="Notes" subtitle="Team" titleDataE2E="title" subtitleDataE2E="group" />,
     )
-    expect(html).toMatch(/<h1 [^>]*data-e2e="title"[^>]*>Notes<\/h1>/)
+    expect(html).toMatch(/<h1 [^>]*data-e2e="title"[^>]*><span [^>]*>Notes<\/span><\/h1>/)
     expect(html).toMatch(/<p [^>]*data-e2e="group"[^>]*>Team<\/p>/)
   })
 
@@ -62,6 +116,19 @@ describe("PageHeader", () => {
     )
     expect(html).toContain(`aria-label="Trip actions"`)
     expect(html).not.toContain("More actions")
+  })
+
+  it("follows the back arrow through navigate on a plain click, and leaves a Ctrl click alone", () => {
+    const routed: string[] = []
+    const header = PageHeader({
+      title: "Trip",
+      back: { href: "/groups", label: "Back to groups" },
+      navigate: (href) => routed.push(href),
+    })
+    const pressed = pressBoth(anchorFor(header, "/groups"), routed)
+    expect(pressed.afterPlain).toEqual(["/groups"])
+    expect(pressed.afterCtrl).toEqual(["/groups"])
+    expect(pressed.ctrlCancelled).toBe(false)
   })
 
   it("draws a mark before the title, and nothing when there is none", () => {
@@ -103,6 +170,28 @@ describe("PageAction", () => {
     expect(button).toContain(`data-e2e="note-new"`)
     expect(button).toContain(`type="button"`)
     expect(button).toContain(TOUCH_TARGET)
+  })
+
+  it("follows its link through navigate on a plain click, and leaves a Ctrl click alone", () => {
+    const routed: string[] = []
+    const action = PageAction({
+      label: "New note",
+      Icon: IconPlus,
+      href: "/notes/new",
+      navigate: (href) => routed.push(href),
+    })
+    const pressed = pressBoth(anchorFor(action, "/notes/new"), routed)
+    expect(pressed.afterPlain).toEqual(["/notes/new"])
+    expect(pressed.afterCtrl).toEqual(["/notes/new"])
+    expect(pressed.ctrlCancelled).toBe(false)
+  })
+
+  it("disables the button form, and turns the link form into an unavailable link", () => {
+    const button = render(<PageAction label="New" Icon={IconPlus} onClick={() => {}} disabled />)
+    expect(button.match(/<button [^>]*>/)?.[0]).toMatch(/\sdisabled[\s=>]/)
+    const link = render(<PageAction label="New" Icon={IconPlus} href="/new" disabled />)
+    expect(link).toContain(`aria-disabled="true"`)
+    expect(link).not.toContain("href=")
   })
 
   it("is a link when given `href`", () => {

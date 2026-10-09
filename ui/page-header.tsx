@@ -82,12 +82,16 @@ export function PageHeader(
       )}
       {mark}
       <div class="flex min-w-0 flex-1 flex-col gap-1">
+        {
+          /* The plain title truncates in its own span: `truncate` on the h1 would clip the focus
+            ring of whatever the heading slot puts there. */
+        }
         <h1
-          class="truncate text-xl font-semibold text-foreground sm:text-2xl"
+          class="min-w-0 text-xl font-semibold text-foreground sm:text-2xl"
           title={title}
           data-e2e={titleDataE2E}
         >
-          {heading ?? title}
+          {heading ?? <span class="block truncate">{title}</span>}
         </h1>
         {subtitle && (
           <p class="truncate text-sm text-muted" data-e2e={subtitleDataE2E}>{subtitle}</p>
