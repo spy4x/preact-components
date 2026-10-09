@@ -1528,12 +1528,14 @@ checklist stores nothing.
 />
 ```
 
-The first step that is not done is the next one: it carries `aria-current="step"`, and its action is
-the card's one primary button, in the footer. That button stays the same element from step to step,
-so when a press completes a step in place, focus stays on it and it offers the next step. Once every
-step is done it becomes Finish, which calls `onDismiss`, and a status region announces
-`completeMessage`. After `onDismiss` the app stops rendering the card and moves focus somewhere
-sensible, since the control that had it is gone.
+The first step that is not done is the next one: it carries `aria-current="step"`, its ring holds a
+dot, and its action is the card's one primary control, in the footer. While consecutive actions are
+buttons that control is the same element, so when a press completes a step in place, focus stays on
+it and it offers the next step. When the control changes element (a button, then a link), focus
+moves to the new one; when the footer goes away (the next step has no action), focus moves to the
+card's heading. Once every step is done the control becomes Finish, which calls `onDismiss`, and a
+status region announces `completeMessage`. After `onDismiss` the app stops rendering the card and
+moves focus somewhere sensible, since the control that had it is gone.
 
 ## Billing
 

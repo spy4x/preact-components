@@ -33,7 +33,9 @@ describe("OnboardingChecklist", () => {
     const html = render(<OnboardingChecklist steps={steps} />)
     const labelledBy = html.match(/role="region" aria-labelledby="([^"]+)"/)?.[1]
     expect(labelledBy).toBeDefined()
-    expect(html).toContain(`<h2 id="${labelledBy}" class="text-lg font-semibold">Get started</h2>`)
+    expect(html).toContain(
+      `<h2 id="${labelledBy}" tabindex="-1" class="text-lg font-semibold">Get started</h2>`,
+    )
   })
 
   it("counts done steps in the progress bar's caption and value", () => {
@@ -46,6 +48,12 @@ describe("OnboardingChecklist", () => {
     const html = render(<OnboardingChecklist steps={steps} />)
     expect(html.match(/aria-current="step"/g)?.length).toBe(1)
     expect(html).toMatch(/<li [^>]*aria-current="step"[^>]*>(?:(?!<\/li>).)*Set a budget/)
+  })
+
+  it("sets the next step apart by a dot inside its ring, not by colour alone", () => {
+    const html = render(<OnboardingChecklist steps={steps} />)
+    expect(html.match(/<span class="size-2 rounded-full bg-primary"><\/span>/g)?.length).toBe(1)
+    expect(html).toMatch(/aria-current="step"><span [^>]*><span class="size-2 rounded-full/)
   })
 
   it("offers only the next open step's action as the footer's one button", () => {
@@ -104,6 +112,11 @@ describe("OnboardingChecklist", () => {
 
   it("takes every visible string from its props", () => {
     const allDone = steps.map((step) => ({ ...step, done: true }))
+    const open = render(
+      <OnboardingChecklist steps={steps} todoLabel="À faire" doneLabel="Fait" />,
+    )
+    expect(open).toContain(`<span class="sr-only">À faire: </span>Invite a teammate`)
+    expect(open).not.toContain("To do: ")
     const html = render(
       <OnboardingChecklist
         steps={allDone}

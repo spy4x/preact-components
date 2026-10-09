@@ -1,7 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconCheckCircle } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
-import { useId } from "preact/hooks"
+import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { Card, CardBody, CardFooter, CardHeader } from "./card.tsx"
 import { Progress } from "./progress.tsx"
@@ -90,11 +90,14 @@ function defaultProgressLabel(done: number, total: number): string {
  * persists. The next open step is the first one, in order, that is not done; it carries
  * `aria-current="step"`.
  *
- * Focus survives progress. The primary action is one button in the footer that changes its text
- * and its target from step to step, rather than a button inside each step's row, so when a press
- * completes a step in place, focus stays on the button, which now offers the next step. Once every
- * step is done the same button becomes Finish, which calls `onDismiss`, and a status region
- * announces `completeMessage`. A step's action that is a link renders an `<a>` in that place.
+ * Focus survives progress. The primary action is one control in the footer that changes its text
+ * and its target from step to step, rather than a button inside each step's row. While consecutive
+ * actions are buttons it is the same element, so focus simply stays on it. When the control has to
+ * change element — a button followed by a link — an effect moves focus to the new control, and
+ * when the footer goes away — the next step has no action, or every step is done and there is no
+ * `onDismiss` — it moves focus to the card's heading. Either move happens only when focus was in the
+ * footer and fell to the page. Once every step is done the control becomes Finish, which calls
+ * `onDismiss`, and a status region announces `completeMessage`.
  *
  * @param props See {@link OnboardingChecklistProps}.
  */
@@ -121,11 +124,37 @@ export function OnboardingChecklist(
   const allDone = next === undefined
   const Heading = `h${headingLevel}` as "h2"
   const action = next?.action
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  /** The footer's control as of the last render, or `null` when there was no footer. */
+  const lastControl = useRef<Element | null>(null)
+  /** Whether focus was last inside the footer. */
+  const footerHadFocus = useRef(false)
+
+  // No dependency array: the footer's control can change on any render. A focused element that
+  // leaves the DOM drops focus on the page body, so when that happened to the footer's control,
+  // hand focus to its replacement, or to the heading when the footer is gone.
+  useLayoutEffect(() => {
+    const card = headingRef.current?.closest('[role="region"]')
+    const control = card?.querySelector("[data-onboarding-footer] > *") ?? null
+    const previous = lastControl.current
+    lastControl.current = control
+    if (previous === null || previous === control || !footerHadFocus.current) return
+    const active = document.activeElement
+    if (active !== null && active !== document.body && active.isConnected) return
+    if (control instanceof HTMLElement) {
+      control.focus()
+    } else {
+      footerHadFocus.current = false
+      headingRef.current?.focus()
+    }
+  })
 
   return (
     <Card class={className} role="region" aria-labelledby={headingId}>
       <CardHeader>
-        <Heading id={headingId} class="text-lg font-semibold">{title}</Heading>
+        <Heading id={headingId} ref={headingRef} tabIndex={-1} class="text-lg font-semibold">
+          {title}
+        </Heading>
         {onDismiss && <Button variant="ghost" size="sm" onClick={onDismiss}>{dismissLabel}</Button>}
       </CardHeader>
       <CardBody class="flex flex-col gap-4">
@@ -149,12 +178,19 @@ export function OnboardingChecklist(
               >
                 {step.done
                   ? <IconCheckCircle class="size-5 text-success" aria-hidden="true" />
+                  : step === next
+                  ? (
+                    // A dot inside the ring, so the next step stands out by shape, not colour alone.
+                    <span
+                      class="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-primary"
+                      aria-hidden="true"
+                    >
+                      <span class="size-2 rounded-full bg-primary" />
+                    </span>
+                  )
                   : (
                     <span
-                      class={cn(
-                        "size-5 shrink-0 rounded-full border-2",
-                        step === next ? "border-primary" : "border-control",
-                      )}
+                      class="size-5 shrink-0 rounded-full border-2 border-control"
                       aria-hidden="true"
                     />
                   )}
@@ -181,7 +217,16 @@ export function OnboardingChecklist(
         </div>
       </CardBody>
       {(action || (allDone && onDismiss)) && (
-        <CardFooter class="justify-end">
+        <CardFooter
+          class="justify-end"
+          data-onboarding-footer=""
+          onFocusIn={() => footerHadFocus.current = true}
+          onFocusOut={(event) => {
+            // A control removed while focused may report a blur with no new target; keep the flag
+            // then, so the effect above can hand focus on.
+            if (event.relatedTarget !== null) footerHadFocus.current = false
+          }}
+        >
           {action?.href !== undefined
             ? <Button href={action.href} navigate={action.navigate}>{action.label}</Button>
             : action
