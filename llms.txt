@@ -451,7 +451,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (852 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (866 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -728,6 +728,13 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `NoticeTone` (type): What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`). Import: `@spy4x/preact-ui`
 - `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
 - `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
+- `MoreMenu` (component): A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list. Import: `@spy4x/preact-ui`
+- `MoreMenuProps` (type): What `MoreMenu` takes. Import: `@spy4x/preact-ui`
+- `PageAction` (component): A page header's primary action: icon and label from `sm` up, the icon alone on a phone. Import: `@spy4x/preact-ui`
+- `PageActionProps` (type): What `PageAction` takes: `href` makes it a link, otherwise it is a button. Import: `@spy4x/preact-ui`
+- `PageHeader` (component): The header a page starts with: an optional back arrow, the title (and a subtitle) on the left, the primary action and an optional "More actions" menu on the right. Import: `@spy4x/preact-ui`
+- `PageHeaderProps` (type): What `PageHeader` takes. Import: `@spy4x/preact-ui`
+- `TOUCH_TARGET` (constant): A touch target of 44 px on a phone and the library's own 36 px from `sm` up, for a small button a thumb has to hit. Import: `@spy4x/preact-ui`
 - `PageTitle` (component): Page heading with the library's `pc-h1` typography inlined. Import: `@spy4x/preact-ui`
 - `PageTitleProps` (type): Props of `PageTitle`. Import: `@spy4x/preact-ui`
 - `pageRange` (helper): Collapse a page range into the items a pagination control renders. Import: `@spy4x/preact-ui`
@@ -745,6 +752,12 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `RadioGroupProps` (type): Props of `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioOption` (type): One choice of a `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioProps` (type): Radio choice with its own label. Import: `@spy4x/preact-ui`
+- `SettingGroup` (component): A named group of settings, such as Account or Security: a small `h2` over its rows, so the page title stays the one large heading on a settings page. Import: `@spy4x/preact-ui`
+- `SettingGroupProps` (type): What `SettingGroup` takes. Import: `@spy4x/preact-ui`
+- `SettingList` (component): A card of `SettingRow`s, one per line, divided by a rule: the shape of a settings page, where each row names a setting, shows its value and offers one action. Import: `@spy4x/preact-ui`
+- `SettingListProps` (type): What `SettingList` takes. Import: `@spy4x/preact-ui`
+- `SettingRow` (component): One setting: its name, its current value under it, and an optional action on the right that stays beside the text on a phone. Import: `@spy4x/preact-ui`
+- `SettingRowProps` (type): What `SettingRow` takes. Import: `@spy4x/preact-ui`
 - `StatusMark` (component): A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`. Import: `@spy4x/preact-ui`
 - `StatusMarkProps` (type): Props of `StatusMark`. Import: `@spy4x/preact-ui`
 - `StatusMarkStatus` (type): A project or feature's lifecycle state. Import: `@spy4x/preact-ui`
