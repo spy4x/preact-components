@@ -255,6 +255,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
   await modalChecks(devtools)
+  await sharedScrollLockChecks(devtools)
 
   // A ZoomableImages reading that threw inside the page was recorded rather than raised, so the
   // rest of this block still ran; fail the block by name now, at its end.
@@ -5387,6 +5388,163 @@ async function backdropAim(devtools: Devtools, dialog: string): Promise<Aim> {
       height: Math.round(box.height),
     }
   })()`)
+}
+
+/** The page's scroll-lock styles, inline and computed, in one read. */
+interface SharedLockReading {
+  /** Inline `overflow` of `html` and of `body`. */
+  inlineHtml: string
+  inlineBody: string
+  /** Inline `padding-right` of `body`. */
+  inlinePadding: string
+  /** Computed `overflow-y` of `html`. */
+  html: string
+}
+
+/** Reads {@link SharedLockReading}. */
+const SHARED_LOCK_READING = `(() => ({
+  inlineHtml: document.documentElement.style.overflow,
+  inlineBody: document.body.style.overflow,
+  inlinePadding: document.body.style.paddingRight,
+  html: getComputedStyle(document.documentElement).overflowY,
+}))()`
+
+/**
+ * `Modal` and `CommandPalette` hold one counted scroll lock (#649).
+ *
+ * First the order a palette whose `onSelect` opens a `Modal` can produce: the guide's search
+ * palette locks the page, the Modal card's dialog opens over it, and the palette closes first. The
+ * page must stay locked under the Modal, with the padding the palette measured, and the Modal's close
+ * must give the page back its own styles — a `padding-right` of `1px` set on the body beforehand, so
+ * a restore to the empty string is told apart from a restore. Then a Modal opened over another
+ * Modal must leave the page's padding as the first one set it, rather than measure a page whose
+ * scrollbar is already gone and write `0px`.
+ *
+ * The second dialog in each pair is opened by a scripted `.click()` on a trigger the first dialog
+ * makes inert: a person could not press it, but an `onSelect` or an app's own code opens a dialog in
+ * exactly that state.
+ *
+ * @param devtools The connected session, on the guide's `ui` page with no dialog open.
+ */
+async function sharedScrollLockChecks(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<SharedLockReading>(SHARED_LOCK_READING)
+  const show = (reading?: SharedLockReading) =>
+    reading === undefined
+      ? "no reading"
+      : `inline overflow "${reading.inlineHtml}"/"${reading.inlineBody}", padding ` +
+        `"${reading.inlinePadding}", html computed ${reading.html}`
+  const PALETTE = `document.querySelector('[data-e2e="ui-guide-search"]')`
+  const MODAL = `document.querySelector('#demo-Modal [data-e2e="guide-modal"]')`
+  const NESTED = `document.querySelector('#demo-Modal [data-e2e="guide-modal-uncontrolled"]')`
+  const press = (label: string) =>
+    devtools.evaluate<boolean>(`(() => {
+      const button = [...document.querySelectorAll("#demo-Modal button")]
+        .find((candidate) => candidate.textContent.trim().startsWith(${JSON.stringify(label)}))
+      button?.click()
+      return button !== undefined
+    })()`)
+  const closeModal = (dialog: string) =>
+    devtools.evaluate<null>(
+      `(${dialog}?.querySelector('header button[aria-label="Close"]')?.click(), null)`,
+    )
+  const until = (expression: string) => poll(() => devtools.evaluate<boolean>(expression), 3_000)
+  // Every dialog this check may have opened, closed whatever happened, and the marker taken off.
+  const cleanUp = async () => {
+    await devtools.evaluate<null>(`(${PALETTE}?.open && ${PALETTE}.close(), null)`)
+    await closeModal(NESTED)
+    await until(`${NESTED} === null`)
+    await closeModal(MODAL)
+    await until(`${MODAL} === null`)
+    await devtools.evaluate<null>(`(document.body.style.paddingRight = "", null)`)
+  }
+
+  await settledScroll(devtools)
+  const original = await devtools.evaluate<SharedLockReading>(
+    `(document.body.style.paddingRight = "1px", ${SHARED_LOCK_READING})`,
+  )
+  let order: {
+    opened: boolean
+    modalOpened: boolean
+    paletteClosed: boolean
+    modalClosed: boolean
+    palette?: SharedLockReading
+    underModal?: SharedLockReading
+    after?: SharedLockReading
+  } = { opened: false, modalOpened: false, paletteClosed: false, modalClosed: false }
+  try {
+    const opened = await clickSelector(devtools, `[data-e2e="ui-guide-search-open"]`) &&
+      await until(`${PALETTE}?.matches(":modal") === true`)
+    const palette = await read()
+    const modalOpened = await press("default") &&
+      await until(`${MODAL}?.matches(":modal") === true`)
+    await devtools.evaluate<null>(`(${PALETTE}.close(), null)`)
+    const paletteClosed = await until(`${PALETTE}.open === false`)
+    // The palette lets go in its `close` handler, a task after `close()`: two frames cover it.
+    await devtools.evaluate<null>(
+      `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null))))`,
+    )
+    const underModal = await read()
+    await closeModal(MODAL)
+    const modalClosed = await until(`${MODAL} === null`)
+    order = { opened, modalOpened, paletteClosed, modalClosed, palette, underModal }
+    // The Modal releases in its effect cleanup, after the commit that removed it.
+    await until(`document.body.style.paddingRight === "1px"`)
+    order.after = await read()
+  } finally {
+    await cleanUp()
+  }
+  check(
+    "a CommandPalette that closes under a Modal it opened over leaves the page locked, and the " +
+      "Modal's close gives the page back its own styles",
+    order.opened && order.modalOpened && order.paletteClosed && order.modalClosed &&
+      order.palette?.html === "hidden" && order.palette.inlinePadding !== "1px" &&
+      order.underModal?.html === "hidden" &&
+      order.underModal.inlinePadding === order.palette.inlinePadding &&
+      order.after?.inlineHtml === original.inlineHtml &&
+      order.after.inlineBody === original.inlineBody && order.after.inlinePadding === "1px" &&
+      order.after.html !== "hidden",
+    `palette opened ${order.opened}, Modal opened over it ${order.modalOpened}, palette closed ` +
+      `${order.paletteClosed}, Modal closed ${order.modalClosed}; before: ${show(original)}; ` +
+      `palette open: ${show(order.palette)}; palette closed under the Modal: ` +
+      `${show(order.underModal)}; Modal closed: ${show(order.after)}`,
+  )
+
+  let nested: {
+    opened: boolean
+    nestedOpened: boolean
+    nestedClosed: boolean
+    first?: SharedLockReading
+    both?: SharedLockReading
+    back?: SharedLockReading
+    after?: SharedLockReading
+  } = { opened: false, nestedOpened: false, nestedClosed: false }
+  try {
+    const opened = await press("default") && await until(`${MODAL}?.matches(":modal") === true`)
+    const first = await read()
+    const nestedOpened = await press("uncontrolled") &&
+      await until(`${NESTED}?.matches(":modal") === true`)
+    const both = await read()
+    await closeModal(NESTED)
+    const nestedClosed = await until(`${NESTED} === null`)
+    nested = { opened, nestedOpened, nestedClosed, first, both, back: await read() }
+    await closeModal(MODAL)
+    await until(`${MODAL} === null && document.body.style.paddingRight === ""`)
+    nested.after = await read()
+  } finally {
+    await cleanUp()
+  }
+  check(
+    "a Modal opened over another Modal leaves the page's padding as the first one set it",
+    nested.opened && nested.nestedOpened && nested.nestedClosed &&
+      nested.first?.html === "hidden" && nested.first.inlinePadding !== "0px" &&
+      nested.both?.inlinePadding === nested.first.inlinePadding &&
+      nested.back?.html === "hidden" &&
+      nested.back.inlinePadding === nested.first.inlinePadding &&
+      nested.after?.inlinePadding === "" && nested.after.html !== "hidden",
+    `first opened ${nested.opened}, second opened over it ${nested.nestedOpened}, second closed ` +
+      `${nested.nestedClosed}; one open: ${show(nested.first)}; both open: ${show(nested.both)}; ` +
+      `first alone again: ${show(nested.back)}; both closed: ${show(nested.after)}`,
+  )
 }
 
 /**

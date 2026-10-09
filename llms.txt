@@ -753,10 +753,8 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `LoadingSpinner` (component): Inline spinner with an accessible live region. Import: `@spy4x/preact-ui`
 - `LoadingSpinnerProps` (type): Props of `LoadingSpinner`. Import: `@spy4x/preact-ui`
 - `SpinnerSize` (type): Rendered size of a `LoadingSpinner`. Import: `@spy4x/preact-ui`
-- `applyScrollLock` (helper): Lock page scrolling without moving the page, and hand back how to undo it. Import: `@spy4x/preact-ui`
 - `backdropClickDismisses` (helper): Whether one click should dismiss the dialog. Import: `@spy4x/preact-ui`
 - `BackdropHitTarget` (type): The two identities a backdrop hit-test compares. Import: `@spy4x/preact-ui`
-- `clientWidthWithoutScrollbar` (helper): Read the layout width once the scrollbar clamping is in place. Import: `@spy4x/preact-ui`
 - `dialogHeldFocus` (helper): Whether the dialog still holds the focused element. Import: `@spy4x/preact-ui`
 - `DialogRect` (type): Rectangle in viewport coordinates: a structural subset of `DOMRect`, so tests need no DOM. Import: `@spy4x/preact-ui`
 - `DialogRole` (type): How a `Modal` announces itself to assistive technology. Import: `@spy4x/preact-ui`
@@ -769,10 +767,6 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `Modal` (component): Built on the platform's dialog element, in the top layer. Import: `@spy4x/preact-ui`
 - `ModalProps` (type): Props of `Modal`. Import: `@spy4x/preact-ui`
 - `restoreFocus` (helper): Move focus back to a captured element. Import: `@spy4x/preact-ui`
-- `ScrollLock` (type): A held lock, undone by `ScrollLock.release`. Import: `@spy4x/preact-ui`
-- `ScrollLockHost` (type): The scrollable element whose scrollbar a lock removes. Import: `@spy4x/preact-ui`
-- `scrollLockPadding` (helper): Padding, in pixels, that keeps a scroll-locked page from shifting. Import: `@spy4x/preact-ui`
-- `ScrollLockTarget` (type): The two elements a page-level scroll lock has to touch, and the styles it replaces. Import: `@spy4x/preact-ui`
 - `shouldRetargetFocus` (helper): Decide whether focus should go back to the element that opened the dialog. Import: `@spy4x/preact-ui`
 - `MoneyDisplay` (component): Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals. Import: `@spy4x/preact-ui`
 - `MoneyDisplayProps` (type): Props of `MoneyDisplay`. Import: `@spy4x/preact-ui`
@@ -817,6 +811,13 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `RadioGroupProps` (type): Props of `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioOption` (type): One choice of a `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioProps` (type): Radio choice with its own label. Import: `@spy4x/preact-ui`
+- `acquireScrollLock` (helper): Hold the page's scroll lock until the returned lock is released. Import: `@spy4x/preact-ui`
+- `applyScrollLock` (helper): Lock page scrolling without moving the page, and hand back how to undo it. Import: `@spy4x/preact-ui`
+- `clientWidthWithoutScrollbar` (helper): Read the layout width once the scrollbar clamping is in place. Import: `@spy4x/preact-ui`
+- `ScrollLock` (type): A held lock, undone by `ScrollLock.release`. Import: `@spy4x/preact-ui`
+- `ScrollLockHost` (type): The scrollable element whose scrollbar a lock removes. Import: `@spy4x/preact-ui`
+- `scrollLockPadding` (helper): Padding, in pixels, that keeps a scroll-locked page from shifting. Import: `@spy4x/preact-ui`
+- `ScrollLockTarget` (type): The two elements a page-level scroll lock has to touch, and the styles it replaces. Import: `@spy4x/preact-ui`
 - `SettingGroup` (component): A named group of settings, such as Account or Security: a small `h2` over its rows, so the page title stays the one large heading on a settings page. Import: `@spy4x/preact-ui`
 - `SettingGroupProps` (type): What `SettingGroup` takes. Import: `@spy4x/preact-ui`
 - `SettingList` (component): A card of `SettingRow`s, one per line, divided by a rule: the shape of a settings page, where each row names a setting, shows its value and offers one action. Import: `@spy4x/preact-ui`

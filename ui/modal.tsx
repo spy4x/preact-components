@@ -2,6 +2,16 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
+import { acquireScrollLock } from "./scroll-lock.ts"
+
+export {
+  applyScrollLock,
+  clientWidthWithoutScrollbar,
+  type ScrollLock,
+  type ScrollLockHost,
+  scrollLockPadding,
+  type ScrollLockTarget,
+} from "./scroll-lock.ts"
 
 /** Visual register of a {@link Modal}: a plain surface or a destructive one. */
 export type DialogTone = "default" | "danger"
@@ -314,17 +324,11 @@ export function Modal(
 
     // Scroll lock. Locking the page removes its scrollbar, which *widens* the layout — measured at a
     // 1000px viewport: `documentElement.clientWidth` goes 985 → 1000 — so the body is padded by
-    // exactly that gain for as long as the lock lasts. Both widths are read here, one before the lock
-    // and one with the scrollbar clamped away, because the gain is not derivable from a single
-    // reading after the fact: post-lock there is no scrollbar left to measure.
-    const widthBefore = document.documentElement.clientWidth
-    const widthLocked = clientWidthWithoutScrollbar(document.documentElement)
-    // The cast is the DOM's own gap, not this component's: `Document.scrollingElement` is typed
-    // `Element | null` even though the spec makes it an element with inline styles.
-    const lock = applyScrollLock(
-      document as unknown as ScrollLockTarget,
-      scrollLockPadding(widthBefore, widthLocked),
-    )
+    // exactly that gain for as long as the lock lasts. The lock is the package's shared one, counted
+    // across every open overlay: a Modal over another Modal or over a `CommandPalette` adds a holder
+    // instead of measuring a page that has no scrollbar left, and the page unlocks only when the last
+    // overlay closes (#649).
+    const lock = acquireScrollLock()
 
     // Escape is handled here, not by the platform — but *how* depends on whether the platform honours
     // `closedby`. Two measured facts set the table:
@@ -559,114 +563,6 @@ export function backdropClickDismisses(
 ): boolean {
   if (!closeOnBackdrop) return false
   return isBackdropClick({ target: event.target, dialog }, rect, event.clientX, event.clientY)
-}
-
-/**
- * Padding, in pixels, that keeps a scroll-locked page from shifting.
- *
- * Locking the page removes its scrollbar, which widens the layout by the scrollbar's width and slides
- * every centred element sideways — measured in headless Chromium at a 1000px viewport, the document's
- * `clientWidth` goes 985 → 1000. Padding the body by exactly that gain cancels it, so this is the
- * difference between the width inside the scrollbar container and the width with it removed:
- * `clientWidthLocked - clientWidthBefore`. Overlay scrollbars measure equal, give `0`, and write no
- * padding.
- *
- * The two widths come from {@link clientWidthWithoutScrollbar} and a plain read at the call site, so
- * the arithmetic itself is unit-testable and free of layout. Reading the *after* value once the lock
- * is in place instead would be a bug with a shape: the subtraction collapses to `0` and the page
- * still shifts, which is exactly what the first version of this component did until a browser said
- * otherwise.
- *
- * @param clientWidthBefore `document.documentElement.clientWidth` before the lock.
- * @param clientWidthLocked The same read with the scrollbar clamped away.
- * @returns A non-negative pixel count; `0` when the page reserves no width.
- */
-export function scrollLockPadding(clientWidthBefore: number, clientWidthLocked: number): number {
-  return Math.max(0, clientWidthLocked - clientWidthBefore)
-}
-
-/** The scrollable element whose scrollbar a lock removes. A structural subset of `HTMLElement`. */
-export interface ScrollLockHost {
-  /** Inline `overflow` — read in, saved, and written back. */
-  style: { overflow: string }
-  /** `Element.clientWidth`: the layout width inside the scrollbar. */
-  readonly clientWidth: number
-}
-
-/**
- * Read the layout width once the scrollbar clamping is in place.
- *
- * The gain the lock causes is not a constant and not readable in advance: it is the scrollbar the
- * page currently shows, `0` when it shows none. The only honest way to get it is to clamp and read —
- * `overflow: hidden` is written, `clientWidth` is read back, the previous value is restored in
- * `finally`. The component then writes the lock itself, and
- * {@link scrollLockPadding} turns the before/after pair into padding.
- *
- * Structurally typed (see {@link ScrollLockHost}) so the write/read/restore sequence is drivable with
- * a stub, and a browser is needed only to prove the DOM's answer matches the arithmetic.
- *
- * @param host The scroll container, normally `document.documentElement`.
- * @returns `clientWidth` with the scrollbar removed.
- */
-export function clientWidthWithoutScrollbar(host: ScrollLockHost): number {
-  const previousOverflow = host.style.overflow
-  try {
-    host.style.overflow = "hidden"
-    return host.clientWidth
-  } finally {
-    host.style.overflow = previousOverflow
-  }
-}
-
-/** The two elements a page-level scroll lock has to touch, and the styles it replaces. */
-export interface ScrollLockTarget {
-  /** The scrolling element: `html` in standards mode, `body` in quirks mode. */
-  scrollingElement: { style: { overflow: string } } | null
-  /** The body, which carries the compensating padding. */
-  body: { style: { overflow: string; paddingRight: string } }
-}
-
-/** A held lock, undone by {@link ScrollLock.release}. */
-export interface ScrollLock {
-  /** Restore both elements to what they had before the lock. */
-  release: () => void
-}
-
-/**
- * Lock page scrolling without moving the page, and hand back how to undo it.
- *
- * Two things, and the second is the one that is easy to get wrong: `overflow: hidden` on `body` alone
- * does **not** stop the page scrolling — measured in headless Chromium, `window.scrollTo(0, 900)` with
- * `body { overflow: hidden }` set moved the page to 1623 — because the default scroll container is the
- * document element. So the lock is written on `document.scrollingElement` (the platform's own answer
- * to "which element scrolls this document"; quirks mode answers `body`), and the padding is written on
- * the body, which is where a page's content is.
- *
- * Both previous inline values are captured and restored, not blanked, so a host that had its own
- * `overflow` or `padding-right` keeps them. Structurally typed (see {@link ScrollLockTarget}) so which
- * element a document gets locked through is a decision a unit test can hold, with no DOM.
- *
- * @param document The document to lock; `globalThis.document` at the call site.
- * @param padding Pixels of right padding that cancel the width the scrollbar was taking.
- * @returns The held lock.
- */
-export function applyScrollLock(document: ScrollLockTarget, padding: number): ScrollLock {
-  const scroller = document.scrollingElement
-  const previousScrollerOverflow = scroller?.style.overflow
-  const previousBodyOverflow = document.body.style.overflow
-  const previousPadding = document.body.style.paddingRight
-
-  if (scroller) scroller.style.overflow = "hidden"
-  document.body.style.overflow = "hidden"
-  document.body.style.paddingRight = `${padding}px`
-
-  return {
-    release: () => {
-      if (scroller) scroller.style.overflow = previousScrollerOverflow ?? ""
-      document.body.style.overflow = previousBodyOverflow
-      document.body.style.paddingRight = previousPadding
-    },
-  }
 }
 
 /**

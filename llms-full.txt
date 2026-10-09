@@ -6124,7 +6124,12 @@ components and tests means exactly that: nothing outside this package should bui
   `applyScrollLock(document, padding)` are the scroll lock in three steps: measure the layout width
   with the scrollbar hidden, turn the two widths into the right padding that keeps the page from
   shifting, then lock scrolling and get back a `release()` that restores the previous inline styles.
-  Use them to lock the page behind an overlay of your own.
+  Use them to lock some other document behind an overlay of your own.
+- `acquireScrollLock()` holds the page's scroll lock that `Modal` and `CommandPalette` share and
+  returns a `release()`. It counts its holders: the first locks the page, unless an app's own class
+  or style already does, and the last to release restores the page's styles, in whatever order the
+  overlays close. Call it when an overlay of your own opens on the page, and release it when that
+  overlay closes. Releasing one holder twice counts once.
 - `DISMISS_KEY` (`"Escape"`), `isDismissKey(event, open)`, `escapeCloseStrategy(closedBySupported)`,
   `bindEscapeClose(target, strategy, handlers)` and `platformCloseHandler(deps)` are exported for
   the package's own components and tests: they decide which event carries Escape on a platform and
