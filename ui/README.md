@@ -404,7 +404,9 @@ Every string it shows is a prop with an English default: `placeholder` (`"Select
 Enter and Escape pressed while an input method is still composing a word neither select an option
 nor close the list: the key belongs to the input method. The list is not filtered while the word is
 being composed either: it keeps the options of the text from before, and is filtered once, when
-the word is finished. Plain typing filters on every keystroke.
+the word is finished. Plain typing filters on every keystroke. `onQueryChange` still fires for every step of the
+word, because a caller that controls `query` has to keep the field's text, so a server search
+driven by it sees the unfinished text.
 
 **One live region, rendered with the field and never taken away.** Every combobox renders a single
 `role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, the
