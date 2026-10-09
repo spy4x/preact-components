@@ -705,7 +705,7 @@ export const feedbackDemos = {
         name: "onError",
         type: "(error: unknown, errorInfo: ErrorInfo) => void",
         description:
-          "Called once with each caught error and Preact's component stack, for your reporter.",
+          "Called once with each caught error and, when Preact has one, its component stack, for your reporter.",
       },
       {
         name: "onReload",
