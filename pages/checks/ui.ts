@@ -246,6 +246,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await billingChecks(devtools)
   await onboardingChecklistChecks(devtools)
   await commandPaletteChecks(devtools)
+  await tourChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -21826,5 +21827,504 @@ async function commandPaletteHotkeyAnnouncementCheck(devtools: Devtools): Promis
     `local ${JSON.stringify(read.local)}, hint "${read.hint}" ${read.hintWidth}px wide, ` +
       `aria-hidden ${read.hintHidden}; guide search ${JSON.stringify(read.guide)}; remote ` +
       `${JSON.stringify(read.remote)}, hint ${read.remoteHint}`,
+  )
+}
+
+/** What {@link tourChecks} reads off the `Tour` card and its open step. */
+interface TourReading {
+  /** `true` while the step's surface is shown in the top layer. */
+  open: boolean
+  /** The surface's `data-coachmark-mode`: `anchor`, `measured` or `sheet`. */
+  mode: string | null
+  /** The step's heading text. */
+  title: string | null
+  /** The step count in the footer. */
+  count: string | null
+  /** `true` when the step's heading has focus. */
+  onHeading: boolean
+  /** `true` when focus is inside the step's surface. */
+  inSurface: boolean
+  /** The focused element's `data-e2e`, or its tag and text. */
+  active: string
+  /** The surface's box, rounded. */
+  surface: StepBox | null
+  /** The Search field's box. */
+  search: StepBox | null
+  /** The New project button's box. */
+  newProject: StepBox | null
+  /** The viewport's width without its scrollbar, and its height. */
+  view: { width: number; height: number }
+  /** The Search field's `aria-describedby`. */
+  searchDescribedBy: string | null
+  /** The Search field's inline `anchor-name`. */
+  searchAnchor: string
+  /** The Search field's inline outline. */
+  searchOutline: string
+  /** New project's `aria-describedby`. */
+  newDescribedBy: string | null
+  /** New project's inline outline. */
+  newOutline: string
+  /** The id of the step's body. */
+  bodyId: string | null
+  /** How many elements on the page point at the step's body. */
+  describedByBody: number
+  /** The Go to button's text, or `null` when the step has none. */
+  goTo: string | null
+  /** The demo's readout of the last `onClose` reason. */
+  closed: string
+  /** `true` while a modal dialog is open. */
+  modal: boolean
+}
+
+/** A rounded box in viewport pixels. */
+interface StepBox {
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+}
+
+const TOUR_DEMO = `document.querySelector("#demo-Tour")`
+
+/** Reads {@link TourReading} in one round trip. */
+const TOUR_READING = `(() => {
+  const demo = ${TOUR_DEMO}
+  const surface = demo?.querySelector("[data-coachmark-mode]") ?? null
+  const heading = surface?.querySelector("h2") ?? null
+  const active = document.activeElement
+  const box = (element) => {
+    if (!element) return null
+    const rect = element.getBoundingClientRect()
+    return {
+      top: Math.round(rect.top),
+      left: Math.round(rect.left),
+      right: Math.round(rect.right),
+      bottom: Math.round(rect.bottom),
+      width: Math.round(rect.width),
+    }
+  }
+  const search = demo?.querySelector('[data-e2e="tour-search"]') ?? null
+  const newProject = demo?.querySelector('[data-e2e="tour-new"]') ?? null
+  const bodyId = surface?.querySelector('[id$="-body"]')?.id ?? null
+  const goTo = [...(surface?.querySelectorAll("button") ?? [])]
+    .find((button) => button.textContent.trim().startsWith("Go to"))
+  return {
+    open: surface?.matches(":popover-open") ?? false,
+    mode: surface?.getAttribute("data-coachmark-mode") ?? null,
+    title: heading?.textContent.trim() ?? null,
+    count: surface?.querySelector("p")?.textContent.trim() ?? null,
+    onHeading: heading !== null && active === heading,
+    inSurface: surface !== null && surface.contains(active),
+    active: active === null || active === document.body
+      ? "the page"
+      : active.getAttribute("data-e2e") ??
+        (active.tagName + " " + (active.textContent ?? "").trim().slice(0, 30)).trim(),
+    surface: box(surface),
+    search: box(search),
+    newProject: box(newProject),
+    view: { width: document.documentElement.clientWidth, height: innerHeight },
+    searchDescribedBy: search?.getAttribute("aria-describedby") ?? null,
+    searchAnchor: search?.style.getPropertyValue("anchor-name") ?? "",
+    searchOutline: search?.style.outline ?? "",
+    newDescribedBy: newProject?.getAttribute("aria-describedby") ?? null,
+    newOutline: newProject?.style.outline ?? "",
+    bodyId,
+    describedByBody: bodyId === null
+      ? 0
+      : [...document.querySelectorAll("[aria-describedby]")]
+        .filter((element) => element.getAttribute("aria-describedby").split(" ").includes(bodyId))
+        .length,
+    goTo: goTo?.textContent.trim() ?? null,
+    closed: demo?.querySelector('[data-e2e="tour-closed"]')?.textContent.trim() ?? "",
+    modal: document.querySelector("dialog:modal") !== null,
+  }
+})()`
+
+/**
+ * Focus a button in the open step by its text, for a real Enter press to activate it.
+ *
+ * @param text The button's text, or its start for Go to.
+ */
+function focusTourButton(text: string): string {
+  return `(() => {
+    const surface = ${TOUR_DEMO}?.querySelector("[data-coachmark-mode]")
+    const button = [...(surface?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent.trim().startsWith(${JSON.stringify(text)}))
+    button?.focus()
+    return button !== undefined
+  })()`
+}
+
+/** Waits two animation frames, so a measured layout scheduled for the next frame has run. */
+const TWO_FRAMES =
+  `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null))))`
+
+/**
+ * Run `body` at a viewport of `width` × `height`, then go back to the harness's own.
+ *
+ * @param devtools The connected session.
+ * @param width The viewport's width.
+ * @param height The viewport's height.
+ * @param body The checks to run there.
+ */
+async function atViewport(
+  devtools: Devtools,
+  width: number,
+  height: number,
+  body: () => Promise<void>,
+): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  try {
+    await devtools.evaluate<null>(TWO_FRAMES)
+    await body()
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+}
+
+/**
+ * Starts the tour on its first step with a real Enter on Start, so Start is what focus goes back
+ * to, and waits for the step's heading to take focus.
+ *
+ * @returns The reading once the first step is up.
+ */
+async function startTour(devtools: Devtools): Promise<TourReading> {
+  const read = () => devtools.evaluate<TourReading>(TOUR_READING)
+  const start = `${TOUR_DEMO}?.querySelector('[data-e2e="tour-start"]')`
+  await centreInView(devtools, start)
+  await devtools.evaluate<null>(`(${start}?.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).onHeading, 3000)
+  await devtools.evaluate<null>(TWO_FRAMES)
+  return await read()
+}
+
+/** Ends an open tour through Skip, so the next check starts from a closed one. */
+async function skipTour(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<TourReading>(TOUR_READING)
+  if (!(await read()).open) return
+  if (await devtools.evaluate<boolean>(focusTourButton("Skip tour"))) {
+    await pressKey(devtools, "Enter")
+  }
+  await poll(async () => !(await read()).open, 3000)
+}
+
+/**
+ * `Tour` and `Coachmark`, on their catalogue cards (#583). The tour's four steps point at a Search
+ * field that carries the app's own `anchor-name` and `aria-describedby`, at a New project button
+ * that opens a `Modal`, at an element the page does not have, and at a Help button.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tourChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  try {
+    await atViewport(devtools, 1280, 800, () => tourDesktopChecks(devtools))
+    await atViewport(devtools, 1280, 800, () => tourMeasuredCheck(devtools))
+    await atViewport(devtools, 375, 812, () => tourSheetCheck(devtools))
+    await atViewport(devtools, 1280, 800, () => coachmarkCheck(devtools))
+  } finally {
+    await skipTour(devtools)
+  }
+}
+
+/**
+ * The tour at a desktop width, with CSS anchor positioning: placement, focus on open, Tab leaving
+ * the step, Go to, Next, the first target's attributes coming back, Escape inside a `Modal`, the
+ * missing-target sheet, contrast, and focus back on Start when the tour closes.
+ */
+async function tourDesktopChecks(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<TourReading>(TOUR_READING)
+  const first = await startTour(devtools)
+  const gap = first.surface && first.search ? first.surface.top - first.search.bottom : NaN
+  const centre = first.search ? (first.search.left + first.search.right) / 2 : NaN
+  check(
+    "Tour: Start opens the first step below its target by anchor positioning, focus on its heading",
+    first.open && first.mode === "anchor" && first.onHeading &&
+      first.title === "Search everything" &&
+      first.count === "Step 1 of 4" && gap >= 6 && gap <= 10 && first.surface !== null &&
+      first.surface.left <= centre && first.surface.right >= centre,
+    `open ${first.open}, mode ${first.mode}, title "${first.title}", count "${first.count}", ` +
+      `focus on ${first.active}, gap ${gap}px, surface ${JSON.stringify(first.surface)}, ` +
+      `target ${JSON.stringify(first.search)}`,
+  )
+  check(
+    "Tour: the step's target keeps the app's own anchor-name and description and adds its own",
+    first.searchOutline.includes("solid") && first.bodyId !== null &&
+      first.searchDescribedBy === `tour-search-hint ${first.bodyId}` &&
+      first.searchAnchor.startsWith("--demo-search, --pc-anchor-"),
+    `outline "${first.searchOutline}", aria-describedby "${first.searchDescribedBy}", ` +
+      `anchor-name "${first.searchAnchor}"`,
+  )
+
+  const stops: string[] = []
+  for (let press = 0; press < 5; press++) {
+    await pressKey(devtools, "Tab")
+    const now = await read()
+    stops.push(now.inSurface ? now.active : `outside: ${now.active}`)
+    if (!now.inSurface) break
+  }
+  const afterTab = await read()
+  check(
+    "Tour: Tab moves through the step's controls and then out into the page, leaving the step open",
+    stops.join(" | ") ===
+        "BUTTON | BUTTON Skip tour | BUTTON Next | BUTTON Go to Search | " +
+          `outside: ${afterTab.active}` && afterTab.open,
+    `stops: ${stops.join(" | ")}; open ${afterTab.open}`,
+  )
+
+  const focused = await devtools.evaluate<boolean>(focusTourButton("Go to"))
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).active === "tour-search", 3000)
+  const wentTo = await read()
+  check(
+    "Tour: Go to focuses the step's target and leaves the step open",
+    focused && wentTo.active === "tour-search" && wentTo.open &&
+      wentTo.title === "Search everything",
+    `Go to found ${focused}, focus on ${wentTo.active}, open ${wentTo.open}, title "${wentTo.title}"`,
+  )
+
+  await devtools.evaluate<boolean>(focusTourButton("Next"))
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).title === "Start a project", 3000)
+  await poll(async () => (await read()).onHeading, 3000)
+  await devtools.evaluate<null>(TWO_FRAMES)
+  const second = await read()
+  const beside = second.surface !== null && second.newProject !== null &&
+    (second.surface.left >= second.newProject.right ||
+      second.surface.right <= second.newProject.left)
+  check(
+    "Tour: Next moves focus to the next step's heading, beside its target",
+    second.onHeading && second.count === "Step 2 of 4" && second.newOutline.includes("solid") &&
+      beside,
+    `focus on ${second.active}, count "${second.count}", outline "${second.newOutline}", ` +
+      `surface ${JSON.stringify(second.surface)}, target ${JSON.stringify(second.newProject)}`,
+  )
+  check(
+    "Tour: leaving a step hands its target's anchor-name, aria-describedby and outline back",
+    second.searchAnchor === "--demo-search" && second.searchDescribedBy === "tour-search-hint" &&
+      second.searchOutline === "",
+    `anchor-name "${second.searchAnchor}", aria-describedby "${second.searchDescribedBy}", ` +
+      `outline "${second.searchOutline}"`,
+  )
+
+  const contrast = await devtools.evaluate<
+    { light: number[]; dark: number[]; found: boolean }
+  >(`(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const surface = ${TOUR_DEMO}?.querySelector("[data-coachmark-mode]")
+    const parts = [
+      surface?.querySelector("h2"),
+      surface?.querySelector('[id$="-body"]'),
+      surface?.querySelector("p"),
+    ]
+    const settle = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    const measure = () => parts.map((part) => part ? Math.round(seenRatio(part) * 100) / 100 : 0)
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      return { light, dark, found: parts.every(Boolean) }
+    } finally {
+      root.classList.toggle("dark", wasDark)
+    }
+  })()`)
+  for (const palette of ["light", "dark"] as const) {
+    const ratios = contrast[palette]
+    check(
+      `Tour: in the ${palette} palette the step's title, text and step count read at 4.5:1 or more`,
+      contrast.found && ratios.every((ratio) => ratio >= 4.5),
+      `title, body, count: ${ratios.join(", ")}`,
+    )
+  }
+
+  await devtools.evaluate<null>(
+    `(${TOUR_DEMO}?.querySelector('[data-e2e="tour-new"]')?.focus(), null)`,
+  )
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).modal, 3000)
+  const withModal = await read()
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await read()).modal, 3000)
+  const afterModal = await read()
+  check(
+    "Tour: Escape inside a Modal the step opened closes only the dialog",
+    withModal.modal && !afterModal.modal && afterModal.open &&
+      afterModal.title === "Start a project" &&
+      afterModal.closed === "onClose last said: nothing yet.",
+    `modal opened ${withModal.modal}, then ${afterModal.modal}; tour open ${afterModal.open}, ` +
+      `title "${afterModal.title}", readout "${afterModal.closed}"`,
+  )
+
+  await devtools.evaluate<boolean>(focusTourButton("Next"))
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).title === "A step with no target", 3000)
+  await devtools.evaluate<null>(TWO_FRAMES)
+  const missing = await read()
+  check(
+    "Tour: a step whose target is missing is a full-width sheet on the bottom edge with no Go to",
+    missing.open && missing.mode === "sheet" && missing.surface !== null &&
+      missing.surface.bottom === missing.view.height && missing.surface.left === 0 &&
+      missing.surface.width === missing.view.width && missing.goTo === null &&
+      missing.describedByBody === 0 && missing.onHeading,
+    `mode ${missing.mode}, surface ${JSON.stringify(missing.surface)}, view ` +
+      `${JSON.stringify(missing.view)}, Go to "${missing.goTo}", pointed at by ` +
+      `${missing.describedByBody}, focus on ${missing.active}`,
+  )
+
+  await devtools.evaluate<boolean>(focusTourButton("Next"))
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).title === "Ask for help", 3000)
+  await devtools.evaluate<boolean>(focusTourButton("Done"))
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).open, 3000)
+  const done = await read()
+  check(
+    "Tour: Done closes the tour, tells the app why and puts focus back on Start",
+    !done.open && done.closed === "onClose last said: done." && done.active === "tour-start",
+    `open ${done.open}, readout "${done.closed}", focus on ${done.active}`,
+  )
+
+  await startTour(devtools)
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await read()).open, 3000)
+  const escaped = await read()
+  check(
+    "Tour: Escape closes the tour with the reason escape and puts focus back on Start",
+    !escaped.open && escaped.closed === "onClose last said: escape." &&
+      escaped.active === "tour-start",
+    `open ${escaped.open}, readout "${escaped.closed}", focus on ${escaped.active}`,
+  )
+}
+
+/**
+ * Without CSS anchor positioning, the step is placed by measurement, and placed again when the
+ * page scrolls. The check makes `CSS.supports` answer no for `anchor-name`, which the component
+ * asks at every layout, and puts it back afterwards.
+ */
+async function tourMeasuredCheck(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<TourReading>(TOUR_READING)
+  await devtools.evaluate<null>(`(() => {
+    globalThis.__verifyCssSupports = CSS.supports
+    CSS.supports = (...args) =>
+      String(args[0]).includes("anchor") ? false : globalThis.__verifyCssSupports.apply(CSS, args)
+    return null
+  })()`)
+  try {
+    const first = await startTour(devtools)
+    const gap = first.surface && first.search ? first.surface.top - first.search.bottom : NaN
+    await devtools.evaluate<null>(`(scrollBy({ top: 40, behavior: "instant" }), null)`)
+    await devtools.evaluate<null>(TWO_FRAMES)
+    const scrolled = await read()
+    const gapAfter = scrolled.surface && scrolled.search
+      ? scrolled.surface.top - scrolled.search.bottom
+      : NaN
+    check(
+      "Tour: without anchor positioning the step is measured into place below its target, and follows it on scroll",
+      first.mode === "measured" && gap === 8 && scrolled.mode === "measured" && gapAfter === 8 &&
+        first.search !== null && scrolled.search !== null &&
+        scrolled.search.top !== first.search.top,
+      `mode ${first.mode} then ${scrolled.mode}, gap ${gap}px then ${gapAfter}px, target top ` +
+        `${first.search?.top} then ${scrolled.search?.top}`,
+    )
+  } finally {
+    await skipTour(devtools)
+    await devtools.evaluate<null>(`(() => {
+      if (globalThis.__verifyCssSupports) CSS.supports = globalThis.__verifyCssSupports
+      return null
+    })()`)
+  }
+}
+
+/** Below 640 px wide, a step whose target is on screen is still a sheet on the bottom edge. */
+async function tourSheetCheck(devtools: Devtools): Promise<void> {
+  try {
+    const phone = await startTour(devtools)
+    check(
+      "Tour: on a 375 px screen the step is a full-width sheet on the bottom edge",
+      phone.open && phone.mode === "sheet" && phone.surface !== null &&
+        phone.surface.bottom === phone.view.height && phone.surface.left === 0 &&
+        phone.surface.width === phone.view.width && phone.onHeading &&
+        phone.goTo === "Go to Search",
+      `mode ${phone.mode}, surface ${JSON.stringify(phone.surface)}, view ` +
+        `${JSON.stringify(phone.view)}, focus on ${phone.active}, Go to "${phone.goTo}"`,
+    )
+  } finally {
+    await skipTour(devtools)
+  }
+}
+
+/** What {@link coachmarkCheck} reads off the `Coachmark` card. */
+interface CoachmarkReading {
+  open: boolean
+  mode: string | null
+  surface: StepBox | null
+  target: StepBox | null
+  active: string
+}
+
+/** A single `Coachmark` with a ref target: placed to its right, closed by ×, focus back. */
+async function coachmarkCheck(devtools: Devtools): Promise<void> {
+  const demo = `document.querySelector("#demo-Coachmark")`
+  const read = () =>
+    devtools.evaluate<CoachmarkReading>(`(() => {
+      const demo = ${demo}
+      const surface = demo?.querySelector("[data-coachmark-mode]") ?? null
+      const box = (element) => {
+        if (!element) return null
+        const rect = element.getBoundingClientRect()
+        return {
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          bottom: Math.round(rect.bottom),
+          width: Math.round(rect.width),
+        }
+      }
+      const active = document.activeElement
+      return {
+        open: surface?.matches(":popover-open") ?? false,
+        mode: surface?.getAttribute("data-coachmark-mode") ?? null,
+        surface: box(surface),
+        target: box(demo?.querySelector('[data-e2e="coachmark-target"]')),
+        active: active?.getAttribute("data-e2e") ?? active?.getAttribute("aria-label") ??
+          active?.tagName ?? "nothing",
+      }
+    })()`)
+  const toggle = `${demo}?.querySelector('[data-e2e="coachmark-toggle"]')`
+  await centreInView(devtools, toggle)
+  await devtools.evaluate<null>(`(${toggle}?.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).open, 3000)
+  await devtools.evaluate<null>(TWO_FRAMES)
+  const shown = await read()
+  const gap = shown.surface && shown.target ? shown.surface.left - shown.target.right : NaN
+  await devtools.evaluate<null>(
+    `(${demo}?.querySelector('[data-coachmark-mode] button[aria-label="Close"]')?.focus(), null)`,
+  )
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).open, 3000)
+  const closed = await read()
+  check(
+    "Coachmark: a ref target gets the hint on its right; × closes it and focus goes back to its opener",
+    shown.open && shown.mode === "anchor" && gap >= 6 && gap <= 10 && !closed.open &&
+      closed.active === "coachmark-toggle",
+    `open ${shown.open}, mode ${shown.mode}, gap ${gap}px, surface ${
+      JSON.stringify(shown.surface)
+    }, ` +
+      `target ${
+        JSON.stringify(shown.target)
+      }; after × open ${closed.open}, focus on ${closed.active}`,
   )
 }
