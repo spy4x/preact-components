@@ -5347,8 +5347,8 @@ in spy4x/ts-libs, which also documents the keyboard-layout and AltGr rules.
 `CommandPalette` is a search button and the dialog it opens: one field and a list of results.
 The arrow keys move through the results, Home and End jump to either end, Enter picks the
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
-focus back on the button. `/` and Ctrl+K (⌘K on a Mac) open it, bound with `useHotkeys`; `hotkeys`
-names others, and `[]` turns them off. The button shows the first hotkey with `Kbd`. A plain key
+focus back on the button. `/`, Ctrl+K and ⌘K open it on every platform, bound with `useHotkeys`;
+`hotkeys` names others, and `[]` turns them off. The button shows the first hotkey with `Kbd`. A plain key
 such as `/` does nothing while the reader types in a field; a chord such as Ctrl+K opens the
 palette from a field too. On a phone the button is an icon and the dialog fills the screen.
 

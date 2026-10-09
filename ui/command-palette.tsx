@@ -47,8 +47,12 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
   error: "The search failed. Try again.",
 }
 
-/** The hotkeys a palette opens on when the caller names none: `/` and Ctrl+K (⌘K on a Mac). */
-const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
+/**
+ * The hotkeys a palette opens on when the caller names none: `/`, Ctrl+K and ⌘K. Both chords on
+ * every platform rather than `mod+k`, so a Mac reader on a PC keyboard, or the reverse, is not
+ * left guessing which one this machine wants.
+ */
+const DEFAULT_HOTKEYS: readonly string[] = ["/", "ctrl+k", "meta+k"]
 
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
@@ -56,8 +60,9 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   onSelect: (option: T) => void
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
-   * `["/", "mod+k"]`; `[]` turns them off. The trigger shows the first one. A combination with
-   * Control, Command, Alt or `mod` opens it from a text field too; a plain key never does.
+   * `["/", "ctrl+k", "meta+k"]`: `/`, Ctrl+K and ⌘K on every platform. `[]` turns them off. The
+   * trigger shows the first one. A combination with Control, Command, Alt or `mod` opens it from a
+   * text field too; a plain key never does.
    */
   hotkeys?: readonly string[]
   /** Overrides for the palette's words; see {@link defaultCommandPaletteLabels}. */
@@ -184,7 +189,7 @@ interface Remote<T> {
  * A search trigger and the dialog it opens: one field and a list of results that the arrow keys
  * move through, as `Combobox` does. Home and End jump to either end, Enter picks the highlighted
  * result, and Escape, the close button or a click on the backdrop closes it, with focus back on the
- * trigger. `/` and Ctrl+K (⌘K on a Mac) open it from anywhere unless `hotkeys` says otherwise.
+ * trigger. `/`, Ctrl+K and ⌘K open it from anywhere unless `hotkeys` says otherwise.
  *
  * Give `options` to have it filter a list itself, or `search` to ask a server, which it calls after
  * a pause in typing, cancelling a stale call. Results with a `group` are listed under headings. On

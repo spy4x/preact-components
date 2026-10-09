@@ -1863,7 +1863,7 @@ useHotkeys(bindings)
       {
         name: "hotkeys",
         type: "string[]",
-        default: `["/", "mod+k"]`,
+        default: `["/", "ctrl+k", "meta+k"]`,
         description: "What opens it; the trigger shows the first one, and `[]` turns them off.",
       },
       {

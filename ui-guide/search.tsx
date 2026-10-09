@@ -2,7 +2,7 @@
  * The guide's search: every page and card name, filtered as you type, in a modal dialog.
  *
  * The index is built from the registry, so a card added to a section is searchable with no second
- * edit. The dialog, its keys and its hotkeys (`/` and Ctrl+K, ⌘K on a Mac) are the library's own
+ * edit. The dialog, its keys and its hotkeys (`/`, Ctrl+K and ⌘K) are the library's own
  * `CommandPalette`; this file keeps only the guide's index and its ranking.
  */
 
