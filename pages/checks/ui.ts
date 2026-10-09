@@ -196,6 +196,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await paginationChecks(devtools)
   await dataTableChecks(devtools)
   await enhancedFormAsyncFailureCheck(devtools)
+  await enhancedFormFailureColourCheck(devtools)
   await enhancedFormSynchronousThrowCheck(devtools)
   await enhancedFormResultChecks(devtools)
   await signUpFormDoubleClickCheck(devtools)
@@ -11615,6 +11616,124 @@ async function enhancedFormAsyncFailureCheck(devtools: Devtools): Promise<void> 
   const toggledOff = await setToggle(devtools, toggle, false)
   check(
     "EnhancedForm's fail toggle switches back off",
+    toggledOff,
+    `fail toggle switched off: ${toggledOff}`,
+  )
+}
+
+/**
+ * The failure text's colour and contrast in one palette, read by
+ * {@link enhancedFormFailureColourCheck}.
+ */
+interface EnhancedFormFailureColour {
+  /** Whether the region carries the `enhanced-form-error` hook. */
+  hooked: boolean
+  /** The region's computed text colour. */
+  color: string
+  /** Whether that colour paints the same pixel as `--color-danger` in this palette. */
+  isDanger: boolean
+  /** Contrast of the text against the backgrounds composited behind it. */
+  onBackdrop: number
+}
+
+/**
+ * `EnhancedForm`'s own card, failed once more so its region shows the failure text (#632): in the
+ * light, the dark and the ink palette the text carries `enhanced-form-error`, paints
+ * `--color-danger`, and reaches 4.5:1 against the card behind it. The fail toggle is switched back
+ * off afterwards, leaving the card where {@link enhancedFormAsyncFailureCheck} left it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function enhancedFormFailureColourCheck(devtools: Devtools): Promise<void> {
+  const card = '#demo-EnhancedForm [data-e2e="enhanced-form"]'
+  const toggle = `${card} [data-e2e="enhanced-form-fail-toggle"]`
+
+  const ready = await cardCanSubmit(devtools, card)
+  const toggledOn = ready.ok && await setToggle(devtools, toggle, true)
+  if (toggledOn) {
+    await devtools.evaluate<null>(
+      `(document.querySelector('${card} button[type="submit"]')?.click(), null)`,
+    )
+  }
+  const failed = toggledOn && await poll(
+    async () =>
+      (await enhancedFormReading(devtools, card)).region ===
+        "Something went wrong. Please try again.",
+    2_000,
+  )
+  await pointerToCorner(devtools)
+
+  const reading = failed
+    ? await devtools.evaluate<Record<"light" | "dark" | "ink", EnhancedFormFailureColour>>(
+      `(async () => {
+      ${CONTRAST_HELPERS}
+      const root = document.documentElement
+      const wasDark = root.classList.contains("dark")
+      const wasTheme = root.getAttribute("data-theme")
+      const region = document.querySelector('${card} [role="status"]')
+      const frames = () =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      const settle = async () => {
+        await frames()
+        await Promise.all(
+          region.getAnimations().map((animation) => animation.finished.catch(() => {})),
+        )
+      }
+      const token = (name) => {
+        const probe = document.createElement("div")
+        probe.style.backgroundColor = "var(" + name + ")"
+        document.body.appendChild(probe)
+        const color = paint(getComputedStyle(probe).backgroundColor)
+        probe.remove()
+        return color
+      }
+      const measure = () => {
+        const text = paint(getComputedStyle(region).color)
+        const danger = token("--color-danger")
+        return {
+          hooked: region.classList.contains("enhanced-form-error"),
+          color: getComputedStyle(region).color,
+          isDanger: text.every((channel, index) => channel === danger[index]),
+          onBackdrop: seenRatio(region),
+        }
+      }
+      try {
+        root.removeAttribute("data-theme")
+        root.classList.remove("dark")
+        await settle()
+        const light = measure()
+        root.classList.add("dark")
+        await settle()
+        const dark = measure()
+        root.setAttribute("data-theme", "ink")
+        await settle()
+        const ink = measure()
+        return { light, dark, ink }
+      } finally {
+        root.classList.toggle("dark", wasDark)
+        if (wasTheme === null) root.removeAttribute("data-theme")
+        else root.setAttribute("data-theme", wasTheme)
+      }
+    })()`,
+    )
+    : null
+
+  for (const palette of ["light", "dark", "ink"] as const) {
+    const colour = reading?.[palette]
+    check(
+      `in the ${palette} palette EnhancedForm's failure text carries enhanced-form-error and ` +
+        "paints --color-danger at 4.5:1 or better on its card",
+      colour !== undefined && colour.hooked && colour.isDanger && colour.onBackdrop >= 4.5,
+      colour === undefined
+        ? `the card never reached its failure text (ready: ${ready.ok}, toggled: ${toggledOn})`
+        : `hooked: ${colour.hooked}, colour ${colour.color} is --color-danger: ` +
+          `${colour.isDanger}, contrast ${colour.onBackdrop.toFixed(2)}`,
+    )
+  }
+
+  const toggledOff = await setToggle(devtools, toggle, false)
+  check(
+    "EnhancedForm's fail toggle switches back off after the colour reading",
     toggledOff,
     `fail toggle switched off: ${toggledOff}`,
   )

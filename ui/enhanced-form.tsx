@@ -178,6 +178,10 @@ export interface EnhancedFormProps {
  * an un-slotted `"failed"`) still needs the region to carry the message visibly, since
  * nothing else on screen does.
  *
+ * **A failure reads in the danger colour.** While the status is `"failed"` the region draws its
+ * text with `text-danger` instead of `text-muted`, so a failure does not look like a hint, and
+ * carries the `enhanced-form-error` class, a stable hook an app can style the failure text by.
+ *
  * **Focus moves to the region only when it was inside this form the moment the visitor submitted,
  * and the control they used is gone — and only the first time that happens for a given submit.**
  * The first condition is read off `event.currentTarget.contains(document.activeElement)` inside the
@@ -361,7 +365,8 @@ export function EnhancedForm(
         aria-atomic="true"
         tabIndex={-1}
         class={join(
-          "text-sm text-muted outline-none",
+          "text-sm outline-none",
+          status === "failed" ? "enhanced-form-error text-danger" : "text-muted",
           regionHidden && "sr-only",
         )}
       >

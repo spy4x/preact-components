@@ -169,6 +169,34 @@ describe("EnhancedForm with a controlled status", () => {
     expect(html).toMatch(/<p role="status"[^>]*>Something went wrong. Please try again.<\/p>/)
   })
 
+  it("draws the failure text in the danger colour, with a stable class hook", () => {
+    const html = render(
+      <EnhancedForm action="/api/subscribe" status="failed">
+        <input />
+      </EnhancedForm>,
+    )
+    const region = html.match(/<p role="status"[^>]*>/)?.[0] ?? ""
+
+    expect(region).toContain("enhanced-form-error")
+    expect(region).toContain("text-danger")
+    expect(region).not.toContain("text-muted")
+  })
+
+  it("keeps sending and done text muted, without the failure hook", () => {
+    for (const status of ["sending", "done"] as const) {
+      const html = render(
+        <EnhancedForm action="/api/subscribe" status={status}>
+          <input />
+        </EnhancedForm>,
+      )
+      const region = html.match(/<p role="status"[^>]*>/)?.[0] ?? ""
+
+      expect(region).toContain("text-muted")
+      expect(region).not.toContain("text-danger")
+      expect(region).not.toContain("enhanced-form-error")
+    }
+  })
+
   it("says nothing in any status when every label is empty", () => {
     for (const status of ["idle", "sending", "done", "failed"] as const) {
       const html = render(
