@@ -807,6 +807,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ZoomableImages` (component): Zoomable images inside a container, opening the shared `Lightbox`. Import: `@spy4x/preact-ui`
 - `ZoomableImagesProps` (type): Props of `ZoomableImages`. Import: `@spy4x/preact-ui`
 - `HotkeyBinding` (type): One keyboard shortcut for `useHotkeys`: a combination, what it does and how it is listed. Import: `@spy4x/preact-ui`
+- `hotkeyClickBinding` (helper): The `useHotkeys` binding that clicks an element through `clickByHotkey`. Import: `@spy4x/preact-ui`
 - `HotkeyPress` (type): A key press as `pickHotkey` sees it: the key, the modifiers and where it landed. Import: `@spy4x/preact-ui`
 - `pickHotkey` (helper): The binding a key press runs, or `undefined`: the first binding whose combination matches and that may fire where the press landed. Import: `@spy4x/preact-ui`
 - `useHotkeys` (hook): Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches. Import: `@spy4x/preact-ui`
