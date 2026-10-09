@@ -323,6 +323,11 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `createClipboard` (helper): Create a clipboard helper. Import: `@spy4x/preact-signals`
 - `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
 - `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
+- `createOnlineStatus` (helper): Create an online status store. Import: `@spy4x/preact-signals`
+- `OnlineNavigator` (type): Network-state port. Import: `@spy4x/preact-signals`
+- `OnlinePorts` (type): Everything the store needs from the outside. Import: `@spy4x/preact-signals`
+- `OnlineStatus` (type): The browser's network state, and the wiring that keeps it current. Import: `@spy4x/preact-signals`
+- `OnlineTarget` (type): Event port. Import: `@spy4x/preact-signals`
 - `patchSignal` (helper): Merge `patch` into `signal`'s current value and notify subscribers. Import: `@spy4x/preact-signals`
 - `createThemeStore` (helper): Create a theme store. Import: `@spy4x/preact-signals`
 - `Theme` (type): A resolved theme: what is actually painted. Import: `@spy4x/preact-signals`
