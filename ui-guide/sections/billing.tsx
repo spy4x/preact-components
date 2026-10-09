@@ -278,7 +278,7 @@ export const billingDemos = {
   },
   UpgradePrompt: {
     summary:
-      "A short message and an upgrade link, in place of a feature the plan does not include. It draws no box, so it sits inside the card or section that holds the feature.",
+      "A short message and an upgrade link with no box of its own, in place of a feature the plan does not include.",
     wide: false,
     props: [
       { name: "href", type: "string", description: "Where the upgrade link goes." },
