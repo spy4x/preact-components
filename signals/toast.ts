@@ -1,8 +1,9 @@
 import { type ReadonlySignal, signal } from "@preact/signals"
-import type { ToastId, ToastMessage, ToastVariant } from "./types.ts"
+import type { ToastAction, ToastId, ToastMessage, ToastVariant } from "./types.ts"
 
-// Re-exported so `@spy4x/preact-signals/toast` alone types the id `remove` takes.
-export type { ToastId } from "./types.ts"
+// Re-exported so `@spy4x/preact-signals/toast` alone types the id `remove` takes and the action a
+// message carries.
+export type { ToastAction, ToastId } from "./types.ts"
 
 /**
  * `@spy4x/preact-signals/toast` — the store behind `Toastr`.
@@ -55,6 +56,8 @@ export interface ToastEntry {
   duration?: number
   /** The message's {@link ToastMessage.dataE2E}, which `Toastr` renders on this toast. */
   dataE2E?: string
+  /** The message's {@link ToastMessage.action}, which `Toastr` renders as a button on this toast. */
+  action?: ToastAction
 }
 
 /** A toast store. `list` is what `Toastr` renders; the four shorthands are what callers use. */
@@ -156,6 +159,7 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
     }
     // Only when asked for, so an entry without a hook has no `dataE2E` key at all.
     if (message.dataE2E !== undefined) entry.dataE2E = message.dataE2E
+    if (message.action !== undefined) entry.action = message.action
 
     // A reused id replaces its toast where it stands. Appending instead would leave two entries that
     // `remove(id)` cannot tell apart, so dismissing one would dismiss both.

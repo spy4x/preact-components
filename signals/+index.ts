@@ -51,6 +51,7 @@ export { createToastStore, type ToastEntry, type ToastOptions, type ToastStore }
 export {
   type Model,
   RemoteEvent,
+  type ToastAction,
   type ToastId,
   type ToastMessage,
   type ToastPort,
