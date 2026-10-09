@@ -263,7 +263,8 @@ function SelectDemo() {
  * way {@link InputDemo}'s does; see there for why the check drives a button rather than reading the
  * ref directly.
  *
- * The round boxes show `shape="round"` ticked by a click, indeterminate, and disabled.
+ * The round boxes show `shape="round"` ticked by a click, indeterminate, and disabled. Tab onto
+ * the first to see its focus ring, the components' own `--color-ring`.
  */
 function CheckboxDemo() {
   const archived = useSignal(false)
