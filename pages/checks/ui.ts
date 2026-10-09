@@ -5085,6 +5085,7 @@ async function modalChecks(devtools: Devtools): Promise<void> {
   await modalFallbackEscapeCheck(devtools)
   await confirmDialogChecks(devtools)
   await confirmDialogBusyChecks(devtools)
+  await confirmDialogBusyFallbackCheck(devtools)
 }
 
 /**
@@ -21004,4 +21005,124 @@ async function confirmDialogBusyChecks(devtools: Devtools): Promise<void> {
   // next check starts with no dialog in the top layer.
   const closed = await poll(() => devtools.evaluate<boolean>(`${dialog} === null`), 5_000)
   if (!closed) await devtools.evaluate<null>(`(${dialog}?.close(), null)`)
+}
+
+/** What the Safari-like busy check saw after its Escape press. */
+interface BusyFallbackReading {
+  /** The platform fired `cancel` for the Escape press. */
+  cancelled: boolean
+  /** The platform closed the dialog: its `close` event fired. */
+  closedOnce: boolean
+  /** The dialog was modal and still busy after the press. */
+  back: boolean
+}
+
+/**
+ * On a browser that ignores `closedby`, as shipping Safari does, a real Escape on a busy
+ * `ConfirmDialog` is closed by the platform before anything can refuse it, and `Modal` must show it
+ * again: the panel ends up open, modal and busy. Once the demo's two-second request ends and it
+ * unmounts the panel, the scroll lock must be released.
+ *
+ * Chromium stands in for that engine as in `modalFallbackEscapeCheck`: `closedBy` is taken off
+ * `HTMLDialogElement.prototype` before the panel mounts and put back once it is open, and the
+ * `closedby` attribute is stripped from the open panel. The trigger and confirm are pressed with real
+ * clicks, because Chromium fires `cancel` for Escape only after a user activation.
+ *
+ * @param devtools The connected session, on a hydrated page with no dialog open.
+ */
+async function confirmDialogBusyFallbackCheck(devtools: Devtools): Promise<void> {
+  const dialog = `document.querySelector("#demo-ConfirmDialog dialog")`
+  const trigger = `[...document.querySelectorAll("#demo-ConfirmDialog button")]
+    .find((button) => button.textContent.trim() === "Delete invoice")`
+  const confirm = `${dialog}?.querySelector('[data-e2e="confirm-dialog-confirm"]')`
+  const busyModal = `(${dialog}?.matches(":modal") === true &&
+    ${confirm}?.getAttribute("aria-busy") === "true")`
+  const hidden = await devtools.evaluate<boolean>(`(() => {
+    const proto = HTMLDialogElement.prototype
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "closedBy")
+    if (descriptor === undefined) return false
+    globalThis.__verifyClosedBy = descriptor
+    delete proto.closedBy
+    return !("closedBy" in proto)
+  })()`)
+  const restore = `(() => {
+    const descriptor = globalThis.__verifyClosedBy
+    if (descriptor !== undefined) Object.defineProperty(HTMLDialogElement.prototype, "closedBy", descriptor)
+    delete globalThis.__verifyClosedBy
+    return "closedBy" in HTMLDialogElement.prototype
+  })()`
+  let opened = false
+  let busy = false
+  let restored = false
+  let reading: BusyFallbackReading = { cancelled: false, closedOnce: false, back: false }
+  let lock = ""
+  try {
+    await centreInView(devtools, trigger)
+    await clickAt(devtools, await aimAt(devtools, trigger), trigger)
+    opened = await poll(
+      () => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`),
+      3_000,
+    )
+    restored = await devtools.evaluate<boolean>(restore)
+    await devtools.evaluate<null>(`(() => {
+      const dialog = ${dialog}
+      globalThis.__verifyCancelled = false
+      globalThis.__verifyClosed = false
+      dialog?.removeAttribute("closedby")
+      dialog?.addEventListener("cancel", () => globalThis.__verifyCancelled = true, { once: true })
+      dialog?.addEventListener("close", () => globalThis.__verifyClosed = true, { once: true })
+      return null
+    })()`)
+    if (opened) await clickAt(devtools, await aimAt(devtools, confirm), confirm)
+    busy = opened && await poll(() => devtools.evaluate<boolean>(busyModal), 1_000)
+    if (busy) {
+      await pressKey(devtools, "Escape")
+      await poll(() => devtools.evaluate<boolean>(`globalThis.__verifyClosed === true`), 1_000)
+      await poll(() => devtools.evaluate<boolean>(busyModal), 500)
+      reading = await devtools.evaluate<BusyFallbackReading>(`({
+        cancelled: globalThis.__verifyCancelled === true,
+        closedOnce: globalThis.__verifyClosed === true,
+        back: ${busyModal},
+      })`)
+    }
+    // The demo unmounts the panel when its two-second request ends.
+    await poll(() => devtools.evaluate<boolean>(`${dialog} === null`), 5_000)
+    await poll(() => devtools.evaluate<boolean>(`document.body.style.overflow === ""`), 2_000)
+    lock = await devtools.evaluate<string>(
+      `${dialog} !== null ? "still rendered" : document.body.style.overflow === "" && ` +
+        `document.documentElement.style.overflow === "" ? "released" : "held"`,
+    )
+  } finally {
+    restored = await devtools.evaluate<boolean>(restore).catch(() => false) || restored
+    await devtools.evaluate<null>(`(() => {
+      delete globalThis.__verifyCancelled
+      delete globalThis.__verifyClosed
+      const dialog = ${dialog}
+      if (dialog?.open) dialog.close()
+      return null
+    })()`).catch(() => null)
+    await pointerToCorner(devtools)
+  }
+
+  check(
+    "on an engine without closedby, a real Escape on a busy ConfirmDialog is undone: it stays open " +
+      "and modal, and the scroll lock is released once it unmounts",
+    hidden && restored && opened && busy && reading.cancelled && reading.closedOnce &&
+      reading.back && lock === "released",
+    !hidden
+      ? "HTMLDialogElement.prototype has no closedBy to take away, so the premise does not hold"
+      : !restored
+      ? "closedBy could not be put back on HTMLDialogElement.prototype"
+      : !opened || !busy
+      ? `real clicks never left a busy modal panel (opened ${opened}, busy ${busy})`
+      : !reading.cancelled || !reading.closedOnce
+      ? `the platform did not close the panel on Escape (cancel ${reading.cancelled}, close ` +
+        `${reading.closedOnce}), so nothing here reached the fallback`
+      : !reading.back
+      ? "the platform closed the busy panel and it was not shown again"
+      : lock !== "released"
+      ? `after the panel's request ended the scroll lock reads "${lock}"`
+      : "the platform closed the busy panel on Escape, Modal showed it again, modal and busy, and " +
+        "the scroll lock was released when it unmounted",
+  )
 }
