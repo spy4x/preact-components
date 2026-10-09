@@ -267,7 +267,7 @@ const FIELD_EDITING_KEYS: ReadonlySet<string> = new Set(["a", "c", "v", "x", "z"
  * @param keys The combination, such as `"mod+enter"`.
  * @throws {Error} When the combination cannot be read.
  */
-function isChord(keys: string): boolean {
+export function firesInFields(keys: string): boolean {
   const hotkey = parseHotkey(keys)
   if (FIELD_EDITING_KEYS.has(hotkey.key)) return false
   return hotkey.ctrl || hotkey.meta || hotkey.mod
@@ -290,7 +290,7 @@ export function hotkeyClickBinding(
   return {
     keys,
     inDialogs: true,
-    inFields: isChord(keys),
+    inFields: firesInFields(keys),
     preventDefault: false,
     handler: (event) => void clickByHotkey(element(), event),
   }

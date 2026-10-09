@@ -348,6 +348,7 @@ export {
 export {
   ariaKeyShortcuts,
   clickByHotkey,
+  firesInFields,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
