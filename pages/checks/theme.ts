@@ -2266,13 +2266,14 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
     fillContrast: number
     hoverContrast: number
     darkFillContrast: number
+    darkHoverContrast: number
   }>(`(async () => {
     ${ACCENT_HELPERS}
     ${CONTRAST_HELPERS}
     const root = document.documentElement
     const wasDark = root.classList.contains("dark")
     const style = document.createElement("style")
-    style.textContent = ":root { --color-primary: #f97316; --color-accent: #f97316; }"
+    style.textContent = ":root { --color-accent: #f97316; }"
     document.head.append(style)
     const button = document.querySelector("#demo-Button button")
     const result = {}
@@ -2286,16 +2287,20 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
     root.classList.toggle("dark", true)
     await settle(button)
     result.darkFillContrast = seenRatio(button)
+    result.darkHoverContrast = contrast(label, resolve("var(--color-accent-700)"))
     style.remove()
     root.classList.toggle("dark", wasDark)
     await settle(button)
     return result
   })()`)
   check(
-    "with #f97316 as the accent, the primary Button's label reads at 4.5:1 on its fill, its hover and in dark",
-    light.fillContrast >= 4.5 && light.hoverContrast >= 4.5 && light.darkFillContrast >= 4.5,
+    "with #f97316 as the only accent token, the primary Button's label reads at 4.5:1 on its fill " +
+      "and its hover, light and dark",
+    light.fillContrast >= 4.5 && light.hoverContrast >= 4.5 && light.darkFillContrast >= 4.5 &&
+      light.darkHoverContrast >= 4.5,
     `label ${light.label} on ${light.fill}: ${light.fillContrast.toFixed(2)}:1, hover ` +
-      `${light.hoverContrast.toFixed(2)}:1, dark ${light.darkFillContrast.toFixed(2)}:1`,
+      `${light.hoverContrast.toFixed(2)}:1, dark ${light.darkFillContrast.toFixed(2)}:1, dark ` +
+      `hover ${light.darkHoverContrast.toFixed(2)}:1`,
   )
 
   const sweep = await devtools.evaluate<{
