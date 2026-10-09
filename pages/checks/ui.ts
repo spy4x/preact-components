@@ -2330,6 +2330,7 @@ async function toastrActionChecks(devtools: Devtools): Promise<void> {
   await toastrActionOnceCheck(devtools)
   await toastrActionFocusReturnCheck(devtools, "action")
   await toastrActionFocusReturnCheck(devtools, "dismiss")
+  await toastrActionKeepsMovedFocusCheck(devtools)
   await toastrActionNarrowCheck(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
 }
@@ -2380,6 +2381,76 @@ async function toastrActionFocusReturnCheck(
       : !landed.onClear
       ? `focus fell to ${landed.tag}, not to the card's clear button`
       : `focus went back to the card's clear button after Enter on ${name}`,
+  )
+}
+
+/**
+ * #606: an action that moves focus on purpose — to a dialog, or here to the card's name field —
+ * keeps it there when its toast closes. `Toastr` hands focus back only while the stack still holds
+ * it; without that condition the toast would pull focus back to the button it came from, out of
+ * whatever the action opened.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrActionKeepsMovedFocusCheck(devtools: Devtools): Promise<void> {
+  const pushed = await devtools.evaluate<{ ok: boolean; reason: string }>(`(async () => {
+    const { card, region, clear } = globalThis.__verifyToastr ?? {}
+    const rename = card?.querySelector('[data-e2e="toast-rename"]') ?? null
+    const field = card?.querySelector('[data-e2e="toast-rename-field"]') ?? null
+    if (!region || !clear || rename === null || field === null) {
+      return { ok: false, reason: "the Toastr card is missing its live area, its clear button, " +
+        'its Rename button (data-e2e="toast-rename") or its name field ' +
+        '(data-e2e="toast-rename-field")' }
+    }
+    const until = ${PAGE_UNTIL}
+    clear.click()
+    await until(() => region.children.length === 0)
+    rename.click()
+    await until(() => region.querySelector('[data-e2e="guide-toast-rename"]') !== null)
+    const toast = region.querySelector('[data-e2e="guide-toast-rename"]')
+    const label = rename.dataset.label ?? ""
+    const action = [...(toast?.querySelectorAll("button") ?? [])]
+      .find((button) => (button.textContent ?? "").trim() === label) ?? null
+    if (toast === null || action === null) {
+      return { ok: false, reason: "pressing Rename pushed no toast with a button labelled " +
+        JSON.stringify(label) }
+    }
+    globalThis.__verifyRename = { toast, action, field }
+    clear.focus()
+    return { ok: true, reason: "" }
+  })()`)
+  await pressKey(devtools, "Tab")
+  const onAction = await devtools.evaluate<boolean>(
+    `document.activeElement !== null && document.activeElement === globalThis.__verifyRename?.action`,
+  )
+  await pressKey(devtools, "Enter")
+  const gone = await poll(
+    async () =>
+      !await devtools.evaluate<boolean>(`globalThis.__verifyRename?.toast?.isConnected ?? false`),
+    3000,
+  )
+  // Focus is read after the toast has left the page, so a late hand-back would already have run.
+  const landed = await devtools.evaluate<{ onField: boolean; tag: string }>(`(() => {
+    const active = document.activeElement
+    return {
+      onField: active !== null && active === globalThis.__verifyRename?.field,
+      tag: active === null ? "nothing" : active.tagName + " " +
+        ((active.textContent ?? "").trim().slice(0, 40) || active.getAttribute("aria-label") || ""),
+    }
+  })()`)
+
+  check(
+    "A toast action that moves focus out of the stack keeps it there after the toast closes",
+    pushed.ok && onAction && gone && landed.onField,
+    !pushed.ok
+      ? pushed.reason
+      : !onAction
+      ? "Tab from the clear button did not land on the Rename toast's action"
+      : !gone
+      ? "Enter on Rename left its toast on screen"
+      : !landed.onField
+      ? `focus ended on ${landed.tag}, not on the name field the action focused`
+      : "focus stayed in the name field the Rename action moved it to",
   )
 }
 
