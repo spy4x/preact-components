@@ -8329,6 +8329,17 @@ function conflictAnnouncements(devtools: Devtools): Promise<string[]> {
  */
 async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   await centreInView(devtools, `document.querySelector('${CONFLICT}')`)
+  // The page is hydrated by now, so the empty chooser's effects have run.
+  const mountedEmpty = await readConflicts(
+    devtools,
+    `${CONFLICT} [data-e2e="conflict-empty"] > section`,
+  )
+  check(
+    "a ConflictChooser mounted with no conflicts announces nothing, once its effects ran",
+    mountedEmpty.heading === "All conflicts resolved" && mountedEmpty.items.length === 0 &&
+      mountedEmpty.announced === "",
+    JSON.stringify(mountedEmpty),
+  )
   const first = await readConflicts(devtools)
   check(
     "ConflictChooser offers the choices each reason allows",
