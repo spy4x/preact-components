@@ -1287,6 +1287,7 @@ combination matches a key press and that may fire where the press landed.
 `Kbd` draws a combination as nested `<kbd>` elements: ⌘K on Apple platforms, Ctrl + K elsewhere.
 A sequence, written as its presses separated by whitespace (`"g t"`), draws each press that way with
 the word "then" between them, so it is read "G then T"; `labels.then` changes the word.
+Write the `+` key in a sequence as `plus` (`"g plus"`): `"g +"` reads as an unfinished combination.
 The server and the first browser render draw Ctrl, and an effect switches to ⌘ on an Apple
 platform, unless `apple` says which. A glyph such as ⌘ is hidden from screen readers and followed
 by its name in visually hidden text. `keyFaces(keys, apple, labels)` returns the text and the name
