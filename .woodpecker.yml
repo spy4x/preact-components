@@ -28,6 +28,18 @@ steps:
     commands:
       - deno task publish:dry
 
+  # A `v*` tag publishes to JSR with the global token, so the tagged commit must already be on
+  # `main` (reviewed, green CI). A tag on an unmerged branch stops here, before `publish` runs.
+  # Woodpecker's clone is shallow and has no `main`, so fetch it with full depth first.
+  on-main:
+    image: alpine/git:2.47.2
+    when:
+      event: tag
+      ref: refs/tags/v*
+    commands:
+      - git fetch --no-tags --depth=2147483647 origin main
+      - git merge-base --is-ancestor "$${CI_COMMIT_SHA}" FETCH_HEAD || { echo "Refusing to publish, commit $${CI_COMMIT_SHA} is not on main"; exit 1; }
+
   # Publishes every named workspace member to JSR (`jsr:@spy4x/preact-*`), only on a `v*` tag
   # and only after both steps above passed. `docs/publishing.md` has the release steps. JSR never
   # deletes a version, and a version already on JSR is skipped, so re-running a tag build that
