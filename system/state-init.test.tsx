@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { jsonLdText } from "@spy4x/platform/universal/seo"
 import {
   readStateInit,
   StateInit,
@@ -19,8 +20,10 @@ describe("stateInitText", () => {
     expect(JSON.parse(text)).toEqual(value)
   })
 
-  it("escapes < the same way SEOHead's own jsonLdText does", () => {
-    expect(stateInitText({ a: "<b>" })).toBe(JSON.stringify({ a: "<b>" }).replace(/</g, "\\u003c"))
+  it("escapes the same way SEOHead's own jsonLdText does", () => {
+    const text = stateInitText({ a: "<b>" })
+    expect(text).toBe(jsonLdText({ a: "<b>" }))
+    expect(text).not.toContain("<")
   })
 
   it("throws an error naming StateInit for undefined, rather than crashing inside .replace", () => {

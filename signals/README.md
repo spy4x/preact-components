@@ -27,6 +27,7 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
 | `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                          |
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
+| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                     |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                              |
 | `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
@@ -79,8 +80,9 @@ pin. The two are not drop-in identical, and one of the differences is silent:
 ## Design rules this package follows
 
 - **Ports, not singletons.** `buildModelStore` takes `fetch`, a `toast` port and a `session` flag;
-  `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard.
-  Every one has a browser default, and every one can be a test double.
+  `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard;
+  `createOnlineStatus` takes `target` and `navigator`. Every one has a browser default, and every
+  one can be a test double.
 - **Immutability is load-bearing.** Signals compare by reference, so per-row operation state lives in
   `Map`s that are copied on write, `list.all` sorts a copy, and toasts append to a new array.
 - **Honest types.** No optional members that are always present, no `as` casts in consumers. `op.delete`
@@ -414,6 +416,16 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   and registers no listener, and `+index.test.ts` is the guard on that. `<For>` and `<Show>` used to
   live here and the module patched `Signal.prototype.map` as a side effect of being imported, which
   reached every consumer of every package that imported this one.
+- **`createOnlineStatus` reports what the browser reports, not whether a server answers.**
+  `online` is `navigator.onLine`: `false` means the browser knows it has no network, while `true`
+  only means it has one, so a failed request is still the app's to notice. Create one store per app
+  (`export const connection = createOnlineStatus()`) and call `watch()` in the client entry point:
+  it re-reads `navigator.onLine`, then follows the window's `online` and `offline` events. Each
+  `watch()` adds its own listeners and returns the function that removes only those, so two
+  callers can watch at once. With no `navigator.onLine` to ask, as on the server, `online` is
+  `true`. `watch(target)` listens on `target` for that call only, so an app's test passes a fake
+  event target and fires `offline` on it to go offline; to reset, it calls the stop function and
+  `watch()` again, which re-reads `navigator.onLine`.
 - **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
   forward: each one re-reads every parameter into its signal, and a parameter that has left the
   address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a

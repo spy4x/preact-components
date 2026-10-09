@@ -33,6 +33,13 @@ export {
   createClipboard,
 } from "./clipboard.ts"
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
+export {
+  createOnlineStatus,
+  type OnlineNavigator,
+  type OnlinePorts,
+  type OnlineStatus,
+  type OnlineTarget,
+} from "./online.ts"
 export { patchSignal } from "./patch-signal.ts"
 export {
   createThemeStore,

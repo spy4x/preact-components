@@ -323,6 +323,11 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `createClipboard` (helper): Create a clipboard helper. Import: `@spy4x/preact-signals`
 - `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
 - `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
+- `createOnlineStatus` (helper): Create an online status store. Import: `@spy4x/preact-signals`
+- `OnlineNavigator` (type): Network-state port. Import: `@spy4x/preact-signals`
+- `OnlinePorts` (type): Everything the store needs from the outside. Import: `@spy4x/preact-signals`
+- `OnlineStatus` (type): The browser's network state, and the wiring that keeps it current. Import: `@spy4x/preact-signals`
+- `OnlineTarget` (type): Event port. Import: `@spy4x/preact-signals`
 - `patchSignal` (helper): Merge `patch` into `signal`'s current value and notify subscribers. Import: `@spy4x/preact-signals`
 - `createThemeStore` (helper): Create a theme store. Import: `@spy4x/preact-signals`
 - `Theme` (type): A resolved theme: what is actually painted. Import: `@spy4x/preact-signals`
@@ -447,7 +452,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (852 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (866 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -463,6 +468,11 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `ViteEnvironment` (type): The part of a Vite environment `npmSpecifiers` reads: the dev server's optimizer. Import: `@spy4x/preact-theme/vite`
 - `ViteResolveContext` (type): The plugin context inside `resolveId`. Import: `@spy4x/preact-theme/vite`
 - `ViteOutputFile` (type): One file of the bundle `generateBundle` receives: a CSS or other asset, or a JS chunk. Import: `@spy4x/preact-theme/vite`
+- `ViteResolvedConfig` (type): The part of Vite's resolved config the plugins here read. Import: `@spy4x/preact-theme/vite`
+- `ViteBuildContext` (type): The plugin context inside `closeBundle`: the environment being built, in Vite 6+. Import: `@spy4x/preact-theme/vite`
+- `ViteServerResponse` (type): The part of a Node HTTP response a dev-server middleware writes. Import: `@spy4x/preact-theme/vite`
+- `ViteMiddleware` (type): A Connect middleware: answers the request, or passes it on with `next()`. Import: `@spy4x/preact-theme/vite`
+- `ViteDevServer` (type): The part of Vite's dev server `VitePlugin.configureServer` uses. Import: `@spy4x/preact-theme/vite`
 - `VitePlugin` (type): The shape of a Vite plugin, cut down to the hooks the plugins here implement. Import: `@spy4x/preact-theme/vite`
 - `PreactThemeCssOptions` (type): Options for `preactThemeCss`. Import: `@spy4x/preact-theme/vite`
 - `preactThemeCss` (helper): Gives the app's stylesheet the `@spy4x/preact-*` design system before Tailwind compiles it. Import: `@spy4x/preact-theme/vite`
@@ -719,6 +729,13 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `NoticeTone` (type): What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`). Import: `@spy4x/preact-ui`
 - `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
 - `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
+- `MoreMenu` (component): A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list. Import: `@spy4x/preact-ui`
+- `MoreMenuProps` (type): What `MoreMenu` takes. Import: `@spy4x/preact-ui`
+- `PageAction` (component): A page header's primary action: icon and label from `sm` up, the icon alone on a phone. Import: `@spy4x/preact-ui`
+- `PageActionProps` (type): What `PageAction` takes: `href` makes it a link, otherwise it is a button. Import: `@spy4x/preact-ui`
+- `PageHeader` (component): The header a page starts with: an optional back arrow, the title (and a subtitle) on the left, the primary action and an optional "More actions" menu on the right. Import: `@spy4x/preact-ui`
+- `PageHeaderProps` (type): What `PageHeader` takes. Import: `@spy4x/preact-ui`
+- `TOUCH_TARGET` (constant): A touch target of 44 px on a phone and the library's own 36 px from `sm` up, for a small button a thumb has to hit. Import: `@spy4x/preact-ui`
 - `PageTitle` (component): Page heading with the library's `pc-h1` typography inlined. Import: `@spy4x/preact-ui`
 - `PageTitleProps` (type): Props of `PageTitle`. Import: `@spy4x/preact-ui`
 - `pageRange` (helper): Collapse a page range into the items a pagination control renders. Import: `@spy4x/preact-ui`
@@ -736,6 +753,12 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `RadioGroupProps` (type): Props of `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioOption` (type): One choice of a `RadioGroup`. Import: `@spy4x/preact-ui`
 - `RadioProps` (type): Radio choice with its own label. Import: `@spy4x/preact-ui`
+- `SettingGroup` (component): A named group of settings, such as Account or Security: a small `h2` over its rows, so the page title stays the one large heading on a settings page. Import: `@spy4x/preact-ui`
+- `SettingGroupProps` (type): What `SettingGroup` takes. Import: `@spy4x/preact-ui`
+- `SettingList` (component): A card of `SettingRow`s, one per line, divided by a rule: the shape of a settings page, where each row names a setting, shows its value and offers one action. Import: `@spy4x/preact-ui`
+- `SettingListProps` (type): What `SettingList` takes. Import: `@spy4x/preact-ui`
+- `SettingRow` (component): One setting: its name, its current value under it, and an optional action on the right that stays beside the text on a phone. Import: `@spy4x/preact-ui`
+- `SettingRowProps` (type): What `SettingRow` takes. Import: `@spy4x/preact-ui`
 - `StatusMark` (component): A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`. Import: `@spy4x/preact-ui`
 - `StatusMarkProps` (type): Props of `StatusMark`. Import: `@spy4x/preact-ui`
 - `StatusMarkStatus` (type): A project or feature's lifecycle state. Import: `@spy4x/preact-ui`
