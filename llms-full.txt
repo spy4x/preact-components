@@ -4120,7 +4120,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                                                |
 | `CardHeader`          | `card`                 | `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`                                                                                                                     |
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                    |
-| `Coachmark`           | `coachmark`            | `open`, `target` (a CSS selector or a ref), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `class?`                                                         |
+| `Coachmark`           | `coachmark`            | `open`, `target` (a CSS selector or a ref), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                         |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                      |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                       |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                      |
@@ -5752,7 +5752,12 @@ It is not modal: Tab is not trapped and the page stays usable. Opening focuses t
 does every new step. The last control, Go to, focuses the target and leaves the step open. Escape
 asks to close, unless a modal dialog is open or the key came from inside a dialog, so Escape in a
 `Modal` the step opened closes only that dialog. On close, focus returns to where it was when the
-tour opened, unless the user has already moved it somewhere else.
+tour opened, unless the user has already moved it somewhere else. The step's dialog is described by
+its text and, in `Tour`, its step count, so a screen reader announces both.
+
+A target that is off-screen is scrolled into view at once. If the page is still running a smooth
+scroll of its own at that moment, that scroll can win and leave the target off-screen; the step then
+shows as a sheet until the target is back on screen, and never points at the wrong control.
 
 ## Billing
 
