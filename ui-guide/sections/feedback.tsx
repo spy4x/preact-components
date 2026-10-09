@@ -739,7 +739,8 @@ export const feedbackDemos = {
     render: () => <ErrorBoundaryDemo />,
   },
   ErrorState: {
-    summary: "An inline error message, which renders nothing when there is no error to show.",
+    summary:
+      "The message for an expected failure, where its result would have been; nothing when there is none.",
     wide: false,
     snippet: `<ErrorState message={error.value} />`,
     render: () => (

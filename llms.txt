@@ -636,7 +636,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `EnhancedFormStatus` (type): Where one `EnhancedForm` is in its submit cycle. Import: `@spy4x/preact-ui`
 - `ErrorBoundary` (component): Catches an error thrown while its children render and shows a reload screen in their place, so the person sees a way out instead of a blank page. Import: `@spy4x/preact-ui`
 - `ErrorBoundaryProps` (type): Props of `ErrorBoundary`. Import: `@spy4x/preact-ui`
-- `ErrorState` (component): Inline error banner. Import: `@spy4x/preact-ui`
+- `ErrorState` (component): Message for an expected failure, shown where the result that failed would have been, such as a list whose request failed. Import: `@spy4x/preact-ui`
 - `ErrorStateProps` (type): Props of `ErrorState`. Import: `@spy4x/preact-ui`
 - `Field` (component): Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls. Import: `@spy4x/preact-ui`
 - `FieldChild` (type): The control of one `Field`: exactly one element, or a function that returns one. Import: `@spy4x/preact-ui`
