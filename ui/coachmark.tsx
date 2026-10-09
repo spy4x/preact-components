@@ -153,7 +153,9 @@ export function Coachmark(
       const ours = active === null || active === document.body ||
         (surface !== null && surface.contains(active)) || active === targetRef.current
       if (!ours) return
-      if (remembered instanceof HTMLElement && remembered.isConnected) remembered.focus()
+      const back = remembered instanceof HTMLElement && remembered !== document.body &&
+        remembered.isConnected
+      if (back) remembered.focus()
       else targetRef.current?.focus()
     }
   }, [open])
