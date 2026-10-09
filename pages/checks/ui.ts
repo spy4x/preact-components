@@ -235,6 +235,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await sortableListChecks(devtools)
   await themeToggleChecks(devtools)
   await billingChecks(devtools)
+  await onboardingChecklistChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -19775,4 +19776,152 @@ async function sortableEdgeScrollCheck(devtools: Devtools): Promise<void> {
     `order ${JSON.stringify(after.order)}, drawn ${JSON.stringify(after.drawn)}, onMove ` +
       `"${after.lastMove}", live "${after.live}", focus ${after.focused}`,
   )
+}
+
+/** What {@link onboardingChecklistChecks} reads off the `OnboardingChecklist` card. */
+interface OnboardingReading {
+  /** `false` when the card's checklist is not on the page, as after Dismiss. */
+  present: boolean
+  /** The progress bar's `aria-valuenow`. */
+  progress: string | null
+  /** The progress caption. */
+  caption: string
+  /** The text of the step marked `aria-current="step"`, or `null` when none is. */
+  current: string | null
+  /** The footer's primary control's text, or `null` when there is none. */
+  primary: string | null
+  /** `true` when the footer's primary control has focus. */
+  onPrimary: boolean
+  /** `true` when the header's Dismiss button has focus. */
+  onDismiss: boolean
+  /** The status region's text. */
+  status: string
+  /** How many times the demo's `onDismiss` ran, from its readout. */
+  dismissed: number
+  /** The focused element, for a failure message. */
+  active: string
+}
+
+/** Reads {@link OnboardingReading} off the `OnboardingChecklist` card in one round trip. */
+const ONBOARDING_READING = `(() => {
+  const demo = document.querySelector("#demo-OnboardingChecklist")
+  const card = demo?.querySelector('[role="region"]') ?? null
+  const active = document.activeElement
+  const primary = card?.querySelector(".pc-card-footer :is(button, a)") ?? null
+  const dismiss = card?.querySelector(".pc-card-header button") ?? null
+  const count = demo?.querySelector('[data-e2e="onboarding-dismissed"]')?.textContent
+    .match(/onDismiss calls: (\\d+)/)
+  return {
+    present: card !== null,
+    progress: card?.querySelector('[role="progressbar"]')?.getAttribute("aria-valuenow") ?? null,
+    caption: card?.querySelector(".pc-kpi-label")?.textContent ?? "",
+    current: card?.querySelector('[aria-current="step"]')?.textContent.trim() ?? null,
+    primary: primary?.textContent.trim() ?? null,
+    onPrimary: primary !== null && active === primary,
+    onDismiss: dismiss !== null && active === dismiss,
+    status: card?.querySelector('[role="status"]')?.textContent.trim() ?? "",
+    dismissed: count ? Number(count[1]) : -1,
+    active: active === null || active === document.body
+      ? "the page"
+      : active.tagName + " " + (active.textContent ?? "").trim().slice(0, 40),
+  }
+})()`
+
+/** Brings the card's checklist back in its starting state, through the demo's own button. */
+const ONBOARDING_SHOW_AGAIN =
+  `(document.querySelector('#demo-OnboardingChecklist [data-e2e="onboarding-show-again"]')?.click(), null)`
+
+/**
+ * `OnboardingChecklist`, driven by keyboard on its catalogue card (#583), which starts with two of
+ * four steps done and marks a step done when its action is pressed.
+ *
+ * From a real click on the heading, Tab reaches Dismiss and then the next step's action. Enter on
+ * that action completes the step, and focus stays on the footer button, which now offers the
+ * following step: a button inside each step's row would vanish with its step and drop focus on the
+ * page. The last step turns the same button into Finish and fills the status region. Finish and
+ * the header's Dismiss each call the `onDismiss` port, which the demo counts.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function onboardingChecklistChecks(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<OnboardingReading>(ONBOARDING_READING)
+  await openGuidePage(devtools, "ui")
+  const heading = `document.querySelector('#demo-OnboardingChecklist [role="region"] h2')`
+  await centreInView(devtools, heading)
+  const spot = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+    const box = ${heading}?.getBoundingClientRect()
+    return box ? { x: Math.round(box.left + 4), y: Math.round(box.top + box.height / 2) } : null
+  })()`)
+  const start = await read()
+  if (spot !== null) await clickAtPoint(devtools, spot)
+
+  await pressKey(devtools, "Tab")
+  const first = await read()
+  await pressKey(devtools, "Tab")
+  const second = await read()
+  check(
+    "OnboardingChecklist: Tab reaches Dismiss and then the next step's action",
+    spot !== null && start.progress === "2" && first.onDismiss && second.onPrimary &&
+      second.primary === "Invite a teammate",
+    spot === null
+      ? "no OnboardingChecklist heading in the card"
+      : start.progress !== "2"
+      ? `the card did not start with 2 steps done (aria-valuenow ${start.progress})`
+      : !first.onDismiss
+      ? `the first Tab from the heading landed on ${first.active}, not Dismiss`
+      : !second.onPrimary
+      ? `the second Tab landed on ${second.active}, not the footer's action`
+      : second.primary !== "Invite a teammate"
+      ? `the footer offers "${second.primary}", not the first open step`
+      : `Dismiss, then the footer's "${second.primary}"`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).progress === "3", 3000)
+  const advanced = await read()
+  check(
+    "OnboardingChecklist: Enter on the next step's action completes it and keeps focus on the button, which offers the step after",
+    advanced.progress === "3" && advanced.caption === "3 of 4 done" && advanced.onPrimary &&
+      advanced.primary === "Turn on notifications" &&
+      (advanced.current ?? "").includes("Turn on notifications"),
+    `progress ${advanced.progress}, caption "${advanced.caption}", footer "${advanced.primary}", ` +
+      `current step "${advanced.current}", focus on ${advanced.active}`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).progress === "4", 3000)
+  const finished = await read()
+  check(
+    "OnboardingChecklist: completing the last step turns the action into Finish, keeps focus and announces the message",
+    finished.progress === "4" && finished.primary === "Finish" && finished.onPrimary &&
+      finished.current === null && finished.status === "All done. You're set up.",
+    `progress ${finished.progress}, footer "${finished.primary}", current step ` +
+      `"${finished.current}", status "${finished.status}", focus on ${finished.active}`,
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).present, 3000)
+  const afterFinish = await read()
+  await devtools.evaluate<null>(ONBOARDING_SHOW_AGAIN)
+  await poll(async () => (await read()).progress === "2", 3000)
+  const shown = await read()
+  await devtools.evaluate<null>(
+    `(document.querySelector('#demo-OnboardingChecklist .pc-card-header button')?.focus(), null)`,
+  )
+  const focusedDismiss = (await read()).onDismiss
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).present, 3000)
+  const afterDismiss = await read()
+  check(
+    "OnboardingChecklist: Finish and Dismiss each call the onDismiss port once",
+    !afterFinish.present && afterFinish.dismissed === start.dismissed + 1 &&
+      shown.present && focusedDismiss && !afterDismiss.present &&
+      afterDismiss.dismissed === start.dismissed + 2,
+    `dismissed ${start.dismissed} at the start, ${afterFinish.dismissed} after Finish ` +
+      `(card ${afterFinish.present ? "still shown" : "gone"}), ${afterDismiss.dismissed} after ` +
+      `Dismiss (card ${afterDismiss.present ? "still shown" : "gone"}, Dismiss ` +
+      `${focusedDismiss ? "had" : "did not have"} focus)`,
+  )
+
+  await devtools.evaluate<null>(ONBOARDING_SHOW_AGAIN)
 }

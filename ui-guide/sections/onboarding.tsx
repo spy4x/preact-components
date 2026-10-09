@@ -77,7 +77,7 @@ function OnboardingChecklistDemo() {
             }}
           />
         )}
-      <DemoNote e2e="onboarding-dismissed">Dismissed {dismissed.value} times.</DemoNote>
+      <DemoNote e2e="onboarding-dismissed">onDismiss calls: {dismissed.value}.</DemoNote>
     </Stack>
   )
 }
