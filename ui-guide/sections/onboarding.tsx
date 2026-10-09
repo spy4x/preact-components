@@ -263,7 +263,7 @@ function TourDemo() {
 
 function CoachmarkDemo() {
   const open = useSignal(false)
-  const target = useRef<HTMLButtonElement>(null)
+  const target = useRef<HTMLDivElement>(null)
 
   return (
     <Stack>
@@ -271,7 +271,14 @@ function CoachmarkDemo() {
         <Button variant="secondary" data-e2e="coachmark-toggle" onClick={() => open.value = true}>
           Show the hint
         </Button>
-        <Button ref={target} variant="outline" data-e2e="coachmark-target">Export</Button>
+        {/* Not focusable, so Go to adds a tabindex and takes it away again on close. */}
+        <div
+          ref={target}
+          class="rounded-md border border-subtle px-3 py-2 text-sm"
+          data-e2e="coachmark-target"
+        >
+          Exports this month: 12
+        </div>
       </Cluster>
       <Coachmark
         open={open.value}
@@ -448,6 +455,11 @@ const index = useSignal(0)
         description: "The button that moves focus to the target.",
       },
       { name: "footer", type: "ComponentChildren", description: "Controls of the app's own." },
+      {
+        name: "describedBy",
+        type: "string",
+        description: "Ids of more elements that describe the dialog, after its text.",
+      },
     ],
     snippet: `<Coachmark
   open={showHint.value}
