@@ -2281,7 +2281,7 @@ Extracted from earlier source applications.
 | `SiteHeader`      | `site-header`      | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
 | `Shell`           | `shell`            | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`       | `state-init`       | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`       | `rail-shell`       | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `header?`, `children`, `labels?`, `class?`                                                                                 |
+| `RailShell`       | `rail-shell`       | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `header?`, `children`, `labels?`, `class?`                                                                |
 | `SyncStatus`      | `sync-status`      | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
 | `ConflictChooser` | `conflict-chooser` | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
 | `InstallPrompt`   | `install-prompt`   | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
@@ -2433,11 +2433,24 @@ was pressed, the tab keeps the previous page's title, and a screen reader announ
 
 ```tsx
 function Layout({ store, children }: { store: HeadStore; children: ComponentChildren }) {
-  const [path] = useLocation()
+  const [path, setLocation] = useLocation()
   useRouteAnnouncer({ path, title: store.head.value.title })
-  return <RailShell items={items} currentPath={path}>{children}</RailShell>
+  return (
+    <RailShell
+      items={items}
+      currentPath={path}
+      navigateLink={(_key, href) => setLocation(href)}
+    >
+      {children}
+    </RailShell>
+  )
 }
 ```
+
+In a single-page app the two make one route change: `navigateLink` (or `Shell`'s `navigate`) hands
+a plain click on a shell link to the router instead of loading a new page, the router's new `path`
+reaches the hook, and the hook moves focus and sets the title the way the page load it replaced
+would have.
 
 - **`path` is the router's, and only its path counts.** The hook imports no router. Anything from
   the first `?` or `#` is ignored, so a filter written to the query string is not a new page.
@@ -3009,7 +3022,7 @@ links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`
 `close(false)`-not-`close(true)` reasoning: a navigating link, like the scrim, is not the menu button
 asking to close, so it must not fight wherever the click actually sends focus next.
 
-**`navigate` is the client-router port, shaped like `RailShell`'s.** Without it, every link is an
+**`navigate` is the client-router port, shaped like `RailShell`'s `navigateLink`.** Without it, every link is an
 ordinary link. With it, a plain left click on a nav link, or on an action that has an `href`, calls
 `navigate(href)` and cancels the browser's own navigation. A click with Ctrl, Meta, Shift or Alt
 held, or with another button, is left to the browser, so "open in a new tab" still works, and such a
@@ -3416,6 +3429,18 @@ page's last line always ends above it; it pads itself by the bottom safe-area in
 bounded, scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and
 that container becomes what both stick to.
 
+**Links reach a client router through `navigateLink`.** An entry with an `href` is a real link, so
+middle-click, "open in a new tab" and the address in the status bar all work. Without
+`navigateLink` a click on it loads the page, as any link does. With it, a plain left click —
+primary button, no Ctrl, Meta, Shift or Alt, not already cancelled by an earlier listener, on a
+link that resolves to the page's own origin — calls `navigateLink(key, href)` and cancels the
+browser's navigation. Every other click is left to the browser; a middle click fires `auxclick`,
+not `click`, so it never reaches the port. The rule is `followLinkClick` from `ui/`'s `link`, the
+one `Link`, `Button` and `Shell` follow, plus the origin test, because a client router cannot open
+another site. In the "More" overlay the entry closes the overlay either way. `navigate` stays the
+port for an entry with no `href`, which is a button. Pair it with `useRouteAnnouncer` (see "Route
+changes move focus and set the title") so a routed click moves focus and sets the title.
+
 **`header` is the app's banner.** The brand, a picker or the user menu go in `header`, not in
 `children`: `header` renders in a `<header>` beside `<main>`, never inside it, so at page level it is
 the document's banner landmark, and the skip link — first in tab order, aimed at `<main>` — moves
@@ -3432,8 +3457,9 @@ The "More" glyph is three dots drawn inline, so the package gains no icon.
 `rail-shell.test.tsx` proves what a string render can: the split at five, the primary action's
 place in it, `aria-current` from either `currentKey` or `currentPath`, the "More" button pointing at
 the dialog, and every label's English default and override. The breakpoint switch, the layout, the
-dialog's keyboard and pointer behaviour, the focus moves, the header's banner role and the skip
-link's jump past the header are proven in `pages/checks/system.ts`.
+dialog's keyboard and pointer behaviour, the focus moves, the header's banner role, the skip
+link's jump past the header and which link clicks `navigateLink` takes are proven in
+`pages/checks/system.ts`.
 
 ---
 

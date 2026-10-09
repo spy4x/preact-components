@@ -1293,15 +1293,18 @@ function StateInitDemo() {
   )
 }
 
-/** The rail shell demo's destinations: seven, so the phone bar needs its "More" slot. */
+/**
+ * The rail shell demo's destinations: seven, so the phone bar needs its "More" slot. Each is a link
+ * to a fragment that names nothing on the page, so a click the demo lets through moves no page.
+ */
 const railShellItems: RailShellItem[] = [
-  { key: "home", label: "Home", Icon: IconHome },
-  { key: "projects", label: "Projects", Icon: IconFolder },
-  { key: "notes", label: "Notes", Icon: IconBookOpen },
-  { key: "stats", label: "Stats", Icon: IconChartPie },
-  { key: "search", label: "Search", Icon: IconSearch },
-  { key: "alerts", label: "Alerts", Icon: IconBell },
-  { key: "settings", label: "Settings", Icon: IconCog6Tooth },
+  { key: "home", label: "Home", href: "#rail-home", Icon: IconHome },
+  { key: "projects", label: "Projects", href: "#rail-projects", Icon: IconFolder },
+  { key: "notes", label: "Notes", href: "#rail-notes", Icon: IconBookOpen },
+  { key: "stats", label: "Stats", href: "#rail-stats", Icon: IconChartPie },
+  { key: "search", label: "Search", href: "#rail-search", Icon: IconSearch },
+  { key: "alerts", label: "Alerts", href: "#rail-alerts", Icon: IconBell },
+  { key: "settings", label: "Settings", href: "#rail-settings", Icon: IconCog6Tooth },
 ]
 
 /**
@@ -1310,12 +1313,16 @@ const railShellItems: RailShellItem[] = [
  * `min-h-full` replaces the component's own `min-h-dvh`, so the frame is the scroll container the
  * rail's contents and the tab bar stick to. Which of the two shows follows the viewport, not this
  * frame: the guide at desktop width shows the rail, and a phone-width window shows the tab bar with
- * "More". Every entry is a button through the `navigate` port, so choosing one moves the current
- * marker and prints the key it was handed instead of leaving the guide. The `header` holds a brand
- * and one button, so the skip link has a control to jump past.
+ * "More". Every item is a link followed through the `navigateLink` port, so a plain click moves the
+ * current marker and prints the key and `href` it was handed instead of following the link; the
+ * checkbox takes the port away, and the links are ordinary links again. The primary action has no
+ * `href`, so it is a button through `navigate`. The `header` holds a brand and one button, so the
+ * skip link has a control to jump past.
  */
 function RailShellDemo() {
   const current = useSignal("home")
+  const via = useSignal("start")
+  const routeLinks = useSignal(true)
   return (
     <div
       class="h-[420px] overflow-y-auto"
@@ -1328,7 +1335,14 @@ function RailShellDemo() {
         primary={{ key: "compose", label: "Write", Icon: IconPencilSquare }}
         navigate={(key) => {
           current.value = key
+          via.value = "navigate"
         }}
+        navigateLink={routeLinks.value
+          ? (key, href) => {
+            current.value = key
+            via.value = `navigateLink ${href}`
+          }
+          : undefined}
         header={
           <div class="flex items-center justify-between gap-4 border-b border-subtle px-4 py-3">
             <strong class="text-sm">Brand</strong>
@@ -1340,8 +1354,20 @@ function RailShellDemo() {
       >
         <div class="flex flex-col gap-4 p-4 text-sm">
           <p>
-            Navigated to: <strong data-e2e="rail-shell-demo-current">{current.value}</strong>
+            Navigated to: <strong data-e2e="rail-shell-demo-current">{current.value}</strong>{" "}
+            through <code data-e2e="rail-shell-demo-via">{via}</code>
           </p>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={routeLinks.value}
+              onChange={(event) => {
+                routeLinks.value = event.currentTarget.checked
+              }}
+              data-e2e="rail-shell-demo-route-links"
+            />
+            Route link clicks through <code>navigateLink</code>
+          </label>
           {Array.from(
             { length: 12 },
             (_, index) => (
@@ -1783,6 +1809,12 @@ useEffect(() => {
         description: "Called for an item with no `href`, instead of following a link.",
       },
       {
+        name: "navigateLink",
+        type: "(key: string, href: string) => void",
+        description:
+          "Called on a plain left click on an item's same-origin link, instead of following it; a modified or middle click stays the browser's.",
+      },
+      {
         name: "header",
         type: "ComponentChildren",
         description:
@@ -1797,6 +1829,7 @@ useEffect(() => {
   ]}
   currentPath={location.pathname}
   primary={{ key: "compose", label: "Write", href: "/new", Icon: IconPencilSquare }}
+  navigateLink={(key, href) => navigate(href)}
   header={<AppHeader />}
 >
   <Page />
