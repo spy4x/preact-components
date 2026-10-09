@@ -86,7 +86,8 @@ export interface InstallPromptStore {
   visible: ReadonlySignal<boolean>
   /**
    * Open the browser's install dialog and wait for the answer. The event can be used once, so the
-   * mode leaves `prompt` either way: `installed` on acceptance, `unavailable` otherwise.
+   * mode leaves `prompt` either way: `installed` on acceptance, `unavailable` otherwise, including
+   * when `prompt()` rejects, which this rethrows.
    */
   install(): Promise<InstallOutcome>
   /** Store the flag, so the offer stays hidden. Returns the port's promise when it has one. */
@@ -107,6 +108,10 @@ export interface InstallPromptStore {
  * Every browser on iOS is WebKit, and since iOS 16.4 each can add a page to the home screen from its
  * Share menu, so this checks the device, not the browser. iPadOS asks for desktop pages and calls
  * itself a Mac; a Mac with touch points is an iPad.
+ *
+ * In-app browsers on iOS, such as the web views inside Instagram or Gmail, also count as iOS here,
+ * though they have no Add to Home Screen. Their user agents differ per app, so this does not try to
+ * tell them apart; the steps then name a menu the person cannot find, and "Not now" hides them.
  */
 export function isIosDevice(navigator: InstallPromptNavigator | null | undefined): boolean {
   const agent = navigator?.userAgent ?? ""
@@ -114,13 +119,19 @@ export function isIosDevice(navigator: InstallPromptNavigator | null | undefined
   return agent.includes("Macintosh") && (navigator?.maxTouchPoints ?? 0) > 1
 }
 
-/** Whether the page runs as an installed app: the display mode says so, or iOS's own flag does. */
+/**
+ * Whether the page runs as an installed app: the display mode is `standalone` or `minimal-ui`, or
+ * iOS's own flag says so. `fullscreen` is left out on purpose, because a browser tab in full-screen
+ * mode matches it too.
+ */
 export function isStandalone(
   navigator: InstallPromptNavigator | null | undefined,
   matchMedia: InstallPromptMatchMedia | null | undefined,
 ): boolean {
   if (navigator?.standalone === true) return true
-  return Boolean(matchMedia?.("(display-mode: standalone)").matches)
+  return ["(display-mode: standalone)", "(display-mode: minimal-ui)"].some((query) =>
+    Boolean(matchMedia?.(query).matches)
+  )
 }
 
 /** The flag's storage when the caller gives none: memory only. */
@@ -194,11 +205,16 @@ export function createInstallPrompt(ports: InstallPromptPorts = {}): InstallProm
     const event = deferred
     if (!event) return "unavailable"
     deferred = null
-    await event.prompt()
-    const { outcome } = await event.userChoice
-    // Read again: `appinstalled` may have already set `installed` while the dialog was open.
-    if (mode.value === "prompt") mode.value = outcome === "accepted" ? "installed" : "unavailable"
-    return outcome
+    let outcome: "accepted" | "dismissed" = "dismissed"
+    try {
+      await event.prompt()
+      outcome = (await event.userChoice).outcome
+      return outcome
+    } finally {
+      // The event is used up even when `prompt()` throws, so the offer cannot stay. Read the mode
+      // again: `appinstalled` may have already set `installed` while the dialog was open.
+      if (mode.value === "prompt") mode.value = outcome === "accepted" ? "installed" : "unavailable"
+    }
   }
 
   function dismiss(): void | Promise<void> {

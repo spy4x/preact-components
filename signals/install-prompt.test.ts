@@ -94,6 +94,21 @@ describe("createInstallPrompt", () => {
     expect(calls.prompt).toBe(1)
   })
 
+  it("ends the offer when the install dialog fails to open", async () => {
+    const { target, fire } = fakeTarget()
+    const store = createInstallPrompt({ target, navigator: CHROME, matchMedia: notStandalone })
+    store.watch()
+    const { event } = fakeEvent()
+    fire("beforeinstallprompt", {
+      ...event,
+      prompt: () => Promise.reject(new Error("NotAllowedError")),
+    })
+
+    await expect(store.install()).rejects.toThrow("NotAllowedError")
+    expect(store.mode.value).toBe("unavailable")
+    expect(store.visible.value).toBe(false)
+  })
+
   it("shows the iOS steps on an iPhone, where no event ever fires", () => {
     const store = createInstallPrompt({
       target: null,
@@ -200,5 +215,13 @@ describe("isStandalone", () => {
     expect(isStandalone({}, () => ({ matches: true }))).toBe(true)
     expect(isStandalone({}, notStandalone)).toBe(false)
     expect(isStandalone(null, null)).toBe(false)
+  })
+
+  it("counts a minimal-ui app as installed, but not a full-screen browser tab", () => {
+    const only = (mode: string) => (query: string) => ({
+      matches: query === `(display-mode: ${mode})`,
+    })
+    expect(isStandalone({}, only("minimal-ui"))).toBe(true)
+    expect(isStandalone({}, only("fullscreen"))).toBe(false)
   })
 })
