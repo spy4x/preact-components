@@ -15,6 +15,7 @@
     "./copy-button": "./copy-button.tsx",
     "./combobox": "./combobox.tsx",
     "./command-palette": "./command-palette.tsx",
+    "./comparison-table": "./comparison-table.tsx",
     "./data-table": "./data-table.tsx",
     "./date-range": "./date-range.ts",
     "./date-range-picker": "./date-range-picker.tsx",
