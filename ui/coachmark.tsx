@@ -50,6 +50,10 @@ type CoachmarkMode = "anchor" | "measured" | "sheet"
 const surfaceClasses =
   "w-80 rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-4 text-foreground shadow-popover"
 
+/** The target's outline colour: the chain `theme/preset.css` uses for a button's focus ring. */
+const TARGET_RING =
+  "var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)))"
+
 const defaultGoToLabel = (name: string) => name ? `Go to ${name}` : "Go to the highlighted control"
 
 /** The element `target` names, or `null` when it names nothing, or names an invalid selector. */
@@ -196,7 +200,7 @@ export function Coachmark(
         "anchor-name",
         others && others !== "none" ? `${others}, ${anchorName}` : anchorName,
       )
-      element.style.outline = "2px solid var(--color-focus)"
+      element.style.outline = `2px solid ${TARGET_RING}`
       element.style.outlineOffset = "2px"
       if (children != null && children !== false) {
         const before = savedRef.current.describedBy
