@@ -1,8 +1,7 @@
 # `@spy4x/preact-system`
 
 Application chrome and platform integration: SEO, PWA updates and offline sync, and the
-progressive-enhancement
-components that have to render without JavaScript.
+progressive-enhancement components that have to render without JavaScript.
 
 Extracted from earlier source applications.
 
@@ -935,17 +934,22 @@ plain values and callbacks, so they work with any outbox and ship on their own.
 - **`ConflictChooser`** lists the changes the server did not take. Each says in plain words what
   happened, changed elsewhere (`version`), deleted elsewhere (`gone`) or refused by the server
   (`rejected`), and offers the choices that make sense: "Keep mine" and "Use theirs" for a change
-  made elsewhere, "Restore mine" and "Discard mine" for a deleted item, and only "Discard mine" for
-  a refusal, because sending it again would be refused again. `offersKeepMine(item)` is that rule;
-  an item's `canKeepMine` overrides it. It renders inline, which suits a phone; for a dialog, put
-  it inside `Modal` from `@spy4x/preact-ui`. When a choice removes the item whose button had
-  focus, focus moves to the next item, or to the heading once none is left.
-  `DEFAULT_CONFLICT_CHOOSER_LABELS` holds its English words; `labels` replaces any of them, per
-  reason inside the records.
+  made elsewhere, and only "Discard mine" for a deleted item or a refusal. `offersKeepMine(item)`
+  is that rule. An item opts in with `canKeepMine: true`: on a `gone` item the button then reads
+  "Restore mine", for an outbox whose `keepMine` re-creates a deleted item. It renders inline, which
+  suits a phone; for a dialog, put it inside `Modal` from `@spy4x/preact-ui` and set
+  `headingLevel` to fit the dialog's own title. When a choice removes the item whose button had
+  focus, focus moves to the next item, or to the heading once none is left. A callback may return
+  a promise: its item's buttons stay busy until it settles, and a rejection shows `labels.failed`
+  under the item and announces it, with nothing left uncaught. `DEFAULT_CONFLICT_CHOOSER_LABELS`
+  holds its English words; `labels` replaces any of them, per reason inside the records.
 - **`InstallPrompt`** offers to install the app: an Install button where the browser has an
   install dialog (`mode: "prompt"`), and "Tap Share, then Add to Home Screen" on an iPhone or iPad
   (`mode: "ios"`). It renders nothing for `installed` and `unavailable`. `createInstallPrompt` in
-  `@spy4x/preact-signals` supplies the mode and remembers a dismissal through a port.
+  `@spy4x/preact-signals` supplies the mode and remembers a dismissal through a port. When the card
+  leaves while focus is inside it, after "Not now" or an accepted install, focus moves to the
+  element `returnFocus` returns, which must be focusable: a button, or an element with
+  `tabIndex={-1}`. Without one, focus falls to the page body. A rejected `onInstall` shows `labels.failed` in the card.
   `DEFAULT_INSTALL_PROMPT_LABELS` holds its English words.
 - The update banner is `SWUpdater`, above; there is no second one.
 
@@ -986,12 +990,13 @@ const byId = (id: string) => entries.value.find((entry) => String(entry.seq) ===
   onUseTheirs={(id) => outbox.useTheirs(byId(id)).then(refresh)}
 />
 <InstallPrompt mode={install.visible.value ? install.mode.value : "unavailable"}
-  onInstall={install.install} onDismiss={install.dismiss} />
+  onInstall={install.install} onDismiss={install.dismiss}
+  returnFocus={() => document.getElementById("app-menu")} />
 ```
 
-"Restore mine" on a `gone` conflict calls `onKeepMine`, which re-creates the item only with an
-outbox whose `keepMine` handles `gone`; with one that does nothing there, pass
-`canKeepMine: false` for `gone` items.
+A `gone` conflict offers only "Discard mine" here, because the outbox's `keepMine` does nothing for
+a deleted item today. Once it re-creates one, map `canKeepMine: true` for `gone` entries and the
+item offers "Restore mine" too.
 
 ## Helpers
 

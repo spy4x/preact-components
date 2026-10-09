@@ -11,7 +11,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconDownload, IconShare } from "@spy4x/preact-icons"
 import { Button } from "@spy4x/preact-ui/button"
 import type { JSX } from "preact"
-import { useState } from "preact/hooks"
+import { useEffect, useRef, useState } from "preact/hooks"
 
 /** Every word {@link InstallPrompt} shows, each with an English default. */
 export interface InstallPromptLabels {
@@ -29,6 +29,8 @@ export interface InstallPromptLabels {
   install: string
   /** The dismiss button. Defaults to `"Not now"`. */
   dismiss: string
+  /** Shown in the card when `onInstall` or `onDismiss` returns a promise that rejects. */
+  failed: string
 }
 
 /** The English words {@link InstallPrompt} shows when the caller passes none. */
@@ -40,6 +42,7 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
   iosAfter: "then Add to Home Screen.",
   install: "Install",
   dismiss: "Not now",
+  failed: "That did not work. Try again.",
 }
 
 export interface InstallPromptProps {
@@ -48,10 +51,22 @@ export interface InstallPromptProps {
    * `unavailable` render nothing. `createInstallPrompt().mode` in `@spy4x/preact-signals` fits.
    */
   mode: "prompt" | "ios" | "installed" | "unavailable"
-  /** Opens the browser's install dialog. A returned promise keeps the button busy until it ends. */
+  /**
+   * Opens the browser's install dialog. A returned promise keeps the button busy until it ends; a
+   * rejection is caught here and shows `labels.failed`.
+   */
   onInstall: () => void | Promise<unknown>
-  /** Hides the card for good. The caller stores that and stops rendering it. */
-  onDismiss: () => void
+  /**
+   * Hides the card for good. The caller stores that and stops rendering it. A returned promise that
+   * rejects is caught here and shows `labels.failed`.
+   */
+  onDismiss: () => void | Promise<unknown>
+  /**
+   * Where focus goes when the card leaves while focus is inside it, after "Not now" or an accepted
+   * install. It must return a focusable element, such as the button that opened a menu, or an
+   * element with `tabIndex={-1}`. Without it, focus falls to the page body.
+   */
+  returnFocus?: () => HTMLElement | null | undefined
   /** Words to replace. */
   labels?: Partial<InstallPromptLabels>
   /** Utilities for the card. */
@@ -60,24 +75,56 @@ export interface InstallPromptProps {
 
 /**
  * Offer to install the app, or explain how to on iOS. Renders nothing when there is nothing to
- * offer. It is not a live region and never takes focus: it is an offer, not news.
+ * offer. It is not a live region and never takes focus on arrival: it is an offer, not news. When
+ * it leaves with focus inside, focus moves to `returnFocus`.
  */
 export function InstallPrompt(
-  { mode, onInstall, onDismiss, labels, class: className }: InstallPromptProps,
+  { mode, onInstall, onDismiss, labels, returnFocus, class: className }: InstallPromptProps,
 ): JSX.Element | null {
   const words = { ...DEFAULT_INSTALL_PROMPT_LABELS, ...labels }
   const [busy, setBusy] = useState(false)
-  if (mode !== "prompt" && mode !== "ios") return null
+  const [failed, setFailed] = useState(false)
+  const card = useRef<HTMLElement>(null)
+  const target = useRef(returnFocus)
+  target.current = returnFocus
+  /** Set when the card is leaving with focus inside, read once it has left. */
+  const moveFocus = useRef(false)
+  const shown = mode === "prompt" || mode === "ios"
 
-  const install = () => {
-    const result = onInstall()
+  // Read before the card leaves the page: once it is gone, focus has already fallen to the body.
+  // A server render has no document.
+  if (!shown && card.current?.contains(globalThis.document?.activeElement ?? null)) {
+    moveFocus.current = true
+  }
+
+  useEffect(() => {
+    if (moveFocus.current) {
+      moveFocus.current = false
+      target.current?.()?.focus()
+    }
+    // The caller may unmount the card instead of changing `mode`. Effect cleanups run while its
+    // markup is still in the page, so focus can still be asked about there.
+    const element = card.current
+    return () => {
+      if (element?.isConnected && element.contains(element.ownerDocument.activeElement)) {
+        target.current?.()?.focus()
+      }
+    }
+  }, [shown])
+
+  if (!shown) return null
+
+  const run = (action: () => void | Promise<unknown>, showBusy: boolean) => {
+    setFailed(false)
+    const result = action()
     if (!result) return
-    setBusy(true)
-    result.finally(() => setBusy(false))
+    if (showBusy) setBusy(true)
+    result.then(() => {}, () => setFailed(true)).finally(() => setBusy(false))
   }
 
   return (
     <section
+      ref={card}
       aria-label={words.title}
       data-install-mode={mode}
       class={cn("pc-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center", className)}
@@ -98,17 +145,19 @@ export function InstallPrompt(
                 {words.iosAfter}
               </p>
             )}
+          {failed ? <p aria-hidden="true" class="text-sm text-danger">{words.failed}</p> : null}
+          <p role="status" class="sr-only">{failed ? words.failed : ""}</p>
         </div>
       </div>
       <div class="flex flex-wrap gap-2">
         {mode === "prompt"
           ? (
-            <Button variant="primary" busy={busy} onClick={install}>
+            <Button variant="primary" busy={busy} onClick={() => run(onInstall, true)}>
               {words.install}
             </Button>
           )
           : null}
-        <Button variant="ghost" onClick={onDismiss}>{words.dismiss}</Button>
+        <Button variant="ghost" onClick={() => run(onDismiss, false)}>{words.dismiss}</Button>
       </div>
     </section>
   )

@@ -26,4 +26,11 @@ describe("InstallPrompt", () => {
     expect(render(<InstallPrompt mode="installed" onInstall={noop} onDismiss={noop} />)).toBe("")
     expect(render(<InstallPrompt mode="unavailable" onInstall={noop} onDismiss={noop} />)).toBe("")
   })
+
+  it("renders no failure message before anything failed", () => {
+    const html = render(<InstallPrompt mode="prompt" onInstall={noop} onDismiss={noop} />)
+
+    expect(html).toContain('<p role="status" class="sr-only"></p>')
+    expect(html).not.toContain("That did not work")
+  })
 })

@@ -1444,27 +1444,35 @@ const sampleConflicts: ConflictItem[] = [
 
 /**
  * `ConflictChooser` inline and in a dialog. A choice removes the item and logs which callback ran,
- * the way an app removes an entry once its outbox settled it.
+ * the way an app removes an entry once its outbox settled it. "Fail the next choice" makes the next
+ * callback return a rejected promise, as a failed outbox write would.
  */
 function ConflictChooserDemo() {
   const conflicts = useSignal<ConflictItem[]>(sampleConflicts)
   const log = useSignal<string[]>([])
   const dialog = useSignal(false)
+  const failNext = useSignal(false)
   const settle = (choice: string) => (id: string) => {
     const item = conflicts.value.find((entry) => entry.id === id)
+    if (failNext.value) {
+      failNext.value = false
+      log.value = [...log.value, `failed: ${item?.label}`]
+      return Promise.reject(new Error("The demo refused this choice"))
+    }
     log.value = [...log.value, `${choice}: ${item?.label}`]
     conflicts.value = conflicts.value.filter((entry) => entry.id !== id)
   }
-  const chooser = (
+  const chooser = (headingLevel: 2 | 3) => (
     <ConflictChooser
       conflicts={conflicts.value}
       onKeepMine={settle("keep mine")}
       onUseTheirs={settle("use theirs")}
+      headingLevel={headingLevel}
     />
   )
   return (
     <Stack gap="md" data-e2e="conflict-demo">
-      <div data-e2e="conflict-inline">{dialog.value ? null : chooser}</div>
+      <div data-e2e="conflict-inline">{dialog.value ? null : chooser(2)}</div>
       <Cluster gap="sm">
         <Button
           variant="outline"
@@ -1485,6 +1493,15 @@ function ConflictChooserDemo() {
         >
           Show in a dialog
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="conflict-fail-next"
+          aria-pressed={failNext.value}
+          onClick={() => (failNext.value = !failNext.value)}
+        >
+          Fail the next choice
+        </Button>
       </Cluster>
       <Modal
         open={dialog.value}
@@ -1494,7 +1511,7 @@ function ConflictChooserDemo() {
         title="Sync conflicts"
         cancelLabel="Close"
       >
-        {dialog.value ? chooser : null}
+        {dialog.value ? chooser(3) : null}
       </Modal>
       <ol data-e2e="conflict-log" class="text-sm text-muted">
         {log.value.map((line) => <li key={line}>{line}</li>)}
@@ -1510,7 +1527,8 @@ const DESKTOP = { userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Safar
 
 /**
  * A stand-in window for `createInstallPrompt`: it fires `beforeinstallprompt` when the card asks,
- * with an event whose dialog accepts at once, so the catalogue never asks to install itself.
+ * with an event whose dialog accepts at once, or whose dialog fails to open, so the catalogue never
+ * asks to install itself.
  */
 function fakeInstallWindow() {
   const listeners = new Set<(event: InstallPromptEvent) => void>()
@@ -1523,32 +1541,49 @@ function fakeInstallWindow() {
         listeners.delete(listener)
       },
     },
-    offer: () =>
+    offer: (broken = false) =>
       listeners.forEach((listener) =>
         listener({
           preventDefault: () => {},
-          prompt: () => Promise.resolve(),
+          prompt: () =>
+            broken
+              ? Promise.reject(new DOMException("The dialog did not open", "NotAllowedError"))
+              : Promise.resolve(),
           userChoice: Promise.resolve({ outcome: "accepted" as const }),
         })
       ),
   }
 }
 
-/** One `createInstallPrompt` store on fake ports, and the card it draws. */
+/**
+ * One `createInstallPrompt` store on fake ports, and the card it draws. Focus returns to the state
+ * line when the card leaves. "Fail the next Not now" makes the stored flag's next write reject.
+ */
 function InstallCase(
-  { name, navigator, standalone, offer }: {
+  { name, navigator, standalone, offer, failToggle }: {
     name: string
     navigator: { userAgent: string }
     standalone: boolean
     offer?: boolean
+    failToggle?: boolean
   },
 ) {
   const fake = useRef(fakeInstallWindow()).current
+  const failNext = useSignal(false)
+  const stateLine = useRef<HTMLParagraphElement>(null)
   const store = useRef(
     createInstallPrompt({
       target: fake.target,
       navigator,
       matchMedia: () => ({ matches: standalone }),
+      dismissed: {
+        read: () => false,
+        write: () => {
+          if (!failNext.value) return
+          failNext.value = false
+          return Promise.reject(new Error("The demo could not store the flag"))
+        },
+      },
     }),
   ).current
   useEffect(() => store.watch(), [])
@@ -1558,17 +1593,50 @@ function InstallCase(
         mode={store.visible.value ? store.mode.value : "unavailable"}
         onInstall={store.install}
         onDismiss={store.dismiss}
+        returnFocus={() => stateLine.current}
       />
-      <p class="text-sm text-muted" data-e2e="install-mode">
+      <p ref={stateLine} tabIndex={-1} class="text-sm text-muted" data-e2e="install-mode">
         mode: {store.mode.value}, dismissed: {String(store.dismissed.value)}
       </p>
-      {offer
+      {offer || failToggle
         ? (
-          <div>
-            <Button variant="outline" size="sm" data-e2e="install-offer" onClick={fake.offer}>
-              Fire beforeinstallprompt
-            </Button>
-          </div>
+          <Cluster gap="sm">
+            {offer
+              ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-e2e="install-offer"
+                    onClick={() => fake.offer()}
+                  >
+                    Fire beforeinstallprompt
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-e2e="install-offer-broken"
+                    onClick={() => fake.offer(true)}
+                  >
+                    Fire one whose dialog fails
+                  </Button>
+                </>
+              )
+              : null}
+            {failToggle
+              ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-e2e="install-fail-next"
+                  aria-pressed={failNext.value}
+                  onClick={() => (failNext.value = !failNext.value)}
+                >
+                  Fail the next Not now
+                </Button>
+              )
+              : null}
+          </Cluster>
         )
         : null}
     </Stack>
@@ -1583,7 +1651,7 @@ function InstallPromptDemo() {
         <InstallCase name="prompt" navigator={DESKTOP} standalone={false} offer />
       </Part>
       <Part title="iPhone: no dialog, so the steps">
-        <InstallCase name="ios" navigator={IPHONE} standalone={false} />
+        <InstallCase name="ios" navigator={IPHONE} standalone={false} failToggle />
       </Part>
       <Part title="Already running installed: nothing to offer">
         <InstallCase name="installed" navigator={IPHONE} standalone />

@@ -28,8 +28,10 @@ export interface ConflictItem {
   /** Replaces the explanation, such as the server's own reason for a refusal. */
   message?: ComponentChildren
   /**
-   * Whether "Keep mine" is offered. Defaults to `true` for `version` and `gone` (keeping mine
-   * re-creates the item) and `false` for `rejected`, where sending it again would be refused again.
+   * Whether "Keep mine" is offered. Defaults to `true` only for `version`. A `gone` item opts in
+   * with `true` when the caller's `onKeepMine` re-creates a deleted item (the button then reads
+   * "Restore mine"); a `rejected` one stays off by default because sending it again would be
+   * refused again.
    */
   canKeepMine?: boolean
 }
@@ -46,6 +48,8 @@ export interface ConflictChooserLabels {
   useTheirs: Record<ConflictKind, string>
   /** Said once nothing is left. Defaults to `"All conflicts resolved"`. */
   resolved: string
+  /** Shown under an item, and announced, when its callback's promise rejects. */
+  failed: string
 }
 
 /** The English words {@link ConflictChooser} shows when the caller passes none. */
@@ -60,6 +64,7 @@ export const DEFAULT_CONFLICT_CHOOSER_LABELS: ConflictChooserLabels = {
   keepMine: { version: "Keep mine", gone: "Restore mine", rejected: "Keep mine" },
   useTheirs: { version: "Use theirs", gone: "Discard mine", rejected: "Discard mine" },
   resolved: "All conflicts resolved",
+  failed: "Your choice was not saved. Try again.",
 }
 
 /** The words a caller replaces: any of them, and per reason inside the records. */
@@ -69,6 +74,7 @@ export interface ConflictChooserLabelOverrides {
   keepMine?: Partial<ConflictChooserLabels["keepMine"]>
   useTheirs?: Partial<ConflictChooserLabels["useTheirs"]>
   resolved?: string
+  failed?: string
 }
 
 export interface ConflictChooserProps {
@@ -80,6 +86,8 @@ export interface ConflictChooserProps {
   onUseTheirs: (id: string) => void | Promise<unknown>
   /** Words to replace. The nested records merge per reason. */
   labels?: ConflictChooserLabelOverrides
+  /** The heading's level, so the outline fits the page or the dialog around it. Defaults to `2`. */
+  headingLevel?: 2 | 3 | 4 | 5 | 6
   /** Utilities for the outer element. */
   class?: string
 }
@@ -93,12 +101,13 @@ function mergeLabels(labels: ConflictChooserLabelOverrides = {}): ConflictChoose
     keepMine: { ...base.keepMine, ...labels.keepMine },
     useTheirs: { ...base.useTheirs, ...labels.useTheirs },
     resolved: labels.resolved ?? base.resolved,
+    failed: labels.failed ?? base.failed,
   }
 }
 
 /** Whether an item offers "Keep mine": the item says, or its reason decides. */
 export function offersKeepMine(item: ConflictItem): boolean {
-  return item.canKeepMine ?? item.reason !== "rejected"
+  return item.canKeepMine ?? item.reason === "version"
 }
 
 /**
@@ -107,15 +116,21 @@ export function offersKeepMine(item: ConflictItem): boolean {
  * A choice runs the caller's callback; the caller removes the item from `conflicts` once it is
  * settled. When that removes the item whose button had focus, focus moves to the next item's first
  * button, or to the heading when none is left, so a keyboard user is never dropped at the top of the
- * page. Nothing else moves focus. A polite live region says when the list is empty.
+ * page. Nothing else moves focus. A polite live region says when the list is empty, and when a
+ * callback's promise rejects; the rejection is caught here, and that item shows `labels.failed`.
  */
 export function ConflictChooser(
-  { conflicts, onKeepMine, onUseTheirs, labels, class: className }: ConflictChooserProps,
+  { conflicts, onKeepMine, onUseTheirs, labels, headingLevel = 2, class: className }:
+    ConflictChooserProps,
 ): JSX.Element {
   const words = mergeLabels(labels)
   const headingId = useId()
   const root = useRef<HTMLElement>(null)
-  const [busy, setBusy] = useState<string | null>(null)
+  const heading = useRef<HTMLHeadingElement>(null)
+  /** The items whose callback is still running. Other items stay usable meanwhile. */
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
+  /** The item whose last callback rejected, to say so under it. */
+  const [failedId, setFailedId] = useState<string | null>(null)
   /** The position of the item whose button was pressed, while its removal is awaited. */
   const chosenAt = useRef<number | null>(null)
   const [hadConflicts, setHadConflicts] = useState(conflicts.length > 0)
@@ -131,19 +146,37 @@ export function ConflictChooser(
     if (document.activeElement && document.activeElement !== document.body) return
     const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
     const next = items[Math.min(index, items.length - 1)]
-    const target = next?.querySelector<HTMLElement>("button") ??
-      root.current.querySelector<HTMLElement>("h2")
+    const target = next?.querySelector<HTMLElement>("button") ?? heading.current
     target?.focus()
   }, [conflicts])
 
   const choose = (id: string, index: number, run: (id: string) => void | Promise<unknown>) => {
-    if (busy !== null) return
+    if (busy.has(id)) return
     chosenAt.current = index
+    setFailedId((current) => (current === id ? null : current))
     const result = run(id)
     if (!result) return
-    setBusy(id)
-    result.finally(() => setBusy((current) => (current === id ? null : current)))
+    setBusy((current) => new Set(current).add(id))
+    result.then(
+      () => {},
+      () => {
+        // The item stays, so no focus move is due for this choice.
+        chosenAt.current = null
+        setFailedId(id)
+      },
+    ).finally(() =>
+      setBusy((current) => {
+        const next = new Set(current)
+        next.delete(id)
+        return next
+      })
+    )
   }
+
+  const Heading = `h${headingLevel}` as "h2"
+  const failedLabel = failedId !== null && conflicts.some((item) => item.id === failedId)
+    ? words.failed
+    : ""
 
   return (
     <section
@@ -151,17 +184,22 @@ export function ConflictChooser(
       aria-labelledby={headingId}
       class={cn("flex flex-col gap-3", className)}
     >
-      <h2 id={headingId} tabIndex={-1} class="text-base font-semibold outline-hidden">
+      <Heading
+        ref={heading}
+        id={headingId}
+        tabIndex={-1}
+        class="text-base font-semibold outline-hidden"
+      >
         {conflicts.length > 0 ? words.heading(conflicts.length) : words.resolved}
-      </h2>
+      </Heading>
       <p role="status" aria-live="polite" class="sr-only">
-        {conflicts.length === 0 && hadConflicts ? words.resolved : ""}
+        {failedLabel || (conflicts.length === 0 && hadConflicts ? words.resolved : "")}
       </p>
       {conflicts.length > 0
         ? (
           <ul class="flex flex-col gap-3">
             {conflicts.map((item, index) => {
-              const itemBusy = busy === item.id
+              const itemBusy = busy.has(item.id)
               return (
                 <li
                   key={item.id}
@@ -174,6 +212,9 @@ export function ConflictChooser(
                     <p class="text-sm text-muted">
                       {item.message ?? words.explanation[item.reason]}
                     </p>
+                    {failedLabel && failedId === item.id
+                      ? <p class="text-sm text-danger">{words.failed}</p>
+                      : null}
                   </div>
                   <div class="flex flex-wrap gap-2">
                     {offersKeepMine(item)

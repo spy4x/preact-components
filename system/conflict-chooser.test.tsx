@@ -39,12 +39,38 @@ describe("ConflictChooser", () => {
     expect(buttonsOf(html, "1")).toEqual(["Keep mine", "Use theirs"])
   })
 
-  it("offers to restore or discard an item deleted elsewhere", () => {
+  it("offers only to discard an item deleted elsewhere", () => {
     const html = render(
       <ConflictChooser conflicts={conflicts} onKeepMine={noop} onUseTheirs={noop} />,
     )
 
+    expect(buttonsOf(html, "2")).toEqual(["Discard mine"])
+  })
+
+  it("offers to restore a deleted item that opts in with canKeepMine", () => {
+    const html = render(
+      <ConflictChooser
+        conflicts={[{ ...conflicts[1], canKeepMine: true }]}
+        onKeepMine={noop}
+        onUseTheirs={noop}
+      />,
+    )
+
     expect(buttonsOf(html, "2")).toEqual(["Restore mine", "Discard mine"])
+  })
+
+  it("renders its heading at the level asked for", () => {
+    const html = render(
+      <ConflictChooser
+        conflicts={conflicts}
+        onKeepMine={noop}
+        onUseTheirs={noop}
+        headingLevel={3}
+      />,
+    )
+
+    expect(html).toMatch(/<h3 id="[^"]+" tabindex="-1"[^>]*>3 changes need your choice<\/h3>/)
+    expect(html).not.toContain("<h2")
   })
 
   it("offers only to discard a change the server refused", () => {
