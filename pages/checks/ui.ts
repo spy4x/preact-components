@@ -18152,7 +18152,9 @@ function pricingState(devtools: Devtools): Promise<PricingState> {
 /**
  * Every billing check: the interval toggle by keyboard, choosing a plan through `onChoose` and
  * through the plain form post, the same toggle and post on a page that runs no script, the
- * past-due warning, and the contrast of every new text in both palettes.
+ * past-due warning, a pending form refusing a submit, focus staying on or returning to the
+ * submit button, a failing callback reported and shown, and the contrast of every new text in
+ * both palettes.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -18160,10 +18162,16 @@ async function billingChecks(devtools: Devtools): Promise<void> {
   await pricingIntervalKeyboardCheck(devtools)
   await pricingCallbackCheck(devtools)
   await pricingPendingCheck(devtools)
+  await billingSyncFocusCheck(devtools, PRICING_DEMO)
+  await billingPendingFocusCheck(devtools, PRICING_DEMO)
+  await billingFailureCheck(devtools, PRICING_DEMO, "Enter", true)
   await pricingFormPostCheck(devtools)
   await pricingNoScriptChecks(devtools)
   await planCardPastDueCheck(devtools)
   await planCardPendingCheck(devtools)
+  await billingSyncFocusCheck(devtools, PLAN_DEMO)
+  await billingPendingFocusCheck(devtools, PLAN_DEMO)
+  await billingFailureCheck(devtools, PLAN_DEMO, "click", false)
   await planCardPausedCheck(devtools)
   await billingContrastCheck(devtools)
 }
@@ -18548,6 +18556,246 @@ async function planCardPendingCheck(devtools: Devtools): Promise<void> {
   }
 }
 
+/** One billing demo that the focus and failure checks drive. */
+interface BillingDemo {
+  /** The component's name, for check names. */
+  name: string
+  card: string
+  /** The submit button whose form the demo's callback takes over. */
+  button: string
+  /** What that button says, for check names. */
+  buttonName: string
+  /** The demo's count of callback calls. */
+  calls: string
+  /** The demo's "Clear pending" button. */
+  clear: string
+  /** The switch that has the callback mark the demo pending. */
+  pendingToggle: string
+  /** The switch that has the callback fail. */
+  failToggle: string
+}
+
+const PRICING_DEMO: BillingDemo = {
+  name: "PricingTable",
+  card: PRICING,
+  button: chooseButton("business-month"),
+  buttonName: "Choose",
+  calls: `${PRICING} [data-e2e="pricing-calls"]`,
+  clear: `${PRICING} [data-e2e="pricing-clear-pending"]`,
+  pendingToggle: `${PRICING} [data-e2e="pricing-pending-toggle"]`,
+  failToggle: `${PRICING} [data-e2e="pricing-fail-toggle"]`,
+}
+
+const PLAN_DEMO: BillingDemo = {
+  name: "PlanCard",
+  card: PLAN_CARDS,
+  button: PLAN_MANAGE,
+  buttonName: "Manage billing",
+  calls: `${PLAN_CARDS} [data-e2e="plan-calls"]`,
+  clear: `${PLAN_CARDS} [data-e2e="plan-clear-pending"]`,
+  pendingToggle: `${PLAN_CARDS} [data-e2e="plan-pending-toggle"]`,
+  failToggle: `${PLAN_CARDS} [data-e2e="plan-fail-toggle"]`,
+}
+
+/**
+ * Sets a demo switch with a scripted click, which leaves focus where it was, and waits until the
+ * checkbox reads `on`.
+ */
+async function setDemoToggle(devtools: Devtools, selector: string, on: boolean): Promise<boolean> {
+  await devtools.evaluate(`(() => {
+    const box = document.querySelector('${selector}')
+    if (box && box.checked !== ${on}) box.click()
+  })()`).catch(() => undefined)
+  return await poll(
+    () =>
+      devtools.evaluate<boolean>(`document.querySelector('${selector}')?.checked === ${on}`)
+        .catch(() => false),
+    2_000,
+  )
+}
+
+/** The demo's call count as a number, `-1` when it cannot be read. */
+async function demoCalls(devtools: Devtools, demo: BillingDemo): Promise<number> {
+  const text = await devtools.evaluate<string>(
+    `document.querySelector('${demo.calls}')?.textContent ?? ""`,
+  ).catch(() => "")
+  return text === "" ? -1 : Number(text)
+}
+
+/** Where focus is, relative to the demo's button: `"button"`, or what holds it instead. */
+function demoFocus(devtools: Devtools, demo: BillingDemo): Promise<string> {
+  return devtools.evaluate<string>(`(() => {
+    const active = document.activeElement
+    if (active === document.querySelector('${demo.button}')) return "button"
+    if (!active || active === document.body) return "body"
+    return active.tagName.toLowerCase() + (active.getAttribute("role") ? "[" +
+      active.getAttribute("role") + "]" : "")
+  })()`).catch(() => "unreadable")
+}
+
+/** Waits two frames and a little more, long enough for a render and its effects to run. */
+async function settleRender(devtools: Devtools): Promise<void> {
+  await devtools.evaluate(`new Promise((done) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 150))))`)
+    .catch(() => undefined)
+}
+
+/** Submits the demo's form with a real Enter on its focused button or with a real click on it. */
+async function submitDemo(
+  devtools: Devtools,
+  demo: BillingDemo,
+  how: "Enter" | "click",
+): Promise<boolean> {
+  if (how === "Enter") return await focusAndEnter(devtools, demo.button)
+  const point = await elementCenter(devtools, demo.button)
+  if (point.ok) await clickAtPoint(devtools, point)
+  return point.ok
+}
+
+/**
+ * A billing callback that returns at once and leaves `pending` alone never disables the form, so
+ * focus stays on the button the visitor pressed, after a real Enter and after a real click.
+ */
+async function billingSyncFocusCheck(devtools: Devtools, demo: BillingDemo): Promise<void> {
+  const off = await setDemoToggle(devtools, demo.pendingToggle, false)
+  const start = await demoCalls(devtools, demo)
+  const results = []
+  for (const how of ["Enter", "click"] as const) {
+    const before = await demoCalls(devtools, demo)
+    const sent = await submitDemo(devtools, demo, how)
+    const called = await poll(async () => await demoCalls(devtools, demo) === before + 1, 2_000)
+    await settleRender(devtools)
+    results.push({ how, sent, called, focus: await demoFocus(devtools, demo) })
+  }
+  const on = await setDemoToggle(devtools, demo.pendingToggle, true)
+  check(
+    `a ${demo.name} callback that returns at once leaves focus on ${demo.buttonName} after a real Enter and a real click`,
+    off && on && start >= 0 &&
+      results.every((result) => result.sent && result.called && result.focus === "button"),
+    `switch off ${off}, back on ${on}, ${JSON.stringify(results)}`,
+  )
+}
+
+/**
+ * When the app clears `pending`, focus that the wait parked on the form goes back to the button
+ * that started it, whether a real Enter or a real click started it. The demo's "Clear pending" is
+ * pressed by a script, as an app ends its work, so the press itself moves no focus.
+ */
+async function billingPendingFocusCheck(devtools: Devtools, demo: BillingDemo): Promise<void> {
+  const disabled = async () => (await billingPendingState(devtools, demo.card, demo.calls)).disabled
+  const results = []
+  for (const how of ["Enter", "click"] as const) {
+    const sent = await submitDemo(devtools, demo, how)
+    const waited = await poll(async () => await disabled() > 0, 2_000)
+    const parked = await demoFocus(devtools, demo)
+    await devtools.evaluate(`document.querySelector('${demo.clear}')?.click()`)
+      .catch(() => undefined)
+    const cleared = await poll(async () => await disabled() === 0, 2_000)
+    const back = await poll(async () => await demoFocus(devtools, demo) === "button", 2_000)
+    results.push({ how, sent, waited, parked, cleared, back })
+  }
+  check(
+    `when a pending ${demo.name} ends, focus returns to ${demo.buttonName} after a real Enter and a real click`,
+    results.every((result) =>
+      result.sent && result.waited && result.parked !== "button" && result.cleared && result.back
+    ),
+    JSON.stringify(results),
+  )
+}
+
+/** What a billing form shows after its callback failed. */
+interface BillingFailure {
+  /** The messages the page's `error` listener caught from `reportError`. */
+  errors: string[]
+  region: string
+  /** Whether the region is drawn on screen rather than kept for screen readers alone. */
+  regionShown: boolean
+  /** Whether the form's fieldset is disabled. */
+  disabled: boolean
+}
+
+/** Reads the failure state of the form that holds the demo's button. */
+function billingFailure(devtools: Devtools, demo: BillingDemo): Promise<BillingFailure> {
+  return devtools.evaluate<BillingFailure>(`(() => {
+    const form = document.querySelector('${demo.button}')?.closest("form")
+    const region = form?.querySelector("[role=status]")
+    const rect = region?.getBoundingClientRect()
+    return {
+      errors: [...(globalThis.__billingErrors ?? [])],
+      region: region?.textContent ?? "no region",
+      regionShown: !!region && !region.classList.contains("sr-only") && rect.height > 1,
+      disabled: !!form?.querySelector("fieldset:disabled"),
+    }
+  })()`).catch(() => ({ errors: [], region: "unreadable", regionShown: false, disabled: true }))
+}
+
+/**
+ * A billing callback that fails is not swallowed: the error reaches the page's `error` listener
+ * through `reportError`, and the form shows the English `failed` words under its button, with the
+ * form still enabled and focus still on the button. The listener cancels the event, as an app's
+ * error handler may, so the console stays clean for `verify`'s own error check.
+ *
+ * @param how How the visitor submits.
+ * @param clearAfter Whether to submit once more, with the callback working, and require the next
+ *   submit to clear the failure. Left out, the failure stays on screen for the contrast check.
+ */
+async function billingFailureCheck(
+  devtools: Devtools,
+  demo: BillingDemo,
+  how: "Enter" | "click",
+  clearAfter: boolean,
+): Promise<void> {
+  const failedWords = "Something went wrong. Please try again."
+  await devtools.evaluate(`(() => {
+    globalThis.__billingErrors = []
+    globalThis.__billingErrorListener = (event) => {
+      const message = String(event.error?.message ?? event.message)
+      if (!message.includes("failed on purpose")) return
+      globalThis.__billingErrors.push(message)
+      event.preventDefault()
+    }
+    addEventListener("error", globalThis.__billingErrorListener)
+  })()`)
+  try {
+    const failing = await setDemoToggle(devtools, demo.failToggle, true)
+    const before = await demoCalls(devtools, demo)
+    const sent = await submitDemo(devtools, demo, how)
+    const shown = await poll(
+      async () => (await billingFailure(devtools, demo)).region === failedWords,
+      2_000,
+    )
+    await settleRender(devtools)
+    const failure = await billingFailure(devtools, demo)
+    const calls = await demoCalls(devtools, demo)
+    const focus = await demoFocus(devtools, demo)
+    const working = await setDemoToggle(devtools, demo.failToggle, false)
+
+    let cleared: BillingFailure | null = null
+    if (clearAfter) {
+      await setDemoToggle(devtools, demo.pendingToggle, false)
+      await submitDemo(devtools, demo, "Enter")
+      await poll(async () => (await billingFailure(devtools, demo)).region === "", 2_000)
+      cleared = await billingFailure(devtools, demo)
+      await setDemoToggle(devtools, demo.pendingToggle, true)
+    }
+
+    check(
+      `a ${demo.name} callback that fails reaches reportError and shows the failed words under ${demo.buttonName}` +
+        (clearAfter ? ", until the next submit" : ""),
+      failing && working && sent && shown && calls === before + 1 &&
+        failure.errors.length === 1 && failure.regionShown && !failure.disabled &&
+        focus === "button" &&
+        (!clearAfter || (cleared !== null && cleared.region === "" && !cleared.regionShown)),
+      `switch on ${failing}, off ${working}, calls ${before} → ${calls}, focus ${focus}, ` +
+        `${JSON.stringify(failure)}, after the next submit ${JSON.stringify(cleared)}`,
+    )
+  } finally {
+    await devtools.evaluate(
+      `removeEventListener("error", globalThis.__billingErrorListener)`,
+    ).catch(() => undefined)
+  }
+}
+
 /**
  * A paused `PlanCard` says so in its status pill, in words, and shows no payment warning. Its
  * contrast is measured with the other billing texts in {@link billingContrastCheck}.
@@ -18683,6 +18931,7 @@ async function billingContrastCheck(devtools: Devtools): Promise<void> {
       ["plan card price", pastDue.querySelector(".text-xl")],
       ["date line", plans.querySelector("[data-status='2'] .pc-card-body p.text-muted")],
       ["warning", warning.querySelector("span")],
+      ["failed words", plans.querySelector("[data-status='2'] form [role=status]")],
       ["upgrade title", upgrade.querySelector("h4")],
       ["upgrade message", upgrade.querySelector("p")],
     ]
