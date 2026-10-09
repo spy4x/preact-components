@@ -113,7 +113,8 @@ export interface WebManifestOptions {
 
 /**
  * Writes the manifest into the output folder once the app build is written, and serves it from the
- * dev server at `/<fileName>` (under Vite's `base`). The manifest is checked when the config
+ * dev server at `/<fileName>` (under Vite's `base`, or at the root when `base` is relative, as
+ * `./` is). The manifest is checked when the config
  * resolves, so a missing icon fails `vite build` and `vite dev` at once.
  *
  * @param options See {@link WebManifestOptions}.
@@ -136,7 +137,10 @@ export function webManifest(options: WebManifestOptions): VitePlugin {
       text = JSON.stringify(buildWebManifest(options.manifest, base), null, 2) + "\n"
     },
     configureServer(server) {
-      const path = `${base.endsWith("/") ? base : `${base}/`}${fileName}`
+      // A relative base (`./` or empty) is relative to the page, and the dev server serves the page
+      // from its root, so the page's link resolves against `/`.
+      const prefix = base.startsWith("/") ? base : "/"
+      const path = `${prefix.endsWith("/") ? prefix : `${prefix}/`}${fileName}`
       server.middlewares.use((request, response, next) => {
         if (request.url?.split("?")[0] !== path) return next()
         response.statusCode = 200

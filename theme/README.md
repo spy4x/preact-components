@@ -163,9 +163,10 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   512x512 one and one with `purpose: "maskable"`, or the config fails to resolve, naming each one
   missing: without them a browser does not offer to install the app, or Android crops the icon.
   Pass `Deno.writeTextFile`, and link the file from the page's `<head>`:
-  `<link rel="manifest" href="/manifest.webmanifest">`. `buildWebManifest(input, base)` is the
-  same object with its defaults filled in, for a test or a server that writes the file itself. In
-  an app with a client and a server build, run it on the client build only, as above.
+  `<link rel="manifest" href="/manifest.webmanifest">`, or `href="./manifest.webmanifest"` with a
+  relative `base: "./"`, which the dev server answers at its root. `buildWebManifest(input, base)`
+  is the same object with its defaults filled in, for a test or a server that writes the file
+  itself. In an app with a client and a server build, run it on the client build only, as above.
 
 The plugins are typed structurally, so this package does not depend on `vite`; an object they
 return is accepted by Vite's `plugins` array as it is.
