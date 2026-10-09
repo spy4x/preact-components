@@ -207,6 +207,7 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   await calendarChecks(devtools)
   await calendarSelectionHoverChecks(devtools)
   await siteHeaderChecks(devtools)
+  await siteHeaderLandmarkChecks(devtools)
   await shellChecks(devtools)
   await shellUserMenuNoScriptKeyboardCheck(devtools)
   await barFocusGapChecks(devtools)
@@ -4569,6 +4570,60 @@ async function siteHeaderNativeExpandedStateCheck(devtools: Devtools): Promise<v
 
   await pressKey(devtools, "Escape")
   await poll(async () => !(await readSiteHeader(devtools)).detailsOpen, 3_000)
+}
+
+/** The phone width #578 names for the landmark check, narrower than `SITE_HEADER_VIEWPORT`. */
+const SITE_HEADER_VIEWPORT_PHONE = { width: 375, height: 812 }
+/** Past the `lg` breakpoint, where the desktop row replaces the menu. */
+const SITE_HEADER_VIEWPORT_DESKTOP = { width: 1280, height: 900 }
+
+/**
+ * `SiteHeader` renders two `<nav>`s with one `aria-label`, the desktop row and the menu panel's
+ * copy, and a screen reader must never be offered both at once. Read from Chromium's accessibility
+ * tree at 375px with the menu closed and open, at 1280px, and at 1280px with the menu left open
+ * from the phone width: at most one `navigation` landmark named "Main navigation" is exposed in
+ * each, and exactly one whenever the links are on screen.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function siteHeaderLandmarkChecks(devtools: Devtools): Promise<void> {
+  const exposed = async () =>
+    (await readAxNodes(devtools, SITE_HEADER + " nav")).filter((node) =>
+      !node.ignored && node.role === "navigation" && node.name === "Main navigation"
+    )
+  const viewport = (size: { width: number; height: number }) =>
+    devtools.send("Emulation.setDeviceMetricsOverride", {
+      ...size,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+  try {
+    await viewport(SITE_HEADER_VIEWPORT_PHONE)
+    await ensureSiteHeaderClosed(devtools)
+    const phoneClosed = await exposed()
+    await focusAndClick(devtools, SITE_HEADER_BUTTON)
+    const opened = await poll(async () => (await readSiteHeader(devtools)).detailsOpen, 3_000)
+    const phoneOpen = await exposed()
+    check(
+      "at 375px SiteHeader exposes no Main navigation landmark closed and exactly one open",
+      phoneClosed.length === 0 && opened && phoneOpen.length === 1,
+      JSON.stringify({ closed: phoneClosed.length, opened, open: phoneOpen.length }),
+    )
+
+    await viewport(SITE_HEADER_VIEWPORT_DESKTOP)
+    const desktopMenuLeftOpen = await exposed()
+    await ensureSiteHeaderClosed(devtools)
+    const desktop = await exposed()
+    check(
+      "at 1280px SiteHeader exposes exactly one Main navigation landmark, menu open or not",
+      desktop.length === 1 && desktopMenuLeftOpen.length === 1,
+      JSON.stringify({ menuClosed: desktop.length, menuLeftOpen: desktopMenuLeftOpen.length }),
+    )
+  } finally {
+    await ensureSiteHeaderClosed(devtools).catch(() => {})
+    await read(devtools, `(document.activeElement?.blur(), 0)`, 0)
+    await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
+  }
 }
 
 /**
