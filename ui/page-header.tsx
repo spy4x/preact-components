@@ -13,7 +13,10 @@ export const TOUCH_TARGET = "min-h-11 min-w-11 justify-center sm:min-h-9 sm:min-
 export interface PageHeaderProps {
   /** The page's `h1`. It stays on one line and truncates; the full text is its tooltip. */
   title: string
-  /** Drawn inside the `h1` in place of `title`, such as a field that renames in place. */
+  /**
+   * Drawn inside the `h1` in place of `title`, such as a field that renames in place. PageHeader does
+   * not truncate it: give it `min-w-0` and truncate inside, as `InlineEdit` does.
+   */
   heading?: ComponentChildren
   /** One quiet line under the title, such as the group a list belongs to. */
   subtitle?: ComponentChildren
