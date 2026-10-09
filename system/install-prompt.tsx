@@ -11,7 +11,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconDownload, IconShare } from "@spy4x/preact-icons"
 import { Button } from "@spy4x/preact-ui/button"
 import type { JSX } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useLayoutEffect, useRef, useState } from "preact/hooks"
 
 /** Every word {@link InstallPrompt} shows, each with an English default. */
 export interface InstallPromptLabels {
@@ -97,7 +97,9 @@ export function InstallPrompt(
     moveFocus.current = true
   }
 
-  useEffect(() => {
+  // A layout effect runs in the same commit that removes the card, so focus never rests on the
+  // body in between; a plain effect waits for the next frame.
+  useLayoutEffect(() => {
     if (moveFocus.current) {
       moveFocus.current = false
       target.current?.()?.focus()
