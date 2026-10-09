@@ -16,6 +16,8 @@ export interface HotkeyHintProps {
   apple: boolean
   /** The words the keys show. */
   labels?: Partial<KbdLabels>
+  /** Utilities added to the hint's own, such as `ml-auto` to push it to the end of a row. */
+  class?: string
 }
 
 /**
@@ -26,9 +28,15 @@ export interface HotkeyHintProps {
  * nothing to the button's accessible name. Shown only where the main pointer is fine, such as a
  * mouse or a trackpad: a phone has no keyboard to press it with.
  */
-export function HotkeyHint({ keys, apple, labels }: HotkeyHintProps): JSX.Element {
+export function HotkeyHint(
+  { keys, apple, labels, class: className }: HotkeyHintProps,
+): JSX.Element {
+  // Joined by hand rather than with `cn`, which would pull tailwind-merge into island bundles.
+  const classes = className === undefined
+    ? "hidden pointer-fine:inline-flex"
+    : `hidden pointer-fine:inline-flex ${className}`
   return (
-    <span aria-hidden="true" data-hotkey-hint="" class="hidden pointer-fine:inline-flex">
+    <span aria-hidden="true" data-hotkey-hint="" class={classes}>
       <KbdKeys
         faces={keyFaces(keys, apple, { ...KBD_LABELS, ...labels })}
         apple={apple}

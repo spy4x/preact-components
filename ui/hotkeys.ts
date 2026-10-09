@@ -235,13 +235,23 @@ function openModal(): Element | null {
  * A key held down repeats its press. A repeat is cancelled, as the first press was, but clicks
  * nothing: holding N makes one note, not twenty.
  *
+ * An element that is hidden on purpose until it is wanted, such as an item of a closed menu, names
+ * the element that stands for it on screen as `shown`, such as the menu's trigger: the press then
+ * clicks the hidden element while `shown` is rendered.
+ *
  * @param element The element to click, such as the button a hotkey belongs to.
  * @param event The key press.
+ * @param shown The element that has to be rendered; `element` itself by default.
  */
-export function clickByHotkey(element: HTMLElement | null, event: KeyboardEvent): boolean {
+export function clickByHotkey(
+  element: HTMLElement | null,
+  event: KeyboardEvent,
+  shown: Element | null = element,
+): boolean {
   if (element === null || !element.isConnected) return false
   if (element.matches(":disabled, [aria-disabled='true']")) return false
-  if (element.closest("[inert]") !== null || element.getClientRects().length === 0) return false
+  if (element.closest("[inert]") !== null) return false
+  if (shown === null || shown.getClientRects().length === 0) return false
   // The target can be the document, which has no `closest`.
   const target = event.target as Partial<Element> | null
   const scope = target?.closest?.(DIALOG_SELECTOR) ?? openModal()
@@ -281,18 +291,24 @@ export function firesInFields(keys: string): boolean {
  *
  * @param keys The combination, such as `"n"` or `"mod+enter"`.
  * @param element Reads the element when the key is pressed.
+ * @param shown Reads the element that has to be rendered, when it is not `element` itself; see
+ * {@link clickByHotkey}.
  * @throws {Error} When the combination cannot be read.
  */
 export function hotkeyClickBinding(
   keys: string,
   element: () => HTMLElement | null,
+  shown?: () => Element | null,
 ): HotkeyBinding {
   return {
     keys,
     inDialogs: true,
     inFields: firesInFields(keys),
     preventDefault: false,
-    handler: (event) => void clickByHotkey(element(), event),
+    handler: (event) => {
+      const target = element()
+      void clickByHotkey(target, event, shown === undefined ? target : shown())
+    },
   }
 }
 
