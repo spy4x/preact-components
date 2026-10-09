@@ -29,20 +29,12 @@ export interface StateInitProps {
  * Serialise `data` for embedding inside {@link StateInit}'s `<script type="application/json">`.
  *
  * Reuses `jsonLdText` from `@spy4x/platform/universal/seo`, the escape `SEOHead` uses, rather
- * than a second implementation of it: `<` becomes the six characters `\u003c`, which is what keeps
- * a value containing the literal text `</script>` from closing the element it is embedded in — the
- * HTML parser looks for that sequence case-insensitively to end *any* `<script>`, whatever its
- * `type`, before either JSON or JavaScript ever gets a look at the content. `<!--` is a `<` too, so
- * the same escape covers it.
- *
- * U+2028 and U+2029 need no escaping here the way they would if this value were embedded as
- * executable JavaScript (`window.x = {…}`) rather than JSON: `StateInit` renders a
- * `type="application/json"` element, which the browser never executes, and {@link readStateInit}
- * reads it back with `JSON.parse`, which has always accepted both characters inside a JSON string —
- * they only became a hazard for the *"raw JS expression"* shape of this pattern, which is not the
- * shape used here. `state-init.test.tsx` proves a value containing all three — `</script>`, `<!--`
- * and both separators — survives a round trip through this function and back through `JSON.parse`
- * unchanged, rather than assuming it from the reasoning above.
+ * than a second implementation of it. It writes `<`, `>`, `&`, U+2028 and U+2029 as `\u` escapes.
+ * The `<` escape is what keeps a value containing the literal text `</script>` (or `<!--`) from
+ * closing the element it is embedded in: the HTML parser ends *any* `<script>` on that sequence,
+ * whatever its `type`, before JSON or JavaScript sees the content. The escapes are valid JSON, so
+ * {@link readStateInit} reads every value back unchanged with `JSON.parse`; `state-init.test.tsx`
+ * proves it for `</script>`, `<!--` and both separators.
  *
  * **Throws when `data` is not JSON-serialisable, by name, rather than crashing inside `.replace`.**
  * `JSON.stringify` answers `undefined` — not a string, and not a thrown error — for `undefined`
