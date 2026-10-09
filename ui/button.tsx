@@ -309,8 +309,8 @@ export interface ButtonOverloads {
  *
  * Given `href` ({@link ButtonLinkProps}), it renders an `<a>` with the classes the same `variant`,
  * `size` and `class` give the `<button>`, focus ring included. Its optional `navigate` port follows
- * the rule `Link` runs (`followLinkClick`): a plain click routes, every other click is the
- * browser's. A disabled link drops its `href`; see {@link ButtonLinkProps.disabled}. `busy` is a
+ * the rule `Link` runs (`followLinkClick`): a plain click on a link to this page's origin routes,
+ * every other click is the browser's. A disabled link drops its `href`; see {@link ButtonLinkProps.disabled}. `busy` is a
  * button's alone: a link starts no work of its own to wait on.
  *
  * Wrapped in `forwardRef` from `./forward-ref.ts` — this package's own, not `preact/compat`'s; see

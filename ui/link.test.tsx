@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import type { JSX } from "preact"
 import { render } from "preact-render-to-string"
 import { followLinkClick, isPlainClick, Link, type LinkClickEvent } from "./link.tsx"
+import { onAppPage, pageAt } from "./testdata/page-at.ts"
 
 /** A click as the anchor receives it, with no modifier, unless `overrides` says otherwise. */
 function click(overrides: Partial<LinkClickEvent> = {}): LinkClickEvent & { cancelled: boolean } {
@@ -46,6 +47,8 @@ describe("isPlainClick", () => {
 })
 
 describe("followLinkClick", () => {
+  onAppPage()
+
   it("cancels a plain click and calls navigate with the href", () => {
     const port = recorder()
     const event = click()
@@ -105,6 +108,90 @@ describe("followLinkClick", () => {
     expect(followLinkClick(click(), { href: "/a.csv", download: false, ...port })).toBe(true)
     expect(port.calls).toEqual(["/a.csv"])
   })
+
+  it("leaves a plain click on a link to another origin to the browser", () => {
+    const port = recorder()
+    const others = [
+      "https://example.org/docs",
+      "//example.org/docs",
+      "http://app.example.com/docs",
+      "https://app.example.com:8443/docs",
+      "https://sub.app.example.com/docs",
+    ]
+
+    for (const href of others) {
+      const event = click()
+      expect(followLinkClick(event, { href, ...port })).toBe(false)
+      expect(event.cancelled).toBe(false)
+    }
+    expect(port.calls).toEqual([])
+  })
+
+  it("leaves mailto: and tel: links to the browser", () => {
+    const port = recorder()
+
+    expect(followLinkClick(click(), { href: "mailto:ada@example.com", ...port })).toBe(false)
+    expect(followLinkClick(click(), { href: "tel:+15555550100", ...port })).toBe(false)
+    expect(port.calls).toEqual([])
+  })
+
+  it("leaves an address that does not parse to the browser", () => {
+    const port = recorder()
+    const event = click()
+
+    expect(followLinkClick(event, { href: "https://[", ...port })).toBe(false)
+    expect(event.cancelled).toBe(false)
+    expect(port.calls).toEqual([])
+  })
+
+  it("takes over relative and absolute links to this page's own origin", () => {
+    const port = recorder()
+    const own = ["/reports", "reports", "?tab=2", "#top", "https://app.example.com/reports"]
+
+    for (const href of own) expect(followLinkClick(click(), { href, ...port })).toBe(true)
+    expect(port.calls).toEqual(own)
+  })
+
+  it("resolves a relative link against the document's base address", () => {
+    const restore = pageAt("https://app.example.com/home", "https://cdn.example.org/")
+    try {
+      const port = recorder()
+      const event = click()
+
+      expect(followLinkClick(event, { href: "/reports", ...port })).toBe(false)
+      expect(event.cancelled).toBe(false)
+      expect(port.calls).toEqual([])
+    } finally {
+      restore()
+    }
+  })
+
+  it("leaves a mailto: link to the browser on a page served from a file", () => {
+    const restore = pageAt("file:///srv/app/index.html")
+    try {
+      const port = recorder()
+
+      expect(followLinkClick(click(), { href: "mailto:ada@example.com", ...port })).toBe(false)
+      expect(followLinkClick(click(), { href: "page.html", ...port })).toBe(true)
+      expect(port.calls).toEqual(["page.html"])
+    } finally {
+      restore()
+    }
+  })
+
+  it("leaves every click to the browser, without throwing, where there is no page location", () => {
+    const restore = pageAt(null)
+    try {
+      const port = recorder()
+      const event = click()
+
+      expect(followLinkClick(event, { href: "/reports", ...port })).toBe(false)
+      expect(event.cancelled).toBe(false)
+      expect(port.calls).toEqual([])
+    } finally {
+      restore()
+    }
+  })
 })
 
 /** Press `Link`'s own anchor with `event`, the way the browser calls its click handler. */
@@ -114,6 +201,18 @@ function pressAnchor(link: JSX.Element, event: LinkClickEvent): void {
 }
 
 describe("Link", () => {
+  onAppPage()
+
+  it("leaves a plain click on a link to another origin to the browser", () => {
+    const port = recorder()
+    const event = click()
+
+    pressAnchor(Link({ href: "https://example.org/docs", navigate: port.navigate }), event)
+
+    expect(event.cancelled).toBe(false)
+    expect(port.calls).toEqual([])
+  })
+
   it("leaves a plain click to the browser when its target opens another browsing context", () => {
     const port = recorder()
     const event = click()

@@ -17025,12 +17025,15 @@ async function shortcutsChecks(devtools: Devtools): Promise<void> {
 const LINK_CARD = "#demo-Link"
 const ROUTED_LINK = `${LINK_CARD} [data-e2e="link-routed"]`
 const PLAIN_LINK = `${LINK_CARD} [data-e2e="link-plain"]`
+/** The `Link` card's link to another site, given the same `navigate` port as the routed one. */
+const FOREIGN_LINK = `${LINK_CARD} [data-e2e="link-foreign"]`
 /** Where a card's `navigate` port reports "called N times"; {@link pressLink} reads it. */
 const LINK_COUNTER = `${LINK_CARD} [data-e2e="link-navigated"]`
 
 /** The `Button` card's routed link, its disabled link, and its `navigate` counter. */
 const BUTTON_LINK = `#demo-Button [data-e2e="button-link-routed"]`
 const BUTTON_LINK_DISABLED = `#demo-Button [data-e2e="button-link-disabled"]`
+const BUTTON_LINK_FOREIGN = `#demo-Button [data-e2e="button-link-foreign"]`
 const BUTTON_LINK_COUNTER = `#demo-Button [data-e2e="button-link-navigated"]`
 
 /** One mouse press the `Link` checks send: which button, and the CDP modifier bitmask. */
@@ -17177,6 +17180,14 @@ async function linkChecks(devtools: Devtools): Promise<void> {
     describeLinkOutcome(bare),
   )
 
+  const foreign = await pressLink(devtools, FOREIGN_LINK, plain)
+  check(
+    "a plain click on a Link with navigate to another origin is left to the browser and does not call navigate",
+    foreign.aimed && foreign.type === "click" && foreign.prevented === false &&
+      foreign.navigations === 0 && !foreign.navigated,
+    describeLinkOutcome(foreign),
+  )
+
   const leftAlone: LinkPress[] = [
     { name: "a Ctrl click", button: "left", modifiers: 2 },
     { name: "a Meta click", button: "left", modifiers: 4 },
@@ -17232,6 +17243,19 @@ async function buttonLinkChecks(devtools: Devtools): Promise<void> {
     ctrl.aimed && ctrl.type === "click" && ctrl.prevented === false && ctrl.navigations === 0 &&
       !ctrl.navigated,
     describeLinkOutcome(ctrl),
+  )
+
+  const foreign = await pressLink(
+    devtools,
+    BUTTON_LINK_FOREIGN,
+    { name: "a plain click", button: "left", modifiers: 0 },
+    BUTTON_LINK_COUNTER,
+  )
+  check(
+    "a plain click on a Button link with navigate to another origin is left to the browser and does not call navigate",
+    foreign.aimed && foreign.type === "click" && foreign.prevented === false &&
+      foreign.navigations === 0 && !foreign.navigated,
+    describeLinkOutcome(foreign),
   )
 
   const disabled = await devtools.evaluate<{ found: boolean; href: boolean; focused: boolean }>(
@@ -21684,6 +21708,8 @@ async function pageActionHotkeyCheck(devtools: Devtools): Promise<void> {
 const DROPDOWN_ITEM_CARD = "#demo-DropdownItem"
 const DROPDOWN_ITEM_ROUTED = `${DROPDOWN_ITEM_CARD} [data-e2e="dropdown-item-routed"]`
 const DROPDOWN_ITEM_COUNTER = `${DROPDOWN_ITEM_CARD} [data-e2e="dropdown-item-navigated"]`
+/** The card's link item to another site, given the same `navigate` port as the routed one. */
+const DROPDOWN_ITEM_FOREIGN = `${DROPDOWN_ITEM_CARD} [data-e2e="dropdown-item-foreign"]`
 
 /**
  * A `DropdownItem` link with a `navigate` port hands a plain click to it and cancels the page load,
@@ -21717,6 +21743,19 @@ async function dropdownItemRouteChecks(devtools: Devtools): Promise<void> {
     ctrl.aimed && ctrl.type === "click" && ctrl.prevented === false && ctrl.navigations === 0 &&
       !ctrl.navigated,
     describeLinkOutcome(ctrl),
+  )
+
+  const foreign = await pressLink(
+    devtools,
+    DROPDOWN_ITEM_FOREIGN,
+    { name: "a plain click", button: "left", modifiers: 0 },
+    DROPDOWN_ITEM_COUNTER,
+  )
+  check(
+    "a plain click on a DropdownItem link with navigate to another origin is left to the browser",
+    foreign.aimed && foreign.type === "click" && foreign.prevented === false &&
+      foreign.navigations === 0 && !foreign.navigated,
+    describeLinkOutcome(foreign),
   )
   await pointerToCorner(devtools)
 }

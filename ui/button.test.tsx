@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import type { VNode } from "preact"
 import { Button, buttonClasses, type ButtonProps } from "./button.tsx"
+import { onAppPage } from "./testdata/page-at.ts"
 
 /** The `class` attribute of the first element in `html`. */
 function classOf(html: string): string {
@@ -128,6 +129,8 @@ describe("Button size none", () => {
 })
 
 describe("Button as a link", () => {
+  onAppPage()
+
   it("renders an anchor with the classes the same button would have", () => {
     const link = render(
       <Button href="/reports" variant="outline" size="lg" class="w-full">Reports</Button>,

@@ -99,7 +99,8 @@ function ButtonClickDemo() {
  * `Button` given `href`: a link that looks like the button beside it. The first has a `navigate`
  * port that only records where it was asked to go, so a plain click shows its href below instead
  * of leaving the page, while a Ctrl, Meta, Shift, Alt or middle click opens it the browser's way.
- * The disabled one has no href. The last is `size="none"`, sized by its own class.
+ * The JSR link has the same port, but it points at another site, which a router cannot open, so
+ * every click on it is the browser's. The disabled one has no href. The last is `size="none"`, sized by its own class.
  * `pages/checks/ui.ts` drives the first with real clicks and measures its focus ring.
  */
 function ButtonLinkDemo() {
@@ -114,7 +115,12 @@ function ButtonLinkDemo() {
         >
           Open the system page
         </Button>
-        <Button href="https://jsr.io/@spy4x/preact-ui" variant="outline">
+        <Button
+          href="https://jsr.io/@spy4x/preact-ui"
+          variant="outline"
+          data-e2e="button-link-foreign"
+          navigate={(href) => navigated.value = [...navigated.value, href]}
+        >
           The package on JSR
         </Button>
         <Button href="#/system" variant="outline" disabled data-e2e="button-link-disabled">
@@ -343,8 +349,9 @@ function CopyButtonDemo() {
 /**
  * One link with a `navigate` port that only records where it was asked to go, and one without.
  * A plain click on the first shows its href below instead of leaving the page; Ctrl, Meta, Shift,
- * Alt or a middle click opens it the browser's way. `pages/checks/ui.ts` drives both with real
- * clicks.
+ * Alt or a middle click opens it the browser's way. The third has the same port but points at
+ * another site, which a router cannot open, so every click on it is the browser's.
+ * `pages/checks/ui.ts` drives all three with real clicks.
  */
 function LinkDemo() {
   const navigated = useSignal<string[]>([])
@@ -361,6 +368,14 @@ function LinkDemo() {
         </Link>
         <Link href="https://jsr.io/@spy4x/preact-ui" class="pc-link" data-e2e="link-plain">
           The package on JSR
+        </Link>
+        <Link
+          href="https://github.com/spy4x/preact-components"
+          class="pc-link"
+          data-e2e="link-foreign"
+          navigate={(href) => navigated.value = [...navigated.value, href]}
+        >
+          The source on GitHub, with navigate
         </Link>
       </Cluster>
       <span class="text-sm text-muted" data-e2e="link-navigated">
@@ -428,7 +443,7 @@ export const buttonDemos = {
         name: "navigate",
         type: "(href) => void",
         description:
-          "A link's router port: a plain click calls it instead of the browser navigating; modified clicks stay the browser's.",
+          "A link's router port: a plain click calls it instead of the browser navigating; modified clicks and links to another origin stay the browser's.",
       },
       {
         name: "disabled",
@@ -559,7 +574,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
   },
   Link: {
     summary:
-      "A real link that hands plain clicks to your router and leaves new tabs, windows and downloads to the browser.",
+      "A real link that hands plain clicks to your router and leaves new tabs, windows, downloads and other sites to the browser.",
     wide: false,
     props: [
       { name: "href", type: "string", description: "Where it goes; works before any script runs." },
@@ -567,7 +582,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
         name: "navigate",
         type: "(href) => void",
         description:
-          "Called on a plain click instead of the browser navigating. Left out, every click is the browser's.",
+          "Called on a plain click instead of the browser navigating; never for a link to another origin. Left out, every click is the browser's.",
       },
       {
         name: "onClick",
