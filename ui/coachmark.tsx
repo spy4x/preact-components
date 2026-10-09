@@ -37,6 +37,11 @@ export interface CoachmarkProps {
   goToLabel?: (targetName: string) => string
   /** The coachmark's own controls, such as `Tour`'s Back and Next, between the body and Go to. */
   footer?: ComponentChildren
+  /**
+   * Ids of more elements inside the coachmark that describe it, after its body: `Tour` passes its
+   * step count, so a screen reader announces "Step 1 of 4" with the step's text.
+   */
+  describedBy?: string
   /** Extra classes for the surface. */
   class?: string
 }
@@ -113,6 +118,10 @@ interface Saved {
  * from inside a dialog, so Escape meant for a `Modal` closes only that. On close, focus goes back
  * to the remembered element, or to the target when that element is gone, but only when focus was
  * in the coachmark, on its target or nowhere: a user who has moved on keeps their place.
+ *
+ * The dialog is named by its heading and described by its body and `describedBy`. An off-screen
+ * target is scrolled into view at once; if the page is still running a smooth scroll of its own,
+ * that scroll can win, and the step then shows as a sheet until the target is back on screen.
  */
 export function Coachmark(
   {
@@ -125,6 +134,7 @@ export function Coachmark(
     closeLabel = "Close",
     goToLabel = defaultGoToLabel,
     footer,
+    describedBy,
     class: className,
   }: CoachmarkProps,
 ): JSX.Element {
@@ -132,6 +142,7 @@ export function Coachmark(
   const headingId = `${id}-title`
   const bodyId = `${id}-body`
   const anchorName = `--pc-anchor-${typeof CSS !== "undefined" ? CSS.escape(id) : id}`
+  const hasBody = children != null && children !== false
   const surfaceRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   /** The target found when the coachmark last opened or moved, or `null` when there is none. */
@@ -202,7 +213,7 @@ export function Coachmark(
       )
       element.style.outline = `2px solid ${TARGET_RING}`
       element.style.outlineOffset = "2px"
-      if (children != null && children !== false) {
+      if (hasBody) {
         const before = savedRef.current.describedBy
         element.setAttribute("aria-describedby", before ? `${before} ${bodyId}` : bodyId)
       }
@@ -315,6 +326,7 @@ export function Coachmark(
       role="dialog"
       aria-modal="false"
       aria-labelledby={headingId}
+      aria-describedby={[hasBody ? bodyId : "", describedBy ?? ""].join(" ").trim() || undefined}
       data-coachmark-mode={mode.value}
       style={style}
       class={cn(
@@ -343,9 +355,7 @@ export function Coachmark(
             <IconXMark class="size-4" />
           </Button>
         </div>
-        {children != null && children !== false && (
-          <div id={bodyId} class="text-sm text-muted">{children}</div>
-        )}
+        {hasBody && <div id={bodyId} class="text-sm text-muted">{children}</div>}
         {footer && <div class="flex flex-wrap items-center gap-2">{footer}</div>}
         {goToName.value !== null && (
           <Button variant="ghost" size="sm" class="self-start" onClick={goTo}>

@@ -37,6 +37,15 @@ describe("Tour", () => {
     expect(buttons(last)).toEqual(["Skip tour", "Back", "Done"])
   })
 
+  it("describes the step's dialog by its text and its step count", () => {
+    const html = render(<Tour steps={steps} open index={0} onIndexChange={noop} onClose={noop} />)
+    const describedBy = html.match(/role="dialog"[^>]*aria-describedby="([^"]+)"/)?.[1] ?? ""
+    const ids = describedBy.split(" ")
+    expect(ids).toHaveLength(2)
+    expect(html).toContain(`<div id="${ids[0]}" class="text-sm text-muted">Find anything.</div>`)
+    expect(html).toContain(`<p id="${ids[1]}" class="mr-auto text-xs text-muted">Step 1 of 3</p>`)
+  })
+
   it("takes every visible label from a prop", () => {
     const html = render(
       <Tour

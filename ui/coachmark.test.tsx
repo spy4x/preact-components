@@ -36,6 +36,19 @@ describe("Coachmark", () => {
     expect(render(<Coachmark open target="#a" title="T" onClose={noop} />)).not.toContain("-body")
   })
 
+  it("describes the dialog by its body, then by the ids the app adds", () => {
+    const html = render(
+      <Coachmark open target="#a" title="T" describedBy="count" onClose={noop}>Body</Coachmark>,
+    )
+    const bodyId = html.match(/<div id="([^"]+-body)"/)?.[1]
+    expect(bodyId).toBeDefined()
+    expect(html).toContain(`role="dialog" aria-modal="false"`)
+    expect(html).toMatch(new RegExp(`aria-describedby="${bodyId} count"`))
+    expect(render(<Coachmark open target="#a" title="T" onClose={noop} />)).not.toContain(
+      "aria-describedby",
+    )
+  })
+
   it("renders the app's footer controls", () => {
     const html = render(
       <Coachmark

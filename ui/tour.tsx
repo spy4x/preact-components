@@ -1,4 +1,5 @@
 import type { ComponentChildren, JSX } from "preact"
+import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { Coachmark, type CoachmarkPlacement, type CoachmarkTarget } from "./coachmark.tsx"
 
@@ -68,6 +69,7 @@ export function Tour(
     goToLabel,
   }: TourProps,
 ): JSX.Element {
+  const countId = `${useId()}-count`
   const step = steps[index] as TourStep | undefined
   const last = index === steps.length - 1
 
@@ -79,10 +81,13 @@ export function Tour(
       placement={step?.placement}
       closeLabel={closeLabel}
       goToLabel={goToLabel}
+      describedBy={countId}
       onClose={(reason) => onClose(reason === "escape" ? "escape" : "skip")}
       footer={
         <>
-          <p class="mr-auto text-xs text-muted">{stepLabel(index + 1, steps.length)}</p>
+          <p id={countId} class="mr-auto text-xs text-muted">
+            {stepLabel(index + 1, steps.length)}
+          </p>
           <Button variant="ghost" size="sm" onClick={() => onClose("skip")}>{skipLabel}</Button>
           {index > 0 && (
             <Button
