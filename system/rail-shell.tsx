@@ -133,7 +133,7 @@ const entryBase =
   "flex min-w-0 cursor-pointer items-center rounded-md text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
 const entryPlace: Record<Place, string> = {
   rail: "w-full flex-col gap-1 px-1 py-2 text-center",
-  tab: "h-full w-full flex-col justify-center gap-1 px-1 py-2 text-center",
+  tab: "h-full w-full flex-col justify-center gap-1 px-1 py-1 text-center",
   sheet: "w-full gap-3 px-3 py-3 text-sm",
 }
 const surface = "bg-[var(--color-surface,oklch(1_0_0))]"
@@ -326,7 +326,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
         )}
         data-e2e="rail-shell-tabbar"
       >
-        <ul class="flex h-16">
+        <ul class="flex min-h-16">
           {tabs.map((item, index) => (
             <li key={`${index}-${item.key}`} class="min-w-0 flex-1 p-1">
               <Entry
