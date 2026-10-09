@@ -100,8 +100,8 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `PageHeader`          | `page-header`          | `title` (one line, truncated), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`                           |
 | `PageTitle`           | `page-title`           | `children`, `class`                                                                                                                                                                                                                                |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                |
-| `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                           |
-| `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                                         |
+| `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                  |
+| `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                             |
 | `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                                                                            |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                           |
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                                                                                 |
@@ -1703,7 +1703,7 @@ shows as a sheet until the target is back on screen, and never points at the wro
 
 `PricingTable`, `PlanCard` and `UpgradePrompt` take everything as props and fetch nothing, so they
 work with any provider. `SubscriptionStatus` numbers, from 1, the five statuses spy4x/ts-libs#362
-proposes for `@spy4x/billing`, in its order. `status` and `interval` also take the plain numbers, so
+proposes for `@spy4x/billing`, in its order, and adds `Paused` as 6. `status` and `interval` also take the plain numbers, so
 an app passes a same-valued enum of its own, or that package's, without a cast. Amounts are integers
 in the currency's smallest unit, formatted with `formatMoney` from `@spy4x/platform`.
 
@@ -1720,9 +1720,32 @@ what one price buys: "€9.00 per member / month" in place of "€9.00 per month
 
 `PlanCard` shows the current plan, its status in words, and a date line chosen by status ("Renews
 on", "Ends on", "Trial ends on", "Ended on"). A past-due or incomplete plan shows a warning sentence
-beside a warning icon, so the state does not rest on colour. "Manage billing" is a form that posts
-to `manageAction`, the app's route that opens the provider's portal. The date is shown in UTC unless
+beside a warning icon, so the state does not rest on colour. A paused plan shows "Paused" in its
+pill and no warning. "Manage billing" is a form that posts to `manageAction`, the app's route that
+opens the provider's portal, until `onSubmit` takes it over once a script runs. The date is shown in UTC unless
 `timeZone` says otherwise, so the server and the browser print the same day.
+
+Both forms are `EnhancedForm`s. While the app is still working on a submit (opening checkout or the
+portal), it passes `pending`: the form is disabled, its button shows a spinner, and a second submit
+is refused, with or without a script. While a promise returned from `onChoose` or `onSubmit` is
+outstanding, the form refuses another submit too, though it stays enabled. A screen reader hears
+the `pending` label ("Please wait…") from the form the visitor submitted. A callback that returns
+at once leaves focus on the button the visitor pressed, and when `pending` ends, focus the wait had
+parked on the form goes back to its button.
+
+A callback that throws or rejects is not swallowed: the error goes to the global `reportError`, so
+it reaches the console and the app's `error` listener, and the form shows and announces the `failed`
+label ("Something went wrong. Please try again.") under its button until the next submit.
+
+The app owns `pending`, so the app clears it when the browser restores the page from its
+back/forward cache. Otherwise a visitor who comes Back from checkout finds every "Choose" still
+waiting:
+
+```ts
+addEventListener("pageshow", (event) => {
+  if (event.persisted) checkoutPending.value = false
+})
+```
 
 `UpgradePrompt` is a short message and a link, in place of a feature the plan does not include.
 
@@ -1737,12 +1760,18 @@ otherwise, for a language that orders them differently. The date lines are funct
 formatted date, so a translation can put the date where its language needs it.
 
 ```tsx
-<PricingTable plans={plans} action="/billing/checkout" onChoose={(plan) => checkout(plan.id)} />
+<PricingTable
+  plans={plans}
+  action="/billing/checkout"
+  onChoose={(plan) => checkout(plan.id)}
+  pending={checkoutPending}
+/>
 <PlanCard
   planName="Pro"
   status={SubscriptionStatus.PastDue}
   periodEnd={subscription.currentPeriodEnd}
   manageAction="/billing/portal"
+  pending={portalPending}
 />
 <UpgradePrompt href="/pricing" labels={{ message: "Exports come with the Pro plan." }} />
 ```
@@ -1770,7 +1799,7 @@ components and tests means exactly that: nothing outside this package should bui
 ### Billing (`./billing`)
 
 - `BillingInterval` (`Month`, `Year`) is how often a plan bills.
-- `SubscriptionStatus` (`Trialing`, `Active`, `PastDue`, `Canceled`, `Incomplete`) is where a
+- `SubscriptionStatus` (`Trialing`, `Active`, `PastDue`, `Canceled`, `Incomplete`, `Paused`) is where a
   subscription stands, numbered from 1.
 - `BillingIntervalValue` and `SubscriptionStatusValue` are the types `interval` and `status` take:
   the enum or its plain numbers, so another package's same-valued enum passes without a cast.

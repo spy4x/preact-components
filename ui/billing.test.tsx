@@ -273,6 +273,20 @@ describe("PricingTable", () => {
     expect(planItem(html, "pro-month")).toContain(">per member / month</span>")
   })
 
+  it("leaves every plan's form enabled while not pending", () => {
+    const html = render(<PricingTable plans={[free, proMonth]} />)
+
+    expect(html).not.toMatch(/<fieldset[^>]*disabled/)
+    expect(html).not.toContain("aria-busy")
+  })
+
+  it("disables every plan's form while pending, with no script", () => {
+    const html = render(<PricingTable plans={[free, proMonth]} pending />)
+
+    expect(html.match(/<fieldset[^>]*disabled/g)?.length).toBe(2)
+    expect(html.match(/aria-busy="true"/g)?.length).toBe(2)
+  })
+
   it("levels each plan's name heading as asked", () => {
     expect(render(<PricingTable plans={[free]} />)).toContain("<h3")
     expect(render(<PricingTable plans={[free]} headingLevel={2} />)).toContain("<h2")
@@ -289,8 +303,44 @@ describe("PlanCard", () => {
   it("posts Manage billing to the caller's action", () => {
     const html = render(<PlanCard {...base} status={SubscriptionStatus.Active} />)
 
-    expect(html).toContain('<form method="post" action="/billing/portal"')
+    expect(html).toMatch(/<form action="\/billing\/portal" method="post"/)
     expect(html).toMatch(/type="submit"[^>]*>Manage billing</)
+  })
+
+  it("leaves its form enabled and silent while not pending", () => {
+    const html = render(<PlanCard {...base} status={SubscriptionStatus.Active} />)
+
+    expect(html).not.toMatch(/<fieldset[^>]*disabled/)
+    expect(html).not.toContain("aria-busy")
+    expect(html).toMatch(/role="status"[^>]*><\/p>/)
+  })
+
+  it("disables its form and announces that it waits while pending, with no script", () => {
+    const html = render(<PlanCard {...base} status={SubscriptionStatus.Active} pending />)
+
+    expect(html).toMatch(/<fieldset[^>]*disabled/)
+    expect(html).toMatch(/aria-busy="true"[^>]*>.*Manage billing/)
+    expect(html).toMatch(/role="status"[^>]*>Please wait…<\/p>/)
+  })
+
+  it("announces the caller's pending word", () => {
+    const html = render(
+      <PlanCard
+        {...base}
+        status={SubscriptionStatus.Active}
+        pending
+        labels={{ pending: "Bitte warten…" }}
+      />,
+    )
+
+    expect(html).toMatch(/role="status"[^>]*>Bitte warten…<\/p>/)
+  })
+
+  it("shows a paused plan in words, with no payment warning", () => {
+    const html = render(<PlanCard {...base} status={SubscriptionStatus.Paused} />)
+
+    expect(html).toMatch(/border-control text-muted">Paused<\/span>/)
+    expect(html).not.toContain("data-plan-warning")
   })
 
   it("shows the renewal date of an active plan, in UTC by default", () => {

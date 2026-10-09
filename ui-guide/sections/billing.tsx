@@ -9,9 +9,11 @@
 
 import {
   BillingInterval,
+  Button,
   Card,
   CardBody,
   Checkbox,
+  Cluster,
   Grid,
   PlanCard,
   type PricingPlan,
@@ -84,30 +86,74 @@ const DEMO_PLANS: PricingPlan[] = [
 
 /**
  * The pricing table, with `onChoose` on by default. Switching it off leaves every "Choose" a plain
- * form post, which is also what a visitor with no script gets either way.
+ * form post, which is also what a visitor with no script gets either way. A choice marks the table
+ * `pending`, the way an app does while it opens checkout, until "Clear pending" stands in for that
+ * work ending; the count shows a pending table refusing a second choice. Two more switches leave
+ * `pending` alone, for a callback that returns at once, and make the callback throw, which shows
+ * the `failed` label and hands the error to `reportError`.
  */
 function PricingTableDemo() {
   const callbackOn = useSignal(true)
   const chosen = useSignal("nothing yet")
+  const calls = useSignal(0)
+  const pending = useSignal(false)
+  const marksPending = useSignal(true)
+  const fails = useSignal(false)
 
   return (
     <Stack>
-      <Checkbox
-        checked={callbackOn.value}
-        onChange={(event) => callbackOn.value = event.currentTarget.checked}
-        data-e2e="pricing-callback-toggle"
-      >
-        Hand the choice to onChoose
-      </Checkbox>
+      <Cluster>
+        <Checkbox
+          checked={callbackOn.value}
+          onChange={(event) => callbackOn.value = event.currentTarget.checked}
+          data-e2e="pricing-callback-toggle"
+        >
+          Hand the choice to onChoose
+        </Checkbox>
+        <Checkbox
+          checked={marksPending.value}
+          onChange={(event) => marksPending.value = event.currentTarget.checked}
+          data-e2e="pricing-pending-toggle"
+        >
+          Mark the table pending
+        </Checkbox>
+        <Checkbox
+          checked={fails.value}
+          onChange={(event) => fails.value = event.currentTarget.checked}
+          data-e2e="pricing-fail-toggle"
+        >
+          Make onChoose fail
+        </Checkbox>
+      </Cluster>
       <PricingTable
         plans={DEMO_PLANS}
         action={FORM_DEMO_ACTION}
         headingLevel={4}
-        onChoose={callbackOn.value ? (plan) => chosen.value = plan.id : undefined}
+        onChoose={callbackOn.value
+          ? (plan) => {
+            chosen.value = plan.id
+            calls.value += 1
+            if (fails.value) throw new Error("The demo's onChoose failed on purpose")
+            if (marksPending.value) pending.value = true
+          }
+          : undefined}
+        pending={pending.value}
       />
-      <DemoNote>
-        onChoose received: <span data-e2e="pricing-chosen">{chosen.value}</span>
-      </DemoNote>
+      <Cluster>
+        <DemoNote>
+          onChoose received: <span data-e2e="pricing-chosen">{chosen.value}</span>, called{" "}
+          <span data-e2e="pricing-calls">{calls.value}</span> times
+        </DemoNote>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!pending.value}
+          onClick={() => pending.value = false}
+          data-e2e="pricing-clear-pending"
+        >
+          Clear pending
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -115,59 +161,117 @@ function PricingTableDemo() {
 /** 23:30 UTC on 31 October 2026, the end of every demo plan's period. */
 const PERIOD_END = new Date(Date.UTC(2026, 9, 31, 23, 30))
 
-/** One card per status, and an active plan set to stop at the end of its period. */
+/**
+ * One card per status, and an active plan set to stop at the end of its period. The first card
+ * hands "Manage billing" to `onSubmit`, which marks it `pending` the way an app does while it opens
+ * the billing portal, until "Clear pending" stands in for that work ending. Two switches leave
+ * `pending` alone, for a callback that returns at once, and make the callback reject, which shows
+ * the `failed` label and hands the error to `reportError`.
+ */
 function PlanCardDemo() {
   const price = { amount: 1200, currency: "EUR", interval: BillingInterval.Month }
+  const calls = useSignal(0)
+  const pending = useSignal(false)
+  const marksPending = useSignal(true)
+  const fails = useSignal(false)
   return (
-    <Grid>
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Active}
-        price={price}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.PastDue}
-        price={price}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Trialing}
-        price={price}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Active}
-        price={price}
-        periodEnd={PERIOD_END}
-        cancelAtPeriodEnd
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Incomplete}
-        price={price}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Canceled}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-    </Grid>
+    <Stack>
+      <Cluster>
+        <Checkbox
+          checked={marksPending.value}
+          onChange={(event) => marksPending.value = event.currentTarget.checked}
+          data-e2e="plan-pending-toggle"
+        >
+          Mark the card pending
+        </Checkbox>
+        <Checkbox
+          checked={fails.value}
+          onChange={(event) => fails.value = event.currentTarget.checked}
+          data-e2e="plan-fail-toggle"
+        >
+          Make onSubmit fail
+        </Checkbox>
+      </Cluster>
+      <Cluster>
+        <DemoNote>
+          The first card's onSubmit was called <span data-e2e="plan-calls">{calls.value}</span>{" "}
+          times
+        </DemoNote>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!pending.value}
+          onClick={() => pending.value = false}
+          data-e2e="plan-clear-pending"
+        >
+          Clear pending
+        </Button>
+      </Cluster>
+      <Grid>
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Active}
+          price={price}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          onSubmit={() => {
+            calls.value += 1
+            if (fails.value) {
+              return Promise.reject(new Error("The demo's onSubmit failed on purpose"))
+            }
+            if (marksPending.value) pending.value = true
+          }}
+          pending={pending.value}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.PastDue}
+          price={price}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Trialing}
+          price={price}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Active}
+          price={price}
+          periodEnd={PERIOD_END}
+          cancelAtPeriodEnd
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Incomplete}
+          price={price}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Canceled}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Paused}
+          price={price}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+      </Grid>
+    </Stack>
   )
 }
 
@@ -185,8 +289,16 @@ export const billingDemos = {
       },
       {
         name: "onChoose",
-        type: "(plan: PricingPlan) => void",
-        description: "Takes the choice over from the form post once the script runs.",
+        type: "(plan: PricingPlan) => unknown",
+        description:
+          "Takes the choice over from the form post once the script runs. That form refuses another submit until a returned promise settles; a throw or a rejection goes to `reportError` and shows the `failed` label.",
+      },
+      {
+        name: "pending",
+        type: "boolean",
+        default: "false",
+        description:
+          "Disables every plan's form and shows a spinner on each Choose; a second choice is refused, with or without a script. Focus parked by the wait returns to Choose when it ends. Clear it on a back/forward-cache restore (`pageshow` with `persisted`).",
       },
       {
         name: "action",
@@ -209,7 +321,7 @@ export const billingDemos = {
         name: "labels",
         type: "Partial<PricingTableLabels>",
         description:
-          "Replaces any of the English words; `intervals` and `per` merge key by key, `perUnit` words a plan with a `unit`, and `chooseName` follows `choose` unless given.",
+          "Replaces any of the English words; `intervals` and `per` merge key by key, `perUnit` words a plan with a `unit`, `chooseName` follows `choose` unless given, `pending` is announced while the table waits, and `failed` after onChoose throws.",
       },
     ],
     snippet: `<PricingTable
@@ -224,19 +336,20 @@ export const billingDemos = {
   ]}
   action="/billing/checkout"
   onChoose={(plan) => startCheckout(plan.id)}
+  pending={checkout.pending}
 />`,
     render: () => <PricingTableDemo />,
   },
   PlanCard: {
     summary:
-      "The current plan with its status, the date it renews or ends, a warning when payment failed, and a Manage billing form.",
+      "The current plan with its status, the date it renews or ends, a warning when payment failed, and a Manage billing form that can wait while pending.",
     wide: true,
     props: [
       {
         name: "status",
         type: "SubscriptionStatusValue",
         description:
-          "Trialing, active, past due, canceled or incomplete, shown in words; another package's same-valued enum passes too.",
+          "Trialing, active, past due, canceled, incomplete or paused, shown in words; another package's same-valued enum passes too.",
       },
       {
         name: "periodEnd",
@@ -255,6 +368,19 @@ export const billingDemos = {
         description: "Where Manage billing posts: the app's billing-portal route.",
       },
       {
+        name: "onSubmit",
+        type: "() => unknown",
+        description:
+          "Takes Manage billing over from the form post once the script runs. The form refuses another submit until a returned promise settles; a throw or a rejection goes to `reportError` and shows the `failed` label.",
+      },
+      {
+        name: "pending",
+        type: "boolean",
+        default: "false",
+        description:
+          "Disables the form and shows a spinner on Manage billing; a second submit is refused, with or without a script. Focus parked by the wait returns to Manage billing when it ends. Clear it on a back/forward-cache restore (`pageshow` with `persisted`).",
+      },
+      {
         name: "timeZone",
         type: "string",
         default: `"UTC"`,
@@ -264,7 +390,7 @@ export const billingDemos = {
         name: "labels",
         type: "Partial<PlanCardLabels>",
         description:
-          "Replaces any of the English words, the date lines as functions; `status` and `per` merge key by key.",
+          "Replaces any of the English words, the date lines as functions; `status` and `per` merge key by key, `pending` is announced while the card waits, and `failed` after onSubmit throws.",
       },
     ],
     snippet: `<PlanCard
@@ -273,6 +399,8 @@ export const billingDemos = {
   price={{ amount: 1200, currency: "EUR", interval: BillingInterval.Month }}
   periodEnd={subscription.currentPeriodEnd}
   manageAction="/billing/portal"
+  onSubmit={openPortal}
+  pending={portal.pending}
 />`,
     render: () => <PlanCardDemo />,
   },

@@ -34,10 +34,12 @@ const ISLAND_CEILING_BYTES = 31_000
  * Islands allowed more than {@link ISLAND_CEILING_BYTES}, each with its reason. `ImageGallery`'s
  * strip measures its row for the counter and Previous/Next (#567), about 2.6 KB on top of the
  * 23.2 KB it bundled before, and #610 added 7.2 KB more; with `tailwind-merge` it would still be
- * over 60 KB.
+ * over 60 KB. `PricingTable`'s forms became `EnhancedForm`s for `pending` (#568), which put the
+ * form's busy guard, live region and focus recovery into its island: 29.6 KB became 31.6 KB.
  */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   "island-image-gallery.tsx": 35_000,
+  "island-pricing-table.tsx": 33_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
