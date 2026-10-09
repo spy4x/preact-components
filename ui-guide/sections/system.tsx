@@ -1307,7 +1307,8 @@ const railShellItems: RailShellItem[] = [
  * rail's contents and the tab bar stick to. Which of the two shows follows the viewport, not this
  * frame: the guide at desktop width shows the rail, and a phone-width window shows the tab bar with
  * "More". Every entry is a button through the `navigate` port, so choosing one moves the current
- * marker and prints the key it was handed instead of leaving the guide.
+ * marker and prints the key it was handed instead of leaving the guide. The `header` holds a brand
+ * and one button, so the skip link has a control to jump past.
  */
 function RailShellDemo() {
   const current = useSignal("home")
@@ -1324,6 +1325,14 @@ function RailShellDemo() {
         navigate={(key) => {
           current.value = key
         }}
+        header={
+          <div class="flex items-center justify-between gap-4 border-b border-subtle px-4 py-3">
+            <strong class="text-sm">Brand</strong>
+            <Button size="sm" variant="outline" data-e2e="rail-shell-demo-account">
+              Account
+            </Button>
+          </div>
+        }
       >
         <div class="flex flex-col gap-4 p-4 text-sm">
           <p>
@@ -1468,6 +1477,12 @@ useEffect(() => {
         type: "(key: string) => void",
         description: "Called for an item with no `href`, instead of following a link.",
       },
+      {
+        name: "header",
+        type: "ComponentChildren",
+        description:
+          "The app's top bar, drawn above the page as its banner; the skip link jumps past it.",
+      },
     ],
     snippet: `<RailShell
   items={[
@@ -1477,6 +1492,7 @@ useEffect(() => {
   ]}
   currentPath={location.pathname}
   primary={{ key: "compose", label: "Write", href: "/new", Icon: IconPencilSquare }}
+  header={<AppHeader />}
 >
   <Page />
 </RailShell>`,

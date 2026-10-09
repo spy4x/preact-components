@@ -388,7 +388,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `HeadStore` (type): A head signal with the defaults it was created from, so `resetHead()` is exact. Import: `@spy4x/preact-system`
 - `OgType` (type): Open Graph object type a page declares. Import: `@spy4x/preact-system`
 - `PageHead` (type): Every field `SEOHead` renders, plus the JSON-LD inputs. Import: `@spy4x/preact-system`
-- `RailShell` (component): The frame: a skip link, the rail from `md` up, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
+- `RailShell` (component): The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
 - `RailShellItem` (type): One destination in `RailShellProps.items`, or the `RailShellProps.primary` action. Import: `@spy4x/preact-system`
 - `RailShellLabels` (type): Every string `RailShell` prints that is not data the caller supplied. Import: `@spy4x/preact-system`
 - `RailShellProps` (type): Everything `RailShell` draws comes from here: the destinations, which one is current, the primary action, the `navigate` port for entries without an `href`, the page itself, and every label. Import: `@spy4x/preact-system`
