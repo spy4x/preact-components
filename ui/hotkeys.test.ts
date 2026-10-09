@@ -184,6 +184,23 @@ describe("clickByHotkey", () => {
     }
   })
 
+  it("clicks a hidden element while the element shown for it is rendered", () => {
+    const item = fakeButton({ rendered: false })
+    const trigger = fakeButton()
+    expect(clickByHotkey(item.element, keyEvent(), trigger.element)).toBe(true)
+    expect(item.clicks).toBe(1)
+    const hiddenTrigger = fakeButton({ rendered: false })
+    expect(clickByHotkey(item.element, keyEvent(), hiddenTrigger.element)).toBe(false)
+    expect(clickByHotkey(item.element, keyEvent(), null)).toBe(false)
+    expect(item.clicks).toBe(1)
+  })
+
+  it("does nothing for a disabled element even while the element shown for it is rendered", () => {
+    const item = fakeButton({ disabled: true, rendered: false })
+    expect(clickByHotkey(item.element, keyEvent(), fakeButton().element)).toBe(false)
+    expect(item.clicks).toBe(0)
+  })
+
   it("cancels a held key's repeats without clicking again", () => {
     const button = fakeButton()
     const event = keyEvent(null, true)
@@ -286,5 +303,14 @@ describe("hotkeyClickBinding", () => {
     const bound = hotkeyClickBinding("n", () => button.element)
     bound.handler(keyEvent())
     expect(button.clicks).toBe(1)
+  })
+
+  it("clicks a hidden element through the element it reads as shown", () => {
+    const item = fakeButton({ rendered: false })
+    const trigger = fakeButton()
+    hotkeyClickBinding("n", () => item.element)
+      .handler(keyEvent())
+    hotkeyClickBinding("n", () => item.element, () => trigger.element).handler(keyEvent())
+    expect(item.clicks).toBe(1)
   })
 })

@@ -62,14 +62,14 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                    |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                      |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                       |
-| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `debounce?`, `labels?`, `dataE2E?`                                                                                    |
+| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                      |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                       |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                              |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                             |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                    |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                           |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                                                                                |
-| `DropdownItem`        | `dropdown`             | `href`, `navigate?` (router port for a link item), `onClick`, `type`, `disabled` (dims it, and drops `danger`'s red), `danger`, `class` — a `role="menuitem"` out of the tab order once its `Dropdown` has hydrated, a plain link or button before |
+| `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before |
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`                                                                                                                                     |
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                      |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                              |
@@ -1290,8 +1290,8 @@ first appear, shortcuts without a description left out.
 
 ### A hotkey on a button
 
-`Button`, `Tabs` (per tab), `CopyButton`, `ThemeToggle` and `PageAction` take a `hotkey` prop in the
-same syntax. Pressing the key clicks the button while it is mounted, enabled and shown. A plain key
+`Button`, `Tabs` (per tab), `CopyButton`, `ThemeToggle`, `PageAction` and `DropdownItem` take a
+`hotkey` prop in the same syntax. Pressing the key clicks the button while it is mounted, enabled and shown. A plain key
 pressed in a text field types instead; a combination holding Control, Command or `mod`
 (`"mod+enter"`, `"mod+s"`) fires there too, because it types no text. A field's own editing chords
 stay with the field: `mod+a`, `mod+c`, `mod+v`, `mod+x`, `mod+z` and `mod+y`, with or without Shift,
@@ -1304,6 +1304,13 @@ key clicks. The button gets `aria-keyshortcuts`, and a `Kbd` hint inside it show
 main pointer is fine (a mouse or a trackpad, never a phone). The hint is hidden from screen readers,
 which read `aria-keyshortcuts` instead; `hotkeyHint={false}` turns it off, an icon-only button has
 none unless `hotkeyHint` asks, and `kbdLabels` changes its words.
+
+A `DropdownItem`'s key works while its menu is closed too, because a menu that shows a key beside an
+item teaches the reader to press it without opening the menu. A closed menu's items are not
+rendered, so the key asks whether the menu's trigger is shown instead: it does nothing while the
+trigger is hidden. It clicks the item, so a link item follows its link (through `navigate` when
+given), a submit item posts its form, and a disabled item passes the key on. Its hint sits at the
+item's right edge.
 
 ```tsx
 <Button hotkey="n" onClick={addNote}>New note</Button>
@@ -1320,6 +1327,9 @@ ambient global state the component rules forbid.
 the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a key press: it clicks
 the element and cancels the press only when the element is connected, enabled, not inert, rendered,
 and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
+`clickByHotkey(element, event, shown)` asks whether `shown` is rendered instead, for an element
+hidden until it is wanted, such as a closed menu's item, whose trigger is `shown`;
+`hotkeyClickBinding(keys, element, shown)` takes it as a function too.
 `hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
 binds several elements in one `useHotkeys` call, as `Tabs` does. `firesInFields(keys)` is its rule
 for text fields, which `CommandPalette` shares: a combination with Control, Command or `mod` fires
@@ -1337,8 +1347,10 @@ in spy4x/ts-libs, which also documents the keyboard-layout and AltGr rules.
 The arrow keys move through the results, Home and End jump to either end, Enter picks the
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
 focus back on the button. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
-bound with `useHotkeys`; `hotkeys` names others, and `[]` turns them off. The button shows the
-first hotkey with `Kbd`. While the reader types in a text field, the rule is `firesInFields`, the
+bound by the machinery of a button's `hotkey`: each clicks the button, which announces them all in
+`aria-keyshortcuts` and shows the first as a button's hotkey hint, from `sm` up and only where the
+main pointer is fine; `kbdLabels` changes its words. `hotkeys` names other keys, and `[]` turns them
+off. While the reader types in a text field, the rule is `firesInFields`, the
 same one a button's `hotkey` follows: a combination with Control, Command or `mod` still opens the
 palette; a plain key such as `/` or an Alt combination does not, since both type text; and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leaves Ctrl+K alone on a
