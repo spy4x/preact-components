@@ -2,12 +2,15 @@ import { countedScrollLock, pageScrollLocked, type ScrollLockPage } from "./scro
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 
-/** A page that records each lock and release, and answers `locked` from what it holds. */
+/**
+ * A page that records each lock and release. `locked` answers only for a lock the app holds, so a
+ * second write by the counter shows up in `events` instead of being hidden by the guard.
+ */
 function stubPage(lockedByApp = false) {
   const events: string[] = []
   let ours = false
   const page: ScrollLockPage = {
-    locked: () => lockedByApp || ours,
+    locked: () => lockedByApp,
     lock: () => {
       events.push("lock")
       ours = true
