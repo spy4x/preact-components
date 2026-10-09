@@ -4,6 +4,7 @@ import { h } from "preact"
 import { render } from "preact-render-to-string"
 import {
   ariaKeyShortcuts,
+  clickByHotkey,
   type HotkeyBinding,
   type HotkeyPress,
   pickHotkey,
@@ -104,5 +105,87 @@ describe("ariaKeyShortcuts", () => {
 
   it("throws on a combination useHotkeys could not read either", () => {
     expect(() => ariaKeyShortcuts("g i", false)).toThrow("sequence")
+  })
+})
+
+/** What a fake button records and how it answers the questions `clickByHotkey` asks. */
+interface FakeButton {
+  clicks: number
+  connected: boolean
+  disabled: boolean
+  inert: boolean
+  rendered: boolean
+}
+
+/** A stand-in for a rendered, enabled button, overridden field by field. */
+function fakeButton(fields: Partial<FakeButton> = {}): FakeButton & { element: HTMLElement } {
+  const state: FakeButton = {
+    clicks: 0,
+    connected: true,
+    disabled: false,
+    inert: false,
+    rendered: true,
+    ...fields,
+  }
+  const element = {
+    get isConnected() {
+      return state.connected
+    },
+    matches: () => state.disabled,
+    closest: (selector: string) => selector === "[inert]" && state.inert ? {} : null,
+    getClientRects: () => state.rendered ? [{}] : [],
+    contains: () => true,
+    click: () => void state.clicks++,
+  }
+  return Object.assign(state, { element: element as unknown as HTMLElement })
+}
+
+/** A key press whose target sits in no dialog; `prevented` says whether it was cancelled. */
+function keyEvent(target: unknown = null): KeyboardEvent & { prevented: boolean } {
+  const event = {
+    target,
+    prevented: false,
+    preventDefault: () => void (event.prevented = true),
+  }
+  return event as unknown as KeyboardEvent & { prevented: boolean }
+}
+
+describe("clickByHotkey", () => {
+  it("clicks a rendered, enabled button and cancels the key press", () => {
+    const button = fakeButton()
+    const event = keyEvent()
+    expect(clickByHotkey(button.element, event)).toBe(true)
+    expect([button.clicks, event.prevented]).toEqual([1, true])
+  })
+
+  it("does nothing for an unmounted button, or none at all", () => {
+    const button = fakeButton({ connected: false })
+    const event = keyEvent()
+    expect(clickByHotkey(button.element, event)).toBe(false)
+    expect(clickByHotkey(null, event)).toBe(false)
+    expect([button.clicks, event.prevented]).toEqual([0, false])
+  })
+
+  it("does nothing for a disabled button and leaves the key press alone", () => {
+    const button = fakeButton({ disabled: true })
+    const event = keyEvent()
+    expect(clickByHotkey(button.element, event)).toBe(false)
+    expect([button.clicks, event.prevented]).toEqual([0, false])
+  })
+
+  it("does nothing for a button inside inert content or not rendered", () => {
+    for (const fields of [{ inert: true }, { rendered: false }]) {
+      const button = fakeButton(fields)
+      expect(clickByHotkey(button.element, keyEvent())).toBe(false)
+      expect(button.clicks).toBe(0)
+    }
+  })
+
+  it("does nothing for a button outside the dialog the key was pressed in", () => {
+    const button = fakeButton()
+    const dialog = { contains: () => false }
+    const event = keyEvent({ closest: () => dialog })
+    expect(clickByHotkey(button.element, event)).toBe(false)
+    expect(button.clicks).toBe(0)
   })
 })

@@ -233,8 +233,9 @@ export function clickByHotkey(element: HTMLElement | null, event: KeyboardEvent)
   if (element === null || !element.isConnected) return false
   if (element.matches(":disabled, [aria-disabled='true']")) return false
   if (element.closest("[inert]") !== null || element.getClientRects().length === 0) return false
-  const target = event.target instanceof Element ? event.target : null
-  const scope = target?.closest(DIALOG_SELECTOR) ?? openModal()
+  // The target can be the document, which has no `closest`.
+  const target = event.target as Partial<Element> | null
+  const scope = target?.closest?.(DIALOG_SELECTOR) ?? openModal()
   if (scope !== null && !scope.contains(element)) return false
   event.preventDefault()
   element.click()
