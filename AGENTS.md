@@ -399,6 +399,19 @@ no ambient context the host did not hand over.
 This is what lets `spy4x/template` and any other app share the same `ui/` package without the
 library knowing which app it is running in.
 
+### Local state: signals for new code
+
+New local state is a `useSignal`, not a `useState` (owner decision, 2026-10-09). Application state
+already arrives as signals, so one model reads more easily, and a signal handed to JSX as itself
+(`{count}`, not `{count.value}`) updates its text without re-rendering the component.
+
+- Existing `useState` is converted only inside a change that already touches that component. A
+  pull request whose sole purpose is the conversion is not worth its risk.
+- `useRef` stays for DOM handles and timers, which are not state, and `useEffect` stays for work tied
+  to the DOM's lifecycle: focus, listeners, cleanup.
+- Reading `.value` during a render subscribes the component, so writing a signal in the same render
+  re-renders it forever (#300). Write signals in event handlers and effects only.
+
 ### Spacing
 
 Padding, margin and gap use only the steps `0 px 1 2 3 4 6 8 12 16`, never an arbitrary value.
