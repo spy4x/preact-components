@@ -808,6 +808,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ZoomableImagesProps` (type): Props of `ZoomableImages`. Import: `@spy4x/preact-ui`
 - `ariaKeyShortcuts` (helper): A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key` names them, joined by `+`. Import: `@spy4x/preact-ui`
 - `clickByHotkey` (helper): Click an element for a key press, the way a hotkey should: only when the reader could have clicked it themselves. Import: `@spy4x/preact-ui`
+- `firesInFields` (helper): Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text. Import: `@spy4x/preact-ui`
 - `HotkeyBinding` (type): One keyboard shortcut for `useHotkeys`: a combination, what it does and how it is listed. Import: `@spy4x/preact-ui`
 - `hotkeyClickBinding` (helper): The `useHotkeys` binding that clicks an element through `clickByHotkey`. Import: `@spy4x/preact-ui`
 - `HotkeyPress` (type): A key press as `pickHotkey` sees it: the key, the modifiers and where it landed. Import: `@spy4x/preact-ui`

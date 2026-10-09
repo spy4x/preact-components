@@ -1864,7 +1864,8 @@ useHotkeys(bindings)
         name: "hotkeys",
         type: "string[]",
         default: `["/", "mod+k"]`,
-        description: "What opens it; the trigger shows the first one, and `[]` turns them off.",
+        description:
+          "What opens it; the trigger shows the first one, and `[]` turns them off. In a text field only a Control, Command or `mod` chord fires, never Alt, and never the field's editing keys (A, C, V, X, Z, Y).",
       },
       {
         name: "debounce",

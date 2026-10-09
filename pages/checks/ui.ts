@@ -21456,6 +21456,40 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
       `over the backdrop; closed ${guideClosed}, overflow after ${released}`,
   )
 
+  // A page an open Modal has already locked: the body carries `overflow: hidden` and the padding
+  // that stands in for the scrollbar. Set the same two styles by hand, as Modal's lock does, and
+  // the palette must leave both alone while it opens and after it closes.
+  await devtools.evaluate<null>(
+    `(document.body.style.overflow = "hidden", document.body.style.paddingRight = "15px", null)`,
+  )
+  const padding = () => devtools.evaluate<string>("document.body.style.paddingRight")
+  let nested = { opened: false, whileOpen: "", afterClose: "", overflowAfter: "" }
+  try {
+    const nestedClicked = await clickSelector(devtools, trigger(GUIDE))
+    const nestedOpened = nestedClicked && await until(GUIDE, "state.focusInField")
+    const whileOpen = await padding()
+    await pressKey(devtools, "Escape")
+    await until(GUIDE, "!state.open")
+    await closeIfOpen(GUIDE)
+    nested = {
+      opened: nestedOpened,
+      whileOpen,
+      afterClose: await padding(),
+      overflowAfter: await devtools.evaluate<string>("document.body.style.overflow"),
+    }
+  } finally {
+    await devtools.evaluate<null>(
+      `(document.body.style.overflow = "", document.body.style.paddingRight = "", null)`,
+    )
+  }
+  check(
+    "a CommandPalette opened over a page another lock already holds leaves that lock's padding alone",
+    nested.opened && nested.whileOpen === "15px" && nested.afterClose === "15px" &&
+      nested.overflowAfter === "hidden",
+    `opened ${nested.opened}; body padding while open ${nested.whileOpen}, after close ` +
+      `${nested.afterClose}; overflow after close ${nested.overflowAfter}`,
+  )
+
   // At a phone's width the guide's header search, the same component, is an icon and a full sheet.
   await devtools.send("Emulation.setDeviceMetricsOverride", {
     width: NARROW_WIDTH,

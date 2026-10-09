@@ -1321,7 +1321,10 @@ the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a 
 the element and cancels the press only when the element is connected, enabled, not inert, rendered,
 and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
 `hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
-binds several elements in one `useHotkeys` call, as `Tabs` does. `useApplePlatform(apple)` answers
+binds several elements in one `useHotkeys` call, as `Tabs` does. `firesInFields(keys)` is its rule
+for text fields, which `CommandPalette` shares: a combination with Control, Command or `mod` fires
+while the reader types, one with only Alt does not (Option types a character on a Mac), and the
+field keeps its editing chords (`mod` with A, C, V, X, Z or Y). `useApplePlatform(apple)` answers
 whether `mod` means Command, reading the platform in an effect so the server render and the first
 browser render agree; `Kbd` and the `hotkey` prop use it.
 
@@ -1335,10 +1338,13 @@ The arrow keys move through the results, Home and End jump to either end, Enter 
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
 focus back on the button. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
 bound with `useHotkeys`; `hotkeys` names others, and `[]` turns them off. The button shows the
-first hotkey with `Kbd`. A plain key such as `/` does nothing while the reader types in a field; a
-chord such as ⌘K opens the palette from a field too. The default leaves Ctrl+K alone on a Mac,
-where it deletes to the end of the line; a caller who lists `ctrl+k` takes it from every field.
-The page behind does not scroll while the palette is open, and the highlighted result is scrolled
+first hotkey with `Kbd`. While the reader types in a text field, the rule is `firesInFields`, the
+same one a button's `hotkey` follows: a combination with Control, Command or `mod` still opens the
+palette; a plain key such as `/` or an Alt combination does not, since both type text; and the
+field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leaves Ctrl+K alone on a
+Mac, where it deletes to the end of the line; a caller who lists `ctrl+k` takes it from every
+field. The page behind does not scroll while the palette is open (a page an open `Modal` already
+locked stays as it is), and the highlighted result is scrolled
 into view as it moves. On a phone the button is an icon and the dialog fills the screen.
 
 It takes its results one of two ways, never both:

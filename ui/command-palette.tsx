@@ -2,9 +2,8 @@ import { cn } from "@spy4x/preact-cn"
 import { IconSearch, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
-import { parseHotkey } from "@spy4x/platform/browser/hotkeys"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
-import { useHotkeys } from "./hotkeys.ts"
+import { firesInFields, useHotkeys } from "./hotkeys.ts"
 import { Kbd } from "./kbd.tsx"
 import {
   applyScrollLock,
@@ -68,8 +67,10 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
    * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off. The
-   * trigger shows the first one. A combination with Control, Command, Alt or `mod` opens it from a
-   * text field too; a plain key never does.
+   * trigger shows the first one. While the reader types in a text field, a combination with
+   * Control, Command or `mod` still opens it; a plain key or an Alt combination does not, since
+   * both type text, and the field keeps its editing chords (`mod` with A, C, V, X, Z or Y). See
+   * `firesInFields`.
    */
   hotkeys?: readonly string[]
   /** Overrides for the palette's words; see {@link defaultCommandPaletteLabels}. */
@@ -289,13 +290,17 @@ export function CommandPalette<T extends CommandPaletteOption>(
       setRemote({ status: Status.IDLE, options: [] })
       ask("", 0)
     }
-    // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses.
-    const widthBefore = document.documentElement.clientWidth
-    const widthLocked = clientWidthWithoutScrollbar(document.documentElement)
-    lock.current = applyScrollLock(
-      document as unknown as ScrollLockTarget,
-      scrollLockPadding(widthBefore, widthLocked),
-    )
+    // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses. A
+    // page something else has already locked, such as an open `Modal` behind the palette, keeps
+    // that lock: locking it again would measure no scrollbar and zero the padding, moving the page.
+    if (document.body.style.overflow !== "hidden") {
+      const widthBefore = document.documentElement.clientWidth
+      const widthLocked = clientWidthWithoutScrollbar(document.documentElement)
+      lock.current = applyScrollLock(
+        document as unknown as ScrollLockTarget,
+        scrollLockPadding(widthBefore, widthLocked),
+      )
+    }
     dialog.current?.showModal()
     input.current?.focus()
   }
@@ -307,15 +312,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
   }
 
   useHotkeys(
-    hotkeys.map((keys) => {
-      const hotkey = parseHotkey(keys)
-      return {
-        keys,
-        handler: open,
-        // A chord cannot be typed as text, so it opens the palette from a field too.
-        inFields: hotkey.mod || hotkey.ctrl || hotkey.meta || hotkey.alt,
-      }
-    }),
+    // The same rule as a button's `hotkey`: a Control, Command or `mod` chord opens the palette
+    // from a text field too, unless it is one of the field's editing chords.
+    hotkeys.map((keys) => ({ keys, handler: open, inFields: firesInFields(keys) })),
     { enabled: hotkeys.length > 0 },
   )
 
