@@ -366,6 +366,19 @@ export {
   ShortcutsDialog,
   type ShortcutsDialogProps,
 } from "./shortcuts-dialog.tsx"
+export {
+  CommandPalette,
+  type CommandPaletteBaseProps,
+  type CommandPaletteGroup,
+  type CommandPaletteLabels,
+  type CommandPaletteLocalProps,
+  type CommandPaletteOption,
+  type CommandPaletteProps,
+  type CommandPaletteRemoteProps,
+  defaultCommandPaletteLabels,
+  groupOptions,
+  rankOptions,
+} from "./command-palette.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
 export {
   type ToggleChipOption,

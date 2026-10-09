@@ -452,7 +452,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (890 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (903 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -828,6 +828,17 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ShortcutGroup` (type): A heading of `ShortcutsDialog` and the shortcuts under it, in the order given. Import: `@spy4x/preact-ui`
 - `ShortcutsDialog` (component): A dialog that lists keyboard shortcuts, each with what it does and its keys, under group headings. Import: `@spy4x/preact-ui`
 - `ShortcutsDialogProps` (type): Props of `ShortcutsDialog`. Import: `@spy4x/preact-ui`
+- `CommandPalette` (component): A search trigger and the dialog it opens: one field and a list of results that the arrow keys move through, as `Combobox` does. Import: `@spy4x/preact-ui`
+- `CommandPaletteBaseProps` (type): Props every `CommandPalette` takes, whichever data mode it uses. Import: `@spy4x/preact-ui`
+- `CommandPaletteGroup` (type): One heading and the options under it, in the order the palette lists them. Import: `@spy4x/preact-ui`
+- `CommandPaletteLabels` (type): The palette's own words. Import: `@spy4x/preact-ui`
+- `CommandPaletteLocalProps` (type): The local data mode: the palette filters `options` itself. Import: `@spy4x/preact-ui`
+- `CommandPaletteOption` (type): One result the palette lists. Import: `@spy4x/preact-ui`
+- `CommandPaletteProps` (type): Props of `CommandPalette`: exactly one of `options` and `search`. Import: `@spy4x/preact-ui`
+- `CommandPaletteRemoteProps` (type): The remote data mode: the palette asks `search` for the options of each query. Import: `@spy4x/preact-ui`
+- `defaultCommandPaletteLabels` (helper): English defaults for every `CommandPaletteLabels` entry. Import: `@spy4x/preact-ui`
+- `groupOptions` (helper): The options under their headings: the unheaded ones first, then each group in the order it first appears, each keeping its options' order. Import: `@spy4x/preact-ui`
+- `rankOptions` (helper): The options that match `query`, best first, at most `limit` of them: names equal to the query, then names that start with it, then names that contain it, then options whose `detail` contains it. Import: `@spy4x/preact-ui`
 - `InlineEdit` (component): A value shown as text that turns into a text field in place, for renaming a list, a tag or a column where it stands. Import: `@spy4x/preact-ui`
 - `inlineEditCommit` (helper): What an edit saves: the trimmed draft, or `null` when there is nothing to save because the draft is empty or matches the current value. Import: `@spy4x/preact-ui`
 - `InlineEditProps` (type): Props of `InlineEdit`. Import: `@spy4x/preact-ui`
