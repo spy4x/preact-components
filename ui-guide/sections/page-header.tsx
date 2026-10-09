@@ -59,6 +59,7 @@ function PageHeaderDemo() {
         title={name.value}
         heading={
           <InlineEdit
+            class="[&>button]:text-xl [&>button]:font-semibold sm:[&>button]:text-2xl"
             value={name.value}
             onSave={(next) => {
               name.value = next
@@ -172,7 +173,14 @@ export const pageHeaderDemos = {
 />
 <PageHeader
   title={name}
-  heading={<InlineEdit value={name} onSave={rename} inputLabel="List name" />}
+  heading={
+    <InlineEdit
+      class="[&>button]:text-xl [&>button]:font-semibold sm:[&>button]:text-2xl"
+      value={name}
+      onSave={rename}
+      inputLabel="List name"
+    />
+  }
 />`,
     render: () => <PageHeaderDemo />,
   },
@@ -218,7 +226,15 @@ export const pageHeaderDemos = {
     summary: "A card of setting rows, one per line and divided by a rule.",
     wide: false,
     snippet: `<SettingList>
-  <SettingRow label="Name" value="Ada Lovelace" action={<EditButton />} />
+  <SettingRow
+    label="Name"
+    value="Ada Lovelace"
+    action={
+      <Button variant="ghost" size="sm" class={TOUCH_TARGET} onClick={editName}>
+        Edit<span class="sr-only"> name</span>
+      </Button>
+    }
+  />
   <SettingRow label="E-mail" value="ada@example.com" />
 </SettingList>`,
     render: () => (
@@ -244,7 +260,11 @@ export const pageHeaderDemos = {
     snippet: `<SettingRow
   label="Time zone"
   value="Europe/Lisbon, which is where the calendar shows every event"
-  action={<Button variant="ghost" size="sm" class={TOUCH_TARGET}>Edit</Button>}
+  action={
+    <Button variant="ghost" size="sm" class={TOUCH_TARGET} onClick={editTimeZone}>
+      Edit<span class="sr-only"> time zone</span>
+    </Button>
+  }
 />`,
     render: () => (
       <SettingList>
@@ -266,7 +286,15 @@ export const pageHeaderDemos = {
     ],
     snippet: `<SettingGroup title="Security" description="How you sign in.">
   <SettingList>
-    <SettingRow label="Password" value="Changed 3 months ago" action={<EditButton />} />
+    <SettingRow
+      label="Password"
+      value="Changed 3 months ago"
+      action={
+        <Button variant="ghost" size="sm" class={TOUCH_TARGET} onClick={changePassword}>
+          Edit<span class="sr-only"> password</span>
+        </Button>
+      }
+    />
   </SettingList>
 </SettingGroup>`,
     render: () => (
