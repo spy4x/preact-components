@@ -1191,6 +1191,47 @@ export async function openGuidePage(
   await settledScroll(page, { target: 0 })
 }
 
+/** One element's node in Chromium's accessibility tree, as {@link readAxNodes} reads it. */
+export interface AxNode {
+  role: string
+  name: string
+  /** Whether Chromium leaves the element out of the tree, e.g. because it is not displayed. */
+  ignored: boolean
+}
+
+/**
+ * Every element matching `selector`, read off Chromium's accessibility tree rather than the DOM, so
+ * a role or a hidden state is what assistive technology is told, not what the markup suggests.
+ */
+export async function readAxNodes(devtools: Devtools, selector: string): Promise<AxNode[]> {
+  await devtools.send("DOM.enable")
+  await devtools.send("Accessibility.enable")
+  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
+    depth: 1,
+  })
+  const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
+    nodeId: root.nodeId,
+    selector,
+  })
+  const read: AxNode[] = []
+  for (const nodeId of nodeIds) {
+    const { nodes } = await devtools.send<
+      {
+        nodes: Array<
+          { ignored?: boolean; role?: { value?: string }; name?: { value?: string } }
+        >
+      }
+    >("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false })
+    const node = nodes[0]
+    read.push({
+      role: String(node?.role?.value ?? ""),
+      name: String(node?.name?.value ?? ""),
+      ignored: Boolean(node?.ignored),
+    })
+  }
+  return read
+}
+
 /** Where {@link inFreshFrame} loads its frame, and what its checks call it. */
 export interface FreshFrame {
   /** The frame element's id, unique to the check, so every expression finds the same one. */

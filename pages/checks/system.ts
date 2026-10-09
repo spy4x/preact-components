@@ -11,6 +11,7 @@ import {
   pointerToCorner,
   poll,
   pressKey,
+  readAxNodes,
   readOr,
   type RingGapPixels,
   ringGapPixels,
@@ -4623,6 +4624,8 @@ async function siteHeaderLandmarkChecks(devtools: Devtools): Promise<void> {
     await ensureSiteHeaderClosed(devtools).catch(() => {})
     await read(devtools, `(document.activeElement?.blur(), 0)`, 0)
     await devtools.send("Emulation.clearDeviceMetricsOverride", {}).catch(() => {})
+    // Changing the viewport leaves a smooth scroll in flight; shellChecks aims by coordinates.
+    await waitForScrollSettle(devtools)
   }
 }
 
@@ -7253,47 +7256,6 @@ async function railShellSkipLinkCheck(devtools: Devtools): Promise<void> {
   }
 }
 
-/** One element's node in Chromium's accessibility tree, as {@link readAxNodes} reads it. */
-interface AxNode {
-  role: string
-  name: string
-  /** Whether Chromium leaves the element out of the tree, e.g. because it is not displayed. */
-  ignored: boolean
-}
-
-/**
- * Every element matching `selector`, read off Chromium's accessibility tree rather than the DOM, so
- * a role or a hidden state is what assistive technology is told, not what the markup suggests.
- */
-async function readAxNodes(devtools: Devtools, selector: string): Promise<AxNode[]> {
-  await devtools.send("DOM.enable")
-  await devtools.send("Accessibility.enable")
-  const { root } = await devtools.send<{ root: { nodeId: number } }>("DOM.getDocument", {
-    depth: 1,
-  })
-  const { nodeIds } = await devtools.send<{ nodeIds: number[] }>("DOM.querySelectorAll", {
-    nodeId: root.nodeId,
-    selector,
-  })
-  const read: AxNode[] = []
-  for (const nodeId of nodeIds) {
-    const { nodes } = await devtools.send<
-      {
-        nodes: Array<
-          { ignored?: boolean; role?: { value?: string }; name?: { value?: string } }
-        >
-      }
-    >("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false })
-    const node = nodes[0]
-    read.push({
-      role: String(node?.role?.value ?? ""),
-      name: String(node?.name?.value ?? ""),
-      ignored: Boolean(node?.ignored),
-    })
-  }
-  return read
-}
-
 /** Where the shell's copy at page level is put while {@link railShellHeaderBannerCheck} reads it. */
 const RAIL_SHELL_PAGE_LEVEL = '[data-e2e="rail-shell-page-level-copy"]'
 
@@ -7345,8 +7307,8 @@ async function railShellHeaderBannerCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The skip link comes before the header in tab order, and jumps past it: real Tab presses from the
- * skip link reach the header's button, and after a real Enter on the skip link puts focus on
+ * The skip link jumps past the header: real Tab presses from the skip link reach the header's
+ * button, so the header is reachable from it, and after a real Enter on the skip link puts focus on
  * `<main>`, the next real Tab press lands after `<main>`, never back in the header or the rail.
  */
 async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
@@ -7378,7 +7340,7 @@ async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
       }
     }
     check(
-      "Tab from RailShell's skip link reaches the header's button, so the link comes first",
+      "Tab from RailShell's skip link reaches the header's button",
       reached,
       reached ? `${presses} Tab presses` : "the header's button was not reached in 20 Tab presses",
     )
