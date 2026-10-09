@@ -16989,10 +16989,11 @@ async function nameFromContent(devtools: Devtools, source: string): Promise<stri
 }
 
 /**
- * A sequence `Kbd` draws is read as its presses with "then" between them, in a real browser: on
- * the `Kbd` card, on both platforms, and in the `ShortcutsDialog` card's open dialog. A string
- * render sees the words, but only the browser's layout decides whether the spaces around "then"
- * survive; in a flex row they would be dropped, and the keys would read "GthenT".
+ * A sequence `Kbd` draws is read as its presses with "then" between them, in a real browser: in
+ * both platform columns of the `Kbd` card, and in the `ShortcutsDialog` card's open dialog. The name is
+ * what Chromium computes from the rendered keys, so it fails when a press or the word is missing
+ * from what assistive technology is given, such as a word hidden from it or a dialog row that
+ * draws only the first press.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -17005,16 +17006,11 @@ async function kbdSequenceNameChecks(devtools: Devtools): Promise<void> {
     return cell?.querySelector("kbd") ?? null
   })()`
   const words = await nameFromContent(devtools, cardKbd(1))
-  check(
-    "Kbd reads the sequence g t as G then T outside Apple platforms",
-    words === "G then T",
-    `read ${JSON.stringify(words)}`,
-  )
   const glyphs = await nameFromContent(devtools, cardKbd(2))
   check(
-    "Kbd reads the sequence g t as G then T on Apple platforms",
-    glyphs === "G then T",
-    `read ${JSON.stringify(glyphs)}`,
+    "Kbd reads the sequence g t as G then T in both platform columns of its card",
+    words === "G then T" && glyphs === "G then T",
+    `apple={false} read ${JSON.stringify(words)}, apple read ${JSON.stringify(glyphs)}`,
   )
 
   const button = `document.querySelector('#demo-ShortcutsDialog [data-e2e="shortcuts-open"]')`
