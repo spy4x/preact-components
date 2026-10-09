@@ -3026,7 +3026,8 @@ asking to close, so it must not fight wherever the click actually sends focus ne
 ordinary link. With it, a plain left click on a nav link, or on an action that has an `href`, calls
 `navigate(href)` and cancels the browser's own navigation. A click with Ctrl, Meta, Shift or Alt
 held, or with another button, is left to the browser, so "open in a new tab" still works, and such a
-click leaves the drawer open. A click something earlier already cancelled (a capture listener of
+click leaves the drawer open. A link to another origin is always the browser's, since a router
+cannot open another site. A click something earlier already cancelled (a capture listener of
 the app's own router, say) does not call the port twice; in the drawer it still closes the drawer.
 Enter on a focused link fires the same plain click, so the keyboard takes the same path.
 
@@ -3436,7 +3437,7 @@ primary button, no Ctrl, Meta, Shift or Alt, not already cancelled by an earlier
 link that resolves to the page's own origin — calls `navigateLink(key, href)` and cancels the
 browser's navigation. Every other click is left to the browser; a middle click fires `auxclick`,
 not `click`, so it never reaches the port. The rule is `followLinkClick` from `ui/`'s `link`, the
-one `Link`, `Button` and `Shell` follow, plus the origin test, because a client router cannot open
+one `Link`, `Button` and `Shell` follow, origin test included, because a client router cannot open
 another site. In the "More" overlay the entry closes the overlay either way. `navigate` stays the
 port for an entry with no `href`, which is a button. Pair it with `useRouteAnnouncer` (see "Route
 changes move focus and set the title") so a routed click moves focus and sets the title.
@@ -4590,7 +4591,8 @@ button's classes onto an anchor of its own. Its props are `ButtonLinkProps`, a s
 so an interface that extends `ButtonProps` is untouched; `ButtonOverloads` is the type of `Button`
 with both call shapes. A `navigate` port follows the rule `Link` runs: a plain click calls
 `navigate(href)` and the browser does not navigate, and a click with Ctrl, Meta, Shift or Alt, a
-middle click, another `target` or a `download` stays the browser's. A link has no `busy`.
+middle click, another `target`, a `download` or a link to another origin stays the browser's. A
+link has no `busy`.
 
 A disabled link has no `disabled` attribute to set, so `disabled` renders the `<a>` without `href`,
 with `role="link"` and `aria-disabled="true"`, dimmed like a disabled button. With no `href` it
@@ -6227,10 +6229,11 @@ components and tests means exactly that: nothing outside this package should bui
   with no Ctrl, Meta, Shift or Alt. A middle click never counts. It is the same rule `Shell` applies.
 - `followLinkClick(event, { href, navigate, target, download })` is the rule `Link` runs on every
   click: when `navigate` is given, the click is plain, nothing earlier cancelled it, `target` is
-  none, `""` or `_self`, and there is no `download`, it cancels the browser's navigation, calls
-  `navigate(href)` and returns `true`; otherwise it does nothing and returns `false`. Call it from
-  the click handler of an anchor of your own — a button drawn as a link, say — to give it the same
-  behaviour.
+  none, `""` or `_self`, there is no `download`, and `href` resolves to the page's own origin
+  (against `document.baseURI`; an address that does not parse, `mailto:` and `tel:` never do), it
+  cancels the browser's navigation, calls `navigate(href)` and returns `true`; otherwise it does
+  nothing and returns `false`. Call it from the click handler of an anchor of your own — a button
+  drawn as a link, say — to give it the same behaviour.
 
 ### PageHeader (`./page-header`)
 

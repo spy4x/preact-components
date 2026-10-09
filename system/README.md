@@ -780,7 +780,8 @@ asking to close, so it must not fight wherever the click actually sends focus ne
 ordinary link. With it, a plain left click on a nav link, or on an action that has an `href`, calls
 `navigate(href)` and cancels the browser's own navigation. A click with Ctrl, Meta, Shift or Alt
 held, or with another button, is left to the browser, so "open in a new tab" still works, and such a
-click leaves the drawer open. A click something earlier already cancelled (a capture listener of
+click leaves the drawer open. A link to another origin is always the browser's, since a router
+cannot open another site. A click something earlier already cancelled (a capture listener of
 the app's own router, say) does not call the port twice; in the drawer it still closes the drawer.
 Enter on a focused link fires the same plain click, so the keyboard takes the same path.
 
@@ -1190,7 +1191,7 @@ primary button, no Ctrl, Meta, Shift or Alt, not already cancelled by an earlier
 link that resolves to the page's own origin — calls `navigateLink(key, href)` and cancels the
 browser's navigation. Every other click is left to the browser; a middle click fires `auxclick`,
 not `click`, so it never reaches the port. The rule is `followLinkClick` from `ui/`'s `link`, the
-one `Link`, `Button` and `Shell` follow, plus the origin test, because a client router cannot open
+one `Link`, `Button` and `Shell` follow, origin test included, because a client router cannot open
 another site. In the "More" overlay the entry closes the overlay either way. `navigate` stays the
 port for an entry with no `href`, which is a button. Pair it with `useRouteAnnouncer` (see "Route
 changes move focus and set the title") so a routed click moves focus and sets the title.
