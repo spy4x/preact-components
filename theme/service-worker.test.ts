@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { buildIdOf, serviceWorker, type ServiceWorkerOptions } from "./vite.ts"
+import { buildIdOf, serviceWorker, type ServiceWorkerOptions, type ViteMiddleware } from "./vite.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
@@ -56,15 +56,38 @@ function fixture(files: Record<string, string>, extra: Partial<ServiceWorkerOpti
 }
 
 async function run(plugin: ReturnType<typeof serviceWorker>, outDir = `dist`) {
-  plugin.configResolved!({ root: `/app`, build: { outDir } })
+  plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir } })
+  plugin.buildEnd!()
   await plugin.closeBundle!()
 }
 
 const define = (call: Record<string, unknown>) => call.define as Record<string, string>
 
 describe(`serviceWorker`, () => {
-  it(`runs on a production build only`, () => {
-    expect(fixture({}).plugin.apply).toBe(`build`)
+  it(`builds nothing when the dev server shuts down`, async () => {
+    const { calls, plugin } = fixture({ "index.html": `x` })
+    plugin.configResolved!({ command: `serve`, root: `/app`, build: { outDir: `dist` } })
+    await plugin.closeBundle!()
+    expect(calls).toHaveLength(0)
+  })
+
+  it(`skips the worker when the app build failed, so the app's error is the one reported`, async () => {
+    const { calls, plugin } = fixture({ "index.html": `x` })
+    plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir: `dist` } })
+    plugin.buildEnd!(new Error(`the app failed`))
+    await plugin.closeBundle!()
+    expect(calls).toHaveLength(0)
+  })
+
+  it(`skips the worker when the output folder is missing`, async () => {
+    const { calls, plugin } = fixture({}, {
+      // deno-lint-ignore require-yield
+      readDir: async function* () {
+        throw Object.assign(new Error(`readdir '/app/dist'`), { name: `NotFound` })
+      },
+    })
+    await run(plugin)
+    expect(calls).toHaveLength(0)
   })
 
   it(`builds the worker as one classic script named sw.js into the output folder`, async () => {
@@ -122,5 +145,102 @@ describe(`serviceWorker`, () => {
     const { calls, plugin } = fixture({ "index.html": `x` })
     await run(plugin, `/app/dist`)
     expect((calls[0].build as { outDir: string }).outDir).toBe(`/app/dist`)
+  })
+})
+
+/** A dev server that records its middleware, and a request to it. */
+function devServer(plugin: ReturnType<typeof serviceWorker>, base?: string) {
+  const middlewares: ViteMiddleware[] = []
+  plugin.configResolved!({ command: `serve`, root: `/app`, base, build: { outDir: `dist` } })
+  plugin.configureServer!({ middlewares: { use: (middleware) => middlewares.push(middleware) } })
+  const request = (url: string) =>
+    new Promise<{ status: number; headers: Record<string, string>; body: string } | `next`>(
+      (resolve) => {
+        const headers: Record<string, string> = {}
+        const response = {
+          statusCode: 0,
+          setHeader: (name: string, value: string) => (headers[name.toLowerCase()] = value),
+          end: (body: string) => resolve({ status: response.statusCode, headers, body }),
+        }
+        middlewares[0]({ url }, response, () => resolve(`next`))
+      },
+    )
+  return { middlewares, request }
+}
+
+/** A `build` that answers each call with the next of `results`: code, or an error to throw. */
+function scriptedBuild(results: Array<string | Error>) {
+  const calls: Record<string, unknown>[] = []
+  const build = (config: Record<string, unknown>) => {
+    calls.push(config)
+    const next = results.shift()!
+    if (next instanceof Error) return Promise.reject(next)
+    return Promise.resolve([{ output: [{ type: `chunk`, code: next }] }])
+  }
+  return { calls, build }
+}
+
+describe(`serviceWorker in the dev server`, () => {
+  it(`serves the worker built in memory at /sw.js, uncached`, async () => {
+    const { calls, build } = scriptedBuild([`self.addEventListener("fetch", f)`])
+    const { request } = devServer(fixture({}, { build }).plugin)
+    const answer = await request(`/sw.js?v=1`)
+    expect(answer).toEqual({
+      status: 200,
+      headers: { "content-type": `text/javascript`, "cache-control": `no-cache` },
+      body: `self.addEventListener("fetch", f)`,
+    })
+    const config = calls[0].build as Record<string, unknown>
+    const lib = config.lib as { entry: string; formats: string[]; name: string }
+    expect(config.write).toBe(false)
+    expect(config.outDir).toBeUndefined()
+    expect([lib.entry, lib.formats, lib.name]).toEqual([`/app/src/sw.ts`, [`iife`], `sw`])
+    expect(calls[0].configFile).toBe(false)
+    expect(calls[0].publicDir).toBe(false)
+    expect(calls[0].plugins).toEqual([`a-plugin`])
+    expect(define(calls[0]).__BUILD_ID__).toBe(`"dev"`)
+  })
+
+  it(`passes every other request on`, async () => {
+    const { calls, build } = scriptedBuild([])
+    const { request } = devServer(fixture({}, { build }).plugin)
+    expect(await request(`/sw.js.map`)).toBe(`next`)
+    expect(await request(`/index.html`)).toBe(`next`)
+    expect(calls).toHaveLength(0)
+  })
+
+  it(`serves the worker under Vite's base and at its own file name`, async () => {
+    const { build } = scriptedBuild([`code`])
+    const { request } = devServer(fixture({}, { build, fileName: `worker.js` }).plugin, `/app/`)
+    expect(await request(`/worker.js`)).toBe(`next`)
+    expect(await request(`/app/worker.js`)).toMatchObject({ status: 200, body: `code` })
+  })
+
+  it(`shows an edit to the worker on the next request`, async () => {
+    const { build } = scriptedBuild([`old`, `new`])
+    const { request } = devServer(fixture({}, { build }).plugin)
+    expect(await request(`/sw.js`)).toMatchObject({ body: `old` })
+    expect(await request(`/sw.js`)).toMatchObject({ body: `new` })
+  })
+
+  it(`answers a failed build with 500 and its message, then tries again`, async () => {
+    const { build } = scriptedBuild([new Error(`sw.ts:3: unexpected token`), `fixed`])
+    const { request } = devServer(fixture({}, { build }).plugin)
+    expect(await request(`/sw.js`)).toMatchObject({
+      status: 500,
+      body: `sw.ts:3: unexpected token`,
+    })
+    expect(await request(`/sw.js`)).toMatchObject({ status: 200, body: `fixed` })
+  })
+
+  it(`answers 500 when the build gives no script`, async () => {
+    const build = () => Promise.resolve({ output: [{ type: `asset` }] })
+    const { request } = devServer(fixture({}, { build }).plugin)
+    expect(await request(`/sw.js`)).toMatchObject({ status: 500 })
+  })
+
+  it(`serves nothing with dev: false`, () => {
+    const { middlewares } = devServer(fixture({}, { dev: false }).plugin)
+    expect(middlewares).toHaveLength(0)
   })
 })
