@@ -78,6 +78,47 @@ export interface ViteOutputFile {
   source?: string | Uint8Array
 }
 
+/** The part of Vite's resolved config the plugins here read. */
+export interface ViteResolvedConfig {
+  /** `build` for `vite build`, `serve` for the dev server. */
+  command: "build" | "serve"
+  /** The project root. */
+  root: string
+  /** The public base path, such as `/` or `/app/`. */
+  base?: string
+  /** Build options. */
+  build: { outDir: string }
+}
+
+/** The plugin context inside `closeBundle`: the environment being built, in Vite 6+. */
+export interface ViteBuildContext {
+  /** The environment whose build just closed, with its own resolved config. */
+  environment?: { config: { build: { outDir: string } } }
+}
+
+/** The part of a Node HTTP response a dev-server middleware writes. */
+export interface ViteServerResponse {
+  /** The status code to send. */
+  statusCode: number
+  /** Sets one response header. */
+  setHeader(name: string, value: string): unknown
+  /** Sends `body` and ends the response. */
+  end(body: string): unknown
+}
+
+/** A Connect middleware: answers the request, or passes it on with `next()`. */
+export type ViteMiddleware = (
+  request: { url?: string },
+  response: ViteServerResponse,
+  next: (error?: unknown) => void,
+) => void
+
+/** The part of Vite's dev server {@link VitePlugin.configureServer} uses. */
+export interface ViteDevServer {
+  /** The server's Connect app. */
+  middlewares: { use(middleware: ViteMiddleware): unknown }
+}
+
 /**
  * The shape of a Vite plugin, cut down to the hooks the plugins here implement.
  *
@@ -104,10 +145,17 @@ export interface VitePlugin {
     source: string,
     importer: string | undefined,
   ) => Promise<VitePartialResolvedId | null | undefined>
-  /** Receives the resolved config: the project root and the output folder. */
-  configResolved?: (config: { root: string; build: { outDir: string } }) => void
-  /** Runs once the build has written its files. */
-  closeBundle?: () => Promise<void>
+  /**
+   * Receives the resolved config: the command (`build` or `serve`), the project root, the public
+   * base path and the output folder.
+   */
+  configResolved?: (config: ViteResolvedConfig) => void
+  /** Adds middleware to the dev server. */
+  configureServer?: (server: ViteDevServer) => void
+  /** Runs once the bundle is complete, with the error that ended it when it failed. */
+  buildEnd?: (error?: Error) => void
+  /** Runs once the build has written its files, and also after a failed build. */
+  closeBundle?: (this: ViteBuildContext) => Promise<void>
   /** Runs once the bundle is written in memory, before it reaches disk. */
   generateBundle?: (
     this: VitePluginContext,

@@ -462,6 +462,11 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `ViteEnvironment` (type): The part of a Vite environment `npmSpecifiers` reads: the dev server's optimizer. Import: `@spy4x/preact-theme/vite`
 - `ViteResolveContext` (type): The plugin context inside `resolveId`. Import: `@spy4x/preact-theme/vite`
 - `ViteOutputFile` (type): One file of the bundle `generateBundle` receives: a CSS or other asset, or a JS chunk. Import: `@spy4x/preact-theme/vite`
+- `ViteResolvedConfig` (type): The part of Vite's resolved config the plugins here read. Import: `@spy4x/preact-theme/vite`
+- `ViteBuildContext` (type): The plugin context inside `closeBundle`: the environment being built, in Vite 6+. Import: `@spy4x/preact-theme/vite`
+- `ViteServerResponse` (type): The part of a Node HTTP response a dev-server middleware writes. Import: `@spy4x/preact-theme/vite`
+- `ViteMiddleware` (type): A Connect middleware: answers the request, or passes it on with `next()`. Import: `@spy4x/preact-theme/vite`
+- `ViteDevServer` (type): The part of Vite's dev server `VitePlugin.configureServer` uses. Import: `@spy4x/preact-theme/vite`
 - `VitePlugin` (type): The shape of a Vite plugin, cut down to the hooks the plugins here implement. Import: `@spy4x/preact-theme/vite`
 - `PreactThemeCssOptions` (type): Options for `preactThemeCss`. Import: `@spy4x/preact-theme/vite`
 - `preactThemeCss` (helper): Gives the app's stylesheet the `@spy4x/preact-*` design system before Tailwind compiles it. Import: `@spy4x/preact-theme/vite`
