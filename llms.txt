@@ -446,7 +446,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (848 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (852 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -807,6 +807,16 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `KanbanSlot` (type): A place on the board by indices: which column, and which index in it. Import: `@spy4x/preact-ui`
 - `moveKanbanItem` (helper): Apply a reported move to an array of items, returning a new array. Import: `@spy4x/preact-ui`
 - `nextKanbanSlot` (helper): Where an arrow key sends a picked-up card. Import: `@spy4x/preact-ui`
+- `defaultSortableListLabels` (helper): The English defaults of `SortableListLabels`. Import: `@spy4x/preact-ui`
+- `edgeScrollStep` (helper): How far to scroll in one animation frame while a held item is dragged near an edge. Import: `@spy4x/preact-ui`
+- `SortableBox` (type): One row's place inside the list, measured when an item is picked up. Import: `@spy4x/preact-ui`
+- `SortableItem` (type): The one field the list reads off an item. Import: `@spy4x/preact-ui`
+- `SortableList` (component): A list whose items are reordered by dragging a handle, by touch or mouse, or from the keyboard. Import: `@spy4x/preact-ui`
+- `SortableListLabels` (type): Every string the list shows to assistive technology. Import: `@spy4x/preact-ui`
+- `SortableListProps` (type): Props of `SortableList`. Import: `@spy4x/preact-ui`
+- `sortableOffsets` (helper): How far each row is shifted while the item at `from` is shown at `to`. Import: `@spy4x/preact-ui`
+- `SortablePlace` (type): Where an item is, as the announcements describe it. Import: `@spy4x/preact-ui`
+- `sortableTarget` (helper): The index a held item would drop at, from where its middle is now. Import: `@spy4x/preact-ui`
 - `defaultThemeToggleLabels` (helper): The English words `ThemeToggle` uses when a caller passes none. Import: `@spy4x/preact-ui`
 - `ThemeToggle` (component): One icon button that steps through the theme preference: auto → the opposite of the device → the device's own → auto, in the order `ThemeStore.cycle()` decides. Import: `@spy4x/preact-ui`
 - `ThemeToggleLabels` (type): Words `ThemeToggle` shows or announces. Import: `@spy4x/preact-ui`

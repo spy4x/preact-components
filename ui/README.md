@@ -101,6 +101,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Section`         | `layout`            | `title?`, `description?`, `headingLevel?` (2–4), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                            |
 | `Select`          | `input`             | `options`, `placeholder?`, native select attrs                                                                                                                                                  |
 | `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                |
+| `SortableList`    | `sortable-list`     | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                       |
 | `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                               |
 | `StatusMark`      | `status-mark`       | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                      |
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                   |
@@ -1364,6 +1365,56 @@ Helpers:
 - `nextKanbanSlot(key, from, lengths)` is the arrow-key map on its own: where a picked-up card goes
   for a key, given each column's length without it.
 - `defaultKanbanLabels` holds the English strings `labels` overrides.
+
+## SortableList
+
+A vertical list whose items a reader reorders by dragging a handle, on a touch screen or with a
+mouse, or from the keyboard. It is controlled: `items` in, one `onMove(from, to)` out, and the list
+never reorders the caller's data. `from` is the item's index before the move and `to` its index
+after it.
+
+```tsx
+<SortableList
+  items={tasks.value}
+  renderItem={(task) => task.title}
+  itemLabel={(task) => task.title}
+  onMove={(from, to) => {
+    const next = [...tasks.value]
+    next.splice(to, 0, ...next.splice(from, 1))
+    tasks.value = next
+  }}
+/>
+```
+
+- **Touch and mouse**: pointer events, no drag library. A drag starts only on an item's handle,
+  the one element with `touch-action: none`, so a finger anywhere else on the list scrolls the page
+  as usual. While an item is held, it follows the pointer and the other rows slide out of its way;
+  near the top or bottom of the scrolling area (the nearest scrolling ancestor, or the page) the
+  area scrolls. Escape, or a touch the browser cancels, puts the item back. A long press on a
+  handle opens no browser menu.
+- **Keyboard**: each handle is a button and a tab stop. Space or Enter picks the item up, the arrow
+  keys move it, Space or Enter drops it, and Escape puts it back. Moving focus away while holding
+  an item, with Tab or a click elsewhere, also puts it back. Focus stays on the handle after a
+  drop or a cancel, by any input. A held handle has `aria-pressed="true"`.
+- **Screen readers**: a reader's default reading mode may keep the arrow keys for itself, so they
+  never reach the page. Pressing the handle there (a click with no pointer) picks the item up and
+  pressing it again drops it; the reader then needs its focus or forms mode for the arrows to move
+  the item.
+- **Announcements**: a polite live region says when an item is picked up, each new position, the
+  drop and a cancel. Each handle is named `Reorder <item>` and is a 44 px target. `labels`
+  overrides any of these strings; `itemLabel` names an item in them and is required, because only
+  the caller knows what an item is called.
+- `renderItem` draws the body beside the handle, so it may hold its own buttons and links.
+- A held item is put back when the caller changes the list's order or membership mid-move.
+
+Helpers, exported for a caller that builds its own drag surface on the same rules:
+
+- `sortableTarget(boxes, from, center)` is the drop rule: the index a held item takes from where
+  its middle is, given every row's `{ top, height }` measured at pick-up.
+- `sortableOffsets(boxes, from, to)` is the layout rule: how far each row shifts while the item at
+  `from` is shown at `to`.
+- `edgeScrollStep(y, top, bottom)` is the edge auto-scroll speed for one animation frame.
+- `defaultSortableListLabels` holds the English strings `labels` overrides.
 
 ## ThemeToggle
 

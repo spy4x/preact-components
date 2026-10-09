@@ -55,6 +55,7 @@
     "./inline-edit": "./inline-edit.tsx",
     "./toggle-chips": "./toggle-chips.tsx",
     "./kanban-board": "./kanban-board.tsx",
+    "./sortable-list": "./sortable-list.tsx",
     "./theme-toggle": "./theme-toggle.tsx",
     "./unsaved-guard": "./unsaved-guard.tsx"
   },

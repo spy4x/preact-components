@@ -355,6 +355,18 @@ export {
   nextKanbanSlot,
 } from "./kanban-board.tsx"
 export {
+  defaultSortableListLabels,
+  edgeScrollStep,
+  type SortableBox,
+  type SortableItem,
+  SortableList,
+  type SortableListLabels,
+  type SortableListProps,
+  sortableOffsets,
+  type SortablePlace,
+  sortableTarget,
+} from "./sortable-list.tsx"
+export {
   defaultThemeToggleLabels,
   ThemeToggle,
   type ThemeToggleLabels,
