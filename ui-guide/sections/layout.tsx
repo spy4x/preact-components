@@ -128,13 +128,24 @@ export const layoutDemos = {
         description: "The heading's level, and its size.",
       },
       {
+        name: "action",
+        type: "ComponentChildren",
+        description:
+          "Controls beside the heading, such as a button; they wrap under it when narrow.",
+      },
+      {
         name: "as",
         type: "SectionElement",
         default: `"section"`,
         description: "`section`, `article`, `aside` or `div`, which is not a landmark.",
       },
     ],
-    snippet: `<Section title="Payment methods" description="Cards we can charge." headingLevel={4}>
+    snippet: `<Section
+  title="Payment methods"
+  description="Cards we can charge."
+  headingLevel={4}
+  action={<Button variant="outline" size="sm">Add card</Button>}
+>
   <Grid>…</Grid>
 </Section>`,
     render: () => (
@@ -142,6 +153,7 @@ export const layoutDemos = {
         title="Payment methods"
         description="Cards we can charge for this workspace."
         headingLevel={4}
+        action={<Button variant="outline" size="sm">Add card</Button>}
       >
         <Grid minColumnWidth="sm">
           <Tile>Company card</Tile>

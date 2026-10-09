@@ -50,6 +50,13 @@ describe("Badge", () => {
     expect(html).not.toContain("text-xs")
   })
 
+  it("shows its text in the case the caller gave, with no capitalisation", () => {
+    const html = render(<Badge text="Not verified" />)
+
+    expect(html).toContain(">Not verified<")
+    expect(html).not.toMatch(/class="[^"]*\bcapitalize\b/)
+  })
+
   it("renders the badge as a span", () => {
     expect(render(<Badge text="x" />)).toMatch(/^<span/)
   })

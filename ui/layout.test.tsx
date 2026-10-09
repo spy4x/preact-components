@@ -183,6 +183,36 @@ describe("Section", () => {
     render(<Section as="footer" />)
   })
 
+  it("puts an action beside the heading, at the header's far end, outside the heading", () => {
+    const html = render(
+      <Section
+        title="Members"
+        description="Who can see this group."
+        action={<a href="/invite">Invite</a>}
+      >
+        <p>body</p>
+      </Section>,
+    )
+    const id = /<h2 id="([^"]+)"/.exec(html)?.[1]
+    expect(html).toBe(
+      `<section aria-labelledby="${id}" class="flex flex-col gap-4">` +
+        `<header class="flex flex-wrap items-start justify-between gap-4">` +
+        `<div class="flex min-w-0 flex-col gap-1"><h2 id="${id}" class="pc-h2">Members</h2>` +
+        `<p class="text-muted text-sm">Who can see this group.</p></div>` +
+        `<div class="flex shrink-0 flex-wrap items-center gap-2"><a href="/invite">Invite</a></div>` +
+        `</header><p>body</p></section>`,
+    )
+  })
+
+  it("renders a header for an action alone, and none for an action that renders nothing", () => {
+    expect(render(<Section action={<a href="/add">Add</a>} />)).toContain(
+      `<header class="flex flex-wrap items-start justify-between gap-4"><div class="flex shrink-0`,
+    )
+    expect(render(<Section action={false}>x</Section>)).toBe(
+      `<section class="flex flex-col gap-4">x</section>`,
+    )
+  })
+
   it("gives two sections on one page different heading ids", () => {
     const html = render(
       <div>

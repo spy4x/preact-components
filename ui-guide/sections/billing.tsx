@@ -9,6 +9,8 @@
 
 import {
   BillingInterval,
+  Card,
+  CardBody,
   Checkbox,
   Grid,
   PlanCard,
@@ -276,7 +278,7 @@ export const billingDemos = {
   },
   UpgradePrompt: {
     summary:
-      "A short message and an upgrade link, in place of a feature the plan does not include.",
+      "A short message and an upgrade link with no box of its own, in place of a feature the plan does not include.",
     wide: false,
     props: [
       { name: "href", type: "string", description: "Where the upgrade link goes." },
@@ -290,17 +292,30 @@ export const billingDemos = {
         type: "Partial<UpgradePromptLabels>",
         description: "Replaces the title, the message or the link's text.",
       },
+      {
+        name: "class",
+        type: "string",
+        description: "Extra classes, such as a border and padding to frame it on a bare page.",
+      },
     ],
-    snippet: `<UpgradePrompt
-  href="/pricing"
-  labels={{ message: "Exports come with the Pro plan." }}
-/>`,
+    snippet: `<Card>
+  <CardBody>
+    <UpgradePrompt
+      href="/pricing"
+      labels={{ message: "Exports come with the Pro plan." }}
+    />
+  </CardBody>
+</Card>`,
     render: () => (
-      <UpgradePrompt
-        href="#billing"
-        headingLevel={4}
-        labels={{ message: "Exports come with the Pro plan." }}
-      />
+      <Card>
+        <CardBody>
+          <UpgradePrompt
+            href="#billing"
+            headingLevel={4}
+            labels={{ message: "Exports come with the Pro plan." }}
+          />
+        </CardBody>
+      </Card>
     ),
   },
 } satisfies DemoFragment

@@ -517,6 +517,10 @@ export interface UpgradePromptProps {
  * A short message and an upgrade link, shown in place of a feature the current plan does not
  * include.
  *
+ * It draws no box of its own — no border, fill or padding — because it usually stands where the
+ * feature would, inside a card or a section that already frames it, and a box inside a card reads
+ * as clutter. A caller that shows it on a bare page frames it with `class`.
+ *
  * @param props See {@link UpgradePromptProps}.
  */
 export function UpgradePrompt(
@@ -528,7 +532,7 @@ export function UpgradePrompt(
   return (
     <div
       class={join(
-        "flex flex-col items-start gap-4 rounded-md border border-dashed border-control bg-surface p-4 sm:flex-row sm:items-center",
+        "flex flex-col items-start gap-4 sm:flex-row sm:items-center",
         className,
       )}
     >

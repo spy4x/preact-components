@@ -211,6 +211,32 @@ describe("DropdownItem", () => {
     expect(html).not.toContain("text-foreground")
   })
 
+  it("dims a disabled item and only a disabled one, as a disabled Button is dimmed", () => {
+    // The dimming is `disabled:opacity-50`, which every item carries; what sets it off is the
+    // `disabled` attribute, so the test needs both on the same button and neither attribute on an
+    // enabled item.
+    const dimmedButton =
+      /<button\b[^>]*\sdisabled[\s=>][^>]*disabled:opacity-50|<button\b[^>]*disabled:opacity-50[^>]*\sdisabled[\s=>]/
+    const disabled = render(<DropdownItem disabled onClick={() => {}}>Archive</DropdownItem>)
+    const enabled = render(<DropdownItem onClick={() => {}}>Archive</DropdownItem>)
+
+    expect(disabled).toMatch(dimmedButton)
+    expect(enabled).not.toMatch(dimmedButton)
+  })
+
+  it("draws a disabled danger item in the default colour, like any disabled item", () => {
+    const html = render(<DropdownItem danger disabled onClick={() => {}}>Delete</DropdownItem>)
+
+    expect(html).toBe(render(<DropdownItem disabled onClick={() => {}}>Delete</DropdownItem>))
+    expect(html).not.toContain("text-red-")
+  })
+
+  it("keeps a danger link red, because disabled disables only the button form", () => {
+    const html = render(<DropdownItem href="/delete" danger disabled>Delete</DropdownItem>)
+
+    expect(html).toContain("text-red-600")
+  })
+
   it("leaves an item without danger in the default grey", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
 

@@ -28,6 +28,14 @@ export interface InlineEditProps {
    * would, unless a save is already running; that save still finishes.
    */
   disabled?: boolean
+  /**
+   * `id` of the element that shows the value as text. A heading around the component names itself
+   * by it — `<h1 aria-labelledby={textId}>` — so the heading reads as the value alone. Without it,
+   * a heading takes its name from its content, and that is the edit button's name, "Edit Trip".
+   */
+  textId?: string
+  /** Sets `data-e2e` on the component's outer element, in both its states. */
+  dataE2E?: string
   class?: string
 }
 
@@ -61,6 +69,9 @@ const defaultErrorMessage = (): string => "Could not save. Try again."
  * {@link InlineEditProps.savingLabel}; Enter, Escape and blur are ignored. A rejected promise leaves
  * the field open with the typed text and an error under it, so the user can retry or cancel.
  *
+ * Inside a heading, pass {@link InlineEditProps.textId} and point the heading's `aria-labelledby` at
+ * it: the button's own name, which says what pressing it does, then stays out of the heading's.
+ *
  * Removing the component while its field is open saves nothing: the typed text is dropped. Chromium
  * fires `blur` on a focused field that leaves the page, and a row deleted by a shortcut or a list
  * that re-renders must not send a rename nobody confirmed. Enter and Escape pressed while an input
@@ -79,6 +90,8 @@ export function InlineEdit(
     savingLabel = "Saving…",
     errorMessage = defaultErrorMessage,
     disabled = false,
+    textId,
+    dataE2E,
     class: className,
   }: InlineEditProps,
 ): JSX.Element {
@@ -172,7 +185,7 @@ export function InlineEdit(
 
   if (!editing) {
     return (
-      <span class={cn("inline-flex max-w-full min-w-0", className)}>
+      <span class={cn("inline-flex max-w-full min-w-0", className)} data-e2e={dataE2E}>
         <button
           ref={trigger}
           type="button"
@@ -181,7 +194,7 @@ export function InlineEdit(
           disabled={disabled}
           onClick={start}
         >
-          <span class="truncate">{value}</span>
+          <span id={textId} class="truncate">{value}</span>
           <span aria-hidden="true" class="text-placeholder">
             <IconPencilSquare class="size-4" />
           </span>
@@ -191,7 +204,7 @@ export function InlineEdit(
   }
 
   return (
-    <span class={cn("inline-flex max-w-full min-w-0 flex-col gap-1", className)}>
+    <span class={cn("inline-flex max-w-full min-w-0 flex-col gap-1", className)} data-e2e={dataE2E}>
       <Input
         ref={field}
         type="text"
@@ -201,9 +214,11 @@ export function InlineEdit(
         aria-invalid={error === null ? undefined : "true"}
         aria-describedby={error === null ? undefined : errorId}
         readOnly={busy}
-        onInput={(event) => setDraft(event.currentTarget.value)}
+        onInput={(event) =>
+          setDraft(event.currentTarget.value)}
         onKeyDown={onKeyDown}
-        onBlur={() => void save()}
+        onBlur={() =>
+          void save()}
       />
       <span role="status" class={busy ? "text-sm text-muted" : "sr-only"}>
         {busy ? savingLabel : ""}

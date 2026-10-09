@@ -12,6 +12,7 @@ export type BadgeColor = "red" | "orange" | "green" | "gray" | "blue" | "purple"
 export type BadgeType = "filled" | "outline"
 
 export interface BadgeProps {
+  /** The label, shown exactly as given: the badge changes no letter's case. */
   text: string
   /** Defaults to `"purple"`, the accent. */
   color?: BadgeColor
@@ -65,7 +66,7 @@ const filledClasses: Record<BadgeColor, string> = {
 }
 
 const base =
-  "inline-flex items-center border rounded-md px-2 py-1 text-xs whitespace-nowrap font-medium capitalize"
+  "inline-flex items-center border rounded-md px-2 py-1 text-xs whitespace-nowrap font-medium"
 
 /**
  * Compose a badge's class list without rendering one, so a pill that is not a {@link Badge} — a

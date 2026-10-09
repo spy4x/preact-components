@@ -50,8 +50,24 @@ export interface ConfirmDialogProps {
   closeOnBackdrop?: boolean
   /** Id used to override the modal's generated title id. */
   titleId?: string
+  /**
+   * The confirmed work is still running, such as the request `onConfirm` started. The confirm button
+   * shows `Button`'s busy state — a spinner, `aria-busy`, presses ignored, focus kept — and the
+   * dialog refuses every way of cancelling: the cancel button is disabled, and Escape, the header
+   * dismiss control and a backdrop click do not reach `onCancel`. The request is already sent, so a
+   * cancel could not take it back. On a browser that ignores `closedby` (shipping Safari), Escape
+   * closes the dialog before anything can refuse it, and `Modal` shows it again at once: it stays
+   * open after a brief flash. Clear `busy`, or unmount the dialog, when the work settles.
+   */
+  busy?: boolean
+  /** Shown on the confirm button while `busy`, such as `"Deleting…"`. Left out, its label stays. */
+  busyLabel?: string
   /** Stamps `data-e2e` on the dialog element. */
   dataE2E?: string
+  /** `data-e2e` of the confirm button. Defaults to `"confirm-dialog-confirm"`. */
+  confirmDataE2E?: string
+  /** `data-e2e` of the cancel button. Defaults to `"confirm-dialog-cancel"`. */
+  cancelDataE2E?: string
   /** Extra utilities for the dialog element. */
   class?: string
 }
@@ -99,7 +115,11 @@ export function ConfirmDialog(
     tone = "default",
     closeOnBackdrop = false,
     titleId,
+    busy = false,
+    busyLabel,
     dataE2E,
+    confirmDataE2E = CONFIRM_DATA_E2E,
+    cancelDataE2E = CANCEL_DATA_E2E,
     class: className,
   }: ConfirmDialogProps,
 ): JSX.Element {
@@ -116,7 +136,8 @@ export function ConfirmDialog(
   return (
     <Modal
       open
-      onClose={onCancel}
+      // `false` refuses the close: while busy, Escape, the dismiss control and the backdrop wait.
+      onClose={() => busy ? false : onCancel()}
       title={title}
       titleId={titleId}
       role="alertdialog"
@@ -128,8 +149,21 @@ export function ConfirmDialog(
       class={className}
       footer={
         <>
-          <Button variant="outline" onClick={() => onCancel()}>{cancelText}</Button>
-          <Button variant={confirmVariant(tone)} onClick={(event) => onConfirm(event)}>
+          <Button
+            variant="outline"
+            disabled={busy}
+            data-e2e={cancelDataE2E}
+            onClick={() => onCancel()}
+          >
+            {cancelText}
+          </Button>
+          <Button
+            variant={confirmVariant(tone)}
+            busy={busy}
+            busyLabel={busyLabel}
+            data-e2e={confirmDataE2E}
+            onClick={(event) => onConfirm(event)}
+          >
             {confirmText}
           </Button>
         </>
@@ -151,6 +185,12 @@ export const CONFIRM_LABEL = "Confirm"
 
 /** English default for the cancelling action, which also names the header dismiss control. */
 export const CANCEL_LABEL = "Cancel"
+
+/** `data-e2e` a {@link ConfirmDialog}'s confirm button carries when the caller names none. */
+const CONFIRM_DATA_E2E = "confirm-dialog-confirm"
+
+/** `data-e2e` a {@link ConfirmDialog}'s cancel button carries when the caller names none. */
+const CANCEL_DATA_E2E = "confirm-dialog-cancel"
 
 /**
  * The caller's label, or the library's English default.

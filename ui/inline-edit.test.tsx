@@ -36,6 +36,18 @@ describe("InlineEdit", () => {
     expect(html).toContain(`aria-label="Renommer Shopping"`)
   })
 
+  it("gives the shown text the caller's id, for a heading around it to be named by", () => {
+    const html = render(<InlineEdit value="Trip" textId="trip-name" onSave={() => {}} />)
+
+    expect(html).toContain(`<span id="trip-name" class="truncate">Trip</span>`)
+  })
+
+  it("sets data-e2e on its outer element", () => {
+    const html = render(<InlineEdit value="Trip" dataE2E="group-title" onSave={() => {}} />)
+
+    expect(html).toMatch(/^<span class="[^"]*" data-e2e="group-title">/)
+  })
+
   it("disables the button when disabled", () => {
     const html = render(<InlineEdit value="Shopping" disabled onSave={() => {}} />)
 
