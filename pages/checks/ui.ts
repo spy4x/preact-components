@@ -18540,7 +18540,11 @@ async function planCardPendingCheck(devtools: Devtools): Promise<void> {
         }, cleared again ${restored}`,
     )
   } finally {
-    if (posted) await restoreHydratedPage(devtools, restoreUrl, "the pending PlanCard checks")
+    // A broken card posts natively and leaves the catalogue, so the later checks need it back.
+    const here = await devtools.evaluate<string>("location.href").catch(() => "")
+    if (posted || here !== restoreUrl) {
+      await restoreHydratedPage(devtools, restoreUrl, "the pending PlanCard checks")
+    }
   }
 }
 
