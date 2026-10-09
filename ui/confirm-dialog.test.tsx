@@ -202,6 +202,35 @@ describe("ConfirmDialog", () => {
       .toContain('data-e2e="delete-invoice"')
   })
 
+  it("stamps default e2e hooks on both buttons, and the caller's when given", () => {
+    const html = render(dialog())
+    expect(html).toMatch(/<button [^>]*data-e2e="confirm-dialog-confirm"[^>]*>Delete</)
+    expect(html).toMatch(/<button [^>]*data-e2e="confirm-dialog-cancel"[^>]*>Keep it</)
+
+    const named = render(dialog({ confirmDataE2E: "delete", cancelDataE2E: "keep" }))
+    expect(named).toMatch(/<button [^>]*data-e2e="delete"[^>]*>Delete</)
+    expect(named).toMatch(/<button [^>]*data-e2e="keep"[^>]*>Keep it</)
+  })
+
+  it("marks the confirm button busy with its busy label, and disables cancel, while busy", () => {
+    const html = render(dialog({ busy: true, busyLabel: "Deleting…" }))
+    const confirm = html.match(/<button [^>]*data-e2e="confirm-dialog-confirm"[^>]*>.*?<\/button>/)
+      ?.[0] ?? ""
+    const cancel = html.match(/<button [^>]*data-e2e="confirm-dialog-cancel"[^>]*>/)?.[0] ?? ""
+
+    expect(confirm).toContain('aria-busy="true"')
+    expect(confirm).toContain("animate-spin")
+    expect(confirm).toContain("Deleting…")
+    expect(cancel).toMatch(/\sdisabled[\s=>]/)
+  })
+
+  it("leaves both buttons usable when not busy", () => {
+    const html = render(dialog())
+
+    expect(html).not.toContain("aria-busy")
+    expect(html).not.toMatch(/<button [^>]*\sdisabled[\s=>]/)
+  })
+
   it("keeps the danger tone off the default surface", () => {
     expect(render(dialog())).not.toContain("border-red-300")
   })

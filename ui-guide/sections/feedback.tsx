@@ -472,6 +472,8 @@ function ModalDemo() {
 function ConfirmDialogDemo() {
   const target = useSignal<string | null>(null)
   const outcome = useSignal("nothing confirmed yet")
+  // The delete "request" takes two seconds, so the busy state stays on screen long enough to see.
+  const deleting = useSignal(false)
 
   return (
     <Stack gap="sm">
@@ -498,9 +500,15 @@ function ConfirmDialogDemo() {
           cancelLabel="Keep it"
           tone="danger"
           dataE2E="guide-confirm"
+          busy={deleting.value}
+          busyLabel="Deleting…"
           onConfirm={() => {
-            outcome.value = "confirmed: delete INV-0007"
-            target.value = null
+            deleting.value = true
+            setTimeout(() => {
+              deleting.value = false
+              outcome.value = "confirmed: delete INV-0007"
+              target.value = null
+            }, 2000)
           }}
           onCancel={() => {
             target.value = null
@@ -929,6 +937,19 @@ export const feedbackDemos = {
         default: `"default"`,
         description: "`danger` confirms in red.",
       },
+      {
+        name: "busy / busyLabel",
+        type: "boolean / string",
+        default: "false",
+        description:
+          "While the confirmed work runs: a spinner and the busy label on confirm, presses ignored, and no way to cancel.",
+      },
+      {
+        name: "confirmDataE2E / cancelDataE2E",
+        type: "string",
+        default: `"confirm-dialog-confirm" / "confirm-dialog-cancel"`,
+        description: "The buttons' `data-e2e` hooks.",
+      },
     ],
     snippet: `<ConfirmDialog
   title="Delete invoice INV-0007?"
@@ -936,6 +957,8 @@ export const feedbackDemos = {
   confirmLabel="Delete"
   cancelLabel="Keep it"
   tone="danger"
+  busy={deleting.value}
+  busyLabel="Deleting…"
   onConfirm={() => deleteInvoice()}
   onCancel={() => confirming.value = false}
 />`,
