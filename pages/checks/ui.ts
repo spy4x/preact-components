@@ -237,6 +237,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await kanbanBoardChecks(devtools)
   await sortableListChecks(devtools)
   await themeToggleChecks(devtools)
+  await hotkeyPropChecks(devtools)
   await billingChecks(devtools)
   await onboardingChecklistChecks(devtools)
 
@@ -20474,4 +20475,275 @@ async function errorBoundaryChecks(devtools: Devtools): Promise<void> {
   if (mendAim.onTarget) await clickAt(devtools, mendAim, reload)
   await poll(() => devtools.evaluate<boolean>(`${view} !== null`), 2_000)
   await pointerToCorner(devtools)
+}
+
+/** One plain key press with no modifier: a letter or a digit, as a US keyboard types it. */
+function plainKey(key: string): Chord {
+  const code = /\d/.test(key) ? `Digit${key}` : `Key${key.toUpperCase()}`
+  return { key, code, keyCode: key.toUpperCase().charCodeAt(0), text: key, modifiers: 0 }
+}
+
+/** What one read of the `Button` card's hotkey demo sees. */
+interface HotkeyButtonState {
+  /** Presses the demo's `onClick` counted. */
+  count: number
+  /** `aria-keyshortcuts` on the button. */
+  shortcuts: string | null
+  /** The hint's text, or `null` when there is no hint. */
+  hint: string | null
+  /** The hint's rendered width; 0 when it is not displayed. */
+  hintWidth: number
+  /** The hint is hidden from the accessibility tree. */
+  hintHidden: boolean
+  /** The text field's value. */
+  field: string
+}
+
+/** Reads {@link HotkeyButtonState} off the `Button` card in one round trip. */
+const HOTKEY_BUTTON_STATE = `(() => {
+  const card = document.querySelector("#demo-Button")
+  const button = card.querySelector('[data-e2e="hotkey-button"]')
+  const hint = button.querySelector("[data-hotkey-hint]")
+  return {
+    count: Number(card.querySelector('[data-e2e="hotkey-count"]').textContent.match(/\\d+/)[0]),
+    shortcuts: button.getAttribute("aria-keyshortcuts"),
+    hint: hint === null ? null : hint.textContent,
+    hintWidth: hint === null ? 0 : hint.getBoundingClientRect().width,
+    hintHidden: hint?.getAttribute("aria-hidden") === "true",
+    field: card.querySelector('[data-e2e="hotkey-field"]').value,
+  }
+})()`
+
+/**
+ * Records whether the page's next key press reached `window` with its default action cancelled,
+ * in `window.__hotkeyPrevented`. Bubble phase on `window`: after every listener on `document`.
+ */
+const RECORD_PREVENTED = `(window.__hotkeyPrevented = "no press", window.addEventListener(
+  "keydown",
+  (event) => { window.__hotkeyPrevented = event.defaultPrevented },
+  { once: true },
+), null)`
+
+/**
+ * The `hotkey` prop (#610), driven with real key presses: `Button`'s own demo, then the `Tabs`,
+ * `ThemeToggle`, `CopyButton` and `PageAction` cards that pass the prop on.
+ *
+ * On `Button`: the button announces N as `aria-keyshortcuts="N"` and shows N in a hint that this
+ * fine-pointer browser displays and screen readers skip. N pressed with focus on the page clicks
+ * it once. N typed in the card's text field lands in the field and clicks nothing. With the card's
+ * checkbox disabling the button, N clicks nothing and leaves the press uncancelled, so the key is
+ * still the page's: a disabled button does not take it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function hotkeyPropChecks(devtools: Devtools): Promise<void> {
+  const button = `document.querySelector('#demo-Button [data-e2e="hotkey-button"]')`
+  const field = `document.querySelector('#demo-Button [data-e2e="hotkey-field"]')`
+  const toggle = `document.querySelector('#demo-Button [data-e2e="hotkey-disable"]')`
+  const present = await devtools.evaluate<boolean>(
+    `${button} !== null && ${field} !== null && ${toggle} !== null`,
+  )
+  check("the Button card's hotkey demo is on the page, with its field and checkbox", present)
+  if (!present) return
+  await centreInView(devtools, button)
+  const read = () => devtools.evaluate<HotkeyButtonState>(HOTKEY_BUTTON_STATE)
+  // A fixed wait for the checks that prove a press did nothing: an absence has nothing to poll.
+  const settle = () => new Promise((done) => setTimeout(done, 200))
+  const blur = () => devtools.evaluate<null>(`(document.activeElement?.blur(), null)`)
+  const n = plainKey("n")
+
+  const start = await read()
+  check(
+    'Button hotkey="n" announces aria-keyshortcuts="N"',
+    start.shortcuts === "N",
+    `aria-keyshortcuts=${JSON.stringify(start.shortcuts)}`,
+  )
+  check(
+    "Button's hotkey hint shows N on a fine-pointer screen and is hidden from screen readers",
+    start.hint === "N" && start.hintWidth > 0 && start.hintHidden,
+    `hint ${JSON.stringify(start.hint)}, width ${start.hintWidth}, aria-hidden ${start.hintHidden}`,
+  )
+
+  await blur()
+  await pressChord(devtools, n)
+  await poll(
+    () => devtools.evaluate<boolean>(`${HOTKEY_BUTTON_STATE}.count > ${start.count}`),
+    3_000,
+  )
+  await settle()
+  const pressed = await read()
+  check(
+    "pressing N clicks the Button that has hotkey n, once",
+    pressed.count === start.count + 1,
+    `count ${start.count} → ${pressed.count}`,
+  )
+
+  await devtools.evaluate<null>(`(${field}.focus(), ${field}.value = "", null)`)
+  await pressChord(devtools, n)
+  await settle()
+  const typed = await read()
+  check(
+    "N typed in a text field lands in the field and does not click the Button",
+    typed.field === "n" && typed.count === pressed.count,
+    `field ${JSON.stringify(typed.field)}, count ${pressed.count} → ${typed.count}`,
+  )
+
+  await devtools.evaluate<null>(`(${toggle}.click(), null)`)
+  const disabled = await poll(() => devtools.evaluate<boolean>(`${button}.disabled`), 3_000)
+  // The switch reaches the hook through an effect; two frames and a task are past it.
+  await devtools.evaluate<null>(`(async () => {
+    for (let k = 0; k < 2; k++) {
+      await new Promise((done) => requestAnimationFrame(() => setTimeout(done, 0)))
+    }
+    return null
+  })()`)
+  await blur()
+  await devtools.evaluate<null>(RECORD_PREVENTED)
+  await pressChord(devtools, n)
+  await settle()
+  const off = await read()
+  const prevented = await devtools.evaluate<boolean | string>(`window.__hotkeyPrevented`)
+  check(
+    "N does not click a disabled Button with hotkey n, and leaves the key press to the page",
+    disabled && off.count === typed.count && prevented === false,
+    `disabled ${disabled}, count ${typed.count} → ${off.count}, press cancelled ${prevented}`,
+  )
+  await devtools.evaluate<null>(`(${toggle}.click(), ${field}.value = "", null)`)
+  await poll(() => devtools.evaluate<boolean>(`!${button}.disabled`), 3_000)
+
+  await tabsHotkeyCheck(devtools)
+  await themeToggleHotkeyCheck(devtools)
+  await copyButtonHotkeyCheck(devtools)
+  await pageActionHotkeyCheck(devtools)
+}
+
+/**
+ * `Tabs` with a `hotkey` per tab: 2 selects Detail, 3 selects nothing because Archived is
+ * disabled, and 1 goes back to Overview, where the card started.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tabsHotkeyCheck(devtools: Devtools): Promise<void> {
+  const selected = `document.querySelector('#demo-Tabs [role="tab"][aria-selected="true"]')?.id`
+  const first = `document.querySelector('#demo-Tabs [role="tab"]')`
+  const present = await devtools.evaluate<boolean>(`${first} !== null`)
+  check("the Tabs card is on the page", present)
+  if (!present) return
+  await centreInView(devtools, first)
+  await devtools.evaluate<null>(`(document.activeElement?.blur(), null)`)
+  const shortcuts = await devtools.evaluate<string | null>(
+    `${first}.getAttribute("aria-keyshortcuts")`,
+  )
+  const before = await devtools.evaluate<string>(selected)
+  await pressChord(devtools, plainKey("2"))
+  await poll(() => devtools.evaluate<boolean>(`${selected} === "guide-tab-detail-tab"`), 3_000)
+  const two = await devtools.evaluate<string>(selected)
+  await pressChord(devtools, plainKey("3"))
+  await new Promise((done) => setTimeout(done, 200))
+  const three = await devtools.evaluate<string>(selected)
+  await pressChord(devtools, plainKey("1"))
+  await poll(() => devtools.evaluate<boolean>(`${selected} === "guide-tab-overview-tab"`), 3_000)
+  const one = await devtools.evaluate<string>(selected)
+  check(
+    "a Tabs hotkey selects its tab, and the hotkey of a disabled tab selects nothing",
+    shortcuts === "1" && before === "guide-tab-overview-tab" && two === "guide-tab-detail-tab" &&
+      three === two && one === "guide-tab-overview-tab",
+    `first tab aria-keyshortcuts=${JSON.stringify(shortcuts)}; ${before} → 2: ${two} → 3: ` +
+      `${three} → 1: ${one}`,
+  )
+}
+
+/**
+ * `ThemeToggle hotkey="t"`: T steps the first toggle's preference, and two more presses bring it
+ * back round to where it started. As an icon button it announces T and shows no hint.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function themeToggleHotkeyCheck(devtools: Devtools): Promise<void> {
+  const toggle = `document.querySelector("#demo-ThemeToggle button")`
+  const readout = `document.querySelector('#demo-ThemeToggle [data-e2e="theme-toggle-readout"]')`
+  const present = await devtools.evaluate<boolean>(`${toggle} !== null && ${readout} !== null`)
+  check("the ThemeToggle card is on the page, with its readout", present)
+  if (!present) return
+  await centreInView(devtools, toggle)
+  await devtools.evaluate<null>(`(document.activeElement?.blur(), null)`)
+  const text = () => devtools.evaluate<string>(`${readout}.textContent`)
+  const attributes = await devtools.evaluate<{ shortcuts: string | null; hint: boolean }>(
+    `({ shortcuts: ${toggle}.getAttribute("aria-keyshortcuts"),
+      hint: ${toggle}.querySelector("[data-hotkey-hint]") !== null })`,
+  )
+  const start = await text()
+  const seen = [start]
+  for (let press = 0; press < 3; press++) {
+    const last = seen[seen.length - 1]
+    await pressChord(devtools, plainKey("t"))
+    await poll(async () => (await text()) !== last, 3_000)
+    seen.push(await text())
+  }
+  check(
+    "pressing T steps a ThemeToggle with hotkey t, and three presses come back round",
+    attributes.shortcuts === "T" && !attributes.hint && seen[1] !== start && seen[3] === start,
+    `aria-keyshortcuts=${JSON.stringify(attributes.shortcuts)}, hint ${attributes.hint}; ` +
+      seen.join(" → "),
+  )
+}
+
+/**
+ * `CopyButton hotkey="c"` on the card's "Copy via port" button: C copies through the port, and
+ * the button's own live region says "Copied".
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function copyButtonHotkeyCheck(devtools: Devtools): Promise<void> {
+  const button = `[...document.querySelectorAll("#demo-CopyButton button")]
+    .find((button) => button.getAttribute("aria-keyshortcuts") === "C")`
+  const present = await devtools.evaluate<boolean>(`(${button}) !== undefined`)
+  check("the CopyButton card has a button with hotkey c", present)
+  if (!present) return
+  await centreInView(devtools, `(${button})`)
+  // A confirmation an earlier check left up has to clear first, or it would read as this one.
+  await poll(
+    () => devtools.evaluate<boolean>(`(${button}).nextElementSibling.textContent === ""`),
+    3_000,
+  )
+  await devtools.evaluate<null>(`(document.activeElement?.blur(), null)`)
+  await pressChord(devtools, plainKey("c"))
+  const copied = await poll(
+    () => devtools.evaluate<boolean>(`(${button}).nextElementSibling.textContent === "Copied"`),
+    3_000,
+  )
+  const label = await devtools.evaluate<string>(`(${button}).textContent`)
+  check(
+    "pressing C copies through a CopyButton with hotkey c",
+    copied,
+    `region ${copied ? "said Copied" : "stayed silent"}, button text ${JSON.stringify(label)}`,
+  )
+}
+
+/**
+ * `PageAction hotkey="p"`: P presses "New task", which the card counts.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function pageActionHotkeyCheck(devtools: Devtools): Promise<void> {
+  const action = `document.querySelector('[data-e2e="page-action-hotkey"]')`
+  const presses = `Number(document.querySelector('[data-e2e="page-action-presses"]').textContent
+    .match(/\\d+/)[0])`
+  const present = await devtools.evaluate<boolean>(`${action} !== null`)
+  check("the PageAction card has an action with hotkey p", present)
+  if (!present) return
+  await centreInView(devtools, action)
+  await devtools.evaluate<null>(`(document.activeElement?.blur(), null)`)
+  const before = await devtools.evaluate<number>(presses)
+  const shortcuts = await devtools.evaluate<string | null>(
+    `${action}.getAttribute("aria-keyshortcuts")`,
+  )
+  await pressChord(devtools, plainKey("p"))
+  await poll(() => devtools.evaluate<boolean>(`${presses} > ${before}`), 3_000)
+  const after = await devtools.evaluate<number>(presses)
+  check(
+    "pressing P presses a PageAction with hotkey p",
+    shortcuts === "P" && after === before + 1,
+    `aria-keyshortcuts=${JSON.stringify(shortcuts)}, presses ${before} → ${after}`,
+  )
 }
