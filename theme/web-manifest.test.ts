@@ -51,6 +51,9 @@ describe("buildWebManifest", () => {
     expect(() => buildWebManifest({ name: "Tasks", icons: [icons[1]] })).toThrow(
       `needs a 192x192 icon, an icon with purpose "maskable"`,
     )
+    expect(() => buildWebManifest({ name: "Tasks", icons: [icons[0]] })).toThrow(
+      `needs a 512x512 icon, an icon with purpose "maskable"`,
+    )
   })
 
   it("refuses an empty name", () => {
