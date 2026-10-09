@@ -116,8 +116,9 @@ export function offersKeepMine(item: ConflictItem): boolean {
  * A choice runs the caller's callback; the caller removes the item from `conflicts` once it is
  * settled. When that removes the item whose button had focus, focus moves to the next item's first
  * button, or to the heading when none is left, so a keyboard user is never dropped at the top of the
- * page. Nothing else moves focus. A polite live region says when the list is empty, and when a
- * callback's promise rejects; the rejection is caught here, and that item shows `labels.failed`.
+ * page. Nothing else moves focus. The list becoming empty is said once: by the heading, when focus
+ * moves there, or else by a polite live region. That region also says when a callback's promise
+ * rejects; the rejection is caught here, and that item shows `labels.failed`.
  */
 export function ConflictChooser(
   { conflicts, onKeepMine, onUseTheirs, labels, headingLevel = 2, class: className }:
@@ -133,22 +134,36 @@ export function ConflictChooser(
   const [failedId, setFailedId] = useState<string | null>(null)
   /** The position of the item whose button was pressed, while its removal is awaited. */
   const chosenAt = useRef<number | null>(null)
-  const [hadConflicts, setHadConflicts] = useState(conflicts.length > 0)
+  /** How many conflicts the last effect saw, to tell the moment the list becomes empty. */
+  const seenCount = useRef(conflicts.length)
+  /** Whether the live region says the list is empty: only when focus did not move to the heading. */
+  const [announceResolved, setAnnounceResolved] = useState(false)
 
   useEffect(() => {
-    if (conflicts.length > 0) setHadConflicts(true)
+    const emptied = conflicts.length === 0 && seenCount.current > 0
+    seenCount.current = conflicts.length
+    const focused = moveFocus()
+    if (conflicts.length > 0) setAnnounceResolved(false)
+    // The focused heading already reads "All conflicts resolved"; the live region saying it too
+    // would announce it twice.
+    else if (emptied) setAnnounceResolved(focused !== heading.current)
+  }, [conflicts])
+
+  /** After a choice removed its item, focus what follows it, and return what got focus. */
+  const moveFocus = (): HTMLElement | null => {
     const index = chosenAt.current
-    if (index === null || !root.current) return
+    if (index === null || !root.current) return null
     chosenAt.current = null
     const document = root.current.ownerDocument
     // Only when the pressed button is gone and focus fell to the body: anything else the person did
     // in the meantime wins.
-    if (document.activeElement && document.activeElement !== document.body) return
+    if (document.activeElement && document.activeElement !== document.body) return null
     const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
     const next = items[Math.min(index, items.length - 1)]
     const target = next?.querySelector<HTMLElement>("button") ?? heading.current
     target?.focus()
-  }, [conflicts])
+    return target && document.activeElement === target ? target : null
+  }
 
   const choose = (id: string, index: number, run: (id: string) => void | Promise<unknown>) => {
     if (busy.has(id)) return
@@ -193,7 +208,7 @@ export function ConflictChooser(
         {conflicts.length > 0 ? words.heading(conflicts.length) : words.resolved}
       </Heading>
       <p role="status" aria-live="polite" class="sr-only">
-        {failedLabel || (conflicts.length === 0 && hadConflicts ? words.resolved : "")}
+        {failedLabel || (conflicts.length === 0 && announceResolved ? words.resolved : "")}
       </p>
       {conflicts.length > 0
         ? (

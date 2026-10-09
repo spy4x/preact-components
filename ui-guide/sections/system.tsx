@@ -1474,7 +1474,8 @@ const sampleConflicts: ConflictItem[] = [
 /**
  * `ConflictChooser` inline and in a dialog. A choice removes the item and logs which callback ran,
  * the way an app removes an entry once its outbox settled it. "Fail the next choice" makes the next
- * callback return a rejected promise, as a failed outbox write would.
+ * callback return a rejected promise, as a failed outbox write would. The last chooser starts with
+ * nothing to resolve, as an app shows it before any conflict arrives.
  */
 function ConflictChooserDemo() {
   const conflicts = useSignal<ConflictItem[]>(sampleConflicts)
@@ -1545,6 +1546,16 @@ function ConflictChooserDemo() {
       <ol data-e2e="conflict-log" class="text-sm text-muted">
         {log.value.map((line) => <li key={line}>{line}</li>)}
       </ol>
+      <Part title="Before any conflict arrives">
+        <div data-e2e="conflict-empty">
+          <ConflictChooser
+            conflicts={[]}
+            onKeepMine={() => {}}
+            onUseTheirs={() => {}}
+            headingLevel={5}
+          />
+        </div>
+      </Part>
     </Stack>
   )
 }

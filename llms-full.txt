@@ -3228,10 +3228,12 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   "Restore mine", for an outbox whose `keepMine` re-creates a deleted item. It renders inline, which
   suits a phone; for a dialog, put it inside `Modal` from `@spy4x/preact-ui` and set
   `headingLevel` to fit the dialog's own title. When a choice removes the item whose button had
-  focus, focus moves to the next item, or to the heading once none is left. A callback may return
-  a promise: its item's buttons stay busy until it settles, and a rejection shows `labels.failed`
-  under the item and announces it, with nothing left uncaught. `DEFAULT_CONFLICT_CHOOSER_LABELS`
-  holds its English words; `labels` replaces any of them, per reason inside the records.
+  focus, focus moves to the next item, or to the heading once none is left. "All conflicts
+  resolved" is said once: by that heading taking focus, or else by a polite live region. A
+  callback may return a promise: its item's buttons stay busy until it settles, and a rejection
+  shows `labels.failed` under the item and announces it, with nothing left uncaught.
+  `DEFAULT_CONFLICT_CHOOSER_LABELS` holds its English words; `labels` replaces any of them, per
+  reason inside the records.
 - **`InstallPrompt`** offers to install the app: an Install button where the browser has an
   install dialog (`mode: "prompt"`), and "Tap Share, then Add to Home Screen" on an iPhone or iPad
   (`mode: "ios"`). It renders nothing for `installed` and `unavailable`. `createInstallPrompt` in
@@ -3631,9 +3633,10 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   512x512 one and one with `purpose: "maskable"`, or the config fails to resolve, naming each one
   missing: without them a browser does not offer to install the app, or Android crops the icon.
   Pass `Deno.writeTextFile`, and link the file from the page's `<head>`:
-  `<link rel="manifest" href="/manifest.webmanifest">`. `buildWebManifest(input, base)` is the
-  same object with its defaults filled in, for a test or a server that writes the file itself. In
-  an app with a client and a server build, run it on the client build only, as above.
+  `<link rel="manifest" href="/manifest.webmanifest">`, or `href="./manifest.webmanifest"` with a
+  relative `base: "./"`, which the dev server answers at its root. `buildWebManifest(input, base)`
+  is the same object with its defaults filled in, for a test or a server that writes the file
+  itself. In an app with a client and a server build, run it on the client build only, as above.
 
 The plugins are typed structurally, so this package does not depend on `vite`; an object they
 return is accepted by Vite's `plugins` array as it is.
