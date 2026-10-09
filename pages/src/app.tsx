@@ -14,6 +14,9 @@
  * {@link NowDemo}, is `useNow`, a hook with no markup of its own, mounted and unmounted on a button.
  * They were on the Signals page until the guide stopped showing helpers (#357); the browser checks
  * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
+ *
+ * The System page ends with {@link RouteAnnouncerDemo}, `useRouteAnnouncer` on a path the demo holds
+ * itself; `pages/checks/system.ts` drives it.
  */
 
 import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
@@ -28,6 +31,7 @@ import { useEffect } from "preact/hooks"
 import { AccentSwitch } from "./accent-switch.tsx"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { NowDemo } from "./now-demo.tsx"
+import { RouteAnnouncerDemo } from "./route-announcer-demo.tsx"
 import { AUTHOR, LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY, THEME_KEY } from "./site.ts"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
@@ -117,6 +121,7 @@ export function App({ initialHash, version }: AppProps) {
               <NowDemo />
             </div>
           ),
+          system: <RouteAnnouncerDemo />,
         }}
       />
     </div>

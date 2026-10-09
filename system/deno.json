@@ -15,6 +15,7 @@
     "./boundary": "./boundary.ts",
     "./conflict-chooser": "./conflict-chooser.tsx",
     "./install-prompt": "./install-prompt.tsx",
+    "./route-announcer": "./route-announcer.ts",
     "./sync-status": "./sync-status.tsx"
   },
   "imports": {
