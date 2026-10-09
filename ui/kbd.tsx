@@ -40,7 +40,7 @@ export interface KbdProps {
  * `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key.
  *
  * A sequence such as `<Kbd keys="g t" />` renders an outer `<kbd>` holding each press as above,
- * with the word "then" between them as plain text with a space on each side, so it is read
+ * with the word "then" between them as plain text with a space on each side; it is read
  * "G then T". The word is {@link KbdLabels.then}.
  *
  * A glyph that a screen reader may not read (⌘, ⌥, ⇧, ⌃ and the arrows) is hidden from it and
@@ -65,8 +65,8 @@ export function Kbd({ keys, children, apple, labels, class: className }: KbdProp
       />
     )
   }
-  // Inline, not flex: the spaces around "then" are real text, so the keys never run into the word
-  // when a screen reader or a copy joins them.
+  // Inline, with real spaces around "then": they space the word from the keys on screen and in
+  // copied text. Chromium's accessible name puts spaces between the keys either way.
   return (
     <kbd class={cn(SEQUENCE_CLASS, className)}>
       {steps.map((faces, index) => (
