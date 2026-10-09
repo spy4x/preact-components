@@ -433,8 +433,20 @@ function InlineEditDemo() {
   const offline = useSignal("Archive")
   const shown = useSignal(true)
   const locked = useSignal(false)
+  const trip = useSignal("Trip to Lisbon")
   return (
     <Stack gap="sm">
+      <h4 class="pc-h4" aria-labelledby="inline-edit-heading-text" data-e2e="inline-edit-heading">
+        <InlineEdit
+          value={trip.value}
+          textId="inline-edit-heading-text"
+          dataE2E="inline-edit-in-heading"
+          inputLabel="Trip name"
+          onSave={(next) => {
+            trip.value = next
+          }}
+        />
+      </h4>
       <div data-e2e="inline-edit-ok">
         {shown.value && (
           <InlineEdit
@@ -755,8 +767,18 @@ export const fieldDemos = {
         default: `"Could not save. Try again."`,
         description: "Words a rejected save; the field stays open with the typed text.",
       },
+      {
+        name: "textId",
+        type: "string",
+        description:
+          "Id of the shown text. Inside a heading, point its `aria-labelledby` here, so the heading reads as the value and not as the button's name.",
+      },
+      { name: "dataE2E", type: "string", description: "Sets `data-e2e` on the outer element." },
     ],
-    snippet: `<InlineEdit
+    snippet: `<h1 aria-labelledby="group-name">
+  <InlineEdit value={group.name} textId="group-name" onSave={rename} />
+</h1>
+<InlineEdit
   value={list.value}
   inputLabel="List name"
   onSave={async (next) => {
