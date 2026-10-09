@@ -2,12 +2,14 @@ import { createToastStore, type ToastEntry } from "@spy4x/preact-signals/toast"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
+import { options } from "preact"
 import { render } from "preact-render-to-string"
 import {
   defaultToastActionDuration,
   defaultToastDuration,
   resolveDuration,
   type ToastCorner,
+  type ToastId,
   type ToastItem,
   Toastr,
   type ToastrProps,
@@ -210,6 +212,41 @@ describe("Toastr", () => {
 
     expect(toast).toContain(">Undo</button>")
     expect(toast.indexOf(">Undo</button>")).toBeLessThan(toast.indexOf('aria-label="Dismiss"'))
+  })
+
+  it("still dismisses the toast when its action throws, and lets the error through", () => {
+    // No DOM here: the action button's click handler is read off the element tree as it is made.
+    let click: (() => void) | undefined
+    const previous = options.vnode
+    options.vnode = (vnode) => {
+      const props = vnode.props as { onClick?: () => void; children?: unknown }
+      if (vnode.type === "button" && props.children === "Undo") click = props.onClick
+      previous?.(vnode)
+    }
+    const dismissed: ToastId[] = []
+    try {
+      render(
+        <Toastr
+          toasts={[{
+            id: 7,
+            body: "Note deleted",
+            action: {
+              label: "Undo",
+              onAction: () => {
+                throw new Error("restore failed")
+              },
+            },
+          }]}
+          onDismiss={(id) => void dismissed.push(id)}
+        />,
+      )
+    } finally {
+      options.vnode = previous
+    }
+
+    expect(click).toBeDefined()
+    expect(() => click?.()).toThrow("restore failed")
+    expect(dismissed).toEqual([7])
   })
 
   it("renders no action button for a toast without an action", () => {
