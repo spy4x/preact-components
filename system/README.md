@@ -35,7 +35,7 @@ Extracted from earlier source applications.
 | `SiteHeader` | `site-header` | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
 | `Shell`      | `shell`       | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`  | `state-init`  | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `children`, `labels?`, `class?`                                                                                            |
+| `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `header?`, `children`, `labels?`, `class?`                                                                                 |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -1059,6 +1059,11 @@ page's last line always ends above it; it pads itself by the bottom safe-area in
 bounded, scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and
 that container becomes what both stick to.
 
+**`header` is the app's banner.** The brand, a picker or the user menu go in `header`, not in
+`children`: `header` renders in a `<header>` beside `<main>`, never inside it, so at page level it is
+the document's banner landmark, and the skip link — first in tab order, aimed at `<main>` — moves
+focus past the rail and the header's controls in one press. Left out, there is no `<header>`.
+
 **Colours are theme tokens read through `var()`,** each with the default palette's value as its
 fallback — the same pattern `theme/preset.css` uses — so the shell follows whichever palette the
 page sets and draws without the preset too.
@@ -1070,4 +1075,5 @@ The "More" glyph is three dots drawn inline, so the package gains no icon.
 `rail-shell.test.tsx` proves what a string render can: the split at five, the primary action's
 place in it, `aria-current` from either `currentKey` or `currentPath`, the "More" button pointing at
 the dialog, and every label's English default and override. The breakpoint switch, the layout, the
-dialog's keyboard and pointer behaviour and the focus moves are proven in `pages/checks/system.ts`.
+dialog's keyboard and pointer behaviour, the focus moves, the header's banner role and the skip
+link's jump past the header are proven in `pages/checks/system.ts`.

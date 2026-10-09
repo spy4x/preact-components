@@ -169,4 +169,23 @@ describe("RailShell", () => {
     expect(rail).not.toContain("<a ")
     expect(rail).toMatch(/<span class="[^"]*" aria-hidden="true"><svg/)
   })
+
+  it("renders the header slot in a header before main and outside it", () => {
+    const html = render(
+      <RailShell items={itemsOf(3)} header={<button type="button">Account</button>}>
+        <p>page body</p>
+      </RailShell>,
+    )
+    const header = html.indexOf('<header data-e2e="rail-shell-header">')
+    const main = html.indexOf("<main")
+    expect(header).toBeGreaterThan(html.indexOf('data-e2e="rail-shell-skip-link"'))
+    expect(header).toBeLessThan(main)
+    expect(region(html, "rail-shell-header", "header")).toContain(">Account</button>")
+    expect(region(html, "rail-shell-content", "main")).not.toContain("Account")
+  })
+
+  it("renders no header element when the header slot is left out", () => {
+    const html = render(<RailShell items={itemsOf(3)}>page</RailShell>)
+    expect(html).not.toContain("<header")
+  })
 })

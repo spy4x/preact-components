@@ -78,6 +78,12 @@ export interface RailShellProps {
   primary?: RailShellItem
   /** Port for an entry with no `href`: receives that entry's key. */
   navigate?: (key: string) => void
+  /**
+   * The app's own top bar — brand, pickers, the user menu. Rendered in a `<header>` above `<main>`
+   * and outside it, so it is the page's banner landmark and the skip link jumps past it. Left out,
+   * there is no `<header>`.
+   */
+  header?: ComponentChildren
   /** The page. Lands inside a `<main>` this component owns, the skip link's target. */
   children: ComponentChildren
   labels?: RailShellLabels
@@ -219,8 +225,13 @@ function MoreDots(): JSX.Element {
 }
 
 /**
- * The frame: a skip link, the rail from `md` up, the page in `<main>`, the phone tab bar below
- * `md`, and the "More" overlay.
+ * The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in
+ * `<main>`, the phone tab bar below `md`, and the "More" overlay.
+ *
+ * **The header is a banner, and the skip link skips it.** `header` lands in a `<header>` that sits
+ * beside `<main>`, never inside it, so placed at page level it is the document's banner landmark.
+ * The skip link comes first in tab order and targets `<main>`, so one Enter moves focus past the
+ * rail and the header's controls straight to the page.
  *
  * **Nothing overlaps the page.** The rail is a column in the layout, not a fixed layer, and its
  * contents stick to the top while the page scrolls. The tab bar sticks to the bottom but keeps its
@@ -245,6 +256,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
     currentPath,
     primary,
     navigate,
+    header,
     children,
     labels,
     class: className,
@@ -308,14 +320,17 @@ export function RailShell(props: RailShellProps): JSX.Element {
         </div>
       </nav>
 
-      <main
-        id={contentId}
-        tabindex={-1}
-        class="min-w-0 flex-1 focus:outline-none"
-        data-e2e="rail-shell-content"
-      >
-        {children}
-      </main>
+      <div class="flex min-w-0 flex-1 flex-col">
+        {header !== undefined && <header data-e2e="rail-shell-header">{header}</header>}
+        <main
+          id={contentId}
+          tabindex={-1}
+          class="min-w-0 flex-1 focus:outline-none"
+          data-e2e="rail-shell-content"
+        >
+          {children}
+        </main>
+      </div>
 
       <nav
         aria-label={navLabel}
