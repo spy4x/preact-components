@@ -22171,7 +22171,18 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
       surface?.querySelector("p"),
     ]
     const target = ${TOUR_DEMO}?.querySelector('[data-e2e="tour-new"]')
-    const settle = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+    // The target is a Button, whose colour transition covers its outline: read once every finite
+    // transition on the page has finished, or the outline is read halfway between the palettes.
+    const until = ${PAGE_UNTIL}
+    const settle = async () => {
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      await until(() =>
+        document.getAnimations().every((animation) =>
+          animation.playState !== "running" ||
+          animation.effect?.getComputedTiming().endTime === Infinity
+        )
+      )
+    }
     const round = (value) => Math.round(value * 100) / 100
     const measure = () => [
       ...parts.map((part) => part ? round(seenRatio(part)) : 0),
