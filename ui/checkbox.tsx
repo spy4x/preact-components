@@ -13,8 +13,8 @@ export type CheckboxShape = "square" | "round"
  * tick is the box's `::after`, a rotated corner of two borders; while indeterminate it is a flat
  * bar instead. The empty ring is drawn in `--color-border-strong`, the token for a checkbox's
  * edge: gray-400 in the light palette, the square box's colour, and gray-500 in the dark ones,
- * where it clears 3:1. The tick is drawn in the surface colour, which clears 3:1 against the accent fill in every palette.
- * Every class is written out whole, so Tailwind's scanner finds it.
+ * where it clears 3:1. The tick is drawn in the surface colour, which clears 3:1 against the
+ * accent fill in every palette. Every class is written out whole, so Tailwind's scanner finds it.
  */
 const roundBox = [
   "grid size-5 shrink-0 cursor-pointer appearance-none place-content-center rounded-full border-2",
