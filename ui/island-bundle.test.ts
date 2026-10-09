@@ -22,16 +22,22 @@ import { fromFileUrl } from "@std/path"
 /** A string `tailwind-merge`'s minified code carries: one of its Tailwind class-group names. */
 const TAILWIND_MERGE_MARKER = "oldstyle-nums"
 
-/** A ceiling on each component island, well under the ~28 KB `tailwind-merge` alone would add. */
-const ISLAND_CEILING_BYTES = 24_000
+/**
+ * A ceiling on each component island, well under the ~28 KB `tailwind-merge` alone would add on
+ * top of it. `Button`'s `hotkey` prop (#610) put Preact's hooks, the hotkey parser and the key
+ * faces of `Kbd` into every island that renders a `Button`, about 9.8 KB minified (3.8 KB gzipped):
+ * the `Button` island went from 13.7 KB to 23.5 KB, and the others that render one to about 29.5 KB.
+ */
+const ISLAND_CEILING_BYTES = 31_000
 
 /**
  * Islands allowed more than {@link ISLAND_CEILING_BYTES}, each with its reason. `ImageGallery`'s
  * strip measures its row for the counter and Previous/Next (#567), about 2.6 KB on top of the
- * 23.2 KB it bundled before; with `tailwind-merge` it would still be over 50 KB.
+ * 23.2 KB it bundled before, and #610 added 7.2 KB more; with `tailwind-merge` it would still be
+ * over 60 KB.
  */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
-  "island-image-gallery.tsx": 27_000,
+  "island-image-gallery.tsx": 35_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))

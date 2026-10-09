@@ -7,7 +7,7 @@ import {
   parseHotkey,
 } from "@spy4x/platform/browser/hotkeys"
 import { isImeKeyPress } from "./ime.ts"
-import type { KbdLabels } from "./kbd.tsx"
+import type { KbdLabels } from "./kbd-keys.tsx"
 
 /**
  * One keyboard shortcut for {@link useHotkeys}: a combination, what it does and how it is listed.

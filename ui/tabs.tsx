@@ -9,7 +9,7 @@ import {
   useApplePlatform,
   useHotkeys,
 } from "./hotkeys.ts"
-import type { KbdLabels } from "./kbd.tsx"
+import type { KbdLabels } from "./kbd-keys.tsx"
 
 /** One tab and the panel it controls. */
 export interface TabItem {
@@ -207,7 +207,8 @@ export function Tabs(
         keys: tab.hotkey,
         inDialogs: true,
         preventDefault: false,
-        handler: (event) => void clickByHotkey(document.getElementById(tabElementId(tab.id)), event),
+        handler: (event) =>
+          void clickByHotkey(document.getElementById(tabElementId(tab.id)), event),
       }]
     ),
   )
