@@ -18,6 +18,7 @@ import {
   EmptyState,
   ErrorBoundary,
   ErrorState,
+  Input,
   LoadingSkeleton,
   LoadingSpinner,
   Modal,
@@ -33,7 +34,7 @@ import {
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
-import { useMemo, useState } from "preact/hooks"
+import { useMemo, useRef, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -159,6 +160,12 @@ const undoLabel = "Undo"
 const undoLongLabel = "Restore the twelve deleted tasks"
 
 /**
+ * The label of the card's action that moves focus on purpose, to the name field beside the
+ * buttons. The toast closes after its action, and focus stays where the action put it.
+ */
+const renameLabel = "Rename"
+
+/**
  * Where the card puts its stack: inside the card, or in one of the window's corners. The record is
  * the coverage guard for `ToastCorner` — a corner with no entry does not compile.
  */
@@ -190,6 +197,7 @@ function ToastrDemo() {
   const toasts = store.list.value
   const placement = useSignal<ToastCorner | "card">("card")
   const undone = useSignal(0)
+  const renameField = useRef<HTMLInputElement>(null)
 
   const push = (type: ToastVariant, duration: number, body: string, dataE2E?: string) =>
     store.add({ type, duration, body, dataE2E })
@@ -293,6 +301,27 @@ function ToastrDemo() {
         >
           with a long action
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="toast-rename"
+          data-label={renameLabel}
+          onClick={() =>
+            store.info({
+              body: "Draft saved as Untitled",
+              duration: 0,
+              dataE2E: "guide-toast-rename",
+              action: { label: renameLabel, onAction: () => renameField.current?.focus() },
+            })}
+        >
+          with an action that moves focus
+        </Button>
+        <Input
+          ref={renameField}
+          aria-label="Draft name"
+          placeholder="Draft name"
+          data-e2e="toast-rename-field"
+        />
         <Button variant="ghost" size="sm" data-e2e="toast-clear" onClick={() => store.clear()}>
           clear {toasts.length ? `(${toasts.length})` : ""}
         </Button>
@@ -304,7 +333,8 @@ function ToastrDemo() {
         <span data-e2e="toast-action-duration">{defaultToastActionDuration}</span>{" "}
         ms with an action; the Undo toast here asks for {undoMs} ms. Undone:{" "}
         <span data-e2e="toast-undo-count">{undone.value}</span>. Each toast shows the title it was
-        pushed with, or its kind's default. Hover the stack to pause every timer.
+        pushed with, or its kind's default. Rename puts focus in the name field, and it stays there
+        once the toast closes. Hover the stack to pause every timer.
       </DemoNote>
       {toasts.length === 0 ? <DemoNote>Nothing pushed yet.</DemoNote> : null}
       <Toastr
