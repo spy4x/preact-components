@@ -228,7 +228,7 @@ describe("ConfirmDialog", () => {
     const html = render(dialog())
 
     expect(html).not.toContain("aria-busy")
-    expect(html).not.toMatch(/<button [^>]*\sdisabled[\s=>]/)
+    expect(html).not.toMatch(/<button\b[^>]*\sdisabled[\s=>]/)
   })
 
   it("keeps the danger tone off the default surface", () => {
