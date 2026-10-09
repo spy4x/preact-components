@@ -1543,14 +1543,16 @@ function ConflictChooserDemo() {
       <ol data-e2e="conflict-log" class="text-sm text-muted">
         {log.value.map((line) => <li key={line}>{line}</li>)}
       </ol>
-      <div data-e2e="conflict-empty">
-        <ConflictChooser
-          conflicts={[]}
-          onKeepMine={() => {}}
-          onUseTheirs={() => {}}
-          headingLevel={3}
-        />
-      </div>
+      <Part title="Before any conflict arrives">
+        <div data-e2e="conflict-empty">
+          <ConflictChooser
+            conflicts={[]}
+            onKeepMine={() => {}}
+            onUseTheirs={() => {}}
+            headingLevel={5}
+          />
+        </div>
+      </Part>
     </Stack>
   )
 }
