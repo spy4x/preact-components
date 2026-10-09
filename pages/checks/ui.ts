@@ -5526,6 +5526,10 @@ async function sharedScrollLockChecks(devtools: Devtools): Promise<void> {
     const both = await read()
     await closeModal(NESTED)
     const nestedClosed = await until(`${NESTED} === null`)
+    // The inner Modal lets go in its effect cleanup, after the commit that removed it: two frames.
+    await devtools.evaluate<null>(
+      `new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null))))`,
+    )
     nested = { opened, nestedOpened, nestedClosed, first, both, back: await read() }
     await closeModal(MODAL)
     await until(`${MODAL} === null && document.body.style.paddingRight === ""`)
