@@ -326,7 +326,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
         )}
         data-e2e="rail-shell-tabbar"
       >
-        <ul class="flex h-16">
+        <ul class="flex min-h-16">
           {tabs.map((item, index) => (
             <li key={`${index}-${item.key}`} class="min-w-0 flex-1 p-1">
               <Entry

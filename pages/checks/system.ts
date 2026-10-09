@@ -6836,6 +6836,50 @@ function readRailShellLayout(devtools: Devtools): Promise<RailShellLayout> {
   )
 }
 
+/** A tab label shorter than its own line, as {@link readClippedTabLabels} reports it. */
+interface ClippedTabLabel {
+  text: string
+  height: number
+  line: number
+}
+
+/**
+ * The phone tab bar's labels that are shorter than their own line height, so their descenders are
+ * cut off; `null` when the bar or its five labels are missing.
+ *
+ * @param devtools The connected session.
+ * @param fontPx When given, the labels' font size is forced to this many pixels for the reading
+ *   only, the way a browser's minimum font size or text zoom enlarges text and nothing else.
+ */
+function readClippedTabLabels(
+  devtools: Devtools,
+  fontPx?: number,
+): Promise<ClippedTabLabel[] | null> {
+  return read(
+    devtools,
+    `(() => {
+      const bar = document.querySelector('${RAIL_SHELL_TABBAR}')
+      if (!bar) return null
+      const labels = [...bar.querySelectorAll("li > :is(a, button) > span:last-child")]
+      if (labels.length !== 5) return null
+      const size = ${fontPx ?? "null"}
+      if (size !== null) for (const label of labels) label.style.fontSize = size + "px"
+      try {
+        return labels
+          .map((label) => ({
+            text: label.textContent,
+            height: label.getBoundingClientRect().height,
+            line: parseFloat(getComputedStyle(label).lineHeight),
+          }))
+          .filter(({ height, line }) => !(height >= line - 0.5))
+      } finally {
+        if (size !== null) for (const label of labels) label.style.fontSize = ""
+      }
+    })()`,
+    null as ClippedTabLabel[] | null,
+  )
+}
+
 /** Whether the overlay is open, and where focus is relative to it and to "More". */
 interface RailShellDialogState {
   open: boolean
@@ -6936,27 +6980,20 @@ async function railShellChecks(devtools: Devtools): Promise<void> {
 
     // Each label is the entry's last child. Its `truncate` makes it `overflow: hidden`, so a column
     // taller than the tab shrinks the label below its own line and cuts the descenders off.
-    const clippedLabels = await read(
-      devtools,
-      `(() => {
-        const bar = document.querySelector('${RAIL_SHELL_TABBAR}')
-        if (!bar) return null
-        const labels = [...bar.querySelectorAll("li > :is(a, button) > span:last-child")]
-        if (labels.length !== 5) return null
-        return labels
-          .map((label) => ({
-            text: label.textContent,
-            height: label.getBoundingClientRect().height,
-            line: parseFloat(getComputedStyle(label).lineHeight),
-          }))
-          .filter(({ height, line }) => !(height >= line - 0.5))
-      })()`,
-      null as { text: string; height: number; line: number }[] | null,
-    )
+    const clippedLabels = await readClippedTabLabels(devtools)
     check(
       "at 375px every RailShell tab label is as tall as its line, so no descender is cut off",
       clippedLabels !== null && clippedLabels.length === 0,
       JSON.stringify(clippedLabels),
+    )
+    // A reader who enlarges only the text (a minimum font size, or text zoom) gets taller labels
+    // in a bar whose height did not grow with them.
+    const clippedEnlarged = await readClippedTabLabels(devtools, 16)
+    check(
+      "at 375px with the label text enlarged to 16px, every RailShell tab label is still as tall " +
+        "as its line",
+      clippedEnlarged !== null && clippedEnlarged.length === 0,
+      JSON.stringify(clippedEnlarged),
     )
 
     const lastLine = await read(
