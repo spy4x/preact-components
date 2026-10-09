@@ -7410,8 +7410,12 @@ async function setRailShellRouteLinks(devtools: Devtools, on: boolean): Promise<
  * Whether the browser's navigation was cancelled is read by `document` listeners for `click` and
  * `auxclick`, the last to see the event: each records `defaultPrevented` as the shell left it, then
  * cancels the event itself, so no click really navigates or opens a tab (`AGENTS.md`, wave six).
- * The card prints the key and `href` the port was handed. `finally` removes the listeners, turns
- * the port back on and puts the card back on its first entry.
+ * The card prints the key and `href` the port was handed. Each check that expects the port left
+ * uncalled compares that line with what it read just before its own click, not with what an
+ * earlier check left there, so a broken plain click fails only its own check (#648). Each aim
+ * centres the card's frame again first, so a click lands on a link in view whatever moved the page
+ * since the last one. `finally` removes the listeners, turns the port back on and puts the card
+ * back on its first entry.
  *
  * @param devtools The connected session, on a hydrated page, at desktop width.
  */
@@ -7422,7 +7426,16 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
     await poll(async () => (await state()).clicks.length >= count, 3_000)
     return await state()
   }
-  await centreInView(devtools, `document.querySelector('${RAIL_SHELL_FRAME}')`)
+  const centreFrame = () => centreInView(devtools, `document.querySelector('${RAIL_SHELL_FRAME}')`)
+  /** Centre the frame, then aim at a link in it, so the click lands on a link in view. */
+  const aimAt = async (selector: string) => {
+    await centreFrame()
+    return await shellAim(devtools, selector)
+  }
+  /** Whether the card still shows the port call it showed before a click. */
+  const unchanged = (before: RailShellPortState, after: RailShellPortState) =>
+    after.current === before.current && after.via === before.via
+  await centreFrame()
   await read(
     devtools,
     `(() => {
@@ -7450,7 +7463,7 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
   try {
     const portOn = await setRailShellRouteLinks(devtools, true)
     const before = await state()
-    const projects = await shellAim(devtools, link("projects"))
+    const projects = await aimAt(link("projects"))
     if (projects?.onTarget) await railShellPointerClick(devtools, projects)
     const plain = await seen(1)
     const plainClick = plain.clicks[0]
@@ -7472,8 +7485,9 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
       ["middle", "notes", "middle"],
     ]
     for (const [name, key, how] of modified) {
-      const count = (await state()).clicks.length
-      const aim = await shellAim(devtools, link(key))
+      const prior = await state()
+      const count = prior.clicks.length
+      const aim = await aimAt(link(key))
       if (aim?.onTarget) {
         await railShellPointerClick(
           devtools,
@@ -7486,17 +7500,21 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
       check(
         `a ${name} click on a RailShell link leaves navigateLink uncalled and the browser's default alone`,
         Boolean(aim?.onTarget) && click?.type === (how === "middle" ? "auxclick" : "click") &&
-          click.href === `#rail-${key}` && !click.prevented && after.current === "projects" &&
-          after.via === plain.via,
+          click.href === `#rail-${key}` && !click.prevented && unchanged(prior, after),
         !aim?.onTarget
           ? `the rail's ${key} link was not under the pointer: ${JSON.stringify(aim)}`
-          : JSON.stringify({ click, current: after.current, via: after.via }),
+          : JSON.stringify({
+            click,
+            before: { current: prior.current, via: prior.via },
+            after: { current: after.current, via: after.via },
+          }),
       )
     }
 
     // The port is for the app's own router, which cannot open another site: point one link at
     // another origin for one click, then put its address back.
-    const count = (await state()).clicks.length
+    const priorForeign = await state()
+    const count = priorForeign.clicks.length
     await read(
       devtools,
       `(document.querySelector('${link("stats")}')
@@ -7510,7 +7528,7 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
       }')?.setAttribute("href", "https://example.com/stats"), 0)`,
       0,
     )
-    const foreign = await shellAim(devtools, `${RAIL_SHELL_RAIL} a[data-rail-shell-href]`)
+    const foreign = await aimAt(`${RAIL_SHELL_RAIL} a[data-rail-shell-href]`)
     if (foreign?.onTarget) await railShellPointerClick(devtools, foreign)
     const afterForeign = await seen(count + 1)
     await read(
@@ -7527,27 +7545,36 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
     check(
       "a plain click on a RailShell link to another origin leaves navigateLink uncalled",
       Boolean(foreign?.onTarget) && foreignClick?.href === "https://example.com/stats" &&
-        !foreignClick.prevented && afterForeign.current === "projects",
+        !foreignClick.prevented && unchanged(priorForeign, afterForeign),
       !foreign?.onTarget
         ? `the rail's Stats link was not under the pointer: ${JSON.stringify(foreign)}`
-        : JSON.stringify({ click: foreignClick, current: afterForeign.current }),
+        : JSON.stringify({
+          click: foreignClick,
+          before: { current: priorForeign.current, via: priorForeign.via },
+          after: { current: afterForeign.current, via: afterForeign.via },
+        }),
     )
 
     const portOff = await setRailShellRouteLinks(devtools, false)
-    const offCount = (await state()).clicks.length
-    const notes = await shellAim(devtools, link("notes"))
+    const priorOff = await state()
+    const offCount = priorOff.clicks.length
+    const notes = await aimAt(link("notes"))
     if (portOff && notes?.onTarget) await railShellPointerClick(devtools, notes)
     const off = await seen(offCount + 1)
     const offClick = off.clicks[offCount]
     check(
       "without navigateLink a plain click on a RailShell link is not cancelled",
       portOff && Boolean(notes?.onTarget) && offClick?.type === "click" &&
-        offClick.href === "#rail-notes" && !offClick.prevented && off.current === "projects",
+        offClick.href === "#rail-notes" && !offClick.prevented && unchanged(priorOff, off),
       !portOff
         ? "the card's checkbox did not turn the port off"
         : !notes?.onTarget
         ? `the rail's Notes link was not under the pointer: ${JSON.stringify(notes)}`
-        : JSON.stringify({ click: offClick, current: off.current }),
+        : JSON.stringify({
+          click: offClick,
+          before: { current: priorOff.current, via: priorOff.via },
+          after: { current: off.current, via: off.via },
+        }),
     )
   } finally {
     await read(
