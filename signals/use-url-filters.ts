@@ -15,8 +15,8 @@ import { useSearchParams } from "wouter-preact"
  * hand-written listener reading `globalThis.location.search` would also read the wrong half of the
  * address under a router whose search comes from the fragment.
  *
- * The value coercion is pulled out into {@link resolveFilterValue} so it can be tested without a
- * DOM. Everything else here is an effect, and `pages/checks/signals.ts` is where those are proven —
+ * The value coercion and the read are pulled out into {@link resolveFilterValue} and
+ * {@link readAddress} so they can be tested without a DOM. Everything else here is an effect, and `pages/checks/signals.ts` is where those are proven —
  * no test in this repository executes one.
  */
 
@@ -205,6 +205,44 @@ export function restoredAddress(fragment: string, after: AddressParts): string |
 }
 
 /**
+ * Read the address into the filters, and answer with the query string they now agree on.
+ *
+ * Every field takes the value its parameter implies (see {@link resolveFilterValue}), with one
+ * exception, and the exception is why this takes `rendered`. The hook reads the address in an
+ * effect, which runs after the first paint, and a reader can change a filter in between: a field
+ * focused the moment it appears takes the first key press before the effect has run. Overwriting
+ * that value from the address would lose the key press. So on the first read only, a field whose
+ * signal no longer holds the value it held at the first render keeps its value. The answer is
+ * still the query string the *address* implies, which is what makes the hook's write effect see
+ * the kept value as a change and write it to the address.
+ *
+ * A later read passes no `rendered`, and the address wins for every field: back, forward, a link and
+ * a push all happen after whatever the reader did before them.
+ *
+ * @param fields The fields, keyed as the hook was given them.
+ * @param search The query string the router reports, with or without its leading `?`.
+ * @param rendered What each field's signal held when the hook first rendered, by the same keys; only
+ *                 for the first read after mounting.
+ * @returns The query string the address implies for these fields — what the write compares against.
+ */
+export function readAddress<T extends Record<string, FilterField>>(
+  fields: T,
+  search: string,
+  rendered?: Readonly<Record<string, unknown>>,
+): string {
+  const params = new URLSearchParams(search)
+  const writes: FilterWrite[] = []
+  for (const [key, field] of Object.entries(fields)) {
+    const fromAddress = resolveFilterValue(field, params.get(field.urlParam))
+    writes.push(filterWrite(field, fromAddress))
+    const changedEarly = rendered !== undefined && key in rendered &&
+      field.signal.peek() !== rendered[key]
+    if (!changedEarly) field.signal.value = fromAddress
+  }
+  return filterSearch(search, writes)
+}
+
+/**
  * Bind filter signals to URL parameters.
  *
  * Call it with fields built from `useSignal`, so the signals outlive the component and a sibling
@@ -254,6 +292,14 @@ export function restoredAddress(fragment: string, after: AddressParts): string |
  *
  * **One address change costs one history entry**, whichever direction it came from, so one press of
  * Back moves the reader once. `clearFilters` is one change, not one per field.
+ *
+ * **A filter the reader changes before the first read keeps its value.** The address is read in an
+ * effect, after the first paint, so a field focused the moment it appears can take a key press
+ * first. On that first read only, a filter whose signal no longer holds what it held at the first
+ * render keeps the reader's value, and the hook writes it to the address as an ordinary filter
+ * change: one history entry, fragment kept. Every other filter loads from the address as usual,
+ * and every later read — back, forward, a link — lets the address win. {@link readAddress} is that
+ * rule.
  */
 export function useUrlFilters<T extends Record<string, FilterField>>(fields: T): UrlFilters<T> {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -292,15 +338,21 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   latestSearch.current = search
   const agreed = useRef(search)
 
+  // What every filter held when this hook first rendered, taken once and with `peek` so the render
+  // subscribes to nothing. The first read below compares against it and then sets it to `null`:
+  // only that read can be older than a change the reader made, because every later one answers an
+  // address change that happened after it.
+  const rendered = useRef<Record<string, unknown> | null | undefined>(undefined)
+  if (rendered.current === undefined) {
+    rendered.current = Object.fromEntries(
+      Object.entries(fields).map(([key, field]) => [key, field.signal.peek()]),
+    )
+  }
+
   useEffect(() => {
     isInitializing.value = true
-    for (const field of Object.values(fields)) {
-      field.signal.value = resolveFilterValue(field, searchParams.get(field.urlParam))
-    }
-    agreed.current = filterSearch(
-      search,
-      Object.values(fields).map((field) => filterWrite(field, field.signal.value)),
-    )
+    agreed.current = readAddress(fields, search, rendered.current ?? undefined)
+    rendered.current = null
     isInitializing.value = false
   }, [search])
 

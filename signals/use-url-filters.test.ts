@@ -5,6 +5,7 @@ import {
   type FilterField,
   filterSearch,
   filterWrite,
+  readAddress,
   resolveFilterValue,
   restoredAddress,
   shouldPersistFilter,
@@ -61,6 +62,68 @@ describe("resolveFilterValue", () => {
     }
     expect(resolveFilterValue(field, "3")).toBe(3)
     expect(resolveFilterValue(field, null)).toBeNull()
+  })
+})
+
+describe("readAddress", () => {
+  /** A search field as an app binds it: the hook rendered while it held `""`. */
+  function searchFields() {
+    const fields = { q: stringField("q", ""), page: numberField("page", 1) }
+    const rendered = { q: fields.q.signal.peek(), page: fields.page.signal.peek() }
+    return { fields, rendered }
+  }
+
+  it("keeps a value changed before the first read, and the write then puts it in the address", () => {
+    const { fields, rendered } = searchFields()
+    fields.q.signal.value = "h"
+
+    const agreed = readAddress(fields, "page=2", rendered)
+    const pending = Object.values(fields).map((field) => filterWrite(field, field.signal.value))
+
+    expect(fields.q.signal.value).toBe("h")
+    expect(fields.page.signal.value).toBe(2)
+    expect(agreed).toBe("page=2")
+    expect(filterSearch("page=2", pending)).toBe("page=2&q=h")
+  })
+
+  it("keeps the reader's value over one the address carries on the first read", () => {
+    const { fields, rendered } = searchFields()
+    fields.q.signal.value = "h"
+
+    readAddress(fields, "q=old", rendered)
+
+    expect(fields.q.signal.value).toBe("h")
+  })
+
+  it("loads an address value on the first read when nothing changed since the render", () => {
+    const { fields, rendered } = searchFields()
+
+    const agreed = readAddress(fields, "?q=hello&page=3", rendered)
+
+    expect(fields.q.signal.value).toBe("hello")
+    expect(fields.page.signal.value).toBe(3)
+    expect(agreed).toBe("q=hello&page=3")
+  })
+
+  it("lets the address win on a later read, as back and forward need", () => {
+    const { fields } = searchFields()
+    fields.q.signal.value = "typed"
+
+    const agreed = readAddress(fields, "q=older")
+
+    expect(fields.q.signal.value).toBe("older")
+    expect(agreed).toBe("q=older")
+  })
+
+  it("takes a filter that has left the address back to its default on a later read", () => {
+    const { fields } = searchFields()
+    fields.q.signal.value = "hello"
+    fields.page.signal.value = 4
+
+    readAddress(fields, "")
+
+    expect(fields.q.signal.value).toBe("")
+    expect(fields.page.signal.value).toBe(1)
   })
 })
 

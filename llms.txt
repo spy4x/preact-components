@@ -385,6 +385,7 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `filterSearch` (helper): The query string a set of filter values implies, starting from the one the address already has. Import: `@spy4x/preact-signals/use-url-filters`
 - `AddressParts` (type): An address as `location` reports it, in the four pieces this hook has to read. Import: `@spy4x/preact-signals/use-url-filters`
 - `restoredAddress` (helper): The address the write should have left behind, or `undefined` when that is already the address. Import: `@spy4x/preact-signals/use-url-filters`
+- `readAddress` (helper): Read the address into the filters, and answer with the query string they now agree on. Import: `@spy4x/preact-signals/use-url-filters`
 
 ## @spy4x/preact-system
 
