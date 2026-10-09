@@ -17,6 +17,22 @@ export type ToastVariant = "success" | "error" | "info" | "warning"
  */
 export type ToastId = string | number
 
+/**
+ * A button on a toast, such as "Undo" after a delete.
+ *
+ * `ToastAction` in `@spy4x/preact-signals` is this same shape, so a store entry's action reaches
+ * this component as it stands.
+ */
+export interface ToastAction {
+  /** The button's visible text, which is also its accessible name. Write it as a verb: "Undo". */
+  label: string
+  /**
+   * Runs when the button is pressed, by pointer or keyboard. It runs at most once per toast, and
+   * the toast is dismissed through {@link ToastrProps.onDismiss} right after it, even when it throws.
+   */
+  onAction: () => void
+}
+
 export interface ToastItem {
   id: ToastId
   /**
@@ -38,6 +54,10 @@ export interface ToastItem {
    *
    * `createToastStore` in `@spy4x/preact-signals` writes this same field, under this same
    * name, so a store entry can be handed straight to this component.
+   *
+   * A toast with an {@link ToastItem.action} and no duration of its own gets
+   * {@link defaultToastActionDuration}, 10000, instead: five seconds is too short to read a message
+   * and then reach its button.
    *
    * Changing it for a toast that is already on screen restarts that toast's budget at the new
    * value, which is how a caller extends one: a toast pushed for 1200ms and given 2500ms half a
@@ -61,6 +81,12 @@ export interface ToastItem {
    * under this same name.
    */
   dataE2E?: string
+  /**
+   * A button on this toast, such as "Undo". It sits before the dismiss control, so Tab reaches it
+   * first, and it is read with the rest of the toast when the toast arrives. Pressing it runs
+   * {@link ToastAction.onAction} once and dismisses the toast.
+   */
+  action?: ToastAction
 }
 
 export interface ToastrProps {
@@ -146,7 +172,15 @@ const variantClasses: Record<ToastVariant, string> = {
 export const defaultToastDuration = 5000
 
 /**
- * How long one toast has, in milliseconds: what it asked for, or {@link defaultToastDuration}.
+ * How long a toast with an {@link ToastItem.action} stays when it names no duration of its own, in
+ * milliseconds. Ten seconds, the usual budget for an Undo: the reader has to take in the message
+ * and then reach the button.
+ */
+export const defaultToastActionDuration = 10_000
+
+/**
+ * How long one toast has, in milliseconds: what it asked for, or {@link defaultToastDuration}
+ * ({@link defaultToastActionDuration} for a toast with an action).
  *
  * Exported because it is the single place the fallback is applied, and because it is what a test
  * can ask about a toast built somewhere else. `resolveDuration(store.list.value[0])` shows that an
@@ -164,7 +198,7 @@ export const defaultToastDuration = 5000
  *
  * | `duration`             | What happens                                                     |
  * | ---------------------- | ---------------------------------------------------------------- |
- * | absent (`undefined`)   | {@link defaultToastDuration}                                     |
+ * | absent (`undefined`)   | the default: 5000, or 10000 for a toast with an action           |
  * | `0`                    | no timer; the toast stays until somebody dismisses it            |
  * | 1 to 2,147,483,647     | that many milliseconds, paused while the stack is being read     |
  * | above 2,147,483,647    | dismissed at once — past the timer's 32-bit signed limit         |
@@ -179,11 +213,12 @@ export const defaultToastDuration = 5000
  * "Keep it until dismissed" is spelled `0`; `Infinity` and a huge number read like they mean the
  * same and do the opposite.
  *
- * @param toast Any toast-shaped value — only its `duration` is read.
+ * @param toast Any toast-shaped value — only its `duration` and whether it has an `action` are read.
  * @returns The delay in milliseconds; `0` for a toast that never dismisses itself.
  */
-export function resolveDuration(toast: Pick<ToastItem, "duration">): number {
-  return toast.duration ?? defaultToastDuration
+export function resolveDuration(toast: Pick<ToastItem, "duration" | "action">): number {
+  return toast.duration ??
+    (toast.action === undefined ? defaultToastDuration : defaultToastActionDuration)
 }
 
 /**
@@ -210,8 +245,8 @@ export function resolveDuration(toast: Pick<ToastItem, "duration">): number {
  * what makes the reader announce a whole toast rather than only the text that changed.
  *
  * The auto-dismiss timer pauses while the pointer is over the stack or focus is inside it, and
- * resumes with the time it had left. Without that, reaching the dismiss control — or a link in a
- * toast's body — is a race against a five-second timer.
+ * resumes with the time it had left. Without that, reaching the dismiss control, a toast's action
+ * button or a link in a toast's body is a race against the timer.
  *
  * **This component owns every dismiss timer, including for toasts that came out of a store.**
  * `createToastStore` in `@spy4x/preact-signals` holds the list and schedules nothing; the
@@ -288,7 +323,7 @@ interface ToastProps {
 }
 
 /**
- * One toast in the stack: its timer and its dismiss button.
+ * One toast in the stack: its timer, its action button when it has one, and its dismiss button.
  *
  * Split out so each toast owns exactly one timer, keyed to its own id and duration.
  *
@@ -303,11 +338,16 @@ interface ToastProps {
  * pass an inline arrow — the port is `(id) => stack.value = stack.value.filter(…)` in every example
  * this library ships — so its identity changes on every render of the host, and a dependency on it
  * would tear the timer down and build it again each time the page around the stack re-rendered.
+ *
+ * The action runs at most once. `acted` is a ref, not state, so a second click that lands before
+ * the dismissal has re-rendered the stack — a double click, or a caller whose `onDismiss` takes the
+ * toast away later — finds it already set and does nothing.
  */
 function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps) {
   const duration = resolveDuration(toast)
   const remaining = useRef(duration)
   const dismiss = useRef(onDismiss)
+  const acted = useRef(false)
 
   useEffect(() => {
     dismiss.current = onDismiss
@@ -333,6 +373,17 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
   }, [toast.id, duration, paused])
 
   const variant = toast.type ?? "info"
+  const action = toast.action
+
+  function runAction(): void {
+    if (action === undefined || acted.current) return
+    acted.current = true
+    try {
+      action.onAction()
+    } finally {
+      onDismiss(toast.id)
+    }
+  }
 
   return (
     <div
@@ -352,6 +403,19 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
             <p>{toast.body}</p>
           </div>
         </div>
+        {action === undefined ? null : (
+          // Named by its text alone — no `aria-label`, no `title` — so the toast's announcement
+          // carries the label once, and the name a screen reader gives on focus is the same word.
+          // `ml-auto` takes the free space to its left, so it sits beside the dismiss control and
+          // a toast without an action renders exactly as it did before actions existed.
+          <button
+            type="button"
+            class="ml-auto shrink-0 rounded px-2 py-1 text-sm font-semibold underline underline-offset-4"
+            onClick={runAction}
+          >
+            {action.label}
+          </button>
+        )}
         <button type="button" onClick={() => onDismiss(toast.id)} aria-label={dismissLabel}>
           <svg
             class="size-4"
