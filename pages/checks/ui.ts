@@ -171,6 +171,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await refForwardingChecks(devtools)
   await roundCheckboxChecks(devtools)
   await roundCheckboxColourChecks(devtools)
+  await roundCheckboxFocusRingChecks(devtools)
   await busyButtonChecks(devtools)
   await busySubmitChecks(devtools)
   await useSucceededChecks(devtools)
@@ -815,6 +816,112 @@ async function roundCheckboxColourChecks(devtools: Devtools): Promise<void> {
     )
   } finally {
     await devtools.send("Emulation.setEmulatedMedia", { features: [] })
+  }
+}
+
+/**
+ * A keyboard-focused round box's outline in one palette, as {@link roundCheckboxFocusRingChecks}
+ * reads it.
+ */
+interface RoundBoxRing {
+  focused: boolean
+  focusVisible: boolean
+  style: string
+  width: string
+  /** Whether the outline is drawn in the palette's `--color-ring`. */
+  ringIsToken: boolean
+  /** The outline against what the page paints behind the box. */
+  behind: number
+  /** The outline against `--color-surface` and `--color-canvas`. */
+  surface: number
+  canvas: number
+  detail: string
+}
+
+/**
+ * A round `Checkbox` reached by a real Tab press draws the components' focus ring (#621): a solid
+ * 2 px outline in the palette's `--color-ring`, the colour `ring-focus` gives other components,
+ * in the light, dark and ink palettes, and not the browser's own focus colour. Ink sets no
+ * `--color-ring`, so there the box keeps the dark accent like every `ring-focus` component, while
+ * `.btn` draws ink's `--color-focus-ring`. The contrast of that outline against the card behind
+ * the box, the surface and the canvas is reported in the check's detail and held to 3:1, the
+ * floor for a focus indicator.
+ *
+ * The palette is switched while the box keeps its focus; the `dark` class and the earlier
+ * `data-theme` value are put back in `finally`.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function roundCheckboxFocusRingChecks(devtools: Devtools): Promise<void> {
+  const read = (palette: "light" | "dark" | "ink") =>
+    devtools.evaluate<RoundBoxRing | null>(`(async () => {
+    ${CONTRAST_HELPERS}
+    const box = document.querySelector('${ROUND_CHECK}')
+    if (!box) return null
+    const root = document.documentElement
+    root.classList.toggle("dark", ${palette !== "light"})
+    if (${palette === "ink"}) root.setAttribute("data-theme", "ink")
+    else root.removeAttribute("data-theme")
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    const token = (name) => {
+      const probe = document.createElement("div")
+      probe.style.color = "var(" + name + ")"
+      box.parentElement.appendChild(probe)
+      const colour = getComputedStyle(probe).color
+      probe.remove()
+      return colour
+    }
+    const style = getComputedStyle(box)
+    const outline = style.outlineColor
+    const ring = token("--color-ring")
+    const surface = token("--color-surface")
+    const canvas = token("--color-canvas")
+    return {
+      focused: document.activeElement === box,
+      focusVisible: box.matches(":focus-visible"),
+      style: style.outlineStyle,
+      width: style.outlineWidth,
+      ringIsToken: paint(outline).every((channel, index) => channel === paint(ring)[index]),
+      behind: seenRatio(box, outline, { outside: true }),
+      surface: contrast(outline, surface),
+      canvas: contrast(outline, canvas),
+      detail: "outline " + outline + ", --color-ring " + ring + ", surface " + surface +
+        ", canvas " + canvas,
+    }
+  })()`)
+
+  const was = await devtools.evaluate<{ dark: boolean; theme: string | null }>(`({
+    dark: document.documentElement.classList.contains("dark"),
+    theme: document.documentElement.getAttribute("data-theme"),
+  })`)
+  try {
+    // Focus the square box above it, then Tab: a real key press, so the round box matches
+    // `:focus-visible` the way it does for a keyboard user.
+    await devtools.evaluate<null>(`(document.querySelector('${SQUARE_CHECK}')?.focus(), null)`)
+    await pressKey(devtools, "Tab")
+    for (const palette of ["light", "dark", "ink"] as const) {
+      const ring = await read(palette)
+      check(
+        `in the ${palette} palette a round Checkbox reached by Tab draws a 2 px outline in ` +
+          "--color-ring that clears 3:1 against the card, the surface and the canvas",
+        ring !== null && ring.focused && ring.focusVisible && ring.style === "solid" &&
+          ring.width === "2px" && ring.ringIsToken && ring.behind >= 3 && ring.surface >= 3 &&
+          ring.canvas >= 3,
+        ring === null ? "no round box in the Checkbox card" : `card ${ring.behind.toFixed(2)}:1, ` +
+          `surface ${ring.surface.toFixed(2)}:1, canvas ${ring.canvas.toFixed(2)}:1 — ` +
+          JSON.stringify(ring),
+      )
+    }
+  } finally {
+    await devtools.evaluate<null>(`(() => {
+      const root = document.documentElement
+      root.classList.toggle("dark", ${was.dark})
+      const theme = ${JSON.stringify(was.theme)}
+      if (theme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", theme)
+      document.activeElement?.blur()
+      return null
+    })()`)
   }
 }
 
