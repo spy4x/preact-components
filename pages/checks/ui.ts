@@ -252,6 +252,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await onboardingChecklistChecks(devtools)
   await commandPaletteChecks(devtools)
   await compositionCommandPaletteChecks(devtools)
+  await compositionRemotePaletteCheck(devtools)
   await tourChecks(devtools)
   await comparisonTableChecks(devtools)
 
@@ -24372,6 +24373,101 @@ async function compositionTagInputCheck(devtools: Devtools): Promise<void> {
   )
   await pressKey(devtools, "Escape")
   await poll(async () => (await read())?.value === "", 2_000)
+
+  // A comma inside a word the input method is still building ends no tag; the finished word does.
+  for (const text of ["a", "a,b"]) {
+    await devtools.send("Input.imeSetComposition", {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    })
+  }
+  // A fixed wait: it proves the steps add no chip, and an absence has no state to poll for.
+  await new Promise((done) => setTimeout(done, 200))
+  const composing = await read()
+  await devtools.send("Input.insertText", { text: "a,b" })
+  await poll(async () => (await read())?.chips.join("|") === "work|a", 2_000)
+  const committed = await read()
+  check(
+    "a comma inside an input method's composition adds no TagInput chip until the word is finished",
+    composing?.chips.join("|") === "work" && composing.value === "a,b" &&
+      committed?.chips.join("|") === "work|a" && committed.value === "b",
+    `while composing: chips ${composing?.chips.join(", ")}, field "${composing?.value}"; after ` +
+      `the commit: chips ${committed?.chips.join(", ")}, field "${committed?.value}"`,
+  )
+  // Back to the card's one tag: the first Backspace empties the field, the second removes `a`.
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read())?.value === "", 2_000)
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read())?.chips.join("|") === "work", 2_000)
+  await pressKey(devtools, "Escape")
+}
+
+/**
+ * The remote `CommandPalette` asks its `search` nothing while an input method composes, and asks
+ * once, for the finished word, when the composition ends (#643).
+ *
+ * The card counts the searches it started. Opening starts one for the empty query; once that has
+ * answered, the composition builds "a" then "ap", and the count must stay put for longer than the
+ * 200 ms debounce after the last step. The commit must then start exactly one search, whose answer
+ * is the fruits holding "ap", and no second one may follow it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function compositionRemotePaletteCheck(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const REMOTE = "palette-remote"
+  const dialog = `document.querySelector('[data-e2e="${REMOTE}"]')`
+  const field = `(${dialog}?.querySelector('[role="combobox"]') ?? null)`
+  const results = () =>
+    devtools.evaluate<string[]>(
+      `[...(${dialog}?.querySelectorAll('[role="option"]') ?? [])]
+        .map((option) => option.querySelector("span span")?.textContent ?? "")`,
+    )
+  const searches = () =>
+    devtools.evaluate<number>(
+      `Number(document.querySelector('[data-e2e="palette-remote-searches"]')?.textContent ?? -1)`,
+    )
+  const trigger = `[data-e2e="${REMOTE}-open"]`
+  const wait = (ms: number) => new Promise((done) => setTimeout(done, ms))
+
+  await centreInView(devtools, `document.querySelector('${trigger}')`)
+  const clicked = await clickSelector(devtools, trigger)
+  const opened = await poll(
+    () => devtools.evaluate<boolean>(`document.activeElement === ${field}`),
+    3_000,
+  )
+  await poll(async () => (await results()).length === 7, 3_000)
+  const base = await searches()
+  for (const text of ["a", "ap"]) {
+    await devtools.send("Input.imeSetComposition", {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    })
+    await wait(150)
+  }
+  // Past the debounce: a search a step had asked for would have started by now.
+  await wait(500)
+  const composing = await searches()
+  const shownWhileComposing = await results()
+  await devtools.send("Input.insertText", { text: "ap" })
+  await poll(async () => (await results()).join() === "Apple,Apricot,Grape,Papaya", 3_000)
+  // And past it again: a second search for the same word would have started by now.
+  await wait(500)
+  const after = await searches()
+  const answered = await results()
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${dialog}?.open !== true`), 3_000)
+  await devtools.evaluate<null>(`(${dialog}?.open && ${dialog}.close(), null)`)
+  check(
+    "the remote CommandPalette starts no search while an input method composes, and exactly one for the finished word",
+    clicked && opened && base > 0 && composing === base && shownWhileComposing.length === 7 &&
+      after === base + 1 && answered.join() === "Apple,Apricot,Grape,Papaya",
+    `opened ${clicked && opened}; searches ${base} before, ${composing} while composing ` +
+      `(${shownWhileComposing.length} results shown), ${after} after the commit; results ` +
+      `${answered.join(", ")}`,
+  )
 }
 
 /**
