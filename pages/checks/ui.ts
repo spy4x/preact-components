@@ -21874,6 +21874,8 @@ interface TourReading {
   closed: string
   /** `true` while a modal dialog is open. */
   modal: boolean
+  /** The page's scroll position, for a failure message. */
+  scrollY: number
 }
 
 /** A rounded box in viewport pixels. */
@@ -21938,6 +21940,7 @@ const TOUR_READING = `(() => {
     goTo: goTo?.textContent.trim() ?? null,
     closed: demo?.querySelector('[data-e2e="tour-closed"]')?.textContent.trim() ?? "",
     modal: document.querySelector("dialog:modal") !== null,
+    scrollY: Math.round(scrollY),
   }
 })()`
 
@@ -22024,6 +22027,7 @@ async function skipTour(devtools: Devtools): Promise<void> {
  */
 async function tourChecks(devtools: Devtools): Promise<void> {
   await openGuidePage(devtools, "ui")
+  await settledScroll(devtools)
   try {
     await atViewport(devtools, 1280, 800, () => tourDesktopChecks(devtools))
     await atViewport(devtools, 1280, 800, () => tourMeasuredCheck(devtools))
@@ -22090,9 +22094,13 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
     `Go to found ${focused}, focus on ${wentTo.active}, open ${wentTo.open}, title "${wentTo.title}"`,
   )
 
+  // The page must stand still before the step moves, so the next target's position is its own.
+  await settledScroll(devtools)
+  const beforeNext = await read()
   await devtools.evaluate<boolean>(focusTourButton("Next"))
   await pressKey(devtools, "Enter")
   await poll(async () => (await read()).title === "Start a project", 3000)
+  await settledScroll(devtools)
   await poll(async () => (await read()).onHeading, 3000)
   await devtools.evaluate<null>(TWO_FRAMES)
   const second = await read()
@@ -22104,7 +22112,8 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
     second.onHeading && second.count === "Step 2 of 4" && second.newOutline.includes("solid") &&
       beside,
     `focus on ${second.active}, count "${second.count}", outline "${second.newOutline}", ` +
-      `surface ${JSON.stringify(second.surface)}, target ${JSON.stringify(second.newProject)}`,
+      `surface ${JSON.stringify(second.surface)}, target ${JSON.stringify(second.newProject)}, ` +
+      `scrollY ${beforeNext.scrollY} before Next, ${second.scrollY} after`,
   )
   check(
     "Tour: leaving a step hands its target's anchor-name, aria-describedby and outline back",
