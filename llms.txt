@@ -423,6 +423,8 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `InstallPrompt` (component): Offer to install the app, or explain how to on iOS. Import: `@spy4x/preact-system`
 - `InstallPromptLabels` (type): Every word `InstallPrompt` shows, each with an English default. Import: `@spy4x/preact-system`
 - `InstallPromptProps` (type): Props of `InstallPrompt`. Import: `@spy4x/preact-system`
+- `RouteAnnouncerOptions` (type): Options of `useRouteAnnouncer`. Import: `@spy4x/preact-system`
+- `useRouteAnnouncer` (hook): On a route change, set `document.title` and move focus to the new page's main heading. Import: `@spy4x/preact-system`
 - `RailShell` (component): The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
 - `RailShellItem` (type): One destination in `RailShellProps.items`, or the `RailShellProps.primary` action. Import: `@spy4x/preact-system`
 - `RailShellLabels` (type): Every string `RailShell` prints that is not data the caller supplied. Import: `@spy4x/preact-system`

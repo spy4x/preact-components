@@ -43,6 +43,7 @@ export {
   type InstallPromptLabels,
   type InstallPromptProps,
 } from "./install-prompt.tsx"
+export { type RouteAnnouncerOptions, useRouteAnnouncer } from "./route-announcer.ts"
 export {
   RailShell,
   type RailShellItem,

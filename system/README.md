@@ -179,6 +179,32 @@ const store = createHeadStore<PageHead & { pageName: string }>({
 store.setHead({ pageName: "Widgets" })
 ```
 
+## Route changes move focus and set the title
+
+`useRouteAnnouncer({ path, title?, main? })`, from the `route-announcer` subpath, does for a
+client-side route change what a page load does by itself. Without it, focus stays on the link that
+was pressed, the tab keeps the previous page's title, and a screen reader announces nothing.
+
+```tsx
+function Layout({ head, children }: { head: HeadStore; children: ComponentChildren }) {
+  const [path] = useLocation()
+  useRouteAnnouncer({ path, title: head.value.title })
+  return <RailShell items={items} currentPath={path}>{children}</RailShell>
+}
+```
+
+- **`path` is the router's, and only its path counts.** The hook imports no router. Anything from
+  the first `?` or `#` is ignored, so a filter written to the query string is not a new page.
+- **Focus goes to the page's `<h1>`, or to `<main>` without one.** It looks inside `main`, the
+  document's first `<main>` unless you pass a ref, and gives the target `tabindex="-1"` when it has
+  no `tabindex`, so script can focus it and Tab still skips it. `Shell` and `RailShell` both render
+  that `<main>`.
+- **The first render moves nothing.** On a page load the reader starts at the top of the document,
+  where the skip link is; only a later path change moves focus.
+- **The title comes from the head store.** Pass the same `title` that `SEOHead` publishes, so there
+  is one source for it. It is written on mount and whenever it changes; leave it out when something
+  else already writes `document.title`.
+
 ## The dual-mode contract
 
 `Calendar` renders `<button>` when the caller supplies a select handler and `<a href>` when it does
