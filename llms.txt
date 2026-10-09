@@ -727,6 +727,12 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `Notice` (component): A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed. Import: `@spy4x/preact-ui`
 - `NoticeProps` (type): Props of `Notice`. Import: `@spy4x/preact-ui`
 - `NoticeTone` (type): What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`). Import: `@spy4x/preact-ui`
+- `OnboardingChecklist` (component): A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one primary button, and Dismiss. Import: `@spy4x/preact-ui`
+- `OnboardingChecklistProps` (type): What `OnboardingChecklist` takes. Import: `@spy4x/preact-ui`
+- `OnboardingStep` (type): One step of an `OnboardingChecklist`. Import: `@spy4x/preact-ui`
+- `OnboardingStepAction` (type): What a step offers to get it done: a button, or a link. Import: `@spy4x/preact-ui`
+- `OnboardingStepButton` (type): A step's action that runs in place, such as opening a dialog. Import: `@spy4x/preact-ui`
+- `OnboardingStepLink` (type): A step's action that goes to another page, such as the form that creates a first project. Import: `@spy4x/preact-ui`
 - `OnOffButtons` (component): Segmented ON/OFF pair, optionally annotated with counts. Import: `@spy4x/preact-ui`
 - `OnOffButtonsProps` (type): Props of `OnOffButtons`. Import: `@spy4x/preact-ui`
 - `MoreMenu` (component): A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list. Import: `@spy4x/preact-ui`

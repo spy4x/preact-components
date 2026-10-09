@@ -36,6 +36,7 @@ import { useMemo, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
+import { onboardingDemos } from "./onboarding.tsx"
 import type { DemoFragment } from "../registry.ts"
 
 const spinnerSizes: Record<SpinnerSize, string> = {
@@ -915,4 +916,5 @@ export const feedbackDemos = {
 />`,
     render: () => <ToastrDemo />,
   },
+  ...onboardingDemos,
 } satisfies DemoFragment
