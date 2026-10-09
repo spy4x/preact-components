@@ -106,6 +106,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `StatusMark`      | `status-mark`       | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                      |
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                   |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                                            |
+| `TagInput`        | `tag-input`         | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                      |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                                                  |
 | `ThemeToggle`     | `theme-toggle`      | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark                                                     |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                             |
@@ -1282,6 +1283,27 @@ Escape pressed while an input method is still composing a word do not save or ca
 `inlineEditCommit(draft, value)` is the save rule on its own: the trimmed draft, or `null` when it
 is empty or matches the value, in which case the field closes without calling `onSave`.
 
+## TagInput
+
+A text field that collects several tags. Enter or a comma adds the typed text as a tag, trimmed;
+a tag the list already holds, in any case or Unicode encoding, is not added twice. Backspace in the empty field removes
+the last tag. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
+
+The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys, with rows
+44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
+arrow key chose a suggestion first. Escape on an open list closes it and drops the typed text, as in
+`Combobox`; with no list showing, Escape leaves the text alone. Text still in the field when focus leaves it is not added.
+
+Each chip's remove button is named `"Remove tag <name>"` and is 44 px square, and so is the text
+field's height. After a removal focus goes back to the text field. Additions, removals and refused
+duplicates are announced through one polite live region rendered with the field, the same message
+twice in a row included. Every string is a
+prop with an English default: `placeholder`, `removeLabel`, `tagsLabel`, `suggestionsLabel`,
+`addedMessage`, `removedMessage` and `duplicateMessage`.
+
+Inside `Field`, leave `label` and `error` out: `Field` renders both, and its wiring sets the field's
+`id`, `aria-describedby` and `aria-invalid`.
+
 ## ToggleChips
 
 Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
@@ -1686,6 +1708,16 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### TagInput (`./tag-input`)
+
+- `addTags(tags, texts)` adds typed texts to a tag list: trimmed, blanks skipped, and a text the
+  list already holds in any case left out and reported in `duplicates`.
+- `splitTagText(text)` splits a field's text at commas into finished tags and the unfinished rest.
+- `tagSuggestions(suggestions, tags, query)` is the suggestion list for a query: matching ones, as
+  `Combobox` matches, minus the chosen tags, each spelling once.
+- `tagInputKeyAction(event, state, count, text)` is the field's whole key table: `Combobox`'s arrow
+  keys, plus Enter and comma adding a tag and Backspace removing the last one.
 
 ### UnsavedGuard (`./unsaved-guard`)
 

@@ -446,7 +446,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (846 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (852 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -744,6 +744,14 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `TabItem` (type): One tab and the panel it controls. Import: `@spy4x/preact-ui`
 - `Tabs` (component): Controlled tabbed interface: a tablist plus one panel per tab. Import: `@spy4x/preact-ui`
 - `TabsProps` (type): Props of `Tabs`. Import: `@spy4x/preact-ui`
+- `addTags` (helper): Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported. Import: `@spy4x/preact-ui`
+- `AddTagsResult` (type): What `addTags` did with the texts it was given. Import: `@spy4x/preact-ui`
+- `splitTagText` (helper): Split the input's text at commas: every part before the last comma is a finished tag, and the part after it is still being typed. Import: `@spy4x/preact-ui`
+- `TagInput` (component): A text field that collects several tags: type one and press Enter or a comma, or pick one of the suggestions; each tag shows as a chip with its own remove button. Import: `@spy4x/preact-ui`
+- `TagInputKeyAction` (type): What the key handler of `TagInput` does for one key press. Import: `@spy4x/preact-ui`
+- `tagInputKeyAction` (helper): The whole key table of `TagInput`, decided without a DOM. Import: `@spy4x/preact-ui`
+- `TagInputProps` (type): Props of `TagInput`. Import: `@spy4x/preact-ui`
+- `tagSuggestions` (helper): The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling once. Import: `@spy4x/preact-ui`
 - `defaultToastDuration` (helper): How long a toast that names no duration of its own stays, in milliseconds. Import: `@spy4x/preact-ui`
 - `resolveDuration` (helper): How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration`. Import: `@spy4x/preact-ui`
 - `ToastCorner` (type): The window corner a `Toastr` stack sits in. Import: `@spy4x/preact-ui`
