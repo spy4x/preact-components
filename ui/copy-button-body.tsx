@@ -13,13 +13,12 @@ export type CopyPort = (text: string) => void | boolean | Promise<void | boolean
 export type CopyStatus = "idle" | "copied" | "failed"
 
 /** Props of `CopyButton`. */
-export interface CopyButtonProps
-  extends
-    Omit<
-      JSX.ButtonHTMLAttributes<HTMLButtonElement>,
-      "class" | "title" | "children" | "onClick" | "type"
-    >,
-    HotkeyProps {
+export interface CopyButtonProps extends
+  Omit<
+    JSX.ButtonHTMLAttributes<HTMLButtonElement>,
+    "class" | "title" | "children" | "onClick" | "type"
+  >,
+  HotkeyProps {
   /**
    * What lands on the clipboard: a string, or a function called at click time for a value that is
    * only known then, such as the current contents of an input.

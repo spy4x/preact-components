@@ -42,13 +42,12 @@ export interface ButtonProps
  * `variant`, `size` and `class` give a `<button>`. A separate interface rather than a union inside
  * {@link ButtonProps}, so an `interface` that extends `ButtonProps` keeps compiling.
  */
-export interface ButtonLinkProps
-  extends
-    Omit<
-      JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
-      "class" | "href" | "target" | "download" | "onClick" | "size"
-    >,
-    HotkeyProps {
+export interface ButtonLinkProps extends
+  Omit<
+    JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
+    "class" | "href" | "target" | "download" | "onClick" | "size"
+  >,
+  HotkeyProps {
   /** Where the link goes. Rendered as a real `href`, so the link works before any script runs. */
   href: string
   /**
