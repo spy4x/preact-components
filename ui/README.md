@@ -209,11 +209,14 @@ Raising a toast's `duration` while it is on screen is the one thing that refills
 than continuing it, which is how a caller extends a toast it has already shown.
 
 A toast can carry one `action`, a `ToastAction` of `{ label, onAction }`, for "Note deleted. Undo".
-It renders as a real `<button>` named by its visible label alone, after the body and before the
-dismiss control, so Tab reaches it first and a screen reader hears the message and the label once
-when the toast arrives. Pressing it, by pointer, Enter or Space, runs `onAction` once and then
-dismisses the toast through `onDismiss`; a second press that lands before the stack re-renders does
-nothing. A toast with an action and no `duration` of its own stays `defaultToastActionDuration`
+It renders as a real `<button>` named by its visible label alone, on its own line under the body
+and before the dismiss control, so Tab reaches it first, a long label wraps instead of pushing the
+dismiss control off a phone's screen, and a screen reader hears the message and the label once when
+the toast arrives. Pressing it, by pointer, Enter or Space, runs `onAction` once and then dismisses
+the toast through `onDismiss`, even when `onAction` throws; a second press that lands before the
+stack re-renders does nothing. An async `onAction`'s rejection is not caught. Dismissing a toast
+through its action or its dismiss control while focus is inside it returns focus to the element it
+came from, unless the action moved focus itself or that element has left the page. A toast with an action and no `duration` of its own stays `defaultToastActionDuration`
 (10000 ms) instead of 5000, so there is time to read it and reach the button, and like every toast
 it holds while the pointer or focus is on it. `createToastStore` carries a message's `action` onto
 its entry, so `toast.info({ body: "Note deleted", action: { label: "Undo", onAction: restore } })`

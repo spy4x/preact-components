@@ -55,7 +55,7 @@ export interface ToastAction {
   label: string
   /**
    * Runs when the button is pressed. `Toastr` calls it at most once per toast and then dismisses
-   * that toast.
+   * that toast. An async callback's rejection is not caught: handle it inside the callback.
    */
   onAction: () => void
 }

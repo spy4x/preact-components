@@ -44,12 +44,12 @@ reason `copy` reports when the runtime has no clipboard at all, on an insecure o
 server render.
 
 `types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`,
-`ToastAction`, `ToastPort`) and is re-exported from the barrel. The store's error envelope and operation state come from
-spy4x/ts-libs, so every package reports failures in one shape: `validate`, `ValidationError` and
-`firstIssueMessage` from `@spy4x/validation`, and `ErrType`, `StoreError`, `RequestError`,
-`OperationState`, `OperationResult`, `connectionError`, `responseError` and `isSilentError` from
-`@spy4x/platform/universal/errors`. `ErrType` is numeric there (`ErrType.Validation`,
-`ErrType.Connection`, `ErrType.Server`, `ErrType.Payload`).
+`ToastAction`, `ToastPort`) and is re-exported from the barrel. The store's error envelope and
+operation state come from spy4x/ts-libs, so every package reports failures in one shape:
+`validate`, `ValidationError` and `firstIssueMessage` from `@spy4x/validation`, and `ErrType`,
+`StoreError`, `RequestError`, `OperationState`, `OperationResult`, `connectionError`,
+`responseError` and `isSilentError` from `@spy4x/platform/universal/errors`. `ErrType` is
+numeric there (`ErrType.Validation`, `ErrType.Connection`, `ErrType.Server`, `ErrType.Payload`).
 
 ## `For` and `Show` live in the dependency, not here
 
