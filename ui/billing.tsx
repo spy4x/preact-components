@@ -247,8 +247,10 @@ function BillingForm(
             try {
               await onSubmit()
             } catch (error) {
-              globalThis.reportError(error)
               setFailed(true)
+              // Safari before 15.4 has no `reportError`.
+              if (typeof globalThis.reportError === "function") globalThis.reportError(error)
+              else console.error(error)
             }
           })}
         labels={{ sending: pendingLabel, done: "", failed: failedLabel }}
