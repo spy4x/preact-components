@@ -2,11 +2,14 @@ import { createToastStore, type ToastEntry } from "@spy4x/preact-signals/toast"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
+import { options } from "preact"
 import { render } from "preact-render-to-string"
 import {
+  defaultToastActionDuration,
   defaultToastDuration,
   resolveDuration,
   type ToastCorner,
+  type ToastId,
   type ToastItem,
   Toastr,
   type ToastrProps,
@@ -182,6 +185,76 @@ describe("Toastr", () => {
     expect(countOccurrences(html, 'aria-label="Dismiss"')).toBe(1)
   })
 
+  it("renders a toast's action as a button named by its visible label alone", () => {
+    const html = render(
+      <Toastr
+        toasts={[{ id: 1, body: "Note deleted", action: { label: "Undo", onAction: () => {} } }]}
+        onDismiss={() => {}}
+      />,
+    )
+    const button = html.match(/<button[^>]*>Undo<\/button>/)?.[0] ?? ""
+
+    expect(button).toContain('type="button"')
+    expect(button).not.toContain("aria-label")
+    expect(button).not.toContain("title=")
+    // The live area reads the toast's text, so the label has to be in it once and only once.
+    expect(countOccurrences(html, "Undo")).toBe(1)
+  })
+
+  it("puts the action before the toast's dismiss control", () => {
+    const html = render(
+      <Toastr
+        toasts={[{ id: 1, body: "Note deleted", action: { label: "Undo", onAction: () => {} } }]}
+        onDismiss={() => {}}
+      />,
+    )
+    const toast = html.slice(html.indexOf('role="status"'))
+
+    expect(toast).toContain(">Undo</button>")
+    expect(toast.indexOf(">Undo</button>")).toBeLessThan(toast.indexOf('aria-label="Dismiss"'))
+  })
+
+  it("still dismisses the toast when its action throws, and lets the error through", () => {
+    // No DOM here: the action button's click handler is read off the element tree as it is made.
+    let click: (() => void) | undefined
+    const previous = options.vnode
+    options.vnode = (vnode) => {
+      const props = vnode.props as { onClick?: () => void; children?: unknown }
+      if (vnode.type === "button" && props.children === "Undo") click = props.onClick
+      previous?.(vnode)
+    }
+    const dismissed: ToastId[] = []
+    try {
+      render(
+        <Toastr
+          toasts={[{
+            id: 7,
+            body: "Note deleted",
+            action: {
+              label: "Undo",
+              onAction: () => {
+                throw new Error("restore failed")
+              },
+            },
+          }]}
+          onDismiss={(id) => void dismissed.push(id)}
+        />,
+      )
+    } finally {
+      options.vnode = previous
+    }
+
+    expect(click).toBeDefined()
+    expect(() => click?.()).toThrow("restore failed")
+    expect(dismissed).toEqual([7])
+  })
+
+  it("renders no action button for a toast without an action", () => {
+    const html = render(<Toastr toasts={[{ id: 1, body: "Saved" }]} onDismiss={() => {}} />)
+
+    expect(countOccurrences(html, "<button")).toBe(1)
+  })
+
   it("exposes the stack as a labelled region for assistive tech", () => {
     const html = render(<Toastr toasts={[{ id: 1, body: "note" }]} onDismiss={() => {}} />)
 
@@ -282,6 +355,13 @@ type SharedTitleField = NonNullable<ToastEntry["title"] & ToastItem["title"]>
 const _titleIsTheSharedName: SharedTitleField = "Saved"
 
 /**
+ * The same guard for the action: renaming it on either side, or retyping one side's shape so the
+ * two no longer overlap, makes this line a type error.
+ */
+type SharedActionField = NonNullable<ToastEntry["action"] & ToastItem["action"]>
+const _actionIsTheSharedName: SharedActionField = { label: "Undo", onAction: () => {} }
+
+/**
  * What these tests prove, and what they cannot.
  *
  * They build toasts through a real `createToastStore` and ask the component's own
@@ -345,6 +425,30 @@ describe("Toastr wired to createToastStore", () => {
 
     expect(store.list.value[0].duration).toBeUndefined()
     expect(resolveDuration(store.list.value[0])).toBe(defaultToastDuration)
+  })
+
+  it("gives a store toast with an action and no delay the longer action default", () => {
+    const store = createToastStore({ nextId: () => "undo" })
+    store.info({ body: "Note deleted", action: { label: "Undo", onAction: () => {} } })
+
+    expect(defaultToastActionDuration).toBe(10_000)
+    expect(resolveDuration(store.list.value[0])).toBe(defaultToastActionDuration)
+  })
+
+  it("keeps the delay a store toast with an action was asked for, zero included", () => {
+    const action = { label: "Undo", onAction: () => {} }
+
+    expect(resolveDuration({ duration: 3000, action })).toBe(3000)
+    expect(resolveDuration({ duration: 0, action })).toBe(0)
+  })
+
+  it("renders the action a store entry carries", () => {
+    const store = createToastStore({ nextId: () => "undo" })
+    store.info({ body: "Note deleted", action: { label: "Undo", onAction: () => {} } })
+
+    const html = render(<Toastr toasts={store.list.value} onDismiss={store.remove} />)
+
+    expect(html).toMatch(/<button[^>]*>Undo<\/button>/)
   })
 
   it("shows the title the store filled in, and the one a caller gave it", () => {

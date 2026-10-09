@@ -289,3 +289,23 @@ describe("createToastStore as a toast port", () => {
     expect(store.list.value.map((entry) => entry.type)).toEqual(["success", "error"])
   })
 })
+
+describe("createToastStore actions", () => {
+  it("carries a message's action onto its entry, callback and all", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    let undone = 0
+    const action = { label: "Undo", onAction: () => undone++ }
+    store.info({ body: "Note deleted", action })
+
+    expect(store.list.value[0].action).toBe(action)
+    store.list.value[0].action?.onAction()
+    expect(undone).toBe(1)
+  })
+
+  it("gives an entry no action key when its message named none", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.info({ body: "Saved" })
+
+    expect(Object.hasOwn(store.list.value[0], "action")).toBe(false)
+  })
+})

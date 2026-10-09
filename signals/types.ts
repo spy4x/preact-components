@@ -46,6 +46,20 @@ export type ToastVariant = "success" | "error" | "info" | "warning"
  */
 export type ToastId = string | number
 
+/**
+ * A button on a toast, such as "Undo" after a delete. Matches `ToastAction` in `@spy4x/preact-ui`,
+ * which renders it.
+ */
+export interface ToastAction {
+  /** The button's visible text, which is also its accessible name. */
+  label: string
+  /**
+   * Runs when the button is pressed. `Toastr` calls it at most once per toast and then dismisses
+   * that toast. An async callback's rejection is not caught: handle it inside the callback.
+   */
+  onAction: () => void
+}
+
 /** Notification content the store hands to its toast port. */
 export interface ToastMessage {
   /**
@@ -79,6 +93,11 @@ export interface ToastMessage {
    * so a test can wait for this one message. Omitted, the toast carries no such attribute.
    */
   dataE2E?: string
+  /**
+   * A button on the toast, such as "Undo". Under `Toastr` a toast with an action and no `duration`
+   * stays ten seconds instead of five, so there is time to reach the button.
+   */
+  action?: ToastAction
 }
 
 /**

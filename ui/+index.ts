@@ -316,8 +316,10 @@ export {
   tagSuggestions,
 } from "./tag-input.tsx"
 export {
+  defaultToastActionDuration,
   defaultToastDuration,
   resolveDuration,
+  type ToastAction,
   type ToastCorner,
   type ToastId,
   type ToastItem,

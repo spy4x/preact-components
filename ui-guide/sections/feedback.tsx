@@ -12,6 +12,7 @@ import {
   Checkbox,
   Cluster,
   ConfirmDialog,
+  defaultToastActionDuration,
   defaultToastDuration,
   type DialogTone,
   EmptyState,
@@ -136,6 +137,26 @@ const extendMs = 2500
 const longDurationMs = 20_000
 
 /**
+ * How long the card's Undo toast stays, in milliseconds, unless the pointer or focus is on it.
+ *
+ * A toast with an action and no duration stays {@link defaultToastActionDuration}, ten seconds, and
+ * the card says so; it pushes a shorter one so the browser check, which reads this number off the
+ * button's `data-duration`, can watch the timer hold and resume without waiting ten seconds twice.
+ */
+const undoMs = 3000
+
+/** Body of the card's Undo toast, and the label of its action. */
+const undoBody = "Draft deleted"
+const undoLabel = "Undo"
+
+/**
+ * A long action label, so the card shows how a label too long for one line wraps instead of
+ * pushing the dismiss control out of a narrow window. The toast stays until it is dismissed, so it
+ * can be looked at on a phone.
+ */
+const undoLongLabel = "Restore the twelve deleted tasks"
+
+/**
  * Where the card puts its stack: inside the card, or in one of the window's corners. The record is
  * the coverage guard for `ToastCorner` — a corner with no entry does not compile.
  */
@@ -166,6 +187,7 @@ function ToastrDemo() {
   const store = useMemo(() => createToastStore(), [])
   const toasts = store.list.value
   const placement = useSignal<ToastCorner | "card">("card")
+  const undone = useSignal(0)
 
   const push = (type: ToastVariant, duration: number, body: string, dataE2E?: string) =>
     store.add({ type, duration, body, dataE2E })
@@ -238,6 +260,37 @@ function ToastrDemo() {
         >
           extend to {extendMs}ms
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="toast-undo"
+          data-duration={undoMs}
+          data-label={undoLabel}
+          onClick={() =>
+            store.info({
+              body: undoBody,
+              duration: undoMs,
+              dataE2E: "guide-toast-undo",
+              action: { label: undoLabel, onAction: () => undone.value++ },
+            })}
+        >
+          with an Undo action
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="toast-undo-long"
+          data-label={undoLongLabel}
+          onClick={() =>
+            store.info({
+              body: "Twelve tasks deleted",
+              duration: 0,
+              dataE2E: "guide-toast-undo-long",
+              action: { label: undoLongLabel, onAction: () => undone.value++ },
+            })}
+        >
+          with a long action
+        </Button>
         <Button variant="ghost" size="sm" data-e2e="toast-clear" onClick={() => store.clear()}>
           clear {toasts.length ? `(${toasts.length})` : ""}
         </Button>
@@ -245,9 +298,11 @@ function ToastrDemo() {
       <DemoNote>
         In the store:{" "}
         <span data-e2e="toast-store-count">{toasts.length}</span>. A toast with no duration of its
-        own stays <span data-e2e="toast-default-duration">{defaultToastDuration}</span>{" "}
-        ms. Each toast shows the title it was pushed with, or its kind's default. Hover the stack to
-        pause every timer.
+        own stays <span data-e2e="toast-default-duration">{defaultToastDuration}</span> ms, or{" "}
+        <span data-e2e="toast-action-duration">{defaultToastActionDuration}</span>{" "}
+        ms with an action; the Undo toast here asks for {undoMs} ms. Undone:{" "}
+        <span data-e2e="toast-undo-count">{undone.value}</span>. Each toast shows the title it was
+        pushed with, or its kind's default. Hover the stack to pause every timer.
       </DemoNote>
       {toasts.length === 0 ? <DemoNote>Nothing pushed yet.</DemoNote> : null}
       <Toastr
@@ -821,7 +876,7 @@ export const feedbackDemos = {
         name: "toasts",
         type: "ToastItem[]",
         description:
-          "The stack: each toast's id, type, title (shown above the body), body, duration, and a `dataE2E` test hook on that toast.",
+          "The stack: each toast's id, type, title (shown above the body), body, duration, an optional `action` button ({ label, onAction }, run once, then the toast is dismissed), and a `dataE2E` test hook on that toast.",
       },
       {
         name: "onDismiss",
@@ -848,7 +903,12 @@ export const feedbackDemos = {
         description: "The dismiss button's name.",
       },
     ],
-    snippet: `<Toastr
+    snippet: `app.toast.info({
+  body: "Draft deleted",
+  action: { label: "Undo", onAction: () => restore(draft) },
+}) // no duration: stays 10 s, paused while hovered or focused
+
+<Toastr
   toasts={app.toast.list.value}
   onDismiss={app.toast.remove}
   corner="bottom-right"
