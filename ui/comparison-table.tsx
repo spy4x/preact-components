@@ -194,7 +194,7 @@ export function ComparisonTable(
                 >
                   {product}
                   {index === 0 && (
-                    <span class="block text-xs font-medium text-muted">
+                    <span class="block text-xs font-medium text-foreground">
                       {words.ours}
                     </span>
                   )}

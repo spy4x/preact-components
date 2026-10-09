@@ -19,8 +19,8 @@ const ROWS: ComparisonRow[] = [
     note: "every field, not a summary",
     values: ["yes", "yes", "partial", "no"],
   },
-  { capability: "Shared budgets", values: ["yes", "no", "yes", "partial"] },
-  { capability: "Self-hosting", values: ["partial", "no", "no", "no"] },
+  { capability: "Shared budgets", values: ["partial", "no", "yes", "yes"] },
+  { capability: "Self-hosting", values: ["no", "no", "partial", "no"] },
 ]
 
 function ComparisonTableDemo() {
