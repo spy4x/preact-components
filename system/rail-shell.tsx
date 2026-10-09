@@ -162,15 +162,6 @@ const entryPrimary =
   "bg-[var(--color-primary,oklch(0.381_0.176_304.987))] text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))] hover:opacity-90"
 
 /**
- * Whether a link points at this page's origin, so a client router can take it. Read from the
- * anchor's resolved `href`, so a relative link, a `<base>` element and a `mailto:` (origin `null`)
- * all count as the browser sees them.
- */
-function isSameOrigin(anchor: HTMLAnchorElement): boolean {
-  return new URL(anchor.href).origin === location.origin
-}
-
-/**
  * One entry: a link when it has an `href`, followed through `navigateLink` on a plain click when
  * that port is given, and a button through `navigate` otherwise.
  */
@@ -214,9 +205,11 @@ function Entry(
         aria-current={current ? "page" : undefined}
         class={className}
         onClick={(event) => {
-          if (navigateLink && isSameOrigin(event.currentTarget)) {
-            followLinkClick(event, { href, navigate: () => navigateLink(key, href) })
-          }
+          // The anchor's own address, as the browser would follow it, decides the origin test.
+          followLinkClick(event, {
+            href: event.currentTarget.href,
+            navigate: navigateLink && (() => navigateLink(key, href)),
+          })
           onChoose?.()
         }}
         data-e2e="rail-shell-entry"
