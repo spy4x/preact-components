@@ -1,10 +1,10 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconAlertTriangle, IconCheck, IconLockClosed } from "@spy4x/preact-icons"
 import { formatMoney } from "@spy4x/platform/universal/money"
-import type { JSX } from "preact"
-import { useId, useState } from "preact/hooks"
+import type { ComponentChildren, JSX } from "preact"
+import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
-import { EnhancedForm, type EnhancedFormLabels } from "./enhanced-form.tsx"
+import { EnhancedForm } from "./enhanced-form.tsx"
 
 /** How often a plan bills. */
 export enum BillingInterval {
@@ -103,6 +103,11 @@ export interface PricingTableLabels {
    * holds. Defaults to `"Please wait…"`.
    */
   pending: string
+  /**
+   * Shown and announced under a plan's "Choose" when `onChoose` threw or its promise rejected.
+   * Defaults to `"Something went wrong. Please try again."`.
+   */
+  failed: string
 }
 
 /** The English words {@link PricingTable} uses when a caller passes none. */
@@ -118,6 +123,7 @@ export const defaultPricingTableLabels: PricingTableLabels = {
   choose: "Choose",
   chooseName: (planName) => `Choose ${planName}`,
   pending: "Please wait…",
+  failed: "Something went wrong. Please try again.",
 }
 
 /** Heading level of a billing component's own heading. */
@@ -132,15 +138,25 @@ export interface PricingTableProps {
   /**
    * Called with the chosen plan instead of posting its form: the table's submit port. Left out,
    * "Choose" posts the form to `action`, which also happens whenever the page runs no script. While
-   * a promise it returns is outstanding, that plan's form is disabled. Typed `unknown` rather than
-   * `Promise<void> | void` so a callback written for the older `void` type, such as an arrow that
-   * returns an assignment, still type-checks.
+   * a promise it returns is outstanding, that plan's form refuses another submit. A throw or a
+   * rejection goes to the global `reportError` and shows the `failed` label under that plan. Typed
+   * `unknown` rather than `Promise<void> | void` so a callback written for the older `void` type,
+   * such as an arrow that returns an assignment, still type-checks.
    */
   onChoose?: (plan: PricingPlan) => unknown
   /**
    * The app is still working on a choice, such as opening checkout. Every plan's form is disabled
    * and refuses a submit, with or without a script, and each "Choose" shows a spinner. Defaults to
-   * `false`.
+   * `false`. When it turns `false`, focus that the wait had parked on the form goes back to its
+   * "Choose". A page the browser restores from its back/forward cache keeps the app's `pending`
+   * as it was, so a visitor who comes Back from checkout finds the table still waiting; clear it
+   * on `pageshow`:
+   *
+   * ```ts
+   * addEventListener("pageshow", (event) => {
+   *   if (event.persisted) pending.value = false
+   * })
+   * ```
    */
   pending?: boolean
   /** Where each plan's form posts. Left out, it posts to the page's own URL. */
@@ -175,22 +191,73 @@ const HIDDEN_UNLESS: Partial<Record<1 | 2, string>> = {
   [BillingInterval.Year]: "group-has-[[data-pricing-interval=month]:checked]/pricing:hidden",
 }
 
-/**
- * The classes a billing form passes to `EnhancedForm`. The form fills its footer, drops the
- * `space-y-4` gap `EnhancedForm` puts under its fields, and keeps its live region off screen: the
- * busy button's spinner is what a sighted visitor sees, and the region speaks to a screen reader.
- */
-const PENDING_FORM_CLASSES = "w-full space-y-0! [&>[role=status]]:sr-only"
+/** Props of {@link BillingForm}. */
+interface BillingFormProps {
+  action?: string
+  /** The component's submit port; left out, the form posts natively. */
+  onSubmit?: () => unknown
+  pending: boolean
+  /** Announced while `pending`; `""` keeps the region silent. */
+  pendingLabel: string
+  /** Shown and announced after `onSubmit` threw or rejected. */
+  failedLabel: string
+  children: ComponentChildren
+}
 
 /**
- * The live region's words for a billing form: `pending` while it waits, nothing once the app's
- * callback settles, since the app shows its own result (a checkout page, a portal, an error).
+ * The form of a billing card: an `EnhancedForm` whose status the card controls entirely.
  *
- * @param pending What to announce while the form waits; `""` keeps the region silent.
- * @returns Labels for `EnhancedForm`.
+ * The status is `"sending"` only while the app says `pending`, so a callback that returns at once
+ * never disables the form, and focus stays on the button the visitor pressed. `EnhancedForm`'s own
+ * busy guard still refuses a second submit while a promise the callback returned is outstanding. A
+ * throw or a rejection is handed to the global `reportError`, so it reaches the console and the
+ * app's `error` listener, and the form shows `failedLabel` under its button.
+ *
+ * While `pending`, the disabled fieldset drops focus and `EnhancedForm` parks it on its live
+ * region, which is off screen here: the busy button's spinner is what a sighted visitor sees. When
+ * `pending` ends, focus that is still on the region goes back to the submit button.
+ *
+ * The form fills its footer and drops the `space-y-4` gap `EnhancedForm` puts under its fields.
  */
-function pendingLabels(pending: string): EnhancedFormLabels {
-  return { sending: pending, done: "", failed: "" }
+function BillingForm(
+  { action, onSubmit, pending, pendingLabel, failedLabel, children }: BillingFormProps,
+): JSX.Element {
+  const [failed, setFailed] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (pending) return
+    const box = boxRef.current
+    const active = globalThis.document?.activeElement
+    if (!box || !active || active.getAttribute("role") !== "status" || !box.contains(active)) {
+      return
+    }
+    box.querySelector<HTMLElement>(`button[type="submit"]`)?.focus()
+  }, [pending])
+
+  const shownFailure = failed && !pending
+  return (
+    <div ref={boxRef} class="w-full">
+      <EnhancedForm
+        action={action}
+        status={pending ? "sending" : shownFailure ? "failed" : "idle"}
+        onSubmit={onSubmit &&
+          (async () => {
+            setFailed(false)
+            try {
+              await onSubmit()
+            } catch (error) {
+              globalThis.reportError(error)
+              setFailed(true)
+            }
+          })}
+        labels={{ sending: pendingLabel, done: "", failed: failedLabel }}
+        class={shownFailure ? "space-y-2!" : "space-y-0! [&>[role=status]]:sr-only"}
+      >
+        {children}
+      </EnhancedForm>
+    </div>
+  )
 }
 
 /** The outline-pill look of a short label: a grey outline `Badge`'s, without `cn`. */
@@ -316,16 +383,16 @@ export function PricingTable(
               )}
             </div>
             <div class="pc-card-footer">
-              <EnhancedForm
+              <BillingForm
                 action={action}
-                status={pending ? "sending" : undefined}
+                pending={pending}
                 onSubmit={onChoose &&
-                  (async () => {
+                  (() => {
                     setChosenId(plan.id)
-                    await onChoose(plan)
+                    return onChoose(plan)
                   })}
-                labels={pendingLabels(chosenId === plan.id ? words.pending : "")}
-                class={PENDING_FORM_CLASSES}
+                pendingLabel={chosenId === plan.id ? words.pending : ""}
+                failedLabel={words.failed}
               >
                 <input type="hidden" name={fieldName} value={plan.id} />
                 <Button
@@ -337,7 +404,7 @@ export function PricingTable(
                 >
                   {words.choose}
                 </Button>
-              </EnhancedForm>
+              </BillingForm>
             </div>
           </li>
         ))}
@@ -372,6 +439,11 @@ export interface PlanCardLabels {
   manage: string
   /** Announced to screen readers while `pending` holds. Defaults to `"Please wait…"`. */
   pending: string
+  /**
+   * Shown and announced under "Manage billing" when `onSubmit` threw or its promise rejected.
+   * Defaults to `"Something went wrong. Please try again."`.
+   */
+  failed: string
 }
 
 /** The English words {@link PlanCard} uses when a caller passes none. */
@@ -393,6 +465,7 @@ export const defaultPlanCardLabels: PlanCardLabels = {
   incomplete: "Your first payment has not gone through. Complete it to start your plan.",
   manage: "Manage billing",
   pending: "Please wait…",
+  failed: "Something went wrong. Please try again.",
 }
 
 export interface PlanCardProps {
@@ -411,13 +484,24 @@ export interface PlanCardProps {
   /**
    * Called instead of posting to `manageAction` once the page runs a script: the card's submit
    * port. Left out, "Manage billing" always posts. While a promise it returns is outstanding, the
-   * form is disabled.
+   * form refuses another submit. A throw or a rejection goes to the global `reportError` and shows
+   * the `failed` label. Typed `unknown`, as `PricingTable`'s `onChoose` is, so a callback that
+   * returns any value, such as `() => fetch("/billing/portal")`, type-checks.
    */
-  onSubmit?: () => Promise<void> | void
+  onSubmit?: () => unknown
   /**
    * The app is still working on the last submit, such as opening the billing portal. The form is
    * disabled and refuses a submit, with or without a script, and "Manage billing" shows a spinner.
-   * Defaults to `false`.
+   * Defaults to `false`. When it turns `false`, focus that the wait had parked on the form goes back
+   * to "Manage billing". A page the browser restores from its back/forward cache keeps the app's `pending`
+   * as it was, so a visitor who comes Back from the portal finds the card still waiting; clear it
+   * on `pageshow`:
+   *
+   * ```ts
+   * addEventListener("pageshow", (event) => {
+   *   if (event.persisted) pending.value = false
+   * })
+   * ```
    */
   pending?: boolean
   /** BCP 47 locale for the price and the date. Defaults to `"en"`. */
@@ -470,7 +554,8 @@ function dateLine(
  * not rest on colour. The status is text too, in a pill next to the name.
  *
  * The form is an `EnhancedForm`: it posts natively until a script runs, `onSubmit` takes it over
- * once one does, and `pending` disables it and refuses a second submit either way.
+ * once one does, and `pending` disables it and refuses a second submit either way. The app clears
+ * `pending` itself after a back/forward-cache restore; see {@link PlanCardProps.pending}.
  *
  * @param props See {@link PlanCardProps}.
  */
@@ -543,15 +628,15 @@ export function PlanCard(
         )}
       </div>
       <div class="pc-card-footer">
-        <EnhancedForm
+        <BillingForm
           action={manageAction}
-          status={pending ? "sending" : undefined}
-          onSubmit={onSubmit && (() => onSubmit())}
-          labels={pendingLabels(words.pending)}
-          class={PENDING_FORM_CLASSES}
+          pending={pending}
+          onSubmit={onSubmit}
+          pendingLabel={words.pending}
+          failedLabel={words.failed}
         >
           <Button type="submit" variant="outline" busy={pending}>{words.manage}</Button>
-        </EnhancedForm>
+        </BillingForm>
       </div>
     </div>
   )

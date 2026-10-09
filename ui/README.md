@@ -1727,9 +1727,25 @@ opens the provider's portal, until `onSubmit` takes it over once a script runs. 
 
 Both forms are `EnhancedForm`s. While the app is still working on a submit (opening checkout or the
 portal), it passes `pending`: the form is disabled, its button shows a spinner, and a second submit
-is refused, with or without a script. A promise returned from `onChoose` or `onSubmit` keeps the
-form disabled until it settles, too. A screen reader hears the `pending` label ("Please wait…") from
-the form the visitor submitted.
+is refused, with or without a script. While a promise returned from `onChoose` or `onSubmit` is
+outstanding, the form refuses another submit too, though it stays enabled. A screen reader hears
+the `pending` label ("Please wait…") from the form the visitor submitted. A callback that returns
+at once leaves focus on the button the visitor pressed, and when `pending` ends, focus the wait had
+parked on the form goes back to its button.
+
+A callback that throws or rejects is not swallowed: the error goes to the global `reportError`, so
+it reaches the console and the app's `error` listener, and the form shows and announces the `failed`
+label ("Something went wrong. Please try again.") under its button until the next submit.
+
+The app owns `pending`, so the app clears it when the browser restores the page from its
+back/forward cache. Otherwise a visitor who comes Back from checkout finds every "Choose" still
+waiting:
+
+```ts
+addEventListener("pageshow", (event) => {
+  if (event.persisted) checkoutPending.value = false
+})
+```
 
 `UpgradePrompt` is a short message and a link, in place of a feature the plan does not include.
 
