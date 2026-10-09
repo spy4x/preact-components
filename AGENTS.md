@@ -402,15 +402,17 @@ library knowing which app it is running in.
 ### Local state: signals for new code
 
 New local state is a `useSignal`, not a `useState` (owner decision, 2026-10-09). Application state
-already arrives as signals, so one model reads more easily, and a signal handed to JSX as itself
-(`{count}`, not `{count.value}`) updates its text without re-rendering the component.
+often arrives as a signal the caller passed in, so one model reads more easily, and a signal handed
+to JSX as itself (`{count}`, not `{count.value}`) updates its text without re-rendering the
+component.
 
 - Existing `useState` is converted only inside a change that already touches that component. A
   pull request whose sole purpose is the conversion is not worth its risk.
-- `useRef` stays for DOM handles and timers, which are not state, and `useEffect` stays for work tied
-  to the DOM's lifecycle: focus, listeners, cleanup.
-- Reading `.value` during a render subscribes the component, so writing a signal in the same render
-  re-renders it forever (#300). Write signals in event handlers and effects only.
+- `useRef` stays for DOM handles and timers, which are not state, and `useEffect` stays for work
+  tied to the DOM's lifecycle: focus, listeners, cleanup.
+- Reading `.value` during a render subscribes the component to that signal, so a render that then
+  writes a new value to it renders again, without end (#300). Never write a signal during a render;
+  write it in an event handler, an effect, or a callback that one of them set up.
 
 ### Spacing
 
