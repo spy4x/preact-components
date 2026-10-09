@@ -9,8 +9,11 @@
 import { type ComparisonRow, ComparisonTable } from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
-/** Invented products: the guide names no real company. */
-const PRODUCTS = ["Tally", "Ledgerly", "Countwise", "Sumbook"] as const
+/**
+ * Placeholders that cannot be anyone's brand: the guide names no real product. The caption is long
+ * on purpose, so the 375 px check proves a long title is never cut off.
+ */
+const PRODUCTS = ["Our app", "Product A", "Product B", "Product C"] as const
 
 const ROWS: ComparisonRow[] = [
   { capability: "Works offline", values: ["yes", "partial", "no", "yes"] },
@@ -26,12 +29,12 @@ const ROWS: ComparisonRow[] = [
 function ComparisonTableDemo() {
   return (
     <ComparisonTable
-      caption="How Tally compares"
+      caption="How our app compares with three other budgeting apps for families"
       products={PRODUCTS}
       rows={ROWS}
       checkedOn={new Date("2026-10-01T00:00:00Z")}
       method="We read each product's official feature, pricing and help pages. Yes means it is built in on the cheapest paid plan; Partial means a limit, an add-on or a higher plan."
-      fit="Tally is not for teams over fifty people, or for anyone who needs payroll."
+      fit="Our app is not for teams over fifty people, or for anyone who needs payroll."
     />
   )
 }
@@ -66,6 +69,12 @@ export const comparisonTableDemos: DemoFragment = {
       { name: "fit", type: "ComponentChildren", description: "Who your product is not for." },
       { name: "locale", type: "string", default: `"en"`, description: "The date's locale." },
       {
+        name: "timeZone",
+        type: "string",
+        default: `"UTC"`,
+        description: "The date's time zone, so the server and the browser print the same day.",
+      },
+      {
         name: "labels",
         type: "Partial<ComparisonTableLabels>",
         description:
@@ -73,15 +82,15 @@ export const comparisonTableDemos: DemoFragment = {
       },
     ],
     snippet: `<ComparisonTable
-  caption="How Tally compares"
-  products={["Tally", "Ledgerly", "Countwise", "Sumbook"]}
+  caption="How our app compares"
+  products={["Our app", "Product A", "Product B", "Product C"]}
   rows={[
     { capability: "Works offline", values: ["yes", "partial", "no", "yes"] },
     { capability: "Export to CSV", note: "every field", values: ["yes", "yes", "partial", "no"] },
   ]}
   checkedOn={new Date("2026-10-01")}
   method="We read each product's official feature, pricing and help pages."
-  fit="Tally is not for teams over fifty people."
+  fit="Our app is not for teams over fifty people."
 />`,
     render: () => <ComparisonTableDemo />,
   },
