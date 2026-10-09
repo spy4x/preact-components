@@ -284,6 +284,8 @@ interface SucceededRun {
  * happens; a save that ends with "Fail" does not count, and neither does dismissing its error
  * afterwards, which drops `failed` while `pending` stays false. Each step waits for the demo's
  * buttons to show the new state, then two animation frames and 100 ms more so the effect has run.
+ * Each check compares a count with the one before its own step, so a broken step fails its own
+ * check rather than every check after it.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -328,13 +330,13 @@ async function useSucceededChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "useSucceeded runs onDone once when a save succeeds",
-    run.stuck === "" && run.succeeded === 1 && run.later === 1,
+    run.stuck === "" && run.succeeded - run.mounted === 1 && run.later === run.succeeded,
     detail,
   )
   check(
     "useSucceeded does not run onDone after a failure, nor when the failure is cleared",
-    run.stuck === "" && run.failed === 1 && run.failedText.includes("Save failed") &&
-      run.dismissed === 1,
+    run.stuck === "" && run.failed === run.later && run.failedText.includes("Save failed") &&
+      run.dismissed === run.failed,
     detail,
   )
 }
