@@ -13,7 +13,8 @@
  * other two shells share would have to rebuild all three.
  *
  * Props and ports only: items, the current key or path, the primary action and every label arrive
- * from the caller; a button item reaches the app's router through the `navigate` port. The rail and
+ * from the caller; a button item reaches the app's router through the `navigate` port, and a link
+ * item reaches it through the `navigateLink` port when the caller passes one. The rail and
  * the tab bar switch at Tailwind's `md` breakpoint in CSS, so the server render already carries both
  * and nothing reads the window while rendering. Every colour is a theme token read through `var()`
  * with the default palette's value as its fallback — the same pattern `theme/preset.css` uses — so
@@ -23,6 +24,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { type IconProps, IconXMark } from "@spy4x/preact-icons"
+import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId, useRef } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"
@@ -61,7 +63,8 @@ export interface RailShellLabels {
 
 /**
  * Everything `RailShell` draws comes from here: the destinations, which one is current, the primary
- * action, the `navigate` port for entries without an `href`, the page itself, and every label.
+ * action, the `navigate` port for entries without an `href` and the `navigateLink` port for entries
+ * with one, the page itself, and every label.
  * Nothing is read from app state or the window.
  */
 export interface RailShellProps {
@@ -78,6 +81,14 @@ export interface RailShellProps {
   primary?: RailShellItem
   /** Port for an entry with no `href`: receives that entry's key. */
   navigate?: (key: string) => void
+  /**
+   * Port to the app's client router for an entry with an `href`. Given, a plain left click on that
+   * link — primary button, no Ctrl, Meta, Shift or Alt, nothing earlier cancelled it, and the link
+   * points at this page's origin — calls it with the entry's key and `href` and cancels the
+   * browser's own navigation. Every other click, a middle click included, stays the browser's, so
+   * "open in a new tab" still works. Left out, every link is an ordinary link.
+   */
+  navigateLink?: (key: string, href: string) => void
   /**
    * The app's own top bar — brand, pickers, the user menu. Rendered in a `<header>` above `<main>`
    * and outside it, so it is the page's banner landmark and the skip link jumps past it. Left out,
@@ -150,14 +161,27 @@ const entryCurrent = "bg-[var(--color-canvas,oklch(0.985_0.002_247.839))] font-s
 const entryPrimary =
   "bg-[var(--color-primary,oklch(0.381_0.176_304.987))] text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))] hover:opacity-90"
 
-/** One entry: a link when it has an `href`, a button through `navigate` otherwise. */
+/**
+ * Whether a link points at this page's origin, so a client router can take it. Read from the
+ * anchor's resolved `href`, so a relative link, a `<base>` element and a `mailto:` (origin `null`)
+ * all count as the browser sees them.
+ */
+function isSameOrigin(anchor: HTMLAnchorElement): boolean {
+  return new URL(anchor.href).origin === location.origin
+}
+
+/**
+ * One entry: a link when it has an `href`, followed through `navigateLink` on a plain click when
+ * that port is given, and a button through `navigate` otherwise.
+ */
 function Entry(
-  { item, place, current, primary, navigate, onChoose }: {
+  { item, place, current, primary, navigate, navigateLink, onChoose }: {
     item: RailShellItem
     place: Place
     current: boolean
     primary: boolean
     navigate?: (key: string) => void
+    navigateLink?: (key: string, href: string) => void
     /** Runs after the entry is chosen — the overlay closes itself through this. */
     onChoose?: () => void
   },
@@ -189,7 +213,12 @@ function Entry(
         href={href}
         aria-current={current ? "page" : undefined}
         class={className}
-        onClick={onChoose}
+        onClick={(event) => {
+          if (navigateLink && isSameOrigin(event.currentTarget)) {
+            followLinkClick(event, { href, navigate: () => navigateLink(key, href) })
+          }
+          onChoose?.()
+        }}
         data-e2e="rail-shell-entry"
       >
         {content}
@@ -256,6 +285,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
     currentPath,
     primary,
     navigate,
+    navigateLink,
     header,
     children,
     labels,
@@ -302,6 +332,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
               current={isCurrent(primary, currentKey, currentPath)}
               primary
               navigate={navigate}
+              navigateLink={navigateLink}
             />
           )}
           <ul class="flex flex-col gap-1">
@@ -313,6 +344,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
                   current={isCurrent(item, currentKey, currentPath)}
                   primary={false}
                   navigate={navigate}
+                  navigateLink={navigateLink}
                 />
               </li>
             ))}
@@ -350,6 +382,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
                 current={isCurrent(item, currentKey, currentPath)}
                 primary={item === primary}
                 navigate={navigate}
+                navigateLink={navigateLink}
               />
             </li>
           ))}
@@ -426,6 +459,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
                     current={isCurrent(item, currentKey, currentPath)}
                     primary={item === primary}
                     navigate={navigate}
+                    navigateLink={navigateLink}
                     onChoose={close}
                   />
                 </li>

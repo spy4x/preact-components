@@ -428,7 +428,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `RailShell` (component): The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
 - `RailShellItem` (type): One destination in `RailShellProps.items`, or the `RailShellProps.primary` action. Import: `@spy4x/preact-system`
 - `RailShellLabels` (type): Every string `RailShell` prints that is not data the caller supplied. Import: `@spy4x/preact-system`
-- `RailShellProps` (type): Everything `RailShell` draws comes from here: the destinations, which one is current, the primary action, the `navigate` port for entries without an `href`, the page itself, and every label. Import: `@spy4x/preact-system`
+- `RailShellProps` (type): Everything `RailShell` draws comes from here: the destinations, which one is current, the primary action, the `navigate` port for entries without an `href` and the `navigateLink` port for entries with one, the page itself, and every label. Import: `@spy4x/preact-system`
 - `TAB_BAR_SLOTS` (constant): The tab bar's slot count, "More" included. Import: `@spy4x/preact-system`
 - `tabBarSlots` (helper): Split the entries between the phone tab bar and its "More" overlay. Import: `@spy4x/preact-system`
 - `TabBarSplit` (type): What `tabBarSlots` decides for the phone bar. Import: `@spy4x/preact-system`

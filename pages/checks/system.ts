@@ -7032,6 +7032,7 @@ async function railShellChecks(devtools: Devtools): Promise<void> {
     await railShellSkipLinkCheck(devtools)
     await railShellHeaderBannerCheck(devtools)
     await railShellSkipPastHeaderCheck(devtools)
+    await railShellLinkPortChecks(devtools)
 
     await devtools.send("Emulation.setDeviceMetricsOverride", {
       ...RAIL_SHELL_VIEWPORT_PHONE,
@@ -7170,7 +7171,7 @@ async function railShellBackdropCheck(devtools: Devtools): Promise<void> {
 }
 
 /**
- * Choosing an entry inside the overlay, with a real click, calls `navigate` with its key (the
+ * Choosing an entry inside the overlay, with a real click, calls `navigateLink` with its key (the
  * card prints it) and closes the overlay.
  */
 async function railShellChooseCheck(devtools: Devtools): Promise<void> {
@@ -7201,7 +7202,7 @@ async function railShellChooseCheck(devtools: Devtools): Promise<void> {
     return !state.open && current === "search"
   }, 3_000)
   check(
-    "choosing an entry in RailShell's overlay calls navigate with its key and closes the overlay",
+    "choosing an entry in RailShell's overlay calls navigateLink with its key and closes the overlay",
     Boolean(aim?.onEntry) && chosen,
     aim === null
       ? "the overlay was not open, or it has no Search entry"
@@ -7258,6 +7259,242 @@ async function railShellSkipLinkCheck(devtools: Devtools): Promise<void> {
         0,
       )
     }
+  }
+}
+
+/** The card's readouts and checkbox the `navigateLink` checks use. */
+const RAIL_SHELL_VIA = RAIL_SHELL + ' [data-e2e="rail-shell-demo-via"]'
+const RAIL_SHELL_ROUTE_LINKS = RAIL_SHELL + ' [data-e2e="rail-shell-demo-route-links"]'
+
+/** One click or auxclick the rail shell spy saw on a link. */
+interface RailShellSeenClick {
+  type: string
+  href: string
+  /** Whether the event was already cancelled when it reached the `document` listener. */
+  prevented: boolean
+}
+
+/** What the card says and what the spy saw, in one round trip. */
+interface RailShellPortState {
+  current: string
+  via: string
+  hash: string
+  clicks: RailShellSeenClick[]
+}
+
+const READ_RAIL_SHELL_PORT = `(() => ({
+  current: document.querySelector('${RAIL_SHELL_CURRENT}')?.textContent.trim() ?? "",
+  via: document.querySelector('${RAIL_SHELL_VIA}')?.textContent.trim() ?? "",
+  hash: location.hash,
+  clicks: [...(globalThis.__railShellClickSpy?.clicks ?? [])],
+}))()`
+
+const RAIL_SHELL_PORT_UNREAD: RailShellPortState = { current: "", via: "", hash: "", clicks: [] }
+
+/** The bits `Input.dispatchMouseEvent` takes for each modifier key. */
+const MODIFIER = { alt: 1, ctrl: 2, meta: 4, shift: 8 } as const
+
+/** A real press and release of one mouse button at a point, with modifier keys held. */
+async function railShellPointerClick(
+  devtools: Devtools,
+  point: { x: number; y: number },
+  { button = "left", modifiers = 0 }: { button?: "left" | "middle"; modifiers?: number } = {},
+): Promise<void> {
+  const held = button === "left" ? 1 : 4
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: point.x,
+      y: point.y,
+      modifiers,
+      button,
+      buttons: type === "mousePressed" ? held : 0,
+      clickCount: 1,
+    })
+  }
+}
+
+/** Set the card's "Route link clicks through navigateLink" checkbox and wait for the card. */
+async function setRailShellRouteLinks(devtools: Devtools, on: boolean): Promise<boolean> {
+  await read(
+    devtools,
+    `(() => {
+      const box = document.querySelector('${RAIL_SHELL_ROUTE_LINKS}')
+      if (box && box.checked !== ${on}) box.click()
+      return true
+    })()`,
+    false,
+  )
+  return await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector('${RAIL_SHELL_ROUTE_LINKS}')?.checked === ${on}`,
+        false,
+      ),
+    3_000,
+  )
+}
+
+/**
+ * `RailShell`'s `navigateLink` port, driven with real mouse clicks on the rail's links at desktop
+ * width: a plain left click calls it with the entry's key and `href` and cancels the browser's
+ * navigation; a Ctrl-, Meta- or Shift-click, a middle click and a click on a link to another origin
+ * do neither; and with the port taken away a plain click is an ordinary link click again.
+ *
+ * Whether the browser's navigation was cancelled is read by `document` listeners for `click` and
+ * `auxclick`, the last to see the event: each records `defaultPrevented` as the shell left it, then
+ * cancels the event itself, so no click really navigates or opens a tab (`AGENTS.md`, wave six).
+ * The card prints the key and `href` the port was handed. `finally` removes the listeners, turns
+ * the port back on and puts the card back on its first entry.
+ *
+ * @param devtools The connected session, on a hydrated page, at desktop width.
+ */
+async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
+  const link = (key: string) => `${RAIL_SHELL_RAIL} a[href="#rail-${key}"]`
+  const state = () => read(devtools, READ_RAIL_SHELL_PORT, RAIL_SHELL_PORT_UNREAD)
+  const seen = async (count: number) => {
+    await poll(async () => (await state()).clicks.length >= count, 3_000)
+    return await state()
+  }
+  await centreInView(devtools, `document.querySelector('${RAIL_SHELL_FRAME}')`)
+  await read(
+    devtools,
+    `(() => {
+      const frame = document.querySelector('${RAIL_SHELL_FRAME}')
+      if (frame) frame.scrollTop = 0
+      const spy = (event) => {
+        const link = event.target.closest ? event.target.closest("a[href]") : null
+        if (!link || !link.closest('${RAIL_SHELL}')) return
+        spy.clicks.push({
+          type: event.type,
+          href: link.getAttribute("href"),
+          prevented: event.defaultPrevented,
+        })
+        event.preventDefault()
+      }
+      spy.clicks = []
+      globalThis.__railShellClickSpy = spy
+      document.addEventListener("click", spy)
+      document.addEventListener("auxclick", spy)
+      return true
+    })()`,
+    false,
+  )
+
+  try {
+    const portOn = await setRailShellRouteLinks(devtools, true)
+    const before = await state()
+    const projects = await shellAim(devtools, link("projects"))
+    if (projects?.onTarget) await railShellPointerClick(devtools, projects)
+    const plain = await seen(1)
+    const plainClick = plain.clicks[0]
+    check(
+      "a plain click on a RailShell link calls navigateLink with its key and href and cancels the page load",
+      portOn && Boolean(projects?.onTarget) && plainClick?.type === "click" &&
+        plainClick.href === "#rail-projects" && plainClick.prevented &&
+        plain.current === "projects" && plain.via === "navigateLink #rail-projects" &&
+        plain.hash === before.hash,
+      !projects?.onTarget
+        ? `the rail's Projects link was not under the pointer: ${JSON.stringify(projects)}`
+        : JSON.stringify({ portOn, before, after: plain }),
+    )
+
+    const modified: [string, string, number | "middle"][] = [
+      ["Ctrl", "notes", MODIFIER.ctrl],
+      ["Meta", "stats", MODIFIER.meta],
+      ["Shift", "search", MODIFIER.shift],
+      ["middle", "notes", "middle"],
+    ]
+    for (const [name, key, how] of modified) {
+      const count = (await state()).clicks.length
+      const aim = await shellAim(devtools, link(key))
+      if (aim?.onTarget) {
+        await railShellPointerClick(
+          devtools,
+          aim,
+          how === "middle" ? { button: "middle" } : { modifiers: how },
+        )
+      }
+      const after = await seen(count + 1)
+      const click = after.clicks[count]
+      check(
+        `a ${name} click on a RailShell link leaves navigateLink uncalled and the browser's default alone`,
+        Boolean(aim?.onTarget) && click?.type === (how === "middle" ? "auxclick" : "click") &&
+          click.href === `#rail-${key}` && !click.prevented && after.current === "projects" &&
+          after.via === plain.via,
+        !aim?.onTarget
+          ? `the rail's ${key} link was not under the pointer: ${JSON.stringify(aim)}`
+          : JSON.stringify({ click, current: after.current, via: after.via }),
+      )
+    }
+
+    // The port is for the app's own router, which cannot open another site: point one link at
+    // another origin for one click, then put its address back.
+    const count = (await state()).clicks.length
+    await read(
+      devtools,
+      `(document.querySelector('${link("stats")}')
+        ?.setAttribute("data-rail-shell-href", "#rail-stats"), 0)`,
+      0,
+    )
+    await read(
+      devtools,
+      `(document.querySelector('${
+        link("stats")
+      }')?.setAttribute("href", "https://example.com/stats"), 0)`,
+      0,
+    )
+    const foreign = await shellAim(devtools, `${RAIL_SHELL_RAIL} a[data-rail-shell-href]`)
+    if (foreign?.onTarget) await railShellPointerClick(devtools, foreign)
+    const afterForeign = await seen(count + 1)
+    await read(
+      devtools,
+      `(() => {
+        const link = document.querySelector('${RAIL_SHELL_RAIL} a[data-rail-shell-href]')
+        link?.setAttribute("href", link.getAttribute("data-rail-shell-href"))
+        link?.removeAttribute("data-rail-shell-href")
+        return 0
+      })()`,
+      0,
+    )
+    const foreignClick = afterForeign.clicks[count]
+    check(
+      "a plain click on a RailShell link to another origin leaves navigateLink uncalled",
+      Boolean(foreign?.onTarget) && foreignClick?.href === "https://example.com/stats" &&
+        !foreignClick.prevented && afterForeign.current === "projects",
+      !foreign?.onTarget
+        ? `the rail's Stats link was not under the pointer: ${JSON.stringify(foreign)}`
+        : JSON.stringify({ click: foreignClick, current: afterForeign.current }),
+    )
+
+    const portOff = await setRailShellRouteLinks(devtools, false)
+    const offCount = (await state()).clicks.length
+    const notes = await shellAim(devtools, link("notes"))
+    if (portOff && notes?.onTarget) await railShellPointerClick(devtools, notes)
+    const off = await seen(offCount + 1)
+    const offClick = off.clicks[offCount]
+    check(
+      "without navigateLink a plain click on a RailShell link is not cancelled",
+      portOff && Boolean(notes?.onTarget) && offClick?.type === "click" &&
+        offClick.href === "#rail-notes" && !offClick.prevented && off.current === "projects",
+      !portOff
+        ? "the card's checkbox did not turn the port off"
+        : !notes?.onTarget
+        ? `the rail's Notes link was not under the pointer: ${JSON.stringify(notes)}`
+        : JSON.stringify({ click: offClick, current: off.current }),
+    )
+  } finally {
+    await read(
+      devtools,
+      `(document.removeEventListener("click", globalThis.__railShellClickSpy),
+        document.removeEventListener("auxclick", globalThis.__railShellClickSpy),
+        delete globalThis.__railShellClickSpy, true)`,
+      false,
+    )
+    await setRailShellRouteLinks(devtools, true)
+    // Back on the first entry, so the overlay checks after this one read the card they expect.
+    await read(devtools, `(document.querySelector('${link("home")}')?.click(), 0)`, 0)
   }
 }
 
