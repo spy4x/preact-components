@@ -523,7 +523,7 @@ async function roundCheckboxChecks(devtools: Devtools): Promise<void> {
   await poll(async () => (await readRoundBox(devtools, ROUND_CHECK)).checked, 2_000)
   const ticked = await readRoundBox(devtools, ROUND_CHECK)
   check(
-    "a round Checkbox is a circle with no tick, and a click on its label ticks it and shows the tick",
+    "a round Checkbox is a circle with no tick until it is ticked, and then it shows the tick",
     before.found && !before.checked && before.roundness >= 0.5 && before.mark.display === "none" &&
       ticked.checked && ticked.mark.display === "block" && ticked.mark.rotate === "45deg" &&
       ticked.mark.right !== "0px" && ticked.fill !== before.fill,
@@ -539,7 +539,7 @@ async function roundCheckboxChecks(devtools: Devtools): Promise<void> {
   await poll(async () => !(await readRoundBox(devtools, ROUND_CHECK)).checked, 2_000)
   const spaced = await readRoundBox(devtools, ROUND_CHECK)
   check(
-    "Tab reaches a round Checkbox with a visible focus outline, and Space unticks it",
+    "a round Checkbox reached by Tab draws a visible focus outline",
     focused.focused && focused.outline.style !== "none" && parseFloat(focused.outline.width) > 0 &&
       !spaced.checked,
     JSON.stringify({ focused, spaced }),
@@ -558,7 +558,7 @@ async function roundCheckboxChecks(devtools: Devtools): Promise<void> {
   )
   const disabled = await readRoundBox(devtools, ROUND_DISABLED)
   check(
-    "a disabled round Checkbox is dimmed and stays ticked when its label is clicked",
+    "a disabled round Checkbox is drawn dimmed",
     disabled.found && disabled.checked && parseFloat(disabled.opacity) < 1,
     JSON.stringify(disabled),
   )
