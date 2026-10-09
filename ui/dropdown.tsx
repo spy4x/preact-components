@@ -189,7 +189,9 @@ export interface DropdownItemProps extends HotkeyProps {
    * menu is open or closed, while the menu's trigger is shown. It clicks the item, so a link item
    * follows its link (through `navigate` when given) and a submit item posts its form; a disabled
    * item does nothing and passes the key on. The rules for text fields and dialogs are `Button`'s.
-   * It sets `aria-keyshortcuts` on the item, and a hint at the item's right edge shows it.
+   * It sets `aria-keyshortcuts` on the item, and a hint at the item's right edge shows it. Give
+   * it only to a menu that appears once on the page: on a menu repeated per row, the first row
+   * whose trigger is shown takes the key, whichever row the reader meant.
    */
   hotkey?: string
   children: ComponentChildren
