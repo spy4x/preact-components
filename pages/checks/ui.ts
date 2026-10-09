@@ -1749,7 +1749,8 @@ async function toastrActionNameCheck(devtools: Devtools): Promise<void> {
       return { found: false, type: "", overrides: "", reachable: false, announced: false,
         labelCount: text.split(label).length - 1, hasBody: false, beforeDismiss: false }
     }
-    const dismiss = toast.querySelector("button[aria-label]")
+    // The dismiss control is the toast's last button, whatever the action is named.
+    const dismiss = [...toast.querySelectorAll("button")].at(-1) ?? null
     return {
       found: true,
       type: action.getAttribute("type") ?? "",
@@ -1761,7 +1762,7 @@ async function toastrActionNameCheck(devtools: Devtools): Promise<void> {
         region.getAttribute("aria-live") === "polite",
       labelCount: text.split(label).length - 1,
       hasBody: text.includes("Draft deleted"),
-      beforeDismiss: dismiss !== null &&
+      beforeDismiss: dismiss !== null && dismiss !== action &&
         (action.compareDocumentPosition(dismiss) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
     }
   })()`)
