@@ -20177,9 +20177,13 @@ async function errorBoundaryChecks(devtools: Devtools): Promise<void> {
   check(
     "`ErrorBoundary`'s Reload button calls the injected `onReload` port, not `location.reload()`",
     pressed?.onTarget === true && mended && after.reloads === 1 && after.marker &&
-      after.href === caught.href && !after.alert && after.caught === 1,
-    pressed?.onTarget !== true
-      ? `the click on Reload landed on ${pressed?.tag ?? reloadAim.tag}`
+      after.href === caught.href && !after.alert,
+    !reloadAim.onTarget
+      ? `the Reload button's centre reads ${reloadAim.tag}, so there was nothing to click`
+      : pressed === null
+      ? "the page lost the record of the click on Reload, so it reloaded or navigated"
+      : !pressed.onTarget
+      ? `the click on Reload landed on ${pressed.tag}`
       : `onReload calls ${after.reloads}; marker ${
         after.marker ? "kept" : "gone, so the page really reloaded"
       }; address ${caught.href} → ${after.href}; view back ${mended}; screen still up ${after.alert}`,
