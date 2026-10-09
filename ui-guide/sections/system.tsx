@@ -1128,9 +1128,9 @@ const SHELL_DEMO_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
  * they would in a full page, rather than being clipped to this box: that is what a caller's own app
  * gets, so that is what this card shows too.
  *
- * Every port is wired to something visible: `navigate` moves `currentPath` and counts its calls,
- * except on "Status", a link to another site, which `navigate` never sees,
- * the "New project" action counts presses, "Sign out" is a form post whose hydrated `onClick`
+ * Every port is wired to something visible. `navigate` moves `currentPath` and counts its calls;
+ * "Status" links to another site, so `navigate` never sees its clicks. The "New project" action
+ * counts presses, "Sign out" is a form post whose hydrated `onClick`
  * counts the submits it takes over, "Sign out everywhere" is a form post with no `onClick`, which
  * the browser really sends, and the collapsed sidebar is kept in `localStorage`
  * through `makeStorage`, read once after mount so the server's markup and the first client render
