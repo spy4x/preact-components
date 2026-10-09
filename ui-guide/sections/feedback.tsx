@@ -16,6 +16,7 @@ import {
   defaultToastDuration,
   type DialogTone,
   EmptyState,
+  ErrorBoundary,
   ErrorState,
   LoadingSkeleton,
   LoadingSpinner,
@@ -609,6 +610,64 @@ function UnsavedGuardDemo() {
   )
 }
 
+/** Props of {@link FragileView}. */
+interface FragileViewProps {
+  broken: boolean
+  onBreak: () => void
+}
+
+/** A view that throws while it renders once its button has been pressed. */
+function FragileView({ broken, onBreak }: FragileViewProps) {
+  if (broken) throw new Error("The ErrorBoundary demo view broke on purpose.")
+  return (
+    <Button onClick={onBreak} data-e2e="error-boundary-break">
+      Break this view
+    </Button>
+  )
+}
+
+/**
+ * A view that breaks on a click, inside an `ErrorBoundary`.
+ *
+ * The reload port is the demo's own: it counts the press, then changes the boundary's `key`, which
+ * mounts a fresh boundary over a mended view, so the card works again and the catalogue is never
+ * really reloaded. `pages/checks/ui.ts` drives this card and reads the readouts below.
+ */
+function ErrorBoundaryDemo() {
+  const broken = useSignal(false)
+  const mount = useSignal(0)
+  const caught = useSignal(0)
+  const last = useSignal("nothing yet")
+  const reloads = useSignal(0)
+
+  return (
+    <Stack gap="sm">
+      <ErrorBoundary
+        key={mount.value}
+        headingLevel={4}
+        dataE2E="error-boundary-screen"
+        onError={(error, errorInfo) => {
+          caught.value++
+          last.value = `${String(error)}, with ${typeof errorInfo} errorInfo`
+        }}
+        onReload={() => {
+          reloads.value++
+          broken.value = false
+          mount.value++
+        }}
+      >
+        <FragileView broken={broken.value} onBreak={() => broken.value = true} />
+      </ErrorBoundary>
+      <DemoNote>
+        Errors reported: <span data-e2e="error-boundary-caught">{caught.value}</span>, the last{" "}
+        <span data-e2e="error-boundary-last">{last.value}</span>. Reloads asked for:{" "}
+        <span data-e2e="error-boundary-reloads">{reloads.value}</span>. This demo's reload changes
+        the boundary's key instead of reloading the page.
+      </DemoNote>
+    </Stack>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -637,8 +696,57 @@ export const feedbackDemos = {
 <EmptyState headingLevel={1} title="Page not found" />`,
     render: () => <EmptyStateDemo />,
   },
+  ErrorBoundary: {
+    summary:
+      "Catches a view that throws while it renders and shows a reload screen instead of a blank page.",
+    wide: false,
+    props: [
+      {
+        name: "onError",
+        type: "(error: unknown, errorInfo: ErrorInfo) => void",
+        description:
+          "Called once with each caught error and, when Preact has one, its component stack, for your reporter.",
+      },
+      {
+        name: "onReload",
+        type: "() => void",
+        default: "location.reload()",
+        description:
+          "What the button does. The screen stays until the boundary remounts: change its `key` to recover.",
+      },
+      {
+        name: "title",
+        type: "string",
+        default: `"Something went wrong."`,
+        description: "The headline.",
+      },
+      {
+        name: "description",
+        type: "string",
+        default: `"Reloading the page usually fixes it."`,
+        description: "The line under it.",
+      },
+      {
+        name: "reloadLabel",
+        type: "string",
+        default: `"Reload the page"`,
+        description: "The button's text.",
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4",
+        default: `3`,
+        description: "The title's heading tag; 1 when the boundary guards the whole page.",
+      },
+    ],
+    snippet: `<ErrorBoundary onError={reportError} headingLevel={1}>
+  <App />
+</ErrorBoundary>`,
+    render: () => <ErrorBoundaryDemo />,
+  },
   ErrorState: {
-    summary: "An inline error message, which renders nothing when there is no error to show.",
+    summary:
+      "The message for an expected failure, where its result would have been; nothing when there is none.",
     wide: false,
     snippet: `<ErrorState message={error.value} />`,
     render: () => (

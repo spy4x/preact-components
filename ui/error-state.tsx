@@ -8,7 +8,12 @@ export interface ErrorStateProps {
 }
 
 /**
- * Inline error banner.
+ * Message for an expected failure, shown where the result that failed would have been, such as a
+ * list whose request failed.
+ *
+ * It is not a page-wide banner: a problem the reader must act on, with a title and an action, is a
+ * `Notice` with `tone="danger"`. Nor does it catch anything: a render that throws is
+ * `ErrorBoundary`'s.
  *
  * The source component read the message out of the app's error signal. It is a prop here, and
  * the component still renders nothing for a falsy message so callers can pass a possibly-empty

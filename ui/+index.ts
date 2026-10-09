@@ -168,6 +168,7 @@ export {
   type EnhancedFormProps,
   type EnhancedFormStatus,
 } from "./enhanced-form.tsx"
+export { ErrorBoundary, type ErrorBoundaryProps } from "./error-boundary.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"
 export {
   Field,

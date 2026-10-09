@@ -19,6 +19,7 @@
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",
+    "./error-boundary": "./error-boundary.tsx",
     "./error-state": "./error-state.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
