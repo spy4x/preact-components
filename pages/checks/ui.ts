@@ -231,6 +231,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await kbdSequenceNameChecks(devtools)
   await toggleChipsChecks(devtools)
   await tagInputChecks(devtools)
+  await compositionTagInputCheck(devtools)
   await outlineBadgeContrastCheck(devtools)
   await fieldErrorContrastCheck(devtools)
   await errorStateDangerCheck(devtools)
@@ -250,6 +251,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await billingChecks(devtools)
   await onboardingChecklistChecks(devtools)
   await commandPaletteChecks(devtools)
+  await compositionCommandPaletteChecks(devtools)
+  await compositionRemotePaletteCheck(devtools)
   await tourChecks(devtools)
   await comparisonTableChecks(devtools)
 
@@ -7037,6 +7040,7 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await fetchingComboboxCheck(devtools)
   await chosenHighlightCheck(devtools)
   await imeComboboxCheck(devtools)
+  await compositionComboboxCheck(devtools)
   await comboboxRowHeightCheck(devtools)
 }
 
@@ -24089,4 +24093,470 @@ async function comparisonTableChecks(devtools: Devtools): Promise<void> {
         `${contrast.highlightShows}`,
     )
   }
+}
+
+/** What {@link composeThenCommit} saw of one field and the list it filters. */
+interface Composition {
+  /** The list before the composition began. */
+  before: string[]
+  /** The field's text after each composition step, so a step that never reached it shows itself. */
+  fields: string[]
+  /** The list after each composition step. */
+  steps: string[][]
+  /** Mutation records on the list from the composition's start until just before its commit. */
+  mutations: number
+  /** The composition and `input` events the field got, in order; `input` with `isComposing`. */
+  events: string
+  /** The list once the commit has been answered. */
+  after: string[]
+}
+
+/**
+ * Compose `steps` in `field` the way an input method builds a word, then commit the last one.
+ *
+ * Each step is an `Input.imeSetComposition`, the browser's own path for composition text: the
+ * field gets `compositionstart`, then an `input` event with `isComposing` true for every step. The
+ * commit is an `Input.insertText` of the finished word, which ends the composition. A short fixed
+ * wait after each step proves an absence — a list that re-filtered on the step re-renders at once,
+ * so 150 ms is time for a wrong one to show — and a mutation observer on the list catches a change
+ * that came and went between reads. After the commit, the list is polled until it changes.
+ *
+ * @param devtools The connected session; `field` must already have focus.
+ * @param field Page expression for the text field.
+ * @param list Page expression for the element holding the options.
+ * @param options Page expression for the options' texts, in list order.
+ * @param steps The composition text at each step; the last is what the commit inserts.
+ */
+async function composeThenCommit(
+  devtools: Devtools,
+  field: string,
+  list: string,
+  options: string,
+  steps: readonly string[],
+): Promise<Composition> {
+  const read = () => devtools.evaluate<string[]>(options)
+  await devtools.evaluate<null>(`(() => {
+    const field = ${field}
+    const list = ${list}
+    const record = globalThis.__verifyComposition = { events: [], mutations: 0 }
+    record.field = field
+    record.listener = (event) => {
+      record.events.push(event.type === "input" ? "input " + event.isComposing : event.type)
+    }
+    for (const type of ["compositionstart", "input", "compositionend"]) {
+      field?.addEventListener(type, record.listener)
+    }
+    record.observer = new MutationObserver((records) => {
+      record.mutations += records.length
+    })
+    if (list) {
+      record.observer.observe(list, {
+        subtree: true, childList: true, characterData: true, attributes: true,
+      })
+    }
+    return null
+  })()`)
+  const before = await read()
+  const fields: string[] = []
+  const seen: string[][] = []
+  for (const text of steps) {
+    await devtools.send("Input.imeSetComposition", {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    })
+    await new Promise((done) => setTimeout(done, 150))
+    fields.push(await devtools.evaluate<string>(`(${field})?.value ?? "missing"`))
+    seen.push(await read())
+  }
+  const mutations = await devtools.evaluate<number>(
+    `(() => {
+      const record = globalThis.__verifyComposition
+      record.observer.disconnect()
+      return record.mutations
+    })()`,
+  )
+  await devtools.send("Input.insertText", { text: steps.at(-1) ?? "" })
+  await poll(async () => (await read()).join("|") !== before.join("|"), 3_000)
+  const after = await read()
+  const events = await devtools.evaluate<string>(`(() => {
+    const record = globalThis.__verifyComposition
+    for (const type of ["compositionstart", "input", "compositionend"]) {
+      record.field?.removeEventListener(type, record.listener)
+    }
+    delete globalThis.__verifyComposition
+    return record.events.join(", ")
+  })()`)
+  return { before, fields, steps: seen, mutations, events, after }
+}
+
+/**
+ * Whether `composition` held its list still through every step and filtered it on the commit.
+ *
+ * @param composition What {@link composeThenCommit} saw.
+ * @param steps The steps it was given.
+ * @param expected The list the committed word must leave.
+ */
+function heldThenFiltered(
+  composition: Composition,
+  steps: readonly string[],
+  expected: readonly string[],
+): boolean {
+  const before = composition.before.join("|")
+  return composition.before.length > expected.length &&
+    composition.fields.join("|") === steps.join("|") &&
+    composition.steps.every((list) => list.join("|") === before) &&
+    composition.mutations === 0 &&
+    composition.events.startsWith("compositionstart, input true") &&
+    composition.events.includes("compositionend") &&
+    composition.after.join("|") === expected.join("|")
+}
+
+/** The detail line for a {@link heldThenFiltered} check. */
+function compositionDetail(composition: Composition): string {
+  return `before [${composition.before.join(", ")}]; field ${
+    composition.fields.map((text) => `"${text}"`).join(" → ")
+  }, list ${
+    composition.steps.map((list) => `[${list.join(", ")}]`).join(" → ")
+  }; ${composition.mutations} list mutations while composing; events ${composition.events}; ` +
+    `after the commit [${composition.after.join(", ")}]`
+}
+
+/**
+ * Type `text` one character per `Input.insertText`, reading the list after each once it changes.
+ *
+ * One character per call because `Input.insertText` delivers its whole string as one `input`
+ * event, and the point is what each keystroke does.
+ *
+ * @param devtools The connected session; the field must already have focus.
+ * @param options Page expression for the options' texts, in list order.
+ * @param text The characters to type.
+ */
+async function typeEachCharacter(
+  devtools: Devtools,
+  options: string,
+  text: string,
+): Promise<string[][]> {
+  const read = () => devtools.evaluate<string[]>(options)
+  const lists: string[][] = []
+  let previous = (await read()).join("|")
+  for (const character of text) {
+    await devtools.send("Input.insertText", { text: character })
+    await poll(async () => (await read()).join("|") !== previous, 2_000)
+    const list = await read()
+    lists.push(list)
+    previous = list.join("|")
+  }
+  return lists
+}
+
+/**
+ * Whether each keystroke narrowed the list: every list shorter than the one before, none empty.
+ *
+ * @param before The list before the first keystroke.
+ * @param lists The list after each keystroke.
+ */
+function narrowedEachTime(before: readonly string[], lists: readonly string[][]): boolean {
+  let length = before.length
+  for (const list of lists) {
+    if (list.length === 0 || list.length >= length) return false
+    length = list.length
+  }
+  return lists.length > 0
+}
+
+/** The detail line for a {@link narrowedEachTime} check. */
+function typingDetail(text: string, before: readonly string[], lists: readonly string[][]): string {
+  return `before [${before.join(", ")}]; ` +
+    [...text].map((character, index) => `"${character}" → [${(lists[index] ?? []).join(", ")}]`)
+      .join("; ")
+}
+
+/** The parked combobox's option texts, in list order; `[]` while its list is hidden. */
+const COMBOBOX_OPTIONS = `(() => {
+  const list = globalThis.__verifyCombobox?.list
+  return !list || list.hidden
+    ? []
+    : [...list.querySelectorAll('[role="option"]')].map((row) => row.textContent.trim())
+})()`
+
+/**
+ * An input method's steps leave the Combobox list as it was, the finished word filters it once,
+ * and plain typing still filters on every keystroke (#643).
+ *
+ * The coin card's list is opened with a click, so it shows all five coins under an empty query.
+ * The composition builds "U" then "US": filtered, "U" alone would leave USD and EUR. The plain
+ * typing then deletes the word and types "U" and "S" as two keystrokes, each of which must narrow
+ * the list. Escape closes the field again for the next check.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function compositionComboboxCheck(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(comboboxSetup("guide-combobox-coin"))
+  await scrollToParked(devtools)
+  const field = `(globalThis.__verifyCombobox?.input ?? null)`
+  const landing = await clickAt(devtools, await aimAt(devtools, field), field)
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`), 3_000)
+  const steps = ["U", "US"]
+  const composed = await composeThenCommit(
+    devtools,
+    field,
+    `globalThis.__verifyCombobox?.list ?? null`,
+    COMBOBOX_OPTIONS,
+    steps,
+  )
+  check(
+    "an input method's steps leave the Combobox list unchanged, and the finished word filters it",
+    landing?.onTarget === true && heldThenFiltered(composed, steps, ["USD"]),
+    `the click ${landing?.onTarget === true ? "landed" : "missed"}; ${compositionDetail(composed)}`,
+  )
+
+  await pressTagKey(devtools, "Backspace")
+  await pressTagKey(devtools, "Backspace")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === ""`), 2_000)
+  const cleared = await devtools.evaluate<string[]>(COMBOBOX_OPTIONS)
+  const typed = await typeEachCharacter(devtools, COMBOBOX_OPTIONS, "US")
+  check(
+    "plain typing still filters the Combobox list on every keystroke",
+    narrowedEachTime(cleared, typed),
+    typingDetail("US", cleared, typed),
+  )
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
+}
+
+/** The `TagInput` card's suggestion texts, in list order; `[]` while its list is hidden. */
+const TAG_INPUT_OPTIONS = `(${TAG_INPUT_STATE})?.options ?? []`
+
+/**
+ * An input method's steps leave the TagInput suggestions as they were, the finished word filters
+ * them once, and plain typing still filters on every keystroke (#643).
+ *
+ * The card holds the tag `work`; a click opens its other five suggestions. The composition builds
+ * "h" then "ho", either of which would leave only home and phone. The field is emptied with
+ * Backspace, which removes no chip while it holds text, and "e" and "r" are then typed as two
+ * keystrokes: four suggestions, then errand alone. Escape drops the text, and the card is left with
+ * its one tag.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function compositionTagInputCheck(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<TagInputState | null>(TAG_INPUT_STATE)
+  await centreInView(devtools, TAG_INPUT)
+  await pointerToCorner(devtools)
+  const landing = await clickAt(devtools, await aimAt(devtools, TAG_INPUT), TAG_INPUT)
+  await poll(async () => (await read())?.expanded === "true", 2_000)
+  const steps = ["h", "ho"]
+  const composed = await composeThenCommit(
+    devtools,
+    TAG_INPUT,
+    `document.getElementById(${TAG_INPUT}?.getAttribute("aria-controls") ?? "")`,
+    TAG_INPUT_OPTIONS,
+    steps,
+  )
+  check(
+    "an input method's steps leave the TagInput suggestions unchanged, and the finished word filters them",
+    landing?.onTarget === true && heldThenFiltered(composed, steps, ["home", "phone"]),
+    `the click ${landing?.onTarget === true ? "landed" : "missed"}; ${compositionDetail(composed)}`,
+  )
+
+  await pressTagKey(devtools, "Backspace")
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read())?.value === "", 2_000)
+  const cleared = await devtools.evaluate<string[]>(TAG_INPUT_OPTIONS)
+  const typed = await typeEachCharacter(devtools, TAG_INPUT_OPTIONS, "er")
+  const chips = (await read())?.chips.join("|") ?? "missing"
+  check(
+    "plain typing still filters the TagInput suggestions on every keystroke",
+    chips === "work" && narrowedEachTime(cleared, typed),
+    `chips ${chips}; ${typingDetail("er", cleared, typed)}`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(async () => (await read())?.value === "", 2_000)
+
+  // A comma inside a word the input method is still building ends no tag; the finished word does.
+  for (const text of ["a", "a,b"]) {
+    await devtools.send("Input.imeSetComposition", {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    })
+  }
+  // A fixed wait: it proves the steps add no chip, and an absence has no state to poll for.
+  await new Promise((done) => setTimeout(done, 200))
+  const composing = await read()
+  await devtools.send("Input.insertText", { text: "a,b" })
+  await poll(async () => (await read())?.chips.join("|") === "work|a", 2_000)
+  const committed = await read()
+  check(
+    "a comma inside an input method's composition adds no TagInput chip until the word is finished",
+    composing?.chips.join("|") === "work" && composing.value === "a,b" &&
+      committed?.chips.join("|") === "work|a" && committed.value === "b",
+    `while composing: chips ${composing?.chips.join(", ")}, field "${composing?.value}"; after ` +
+      `the commit: chips ${committed?.chips.join(", ")}, field "${committed?.value}"`,
+  )
+  // Back to the card's one tag: the first Backspace empties the field, the second removes `a`.
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read())?.value === "", 2_000)
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read())?.chips.join("|") === "work", 2_000)
+  await pressKey(devtools, "Escape")
+}
+
+/**
+ * The remote `CommandPalette` asks its `search` nothing while an input method composes, and asks
+ * once, for the finished word, when the composition ends (#643).
+ *
+ * The card counts the searches it started. Opening starts one for the empty query; once that has
+ * answered, the composition builds "a" then "ap", and the count must stay put for longer than the
+ * 200 ms debounce after the last step. The commit must then start exactly one search, whose answer
+ * is the fruits holding "ap", and no second one may follow it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function compositionRemotePaletteCheck(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const REMOTE = "palette-remote"
+  const dialog = `document.querySelector('[data-e2e="${REMOTE}"]')`
+  const field = `(${dialog}?.querySelector('[role="combobox"]') ?? null)`
+  const results = () =>
+    devtools.evaluate<string[]>(
+      `[...(${dialog}?.querySelectorAll('[role="option"]') ?? [])]
+        .map((option) => option.querySelector("span span")?.textContent ?? "")`,
+    )
+  const searches = () =>
+    devtools.evaluate<number>(
+      `Number(document.querySelector('[data-e2e="palette-remote-searches"]')?.textContent ?? -1)`,
+    )
+  const trigger = `[data-e2e="${REMOTE}-open"]`
+  const wait = (ms: number) => new Promise((done) => setTimeout(done, ms))
+
+  await centreInView(devtools, `document.querySelector('${trigger}')`)
+  const clicked = await clickSelector(devtools, trigger)
+  const opened = await poll(
+    () => devtools.evaluate<boolean>(`document.activeElement === ${field}`),
+    3_000,
+  )
+  await poll(async () => (await results()).length === 7, 3_000)
+  const base = await searches()
+  for (const text of ["a", "ap"]) {
+    await devtools.send("Input.imeSetComposition", {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    })
+    await wait(150)
+  }
+  // Past the debounce: a search a step had asked for would have started by now.
+  await wait(500)
+  const composing = await searches()
+  const shownWhileComposing = await results()
+  await devtools.send("Input.insertText", { text: "ap" })
+  await poll(async () => (await results()).join() === "Apple,Apricot,Grape,Papaya", 3_000)
+  // And past it again: a second search for the same word would have started by now.
+  await wait(500)
+  const after = await searches()
+  const answered = await results()
+  await pressKey(devtools, "Escape")
+  await poll(() => devtools.evaluate<boolean>(`${dialog}?.open !== true`), 3_000)
+  await devtools.evaluate<null>(`(${dialog}?.open && ${dialog}.close(), null)`)
+  check(
+    "the remote CommandPalette starts no search while an input method composes, and exactly one for the finished word",
+    clicked && opened && base > 0 && composing === base && shownWhileComposing.length === 7 &&
+      after === base + 1 && answered.join() === "Apple,Apricot,Grape,Papaya",
+    `opened ${clicked && opened}; searches ${base} before, ${composing} while composing ` +
+      `(${shownWhileComposing.length} results shown), ${after} after the commit; results ` +
+      `${answered.join(", ")}`,
+  )
+}
+
+/**
+ * The local `CommandPalette`: an input method's steps leave its results as they were, the finished
+ * word filters them once, plain typing still filters on every keystroke, and the Enter and Escape
+ * that end a composition neither pick nor close (#643).
+ *
+ * The composition builds "s" then "se". Plain typing then retypes "s" and "e" as two keystrokes
+ * into an emptied field. The Enter and Escape are real presses with keyCode 229, as Safari sends
+ * the ones that confirm or cancel a word; the palette must stay open with nothing picked, and a
+ * plain Enter afterwards must still pick.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function compositionCommandPaletteChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const LOCAL = "palette-local"
+  const dialog = `document.querySelector('[data-e2e="${LOCAL}"]')`
+  const field = `(${dialog}?.querySelector('[role="combobox"]') ?? null)`
+  const results = `[...(${dialog}?.querySelectorAll('[role="option"]') ?? [])]
+    .map((option) => option.querySelector("span span")?.textContent ?? "")`
+  const picked = () =>
+    devtools.evaluate<string>(
+      `document.querySelector('[data-e2e="${LOCAL}-picked"]')?.textContent ?? "?"`,
+    )
+  const isOpen = () => devtools.evaluate<boolean>(`${dialog}?.open === true`)
+  const trigger = `[data-e2e="${LOCAL}-open"]`
+
+  await centreInView(devtools, `document.querySelector('${trigger}')`)
+  const clicked = await clickSelector(devtools, trigger)
+  const opened = await poll(
+    () => devtools.evaluate<boolean>(`document.activeElement === ${field}`),
+    3_000,
+  )
+  const steps = ["s", "se"]
+  const composed = await composeThenCommit(
+    devtools,
+    field,
+    `${dialog}?.querySelector('[role="listbox"]') ?? null`,
+    results,
+    steps,
+  )
+  check(
+    "an input method's steps leave the CommandPalette results unchanged, and the finished word filters them",
+    clicked && opened && heldThenFiltered(composed, steps, ["Settings"]),
+    `clicked ${clicked}, focus in the field ${opened}; ${compositionDetail(composed)}`,
+  )
+
+  // Picking closes the palette before it reports the option, so staying open is the proof that the
+  // input method's keys picked nothing; the plain Enter must then pick the highlighted result. The
+  // highlight is read after them: Chromium still clears a search field on an Escape with keyCode
+  // 229 sent through the protocol, and the results widen with it.
+  const highlight = () =>
+    devtools.evaluate<string>(
+      `document.getElementById(${field}?.getAttribute("aria-activedescendant") ?? "")
+        ?.querySelector("span span")?.textContent ?? ""`,
+    )
+  await devtools.evaluate<null>(RECORD_IME_KEYS)
+  await pressImeKey(devtools, "Enter")
+  await pressImeKey(devtools, "Escape")
+  // A fixed wait: it proves the presses change nothing, and an absence has no state to poll for.
+  await new Promise((done) => setTimeout(done, 200))
+  const keys = await devtools.evaluate<string>(TAKE_IME_KEYS)
+  const stillOpen = await isOpen()
+  const highlighted = await highlight()
+  await pressKey(devtools, "Enter")
+  const closed = await poll(async () => !(await isOpen()), 3_000)
+  const chosen = await picked()
+  check(
+    "the Enter and Escape that end a composition neither pick from nor close the CommandPalette, and a plain Enter still picks",
+    keys === "Enter 229 false, Escape 229 false" && stillOpen && highlighted !== "" && closed &&
+      chosen === highlighted,
+    `the page saw [${keys}]; open after it ${stillOpen}; a plain Enter closed it ${closed} and ` +
+      `picked "${chosen}" (highlight "${highlighted}")`,
+  )
+
+  const reclicked = await clickSelector(devtools, trigger)
+  const reopened = await poll(
+    () => devtools.evaluate<boolean>(`document.activeElement === ${field}`),
+    3_000,
+  )
+  const all = await devtools.evaluate<string[]>(results)
+  const typed = await typeEachCharacter(devtools, results, "se")
+  check(
+    "plain typing still filters the CommandPalette results on every keystroke",
+    reclicked && reopened && narrowedEachTime(all, typed),
+    `reopened ${reclicked && reopened}; ${typingDetail("se", all, typed)}`,
+  )
+  await pressKey(devtools, "Escape")
+  await poll(async () => !(await isOpen()), 3_000)
+  await devtools.evaluate<null>(`(${dialog}?.open && ${dialog}.close(), null)`)
 }

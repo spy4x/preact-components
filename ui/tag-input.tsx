@@ -12,6 +12,7 @@ import {
   filterItems,
   leavesCombobox,
 } from "./combobox.tsx"
+import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 
@@ -285,7 +286,9 @@ export function TagInput({
   const activeIndex = useSignal(-1)
   const announcement = useSignal("")
 
-  const visible = tagSuggestions(suggestions, value, draft.value)
+  // While an input method composes, the suggestions stay those of the text from before it began.
+  const query = useComposedQuery(inputRef, draft.value, (text) => onTyped(text))
+  const visible = tagSuggestions(suggestions, value, query)
   const shown = isOpen.value && visible.length > 0 && !disabled
   const active = activeIndex.value >= visible.length ? -1 : activeIndex.value
   const listboxId = comboboxListboxId(id)
@@ -322,6 +325,16 @@ export function TagInput({
     // Written to the field as well: when the draft does not change (`""` before a paste of `"a,"`
     // and after it), no render follows to put the field's text back in line with it.
     if (inputRef.current && inputRef.current.value !== text) inputRef.current.value = text
+  }
+
+  /** Follow a finished keystroke: add what a comma ended, and open the list, nothing highlighted. */
+  const onTyped = (text: string) => {
+    const split = splitTagText(text)
+    if (split.tags.length > 0) add(split.tags)
+    setDraft(split.rest)
+    // The list follows the text, with nothing highlighted: Enter adds what was typed.
+    isOpen.value = true
+    activeIndex.value = -1
   }
 
   const add = (texts: readonly string[]) => {
@@ -442,12 +455,11 @@ export function TagInput({
           aria-autocomplete="list"
           autocomplete="off"
           onInput={(event) => {
-            const split = splitTagText(event.currentTarget.value)
-            if (split.tags.length > 0) add(split.tags)
-            setDraft(split.rest)
-            // The list follows the text, with nothing highlighted: Enter adds what was typed.
-            isOpen.value = true
-            activeIndex.value = -1
+            const text = event.currentTarget.value
+            // A step of a word an input method is still building is only shown: no comma ends a
+            // tag and the list does not move until the composition ends.
+            if (isComposingInput(event)) draft.value = text
+            else onTyped(text)
           }}
           onFocus={open}
           onClick={open}

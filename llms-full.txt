@@ -4676,7 +4676,11 @@ Every string it shows is a prop with an English default: `placeholder` (`"Select
 `clearLabel` (`"Clear selection"`).
 
 Enter and Escape pressed while an input method is still composing a word neither select an option
-nor close the list: the key belongs to the input method.
+nor close the list: the key belongs to the input method. The list is not filtered while the word is
+being composed either: it keeps the options of the text from before, and is filtered once, when
+the word is finished. Plain typing filters on every keystroke. `onQueryChange` still fires for every step of the
+word, because a caller that controls `query` has to keep the field's text, so a server search
+driven by it sees the unfinished text.
 
 **One live region, rendered with the field and never taken away.** Every combobox renders a single
 `role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, the
@@ -5651,6 +5655,10 @@ field. The page behind does not scroll while the palette is open (a page already
 `Modal` or by an app's own CSS class, stays as it is), and the highlighted result is scrolled
 into view as it moves. On a phone the button is an icon and the dialog fills the screen.
 
+While an input method is still composing a word, the results stay those of the text from before
+and no `search` is asked; they follow once the word is finished. Enter and Escape pressed to
+confirm or cancel the word neither pick a result nor close the dialog.
+
 It takes its results one of two ways, never both:
 
 - `options`: the palette filters the list itself as the reader types. Its default `filter` is
@@ -5702,6 +5710,8 @@ The suggestion list is `Combobox`'s: the same roles, states, option rows and arr
 44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
 arrow key chose a suggestion first. Escape on an open list closes it and drops the typed text, as in
 `Combobox`; with no list showing, Escape leaves the text alone. Text still in the field when focus leaves it is not added.
+As in `Combobox`, the suggestions wait for a word an input method is still composing, and a comma
+inside it adds no tag until the word is finished.
 
 Each chip's remove button is named `"Remove tag <name>"` and is 44 px square, and so is the text
 field's height. After a removal focus goes back to the text field. Additions, removals and refused
