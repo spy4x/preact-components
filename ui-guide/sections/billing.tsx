@@ -9,9 +9,11 @@
 
 import {
   BillingInterval,
+  Button,
   Card,
   CardBody,
   Checkbox,
+  Cluster,
   Grid,
   PlanCard,
   type PricingPlan,
@@ -84,11 +86,15 @@ const DEMO_PLANS: PricingPlan[] = [
 
 /**
  * The pricing table, with `onChoose` on by default. Switching it off leaves every "Choose" a plain
- * form post, which is also what a visitor with no script gets either way.
+ * form post, which is also what a visitor with no script gets either way. A choice marks the table
+ * `pending`, the way an app does while it opens checkout, until "Clear pending" stands in for that
+ * work ending; the count shows a pending table refusing a second choice.
  */
 function PricingTableDemo() {
   const callbackOn = useSignal(true)
   const chosen = useSignal("nothing yet")
+  const calls = useSignal(0)
+  const pending = useSignal(false)
 
   return (
     <Stack>
@@ -103,11 +109,30 @@ function PricingTableDemo() {
         plans={DEMO_PLANS}
         action={FORM_DEMO_ACTION}
         headingLevel={4}
-        onChoose={callbackOn.value ? (plan) => chosen.value = plan.id : undefined}
+        onChoose={callbackOn.value
+          ? (plan) => {
+            chosen.value = plan.id
+            calls.value += 1
+            pending.value = true
+          }
+          : undefined}
+        pending={pending.value}
       />
-      <DemoNote>
-        onChoose received: <span data-e2e="pricing-chosen">{chosen.value}</span>
-      </DemoNote>
+      <Cluster>
+        <DemoNote>
+          onChoose received: <span data-e2e="pricing-chosen">{chosen.value}</span>, called{" "}
+          <span data-e2e="pricing-calls">{calls.value}</span> times
+        </DemoNote>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!pending.value}
+          onClick={() => pending.value = false}
+          data-e2e="pricing-clear-pending"
+        >
+          Clear pending
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -115,59 +140,94 @@ function PricingTableDemo() {
 /** 23:30 UTC on 31 October 2026, the end of every demo plan's period. */
 const PERIOD_END = new Date(Date.UTC(2026, 9, 31, 23, 30))
 
-/** One card per status, and an active plan set to stop at the end of its period. */
+/**
+ * One card per status, and an active plan set to stop at the end of its period. The first card
+ * hands "Manage billing" to `onSubmit`, which marks it `pending` the way an app does while it opens
+ * the billing portal, until "Clear pending" stands in for that work ending.
+ */
 function PlanCardDemo() {
   const price = { amount: 1200, currency: "EUR", interval: BillingInterval.Month }
+  const calls = useSignal(0)
+  const pending = useSignal(false)
   return (
-    <Grid>
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Active}
-        price={price}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.PastDue}
-        price={price}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Trialing}
-        price={price}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Active}
-        price={price}
-        periodEnd={PERIOD_END}
-        cancelAtPeriodEnd
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Incomplete}
-        price={price}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-      <PlanCard
-        planName="Pro"
-        status={SubscriptionStatus.Canceled}
-        periodEnd={PERIOD_END}
-        manageAction={FORM_DEMO_ACTION}
-        headingLevel={4}
-      />
-    </Grid>
+    <Stack>
+      <Cluster>
+        <DemoNote>
+          The first card's onSubmit was called <span data-e2e="plan-calls">{calls.value}</span>{" "}
+          times
+        </DemoNote>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!pending.value}
+          onClick={() => pending.value = false}
+          data-e2e="plan-clear-pending"
+        >
+          Clear pending
+        </Button>
+      </Cluster>
+      <Grid>
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Active}
+          price={price}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          onSubmit={() => {
+            calls.value += 1
+            pending.value = true
+          }}
+          pending={pending.value}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.PastDue}
+          price={price}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Trialing}
+          price={price}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Active}
+          price={price}
+          periodEnd={PERIOD_END}
+          cancelAtPeriodEnd
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Incomplete}
+          price={price}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Canceled}
+          periodEnd={PERIOD_END}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Paused}
+          price={price}
+          manageAction={FORM_DEMO_ACTION}
+          headingLevel={4}
+        />
+      </Grid>
+    </Stack>
   )
 }
 
@@ -185,8 +245,16 @@ export const billingDemos = {
       },
       {
         name: "onChoose",
-        type: "(plan: PricingPlan) => void",
-        description: "Takes the choice over from the form post once the script runs.",
+        type: "(plan: PricingPlan) => unknown",
+        description:
+          "Takes the choice over from the form post once the script runs; a returned promise keeps that form disabled until it settles.",
+      },
+      {
+        name: "pending",
+        type: "boolean",
+        default: "false",
+        description:
+          "Disables every plan's form and shows a spinner on each Choose; a second choice is refused, with or without a script.",
       },
       {
         name: "action",
@@ -209,7 +277,7 @@ export const billingDemos = {
         name: "labels",
         type: "Partial<PricingTableLabels>",
         description:
-          "Replaces any of the English words; `intervals` and `per` merge key by key, `perUnit` words a plan with a `unit`, and `chooseName` follows `choose` unless given.",
+          "Replaces any of the English words; `intervals` and `per` merge key by key, `perUnit` words a plan with a `unit`, `chooseName` follows `choose` unless given, and `pending` is announced while the table waits.",
       },
     ],
     snippet: `<PricingTable
@@ -224,19 +292,20 @@ export const billingDemos = {
   ]}
   action="/billing/checkout"
   onChoose={(plan) => startCheckout(plan.id)}
+  pending={checkout.pending}
 />`,
     render: () => <PricingTableDemo />,
   },
   PlanCard: {
     summary:
-      "The current plan with its status, the date it renews or ends, a warning when payment failed, and a Manage billing form.",
+      "The current plan with its status, the date it renews or ends, a warning when payment failed, and a Manage billing form that can wait while pending.",
     wide: true,
     props: [
       {
         name: "status",
         type: "SubscriptionStatusValue",
         description:
-          "Trialing, active, past due, canceled or incomplete, shown in words; another package's same-valued enum passes too.",
+          "Trialing, active, past due, canceled, incomplete or paused, shown in words; another package's same-valued enum passes too.",
       },
       {
         name: "periodEnd",
@@ -255,6 +324,19 @@ export const billingDemos = {
         description: "Where Manage billing posts: the app's billing-portal route.",
       },
       {
+        name: "onSubmit",
+        type: "() => Promise<void> | void",
+        description:
+          "Takes Manage billing over from the form post once the script runs; a returned promise keeps the form disabled until it settles.",
+      },
+      {
+        name: "pending",
+        type: "boolean",
+        default: "false",
+        description:
+          "Disables the form and shows a spinner on Manage billing; a second submit is refused, with or without a script.",
+      },
+      {
         name: "timeZone",
         type: "string",
         default: `"UTC"`,
@@ -264,7 +346,7 @@ export const billingDemos = {
         name: "labels",
         type: "Partial<PlanCardLabels>",
         description:
-          "Replaces any of the English words, the date lines as functions; `status` and `per` merge key by key.",
+          "Replaces any of the English words, the date lines as functions; `status` and `per` merge key by key, and `pending` is announced while the card waits.",
       },
     ],
     snippet: `<PlanCard
@@ -273,6 +355,8 @@ export const billingDemos = {
   price={{ amount: 1200, currency: "EUR", interval: BillingInterval.Month }}
   periodEnd={subscription.currentPeriodEnd}
   manageAction="/billing/portal"
+  onSubmit={openPortal}
+  pending={portal.pending}
 />`,
     render: () => <PlanCardDemo />,
   },

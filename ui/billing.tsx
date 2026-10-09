@@ -4,6 +4,7 @@ import { formatMoney } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
 import { useId, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
+import { EnhancedForm, type EnhancedFormLabels } from "./enhanced-form.tsx"
 
 /** How often a plan bills. */
 export enum BillingInterval {
@@ -18,9 +19,10 @@ export enum BillingInterval {
 export type BillingIntervalValue = BillingInterval | 1 | 2
 
 /**
- * Where a subscription stands. The members follow the five statuses spy4x/ts-libs#362 proposes for
- * `@spy4x/billing`, numbered from 1 in the order it lists them. This package does not import that
- * one, so the components stay usable with any billing provider.
+ * Where a subscription stands. The first five members follow the five statuses spy4x/ts-libs#362
+ * proposes for `@spy4x/billing`, numbered from 1 in the order it lists them; `Paused`, a
+ * subscription whose billing is on hold, comes after them. This package does not import that one,
+ * so the components stay usable with any billing provider.
  */
 export enum SubscriptionStatus {
   Trialing = 1,
@@ -28,13 +30,14 @@ export enum SubscriptionStatus {
   PastDue = 3,
   Canceled = 4,
   Incomplete = 5,
+  Paused = 6,
 }
 
 /**
  * A subscription status: this package's enum, or the same number from another package's enum, such
  * as `@spy4x/billing`'s, so an app passes its value without a cast.
  */
-export type SubscriptionStatusValue = SubscriptionStatus | 1 | 2 | 3 | 4 | 5
+export type SubscriptionStatusValue = SubscriptionStatus | 1 | 2 | 3 | 4 | 5 | 6
 
 /** A price: an amount in the currency's smallest unit, and how often it is charged. */
 export interface PlanPrice {
@@ -95,6 +98,11 @@ export interface PricingTableLabels {
    * puts the words in another order.
    */
   chooseName: (planName: string) => string
+  /**
+   * Announced to screen readers from the plan whose "Choose" started the work, while `pending`
+   * holds. Defaults to `"Please wait…"`.
+   */
+  pending: string
 }
 
 /** The English words {@link PricingTable} uses when a caller passes none. */
@@ -109,6 +117,7 @@ export const defaultPricingTableLabels: PricingTableLabels = {
   highlighted: "Most popular",
   choose: "Choose",
   chooseName: (planName) => `Choose ${planName}`,
+  pending: "Please wait…",
 }
 
 /** Heading level of a billing component's own heading. */
@@ -121,10 +130,19 @@ export interface PricingTableProps {
    */
   plans: PricingPlan[]
   /**
-   * Called with the chosen plan instead of posting its form. Left out, "Choose" posts the form to
-   * `action`, which also happens whenever the page runs no script.
+   * Called with the chosen plan instead of posting its form: the table's submit port. Left out,
+   * "Choose" posts the form to `action`, which also happens whenever the page runs no script. While
+   * a promise it returns is outstanding, that plan's form is disabled. Typed `unknown` rather than
+   * `Promise<void> | void` so a callback written for the older `void` type, such as an arrow that
+   * returns an assignment, still type-checks.
    */
-  onChoose?: (plan: PricingPlan) => void
+  onChoose?: (plan: PricingPlan) => unknown
+  /**
+   * The app is still working on a choice, such as opening checkout. Every plan's form is disabled
+   * and refuses a submit, with or without a script, and each "Choose" shows a spinner. Defaults to
+   * `false`.
+   */
+  pending?: boolean
   /** Where each plan's form posts. Left out, it posts to the page's own URL. */
   action?: string
   /** Name of the hidden field that carries the plan's ID. Defaults to `"planId"`. */
@@ -157,6 +175,24 @@ const HIDDEN_UNLESS: Partial<Record<1 | 2, string>> = {
   [BillingInterval.Year]: "group-has-[[data-pricing-interval=month]:checked]/pricing:hidden",
 }
 
+/**
+ * The classes a billing form passes to `EnhancedForm`. The form fills its footer, drops the
+ * `space-y-4` gap `EnhancedForm` puts under its fields, and keeps its live region off screen: the
+ * busy button's spinner is what a sighted visitor sees, and the region speaks to a screen reader.
+ */
+const PENDING_FORM_CLASSES = "w-full space-y-0! [&>[role=status]]:sr-only"
+
+/**
+ * The live region's words for a billing form: `pending` while it waits, nothing once the app's
+ * callback settles, since the app shows its own result (a checkout page, a portal, an error).
+ *
+ * @param pending What to announce while the form waits; `""` keeps the region silent.
+ * @returns Labels for `EnhancedForm`.
+ */
+function pendingLabels(pending: string): EnhancedFormLabels {
+  return { sending: pending, done: "", failed: "" }
+}
+
 /** The outline-pill look of a short label: a grey outline `Badge`'s, without `cn`. */
 const pillClasses =
   "inline-flex w-fit items-center rounded-md border px-2 py-1 text-xs font-medium whitespace-nowrap"
@@ -168,7 +204,8 @@ const pillClasses =
  * choice works before any script has run; `onChoose`, when given, takes the submit over. When the
  * plans carry both intervals, a monthly/yearly toggle sits above them. The toggle is a pair of
  * native radio buttons, so the arrow keys move it, and a CSS rule hides the plans of the other
- * interval, so it works with no script either.
+ * interval, so it works with no script either. Each plan's form is an `EnhancedForm`, so `pending`
+ * disables every form and refuses a second submit, with or without a script.
  *
  * @param props See {@link PricingTableProps}.
  */
@@ -176,6 +213,7 @@ export function PricingTable(
   {
     plans,
     onChoose,
+    pending = false,
     action,
     fieldName = "planId",
     defaultInterval = BillingInterval.Month,
@@ -195,6 +233,9 @@ export function PricingTable(
   const chooseName = labels?.chooseName ?? ((name: string) => `${words.choose} ${name}`)
   const groupName = useId()
   const [interval, setInterval] = useState<BillingIntervalValue>(defaultInterval)
+  // The plan whose "Choose" started the current work: only its form announces `pending`, so a
+  // screen reader hears it once rather than once per plan.
+  const [chosenId, setChosenId] = useState<string | null>(null)
   const intervals = [BillingInterval.Month, BillingInterval.Year].filter((each) =>
     plans.some((plan) => plan.interval === each)
   )
@@ -274,26 +315,30 @@ export function PricingTable(
                 </ul>
               )}
             </div>
-            <form
-              method="post"
-              action={action}
-              class="pc-card-footer"
-              onSubmit={onChoose &&
-                ((event) => {
-                  event.preventDefault()
-                  onChoose(plan)
-                })}
-            >
-              <input type="hidden" name={fieldName} value={plan.id} />
-              <Button
-                type="submit"
-                variant={plan.highlighted ? "primary" : "outline"}
-                class="w-full"
-                aria-label={chooseName(plan.name)}
+            <div class="pc-card-footer">
+              <EnhancedForm
+                action={action}
+                status={pending ? "sending" : undefined}
+                onSubmit={onChoose &&
+                  (async () => {
+                    setChosenId(plan.id)
+                    await onChoose(plan)
+                  })}
+                labels={pendingLabels(chosenId === plan.id ? words.pending : "")}
+                class={PENDING_FORM_CLASSES}
               >
-                {words.choose}
-              </Button>
-            </form>
+                <input type="hidden" name={fieldName} value={plan.id} />
+                <Button
+                  type="submit"
+                  variant={plan.highlighted ? "primary" : "outline"}
+                  class="w-full"
+                  aria-label={chooseName(plan.name)}
+                  busy={pending}
+                >
+                  {words.choose}
+                </Button>
+              </EnhancedForm>
+            </div>
           </li>
         ))}
       </ul>
@@ -304,11 +349,11 @@ export function PricingTable(
 /** Words {@link PlanCard} shows. Each one has an English default. */
 export interface PlanCardLabels {
   /**
-   * Each status, in words. Defaults to `"Trial"`, `"Active"`, `"Past due"`, `"Canceled"` and
-   * `"Incomplete"`, merged key by key, so a caller may pass some alone. A status with no word shows
-   * no pill rather than an empty one.
+   * Each status, in words. Defaults to `"Trial"`, `"Active"`, `"Past due"`, `"Canceled"`,
+   * `"Incomplete"` and `"Paused"`, merged key by key, so a caller may pass some alone. A status with
+   * no word shows no pill rather than an empty one.
    */
-  status: Partial<Record<1 | 2 | 3 | 4 | 5, string>>
+  status: Partial<Record<1 | 2 | 3 | 4 | 5 | 6, string>>
   /** Text after the price. Defaults to `"per month"` and `"per year"`, merged key by key. */
   per: Partial<Record<1 | 2, string>>
   /** The date line of a trial, from the formatted date. Defaults to `Trial ends on <date>`. */
@@ -325,6 +370,8 @@ export interface PlanCardLabels {
   incomplete: string
   /** The button that posts to `manageAction`. Defaults to `"Manage billing"`. */
   manage: string
+  /** Announced to screen readers while `pending` holds. Defaults to `"Please wait…"`. */
+  pending: string
 }
 
 /** The English words {@link PlanCard} uses when a caller passes none. */
@@ -335,6 +382,7 @@ export const defaultPlanCardLabels: PlanCardLabels = {
     [SubscriptionStatus.PastDue]: "Past due",
     [SubscriptionStatus.Canceled]: "Canceled",
     [SubscriptionStatus.Incomplete]: "Incomplete",
+    [SubscriptionStatus.Paused]: "Paused",
   },
   per: defaultPricingTableLabels.per,
   trialEnds: (date) => `Trial ends on ${date}`,
@@ -344,6 +392,7 @@ export const defaultPlanCardLabels: PlanCardLabels = {
   pastDue: "Your last payment failed. Update your payment method to keep your plan.",
   incomplete: "Your first payment has not gone through. Complete it to start your plan.",
   manage: "Manage billing",
+  pending: "Please wait…",
 }
 
 export interface PlanCardProps {
@@ -359,6 +408,18 @@ export interface PlanCardProps {
   cancelAtPeriodEnd?: boolean
   /** Where "Manage billing" posts: the app's route that opens the provider's billing portal. */
   manageAction: string
+  /**
+   * Called instead of posting to `manageAction` once the page runs a script: the card's submit
+   * port. Left out, "Manage billing" always posts. While a promise it returns is outstanding, the
+   * form is disabled.
+   */
+  onSubmit?: () => Promise<void> | void
+  /**
+   * The app is still working on the last submit, such as opening the billing portal. The form is
+   * disabled and refuses a submit, with or without a script, and "Manage billing" shows a spinner.
+   * Defaults to `false`.
+   */
+  pending?: boolean
   /** BCP 47 locale for the price and the date. Defaults to `"en"`. */
   locale?: string
   /**
@@ -408,6 +469,9 @@ function dateLine(
  * A past-due or incomplete plan shows a warning in words beside a warning icon, so the state does
  * not rest on colour. The status is text too, in a pill next to the name.
  *
+ * The form is an `EnhancedForm`: it posts natively until a script runs, `onSubmit` takes it over
+ * once one does, and `pending` disables it and refuses a second submit either way.
+ *
  * @param props See {@link PlanCardProps}.
  */
 export function PlanCard(
@@ -418,6 +482,8 @@ export function PlanCard(
     periodEnd,
     cancelAtPeriodEnd = false,
     manageAction,
+    onSubmit,
+    pending = false,
     locale = "en",
     timeZone = "UTC",
     headingLevel = 2,
@@ -476,9 +542,17 @@ export function PlanCard(
           </p>
         )}
       </div>
-      <form method="post" action={manageAction} class="pc-card-footer">
-        <Button type="submit" variant="outline">{words.manage}</Button>
-      </form>
+      <div class="pc-card-footer">
+        <EnhancedForm
+          action={manageAction}
+          status={pending ? "sending" : undefined}
+          onSubmit={onSubmit && (() => onSubmit())}
+          labels={pendingLabels(words.pending)}
+          class={PENDING_FORM_CLASSES}
+        >
+          <Button type="submit" variant="outline" busy={pending}>{words.manage}</Button>
+        </EnhancedForm>
+      </div>
     </div>
   )
 }
