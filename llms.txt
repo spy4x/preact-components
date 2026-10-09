@@ -331,7 +331,7 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `InstallPromptStore` (type): The install state, and the wiring that keeps it current. Import: `@spy4x/preact-signals`
 - `InstallPromptTarget` (type): Event port. Import: `@spy4x/preact-signals`
 - `isIosDevice` (helper): Whether this is an iPhone, iPod or iPad, where no browser fires `beforeinstallprompt`. Import: `@spy4x/preact-signals`
-- `isStandalone` (helper): Whether the page runs as an installed app: the display mode says so, or iOS's own flag does. Import: `@spy4x/preact-signals`
+- `isStandalone` (helper): Whether the page runs as an installed app: the display mode is `standalone` or `minimal-ui`, or iOS's own flag says so. Import: `@spy4x/preact-signals`
 - `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
 - `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
 - `createNow` (helper): Create a store holding the current time. Import: `@spy4x/preact-signals`
