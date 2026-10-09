@@ -244,6 +244,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await hotkeyPropChecks(devtools)
   await billingChecks(devtools)
   await onboardingChecklistChecks(devtools)
+  await commandPaletteChecks(devtools)
 
   // Last on purpose: a Modal that refuses to close would sit in the top layer over everything, so a
   // failure here cannot take an unrelated check down with it.
@@ -21125,4 +21126,274 @@ async function confirmDialogBusyFallbackCheck(devtools: Devtools): Promise<void>
       : "the platform closed the busy panel on Escape, Modal showed it again, modal and busy, and " +
         "the scroll lock was released when it unmounted",
   )
+}
+
+/** What one read of a `CommandPalette` sees, by its `dataE2E` name. */
+interface PaletteState {
+  open: boolean
+  focusInField: boolean
+  onTrigger: boolean
+  query: string
+  /** Each option's label, in list order. */
+  results: string[]
+  /** Each group as `heading:count`, in list order. */
+  groups: string[]
+  /** The label of the option `aria-activedescendant` points at, or `""`. */
+  active: string
+  /** The status line's text, and whether it is shown rather than visually hidden. */
+  status: string
+  statusShown: boolean
+  /** `aria-busy` on the list. */
+  busy: boolean
+}
+
+/** The {@link PaletteState} of the palette named `name`, read in one round trip. */
+function paletteState(name: string): string {
+  return `(() => {
+    const dialog = document.querySelector('[data-e2e="${name}"]')
+    const field = dialog?.querySelector('[role="combobox"]')
+    const label = (option) => option?.querySelector("span span")?.textContent ?? ""
+    const activeId = field?.getAttribute("aria-activedescendant")
+    const status = dialog?.querySelector('[role="status"]')
+    return {
+      open: dialog?.open === true,
+      focusInField: field != null && document.activeElement === field,
+      onTrigger: document.activeElement === document.querySelector('[data-e2e="${name}-open"]'),
+      query: field?.value ?? "",
+      results: [...(dialog?.querySelectorAll('[role="option"]') ?? [])].map(label),
+      groups: [...(dialog?.querySelectorAll('[role="group"]') ?? [])].map((group) =>
+        (document.getElementById(group.getAttribute("aria-labelledby"))?.textContent ?? "?") +
+        ":" + group.querySelectorAll('[role="option"]').length),
+      active: activeId ? label(document.getElementById(activeId)) : "",
+      status: status?.textContent ?? "",
+      statusShown: status != null && !status.classList.contains("sr-only"),
+      busy: dialog?.querySelector('[role="listbox"]')?.getAttribute("aria-busy") === "true",
+    }
+  })()`
+}
+
+/** A real left click at the centre of the element `selector` names, as it sits now. */
+async function clickSelector(devtools: Devtools, selector: string): Promise<boolean> {
+  const point = await devtools.evaluate<{ x: number; y: number } | null>(`(() => {
+    const box = document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect()
+    return box && box.width > 0 ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : null
+  })()`)
+  if (point === null) return false
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      ...point,
+      button: "left",
+      clickCount: 1,
+    })
+  }
+  return true
+}
+
+/**
+ * `CommandPalette` on its card. The local palette: a click opens it with its options under their
+ * group headings, typing filters them with accents folded, Escape closes it onto its trigger, its
+ * own hotkey (mod+P) opens it from a text field, and the arrows, Home, End and Enter move and pick.
+ * The remote palette: a stale answer that arrives after a fresh one is ignored, a rejected search
+ * shows the error, and a query nothing matches says so. At a phone's width the guide's own search,
+ * the same component, fills the screen.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function commandPaletteChecks(devtools: Devtools): Promise<void> {
+  await openGuidePage(devtools, "ui")
+  const LOCAL = "palette-local"
+  const REMOTE = "palette-remote"
+  const read = (name: string) => devtools.evaluate<PaletteState>(paletteState(name))
+  const until = (name: string, expression: string, timeoutMs = 3_000) =>
+    poll(
+      () =>
+        devtools.evaluate<boolean>(
+          `(() => { const state = ${paletteState(name)}; return ${expression} })()`,
+        ),
+      timeoutMs,
+    )
+  const text = (selector: string) =>
+    devtools.evaluate<string>(
+      `document.querySelector(${JSON.stringify(selector)})?.textContent ?? "?"`,
+    )
+  const clear = (name: string) =>
+    devtools.evaluate<null>(`(() => {
+      const field = document.querySelector('[data-e2e="${name}"] [role="combobox"]')
+      field.value = ""
+      field.dispatchEvent(new Event("input", { bubbles: true }))
+      return null
+    })()`)
+  const closeIfOpen = (name: string) =>
+    devtools.evaluate<null>(
+      `(document.querySelector('[data-e2e="${name}"]')?.open && ` +
+        `document.querySelector('[data-e2e="${name}"]').close(), null)`,
+    )
+  const trigger = (name: string) => `[data-e2e="${name}-open"]`
+
+  const present = await devtools.evaluate<boolean>(
+    `document.querySelector('#demo-CommandPalette ${trigger(LOCAL)}') !== null && ` +
+      `document.querySelector('#demo-CommandPalette ${trigger(REMOTE)}') !== null`,
+  )
+  check("the CommandPalette card is on the page, with its two palettes", present)
+  if (!present) return
+  await centreInView(devtools, `document.querySelector('${trigger(LOCAL)}')`)
+
+  // A click opens it; typing filters, with case and accents folded.
+  const clicked = await clickSelector(devtools, trigger(LOCAL))
+  const opened = await until(LOCAL, "state.focusInField")
+  const all = await read(LOCAL)
+  await devtools.send("Input.insertText", { text: "creme" })
+  await until(LOCAL, `state.results.join() === "Crème brûlée"`)
+  const filtered = await read(LOCAL)
+  check(
+    "a click opens the CommandPalette with its options under their group headings, and typing filters them",
+    clicked && opened && all.groups.join() === "Actions:2,Pages:4" &&
+      all.results[0] === "New invoice" && filtered.results.join() === "Crème brûlée",
+    `clicked ${clicked}, focus in the field ${opened}; groups ${all.groups.join(", ")}, first ` +
+      `"${all.results[0]}"; "creme" → ${filtered.results.join(", ")}`,
+  )
+
+  await pressKey(devtools, "Escape")
+  const escaped = await until(LOCAL, "!state.open && state.onTrigger")
+  await closeIfOpen(LOCAL)
+  check("Escape closes the CommandPalette with focus back on its trigger", escaped)
+
+  // Its own hotkey from inside a text field: a chord is never typed text.
+  const apple = await devtools.evaluate<boolean>(
+    `/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || "")`,
+  )
+  const modP: Chord = { key: "p", code: "KeyP", keyCode: 80, modifiers: apple ? 4 : 2 }
+  const field = `document.querySelector('#demo-ShortcutsDialog [data-e2e="shortcuts-field"]')`
+  const focused = await devtools.evaluate<boolean>(
+    `(${field}?.focus(), document.activeElement === ${field})`,
+  )
+  await pressChord(devtools, modP)
+  const byHotkey = await until(LOCAL, "state.focusInField")
+  const fresh = await read(LOCAL)
+  check(
+    `${
+      apple ? "⌘P" : "Ctrl+P"
+    }, the card's own hotkey, opens the CommandPalette from a text field with an empty query`,
+    focused && byHotkey && fresh.query === "" && fresh.results.length === 6,
+    `focus in a text field ${focused}; opened ${byHotkey}, query "${fresh.query}", ` +
+      `${fresh.results.length} results`,
+  )
+
+  const moves: string[] = [fresh.active]
+  for (const key of ["ArrowDown", "End", "Home", "ArrowUp"] as const) {
+    await pressKey(devtools, key)
+    moves.push((await read(LOCAL)).active)
+  }
+  await pressKey(devtools, "Enter")
+  const picked = await until(LOCAL, "!state.open && state.onTrigger")
+  const pickedText = await text(`[data-e2e="palette-local-picked"]`)
+  await closeIfOpen(LOCAL)
+  check(
+    "ArrowDown, End, Home and ArrowUp move the CommandPalette's highlight, and Enter picks it and closes onto the trigger",
+    moves.join() === "New invoice,Export to CSV,Settings,New invoice,Settings" && picked &&
+      pickedText === "Settings",
+    `highlight ${moves.join(" → ")}; Enter closed with focus on the trigger ${picked}, ` +
+      `onSelect got "${pickedText}"`,
+  )
+
+  // The remote palette: a one-letter query answers in 900ms, a longer one in 100ms.
+  const searches = () =>
+    devtools.evaluate<number>(
+      `Number(document.querySelector('[data-e2e="palette-remote-searches"]')?.textContent ?? -1)`,
+    )
+  await centreInView(devtools, `document.querySelector('${trigger(REMOTE)}')`)
+  const remoteClicked = await clickSelector(devtools, trigger(REMOTE))
+  const loaded = await until(
+    REMOTE,
+    "state.focusInField && state.results.length === 7 && !state.busy",
+  )
+  const started = await searches()
+  const localOpen = (await read(LOCAL)).open
+  const remoteOpen = (await read(REMOTE)).open
+  await devtools.send("Input.insertText", { text: "a" })
+  const slowStarted = await poll(async () => (await searches()) === started + 1, 3_000)
+  const loading = await read(REMOTE)
+  await devtools.send("Input.insertText", { text: "p" })
+  const fast = await until(
+    REMOTE,
+    `state.results.join() === "Apple,Apricot,Grape,Papaya" && !state.busy`,
+  )
+  // A fixed wait on purpose: the check proves the slow answer for "a" changes NOTHING when it
+  // lands, 900ms after it started, and an absence has no state to poll for.
+  await new Promise((done) => setTimeout(done, 1_200))
+  const after = await read(REMOTE)
+  check(
+    "the CommandPalette shows Searching… while a search runs, and ignores a stale answer that arrives after a fresh one",
+    remoteClicked && loaded && slowStarted && loading.status === "Searching…" && loading.busy &&
+      fast && after.results.join() === "Apple,Apricot,Grape,Papaya" &&
+      after.groups.join() === "Fruit with A:2,Fruit with G:1,Fruit with P:1" &&
+      after.query === "ap",
+    `opened ${remoteClicked}, first answer ${loaded} (local open ${localOpen}, remote open ` +
+      `${remoteOpen}); "a" started ${slowStarted}, status ` +
+      `"${loading.status}", busy ${loading.busy}; "ap" answered ${fast}; 1.2s later ` +
+      `${after.results.join(", ")} under ${after.groups.join(", ")}`,
+  )
+
+  await clear(REMOTE)
+  await devtools.send("Input.insertText", { text: "boom" })
+  const failed = await until(
+    REMOTE,
+    `state.status === "The search failed. Try again." && state.statusShown && state.results.length === 0`,
+  )
+  await clear(REMOTE)
+  await devtools.send("Input.insertText", { text: "zz" })
+  const empty = await until(
+    REMOTE,
+    `state.status === "Nothing matches." && state.statusShown && !state.busy`,
+  )
+  const last = await read(REMOTE)
+  await pressKey(devtools, "Escape")
+  await until(REMOTE, "!state.open")
+  await closeIfOpen(REMOTE)
+  check(
+    "a rejected search shows the CommandPalette's error, and a query nothing matches says so",
+    failed && empty,
+    `"boom" → error shown ${failed}; "zz" → "${last.status}" shown ${last.statusShown}`,
+  )
+
+  // At a phone's width the guide's header search, the same component, is an icon and a full sheet.
+  const GUIDE = "ui-guide-search"
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: NARROW_WIDTH,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  try {
+    const icon = await devtools.evaluate<{ text: boolean; hint: boolean }>(`(() => {
+      const button = document.querySelector('${trigger(GUIDE)}')
+      return {
+        text: button?.querySelector("span")?.checkVisibility() ?? true,
+        hint: button?.querySelector("kbd")?.checkVisibility() ?? true,
+      }
+    })()`)
+    const phoneClicked = await clickSelector(devtools, trigger(GUIDE))
+    const phoneOpened = await until(GUIDE, "state.focusInField")
+    const box = await devtools.evaluate<
+      { left: number; top: number; width: number; height: number; vw: number; vh: number }
+    >(`(() => {
+      const box = document.querySelector('[data-e2e="${GUIDE}"]').getBoundingClientRect()
+      return { left: box.left, top: box.top, width: box.width, height: box.height,
+        vw: document.documentElement.clientWidth, vh: innerHeight }
+    })()`)
+    await clickSelector(devtools, `[data-e2e="${GUIDE}-close"]`)
+    const phoneClosed = await until(GUIDE, "!state.open")
+    await closeIfOpen(GUIDE)
+    check(
+      `at ${NARROW_WIDTH}px the CommandPalette's trigger is an icon and its dialog fills the screen`,
+      !icon.text && !icon.hint && phoneClicked && phoneOpened && box.left === 0 && box.top === 0 &&
+        box.width === box.vw && box.height === box.vh && phoneClosed,
+      `trigger text shown ${icon.text}, hint shown ${icon.hint}; opened ${phoneOpened}; dialog ` +
+        `${box.width}×${box.height} at (${box.left}, ${box.top}) in ${box.vw}×${box.vh}; ` +
+        `closed by its button ${phoneClosed}`,
+    )
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
 }
