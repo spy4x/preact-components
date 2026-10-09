@@ -29,6 +29,101 @@ function fakePort(stored = false): OnboardingDismissedPort & { reads: number; wr
 const facts = (...done: boolean[]): OnboardingStepFact[] =>
   done.map((value, index) => ({ id: `step-${index + 1}`, done: value }))
 
+/**
+ * One step of a scripted order of calls. A call names how its write ends: it `saves` or `throws`
+ * synchronously, or it `waits` on a promise until a later `resolve <n>` or `reject <n>` step ends
+ * it. Calls are numbered from 1 in the order they are made, whatever their ending.
+ */
+type Step =
+  | `${"dismiss" | "reset"} ${"saves" | "throws" | "waits"}`
+  | `${"resolve" | "reject"} ${number}`
+
+/**
+ * Play `steps` against a store whose stored flag starts as `stored`, and return `visible` once
+ * they have all run. Each call's result and each pending write's rejection is checked on the way.
+ */
+async function play(stored: boolean, steps: readonly Step[]): Promise<boolean> {
+  let ending = ""
+  const calls: { saving?: PromiseWithResolvers<void>; result: void | Promise<void> }[] = []
+  let saving: PromiseWithResolvers<void> | undefined
+  const state = createOnboardingState({
+    steps: signal(facts(false)),
+    dismissed: {
+      read: () => stored,
+      write: () => {
+        if (ending === "throws") throw new Error("storage is full")
+        if (ending === "saves") return
+        saving = Promise.withResolvers<void>()
+        return saving.promise
+      },
+    },
+  })
+  for (const step of steps) {
+    const [action, argument] = step.split(" ")
+    if (action === "dismiss" || action === "reset") {
+      ending = argument
+      saving = undefined
+      if (ending === "throws") {
+        expect(() => state[action]()).toThrow("storage is full")
+        calls.push({ result: undefined })
+      } else {
+        calls.push({ result: state[action](), saving })
+      }
+      continue
+    }
+    const call = calls[Number(argument) - 1]
+    if (action === "resolve") {
+      call.saving!.resolve()
+      call.saving = undefined
+      await call.result
+    } else {
+      call.saving!.reject(new Error(`save ${argument} failed`))
+      call.saving = undefined
+      await expect(call.result).rejects.toThrow(`save ${argument} failed`)
+    }
+  }
+  expect(calls.filter((call) => call.saving), "every pending write is ended").toEqual([])
+  return state.visible.value
+}
+
+/** The rule: `visible` is the inverse of the newest call whose write succeeded, or of `stored`. */
+function settledVisible(stored: boolean, steps: readonly Step[]): boolean {
+  const values: boolean[] = []
+  let saved = { call: 0, value: stored }
+  for (const step of steps) {
+    const [action, argument] = step.split(" ")
+    if (action === "dismiss" || action === "reset") values.push(action === "dismiss")
+    const call = action === "resolve" ? Number(argument) : values.length
+    const succeeded = action === "resolve" || argument === "saves"
+    if (succeeded && call > saved.call) saved = { call, value: values[call - 1] }
+  }
+  return !saved.value
+}
+
+/** Every order of `count` calls, each with every ending, with pending writes ended in any order. */
+function* everyOrder(
+  count: number,
+  made = 0,
+  waiting: readonly number[] = [],
+  done: readonly Step[] = [],
+): Generator<readonly Step[]> {
+  if (made === count && waiting.length === 0) yield done
+  if (made < count) {
+    for (const action of ["dismiss", "reset"] as const) {
+      for (const ending of ["saves", "throws", "waits"] as const) {
+        const now = ending === "waits" ? [...waiting, made + 1] : waiting
+        yield* everyOrder(count, made + 1, now, [...done, `${action} ${ending}`])
+      }
+    }
+  }
+  for (const call of waiting) {
+    for (const end of ["resolve", "reject"] as const) {
+      const now = waiting.filter((other) => other !== call)
+      yield* everyOrder(count, made, now, [...done, `${end} ${call}`])
+    }
+  }
+}
+
 describe("createOnboardingState", () => {
   it("reads the stored dismissed flag once, when it is created", () => {
     const port = fakePort(true)
@@ -175,6 +270,72 @@ describe("createOnboardingState", () => {
     await expect(dismissing).rejects.toThrow("server said 500")
 
     expect(state.visible.value).toBe(false)
+  })
+
+  const orders: { name: string; stored: boolean; steps: Step[]; visible: boolean }[] = [
+    {
+      name: "shows it again when two asynchronous dismissals both fail",
+      stored: false,
+      steps: ["dismiss waits", "dismiss waits", "reject 1", "reject 2"],
+      visible: true,
+    },
+    {
+      name: "shows it again when an asynchronous dismissal fails after a later reset threw",
+      stored: false,
+      steps: ["dismiss waits", "reset throws", "reject 1"],
+      visible: true,
+    },
+    {
+      name: "shows it again when a later asynchronous reset fails before the dismissal fails",
+      stored: false,
+      steps: ["dismiss waits", "reset waits", "reject 2", "reject 1"],
+      visible: true,
+    },
+    {
+      name: "stays hidden when an earlier asynchronous dismissal saves after a later reset failed",
+      stored: false,
+      steps: ["dismiss waits", "reset waits", "reject 2", "resolve 1"],
+      visible: false,
+    },
+    {
+      name: "stays hidden when an asynchronous reset fails after a dismissal saved",
+      stored: false,
+      steps: ["dismiss waits", "resolve 1", "reset waits", "reject 2"],
+      visible: false,
+    },
+    {
+      name: "stays shown when a later synchronous reset saved before an earlier dismissal",
+      stored: false,
+      steps: ["dismiss waits", "reset saves", "resolve 1"],
+      visible: true,
+    },
+    {
+      name: "stays hidden when an asynchronous reset of a stored dismissal fails",
+      stored: true,
+      steps: ["reset waits", "reject 1"],
+      visible: false,
+    },
+  ]
+  for (const order of orders) {
+    it(order.name, async () => {
+      expect(settledVisible(order.stored, order.steps)).toBe(order.visible)
+      expect(await play(order.stored, order.steps)).toBe(order.visible)
+    })
+  }
+
+  it("follows the newest saved flag in every order of up to three calls", async () => {
+    let played = 0
+    for (const stored of [false, true]) {
+      for (const count of [1, 2, 3]) {
+        for (const steps of everyOrder(count)) {
+          expect(await play(stored, steps), `stored ${stored}: ${steps.join(", ")}`)
+            .toBe(settledVisible(stored, steps))
+          played++
+        }
+      }
+    }
+    // A generator that yields nothing would pass the loop above; the count proves it ran.
+    expect(played).toBe(4976)
   })
 
   it("picks the same next step that OnboardingChecklist marks as current", () => {

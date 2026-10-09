@@ -434,9 +434,14 @@ creates the store. Its `write()` may be either:
 - **Synchronous**, such as `localStorage`. The write runs first and `visible` changes after it, so a
   write that throws leaves `visible` as it was, and the error reaches the caller of `dismiss()`.
 - **Asynchronous**, such as a request that saves a user setting. `visible` changes at once, so the
-  card goes away without waiting for the network. If the promise rejects, `visible` changes back
-  (unless a later `dismiss()` or `reset()` has run), and the promise that `dismiss()` returns rejects with the same error. Catch it and tell the user:
-  a dropped promise is an unhandled rejection.
+  card goes away without waiting for the network. If the promise rejects, the promise that
+  `dismiss()` returns rejects with the same error. Catch it and tell the user: a dropped promise is
+  an unhandled rejection.
+
+Whatever order the calls come in and their writes end in, once every write has ended `visible`
+follows the newest call whose write succeeded, or the stored flag when none did. While writes are
+still pending, it follows the newest call that has not failed. So a failed save never leaves the
+card hidden with nothing saved, and an older save that fails late never undoes a newer choice.
 
 ```tsx
 const onboarding = createOnboardingState({ steps, dismissed: settingsPort })

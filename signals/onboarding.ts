@@ -65,12 +65,13 @@ export interface OnboardingState {
    *
    * A synchronous write runs first and `visible` turns `false` after it, so a write that throws
    * leaves `visible` as it was and the error reaches the caller. When the write returns a promise,
-   * `visible` turns `false` at once and turns back if the promise rejects, unless a later
-   * `dismiss()` or `reset()` has run; the returned promise rejects with the same error. Catch it: a caller that drops the promise gets an unhandled
-   * rejection.
+   * `visible` turns `false` at once. If the promise rejects, `visible` falls back to the newest
+   * call that has not failed, or to the stored flag. Once every write has settled, `visible`
+   * follows the newest call whose write succeeded. The returned promise rejects with the same
+   * error. Catch it: a caller that drops the promise gets an unhandled rejection.
    *
-   * @returns The write's promise, settled after `visible` is restored on failure, or nothing for a
-   * synchronous write.
+   * @returns The write's promise, settled after `visible` has fallen back on failure, or nothing
+   * for a synchronous write.
    */
   dismiss(): void | Promise<void>
   /** Show the onboarding again: writes `false`, as {@link OnboardingState.dismiss} does `true`. */
@@ -81,8 +82,9 @@ export interface OnboardingState {
  * Create an onboarding store over the app's step facts and a port for the dismissed flag.
  *
  * A synchronous port is written before `visible` changes, so a port that throws leaves `visible` as
- * it was. An asynchronous port changes `visible` at once and restores it when its promise rejects;
- * `dismiss()` and `reset()` return that promise, so the caller sees the error either way.
+ * it was. An asynchronous port changes `visible` at once and takes it back when its promise
+ * rejects; `dismiss()` and `reset()` return that promise, so the caller sees the error either way.
+ * Once every write has settled, `visible` follows the newest call whose write succeeded.
  *
  * @example
  * ```ts
@@ -107,21 +109,40 @@ export function createOnboardingState(options: OnboardingStateOptions): Onboardi
     total: steps.value.length,
   }))
 
-  /** Counts calls to {@link setDismissed}, so a failed write knows whether a later one came. */
-  let writes = 0
+  /**
+   * The newest saved flag, then each later call whose write is still pending, in call order.
+   * `visible` follows the last entry. A failed write leaves the list, and a saved one drops every
+   * entry before it, so once all writes settle the list holds only the newest saved flag.
+   */
+  let standing: { value: boolean }[] = [{ value: dismissed.value }]
+  const show = () => {
+    dismissed.value = standing[standing.length - 1].value
+  }
 
   function setDismissed(value: boolean): void | Promise<void> {
-    const previous = dismissed.value
-    const write = ++writes
+    // Written first: a synchronous write that throws changes nothing here.
     const saving = port.write(value)
-    dismissed.value = value
-    if (saving === undefined) return
+    const call = { value }
+    if (saving === undefined) {
+      standing = [call]
+      show()
+      return
+    }
+    standing = [...standing, call]
+    show()
     // One chain, returned to the caller, so a rejection is unhandled only if the caller drops it.
-    return saving.then(undefined, (error: unknown) => {
-      // A later dismiss() or reset() owns `visible` now; undo only when this write was the last.
-      if (write === writes) dismissed.value = previous
-      throw error
-    })
+    return saving.then(
+      () => {
+        // Not found: a later call was saved first and has already dropped this one.
+        const index = standing.indexOf(call)
+        if (index !== -1) standing = standing.slice(index)
+      },
+      (error: unknown) => {
+        standing = standing.filter((entry) => entry !== call)
+        show()
+        throw error
+      },
+    )
   }
 
   return {
