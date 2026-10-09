@@ -470,6 +470,10 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `NpmVersionMismatchError` (helper): Thrown when a library module asks for an npm package version the app does not have. Import: `@spy4x/preact-theme/vite`
 - `NpmSpecifiersOptions` (type): Options for `npmSpecifiers`. Import: `@spy4x/preact-theme/vite`
 - `npmSpecifiers` (helper): Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that package, and refuses one whose version or range the app's copy does not satisfy. Import: `@spy4x/preact-theme/vite`
+- `buildIdOf` (helper): A short hash of files, by path and content, so a change to any one of them, or a rename, changes it. Import: `@spy4x/preact-theme/vite`
+- `serviceWorker` (helper): Builds the worker at `entry` into the output folder once the app build is written, as one classic script (`iife`). Import: `@spy4x/preact-theme/vite`
+- `ServiceWorkerDirEntry` (type): The part of a directory entry `ServiceWorkerOptions.readDir` yields. Import: `@spy4x/preact-theme/vite`
+- `ServiceWorkerOptions` (type): Options for `serviceWorker`. Import: `@spy4x/preact-theme/vite`
 
 ## @spy4x/preact-ui
 
