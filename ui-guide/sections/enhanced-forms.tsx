@@ -324,7 +324,11 @@ function ControlledDemo() {
           <Button type="submit">Submit</Button>
         </Cluster>
       </EnhancedForm>
-      <p class="text-sm text-muted" role="status" data-e2e="controlled-form-message">
+      <p
+        class={status.value === "failed" ? "text-sm text-danger" : "text-sm text-muted"}
+        role="status"
+        data-e2e="controlled-form-message"
+      >
         {status.value === "sending"
           ? "Saving your note…"
           : status.value === "done"
@@ -407,6 +411,13 @@ export const enhancedFormDemos = {
         name: "labels",
         type: "{ sending?, done?, failed? }",
         description: 'What the form announces; `""` for a key says nothing in that state.',
+      },
+      {
+        name: "class",
+        type: "string",
+        description:
+          "Extra classes for the form. The failure text carries `enhanced-form-error`, a hook " +
+          "for styling it.",
       },
       {
         name: "method",

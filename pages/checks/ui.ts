@@ -11550,7 +11550,10 @@ async function enhancedFormAsyncFailureCheck(devtools: Devtools): Promise<void> 
   )
 }
 
-/** The failure text's colour and contrast in one palette, read by {@link enhancedFormFailureColourCheck}. */
+/**
+ * The failure text's colour and contrast in one palette, read by
+ * {@link enhancedFormFailureColourCheck}.
+ */
 interface EnhancedFormFailureColour {
   /** Whether the region carries the `enhanced-form-error` hook. */
   hooked: boolean
@@ -11597,10 +11600,13 @@ async function enhancedFormFailureColourCheck(devtools: Devtools): Promise<void>
       const wasDark = root.classList.contains("dark")
       const wasTheme = root.getAttribute("data-theme")
       const region = document.querySelector('${card} [role="status"]')
-      const frames = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      const frames = () =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
       const settle = async () => {
         await frames()
-        await Promise.all(region.getAnimations().map((animation) => animation.finished.catch(() => {})))
+        await Promise.all(
+          region.getAnimations().map((animation) => animation.finished.catch(() => {})),
+        )
       }
       const token = (name) => {
         const probe = document.createElement("div")
