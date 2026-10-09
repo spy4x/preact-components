@@ -452,7 +452,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (889 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (890 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -806,10 +806,15 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `resolveImage` (helper): Turn an event target into a lightbox image, or `null` when the event missed an image. Import: `@spy4x/preact-ui`
 - `ZoomableImages` (component): Zoomable images inside a container, opening the shared `Lightbox`. Import: `@spy4x/preact-ui`
 - `ZoomableImagesProps` (type): Props of `ZoomableImages`. Import: `@spy4x/preact-ui`
+- `ariaKeyShortcuts` (helper): A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key` names them, joined by `+`. Import: `@spy4x/preact-ui`
+- `clickByHotkey` (helper): Click an element for a key press, the way a hotkey should: only when the reader could have clicked it themselves. Import: `@spy4x/preact-ui`
 - `HotkeyBinding` (type): One keyboard shortcut for `useHotkeys`: a combination, what it does and how it is listed. Import: `@spy4x/preact-ui`
 - `hotkeyClickBinding` (helper): The `useHotkeys` binding that clicks an element through `clickByHotkey`. Import: `@spy4x/preact-ui`
 - `HotkeyPress` (type): A key press as `pickHotkey` sees it: the key, the modifiers and where it landed. Import: `@spy4x/preact-ui`
+- `HotkeyProps` (type): The props a component takes to bind a key to its own button: `hotkey` binds it and announces it, and a `Kbd` hint inside the button shows it. Import: `@spy4x/preact-ui`
 - `pickHotkey` (helper): The binding a key press runs, or `undefined`: the first binding whose combination matches and that may fire where the press landed. Import: `@spy4x/preact-ui`
+- `useApplePlatform` (hook): Whether this browser is an Apple platform, for drawing or announcing `mod` as Command. Import: `@spy4x/preact-ui`
+- `useHotkeyClick` (hook): Bind a key to one element: pressing it clicks the element through `clickByHotkey`. Import: `@spy4x/preact-ui`
 - `useHotkeys` (hook): Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches. Import: `@spy4x/preact-ui`
 - `UseHotkeysOptions` (type): Options of `useHotkeys`. Import: `@spy4x/preact-ui`
 - `Kbd` (component): One key or a combination of keys, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key. Import: `@spy4x/preact-ui`
