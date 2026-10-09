@@ -144,7 +144,7 @@ function DropdownRow(
 /**
  * Every shape of `DropdownItem` in one standing menu. The routed link's `navigate` port only
  * records where it was asked to go, so a plain click shows the count below instead of loading the
- * page. `pages/checks/ui.ts` clicks it, and measures the two disabled items against each other.
+ * page. The link to another site has the same port, which never sees its clicks. `pages/checks/ui.ts` clicks it, and measures the two disabled items against each other.
  */
 function DropdownItemDemo() {
   const navigated = useSignal(0)
@@ -158,6 +158,13 @@ function DropdownItemDemo() {
           dataE2E="dropdown-item-routed"
         >
           A link the app routes, through navigate
+        </DropdownItem>
+        <DropdownItem
+          href="https://jsr.io/@spy4x/preact-ui"
+          navigate={() => navigated.value++}
+          dataE2E="dropdown-item-foreign"
+        >
+          A link to another site, which navigate never sees
         </DropdownItem>
         <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
         <DropdownItem danger onClick={() => {}}>Destructive, through danger</DropdownItem>
@@ -1262,7 +1269,7 @@ export const inputDemos = {
         name: "navigate",
         type: "(href: string) => void",
         description:
-          "The app's router, called on a plain click on a link item instead of loading the page.",
+          "The app's router, called on a plain click on a link item instead of loading the page; never for a link to another origin.",
       },
       { name: "onClick", type: "() => void", description: "What a button item does." },
       {

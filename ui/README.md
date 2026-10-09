@@ -320,7 +320,8 @@ button's classes onto an anchor of its own. Its props are `ButtonLinkProps`, a s
 so an interface that extends `ButtonProps` is untouched; `ButtonOverloads` is the type of `Button`
 with both call shapes. A `navigate` port follows the rule `Link` runs: a plain click calls
 `navigate(href)` and the browser does not navigate, and a click with Ctrl, Meta, Shift or Alt, a
-middle click, another `target` or a `download` stays the browser's. A link has no `busy`.
+middle click, another `target`, a `download` or a link to another origin stays the browser's. A
+link has no `busy`.
 
 A disabled link has no `disabled` attribute to set, so `disabled` renders the `<a>` without `href`,
 with `role="link"` and `aria-disabled="true"`, dimmed like a disabled button. With no `href` it
@@ -1957,10 +1958,11 @@ components and tests means exactly that: nothing outside this package should bui
   with no Ctrl, Meta, Shift or Alt. A middle click never counts. It is the same rule `Shell` applies.
 - `followLinkClick(event, { href, navigate, target, download })` is the rule `Link` runs on every
   click: when `navigate` is given, the click is plain, nothing earlier cancelled it, `target` is
-  none, `""` or `_self`, and there is no `download`, it cancels the browser's navigation, calls
-  `navigate(href)` and returns `true`; otherwise it does nothing and returns `false`. Call it from
-  the click handler of an anchor of your own — a button drawn as a link, say — to give it the same
-  behaviour.
+  none, `""` or `_self`, there is no `download`, and `href` resolves to the page's own origin
+  (against `document.baseURI`; an address that does not parse, `mailto:` and `tel:` never do), it
+  cancels the browser's navigation, calls `navigate(href)` and returns `true`; otherwise it does
+  nothing and returns `false`. Call it from the click handler of an anchor of your own — a button
+  drawn as a link, say — to give it the same behaviour.
 
 ### PageHeader (`./page-header`)
 

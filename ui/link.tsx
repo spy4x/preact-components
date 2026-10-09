@@ -20,6 +20,7 @@ export interface LinkClickEvent extends ClickModifiers {
 
 /** The anchor a click landed on, as {@link followLinkClick} needs it. */
 export interface LinkClickTarget {
+  /** The anchor's address; one that resolves to another origin leaves the click to the browser. */
   href: string
   /** Called with `href` instead of letting the browser follow the link. Left out, it always does. */
   navigate?: (href: string) => void
@@ -40,14 +41,30 @@ export function isPlainClick(event: ClickModifiers): boolean {
 }
 
 /**
+ * Whether `href` resolves to this page's own origin, as the browser would resolve it from this
+ * document: against `document.baseURI`, so a `<base>` element counts. An address that does not
+ * parse, and one with an opaque origin such as `mailto:` or `tel:`, is never the page's own. Read
+ * only when a click arrives, so importing this module on a server touches no browser global.
+ */
+function isOwnOrigin(href: string): boolean {
+  try {
+    const url = new URL(href, globalThis.document?.baseURI ?? location.href)
+    return url.protocol === location.protocol && url.origin === location.origin
+  } catch {
+    return false
+  }
+}
+
+/**
  * Follow a link click through the `navigate` port when the page may take it over, and report
  * whether it did.
  *
  * It takes over only a plain click ({@link isPlainClick}) that nothing earlier cancelled, on a link
- * that opens in the same browsing context and is not a download, and only when `navigate` is given.
- * Then it cancels the browser's own navigation and calls `navigate(href)`. Every other click is
- * left alone, so a new tab, a new window, a download or a caller's own `preventDefault()` work as
- * they would on any link. This is the rule {@link Link} runs; call it from the click handler of an
+ * that opens in the same browsing context, is not a download and points at this page's own origin,
+ * and only when `navigate` is given. Then it cancels the browser's own navigation and calls
+ * `navigate(href)`. Every other click is left alone, so a new tab, a new window, a download, a link
+ * to another site, a `mailto:` or `tel:` link, or a caller's own `preventDefault()` work as they
+ * would on any link: an app's router cannot open another site. This is the rule {@link Link} runs; call it from the click handler of an
  * anchor of your own to give it the same behaviour.
  *
  * @param event The click, as the anchor received it.
@@ -59,6 +76,7 @@ export function followLinkClick(event: LinkClickEvent, link: LinkClickTarget): b
   if (!navigate || event.defaultPrevented || !isPlainClick(event)) return false
   if (target && target.toLowerCase() !== "_self") return false
   if (download !== undefined && download !== false) return false
+  if (!isOwnOrigin(href)) return false
   event.preventDefault()
   navigate(href)
   return true
@@ -73,7 +91,7 @@ export interface LinkProps extends
   href: string
   /**
    * Called with `href` on a plain click instead of the browser following the link — the app's
-   * router, passed in. Left out, every click is the browser's.
+   * router, passed in. A link to another origin is always the browser's. Left out, every click is.
    */
   navigate?: (href: string) => void
   /** Narrowed from Preact's `Signalish<string>`: the click rule reads it as a plain value. */
@@ -93,8 +111,8 @@ export interface LinkProps extends
  * Server-rendered screens shared between a single-page app and a multi-page site cannot import a
  * router; each app passes its own `navigate` instead. With one, a plain click calls
  * `navigate(href)` and the browser does not navigate; a click with Ctrl, Meta, Shift or Alt, a
- * middle click, a click on a link with another `target` or a `download`, and a click something
- * already cancelled stay the browser's — see {@link followLinkClick}. Without one it is an ordinary
+ * middle click, a click on a link with another `target` or a `download`, a click on a link to another
+ * origin, and a click something already cancelled stay the browser's — see {@link followLinkClick}. Without one it is an ordinary
  * link. Every other anchor attribute passes through, and the link carries no classes but `class`.
  */
 export function Link(

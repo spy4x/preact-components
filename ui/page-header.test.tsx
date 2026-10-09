@@ -5,6 +5,7 @@ import { type ComponentChildren, Fragment, isValidElement, type VNode } from "pr
 import { IconPlus } from "@spy4x/preact-icons"
 import { DropdownItem } from "./dropdown.tsx"
 import { MoreMenu, PageAction, PageHeader, TOUCH_TARGET } from "./page-header.tsx"
+import { onAppPage } from "./testdata/page-at.ts"
 
 /** A click as `followLinkClick` reads it, recording whether it was cancelled. */
 function click(modifiers: { ctrlKey?: boolean } = {}) {
@@ -58,6 +59,8 @@ function pressBoth(anchor: VNode<{ onClick?: (e: Click) => void }>, routed: stri
 }
 
 describe("PageHeader", () => {
+  onAppPage()
+
   it("draws the title as the page's one-line h1, with its full text as the tooltip", () => {
     const html = render(<PageHeader title="Notes" subtitle="Personal" />)
     expect(html).toMatch(
@@ -161,6 +164,8 @@ describe("MoreMenu", () => {
 })
 
 describe("PageAction", () => {
+  onAppPage()
+
   it("keeps its label as the accessible name while a phone shows only the icon", () => {
     const html = render(
       <PageAction label="New note" Icon={IconPlus} onClick={() => {}} dataE2E="note-new" />,

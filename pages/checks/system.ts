@@ -6223,7 +6223,8 @@ async function shellStickySidebarCheck(devtools: Devtools): Promise<void> {
 
 /**
  * `Shell`'s `navigate` port, driven with real mouse clicks on the desktop sidebar: a plain click
- * calls it and cancels the browser's navigation; a Ctrl-click does neither.
+ * calls it and cancels the browser's navigation; a Ctrl-click, and a plain click on a link to
+ * another origin, do neither.
  *
  * Whether the browser's navigation was cancelled is read by a `document` click listener, the last
  * to see the event: it records `defaultPrevented` as the shell left it, then cancels the event
@@ -6278,6 +6279,26 @@ async function shellNavigatePortChecks(devtools: Devtools): Promise<void> {
         ? `the sidebar's Dashboard link was not under the pointer: ${JSON.stringify(dashboard)}`
         : `click ${JSON.stringify(ctrlClick)}, navigate calls ${plain.navigations} → ` +
           `${modified.navigations}, path ${modified.path}`,
+    )
+
+    const statusHref = "https://example.com/status"
+    const status = await shellAim(devtools, `${SHELL_SIDEBAR} nav a[href="${statusHref}"]`)
+    if (status?.onTarget) await shellPointerClick(devtools, status)
+    await poll(
+      async () => (await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)).clicks.length > 2,
+      3_000,
+    )
+    const foreign = await read(devtools, READ_SHELL_PORT, SHELL_PORT_UNREAD)
+    const foreignClick = foreign.clicks[2]
+    check(
+      "a plain click on a Shell sidebar link to another origin leaves navigate uncalled and the browser's default alone",
+      Boolean(status?.onTarget) && foreignClick?.href === statusHref && !foreignClick.prevented &&
+        foreign.navigations === plain.navigations && foreign.path === "/docs" &&
+        foreign.href === before.href,
+      !status?.onTarget
+        ? `the sidebar's Status link was not under the pointer: ${JSON.stringify(status)}`
+        : `click ${JSON.stringify(foreignClick)}, navigate calls ${plain.navigations} → ` +
+          `${foreign.navigations}, path ${foreign.path}`,
     )
   } finally {
     await removeShellClickSpy(devtools)

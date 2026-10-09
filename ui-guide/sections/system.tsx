@@ -29,6 +29,7 @@ import {
   IconChartPie,
   IconCog6Tooth,
   IconFolder,
+  IconGlobe,
   IconHome,
   IconPencilSquare,
   IconSearch,
@@ -1127,8 +1128,9 @@ const SHELL_DEMO_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
  * they would in a full page, rather than being clipped to this box: that is what a caller's own app
  * gets, so that is what this card shows too.
  *
- * Every port is wired to something visible: `navigate` moves `currentPath` and counts its calls,
- * the "New project" action counts presses, "Sign out" is a form post whose hydrated `onClick`
+ * Every port is wired to something visible. `navigate` moves `currentPath` and counts its calls;
+ * "Status" links to another site, so `navigate` never sees its clicks. The "New project" action
+ * counts presses, "Sign out" is a form post whose hydrated `onClick`
  * counts the submits it takes over, "Sign out everywhere" is a form post with no `onClick`, which
  * the browser really sends, and the collapsed sidebar is kept in `localStorage`
  * through `makeStorage`, read once after mount so the server's markup and the first client render
@@ -1188,6 +1190,7 @@ function ShellDemo() {
             },
           },
           { name: "Docs", href: "/docs", Icon: IconBookOpen },
+          { name: "Status", href: "https://example.com/status", Icon: IconGlobe },
           {
             name: "Settings",
             children: [
@@ -1702,7 +1705,7 @@ export const systemDemos = {
         name: "navigate",
         type: "(href: string) => void",
         description:
-          "Your router. A plain click on a link calls it instead of loading the page; Ctrl, Meta, Shift or Alt clicks stay the browser's.",
+          "Your router. A plain click on a link calls it instead of loading the page; Ctrl, Meta, Shift or Alt clicks and links to another origin stay the browser's.",
       },
       {
         name: "sidebarTop",
