@@ -21192,8 +21192,9 @@ async function clickSelector(devtools: Devtools, selector: string): Promise<bool
 
 /**
  * `CommandPalette` on its card. The local palette: a click opens it with its options under their
- * group headings, typing filters them with accents folded, Escape closes it onto its trigger, its
- * own hotkey (mod+P) opens it from a text field, and the arrows, Home, End and Enter move and pick.
+ * group headings, typing filters them with accents folded, its own hotkey (mod+P) opens it from a
+ * text field, Escape then closes it onto its trigger rather than the field, and the arrows, Home,
+ * End and Enter move and pick.
  * The remote palette: a stale answer that arrives after a fresh one is ignored, a rejected search
  * shows the error, and a query nothing matches says so. At a phone's width the guide's own search,
  * the same component, fills the screen.
@@ -21254,10 +21255,11 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
       `"${all.results[0]}"; "creme" → ${filtered.results.join(", ")}`,
   )
 
+  // A click opened it, so the browser itself puts focus back on the trigger when it closes. The
+  // Escape check below opens it from a text field instead, where only the palette moves focus there.
   await pressKey(devtools, "Escape")
-  const escaped = await until(LOCAL, "!state.open && state.onTrigger")
+  const escapedClick = await until(LOCAL, "!state.open")
   await closeIfOpen(LOCAL)
-  check("Escape closes the CommandPalette with focus back on its trigger", escaped)
 
   // Its own hotkey from inside a text field: a chord is never typed text.
   const apple = await devtools.evaluate<boolean>(
@@ -21280,20 +21282,33 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
       `${fresh.results.length} results`,
   )
 
-  const moves: string[] = [fresh.active]
+  await pressKey(devtools, "Escape")
+  const escaped = await until(LOCAL, "!state.open && state.onTrigger")
+  const inField = await devtools.evaluate<boolean>(`document.activeElement === ${field}`)
+  await closeIfOpen(LOCAL)
+  check(
+    "Escape closes the CommandPalette with focus on its trigger, not back in the text field a hotkey opened it from",
+    escapedClick && escaped && !inField,
+    `closed by Escape after a click ${escapedClick}; after the hotkey: closed onto the trigger ` +
+      `${escaped}, focus in the text field ${inField}`,
+  )
+
+  await pressChord(devtools, modP)
+  const reopened = await until(LOCAL, "state.focusInField")
+  const moves: string[] = [(await read(LOCAL)).active]
   for (const key of ["ArrowDown", "End", "Home", "ArrowUp"] as const) {
     await pressKey(devtools, key)
     moves.push((await read(LOCAL)).active)
   }
   await pressKey(devtools, "Enter")
-  const picked = await until(LOCAL, "!state.open && state.onTrigger")
+  const picked = await until(LOCAL, "!state.open")
   const pickedText = await text(`[data-e2e="palette-local-picked"]`)
   await closeIfOpen(LOCAL)
   check(
-    "ArrowDown, End, Home and ArrowUp move the CommandPalette's highlight, and Enter picks it and closes onto the trigger",
-    moves.join() === "New invoice,Export to CSV,Settings,New invoice,Settings" && picked &&
-      pickedText === "Settings",
-    `highlight ${moves.join(" → ")}; Enter closed with focus on the trigger ${picked}, ` +
+    "ArrowDown, End, Home and ArrowUp move the CommandPalette's highlight, and Enter picks it and closes the palette",
+    reopened && moves.join() === "New invoice,Export to CSV,Settings,New invoice,Settings" &&
+      picked && pickedText === "Settings",
+    `reopened ${reopened}; highlight ${moves.join(" → ")}; Enter closed it ${picked}, ` +
       `onSelect got "${pickedText}"`,
   )
 
