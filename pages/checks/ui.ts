@@ -22290,6 +22290,17 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
       `${nested.afterClose}; overflow after close ${nested.overflowAfter}`,
   )
 
+  await commandPaletteClassLockChecks(devtools, {
+    open: async () =>
+      await clickSelector(devtools, trigger(GUIDE)) && await until(GUIDE, "state.focusInField"),
+    close: async () => {
+      await pressKey(devtools, "Escape")
+      const closed = await until(GUIDE, "!state.open")
+      await closeIfOpen(GUIDE)
+      return closed
+    },
+  })
+
   // At a phone's width the guide's header search, the same component, is an icon and a full sheet.
   await devtools.send("Emulation.setDeviceMetricsOverride", {
     width: NARROW_WIDTH,
@@ -22484,6 +22495,118 @@ async function dropdownItemHotkeyChecks(devtools: Devtools): Promise<void> {
     "Shift+D does not choose a disabled DropdownItem, and leaves the key press to the page",
     disabled.status.includes("disabled chosen 0") && prevented === false && !disabled.open,
     `"${disabled.status}"; press cancelled ${prevented}; open ${disabled.open}`,
+  )
+}
+
+/** Opens and closes one `CommandPalette`, each answering whether it got there. */
+interface PaletteDriver {
+  /** Click the trigger; `true` once focus is in the palette's field. */
+  open: () => Promise<boolean>
+  /** Press Escape; `true` once the dialog is closed. */
+  close: () => Promise<boolean>
+}
+
+/** The page's scroll lock as the palette leaves it, read at one moment. */
+interface PageLockReading {
+  /** The scrolling element's inline `overflow`: what the palette wrote there. */
+  inlineScrollerOverflow: string
+  /** The body's inline `overflow`: what the palette wrote there. */
+  inlineOverflow: string
+  /** The body's inline `padding-right`: the padding the palette wrote. */
+  inlinePadding: string
+  /** The scrolling element's computed `overflow-y`. */
+  scrollerOverflow: string
+  /** The body's computed `overflow-y`. */
+  bodyOverflow: string
+  /** The body's computed `padding-right`. */
+  padding: string
+}
+
+/** The class an app's own dialog would put on the body or on `html` to lock the page (#633). */
+const APP_LOCK_CLASS = "app-scroll-lock"
+
+/**
+ * An app that locks the page with a CSS class keeps its lock through a `CommandPalette` (#633).
+ *
+ * The class sets `overflow: hidden`, and the body gets the 15px padding that stands in for the
+ * scrollbar, as an app's own dialog would. It is put on the body in one run and on `html` in
+ * another, since an app may lock either. While it is on, the palette must write no inline style of
+ * its own: writing one zeroes the padding, so the page moves. Without the class the palette locks
+ * the page while open and unlocks it after close.
+ */
+async function commandPaletteClassLockChecks(
+  devtools: Devtools,
+  palette: PaletteDriver,
+): Promise<void> {
+  const reading = () =>
+    devtools.evaluate<PageLockReading>(`(() => {
+      const body = getComputedStyle(document.body)
+      return {
+        inlineScrollerOverflow: document.scrollingElement.style.overflow,
+        inlineOverflow: document.body.style.overflow,
+        inlinePadding: document.body.style.paddingRight,
+        scrollerOverflow: getComputedStyle(document.scrollingElement).overflowY,
+        bodyOverflow: body.overflowY,
+        padding: body.paddingRight,
+      }
+    })()`)
+  const show = (read?: PageLockReading) =>
+    read === undefined ? "no reading" : `inline overflow "${read.inlineScrollerOverflow}"/` +
+      `"${read.inlineOverflow}" padding "${read.inlinePadding}", computed overflow ` +
+      `${read.scrollerOverflow}/${read.bodyOverflow} padding ${read.padding}`
+
+  for (const holder of ["body", "html"] as const) {
+    const element = holder === "body" ? "document.body" : "document.documentElement"
+    await devtools.evaluate<null>(`(() => {
+      const style = document.createElement("style")
+      style.id = "${APP_LOCK_CLASS}-style"
+      style.textContent = ".${APP_LOCK_CLASS} { overflow: hidden } " +
+        "body.${APP_LOCK_CLASS}, html.${APP_LOCK_CLASS} > body { padding-right: 15px }"
+      document.head.append(style)
+      ${element}.classList.add("${APP_LOCK_CLASS}")
+      return null
+    })()`)
+    let classed: {
+      opened: boolean
+      closed: boolean
+      open?: PageLockReading
+      after?: PageLockReading
+    } = { opened: false, closed: false }
+    try {
+      const opened = await palette.open()
+      const open = await reading()
+      const closed = await palette.close()
+      classed = { opened, closed, open, after: await reading() }
+    } finally {
+      await devtools.evaluate<null>(`(() => {
+        ${element}.classList.remove("${APP_LOCK_CLASS}")
+        document.getElementById("${APP_LOCK_CLASS}-style")?.remove()
+        return null
+      })()`)
+    }
+    const locked = (read: PageLockReading) =>
+      holder === "body" ? read.bodyOverflow === "hidden" : read.scrollerOverflow === "hidden"
+    const untouched = (read?: PageLockReading) =>
+      read !== undefined && read.inlineScrollerOverflow === "" && read.inlineOverflow === "" &&
+      read.inlinePadding === "" && locked(read) && read.padding === "15px"
+    check(
+      `a CommandPalette opened over a page an app locks with a class on ${holder} writes no style ` +
+        "of its own, so the lock keeps its padding while open and after close",
+      classed.opened && classed.closed && untouched(classed.open) && untouched(classed.after),
+      `opened ${classed.opened}, closed ${classed.closed}; while open: ${show(classed.open)}; ` +
+        `after close: ${show(classed.after)}`,
+    )
+  }
+
+  const opened = await palette.open()
+  const open = await reading()
+  const closed = await palette.close()
+  const after = await reading()
+  check(
+    "without the class a CommandPalette locks the page while open and unlocks it after close",
+    opened && closed && open.scrollerOverflow === "hidden" && after.scrollerOverflow !== "hidden" &&
+      after.bodyOverflow !== "hidden" && after.inlinePadding === "",
+    `opened ${opened}, closed ${closed}; while open: ${show(open)}; after close: ${show(after)}`,
   )
 }
 
