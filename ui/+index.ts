@@ -243,10 +243,8 @@ export {
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
 export {
-  applyScrollLock,
   backdropClickDismisses,
   type BackdropHitTarget,
-  clientWidthWithoutScrollbar,
   dialogHeldFocus,
   type DialogRect,
   type DialogRole,
@@ -259,10 +257,6 @@ export {
   Modal,
   type ModalProps,
   restoreFocus,
-  type ScrollLock,
-  type ScrollLockHost,
-  scrollLockPadding,
-  type ScrollLockTarget,
   shouldRetargetFocus,
 } from "./modal.tsx"
 export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
@@ -310,6 +304,15 @@ export {
   type RadioOption,
   type RadioProps,
 } from "./radio.tsx"
+export {
+  acquireScrollLock,
+  applyScrollLock,
+  clientWidthWithoutScrollbar,
+  type ScrollLock,
+  type ScrollLockHost,
+  scrollLockPadding,
+  type ScrollLockTarget,
+} from "./scroll-lock.ts"
 export {
   SettingGroup,
   type SettingGroupProps,

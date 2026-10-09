@@ -6,25 +6,7 @@ import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
-import {
-  applyScrollLock,
-  clientWidthWithoutScrollbar,
-  type ScrollLock,
-  scrollLockPadding,
-  type ScrollLockTarget,
-} from "./modal.tsx"
-
-/**
- * Whether something already locks the page's scroll, by an inline style or by a class.
- *
- * Reads the computed `overflow-y` of the scrolling element and of the body, so a lock an app writes
- * as a CSS class counts as much as the inline one `Modal` writes.
- */
-function pageScrollLocked(): boolean {
-  return [document.scrollingElement, document.body].some((element) =>
-    element !== null && ["hidden", "clip"].includes(getComputedStyle(element).overflowY)
-  )
-}
+import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
 
 /** One result the palette lists. Extend it with whatever `onSelect` needs, such as an `href`. */
 export interface CommandPaletteOption {
@@ -307,18 +289,11 @@ export function CommandPalette<T extends CommandPaletteOption>(
       setRemote({ status: Status.IDLE, options: [] })
       ask("", 0)
     }
-    // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses. A
-    // page something else has already locked, such as an open `Modal` behind the palette or an app
-    // dialog that adds a class, keeps that lock: locking it again would measure no scrollbar and
-    // zero the padding, moving the page.
-    if (!pageScrollLocked()) {
-      const widthBefore = document.documentElement.clientWidth
-      const widthLocked = clientWidthWithoutScrollbar(document.documentElement)
-      lock.current = applyScrollLock(
-        document as unknown as ScrollLockTarget,
-        scrollLockPadding(widthBefore, widthLocked),
-      )
-    }
+    // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses. The
+    // lock is the one `Modal` holds too, counted: a page something else has already locked, such as
+    // an open `Modal` behind the palette or an app dialog that adds a class, keeps that lock, and a
+    // `Modal` the palette's `onSelect` opens keeps the page locked after the palette lets go.
+    lock.current ??= acquireScrollLock()
     dialog.current?.showModal()
     input.current?.focus()
   }
