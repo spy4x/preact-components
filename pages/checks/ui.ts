@@ -62,7 +62,8 @@ const DROPDOWN_STATE = `(() => {
  * `withTime` modes, Pagination's end controls, DataTable's sort-by-header and paging contract,
  * `Link`'s plain-click rule, `ImageGallery`'s thumbnail strip and the shared `Lightbox` it opens,
  * `FileInput`'s keyboard, drag-and-drop, refusal, preview-revocation and plain-form-post contract,
- * `useHotkeys` with `ShortcutsDialog`, and — last — Modal's keyboard and focus contract.
+ * `useHotkeys` with `ShortcutsDialog`, `TagInput`'s keys, chips and focus return, and — last —
+ * Modal's keyboard and focus contract.
  *
  * This file runs last of every package's, and Modal's checks run last inside it, for the same
  * reason: Modal opens a real modal dialog, and a dialog that refused to close would sit in the top
@@ -217,6 +218,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await inlineEditInterruptionChecks(devtools)
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
+  await tagInputChecks(devtools)
   await outlineBadgeContrastCheck(devtools)
   await fieldErrorContrastCheck(devtools)
   await errorStateDangerCheck(devtools)
@@ -229,6 +231,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await linkFocusRingCheck(devtools, { selector: BUTTON_LINK, name: "Button link" })
   await primaryButtonFillCheck(devtools)
   await kanbanBoardChecks(devtools)
+  await sortableListChecks(devtools)
   await themeToggleChecks(devtools)
   await billingChecks(devtools)
 
@@ -13613,6 +13616,301 @@ async function toggleChipsChecks(devtools: Devtools): Promise<void> {
   )
 }
 
+/**
+ * Reads the `TagInput` card's tag field in one round trip, or `null` when the card lost it.
+ *
+ * The chips are read from the list named "Tags", the suggestions from the listbox the input's
+ * `aria-controls` names, and the highlighted row from its `aria-activedescendant`, so every value
+ * here is what assistive technology is pointed at rather than what a class name suggests.
+ */
+const TAG_INPUT_STATE = `(() => {
+  const card = document.querySelector("#demo-TagInput")
+  const input = card?.querySelector("#guide-tag-input") ?? null
+  if (input === null) return null
+  const root = input.closest("div.relative")
+  const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "")
+  const activeId = input.getAttribute("aria-activedescendant")
+  const active = activeId === null ? null : document.getElementById(activeId)
+  return {
+    chips: [...root.querySelectorAll('ul[aria-label="Tags"] > li')].map((li) => li.textContent.trim()),
+    removeNames: [...root.querySelectorAll('ul[aria-label="Tags"] button')]
+      .map((button) => button.getAttribute("aria-label")),
+    value: input.value,
+    expanded: input.getAttribute("aria-expanded"),
+    options: listbox === null || listbox.hidden
+      ? []
+      : [...listbox.querySelectorAll('[role="option"]')].map((option) => option.textContent.trim()),
+    active: active?.textContent.trim() ?? null,
+    activeSelected: active?.getAttribute("aria-selected") ?? null,
+    focused: document.activeElement === input,
+    status: (root.querySelector('[role="status"]')?.textContent ?? "").trim(),
+    statusRaw: root.querySelector('[role="status"]')?.textContent ?? "",
+    optionHeight: listbox === null || listbox.hidden
+      ? 0
+      : Math.min(...[...listbox.querySelectorAll('[role="option"]')]
+        .map((option) => Math.round(option.getBoundingClientRect().height))),
+    echo: card.querySelector('[data-e2e="controlled-value"]')?.textContent.trim() ?? "",
+  }
+})()`
+
+/** A {@link TAG_INPUT_STATE} read. */
+interface TagInputState {
+  chips: string[]
+  removeNames: string[]
+  value: string
+  expanded: string | null
+  /** The suggestions on screen; empty while the listbox is hidden. */
+  options: string[]
+  active: string | null
+  activeSelected: string | null
+  focused: boolean
+  status: string
+  /** The live region's text untrimmed: a repeat announcement differs from the last one only here. */
+  statusRaw: string
+  /** The shortest suggestion row's height in px; 0 while the listbox is hidden. */
+  optionHeight: number
+  echo: string
+}
+
+/** The tag field of the card, as a page expression. */
+const TAG_INPUT = `document.querySelector("#demo-TagInput #guide-tag-input")`
+
+/**
+ * Press a key the shared table in `harness.ts` does not describe, through the browser's own input
+ * pipeline: the comma that adds a tag, and Backspace.
+ *
+ * @param devtools The connected session; the key goes to whatever the page has focused.
+ * @param key Which of the two.
+ */
+async function pressTagKey(devtools: Devtools, key: "Comma" | "Backspace"): Promise<void> {
+  const press = key === "Comma"
+    ? { key: ",", code: "Comma", windowsVirtualKeyCode: 188, nativeVirtualKeyCode: 188, text: "," }
+    : { key: "Backspace", code: "Backspace", windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8 }
+  await devtools.send("Input.dispatchKeyEvent", { type: "keyDown", ...press })
+  const { text: _text, ...up } = press as typeof press & { text?: string }
+  await devtools.send("Input.dispatchKeyEvent", { type: "keyUp", ...up })
+}
+
+/**
+ * `TagInput`, driven with real clicks and key presses on its card: Enter and a comma add the typed
+ * word, a word already there in another case is refused and announced again when typed again,
+ * Escape with no suggestion showing keeps the typed text, the arrow keys walk the 44 px suggestion
+ * rows with the chosen tags left out and Enter picks one, a chip's named remove button takes it away and
+ * gives focus back to the text field, Backspace in the empty field removes the last chip, and at a
+ * 375 px wide viewport the chips wrap inside the field with every target 44 px.
+ *
+ * None of this reaches a string render: the key handler, the focus moved after a removal and the
+ * wrapping are all the browser's. The card starts with the one tag `work` and is put back to it.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function tagInputChecks(devtools: Devtools): Promise<void> {
+  const read = async () =>
+    await devtools.evaluate<TagInputState | null>(TAG_INPUT_STATE) ??
+      ({
+        chips: [],
+        removeNames: [],
+        value: "missing",
+        expanded: null,
+        options: [],
+        active: null,
+        activeSelected: null,
+        focused: false,
+        status: "",
+        statusRaw: "",
+        optionHeight: 0,
+        echo: "",
+      } satisfies TagInputState)
+  const chipsAre = (expected: string[]) => async () =>
+    (await read()).chips.join("|") === expected.join("|")
+
+  await centreInView(devtools, TAG_INPUT)
+  await pointerToCorner(devtools)
+  const landing = await clickAt(devtools, await aimAt(devtools, TAG_INPUT), TAG_INPUT)
+  await poll(async () => (await read()).focused, 2_000)
+  const start = await read()
+
+  await typeInto(devtools, "Urgent")
+  await pressKey(devtools, "Enter")
+  await poll(chipsAre(["work", "Urgent"]), 2_000)
+  const entered = await read()
+  check(
+    "typing a word and pressing Enter adds it to TagInput as a chip and empties the field",
+    landing?.onTarget === true && start.chips.join("|") === "work" &&
+      entered.chips.join("|") === "work|Urgent" && entered.value === "" && entered.focused &&
+      entered.echo === "tags: work, Urgent" && entered.status === "Added tag Urgent",
+    `click ${landing?.onTarget ? "landed" : `missed (${landing?.tag ?? "nothing"})`}; chips ` +
+      `${start.chips.join(", ")} → ${entered.chips.join(", ")}; field "${entered.value}", ` +
+      `"${entered.echo}", said "${entered.status}"`,
+  )
+
+  await typeInto(devtools, "phone")
+  await pressTagKey(devtools, "Comma")
+  await poll(chipsAre(["work", "Urgent", "phone"]), 2_000)
+  const comma = await read()
+  await typeInto(devtools, "WORK")
+  await pressTagKey(devtools, "Comma")
+  await poll(async () => (await read()).value === "", 2_000)
+  const duplicate = await read()
+  check(
+    "a comma adds the typed word, and TagInput refuses a tag it holds in another case",
+    comma.chips.join("|") === "work|Urgent|phone" && comma.value === "" &&
+      duplicate.chips.join("|") === "work|Urgent|phone" && duplicate.value === "" &&
+      duplicate.status === "WORK is already added",
+    `after "phone," ${comma.chips.join(", ")} with field "${comma.value}"; after "WORK," ` +
+      `${duplicate.chips.join(", ")} with field "${duplicate.value}", said "${duplicate.status}"`,
+  )
+
+  await typeInto(devtools, "WORK")
+  await pressTagKey(devtools, "Comma")
+  await poll(async () => (await read()).statusRaw !== duplicate.statusRaw, 2_000)
+  const again = await read()
+  check(
+    "TagInput announces a duplicate typed a second time in a row, by changing its live region again",
+    again.statusRaw !== duplicate.statusRaw && again.status === "WORK is already added" &&
+      again.chips.join("|") === "work|Urgent|phone" && again.value === "",
+    `region ${JSON.stringify(duplicate.statusRaw)} → ${JSON.stringify(again.statusRaw)}; chips ` +
+      `${again.chips.join(", ")} with field "${again.value}"`,
+  )
+
+  await typeInto(devtools, "newtag")
+  await poll(async () => (await read()).value === "newtag", 2_000)
+  const unmatched = await read()
+  await pressKey(devtools, "Escape")
+  // Given time to go wrong: a field that drops the text on Escape empties within a frame or two.
+  await poll(async () => (await read()).value !== "newtag", 300)
+  const escaped = await read()
+  check(
+    "Escape in TagInput with no suggestion showing leaves the typed text in the field",
+    unmatched.expanded === "false" && unmatched.options.length === 0 &&
+      escaped.value === "newtag" && escaped.chips.join("|") === "work|Urgent|phone",
+    `typed "${unmatched.value}" with expanded ${unmatched.expanded} and ` +
+      `${unmatched.options.length} suggestions; after Escape the field holds "${escaped.value}"`,
+  )
+  // Clear the six letters, one Backspace each; a seventh would take a chip.
+  for (let letter = 0; letter < "newtag".length; letter++) await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read()).value === "", 2_000)
+
+  await pressKey(devtools, "ArrowDown")
+  await poll(async () => (await read()).active !== null, 2_000)
+  const first = await read()
+  await pressKey(devtools, "ArrowDown")
+  await poll(async () => (await read()).active !== first.active, 2_000)
+  const second = await read()
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).chips.length === 4, 2_000)
+  const picked = await read()
+  check(
+    "ArrowDown walks TagInput's suggestions without the chosen tags, and Enter picks one",
+    first.expanded === "true" &&
+      !first.options.some((option) => ["work", "phone"].includes(option)) &&
+      first.active === first.options[0] && first.activeSelected === "true" &&
+      second.active === first.options[1] && picked.chips.at(-1) === first.options[1] &&
+      picked.expanded === "false" && picked.focused,
+    `suggestions ${first.options.join(", ")}; active ${first.active} (selected ` +
+      `${first.activeSelected}) → ${second.active}; chips after Enter ${
+        picked.chips.join(", ")
+      }, ` +
+      `expanded ${picked.expanded}`,
+  )
+  check(
+    "every TagInput suggestion row is a 44 px target",
+    first.optionHeight >= 44,
+    `shortest row ${first.optionHeight} px over ${first.options.length} suggestions`,
+  )
+
+  const remove = `[...document.querySelectorAll('#demo-TagInput ul[aria-label="Tags"] button')]
+    .find((button) => button.getAttribute("aria-label") === "Remove tag Urgent")`
+  await devtools.evaluate<null>(`(${remove}?.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).chips.includes("Urgent"), 2_000)
+  const removed = await read()
+  check(
+    "each TagInput chip's remove button is named after it, and a press returns focus to the field",
+    picked.removeNames.join("|") === picked.chips.map((chip) => `Remove tag ${chip}`).join("|") &&
+      !removed.chips.includes("Urgent") && removed.chips.length === 3 && removed.focused &&
+      removed.status === "Removed tag Urgent" && removed.expanded === "false",
+    `names ${picked.removeNames.join(", ")}; chips ${removed.chips.join(", ")}, focus ` +
+      `${removed.focused ? "on the field" : "elsewhere"}, said "${removed.status}"`,
+  )
+
+  await pressTagKey(devtools, "Backspace")
+  await poll(async () => (await read()).chips.length === 2, 2_000)
+  const backspaced = await read()
+  check(
+    "Backspace in TagInput's empty field removes the last chip",
+    backspaced.chips.join("|") === removed.chips.slice(0, -1).join("|") && backspaced.focused,
+    `${removed.chips.join(", ")} → ${backspaced.chips.join(", ")}`,
+  )
+
+  await typeInto(devtools, "groceries, appointments, reading-list, someday-maybe, waiting-for,")
+  await poll(async () => (await read()).chips.length === 7, 2_000)
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: 375,
+    height: 812,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  let fit: TagInputFit | null = null
+  try {
+    await new Promise((done) => setTimeout(done, 200))
+    fit = await devtools.evaluate<TagInputFit | null>(TAG_INPUT_FIT)
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+  check(
+    "at 375 px TagInput's chips wrap inside the field, and every remove button and the field are 44 px",
+    fit !== null && fit.chips === 7 && fit.rows > 1 && fit.inside && fit.pageWidth <= 375 &&
+      fit.smallestButton >= 44 && fit.inputHeight >= 44,
+    fit === null
+      ? "the card lost its tag field"
+      : `${fit.chips} chips on ${fit.rows} rows, ${fit.inside ? "inside" : "outside"} the field; ` +
+        `page ${fit.pageWidth} px wide; smallest button ${fit.smallestButton} px, field ` +
+        `${fit.inputHeight} px`,
+  )
+
+  // Back to the card's starting value, one Backspace per extra chip.
+  await devtools.evaluate<null>(`(${TAG_INPUT}.focus(), null)`)
+  for (let extra = (await read()).chips.length - 1; extra > 0; extra--) {
+    await pressTagKey(devtools, "Backspace")
+  }
+  await poll(chipsAre(["work"]), 2_000)
+  await pressKey(devtools, "Escape")
+}
+
+/** How the card's tag field lays out, read by {@link TAG_INPUT_FIT}. */
+interface TagInputFit {
+  chips: number
+  /** How many distinct rows the chips sit on. */
+  rows: number
+  /** Every chip lies inside the field's box. */
+  inside: boolean
+  /** The page's scroll width: wider than the viewport means a sideways scroll. */
+  pageWidth: number
+  /** The smaller side of the smallest remove button, rounded. */
+  smallestButton: number
+  inputHeight: number
+}
+
+/** Measures {@link TagInputFit} off the card's tag field, or `null` when the card lost it. */
+const TAG_INPUT_FIT = `(() => {
+  const input = document.querySelector("#demo-TagInput #guide-tag-input")
+  if (input === null) return null
+  const field = input.parentElement.getBoundingClientRect()
+  const chips = [...input.parentElement.querySelectorAll('ul[aria-label="Tags"] > li')]
+    .map((chip) => chip.getBoundingClientRect())
+  const buttons = [...input.parentElement.querySelectorAll('ul[aria-label="Tags"] button')]
+    .map((button) => button.getBoundingClientRect())
+  return {
+    chips: chips.length,
+    rows: new Set(chips.map((box) => Math.round(box.top))).size,
+    inside: chips.every((box) => box.left >= field.left - 0.5 && box.right <= field.right + 0.5),
+    pageWidth: document.documentElement.scrollWidth,
+    smallestButton: Math.round(Math.min(...buttons.map((box) => Math.min(box.width, box.height)))),
+    inputHeight: Math.round(input.getBoundingClientRect().height),
+  }
+})()`
+
 /** One outline badge's label contrast, measured in one palette. */
 interface BadgeContrast {
   /** The badge's text, which is its colour's name in the catalogue. */
@@ -18280,4 +18578,621 @@ async function unsavedGuardChecks(devtools: Devtools): Promise<void> {
     await unsavedSetDirty(devtools, false).catch(() => {})
     await devtools.evaluate(UNSAVED_PROBE_REMOVE).catch(() => {})
   }
+}
+
+const SORTABLE_CARD = "#demo-SortableList"
+
+/** What one read of the `SortableList` demo sees. */
+interface SortableState {
+  /** The rows' ids, in DOM order. */
+  order: string[]
+  /** The rows' ids, top to bottom as drawn, transforms included. */
+  drawn: string[]
+  /** The id of the row whose handle has focus, or `null`. */
+  focused: string | null
+  /** The live region's text. */
+  live: string
+  /** The demo's readout of the moves `onMove` reported. */
+  lastMove: string
+  /** The page's vertical scroll position. */
+  scrollY: number
+}
+
+/** Reads {@link SortableState} off the `SortableList` card in one round trip. */
+const SORTABLE_STATE = `(() => {
+  const card = document.querySelector("${SORTABLE_CARD}")
+  const rows = [...card.querySelectorAll("[data-sortable-item]")]
+  const active = document.activeElement
+  const row = active?.matches?.("[data-sortable-handle]") ? active.closest("[data-sortable-item]") : null
+  return {
+    order: rows.map((row) => row.dataset.sortableItem),
+    drawn: [...rows]
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+      .map((row) => row.dataset.sortableItem),
+    focused: row?.dataset.sortableItem ?? null,
+    live: card.querySelector("[data-sortable-live]").textContent.trim(),
+    lastMove: card.querySelector('[data-e2e="sortable-last-move"]').textContent.trim(),
+    scrollY: Math.round(globalThis.scrollY),
+  }
+})()`
+
+/** The demo's first order. */
+const SORTABLE_FIRST = ["milk", "call", "bins", "plants", "post"]
+
+/** A page expression for the element `part` names inside the row with this id. */
+function sortablePart(id: string, part: "handle" | "body"): string {
+  const inner = part === "handle" ? "[data-sortable-handle]" : "[data-sortable-handle] + div"
+  return `document.querySelector('${SORTABLE_CARD} [data-sortable-item="${id}"] ${inner}')`
+}
+
+/** Put the demo back to its first items, and wait until it shows them. */
+async function resetSortable(devtools: Devtools): Promise<void> {
+  await devtools.evaluate<null>(
+    `(document.querySelector('${SORTABLE_CARD} [data-e2e="sortable-reset"]').click(), null)`,
+  )
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.lastMove.endsWith("0, the last none yet")`),
+    2_000,
+  )
+}
+
+/**
+ * `SortableList`, driven by real key presses, a real mouse drag and real touches on its catalogue
+ * demo.
+ *
+ * A string render shows the handles and the empty live region, but none of what the list does:
+ * picking an item up, the rows sliding out of its way, the one `onMove` at the drop, Escape putting
+ * it back, a finger that scrolls the page outside a handle, and the edge scroll. Each check here
+ * reads those off the page.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function sortableListChecks(devtools: Devtools): Promise<void> {
+  const present = await devtools.evaluate<boolean>(
+    `document.querySelector("${SORTABLE_CARD} [data-sortable-item]") !== null`,
+  )
+  check("the SortableList card is on the page", present)
+  if (!present) return
+
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  try {
+    await sortableKeyboardCheck(devtools)
+    await sortableEscapeCheck(devtools)
+    await sortableTabAwayCheck(devtools)
+    await sortableEnterCheck(devtools)
+    await sortableReaderClickCheck(devtools)
+    await sortableItemsChangeCheck(devtools)
+    await sortableContextMenuCheck(devtools)
+    await sortableMouseDragCheck(devtools)
+    await sortableTouchDragCheck(devtools)
+    await sortableTouchCancelCheck(devtools)
+    await sortableTouchScrollCheck(devtools)
+    await sortableEdgeScrollCheck(devtools)
+  } finally {
+    await devtools.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] })
+      .catch(() => {})
+    await resetSortable(devtools)
+  }
+}
+
+/**
+ * Space picks the first item up, two ArrowDown presses carry it down and Space drops it: the item
+ * is drawn at its new place before any `onMove`, `onMove` hears `0 to 2` once, focus stays on its
+ * handle, and the live region said each step.
+ */
+async function sortableKeyboardCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("milk", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Picked up")`),
+    2_000,
+  )
+  const picked = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await pressKey(devtools, "ArrowDown")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.includes("position 3")`),
+    2_000,
+  )
+  // Rows slide with a short transition; wait it out before reading where they are drawn.
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.drawn[2] === "milk"`),
+    2_000,
+  )
+  const carried = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await pressKey(devtools, "Space")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Dropped")`),
+    2_000,
+  )
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[2] === "milk"`), 2_000)
+  const dropped = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "the SortableList live region announces a keyboard pick-up and each move",
+    picked.live === "Picked up Buy milk, position 1 of 5." &&
+      carried.live === "Moved Buy milk to position 3 of 5.",
+    `"${picked.live}", then "${carried.live}"`,
+  )
+  check(
+    "a SortableList item picked up with Space is drawn lower on ArrowDown, before any onMove",
+    JSON.stringify(carried.drawn) === `["call","bins","milk","plants","post"]` &&
+      JSON.stringify(carried.order) === JSON.stringify(SORTABLE_FIRST) &&
+      carried.lastMove.endsWith("0, the last none yet") && carried.focused === "milk",
+    `drawn ${JSON.stringify(carried.drawn)}, DOM ${JSON.stringify(carried.order)}, onMove ` +
+      `"${carried.lastMove}", focus ${carried.focused}`,
+  )
+  check(
+    "Space drops a SortableList item: onMove hears 0 to 2 once, and focus stays on its handle",
+    dropped.lastMove.endsWith("1, the last 0 to 2") &&
+      JSON.stringify(dropped.order) === `["call","bins","milk","plants","post"]` &&
+      dropped.focused === "milk" && dropped.live === "Dropped Buy milk at position 3 of 5.",
+    `onMove "${dropped.lastMove}", order ${JSON.stringify(dropped.order)}, focus ` +
+      `${dropped.focused}, live "${dropped.live}"`,
+  )
+}
+
+/** Escape during a keyboard move puts the item back, keeps focus on it and reports no move. */
+async function sortableEscapeCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("plants", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowUp")
+  await pressKey(devtools, "ArrowUp")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.drawn[1] === "plants"`),
+    2_000,
+  )
+  const moving = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await pressKey(devtools, "Escape")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.drawn[3] === "plants"`),
+    2_000,
+  )
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "Escape puts a SortableList item back, keeps focus on it, calls nothing and announces it",
+    moving.drawn[1] === "plants" &&
+      JSON.stringify(after.drawn) === JSON.stringify(SORTABLE_FIRST) &&
+      JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST) &&
+      after.lastMove.endsWith("0, the last none yet") && after.focused === "plants" &&
+      after.live === "Cancelled. Water the plants is back at position 4 of 5.",
+    `while moving drawn ${
+      JSON.stringify(moving.drawn)
+    }, live "${moving.live}"; after Escape drawn ` +
+      `${JSON.stringify(after.drawn)}, onMove "${after.lastMove}", focus ${after.focused}, live ` +
+      `"${after.live}"`,
+  )
+}
+
+/** Tab away from a keyboard-held item puts it back and reports no move. */
+async function sortableTabAwayCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("call", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Call")`),
+    2_000,
+  )
+  await pressKey(devtools, "Tab")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `JSON.stringify(${SORTABLE_STATE}.drawn) === '${JSON.stringify(SORTABLE_FIRST)}'`,
+      ),
+    2_000,
+  )
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "Tab away from a keyboard-held SortableList item puts it back and reports no move",
+    JSON.stringify(after.drawn) === JSON.stringify(SORTABLE_FIRST) &&
+      after.lastMove.endsWith("0, the last none yet") && after.focused !== "call" &&
+      after.live === "Cancelled. Call the plumber is back at position 2 of 5.",
+    `drawn ${JSON.stringify(after.drawn)}, onMove "${after.lastMove}", focus ${after.focused}, ` +
+      `live "${after.live}"`,
+  )
+}
+
+/** Whether the handle of the row with this id says it is pressed. */
+function sortablePressed(devtools: Devtools, id: string): Promise<string | null> {
+  return devtools.evaluate<string | null>(
+    `${sortablePart(id, "handle")}.getAttribute("aria-pressed")`,
+  )
+}
+
+/** Enter picks the second item up, ArrowDown moves it and Enter drops it: `onMove` hears `1 to 2`. */
+async function sortableEnterCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("call", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Picked up Call")`),
+    2_000,
+  )
+  const pressed = await sortablePressed(devtools, "call")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Call")`),
+    2_000,
+  )
+  await pressKey(devtools, "Enter")
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[2] === "call"`), 2_000)
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const released = await sortablePressed(devtools, "call")
+
+  check(
+    "Enter picks a SortableList item up and drops it: onMove hears 1 to 2 once, focus stays on its handle",
+    after.lastMove.endsWith("1, the last 1 to 2") && after.focused === "call" &&
+      after.live === "Dropped Call the plumber at position 3 of 5." && pressed === "true" &&
+      released === "false",
+    `onMove "${after.lastMove}", focus ${after.focused}, live "${after.live}", aria-pressed ` +
+      `${pressed} → ${released}`,
+  )
+}
+
+/**
+ * A click with no pointer behind it, as a screen reader sends in its reading mode, picks the first
+ * item up and a second one drops it; a real mouse click with no drag does nothing.
+ */
+async function sortableReaderClickCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  const at = await sortablePoint(devtools, sortablePart("bins", "handle"))
+  for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+    await devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: at.x,
+      y: at.y,
+      button: type === "mouseMoved" ? "none" : "left",
+      buttons: type === "mousePressed" ? 1 : 0,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+    })
+  }
+  await sortableFrames(devtools)
+  const clicked = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const clickedPressed = await sortablePressed(devtools, "bins")
+
+  const milk = sortablePart("milk", "handle")
+  await devtools.evaluate<null>(`(${milk}.focus(), ${milk}.click(), null)`)
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Picked up Buy milk")`),
+    2_000,
+  )
+  const pressed = await sortablePressed(devtools, "milk")
+  await pressKey(devtools, "ArrowDown")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Buy milk")`),
+    2_000,
+  )
+  await devtools.evaluate<null>(`(${milk}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[1] === "milk"`), 2_000)
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "a mouse click on a SortableList handle, with no drag, picks nothing up",
+    !clicked.live.startsWith("Picked up") && clickedPressed === "false" &&
+      clicked.lastMove.endsWith("0, the last none yet"),
+    `live "${clicked.live}", aria-pressed ${clickedPressed}, onMove "${clicked.lastMove}"`,
+  )
+  check(
+    "a screen reader's click on a SortableList handle picks the item up, and a second drops it",
+    pressed === "true" && after.lastMove.endsWith("1, the last 0 to 1") &&
+      after.live === "Dropped Buy milk at position 2 of 5." && after.focused === "milk",
+    `aria-pressed ${pressed}, onMove "${after.lastMove}", live "${after.live}", focus ` +
+      `${after.focused}`,
+  )
+}
+
+/**
+ * The caller swaps the list's order while an item is held from the keyboard: the hold ends as a
+ * cancel and nothing reaches `onMove`.
+ */
+async function sortableItemsChangeCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await devtools.evaluate<null>(`(${sortablePart("milk", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowDown")
+  await pressKey(devtools, "Space")
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[1] === "milk"`), 2_000)
+  await devtools.evaluate<null>(`(${sortablePart("plants", "handle")}.focus(), null)`)
+  await pressKey(devtools, "Space")
+  await pressKey(devtools, "ArrowUp")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Moved Water")`),
+    2_000,
+  )
+  // The demo's Reset puts the first order back; clicked from script, so focus stays on the handle.
+  await devtools.evaluate<null>(
+    `(document.querySelector('${SORTABLE_CARD} [data-e2e="sortable-reset"]').click(), null)`,
+  )
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await sortableFrames(devtools)
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const pressed = await sortablePressed(devtools, "plants")
+
+  check(
+    "changing a SortableList's items while one is held cancels the hold and calls nothing",
+    after.live.startsWith("Cancelled. Water the plants") &&
+      after.lastMove.endsWith("0, the last none yet") &&
+      JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST) && pressed === "false",
+    `live "${after.live}", onMove "${after.lastMove}", order ${JSON.stringify(after.order)}, ` +
+      `aria-pressed ${pressed}`,
+  )
+}
+
+/** A long press's context menu is blocked on a handle, and only there. */
+async function sortableContextMenuCheck(devtools: Devtools): Promise<void> {
+  const blocked = (target: string) =>
+    devtools.evaluate<boolean>(
+      `!${target}.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }))`,
+    )
+  const onHandle = await blocked(sortablePart("milk", "handle"))
+  const onBody = await blocked(sortablePart("milk", "body"))
+
+  check(
+    "a SortableList handle blocks the context menu a long press would open, and its row body does not",
+    onHandle && !onBody,
+    `handle blocked ${onHandle}, body blocked ${onBody}`,
+  )
+}
+
+/** A finger dragging a handle that the browser then cancels puts the item back and reports nothing. */
+async function sortableTouchCancelCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  const from = await sortablePoint(devtools, sortablePart("milk", "handle"))
+  const id = 13
+  await devtools.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ ...from, id }],
+  })
+  for (let step = 1; step <= 8; step++) {
+    await devtools.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: from.x, y: from.y + step * 12, id }],
+    })
+    await sortableFrames(devtools)
+  }
+  const held = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await devtools.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] })
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `JSON.stringify(${SORTABLE_STATE}.drawn) === '${JSON.stringify(SORTABLE_FIRST)}'`,
+      ),
+    2_000,
+  )
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "a cancelled touch drag of a SortableList handle puts the item back and calls nothing",
+    held.live.startsWith("Moved Buy milk") &&
+      after.live === "Cancelled. Buy milk is back at position 1 of 5." &&
+      after.lastMove.endsWith("0, the last none yet") &&
+      JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST),
+    `while held "${held.live}", after "${after.live}", onMove "${after.lastMove}", order ` +
+      `${JSON.stringify(after.order)}`,
+  )
+}
+
+/** The middle of an element in viewport coordinates, from a page expression. */
+async function sortablePoint(
+  devtools: Devtools,
+  element: string,
+): Promise<{ x: number; y: number }> {
+  return await devtools.evaluate<{ x: number; y: number }>(`(() => {
+    const box = (${element}).getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  })()`)
+}
+
+/** Wait two animation frames, so the page has handled the input sent before. */
+async function sortableFrames(devtools: Devtools): Promise<void> {
+  const frame = `new Promise((done) => requestAnimationFrame(done))`
+  await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
+}
+
+/**
+ * A real mouse press on the first handle, moved in steps to below the fourth row's middle and
+ * released: the rows were drawn in the new order during the drag, and `onMove` hears `0 to 3` once.
+ */
+async function sortableMouseDragCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  const from = await sortablePoint(devtools, sortablePart("milk", "handle"))
+  const past = await devtools.evaluate<number>(`(() => {
+    const box = ${sortablePart("plants", "handle")}.closest("li").getBoundingClientRect()
+    return Math.round(box.top + box.height * 0.75)
+  })()`)
+  const mouse = (type: string, x: number, y: number, buttons: number) =>
+    devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x,
+      y,
+      button: type === "mouseMoved" && buttons === 0 ? "none" : "left",
+      buttons,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+    })
+  await mouse("mouseMoved", from.x, from.y, 0)
+  await mouse("mousePressed", from.x, from.y, 1)
+  const steps = 8
+  for (let step = 1; step <= steps; step++) {
+    await mouse("mouseMoved", from.x, Math.round(from.y + ((past - from.y) * step) / steps), 1)
+    await sortableFrames(devtools)
+  }
+  const during = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await mouse("mouseReleased", from.x, past, 0)
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[3] === "milk"`), 2_000)
+  await sortableFrames(devtools)
+  const dropped = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "dragging a SortableList handle with a mouse draws the rows in the new order before the drop",
+    JSON.stringify(during.drawn) === `["call","bins","plants","milk","post"]` &&
+      during.lastMove.endsWith("0, the last none yet"),
+    `drawn ${JSON.stringify(during.drawn)}, onMove "${during.lastMove}", live "${during.live}"`,
+  )
+  check(
+    "releasing a mouse drag of a SortableList handle calls onMove once with 0 to 3 and keeps focus on its handle",
+    dropped.lastMove.endsWith("1, the last 0 to 3") &&
+      JSON.stringify(dropped.order) === `["call","bins","plants","milk","post"]` &&
+      dropped.live === "Dropped Buy milk at position 4 of 5." && dropped.focused === "milk",
+    `onMove "${dropped.lastMove}", order ${
+      JSON.stringify(dropped.order)
+    }, live "${dropped.live}", ` +
+      `focus ${dropped.focused}`,
+  )
+}
+
+/**
+ * One finger, through the browser's own touch input: down at `from`, moved in steps by `dy`, and
+ * lifted. Each step waits two frames so the page sees every move.
+ */
+async function sortableTouch(
+  devtools: Devtools,
+  from: { x: number; y: number },
+  dy: number,
+  id: number,
+): Promise<void> {
+  await devtools.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ ...from, id }],
+  })
+  const steps = 8
+  for (let step = 1; step <= steps; step++) {
+    await devtools.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: from.x, y: Math.round(from.y + (dy * step) / steps), id }],
+    })
+    await sortableFrames(devtools)
+  }
+  await devtools.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+  await sortableFrames(devtools)
+}
+
+/** A finger on the last handle, dragged up past the second row's middle: `onMove` hears `4 to 1`. */
+async function sortableTouchDragCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  const from = await sortablePoint(devtools, sortablePart("post", "handle"))
+  const past = await devtools.evaluate<number>(`(() => {
+    const box = ${sortablePart("call", "handle")}.closest("li").getBoundingClientRect()
+    return Math.round(box.top + box.height * 0.25)
+  })()`)
+  const scrolled = (await devtools.evaluate<SortableState>(SORTABLE_STATE)).scrollY
+  await sortableTouch(devtools, from, past - from.y, 11)
+  await poll(() => devtools.evaluate<boolean>(`${SORTABLE_STATE}.order[1] === "post"`), 2_000)
+  const dropped = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "dragging a SortableList handle by touch calls onMove once with 4 to 1, leaves the page put and focuses its handle",
+    dropped.lastMove.endsWith("1, the last 4 to 1") &&
+      JSON.stringify(dropped.order) === `["milk","post","call","bins","plants"]` &&
+      dropped.scrollY === scrolled && dropped.focused === "post",
+    `onMove "${dropped.lastMove}", order ${JSON.stringify(dropped.order)}, scrollY ` +
+      `${scrolled} → ${dropped.scrollY}, live "${dropped.live}", focus ${dropped.focused}`,
+  )
+}
+
+/** A finger dragged up over an item's body, not its handle, scrolls the page and moves nothing. */
+async function sortableTouchScrollCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  await settledScroll(devtools)
+  const before = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  const from = await sortablePoint(devtools, sortablePart("bins", "body"))
+  await sortableTouch(devtools, from, -150, 12)
+  await settledScroll(devtools, { from: before.scrollY })
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "touch-scrolling a SortableList outside a handle scrolls the page and starts no drag",
+    after.scrollY > before.scrollY + 50 &&
+      JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST) &&
+      after.lastMove.endsWith("0, the last none yet") && after.live === before.live,
+    `scrollY ${before.scrollY} → ${after.scrollY}, order ${JSON.stringify(after.order)}, onMove ` +
+      `"${after.lastMove}", live "${before.live}" → "${after.live}"`,
+  )
+}
+
+/**
+ * A mouse drag held at the bottom edge of the window scrolls the page by itself; Escape then puts
+ * the item back and reports nothing.
+ */
+async function sortableEdgeScrollCheck(devtools: Devtools): Promise<void> {
+  await resetSortable(devtools)
+  await centreInView(devtools, `document.querySelector("${SORTABLE_CARD} ul")`)
+  await settledScroll(devtools)
+  const from = await sortablePoint(devtools, sortablePart("milk", "handle"))
+  const bottom = await devtools.evaluate<number>(`globalThis.innerHeight - 4`)
+  const mouse = (type: string, y: number, buttons: number) =>
+    devtools.send("Input.dispatchMouseEvent", {
+      type,
+      x: from.x,
+      y,
+      button: type === "mouseMoved" && buttons === 0 ? "none" : "left",
+      buttons,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+    })
+  await mouse("mouseMoved", from.y, 0)
+  await mouse("mousePressed", from.y, 1)
+  await mouse("mouseMoved", from.y + 10, 1)
+  await sortableFrames(devtools)
+  const before = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await mouse("mouseMoved", bottom, 1)
+  const scrolled = await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.scrollY > ${before.scrollY + 100}`),
+    3_000,
+  )
+  const held = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+  await pressKey(devtools, "Escape")
+  await poll(
+    () => devtools.evaluate<boolean>(`${SORTABLE_STATE}.live.startsWith("Cancelled")`),
+    2_000,
+  )
+  await mouse("mouseReleased", bottom, 0)
+  // The rows slide back with a short transition; wait it out before reading where they are drawn.
+  await poll(
+    () =>
+      devtools.evaluate<boolean>(
+        `JSON.stringify(${SORTABLE_STATE}.drawn) === '${JSON.stringify(SORTABLE_FIRST)}'`,
+      ),
+    2_000,
+  )
+  const after = await devtools.evaluate<SortableState>(SORTABLE_STATE)
+
+  check(
+    "holding a SortableList drag at the window's bottom edge scrolls the page",
+    scrolled && held.live.startsWith("Moved Buy milk"),
+    `scrollY ${before.scrollY} → ${held.scrollY}, live "${held.live}"`,
+  )
+  check(
+    "Escape during a SortableList mouse drag puts the item back, keeps focus on its handle and reports no move",
+    JSON.stringify(after.order) === JSON.stringify(SORTABLE_FIRST) &&
+      JSON.stringify(after.drawn) === JSON.stringify(SORTABLE_FIRST) &&
+      after.lastMove.endsWith("0, the last none yet") &&
+      after.live === "Cancelled. Buy milk is back at position 1 of 5." && after.focused === "milk",
+    `order ${JSON.stringify(after.order)}, drawn ${JSON.stringify(after.drawn)}, onMove ` +
+      `"${after.lastMove}", live "${after.live}", focus ${after.focused}`,
+  )
 }

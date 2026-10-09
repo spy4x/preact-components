@@ -3,6 +3,7 @@ import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { isImeKeyPress } from "./ime.ts"
+import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 
 /**
  * Keys the combobox acts on, and what each does. Everything else falls through to the platform,
@@ -535,18 +536,6 @@ export interface ComboboxNamingProps {
   "aria-labelledby"?: string
 }
 
-/*
- * Base classes first. `cn` resolves conflicts last-wins, so a state class has to come after the
- * base to win: the highlighted row repaints the background, the selected row repaints the text.
- */
-const optionClasses =
-  "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
-const activeOptionClasses = "bg-hover font-semibold"
-const selectedOptionClasses =
-  "bg-selected-soft font-medium text-selected hover:bg-selected-soft-hover"
-const activeSelectedOptionClasses = "bg-selected-soft-hover font-semibold"
-const disabledOptionClasses = "cursor-not-allowed opacity-50"
-
 /**
  * Chevron of the search input, inline so `ui`'s "no dependency on `icons/`" rule holds.
  *
@@ -578,20 +567,6 @@ function Chevron() {
  */
 function defaultCountMessage(count: number): string {
   return count === 1 ? "1 match" : `${count} matches`
-}
-
-/** Clear glyph, inline for the same reason as {@link Chevron}. */
-function Cross() {
-  return (
-    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M6 18L18 6M6 6l12 12"
-      />
-    </svg>
-  )
 }
 
 /**
@@ -939,7 +914,7 @@ export function Combobox<T>({
                 close()
               }}
             >
-              <Cross />
+              <CrossGlyph />
             </button>
           )}
           <Chevron />
@@ -954,10 +929,7 @@ export function Combobox<T>({
         // The `hidden` attribute, not a `hidden` utility: the popup then disappears on markup alone,
         // without the stylesheet, and cannot be shown by a utility the caller adds.
         hidden={!isOpen.value}
-        class={cn(
-          "absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-control bg-surface shadow-popover",
-          listboxClass,
-        )}
+        class={cn(listboxClasses, listboxClass)}
       >
         {content.options.map((item, index) => {
           // A lookup, not a scan: reading `items` per row is what made this loop quadratic.
@@ -972,13 +944,7 @@ export function Combobox<T>({
               aria-selected={selected}
               aria-disabled={disabled || undefined}
               data-active={isActive || undefined}
-              class={cn(
-                optionClasses,
-                isActive && activeOptionClasses,
-                selected && selectedOptionClasses,
-                isActive && selected && activeSelectedOptionClasses,
-                disabled && disabledOptionClasses,
-              )}
+              class={listboxOptionClass({ active: isActive, selected, disabled })}
               onMouseDown={(event) => event.preventDefault()}
               // No pointer handler moves the highlight. `aria-activedescendant` is where a screen
               // reader is reading, and writing it from a `mouseenter` drags that reading around

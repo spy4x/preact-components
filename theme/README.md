@@ -141,6 +141,15 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   resolved package's `package.json` through the `readTextFile` it is given — `Deno.readTextFile`,
   or Node's `(path) => readFile(path, "utf8")` — so the module itself calls no Deno-only API. List
   it before `deno()`.
+- `serviceWorker({ entry, build, plugins, readDir, readFile })` builds a service worker after the
+  app build, because a browser cannot load a worker that imports a `jsr:` or `npm:` specifier. It
+  writes `sw.js` (`fileName` changes it) into the output folder as one classic script, with
+  `__BUILD_ID__` (`buildIdName` renames it) defined as a hash of every other built file. Name the
+  worker's cache after it and a deploy changes both the worker's bytes, so browsers see an update,
+  and the cache name, so the old cache is dropped. Pass Vite's `build`, `[deno()]` as `plugins`,
+  and `Deno.readDir` and `Deno.readFile`. `buildIdOf(files)` is the hash, exported for a test.
+  In an app with a client and a server build (Fresh), run it on the client build only:
+  `{ ...serviceWorker(options), applyToEnvironment: (env) => env.name === "client" }`.
 
 The plugins are typed structurally, so this package does not depend on `vite`; an object they
 return is accepted by Vite's `plugins` array as it is.

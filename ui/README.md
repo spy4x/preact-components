@@ -107,10 +107,12 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `SettingList`     | `setting-row`       | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                    |
 | `SettingRow`      | `setting-row`       | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                      |
 | `ShortcutsDialog` | `shortcuts-dialog`  | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                |
+| `SortableList`    | `sortable-list`     | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                       |
 | `Stack`           | `layout`            | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                               |
 | `StatusMark`      | `status-mark`       | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                      |
 | `Table`           | `table`             | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                   |
 | `Tabs`            | `tabs`              | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                                            |
+| `TagInput`        | `tag-input`         | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                      |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                                                  |
 | `ThemeToggle`     | `theme-toggle`      | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark                                                     |
 | `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                             |
@@ -1287,6 +1289,27 @@ Escape pressed while an input method is still composing a word do not save or ca
 `inlineEditCommit(draft, value)` is the save rule on its own: the trimmed draft, or `null` when it
 is empty or matches the value, in which case the field closes without calling `onSave`.
 
+## TagInput
+
+A text field that collects several tags. Enter or a comma adds the typed text as a tag, trimmed;
+a tag the list already holds, in any case or Unicode encoding, is not added twice. Backspace in the empty field removes
+the last tag. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
+
+The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys, with rows
+44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
+arrow key chose a suggestion first. Escape on an open list closes it and drops the typed text, as in
+`Combobox`; with no list showing, Escape leaves the text alone. Text still in the field when focus leaves it is not added.
+
+Each chip's remove button is named `"Remove tag <name>"` and is 44 px square, and so is the text
+field's height. After a removal focus goes back to the text field. Additions, removals and refused
+duplicates are announced through one polite live region rendered with the field, the same message
+twice in a row included. Every string is a
+prop with an English default: `placeholder`, `removeLabel`, `tagsLabel`, `suggestionsLabel`,
+`addedMessage`, `removedMessage` and `duplicateMessage`.
+
+Inside `Field`, leave `label` and `error` out: `Field` renders both, and its wiring sets the field's
+`id`, `aria-describedby` and `aria-invalid`.
+
 ## ToggleChips
 
 Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
@@ -1348,6 +1371,56 @@ Helpers:
 - `nextKanbanSlot(key, from, lengths)` is the arrow-key map on its own: where a picked-up card goes
   for a key, given each column's length without it.
 - `defaultKanbanLabels` holds the English strings `labels` overrides.
+
+## SortableList
+
+A vertical list whose items a reader reorders by dragging a handle, on a touch screen or with a
+mouse, or from the keyboard. It is controlled: `items` in, one `onMove(from, to)` out, and the list
+never reorders the caller's data. `from` is the item's index before the move and `to` its index
+after it.
+
+```tsx
+<SortableList
+  items={tasks.value}
+  renderItem={(task) => task.title}
+  itemLabel={(task) => task.title}
+  onMove={(from, to) => {
+    const next = [...tasks.value]
+    next.splice(to, 0, ...next.splice(from, 1))
+    tasks.value = next
+  }}
+/>
+```
+
+- **Touch and mouse**: pointer events, no drag library. A drag starts only on an item's handle,
+  the one element with `touch-action: none`, so a finger anywhere else on the list scrolls the page
+  as usual. While an item is held, it follows the pointer and the other rows slide out of its way;
+  near the top or bottom of the scrolling area (the nearest scrolling ancestor, or the page) the
+  area scrolls. Escape, or a touch the browser cancels, puts the item back. A long press on a
+  handle opens no browser menu.
+- **Keyboard**: each handle is a button and a tab stop. Space or Enter picks the item up, the arrow
+  keys move it, Space or Enter drops it, and Escape puts it back. Moving focus away while holding
+  an item, with Tab or a click elsewhere, also puts it back. Focus stays on the handle after a
+  drop or a cancel, by any input. A held handle has `aria-pressed="true"`.
+- **Screen readers**: a reader's default reading mode may keep the arrow keys for itself, so they
+  never reach the page. Pressing the handle there (a click with no pointer) picks the item up and
+  pressing it again drops it; the reader then needs its focus or forms mode for the arrows to move
+  the item.
+- **Announcements**: a polite live region says when an item is picked up, each new position, the
+  drop and a cancel. Each handle is named `Reorder <item>` and is a 44 px target. `labels`
+  overrides any of these strings; `itemLabel` names an item in them and is required, because only
+  the caller knows what an item is called.
+- `renderItem` draws the body beside the handle, so it may hold its own buttons and links.
+- A held item is put back when the caller changes the list's order or membership mid-move.
+
+Helpers, exported for a caller that builds its own drag surface on the same rules:
+
+- `sortableTarget(boxes, from, center)` is the drop rule: the index a held item takes from where
+  its middle is, given every row's `{ top, height }` measured at pick-up.
+- `sortableOffsets(boxes, from, to)` is the layout rule: how far each row shifts while the item at
+  `from` is shown at `to`.
+- `edgeScrollStep(y, top, bottom)` is the edge auto-scroll speed for one animation frame.
+- `defaultSortableListLabels` holds the English strings `labels` overrides.
 
 ## ThemeToggle
 
@@ -1647,6 +1720,16 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### TagInput (`./tag-input`)
+
+- `addTags(tags, texts)` adds typed texts to a tag list: trimmed, blanks skipped, and a text the
+  list already holds in any case left out and reported in `duplicates`.
+- `splitTagText(text)` splits a field's text at commas into finished tags and the unfinished rest.
+- `tagSuggestions(suggestions, tags, query)` is the suggestion list for a query: matching ones, as
+  `Combobox` matches, minus the chosen tags, each spelling once.
+- `tagInputKeyAction(event, state, count, text)` is the field's whole key table: `Combobox`'s arrow
+  keys, plus Enter and comma adding a tag and Backspace removing the last one.
 
 ### UnsavedGuard (`./unsaved-guard`)
 

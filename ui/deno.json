@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "exports": {
     ".": "./+index.ts",
     "./avatar": "./avatar.tsx",
@@ -45,6 +45,7 @@
     "./status-mark": "./status-mark.tsx",
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",
+    "./tag-input": "./tag-input.tsx",
     "./toastr": "./toastr.tsx",
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
@@ -56,6 +57,7 @@
     "./inline-edit": "./inline-edit.tsx",
     "./toggle-chips": "./toggle-chips.tsx",
     "./kanban-board": "./kanban-board.tsx",
+    "./sortable-list": "./sortable-list.tsx",
     "./theme-toggle": "./theme-toggle.tsx",
     "./unsaved-guard": "./unsaved-guard.tsx"
   },

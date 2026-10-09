@@ -2,13 +2,15 @@
  * `@spy4x/preact-theme/vite` — the Vite plugins a Deno app needs to use the `@spy4x/preact-*`
  * packages.
  *
- * Three plugins, each a factory an app lists in its `vite.config.ts`:
+ * Four plugins, each a factory an app lists in its `vite.config.ts`:
  *
  * - {@link preactThemeCss} answers the theme's `@import` lines in the app's stylesheet with the
  *   text this package exports, and appends `@source inline(...)` with {@link COMPONENT_CLASSES}.
  * - {@link requireComponentCss} fails a build whose CSS lacks the components' classes.
  * - {@link npmSpecifiers} resolves the `npm:` specifiers inside the library's modules to the app's
  *   own copy, and fails when the versions differ.
+ * - {@link serviceWorker} bundles a service worker after the app build, with a hash of the build
+ *   defined in it.
  *
  * The plugins are typed structurally ({@link VitePlugin}): this package takes no `vite`
  * dependency, and an object of this shape is accepted wherever Vite takes a plugin. Nothing here
@@ -102,6 +104,10 @@ export interface VitePlugin {
     source: string,
     importer: string | undefined,
   ) => Promise<VitePartialResolvedId | null | undefined>
+  /** Receives the resolved config: the project root and the output folder. */
+  configResolved?: (config: { root: string; build: { outDir: string } }) => void
+  /** Runs once the build has written its files. */
+  closeBundle?: () => Promise<void>
   /** Runs once the bundle is written in memory, before it reaches disk. */
   generateBundle?: (
     this: VitePluginContext,
@@ -345,3 +351,6 @@ export function npmSpecifiers(options: NpmSpecifiersOptions): VitePlugin {
     },
   }
 }
+
+export { buildIdOf, serviceWorker } from "./service-worker.ts"
+export type { ServiceWorkerDirEntry, ServiceWorkerOptions } from "./service-worker.ts"
