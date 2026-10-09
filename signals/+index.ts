@@ -32,6 +32,19 @@ export {
   type CopyFeedback,
   createClipboard,
 } from "./clipboard.ts"
+export {
+  createInstallPrompt,
+  type InstallOutcome,
+  type InstallPromptEvent,
+  type InstallPromptMatchMedia,
+  type InstallPromptMode,
+  type InstallPromptNavigator,
+  type InstallPromptPorts,
+  type InstallPromptStore,
+  type InstallPromptTarget,
+  isIosDevice,
+  isStandalone,
+} from "./install-prompt.ts"
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 export {
   createNow,

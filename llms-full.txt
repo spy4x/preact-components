@@ -1525,18 +1525,19 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 
 ## What is in the box
 
-| Module              | Exports                                                                                                                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                   |
-| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
-| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                          |
-| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
-| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                     |
-| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                      |
-| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                              |
-| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                              |
-| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
-| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
+| Module              | Exports                                                                                                                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                                        |
+| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint                      |
+| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                                               |
+| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                     |
+| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                          |
+| `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `isIosDevice`, `isStandalone` |
+| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                                           |
+| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                                                   |
+| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                                                   |
+| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                                                |
+| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                                            |
 
 A toast in the store carries an `id`, a `title`, a `body`, a `type` and an optional `duration`;
 `Toastr` in `@spy4x/preact-ui` shows the title in bold above the body. A message that names no
@@ -1962,6 +1963,29 @@ const onboarding = createOnboardingState({ steps, dismissed: settingsPort })
 }
 ```
 
+## `createInstallPrompt`, beside `InstallPrompt`
+
+`createInstallPrompt(ports)` captures `beforeinstallprompt` (and cancels the browser's own mini
+info bar), so `install()` can open the browser's dialog later from a button. Its `mode` is
+`prompt` once the event fired, `ios` on an iPhone or iPad, where no browser fires it and the
+person installs through Share, then Add to Home Screen, `installed` when the app already runs
+standalone or `appinstalled` fired, and `unavailable` otherwise. `visible` is `true` for `prompt`
+and `ios` until `dismiss()` stores the flag through `dismissed`, the same `{ read, write }` port
+`createOnboardingState` takes; left out, the flag lives in memory. Call `watch()` early in the
+client entry point: the event can fire before the app renders. `isIosDevice(navigator)` and
+`isStandalone(navigator, matchMedia)` are the two checks it starts from. `InstallPrompt` in
+`@spy4x/preact-system` draws it.
+
+```ts
+const install = createInstallPrompt({
+  dismissed: {
+    read: () => localStorage.getItem("install-dismissed") === "1",
+    write: (value) => localStorage.setItem("install-dismissed", value ? "1" : "0"),
+  },
+})
+install.watch()
+```
+
 ## Notes and sharp edges
 
 - **Importing this package changes nothing globally.** It renders nothing, augments no prototype
@@ -2222,8 +2246,8 @@ the named tests for that.
 
 # `@spy4x/preact-system`
 
-Application chrome and platform integration: SEO, PWA updates, and the progressive-enhancement
-components that have to render without JavaScript.
+Application chrome and platform integration: SEO, PWA updates and offline sync, and the
+progressive-enhancement components that have to render without JavaScript.
 
 Extracted from earlier source applications.
 
@@ -2238,9 +2262,9 @@ Extracted from earlier source applications.
   `today` so a render is deterministic.
 - **A live region is always present and empty.** See below; it is a library-wide rule, not a
   `SWUpdater` one.
-- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the four glyphs
-  these components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`) rather
-  than duplicating SVG.
+- **No `theme/` dependency.** Utilities are inlined, like `ui/`. `icons/` supplies the glyphs these
+  components draw (`IconChevronLeft`, `IconChevronRight`, `IconXMark`, `IconBars3`, `IconDownload`,
+  `IconShare`) rather than duplicating SVG.
 - **`ui/` is a sibling dependency.** `Shell` and `AuthForm` already import individual `ui/`
   components (`Avatar`, `Dropdown`; `Button`, `Field`, `Input`). `crud/` imports `ui/` the same
   way. The zoom layer over a container's images that used to live here as `ImageLightbox` is
@@ -2248,16 +2272,19 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component    | Subpath       | Ports / key props                                                                                                                                                                           |
-| ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`   | `auth-form`   | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
-| `SEOHead`    | `seo-head`    | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
-| `SWUpdater`  | `sw-updater`  | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
-| `Calendar`   | `calendar`    | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader` | `site-header` | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
-| `Shell`      | `shell`       | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
-| `StateInit`  | `state-init`  | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`  | `rail-shell`  | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `header?`, `children`, `labels?`, `class?`                                                                                 |
+| Component         | Subpath            | Ports / key props                                                                                                                                                                           |
+| ----------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthForm`        | `auth-form`        | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
+| `SEOHead`         | `seo-head`         | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
+| `SWUpdater`       | `sw-updater`       | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
+| `Calendar`        | `calendar`         | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
+| `SiteHeader`      | `site-header`      | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
+| `Shell`           | `shell`            | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
+| `StateInit`       | `state-init`       | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
+| `RailShell`       | `rail-shell`       | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `header?`, `children`, `labels?`, `class?`                                                                                 |
+| `SyncStatus`      | `sync-status`      | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
+| `ConflictChooser` | `conflict-chooser` | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
+| `InstallPrompt`   | `install-prompt`   | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -3138,6 +3165,85 @@ at import time. Props-and-ports conversion for those was a redesign, not a port 
 the same redesign and got it first. `Shell` (#135) and `StateInit` are that redesign, and their own
 sections above describe what changed.
 
+## Offline sync and install
+
+Three components for an offline-first app. None of them imports a queue or a store: they take
+plain values and callbacks, so they work with any outbox and ship on their own.
+
+- **`SyncStatus`** is one compact line for a header or a status bar: offline, "3 changes waiting
+  to sync", syncing, "Sync failed" with a Retry button, or "All changes synced" (`labels.synced: ""`
+  hides that one). The words sit in a `role="status"` region that is always in the page, so every
+  change is announced politely, and the component never moves focus on its own. A shape beside the
+  words tells the states apart without colour. `syncState(input)` is the precedence it uses, most
+  urgent first: offline, failed, syncing, waiting, synced. `DEFAULT_SYNC_STATUS_LABELS` holds its
+  English words.
+- **`ConflictChooser`** lists the changes the server did not take. Each says in plain words what
+  happened, changed elsewhere (`version`), deleted elsewhere (`gone`) or refused by the server
+  (`rejected`), and offers the choices that make sense: "Keep mine" and "Use theirs" for a change
+  made elsewhere, and only "Discard mine" for a deleted item or a refusal. `offersKeepMine(item)`
+  is that rule. An item opts in with `canKeepMine: true`: on a `gone` item the button then reads
+  "Restore mine", for an outbox whose `keepMine` re-creates a deleted item. It renders inline, which
+  suits a phone; for a dialog, put it inside `Modal` from `@spy4x/preact-ui` and set
+  `headingLevel` to fit the dialog's own title. When a choice removes the item whose button had
+  focus, focus moves to the next item, or to the heading once none is left. A callback may return
+  a promise: its item's buttons stay busy until it settles, and a rejection shows `labels.failed`
+  under the item and announces it, with nothing left uncaught. `DEFAULT_CONFLICT_CHOOSER_LABELS`
+  holds its English words; `labels` replaces any of them, per reason inside the records.
+- **`InstallPrompt`** offers to install the app: an Install button where the browser has an
+  install dialog (`mode: "prompt"`), and "Tap Share, then Add to Home Screen" on an iPhone or iPad
+  (`mode: "ios"`). It renders nothing for `installed` and `unavailable`. `createInstallPrompt` in
+  `@spy4x/preact-signals` supplies the mode and remembers a dismissal through a port. When the card
+  leaves while focus is inside it, after "Not now" or an accepted install, focus moves to the
+  element `returnFocus` returns, which must be focusable: a button, or an element with
+  `tabIndex={-1}`. Without one, focus falls to the page body. A rejected `onInstall` shows `labels.failed` in the card.
+  `DEFAULT_INSTALL_PROMPT_LABELS` holds its English words.
+- The update banner is `SWUpdater`, above; there is no second one.
+
+### Wiring them to an `Outbox`
+
+The outbox in `@spy4x/realtime/outbox` (spy4x/ts-libs) fits these props as follows. This package
+does not import it.
+
+```tsx
+import { createInstallPrompt, createOnlineStatus } from "@spy4x/preact-signals"
+import { ConflictChooser, InstallPrompt, SyncStatus } from "@spy4x/preact-system"
+
+const connection = createOnlineStatus()
+const install = createInstallPrompt({ dismissed: localFlag("install-dismissed") })
+// In the client entry point: connection.watch(); install.watch()
+
+// `entries` is a signal the app refreshes from `outbox.entries()` after every change, and
+// `syncing` and `failed` come from whatever runs `outbox.flush()`.
+const pending = entries.value.filter((entry) => !entry.conflict).length
+const conflicts = entries.value.filter((entry) => entry.conflict).map((entry) => ({
+  id: String(entry.seq),
+  label: entry.payload.title,
+  reason: entry.conflict!.reason,
+  message: entry.conflict!.reason === "rejected" ? entry.conflict!.message : undefined,
+}))
+const byId = (id: string) => entries.value.find((entry) => String(entry.seq) === id)!
+
+<SyncStatus
+  online={connection.online.value}
+  pending={pending}
+  syncing={syncing.value}
+  failed={failed.value}
+  onRetry={() => runSync()}
+/>
+<ConflictChooser
+  conflicts={conflicts}
+  onKeepMine={(id) => outbox.keepMine(byId(id)).then(refresh)}
+  onUseTheirs={(id) => outbox.useTheirs(byId(id)).then(refresh)}
+/>
+<InstallPrompt mode={install.visible.value ? install.mode.value : "unavailable"}
+  onInstall={install.install} onDismiss={install.dismiss}
+  returnFocus={() => document.getElementById("app-menu")} />
+```
+
+A `gone` conflict offers only "Discard mine" here, because the outbox's `keepMine` does nothing for
+a deleted item today. Once it re-creates one, map `canKeepMine: true` for `gone` entries and the
+item offers "Restore mine" too.
+
 ## Helpers
 
 Helpers the sections above do not already name, each importable from the package root or from its
@@ -3461,6 +3567,17 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   on the next fetch, and a broken worker answers 500 with the build error. `dev: false` turns this
   off. In an app with a client and a server build (Fresh), run it on the client build only:
   `{ ...serviceWorker(options), applyToEnvironment: (env) => env.name === "client" }`.
+- `webManifest({ manifest, writeTextFile })` writes `manifest.webmanifest` (`fileName` changes
+  it) into the output folder after the build, and serves the same file from the dev server. The
+  manifest is a typed object: `name` and `icons` are yours, and the rest defaults to what an
+  installable app needs: `display: "standalone"`, `start_url`, `scope` and `id` at Vite's `base`,
+  `short_name` from `name`, and a white `background_color`. `icons` must hold a 192x192 icon, a
+  512x512 one and one with `purpose: "maskable"`, or the config fails to resolve, naming each one
+  missing: without them a browser does not offer to install the app, or Android crops the icon.
+  Pass `Deno.writeTextFile`, and link the file from the page's `<head>`:
+  `<link rel="manifest" href="/manifest.webmanifest">`. `buildWebManifest(input, base)` is the
+  same object with its defaults filled in, for a test or a server that writes the file itself. In
+  an app with a client and a server build, run it on the client build only, as above.
 
 The plugins are typed structurally, so this package does not depend on `vite`; an object they
 return is accepted by Vite's `plugins` array as it is.

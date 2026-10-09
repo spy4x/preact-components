@@ -26,7 +26,23 @@ export {
   type CalendarProps,
   describeCalendarDay,
 } from "./calendar.tsx"
+export {
+  ConflictChooser,
+  type ConflictChooserLabelOverrides,
+  type ConflictChooserLabels,
+  type ConflictChooserProps,
+  type ConflictItem,
+  type ConflictKind,
+  DEFAULT_CONFLICT_CHOOSER_LABELS,
+  offersKeepMine,
+} from "./conflict-chooser.tsx"
 export { createHeadStore, type HeadStore, type OgType, type PageHead } from "./head.ts"
+export {
+  DEFAULT_INSTALL_PROMPT_LABELS,
+  InstallPrompt,
+  type InstallPromptLabels,
+  type InstallPromptProps,
+} from "./install-prompt.tsx"
 export {
   RailShell,
   type RailShellItem,
@@ -62,6 +78,15 @@ export {
   type StateInitSourceLike,
   stateInitText,
 } from "./state-init.tsx"
+export {
+  DEFAULT_SYNC_STATUS_LABELS,
+  type SyncState,
+  syncState,
+  type SyncStateInput,
+  SyncStatus,
+  type SyncStatusLabels,
+  type SyncStatusProps,
+} from "./sync-status.tsx"
 export {
   type ContainerLike,
   DEFAULT_UPDATE_MESSAGE,

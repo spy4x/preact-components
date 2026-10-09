@@ -321,6 +321,17 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `ClipboardStore` (type): A clipboard helper. Import: `@spy4x/preact-signals`
 - `CopyFeedback` (type): What to do about the outcome. Import: `@spy4x/preact-signals`
 - `createClipboard` (helper): Create a clipboard helper. Import: `@spy4x/preact-signals`
+- `createInstallPrompt` (helper): Create an install prompt store. Import: `@spy4x/preact-signals`
+- `InstallOutcome` (type): What the install dialog came to. Import: `@spy4x/preact-signals`
+- `InstallPromptEvent` (type): The slice of the `beforeinstallprompt` event this store uses. Import: `@spy4x/preact-signals`
+- `InstallPromptMatchMedia` (type): `matchMedia` port. Import: `@spy4x/preact-signals`
+- `InstallPromptMode` (type): How the app can be installed here. Import: `@spy4x/preact-signals`
+- `InstallPromptNavigator` (type): The slice of `navigator` this store reads. Import: `@spy4x/preact-signals`
+- `InstallPromptPorts` (type): Everything the store needs from the outside. Import: `@spy4x/preact-signals`
+- `InstallPromptStore` (type): The install state, and the wiring that keeps it current. Import: `@spy4x/preact-signals`
+- `InstallPromptTarget` (type): Event port. Import: `@spy4x/preact-signals`
+- `isIosDevice` (helper): Whether this is an iPhone, iPod or iPad, where no browser fires `beforeinstallprompt`. Import: `@spy4x/preact-signals`
+- `isStandalone` (helper): Whether the page runs as an installed app: the display mode is `standalone` or `minimal-ui`, or iOS's own flag says so. Import: `@spy4x/preact-signals`
 - `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
 - `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
 - `createNow` (helper): Create a store holding the current time. Import: `@spy4x/preact-signals`
@@ -377,7 +388,7 @@ Install: `deno add jsr:@spy4x/preact-signals`
 
 ## @spy4x/preact-system
 
-Application chrome and platform integration: SEO, PWA updates, and the progressive-enhancement components that have to render without JavaScript.
+Application chrome and platform integration: SEO, PWA updates and offline sync, and the progressive-enhancement components that have to render without JavaScript.
 
 Install: `deno add jsr:@spy4x/preact-system`
 
@@ -396,10 +407,22 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `CalendarLabels` (type): Copy the calendar renders. Import: `@spy4x/preact-system`
 - `CalendarProps` (type): Props of `Calendar`. Import: `@spy4x/preact-system`
 - `describeCalendarDay` (helper): Default day description: the date as the locale writes it, then why it cannot be picked. Import: `@spy4x/preact-system`
+- `ConflictChooser` (component): A list of conflicts, each explained in plain words, with "Keep mine" and "Use theirs". Import: `@spy4x/preact-system`
+- `ConflictChooserLabelOverrides` (type): The words a caller replaces: any of them, and per reason inside the records. Import: `@spy4x/preact-system`
+- `ConflictChooserLabels` (type): Every word `ConflictChooser` shows, each with an English default. Import: `@spy4x/preact-system`
+- `ConflictChooserProps` (type): Props of `ConflictChooser`. Import: `@spy4x/preact-system`
+- `ConflictItem` (type): One conflict to show. Import: `@spy4x/preact-system`
+- `ConflictKind` (type): Why a change was not taken, the same three words `ConflictReason` in `@spy4x/realtime/outbox` uses: `version` (changed elsewhere), `gone` (deleted elsewhere), `rejected` (the server refused). Import: `@spy4x/preact-system`
+- `DEFAULT_CONFLICT_CHOOSER_LABELS` (constant): The English words `ConflictChooser` shows when the caller passes none. Import: `@spy4x/preact-system`
+- `offersKeepMine` (helper): Whether an item offers "Keep mine": the item says, or its reason decides. Import: `@spy4x/preact-system`
 - `createHeadStore` (helper): Build a head store from defaults. Import: `@spy4x/preact-system`
 - `HeadStore` (type): A head signal with the defaults it was created from, so `resetHead()` is exact. Import: `@spy4x/preact-system`
 - `OgType` (type): Open Graph object type a page declares. Import: `@spy4x/preact-system`
 - `PageHead` (type): Every field `SEOHead` renders, plus the JSON-LD inputs. Import: `@spy4x/preact-system`
+- `DEFAULT_INSTALL_PROMPT_LABELS` (constant): The English words `InstallPrompt` shows when the caller passes none. Import: `@spy4x/preact-system`
+- `InstallPrompt` (component): Offer to install the app, or explain how to on iOS. Import: `@spy4x/preact-system`
+- `InstallPromptLabels` (type): Every word `InstallPrompt` shows, each with an English default. Import: `@spy4x/preact-system`
+- `InstallPromptProps` (type): Props of `InstallPrompt`. Import: `@spy4x/preact-system`
 - `RailShell` (component): The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
 - `RailShellItem` (type): One destination in `RailShellProps.items`, or the `RailShellProps.primary` action. Import: `@spy4x/preact-system`
 - `RailShellLabels` (type): Every string `RailShell` prints that is not data the caller supplied. Import: `@spy4x/preact-system`
@@ -431,6 +454,13 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `StateInitProps` (type): Props of `StateInit`. Import: `@spy4x/preact-system`
 - `StateInitSourceLike` (type): The one thing `readStateInit` needs from `document` — a seam a test can fake without a DOM. Import: `@spy4x/preact-system`
 - `stateInitText` (helper): Serialise `data` for embedding inside `StateInit`'s `<script type="application/json">`. Import: `@spy4x/preact-system`
+- `DEFAULT_SYNC_STATUS_LABELS` (constant): The English words `SyncStatus` shows when the caller passes none. Import: `@spy4x/preact-system`
+- `SyncState` (type): Which of the five states the line shows. Import: `@spy4x/preact-system`
+- `syncState` (helper): The state to show, most urgent first: offline, then failed, then syncing, then waiting. Import: `@spy4x/preact-system`
+- `SyncStateInput` (type): What `syncState` reads. Import: `@spy4x/preact-system`
+- `SyncStatus` (component): Whether the app's offline changes have reached the server, in one compact line. Import: `@spy4x/preact-system`
+- `SyncStatusLabels` (type): Every word `SyncStatus` shows. Import: `@spy4x/preact-system`
+- `SyncStatusProps` (type): Props of `SyncStatus`. Import: `@spy4x/preact-system`
 - `ContainerLike` (type): The slice of `ServiceWorkerContainer` this package uses. Import: `@spy4x/preact-system`
 - `DEFAULT_UPDATE_MESSAGE` (constant): What a waiting worker is told to take over with, when the caller names nothing else. Import: `@spy4x/preact-system`
 - `RegistrationLike` (type): The slice of `ServiceWorkerRegistration` this package uses. Import: `@spy4x/preact-system`
@@ -464,7 +494,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (912 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (915 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -497,6 +527,12 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `serviceWorker` (helper): Builds the worker at `entry` into the output folder once the app build is written, as one classic script (`iife`). Import: `@spy4x/preact-theme/vite`
 - `ServiceWorkerDirEntry` (type): The part of a directory entry `ServiceWorkerOptions.readDir` yields. Import: `@spy4x/preact-theme/vite`
 - `ServiceWorkerOptions` (type): Options for `serviceWorker`. Import: `@spy4x/preact-theme/vite`
+- `buildWebManifest` (helper): The manifest with its defaults filled in. Import: `@spy4x/preact-theme/vite`
+- `webManifest` (helper): Writes the manifest into the output folder once the app build is written, and serves it from the dev server at `/<fileName>` (under Vite's `base`). Import: `@spy4x/preact-theme/vite`
+- `WebManifest` (type): A manifest with every default filled in, as written to the file. Import: `@spy4x/preact-theme/vite`
+- `WebManifestIcon` (type): One manifest icon. Import: `@spy4x/preact-theme/vite`
+- `WebManifestInput` (type): The manifest fields a caller writes; everything but `name` and `icons` has a default. Import: `@spy4x/preact-theme/vite`
+- `WebManifestOptions` (type): Options for `webManifest`. Import: `@spy4x/preact-theme/vite`
 
 ## @spy4x/preact-ui
 

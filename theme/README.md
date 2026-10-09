@@ -155,6 +155,17 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   on the next fetch, and a broken worker answers 500 with the build error. `dev: false` turns this
   off. In an app with a client and a server build (Fresh), run it on the client build only:
   `{ ...serviceWorker(options), applyToEnvironment: (env) => env.name === "client" }`.
+- `webManifest({ manifest, writeTextFile })` writes `manifest.webmanifest` (`fileName` changes
+  it) into the output folder after the build, and serves the same file from the dev server. The
+  manifest is a typed object: `name` and `icons` are yours, and the rest defaults to what an
+  installable app needs: `display: "standalone"`, `start_url`, `scope` and `id` at Vite's `base`,
+  `short_name` from `name`, and a white `background_color`. `icons` must hold a 192x192 icon, a
+  512x512 one and one with `purpose: "maskable"`, or the config fails to resolve, naming each one
+  missing: without them a browser does not offer to install the app, or Android crops the icon.
+  Pass `Deno.writeTextFile`, and link the file from the page's `<head>`:
+  `<link rel="manifest" href="/manifest.webmanifest">`. `buildWebManifest(input, base)` is the
+  same object with its defaults filled in, for a test or a server that writes the file itself. In
+  an app with a client and a server build, run it on the client build only, as above.
 
 The plugins are typed structurally, so this package does not depend on `vite`; an object they
 return is accepted by Vite's `plugins` array as it is.

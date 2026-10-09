@@ -179,7 +179,8 @@ function clickBarButton(devtools: Devtools, label: string, bar = BAR): Promise<b
 /**
  * `system/`'s browser checks: `AuthForm`, the calendar's keyboard, `SiteHeader`'s mobile panel,
  * `Shell`'s drawer and its interaction with `ui/`'s `Dropdown`, `RailShell`'s rail, tab bar and
- * "More" dialog, and `SWUpdater` against a real service worker.
+ * "More" dialog, `SyncStatus`, `ConflictChooser` and `InstallPrompt`, and `SWUpdater` against a
+ * real service worker.
  *
  * `AuthForm` runs first, and its last step is the reason the calendar comes after it rather than
  * around it: proving that a submit survives disabled script execution means disabling script
@@ -216,6 +217,9 @@ export async function systemChecks(devtools: Devtools): Promise<void> {
   // RailShell's no-script check reloads the page on an address whose hash names no guide page,
   // so the guide opens its overview; the SWUpdater card lives on the system page.
   await openGuidePage(devtools, "system")
+  await syncStatusChecks(devtools)
+  await conflictChooserChecks(devtools)
+  await installPromptChecks(devtools)
   await serviceWorkerChecks(devtools)
   check(
     "every reading this file took came back without a page exception",
@@ -7820,5 +7824,462 @@ async function barFocusGapChecks(devtools: Devtools): Promise<void> {
         pixelContrast(reading.ring, reading.gap).toFixed(2)
       }:1 on the gap${reading.error ? ` (${reading.error})` : ""}`
     ).join("; "),
+  )
+}
+
+/** The `SyncStatus` card, its mounted component and its live region. */
+const SYNC = "#demo-SyncStatus"
+const SYNC_ROOT = SYNC + ' [data-e2e="sync-mount"] > [data-sync-state]'
+const SYNC_REGION = SYNC_ROOT + ' > [role="status"]'
+
+/** What the `SyncStatus` checks read, in one round trip. */
+interface SyncReading {
+  /** The root's `data-sync-state`. */
+  state: string
+  /** The live region's text. */
+  text: string
+  /** Whether the live region is the same element as at the first reading. */
+  sameRegion: boolean
+  /** The Retry button's text, or `""` when there is none. */
+  retry: string
+  /** Whether a button sits inside the live region, where it would be announced with the words. */
+  buttonInRegion: boolean
+  /** Which element has focus: `retry`, `root`, `body`, or the `data-e2e` of a demo button. */
+  focus: string
+}
+
+/** Read the `SyncStatus` card. The first call tags the live region so a later one knows it. */
+function readSync(devtools: Devtools): Promise<SyncReading> {
+  return read(
+    devtools,
+    `(() => {
+    const root = document.querySelector('${SYNC_ROOT}')
+    const region = document.querySelector('${SYNC_REGION}')
+    if (region && globalThis.__syncRegion === undefined) globalThis.__syncRegion = region
+    const retry = root?.querySelector(":scope > button")
+    const active = document.activeElement
+    return {
+      state: root?.getAttribute("data-sync-state") ?? "",
+      text: region?.textContent ?? "",
+      sameRegion: region !== null && region === globalThis.__syncRegion,
+      retry: retry?.textContent.trim() ?? "",
+      buttonInRegion: Boolean(region?.querySelector("button")),
+      focus: active === retry && retry ? "retry" : active === root ? "root"
+        : active === document.body ? "body" : active?.getAttribute("data-e2e") ?? active?.tagName,
+    }
+  })()`,
+    { state: "", text: "", sameRegion: false, retry: "", buttonInRegion: false, focus: "" },
+  )
+}
+
+/** Press one of the card's own buttons the way a pointer does, focusing it first. */
+function pressSyncControl(devtools: Devtools, name: string): Promise<boolean> {
+  return focusAndClick(devtools, `${SYNC} [data-e2e="${name}"]`)
+}
+
+/**
+ * `SyncStatus` through every state, as the card's stand-in queue drives it.
+ *
+ * What is proven is the contract a header indicator needs: the words change inside one live region
+ * that stays the same element (so each change is announced), pressing a control elsewhere never
+ * moves focus, Retry works from the keyboard and stays outside the region, and when a retry that
+ * had focus succeeds and the button goes, focus lands on the indicator rather than on the body.
+ *
+ * @param devtools The connected session, on the system page.
+ */
+async function syncStatusChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('${SYNC}')`)
+  const first = await readSync(devtools)
+  check(
+    "SyncStatus starts by saying how many changes wait, in a polite live region",
+    first.state === "waiting" && first.text === "2 changes waiting to sync" && first.sameRegion,
+    JSON.stringify(first),
+  )
+  const region = (await readAxNodes(devtools, SYNC_REGION))[0]
+  check(
+    "SyncStatus's words are a status region to assistive technology",
+    region?.role === "status" && !region.ignored,
+    JSON.stringify(region),
+  )
+
+  await pressSyncControl(devtools, "sync-network")
+  const offline = await readSync(devtools)
+  check(
+    "going offline changes SyncStatus's words in the same live region, and leaves focus where it was",
+    offline.state === "offline" && offline.text === "Offline, 2 changes waiting" &&
+      offline.sameRegion && offline.focus === "sync-network",
+    JSON.stringify(offline),
+  )
+
+  await pressSyncControl(devtools, "sync-network")
+  await pressSyncControl(devtools, "sync-start")
+  const syncing = await readSync(devtools)
+  await pressSyncControl(devtools, "sync-fail")
+  const failed = await readSync(devtools)
+  check(
+    "a failed sync says so and offers Retry beside the live region, not inside it",
+    syncing.text === "Syncing…" && failed.state === "failed" && failed.text === "Sync failed" &&
+      failed.retry === "Retry" && !failed.buttonInRegion && failed.sameRegion &&
+      failed.focus === "sync-fail",
+    JSON.stringify({ syncing, failed }),
+  )
+
+  await devtools.evaluate(`(document.querySelector('${SYNC_ROOT} > button')?.focus(), null)`)
+  await pressKey(devtools, "Enter")
+  const retried = await readSync(devtools)
+  check(
+    "Enter on Retry starts a sync, and the busy Retry button keeps focus while it runs",
+    retried.state === "syncing" && retried.retry !== "" && retried.focus === "retry",
+    JSON.stringify(retried),
+  )
+
+  // A plain `.click()` does not move focus, so Retry still has it when the sync succeeds.
+  await click(devtools, `${SYNC} [data-e2e="sync-succeed"]`)
+  const settled = await poll(async () => (await readSync(devtools)).state === "synced", 2_000)
+  const synced = await readSync(devtools)
+  check(
+    "when a retry that had focus succeeds, focus moves to the indicator instead of the page body",
+    settled && synced.text === "All changes synced" && synced.retry === "" &&
+      synced.focus === "root",
+    JSON.stringify(synced),
+  )
+}
+
+/** The `ConflictChooser` card and the inline chooser in it. */
+const CONFLICT = "#demo-ConflictChooser"
+const CONFLICT_INLINE = CONFLICT + ' [data-e2e="conflict-inline"] > section'
+
+/** What the `ConflictChooser` checks read. */
+interface ConflictReading {
+  /** Each item's id and its buttons' labels. */
+  items: Array<{ id: string; buttons: string[] }>
+  /** The heading's text. */
+  heading: string
+  /** The heading's tag name, such as `H2`. */
+  headingTag: string
+  /** Each item's failure message, keyed by id, for the items that show one. */
+  failures: Record<string, string>
+  /** The polite live region's text. */
+  announced: string
+  /** The card's log of callbacks that ran. */
+  log: string[]
+  /** What has focus: `heading`, `body`, or `<item id>:<button label>`. */
+  focus: string
+}
+
+/** Read the chooser under `root`, the inline one by default. */
+function readConflicts(devtools: Devtools, root = CONFLICT_INLINE): Promise<ConflictReading> {
+  return read(
+    devtools,
+    `(() => {
+    const root = document.querySelector('${root}')
+    const items = [...(root?.querySelectorAll("[data-conflict-id]") ?? [])].map((item) => ({
+      id: item.getAttribute("data-conflict-id"),
+      buttons: [...item.querySelectorAll("button")].map((button) => button.textContent.trim()),
+    }))
+    const failures = Object.fromEntries(
+      [...(root?.querySelectorAll("[data-conflict-id]") ?? [])]
+        .map((item) => [item.getAttribute("data-conflict-id"), item.querySelector(".text-danger")])
+        .filter(([, message]) => message)
+        .map(([id, message]) => [id, message.textContent]),
+    )
+    const heading = root?.querySelector("h2, h3, h4, h5, h6")
+    const active = document.activeElement
+    const item = active?.closest?.("[data-conflict-id]")
+    return {
+      items,
+      failures,
+      heading: heading?.textContent ?? "",
+      headingTag: heading?.tagName ?? "",
+      announced: root?.querySelector('[role="status"]')?.textContent ?? "",
+      log: [...document.querySelectorAll('${CONFLICT} [data-e2e="conflict-log"] li')]
+        .map((line) => line.textContent),
+      focus: active === document.body ? "body" : active === heading ? "heading"
+        : item ? item.getAttribute("data-conflict-id") + ":" + active.textContent.trim()
+        : active?.tagName ?? "",
+    }
+  })()`,
+    { items: [], heading: "", headingTag: "", failures: {}, announced: "", log: [], focus: "" },
+  )
+}
+
+/**
+ * Count `unhandledrejection` events on the page from zero, so one check never pays for another's
+ * failure. A callback's rejected promise that a component leaves uncaught lands here.
+ */
+function countUnhandledRejections(devtools: Devtools): Promise<unknown> {
+  return devtools.evaluate(`(() => {
+    if (globalThis.__unhandled === undefined) {
+      addEventListener("unhandledrejection", () => globalThis.__unhandled++)
+    }
+    globalThis.__unhandled = 0
+    return null
+  })()`)
+}
+
+/** How many `unhandledrejection` events the page saw since {@link countUnhandledRejections}. */
+async function unhandledRejections(devtools: Devtools): Promise<number> {
+  // Unhandled rejections are reported after a task boundary; give the page one.
+  await devtools.evaluate(`new Promise((resolve) => setTimeout(() => resolve(null), 50))`)
+  return devtools.evaluate<number>(`globalThis.__unhandled ?? -1`)
+}
+
+/** Focus the button labelled `label` in item `id`, so the next key press goes to it. */
+function focusConflictButton(
+  devtools: Devtools,
+  id: string,
+  label: string,
+  root = CONFLICT_INLINE,
+): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const button = [...document.querySelectorAll('${root} [data-conflict-id="${id}"] button')]
+      .find((candidate) => candidate.textContent.trim() === ${JSON.stringify(label)})
+    button?.focus()
+    return document.activeElement === button
+  })()`)
+}
+
+/**
+ * `ConflictChooser` worked through from the keyboard, both choices, inline and in a dialog.
+ *
+ * Each choice is made with Enter on a focused button. The card's callbacks remove the item, as an
+ * app does once its outbox settled it, so each check also proves where focus goes then: to the next
+ * item's first button, and to the heading once the list is empty, never to the page body.
+ *
+ * @param devtools The connected session, on the system page.
+ */
+async function conflictChooserChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('${CONFLICT}')`)
+  const first = await readConflicts(devtools)
+  check(
+    "ConflictChooser offers the choices each reason allows",
+    JSON.stringify(first.items) === JSON.stringify([
+          { id: "1", buttons: ["Keep mine", "Use theirs"] },
+          { id: "2", buttons: ["Discard mine"] },
+          { id: "3", buttons: ["Discard mine"] },
+        ]) && first.heading === "3 changes need your choice" && first.headingTag === "H2",
+    JSON.stringify(first),
+  )
+
+  await countUnhandledRejections(devtools)
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-fail-next"]`)
+  const focusedFailing = await focusConflictButton(devtools, "1", "Keep mine")
+  await pressKey(devtools, "Enter")
+  await poll(async () => Boolean((await readConflicts(devtools)).failures["1"]), 2_000)
+  const failed = await readConflicts(devtools)
+  const uncaught = await unhandledRejections(devtools)
+  check(
+    "a choice whose promise rejects keeps the item, says so under it and in the live region, and leaves nothing uncaught",
+    focusedFailing && failed.items.length === 3 &&
+      failed.failures["1"] === "Your choice was not saved. Try again." &&
+      failed.announced === "Your choice was not saved. Try again." &&
+      failed.log.join("|") === "failed: Buy milk" && failed.focus === "1:Keep mine" &&
+      uncaught === 0,
+    JSON.stringify({ failed, uncaught }),
+  )
+
+  const focusedMine = await focusConflictButton(devtools, "1", "Keep mine")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readConflicts(devtools)).items.length === 2, 2_000)
+  const kept = await readConflicts(devtools)
+  check(
+    "Enter on Keep mine runs onKeepMine, and focus moves to the next conflict's first button",
+    focusedMine && kept.log.join("|") === "failed: Buy milk|keep mine: Buy milk" &&
+      kept.focus === "2:Discard mine" && Object.keys(kept.failures).length === 0,
+    JSON.stringify(kept),
+  )
+
+  const focusedTheirs = await focusConflictButton(devtools, "2", "Discard mine")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readConflicts(devtools)).items.length === 1, 2_000)
+  const used = await readConflicts(devtools)
+  check(
+    "Enter on Discard mine runs onUseTheirs for an item deleted elsewhere",
+    focusedTheirs && used.log[2] === "use theirs: Call the plumber" &&
+      used.focus === "3:Discard mine",
+    JSON.stringify(used),
+  )
+
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readConflicts(devtools)).items.length === 0, 2_000)
+  const empty = await readConflicts(devtools)
+  check(
+    "settling the last conflict moves focus to the heading and announces that all are resolved",
+    empty.log[3] === "use theirs: Rename the shared list" && empty.focus === "heading" &&
+      empty.heading === "All conflicts resolved" && empty.announced === "All conflicts resolved",
+    JSON.stringify(empty),
+  )
+
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-dialog"]`)
+  const dialogChooser = `${CONFLICT} dialog[open] section`
+  const opened = await poll(
+    async () => (await readConflicts(devtools, dialogChooser)).items.length === 3,
+    2_000,
+  )
+  const focusedInDialog = await focusConflictButton(devtools, "1", "Use theirs", dialogChooser)
+  await pressKey(devtools, "Enter")
+  await poll(
+    async () => (await readConflicts(devtools, dialogChooser)).items.length === 2,
+    2_000,
+  )
+  const inDialog = await readConflicts(devtools, dialogChooser)
+  check(
+    "inside a Modal, Enter on Use theirs runs onUseTheirs and focus stays in the dialog, under an h3",
+    opened && focusedInDialog && inDialog.log.join("|") === "use theirs: Buy milk" &&
+      inDialog.focus === "2:Discard mine" && inDialog.headingTag === "H3",
+    JSON.stringify(inDialog),
+  )
+  await pressKey(devtools, "Escape")
+  await poll(
+    () => devtools.evaluate<boolean>(`!document.querySelector('${CONFLICT} dialog[open]')`),
+    2_000,
+  )
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
+}
+
+/** The `InstallPrompt` card, one part per case. */
+const INSTALL_CARD = "#demo-InstallPrompt"
+
+/** What one install case shows. */
+interface InstallReading {
+  /** The offer's `data-install-mode`, or `""` when no offer is drawn. */
+  shown: string
+  /** The offer's buttons, in order. */
+  buttons: string[]
+  /** The offer's text. */
+  text: string
+  /** The offer's visible failure message, or `""`. */
+  failed: string
+  /** The store's state line under it. */
+  state: string
+  /** Where focus is: `state` (this case's state line, the card's `returnFocus`), `body`, or other. */
+  focus: string
+}
+
+/** Read one case of the install card: `prompt`, `ios` or `installed`. */
+function readInstall(devtools: Devtools, name: string): Promise<InstallReading> {
+  const part = `${INSTALL_CARD} [data-e2e="install-${name}"]`
+  return read(
+    devtools,
+    `(() => {
+    const offer = document.querySelector('${part} section')
+    const state = document.querySelector('${part} [data-e2e="install-mode"]')
+    const active = document.activeElement
+    return {
+      shown: offer?.getAttribute("data-install-mode") ?? "",
+      buttons: [...(offer?.querySelectorAll("button") ?? [])].map((b) => b.textContent.trim()),
+      text: offer?.textContent ?? "",
+      failed: offer?.querySelector(".text-danger")?.textContent ?? "",
+      state: state?.textContent ?? "",
+      focus: active === state ? "state" : active === document.body ? "body"
+        : active?.textContent?.trim() ?? active?.tagName ?? "",
+    }
+  })()`,
+    { shown: "", buttons: [], text: "", failed: "", state: "", focus: "" },
+  )
+}
+
+/** Focus the button labelled `label` in the offer of case `name`. */
+function focusInstallButton(devtools: Devtools, name: string, label: string): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const button = [...document.querySelectorAll('${INSTALL_CARD} [data-e2e="install-${name}"] section button')]
+      .find((candidate) => candidate.textContent.trim() === ${JSON.stringify(label)})
+    button?.focus()
+    return document.activeElement === button
+  })()`)
+}
+
+/**
+ * `InstallPrompt` on `createInstallPrompt`, in the three cases the store tells apart.
+ *
+ * Each case runs the real store on a fake window and navigator, so the catalogue never asks the
+ * browser to install it: a browser that fires `beforeinstallprompt` and installs from the Install
+ * button pressed with Enter, an iPhone that shows the Share steps and can be dismissed, and an app
+ * already running standalone that shows nothing. Each case passes its state line as `returnFocus`,
+ * so the checks also prove where focus lands when the card leaves, and that a failing dialog or a
+ * failing store leaves no uncaught rejection.
+ *
+ * @param devtools The connected session, on the system page.
+ */
+async function installPromptChecks(devtools: Devtools): Promise<void> {
+  await centreInView(devtools, `document.querySelector('${INSTALL_CARD}')`)
+  const before = await readInstall(devtools, "prompt")
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer"]`)
+  await poll(async () => (await readInstall(devtools, "prompt")).shown === "prompt", 2_000)
+  const offered = await readInstall(devtools, "prompt")
+  check(
+    "InstallPrompt shows nothing until beforeinstallprompt fires, then offers Install and Not now",
+    before.shown === "" && offered.shown === "prompt" &&
+      offered.buttons.join("|") === "Install|Not now",
+    JSON.stringify({ before, offered }),
+  )
+
+  // An event whose dialog fails to open replaces the good one.
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer-broken"]`)
+  await countUnhandledRejections(devtools)
+  const focusedBroken = await focusInstallButton(devtools, "prompt", "Install")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readInstall(devtools, "prompt")).shown === "", 2_000)
+  const broken = await readInstall(devtools, "prompt")
+  const uncaughtInstall = await unhandledRejections(devtools)
+  check(
+    "a dialog that fails to open ends the offer, moves focus to returnFocus, and leaves nothing uncaught",
+    focusedBroken && broken.shown === "" && broken.state.startsWith("mode: unavailable") &&
+      broken.focus === "state" && uncaughtInstall === 0,
+    JSON.stringify({ broken, uncaughtInstall }),
+  )
+
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer"]`)
+  await poll(async () => (await readInstall(devtools, "prompt")).shown === "prompt", 2_000)
+  const focused = await focusInstallButton(devtools, "prompt", "Install")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readInstall(devtools, "prompt")).shown === "", 2_000)
+  const installed = await readInstall(devtools, "prompt")
+  check(
+    "Enter on Install opens the browser's dialog, an accepted dialog ends the offer, and focus moves to returnFocus",
+    focused && installed.shown === "" && installed.state.startsWith("mode: installed") &&
+      installed.focus === "state",
+    JSON.stringify(installed),
+  )
+
+  const ios = await readInstall(devtools, "ios")
+  check(
+    "on an iPhone, InstallPrompt explains Share, then Add to Home Screen, with no Install button",
+    ios.shown === "ios" && ios.buttons.join("|") === "Not now" &&
+      ios.text.includes("then Add to Home Screen."),
+    JSON.stringify(ios),
+  )
+
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-fail-next"]`)
+  await countUnhandledRejections(devtools)
+  await focusInstallButton(devtools, "ios", "Not now")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readInstall(devtools, "ios")).failed !== "", 2_000)
+  const refused = await readInstall(devtools, "ios")
+  const uncaughtDismiss = await unhandledRejections(devtools)
+  check(
+    "Not now whose store write fails keeps the steps, says it did not work, and leaves nothing uncaught",
+    refused.shown === "ios" && refused.failed === "That did not work. Try again." &&
+      refused.state === "mode: ios, dismissed: false" && uncaughtDismiss === 0,
+    JSON.stringify({ refused, uncaughtDismiss }),
+  )
+
+  const focusedDismiss = await focusInstallButton(devtools, "ios", "Not now")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readInstall(devtools, "ios")).shown === "", 2_000)
+  const dismissed = await readInstall(devtools, "ios")
+  check(
+    "Not now hides the iOS steps, stores the dismissal, and moves focus to returnFocus",
+    focusedDismiss && dismissed.shown === "" && dismissed.state === "mode: ios, dismissed: true" &&
+      dismissed.focus === "state",
+    JSON.stringify(dismissed),
+  )
+
+  const standalone = await readInstall(devtools, "installed")
+  check(
+    "an app already running standalone is offered nothing",
+    standalone.shown === "" && standalone.state === "mode: installed, dismissed: false",
+    JSON.stringify(standalone),
   )
 }
