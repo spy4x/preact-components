@@ -13,6 +13,7 @@ import {
   poll,
   pressKey,
   readOr,
+  samePixel,
   settledScroll,
 } from "./harness.ts"
 
@@ -173,6 +174,8 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await busySubmitChecks(devtools)
   await linkChecks(devtools)
   await buttonLinkChecks(devtools)
+  await dropdownItemRouteChecks(devtools)
+  await dropdownItemDisabledDangerCheck(devtools)
 
   await copyBlockChecks(devtools)
   await copyBlockNeverClipsCheck(devtools)
@@ -219,6 +222,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await fileInputChecks(devtools)
   await inlineEditChecks(devtools)
   await inlineEditInterruptionChecks(devtools)
+  await inlineEditHeadingNameCheck(devtools)
   await shortcutsChecks(devtools)
   await toggleChipsChecks(devtools)
   await tagInputChecks(devtools)
@@ -5080,6 +5084,7 @@ async function modalChecks(devtools: Devtools): Promise<void> {
   await modalBackdropCheck(devtools)
   await modalFallbackEscapeCheck(devtools)
   await confirmDialogChecks(devtools)
+  await confirmDialogBusyChecks(devtools)
 }
 
 /**
@@ -20763,5 +20768,249 @@ async function pageActionHotkeyCheck(devtools: Devtools): Promise<void> {
     "pressing P presses a PageAction with hotkey p",
     shortcuts === "P" && after === before + 1,
     `aria-keyshortcuts=${JSON.stringify(shortcuts)}, presses ${before} → ${after}`,
+  )
+}
+
+/** The `DropdownItem` card's routed link item, its two disabled items and its `navigate` counter. */
+const DROPDOWN_ITEM_CARD = "#demo-DropdownItem"
+const DROPDOWN_ITEM_ROUTED = `${DROPDOWN_ITEM_CARD} [data-e2e="dropdown-item-routed"]`
+const DROPDOWN_ITEM_COUNTER = `${DROPDOWN_ITEM_CARD} [data-e2e="dropdown-item-navigated"]`
+
+/**
+ * A `DropdownItem` link with a `navigate` port hands a plain click to it and cancels the page load,
+ * and leaves a Ctrl click to the browser. Each is one real press; {@link pressLink} keeps the page
+ * from really following the link.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function dropdownItemRouteChecks(devtools: Devtools): Promise<void> {
+  const routed = await pressLink(
+    devtools,
+    DROPDOWN_ITEM_ROUTED,
+    { name: "a plain click", button: "left", modifiers: 0 },
+    DROPDOWN_ITEM_COUNTER,
+  )
+  check(
+    "a plain click on a DropdownItem link with navigate calls navigate instead of loading the page",
+    routed.aimed && routed.type === "click" && routed.prevented === true &&
+      routed.navigations === 1 && !routed.navigated,
+    describeLinkOutcome(routed),
+  )
+
+  const ctrl = await pressLink(
+    devtools,
+    DROPDOWN_ITEM_ROUTED,
+    { name: "a Ctrl click", button: "left", modifiers: 2 },
+    DROPDOWN_ITEM_COUNTER,
+  )
+  check(
+    "a Ctrl click on a DropdownItem link with navigate is left to the browser",
+    ctrl.aimed && ctrl.type === "click" && ctrl.prevented === false && ctrl.navigations === 0 &&
+      !ctrl.navigated,
+    describeLinkOutcome(ctrl),
+  )
+  await pointerToCorner(devtools)
+}
+
+/** One palette's reading of the `DropdownItem` card's disabled items, as `seen` composites them. */
+interface DisabledItemReading {
+  /** Both disabled items and an enabled button item were found. */
+  found: boolean
+  /** The text colour a reader sees on the disabled danger item, `[r, g, b]`. */
+  danger: number[]
+  /** The text colour a reader sees on the plain disabled item. */
+  plain: number[]
+  /** Contrast of the plain disabled item's text on its ground. */
+  disabledRatio: number
+  /** Contrast of an enabled button item's text on its ground. */
+  enabledRatio: number
+}
+
+/**
+ * A disabled `DropdownItem` with `danger` looks like any disabled item, in both palettes: the text
+ * a reader sees on it is the same colour as on the plain disabled item, not red. And both are
+ * dimmed: the disabled text stands lower off its ground than an enabled item's does.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function dropdownItemDisabledDangerCheck(devtools: Devtools): Promise<void> {
+  await pointerToCorner(devtools)
+  const reading = await devtools.evaluate<Record<"light" | "dark", DisabledItemReading>>(
+    `(async () => {
+    ${CONTRAST_HELPERS}
+    const root = document.documentElement
+    const wasDark = root.classList.contains("dark")
+    const card = document.querySelector('${DROPDOWN_ITEM_CARD}')
+    const danger = card?.querySelector('[data-e2e="dropdown-item-disabled-danger"]')
+    const plain = card?.querySelector('[data-e2e="dropdown-item-disabled"]')
+    const enabled = [...(card?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent.trim() === "A button, because it has none")
+    const settle = () => Promise.all(
+      [danger, plain, enabled].flatMap((element) =>
+        element ? element.getAnimations().map((animation) => animation.finished.catch(() => {})) : []
+      ),
+    )
+    const measure = () => danger && plain && enabled
+      ? {
+        found: true,
+        danger: seen(danger).text,
+        plain: seen(plain).text,
+        disabledRatio: seenRatio(plain),
+        enabledRatio: seenRatio(enabled),
+      }
+      : { found: false, danger: [], plain: [], disabledRatio: 0, enabledRatio: 0 }
+    try {
+      root.classList.remove("dark")
+      await settle()
+      const light = measure()
+      root.classList.add("dark")
+      await settle()
+      const dark = measure()
+      return { light, dark }
+    } finally {
+      root.classList.toggle("dark", wasDark)
+    }
+  })()`,
+  )
+  for (const palette of ["light", "dark"] as const) {
+    const read = reading[palette]
+    check(
+      `in the ${palette} palette a disabled danger DropdownItem draws the same text as a plain ` +
+        "disabled item, dimmed below an enabled one",
+      read.found && samePixel(read.danger, read.plain) && read.disabledRatio < read.enabledRatio,
+      !read.found
+        ? `the DropdownItem card is missing a disabled, a disabled danger or an enabled item`
+        : `danger text rgb(${read.danger}), plain disabled rgb(${read.plain}); disabled ` +
+          `${read.disabledRatio.toFixed(2)}:1, enabled ${read.enabledRatio.toFixed(2)}:1`,
+    )
+  }
+}
+
+/**
+ * The accessible name Chromium computes for the element `expression` evaluates to, or `null` when
+ * it evaluates to nothing.
+ *
+ * @param devtools The connected session.
+ * @param expression A page expression that returns one element.
+ */
+async function computedName(devtools: Devtools, expression: string): Promise<string | null> {
+  const { result } = await devtools.send<{ result: { objectId?: string } }>("Runtime.evaluate", {
+    expression,
+  })
+  if (result.objectId === undefined) return null
+  const { nodes } = await devtools.send<{ nodes: Array<{ name?: { value?: string } }> }>(
+    "Accessibility.getPartialAXTree",
+    { objectId: result.objectId, fetchRelatives: false },
+  )
+  return (nodes[0]?.name?.value ?? "").trim()
+}
+
+/**
+ * An `InlineEdit` inside a heading, given `textId` that the heading's `aria-labelledby` points at,
+ * leaves the heading's accessible name as the value alone, while the button inside it keeps its own
+ * name, "Edit …". Without the id the heading would be named after the button.
+ *
+ * @param devtools The connected session, on the `ui` page.
+ */
+async function inlineEditHeadingNameCheck(devtools: Devtools): Promise<void> {
+  const heading = await computedName(
+    devtools,
+    `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-heading"]')`,
+  )
+  const button = await computedName(
+    devtools,
+    `document.querySelector('#demo-InlineEdit [data-e2e="inline-edit-in-heading"] button')`,
+  )
+  check(
+    "a heading around an InlineEdit given textId is named by the value, not the edit button",
+    heading === "Trip to Lisbon" && button === "Edit Trip to Lisbon",
+    heading === null || button === null
+      ? "the InlineEdit heading demo or its button is missing"
+      : `heading "${heading}", button "${button}"`,
+  )
+}
+
+/** What the busy delete panel of the `ConfirmDialog` card shows. */
+interface ConfirmBusyState {
+  /** The panel is open and modal. */
+  modal: boolean
+  /** `aria-busy` on the confirm button. */
+  busy: string | null
+  /** The confirm button's visible text. */
+  confirmText: string
+  /** The confirm button holds the spinner. */
+  spinner: boolean
+  /** The cancel button is disabled. */
+  cancelDisabled: boolean
+}
+
+/**
+ * A `ConfirmDialog` with `busy` shows it on the confirm button and refuses to be cancelled while the
+ * work runs. The card's Delete panel turns busy when confirmed and closes itself two seconds later:
+ * pressing Delete must show the spinner, `aria-busy` and "Deleting…" on the confirm button and
+ * disable "Keep it", a real Escape during that time must leave the panel open, and the panel must
+ * then close on its own with the delete recorded.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function confirmDialogBusyChecks(devtools: Devtools): Promise<void> {
+  const dialog = `document.querySelector("#demo-ConfirmDialog dialog")`
+  const outcome = `(document.querySelector('#demo-ConfirmDialog [data-e2e="controlled-value"]')` +
+    `?.textContent ?? "").trim()`
+  const state = `(() => {
+    const dialog = ${dialog}
+    const confirm = dialog?.querySelector('[data-e2e="confirm-dialog-confirm"]')
+    const cancel = dialog?.querySelector('[data-e2e="confirm-dialog-cancel"]')
+    return {
+      modal: dialog?.matches(":modal") === true,
+      busy: confirm?.getAttribute("aria-busy") ?? null,
+      confirmText: confirm?.textContent.trim() ?? "",
+      spinner: confirm?.querySelector("svg.animate-spin") != null,
+      cancelDisabled: cancel?.disabled === true,
+    }
+  })()`
+
+  const opened = await devtools.evaluate<boolean>(`(() => {
+    const open = [...document.querySelectorAll("#demo-ConfirmDialog button")]
+      .find((button) => button.textContent.trim() === "Delete invoice")
+    open?.click()
+    return open !== undefined
+  })()`) &&
+    await poll(() => devtools.evaluate<boolean>(`${dialog}?.matches(":modal") === true`), 3_000)
+  await devtools.evaluate<null>(
+    `(${dialog}?.querySelector('[data-e2e="confirm-dialog-confirm"]')?.click(), null)`,
+  )
+  const busy = opened &&
+    await poll(() => devtools.evaluate<boolean>(`${state}.busy === "true"`), 2_000)
+  const during = await devtools.evaluate<ConfirmBusyState>(state)
+  check(
+    "a busy ConfirmDialog shows a spinner, aria-busy and its busy label on confirm, and " +
+      "disables cancel",
+    busy && during.spinner && during.confirmText === "Deleting…" && during.cancelDisabled,
+    !opened ? "the Delete invoice panel never became modal" : JSON.stringify(during),
+  )
+
+  await pressKey(devtools, "Escape")
+  const held = await holdsFor(
+    () => devtools.evaluate<boolean>(`${state}.modal && ${state}.busy === "true"`),
+    600,
+  )
+  check(
+    "a real Escape on a busy ConfirmDialog leaves it open",
+    busy && held.held,
+    !busy
+      ? "the panel never turned busy, so Escape proves nothing"
+      : `the panel ${held.held ? "stayed open" : `closed or went idle after ${held.elapsedMs}ms`}`,
+  )
+
+  const finished = await poll(
+    () => devtools.evaluate<boolean>(`${dialog} === null && ${outcome}.includes("delete")`),
+    5_000,
+  )
+  if (!finished) await devtools.evaluate<null>(`(${dialog}?.close(), null)`)
+  check(
+    "a busy ConfirmDialog closes once its work settles, with the confirmed action done",
+    finished,
+    `the card reads "${await devtools.evaluate<string>(outcome)}"`,
   )
 }
