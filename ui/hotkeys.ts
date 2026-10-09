@@ -276,7 +276,8 @@ function isChord(keys: string): boolean {
 /**
  * The {@link useHotkeys} binding that clicks an element through {@link clickByHotkey}. It fires in
  * a dialog, and in a text field only for a combination that holds Control, Command or `mod` and
- * is not one of the field's own editing chords, such as `mod+z`. It leaves the key press alone unless it clicks, so a disabled button passes its key on.
+ * is not one of the field's own editing chords, such as `mod+z`. It leaves the key press alone
+ * unless it clicks, so a disabled button passes its key on.
  *
  * @param keys The combination, such as `"n"` or `"mod+enter"`.
  * @param element Reads the element when the key is pressed.

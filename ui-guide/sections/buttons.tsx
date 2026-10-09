@@ -251,8 +251,8 @@ function BusySubmitDemo() {
 /**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service. The
- * fourth's port always fails, to show the failure state. C presses the third. `pages/checks/ui.ts` presses the fourth
- * twice, and drives the first two with a clipboard it replaces.
+ * fourth's port always fails, to show the failure state. C presses the third. `pages/checks/ui.ts`
+ * presses the fourth twice, and drives the first two with a clipboard it replaces.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
