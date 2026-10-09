@@ -402,21 +402,21 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
           <div class="min-w-0">
             {toast.title ? <p class="font-semibold">{toast.title}</p> : null}
             <p>{toast.body}</p>
+            {action === undefined ? null : (
+              // Named by its text alone — no `aria-label`, no `title` — so the toast's announcement
+              // carries the label once, and the name a screen reader gives on focus is the same
+              // word. It sits on its own line under the body, so a long label wraps there instead
+              // of pushing the dismiss control out of a narrow window.
+              <button
+                type="button"
+                class="mt-1 rounded py-1 text-left font-semibold underline underline-offset-4 break-words"
+                onClick={runAction}
+              >
+                {action.label}
+              </button>
+            )}
           </div>
         </div>
-        {action === undefined ? null : (
-          // Named by its text alone — no `aria-label`, no `title` — so the toast's announcement
-          // carries the label once, and the name a screen reader gives on focus is the same word.
-          // `ml-auto` takes the free space to its left, so it sits beside the dismiss control and
-          // a toast without an action renders exactly as it did before actions existed.
-          <button
-            type="button"
-            class="ml-auto shrink-0 rounded px-2 py-1 text-sm font-semibold underline underline-offset-4"
-            onClick={runAction}
-          >
-            {action.label}
-          </button>
-        )}
         <button type="button" onClick={() => onDismiss(toast.id)} aria-label={dismissLabel}>
           <svg
             class="size-4"

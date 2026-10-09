@@ -150,6 +150,13 @@ const undoBody = "Draft deleted"
 const undoLabel = "Undo"
 
 /**
+ * A long action label, so the card shows how a label too long for one line wraps instead of
+ * pushing the dismiss control out of a narrow window. The toast stays until it is dismissed, so it
+ * can be looked at on a phone.
+ */
+const undoLongLabel = "Restore the twelve deleted tasks"
+
+/**
  * Where the card puts its stack: inside the card, or in one of the window's corners. The record is
  * the coverage guard for `ToastCorner` — a corner with no entry does not compile.
  */
@@ -268,6 +275,21 @@ function ToastrDemo() {
             })}
         >
           with an Undo action
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="toast-undo-long"
+          data-label={undoLongLabel}
+          onClick={() =>
+            store.info({
+              body: "Twelve tasks deleted",
+              duration: 0,
+              dataE2E: "guide-toast-undo-long",
+              action: { label: undoLongLabel, onAction: () => undone.value++ },
+            })}
+        >
+          with a long action
         </Button>
         <Button variant="ghost" size="sm" data-e2e="toast-clear" onClick={() => store.clear()}>
           clear {toasts.length ? `(${toasts.length})` : ""}

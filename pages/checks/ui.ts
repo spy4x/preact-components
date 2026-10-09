@@ -1726,7 +1726,115 @@ async function toastrActionChecks(devtools: Devtools): Promise<void> {
   await toastrActionKeyboardCheck(devtools)
   await toastrActionPointerCheck(devtools)
   await toastrActionOnceCheck(devtools)
+  await toastrActionNarrowCheck(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/** One element's box in the viewport, in whole pixels. */
+interface Box {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+/** What {@link toastrActionNarrowCheck} measures. */
+interface NarrowReading {
+  ok: boolean
+  /** What was missing, when `ok` is false. */
+  reason: string
+  label: string
+  /** The viewport's width, without a scrollbar. */
+  width: number
+  toast: Box
+  action: Box
+  dismiss: Box
+}
+
+/** The width of a small phone, where a long action label has the least room. */
+const NARROW_WIDTH = 375
+
+/**
+ * At a phone's width, a toast whose action label runs to some thirty characters keeps its action
+ * and its dismiss control inside the toast and inside the window. A label that refused to wrap
+ * pushed the dismiss control out of both, so the toast could not be closed by hand.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrActionNarrowCheck(devtools: Devtools): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: NARROW_WIDTH,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  let reading: NarrowReading
+  try {
+    reading = await devtools.evaluate<NarrowReading>(`(async () => {
+      const { card, region, clear } = globalThis.__verifyToastr ?? {}
+      const long = card?.querySelector('[data-e2e="toast-undo-long"]') ?? null
+      const blank = { label: "", width: 0, toast: null, action: null, dismiss: null }
+      if (!region || !clear || long === null) {
+        return { ...blank, ok: false, reason: "the Toastr card is missing its live area, its " +
+          'clear button or its long-action button (data-e2e="toast-undo-long")' }
+      }
+      const label = long.dataset.label ?? ""
+      const until = ${PAGE_UNTIL}
+      clear.click()
+      await until(() => region.children.length === 0)
+      long.click()
+      await until(() => region.querySelector('[data-e2e="guide-toast-undo-long"]') !== null)
+      const toast = region.querySelector('[data-e2e="guide-toast-undo-long"]')
+      const buttons = [...(toast?.querySelectorAll("button") ?? [])]
+      const action = buttons.find((button) => (button.textContent ?? "").trim() === label)
+      const dismiss = buttons.at(-1)
+      if (!toast || !action || !dismiss || action === dismiss || label.length < 25) {
+        return { ...blank, ok: false, reason: "the long-action toast arrived without a " +
+          "dismiss control and a button labelled with the card's data-label of 25+ characters" }
+      }
+      // The boxes are read where the 300ms slide ends.
+      await until(() => toast.getAnimations({ subtree: true }).length === 0)
+      const box = (element) => {
+        const rect = element.getBoundingClientRect()
+        return {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          right: Math.round(rect.right),
+          bottom: Math.round(rect.bottom),
+        }
+      }
+      return {
+        ok: true,
+        reason: "",
+        label,
+        width: document.documentElement.clientWidth,
+        toast: box(toast),
+        action: box(action),
+        dismiss: box(dismiss),
+      }
+    })()`)
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+
+  const within = (inner: Box, outer: Box) =>
+    inner.left >= outer.left && inner.right <= outer.right && inner.top >= outer.top &&
+    inner.bottom <= outer.bottom
+  const inWindow = (inner: Box) => inner.left >= 0 && inner.right <= reading.width
+  const fits = reading.ok && within(reading.action, reading.toast) &&
+    within(reading.dismiss, reading.toast) && inWindow(reading.action) &&
+    inWindow(reading.dismiss)
+  const show = (box: Box) => `${box.left}–${box.right} × ${box.top}–${box.bottom}`
+
+  check(
+    `at ${NARROW_WIDTH}px a toast's long action label wraps, keeping the action and the dismiss ` +
+      "control inside the toast and the window",
+    fits,
+    !reading.ok
+      ? reading.reason
+      : `"${reading.label}": toast ${show(reading.toast)}, action ${show(reading.action)}, ` +
+        `dismiss ${show(reading.dismiss)}, window 0–${reading.width}`,
+  )
 }
 
 /**
