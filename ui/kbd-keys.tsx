@@ -135,7 +135,7 @@ export function keyFaces(keys: string, apple: boolean, labels: KbdLabels = KBD_L
  * @param keys The presses separated by whitespace, each written the way `useHotkeys` takes it.
  */
 export function sequenceSteps(keys: string): string[] {
-  return keys.trim().split(/(?<!\+)\s+(?!\+)/)
+  return keys.trim().split(/(?<![+\s])\s+(?![+\s])/)
 }
 
 /** The face of the one key that is not a modifier. */

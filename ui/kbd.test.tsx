@@ -13,6 +13,8 @@ describe("sequenceSteps", () => {
   it("splits a sequence at whitespace but keeps spaces around a plus in one combination", () => {
     expect(sequenceSteps("g t")).toEqual(["g", "t"])
     expect(sequenceSteps("  g   mod+shift+k  ")).toEqual(["g", "mod+shift+k"])
+    expect(sequenceSteps("mod  + k")).toEqual(["mod  + k"])
+    expect(sequenceSteps("mod +  k")).toEqual(["mod +  k"])
     expect(sequenceSteps("mod + k")).toEqual(["mod + k"])
     expect(sequenceSteps("?")).toEqual(["?"])
   })

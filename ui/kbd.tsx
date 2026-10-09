@@ -19,7 +19,8 @@ export interface KbdProps {
   /**
    * A combination such as `"mod+k"`, `"?"` or `"esc"`, written the way `useHotkeys` takes it, or a
    * sequence of them separated by whitespace, such as `"g t"`: press `g`, then `t`. `mod` is ⌘ on
-   * Apple platforms and Ctrl elsewhere. Throws when a combination cannot be read.
+   * Apple platforms and Ctrl elsewhere. In a sequence, write the `+` key as `plus`: `"g +"` reads as
+   * an unfinished combination. Throws when a combination cannot be read.
    */
   keys?: string
   /** A key written by hand, used when there is no `keys`: `<Kbd>Tab</Kbd>`. */
