@@ -452,7 +452,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (866 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (889 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -536,6 +536,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `ButtonVariant` (type): Visual role of a `Button`. Import: `@spy4x/preact-ui`
 - `Checkbox` (component): Render the box and its label. Import: `@spy4x/preact-ui`
 - `CheckboxProps` (type): Checkbox with its own label. Import: `@spy4x/preact-ui`
+- `CheckboxShape` (type): The box's outline: the theme's square `.pc-checkbox`, or a circle, as a task list's check. Import: `@spy4x/preact-ui`
 - `Card` (component): Card surface. Import: `@spy4x/preact-ui`
 - `CardBody` (component): Card body: the content region of a `Card`. Import: `@spy4x/preact-ui`
 - `CardBodyProps` (type): Props of `CardBody`. Import: `@spy4x/preact-ui`

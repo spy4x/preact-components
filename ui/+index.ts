@@ -56,7 +56,7 @@ export {
   type ButtonSize,
   type ButtonVariant,
 } from "./button.tsx"
-export { Checkbox, type CheckboxProps } from "./checkbox.tsx"
+export { Checkbox, type CheckboxProps, type CheckboxShape } from "./checkbox.tsx"
 export {
   Card,
   CardBody,
