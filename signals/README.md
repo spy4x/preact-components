@@ -43,8 +43,8 @@ is set by its `messages` option (below).
 reason `copy` reports when the runtime has no clipboard at all, on an insecure origin or during a
 server render.
 
-`types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`, `ToastPort`)
-and is re-exported from the barrel. The store's error envelope and operation state come from
+`types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`,
+`ToastAction`, `ToastPort`) and is re-exported from the barrel. The store's error envelope and operation state come from
 spy4x/ts-libs, so every package reports failures in one shape: `validate`, `ValidationError` and
 `firstIssueMessage` from `@spy4x/validation`, and `ErrType`, `StoreError`, `RequestError`,
 `OperationState`, `OperationResult`, `connectionError`, `responseError` and `isSilentError` from
@@ -386,6 +386,10 @@ toast.info({ body: "Read this one", duration: 20_000 })
   number is matched by its string form.
 - **`dataE2E` on a message** reaches its entry and `Toastr` renders it on that toast as `data-e2e`,
   so a test can wait for one message.
+- **`action` on a message**, a `ToastAction` of `{ label, onAction }`, reaches its entry, and
+  `Toastr` renders it as a button that runs `onAction` once and dismisses the toast:
+  `toast.info({ body: "Note deleted", action: { label: "Undo", onAction: restore } })`. Named no
+  `duration`, such a toast stays ten seconds under `Toastr` instead of five.
 - **`list` appends the newest toast last**, so the documented wiring renders oldest at the top. A
   caller who wants the newest first hands `Toastr` a reversed copy.
 

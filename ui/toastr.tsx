@@ -172,9 +172,10 @@ const variantClasses: Record<ToastVariant, string> = {
 export const defaultToastDuration = 5000
 
 /**
- * How long a toast with an {@link ToastItem.action} stays when it names no duration of its own, in
- * milliseconds. Ten seconds, the usual budget for an Undo: the reader has to take in the message
- * and then reach the button.
+ * How long a toast with an action stays when it names no duration of its own, in milliseconds.
+ *
+ * Ten seconds, the usual budget for an Undo: the reader has to take in the message and then reach
+ * the button. See {@link ToastItem.action}.
  */
 export const defaultToastActionDuration = 10_000
 

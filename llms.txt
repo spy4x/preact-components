@@ -341,6 +341,7 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `ToastStore` (type): A toast store. Import: `@spy4x/preact-signals`
 - `Model` (type): The minimum a row must have for the store to manage it. Import: `@spy4x/preact-signals`
 - `RemoteEvent` (type): Event kinds a remote (websocket) feed can announce. Import: `@spy4x/preact-signals`
+- `ToastAction` (type): A button on a toast, such as "Undo" after a delete. Import: `@spy4x/preact-signals`
 - `ToastId` (type): What identifies one toast: the type `ToastStore.remove` takes. Import: `@spy4x/preact-signals`
 - `ToastMessage` (type): Notification content the store hands to its toast port. Import: `@spy4x/preact-signals`
 - `ToastPort` (type): Notification port. Import: `@spy4x/preact-signals`
@@ -752,8 +753,10 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `tagInputKeyAction` (helper): The whole key table of `TagInput`, decided without a DOM. Import: `@spy4x/preact-ui`
 - `TagInputProps` (type): Props of `TagInput`. Import: `@spy4x/preact-ui`
 - `tagSuggestions` (helper): The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling once. Import: `@spy4x/preact-ui`
+- `defaultToastActionDuration` (helper): How long a toast with an action stays when it names no duration of its own, in milliseconds. Import: `@spy4x/preact-ui`
 - `defaultToastDuration` (helper): How long a toast that names no duration of its own stays, in milliseconds. Import: `@spy4x/preact-ui`
-- `resolveDuration` (helper): How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration`. Import: `@spy4x/preact-ui`
+- `resolveDuration` (helper): How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration` (`defaultToastActionDuration` for a toast with an action). Import: `@spy4x/preact-ui`
+- `ToastAction` (type): A button on a toast, such as "Undo" after a delete. Import: `@spy4x/preact-ui`
 - `ToastCorner` (type): The window corner a `Toastr` stack sits in. Import: `@spy4x/preact-ui`
 - `ToastId` (type): What identifies one toast in a stack: the type of `ToastItem.id` and of the id `ToastrProps.onDismiss` is called with. Import: `@spy4x/preact-ui`
 - `ToastItem` (type): Import: `@spy4x/preact-ui`

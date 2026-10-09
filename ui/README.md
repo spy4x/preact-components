@@ -109,7 +109,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `TagInput`        | `tag-input`         | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                      |
 | `Textarea`        | `input`             | native textarea attrs, `class`                                                                                                                                                                  |
 | `ThemeToggle`     | `theme-toggle`      | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark                                                     |
-| `Toastr`          | `toastr`            | `toasts`, `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                             |
+| `Toastr`          | `toastr`            | `toasts` (each may carry an `action`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                |
 | `ToggleChips`     | `toggle-chips`      | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                            |
 | `ToggleField`     | `toggle-field`      | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                    |
 | `ToggleSwitch`    | `toggle-switch`     | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                        |
@@ -207,6 +207,17 @@ time it had left when they leave — a toast is reachable by keyboard instead of
 _within_ the stack, from a link in a toast's body to its dismiss control, does not resume it.
 Raising a toast's `duration` while it is on screen is the one thing that refills the budget rather
 than continuing it, which is how a caller extends a toast it has already shown.
+
+A toast can carry one `action`, a `ToastAction` of `{ label, onAction }`, for "Note deleted. Undo".
+It renders as a real `<button>` named by its visible label alone, after the body and before the
+dismiss control, so Tab reaches it first and a screen reader hears the message and the label once
+when the toast arrives. Pressing it, by pointer, Enter or Space, runs `onAction` once and then
+dismisses the toast through `onDismiss`; a second press that lands before the stack re-renders does
+nothing. A toast with an action and no `duration` of its own stays `defaultToastActionDuration`
+(10000 ms) instead of 5000, so there is time to read it and reach the button, and like every toast
+it holds while the pointer or focus is on it. `createToastStore` carries a message's `action` onto
+its entry, so `toast.info({ body: "Note deleted", action: { label: "Undo", onAction: restore } })`
+is the whole call.
 
 `duration` is not validated, and `resolveDuration` documents what each odd value does. The short
 version: pass `0`, a positive number of milliseconds up to 2,147,483,647, or nothing. A negative
