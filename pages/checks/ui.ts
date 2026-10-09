@@ -20087,6 +20087,8 @@ interface ErrorBoundaryCard {
   reloadE2E: string | null
   /** How many errors the demo's `onError` received. */
   caught: number
+  /** What the demo's `onError` last received: the error as a string, and the `errorInfo` type. */
+  last: string
   /** How many times the demo's `onReload` port was called. */
   reloads: number
   /** Whether the marker set before the first click survived, which a real reload would wipe. */
@@ -20111,6 +20113,7 @@ const ERROR_BOUNDARY_CARD = `(() => {
     reload: button === null ? null : button.textContent.trim(),
     reloadE2E: button?.getAttribute("data-e2e") ?? null,
     caught: count("error-boundary-caught"),
+    last: card?.querySelector('[data-e2e="error-boundary-last"]')?.textContent.trim() ?? "",
     reloads: count("error-boundary-reloads"),
     marker: globalThis.__verifyErrorBoundaryMarker === true,
     href: location.href,
@@ -20162,9 +20165,12 @@ async function errorBoundaryChecks(devtools: Devtools): Promise<void> {
         } button=${JSON.stringify(caught.reload)} button data-e2e=${caught.reloadE2E}`,
   )
   check(
-    "`ErrorBoundary` hands the caught error to `onError` exactly once",
-    before.caught === 0 && caught.caught === 1,
-    `onError calls: ${before.caught} before the click, ${caught.caught} after`,
+    "`ErrorBoundary` hands the caught error and Preact's `errorInfo` to `onError` exactly once",
+    before.caught === 0 && caught.caught === 1 &&
+      caught.last ===
+        "Error: The ErrorBoundary demo view broke on purpose., with object errorInfo",
+    `onError calls: ${before.caught} before the click, ${caught.caught} after; last received ` +
+      JSON.stringify(caught.last),
   )
 
   const reloadAim = await aimAt(devtools, reload)
@@ -20188,5 +20194,27 @@ async function errorBoundaryChecks(devtools: Devtools): Promise<void> {
         after.marker ? "kept" : "gone, so the page really reloaded"
       }; address ${caught.href} → ${after.href}; view back ${mended}; screen still up ${after.alert}`,
   )
+
+  // The fresh boundary the key change mounted catches a second throw on its own.
+  await centreInView(devtools, view)
+  const againAim = await aimAt(devtools, view)
+  const rebroke = againAim.onTarget ? await clickAt(devtools, againAim, view) : null
+  const again = await poll(() => devtools.evaluate<boolean>(`${reload} !== null`), 2_000)
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  const second = await devtools.evaluate<ErrorBoundaryCard>(ERROR_BOUNDARY_CARD)
+  check(
+    "an `ErrorBoundary` remounted by a `key` change catches a second throw and reports it once",
+    rebroke?.onTarget === true && again && second.alert && !second.view && second.caught === 2 &&
+      second.marker,
+    rebroke?.onTarget !== true
+      ? `the second click on "Break this view" landed on ${rebroke?.tag ?? againAim.tag}`
+      : `screen ${second.alert}; view ${second.view}; onError calls ${second.caught}; marker ${
+        second.marker ? "kept" : "gone"
+      }`,
+  )
+  // Leave the card on its working view for anyone who reads it after this block.
+  const mendAim = await aimAt(devtools, reload)
+  if (mendAim.onTarget) await clickAt(devtools, mendAim, reload)
+  await poll(() => devtools.evaluate<boolean>(`${view} !== null`), 2_000)
   await pointerToCorner(devtools)
 }

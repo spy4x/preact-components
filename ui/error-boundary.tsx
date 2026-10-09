@@ -1,20 +1,23 @@
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, ErrorInfo, JSX } from "preact"
 import { useErrorBoundary } from "preact/hooks"
-import { Button } from "./button.tsx"
-import { EmptyState } from "./empty-state.tsx"
+import { ErrorBoundaryScreen } from "./error-boundary-screen.tsx"
 
 export interface ErrorBoundaryProps {
   /** The view to guard. Rendered untouched until something inside it throws. */
   children?: ComponentChildren
   /**
-   * Called once with each error the boundary catches, to report it. The prop is read when the error
-   * arrives, so the latest one is called. It must not throw: an error it throws escapes the
-   * boundary.
+   * Called once with each error the boundary catches, to report it, and with Preact's `errorInfo`
+   * (its `componentStack`, when Preact has one). The prop is read when the error arrives, so the
+   * latest one is called. It must not throw: an error it throws escapes the boundary.
    */
-  onError?: (error: unknown) => void
+  onError?: (error: unknown, errorInfo: ErrorInfo) => void
   /**
    * What the Reload button does. Defaults to `location.reload()`, which is read only when the button
    * is pressed, so the boundary renders on a server.
+   *
+   * The screen stays until the boundary remounts; there is no reset. A port that does not load the
+   * page again recovers the view by changing the boundary's `key`, which mounts a fresh boundary
+   * over fresh children.
    */
   onReload?: () => void
   /** The screen's headline. Defaults to "Something went wrong." */
@@ -32,11 +35,6 @@ export interface ErrorBoundaryProps {
   dataE2E?: string
 }
 
-/** Runs when no `onReload` port is given; only ever from the button's click handler. */
-function reloadPage(): void {
-  location.reload()
-}
-
 /**
  * Catches an error thrown while its children render and shows a reload screen in their place, so
  * the person sees a way out instead of a blank page.
@@ -50,7 +48,9 @@ function reloadPage(): void {
  * announces it the moment it replaces the view. Every string has an English default and a prop.
  *
  * It catches in the browser only. Preact's server renderer runs no error boundary, so a child that
- * throws during a server render throws out of that render.
+ * throws during a server render throws out of that render. A thrown `undefined` is not caught
+ * either: Preact's own render loop fails on it, reading `.then` off it, before any boundary is
+ * asked.
  *
  * @param props See {@link ErrorBoundaryProps}.
  * @returns The children, or the reload screen once one of them has thrown.
@@ -65,24 +65,19 @@ export function ErrorBoundary({
   headingLevel,
   dataE2E,
 }: ErrorBoundaryProps): JSX.Element {
-  const [error] = useErrorBoundary((caught: unknown) => onError?.(caught))
+  const [error] = useErrorBoundary((caught: unknown, errorInfo: ErrorInfo) =>
+    onError?.(caught, errorInfo)
+  )
   if (error === undefined) return <>{children}</>
 
   return (
-    <div role="alert" data-e2e={dataE2E}>
-      <EmptyState
-        title={title}
-        description={description}
-        headingLevel={headingLevel}
-        action={
-          <Button
-            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-reload`}
-            onClick={() => (onReload ?? reloadPage)()}
-          >
-            {reloadLabel}
-          </Button>
-        }
-      />
-    </div>
+    <ErrorBoundaryScreen
+      onReload={onReload}
+      title={title}
+      description={description}
+      reloadLabel={reloadLabel}
+      headingLevel={headingLevel}
+      dataE2E={dataE2E}
+    />
   )
 }
