@@ -28,6 +28,7 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                          |
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
 | `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                     |
+| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                      |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                              |
 | `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
@@ -82,7 +83,8 @@ pin. The two are not drop-in identical, and one of the differences is silent:
 - **Ports, not singletons.** `buildModelStore` takes `fetch`, a `toast` port and a `session` flag;
   `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard;
   `createOnlineStatus` takes `target` and `navigator`. Every one has a browser default, and every
-  one can be a test double.
+  one can be a test double. `createOnboardingState` takes a `dismissed` port with no default,
+  because only the app knows where that flag is kept.
 - **Immutability is load-bearing.** Signals compare by reference, so per-row operation state lives in
   `Map`s that are copied on write, `list.all` sorts a copy, and toasts append to a new array.
 - **Honest types.** No optional members that are always present, no `as` casts in consumers. `op.delete`
@@ -409,6 +411,33 @@ reached the component under its old name, both clocks ran, and a toast lived whi
 — so a twenty-second delay was cut to five, and `duration: 0` lost its toast after five. See
 [#174](https://github.com/spy4x/preact-components/issues/174) and
 [#175](https://github.com/spy4x/preact-components/issues/175).
+
+## `createOnboardingState`, beside `OnboardingChecklist`
+
+`OnboardingChecklist` in `@spy4x/preact-ui` takes plain props and needs nothing from here. Reach
+for `createOnboardingState` when the same answers are needed in more than one place, such as a
+checklist on the dashboard and a badge in the menu, or by a tour with no checklist. It takes the
+steps as a signal of `{ id, done }` (the checklist's own steps fit) and a `dismissed` port with
+`read()` and `write(value)`, and gives back:
+
+- `visible`: `true` until `dismiss()`. A checklist whose steps are all done stays visible, so the
+  user sees the completion message and presses Finish, which is what calls `dismiss()`.
+- `next`: the id of the first step not done, in list order, or `null`. It is the step
+  `OnboardingChecklist` marks as current; a test holds the two to that rule.
+- `allDone`: `true` when no step is left, which includes an empty list.
+- `progress`: `{ done, total }`.
+- `dismiss()` and `reset()`: write `true` or `false` through the port, then change `visible`. A port
+  that throws leaves `visible` as it was.
+
+```tsx
+const onboarding = createOnboardingState({ steps, dismissed: settingsPort })
+
+{
+  onboarding.visible.value && (
+    <OnboardingChecklist steps={steps.value} onDismiss={onboarding.dismiss} />
+  )
+}
+```
 
 ## Notes and sharp edges
 
