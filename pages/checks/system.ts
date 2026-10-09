@@ -8278,6 +8278,47 @@ function focusConflictButton(
 }
 
 /**
+ * Start recording what the chooser under `root` says from now on: each text its live region takes,
+ * and the heading's text each time the heading receives focus, since a screen reader reads both.
+ */
+function recordConflictAnnouncements(
+  devtools: Devtools,
+  root = CONFLICT_INLINE,
+): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    globalThis.__conflictObserver?.disconnect()
+    const root = document.querySelector('${root}')
+    const region = root?.querySelector('[role="status"]')
+    const heading = root?.querySelector("h2, h3, h4, h5, h6")
+    if (!region || !heading) return false
+    const said = []
+    globalThis.__conflictSaid = said
+    globalThis.__conflictObserver = new MutationObserver(() => {
+      if (region.textContent) said.push("region: " + region.textContent)
+    })
+    globalThis.__conflictObserver.observe(region, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
+    heading.addEventListener("focus", () => said.push("focus: " + heading.textContent))
+    return true
+  })()`)
+}
+
+/** What the chooser said since {@link recordConflictAnnouncements}, after one task to settle. */
+function conflictAnnouncements(devtools: Devtools): Promise<string[]> {
+  return read(
+    devtools,
+    `new Promise((resolve) => setTimeout(() => {
+      globalThis.__conflictObserver?.disconnect()
+      resolve(globalThis.__conflictSaid ?? ["not recording"])
+    }, 100))`,
+    ["read failed"],
+  )
+}
+
+/**
  * `ConflictChooser` worked through from the keyboard, both choices, inline and in a dialog.
  *
  * Each choice is made with Enter on a focused button. The card's callbacks remove the item, as an
@@ -8338,14 +8379,41 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
     JSON.stringify(used),
   )
 
+  const recording = await recordConflictAnnouncements(devtools)
   await pressKey(devtools, "Enter")
   await poll(async () => (await readConflicts(devtools)).items.length === 0, 2_000)
   const empty = await readConflicts(devtools)
+  const saidOnFocus = await conflictAnnouncements(devtools)
   check(
-    "settling the last conflict moves focus to the heading and announces that all are resolved",
-    empty.log[3] === "use theirs: Rename the shared list" && empty.focus === "heading" &&
-      empty.heading === "All conflicts resolved" && empty.announced === "All conflicts resolved",
-    JSON.stringify(empty),
+    "settling the last conflict moves focus to the heading, which alone says all are resolved, once",
+    recording && empty.log[3] === "use theirs: Rename the shared list" &&
+      empty.focus === "heading" && empty.heading === "All conflicts resolved" &&
+      JSON.stringify(saidOnFocus) === JSON.stringify(["focus: All conflicts resolved"]),
+    JSON.stringify({ empty, saidOnFocus }),
+  )
+
+  // A pointer click that leaves focus where it was (Safari does not focus a clicked button): the
+  // chooser moves no focus, so the live region is what says the list is empty.
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
+  await poll(async () => (await readConflicts(devtools)).items.length === 3, 2_000)
+  const focusedReset = await devtools.evaluate<boolean>(`(() => {
+    const reset = document.querySelector('${CONFLICT} [data-e2e="conflict-reset"]')
+    reset?.focus()
+    return document.activeElement === reset
+  })()`)
+  const recordingRegion = await recordConflictAnnouncements(devtools)
+  for (const id of ["1", "2", "3"]) {
+    await click(devtools, `${CONFLICT_INLINE} [data-conflict-id="${id}"] button`)
+  }
+  await poll(async () => (await readConflicts(devtools)).items.length === 0, 2_000)
+  const unfocused = await readConflicts(devtools)
+  const saidInRegion = await conflictAnnouncements(devtools)
+  check(
+    "settling the last conflict without a focus move says all are resolved once, in the live region",
+    focusedReset && recordingRegion && unfocused.focus === "BUTTON" &&
+      unfocused.announced === "All conflicts resolved" &&
+      JSON.stringify(saidInRegion) === JSON.stringify(["region: All conflicts resolved"]),
+    JSON.stringify({ unfocused, saidInRegion }),
   )
 
   await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
