@@ -23221,10 +23221,10 @@ interface ComparisonTableContrast {
  * scrolls 120 px the first column — the capabilities and the header over them — stays where it was
  * as the second column moves; the visible title stays wholly inside the window before and after
  * that scroll; the held column is on top of, and opaque over, the cells scrolled under it; and a
- * real Tab reaches the box, which then scrolls with ArrowRight. In the light and the dark palette, every value label, in a plain
- * column and in the highlighted one, reads 4.5:1 or better against its cell, every value icon 3:1
- * or better, the highlighted header's text 4.5:1 or better, and the highlighted column's ground
- * differs from a plain one. Every reading goes through `seen`.
+ * real Tab reaches the box, which then scrolls with ArrowRight. In the light and the dark palette,
+ * every value label, in a plain column and in the highlighted one, reads 4.5:1 or better against
+ * its cell, every value icon 3:1 or better, the highlighted header's text 4.5:1 or better, and the
+ * highlighted column's ground differs from a plain one. Every reading goes through `seen`.
  *
  * @param devtools The connected session, on a hydrated page.
  */
