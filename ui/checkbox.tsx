@@ -2,10 +2,33 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
+/** The box's outline: the theme's square `.pc-checkbox`, or a circle, as a task list's check. */
+export type CheckboxShape = "square" | "round"
+
+/**
+ * The round box, drawn by these utilities rather than by the browser: a native checkbox ignores
+ * `border-radius`. The input stays a real checkbox — only its paint is replaced — so its role,
+ * name, keyboard, focus outline and form value are the browser's own. The tick is the box's
+ * `::after`, a rotated corner of two borders; while indeterminate it is a flat bar instead.
+ * Every class is written out whole, so Tailwind's scanner finds it.
+ */
+const roundBox = [
+  "grid size-5 shrink-0 cursor-pointer appearance-none place-content-center rounded-full border-2",
+  "border-[color:var(--color-border-control,oklch(0.872_0.01_258.338))] bg-[var(--color-surface,oklch(1_0_0))]",
+  "checked:border-[color:var(--color-primary-muted,oklch(0.558_0.288_302.321))] checked:bg-[var(--color-primary-muted,oklch(0.558_0.288_302.321))]",
+  "indeterminate:border-[color:var(--color-primary-muted,oklch(0.558_0.288_302.321))] indeterminate:bg-[var(--color-primary-muted,oklch(0.558_0.288_302.321))]",
+  "after:hidden after:h-2.5 after:w-1.5 after:-translate-y-px after:rotate-45 after:border-r-2 after:border-b-2 after:content-['']",
+  "after:border-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))]",
+  "checked:after:block indeterminate:after:block",
+  "indeterminate:after:h-0 indeterminate:after:w-2.5 indeterminate:after:translate-y-0 indeterminate:after:rotate-0 indeterminate:after:border-r-0",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+].join(" ")
+
 /**
  * Checkbox with its own label.
  *
- * A real `<input type="checkbox">` with `.pc-checkbox` on it, wrapped in a `.pc-label`. The label is the
+ * A real `<input type="checkbox">` with `.pc-checkbox` on it (or the round box, with
+ * `shape="round"`), wrapped in a `.pc-label`. The label is the
  * input's parent, so the browser's own activation behaviour binds the two — no `for`/`id` pair and
  * no click handler reimplementing what the platform already does. Give it an `id` anyway when a
  * {@link Field} or a form describes it.
@@ -21,6 +44,8 @@ export interface CheckboxProps
   labelClass?: string
   /** Label text. The checkbox renders bare without it — pass `aria-label` on the input then. */
   children?: ComponentChildren
+  /** `"round"` draws a circle with a tick, as a task list's completion check. Defaults to `"square"`. */
+  shape?: CheckboxShape
 }
 
 /**
@@ -39,12 +64,13 @@ export interface CheckboxProps
 export const Checkbox: (
   props: CheckboxProps & { ref?: Ref<HTMLInputElement> },
 ) => VNode | null = forwardRef<HTMLInputElement, CheckboxProps>("Checkbox", function Checkbox(
-  { class: className, labelClass, children, ...rest },
+  { class: className, labelClass, children, shape = "square", ...rest },
   ref,
 ) {
+  const box = shape === "round" ? roundBox : "pc-checkbox"
   return (
     <label class={cn("pc-label", "gap-2 items-center", labelClass)}>
-      <input {...rest} ref={ref} type="checkbox" class={cn("pc-checkbox", className)} />
+      <input {...rest} ref={ref} type="checkbox" class={cn(box, className)} />
       {children}
     </label>
   )

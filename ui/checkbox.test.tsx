@@ -22,6 +22,18 @@ describe("Checkbox", () => {
     expect(html).not.toContain("for=")
   })
 
+  it("draws a round native checkbox in its label when shape is round", () => {
+    const html = render(<Checkbox shape="round" checked>Done</Checkbox>)
+    const box = html.match(/<input [^>]*>/)?.[0] ?? ""
+
+    expect(box).toContain('type="checkbox"')
+    expect(box).toContain("checked")
+    expect(box).toMatch(/class="[^"]*\bappearance-none\b[^"]*\brounded-full\b/)
+    expect(box).not.toContain("pc-checkbox")
+    expect(html.indexOf("<label")).toBeLessThan(html.indexOf("<input"))
+    expect(html.indexOf("Done")).toBeLessThan(html.indexOf("</label>"))
+  })
+
   it("renders the checked state from the prop", () => {
     expect(render(<Checkbox checked>On</Checkbox>)).toContain("checked")
     expect(render(<Checkbox checked={false}>Off</Checkbox>)).not.toContain("checked")
