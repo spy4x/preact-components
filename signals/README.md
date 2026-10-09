@@ -21,18 +21,19 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 
 ## What is in the box
 
-| Module              | Exports                                                                                                                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                   |
-| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint |
-| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                          |
-| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
-| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                     |
-| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                      |
-| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                              |
-| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                              |
-| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
-| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
+| Module              | Exports                                                                                                                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                                        |
+| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint                      |
+| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                                               |
+| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                     |
+| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                          |
+| `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `isIosDevice`, `isStandalone` |
+| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                                           |
+| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                                                   |
+| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                                                   |
+| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                                                |
+| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                                            |
 
 A toast in the store carries an `id`, a `title`, a `body`, a `type` and an optional `duration`;
 `Toastr` in `@spy4x/preact-ui` shows the title in bold above the body. A message that names no
@@ -456,6 +457,29 @@ const onboarding = createOnboardingState({ steps, dismissed: settingsPort })
     />
   )
 }
+```
+
+## `createInstallPrompt`, beside `InstallPrompt`
+
+`createInstallPrompt(ports)` captures `beforeinstallprompt` (and cancels the browser's own mini
+info bar), so `install()` can open the browser's dialog later from a button. Its `mode` is
+`prompt` once the event fired, `ios` on an iPhone or iPad, where no browser fires it and the
+person installs through Share, then Add to Home Screen, `installed` when the app already runs
+standalone or `appinstalled` fired, and `unavailable` otherwise. `visible` is `true` for `prompt`
+and `ios` until `dismiss()` stores the flag through `dismissed`, the same `{ read, write }` port
+`createOnboardingState` takes; left out, the flag lives in memory. Call `watch()` early in the
+client entry point: the event can fire before the app renders. `isIosDevice(navigator)` and
+`isStandalone(navigator, matchMedia)` are the two checks it starts from. `InstallPrompt` in
+`@spy4x/preact-system` draws it.
+
+```ts
+const install = createInstallPrompt({
+  dismissed: {
+    read: () => localStorage.getItem("install-dismissed") === "1",
+    write: (value) => localStorage.setItem("install-dismissed", value ? "1" : "0"),
+  },
+})
+install.watch()
 ```
 
 ## Notes and sharp edges
