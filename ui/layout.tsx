@@ -208,13 +208,19 @@ export interface SectionProps extends Omit<LayoutProps, "as"> {
   description?: ComponentChildren
   /** The heading's level, `h2` by default. Its look follows the level, from the theme's classes. */
   headingLevel?: SectionHeadingLevel
+  /**
+   * Controls beside the heading, such as an "Invite people" button next to "Members". They sit at
+   * the header's far end and wrap under the heading when the row is too narrow.
+   */
+  action?: ComponentChildren
 }
 
 /**
  * A titled block of a page: an optional heading and description, then the children.
  *
  * The gaps are fixed so every section on every page reads the same: `xs` (4 px) between the heading
- * and the description, `md` (16 px) between the header and each child. A titled `section`,
+ * and the description, `md` (16 px) between the header and each child, and `md` between the
+ * heading and an `action` beside it. A titled `section`,
  * `article` or `aside` is named by its heading, so it is a landmark a screen reader can jump to.
  *
  * @param props See {@link SectionProps}.
@@ -225,6 +231,7 @@ export function Section(
     title,
     description,
     headingLevel = 2,
+    action,
     class: className,
     children,
     ...rest
@@ -232,7 +239,14 @@ export function Section(
 ): JSX.Element {
   const headingId = useId()
   const Heading = `h${headingLevel}` as "h2"
-  const hasHeader = Boolean(title) || Boolean(description)
+  const hasAction = action !== undefined && action !== null && action !== false
+  const hasText = Boolean(title) || Boolean(description)
+  const text = hasText && (
+    <>
+      {title && <Heading id={headingId} class={HEADING_CLASSES[headingLevel]}>{title}</Heading>}
+      {description && <p class="text-muted text-sm">{description}</p>}
+    </>
+  )
   return (
     <Box
       {...rest}
@@ -240,12 +254,14 @@ export function Section(
       aria-labelledby={title && NAMED_BY_HEADING.has(as) ? headingId : rest["aria-labelledby"]}
       className={cn("flex flex-col gap-4", className)}
     >
-      {hasHeader && (
-        <header class="flex flex-col gap-1">
-          {title && <Heading id={headingId} class={HEADING_CLASSES[headingLevel]}>{title}</Heading>}
-          {description && <p class="text-muted text-sm">{description}</p>}
-        </header>
-      )}
+      {hasAction
+        ? (
+          <header class="flex flex-wrap items-start justify-between gap-4">
+            {hasText && <div class="flex min-w-0 flex-col gap-1">{text}</div>}
+            <div class="flex shrink-0 flex-wrap items-center gap-2">{action}</div>
+          </header>
+        )
+        : hasText && <header class="flex flex-col gap-1">{text}</header>}
       {children}
     </Box>
   )
