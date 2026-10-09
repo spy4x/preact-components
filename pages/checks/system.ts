@@ -7277,10 +7277,18 @@ async function watchRailShellAddress(devtools: Devtools): Promise<string> {
  * fragment, so no event can arrive after the address is restored.
  */
 async function restoreRailShellAddress(devtools: Devtools, address: string): Promise<void> {
-  await poll(
+  const delivered = await poll(
     () => read(devtools, `globalThis.__railShellHashSeen === location.hash`, false),
     3_000,
   )
+  // Restoring anyway brings the race back, and the link checks would take the blame for it.
+  if (!delivered) {
+    check(
+      "the skip link's hashchange is delivered before RailShell's address is restored",
+      false,
+      "no hashchange for the current fragment within 3s",
+    )
+  }
   await read(
     devtools,
     `(() => {
