@@ -34,6 +34,14 @@ export {
 } from "./clipboard.ts"
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 export {
+  createNow,
+  type NowOptions,
+  type NowStore,
+  type NowTimers,
+  type NowVisibility,
+  useNow,
+} from "./now.ts"
+export {
   createOnlineStatus,
   type OnlineNavigator,
   type OnlinePorts,

@@ -389,9 +389,11 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
     - 400 and 500 are capped at 0.80 and 0.76. That keeps the scale in order for an accent about
       as dark as purple-900. For an accent lighter than about 0.5, capped steps come out of order;
       for example, step 700 is no longer lighter than step 900.
-    - 600, 700 and 800 carry the primary Button's white label, as its dark hover, dark fill and
-      light hover. They are capped at 0.545, 0.50 and 0.545, where white text clears 4.5:1 at
-      every hue. Step 600 gets 0.013 more near purple, so purple-600 stays exact.
+    - 600, 700 and 800 carry the primary Button's label, as its dark fill, dark hover and light
+      hover. Under a white label they are capped at 0.545, 0.50 and 0.545, where white text clears
+      4.5:1 at every hue; step 600 gets 0.013 more near purple, so purple-600 stays exact. Under
+      the dark label (below) they are the accent itself (700) or 0.05 lighter (600 and 800)
+      instead, because a lighter fill only raises a dark label's contrast.
   - **Chroma.** A step takes the purple step's chroma ratio only near purple's own hue; any other
     accent keeps its own chroma on steps 400–800, and scales down on the tints and 950. The result
     is capped at an estimate of the most chroma sRGB can show at that lightness and hue: the
@@ -407,8 +409,32 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   purple: the allowance that keeps purple itself exact lets step 500 overshoot by up to about 0.025
   OKLab. A warm accent's dark fill (step 600) can sit fairly close to the danger button's red;
   white text on it comes first. `pages/checks/theme.ts` measures, in a browser, the purple steps,
-  the gamut, and white-label contrast for four accents. Choose an accent about as dark as
-  purple-900: white text sits on it.
+  the gamut, and white-label contrast for four accents.
+- **A light accent fills the `Button` from one token.** `--color-accent-foreground`, the label on
+  an accent fill, is white or a near-black (`oklch(0.1 0 0)`), whichever reads better on the
+  accent: an accent whose relative luminance is above 0.18 takes the near-black one. With that
+  label every fill and hover the primary `Button` draws, in both palettes, holds 4.5:1. So an app
+  with a bright brand colour sets that one token and nothing else, and deletes any steps it copied
+  by hand:
+
+  ```css
+  @theme {
+    --color-accent: #f97316; /* orange-500: a near-black label, in light and dark */
+  }
+  ```
+
+  `pages/checks/theme.ts` reads that exact accent's label against all four fills, and sweeps
+  accents of seven hues and eight lightnesses through steps 600–900. An app that wants its own
+  label colour (a warm ink rather than the neutral near-black) still sets
+  `--color-accent-foreground`, and so does one that supports a browser which skips the scale's
+  `@supports` block (below): there the label stays white.
+
+  What this does not cover is the accent used as a text colour on the page. In the light palette
+  `--color-selected-text` (the current tab) is step 900 itself, and the accent `Badge` writes step
+  600 on the surface and step 100 on step 900; orange-500 as text on a white surface is about 2.8:1.
+  An app with a light accent points the `--color-selected-*` tokens (below) at its own text colours,
+  and keeps the accent `Badge` for dark accents. For an accent lighter than about 0.5, the tints and
+  steps 400 and 500 also come out of order.
 - The scale's block in `tokens.css` is written by `accent-scale.ts`, which holds the purple steps,
   the caps and the weights, and fits the cusp itself. `accent-scale.test.ts` fails when
   `tokens.css` differs from its output, and `deno task --cwd theme generate` runs it.

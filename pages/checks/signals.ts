@@ -1,9 +1,10 @@
 import { pageHref } from "@spy4x/preact-ui-guide/routes"
-import { check, type Devtools, inFreshFrame, poll } from "./harness.ts"
+import { check, type Devtools, inFreshFrame, PAGE_UNTIL, poll } from "./harness.ts"
 
 /**
  * `signals/`'s browser checks: the theme store and its bootstrap script setting `color-scheme`
- * (#446), then `useUrlFilters`, bound to the host page's own address bar.
+ * (#446), then `useUrlFilters`, bound to the host page's own address bar, then `useNow` mounted and
+ * unmounted on the host page (`pages/src/now-demo.tsx`).
  *
  * The demo page runs the real `themeBootstrapScript` in `<head>` and attaches a real
  * `createThemeStore` behind the header's theme switch (`pages/src/document.tsx`, `pages/src/app.tsx`).
@@ -34,8 +35,9 @@ export async function signalsChecks(devtools: Devtools): Promise<void> {
   await themeSwitchColorSchemeCheck(devtools)
   for (const stored of ["dark", "light"] as const) await bootstrapColorSchemeCheck(devtools, stored)
   await urlFilterChecks(devtools)
+  await nowChecks(devtools)
   check(
-    "every URL-filter reading came back without a page exception",
+    "every URL-filter and useNow reading came back without a page exception",
     pageErrors.length === 0,
     pageErrors.length === 0
       ? "each expression this file evaluated returned a value, and every action settled"
@@ -960,5 +962,134 @@ async function fragmentChecks(devtools: Devtools, before: FilterState): Promise<
       !emptied.href.endsWith("?") && !emptied.href.includes("#"),
     `clicked clear on ${written.href}: the query string went "${emptied.search}" and the address ` +
       `settled at ${emptied.href}`,
+  )
+}
+
+/** What {@link nowChecks} reads in the page around one mount and unmount of `useNow`. */
+interface NowReading {
+  /** Whether the demo section and its button were on the page. */
+  found: boolean
+  /** `document.visibilityState` when the event was fired. */
+  visibility: string
+  /** The reading right after mounting, and after `visibilitychange` fired. */
+  before: string
+  after: string
+  /** `visibilitychange` listeners on `document`, and timers due within 5 s of the next UTC
+   * midnight, still in place: after mounting and after unmounting. */
+  listenersMounted: number
+  timersMounted: number
+  listenersUnmounted: number
+  timersUnmounted: number
+}
+
+/**
+ * `useNow`: the one part of it no unit test reaches is the effect that starts the store and stops
+ * it on unmount (`signals/now.test.ts` drives the store itself with a fake clock).
+ *
+ * The probe wraps `document.addEventListener`/`removeEventListener` and `setTimeout`/`clearTimeout`
+ * before mounting, counts the `visibilitychange` listeners and the timers set for the next UTC
+ * midnight (the demo's zone; within 5 s of it, so a run near midnight still finds it) that are still
+ * live, then fires `visibilitychange` on a visible page and unmounts. Every wrapper is put back
+ * before the expression returns.
+ *
+ * @param devtools The connected session.
+ */
+async function nowChecks(devtools: Devtools): Promise<void> {
+  const reading = await read<NowReading | null>(
+    devtools,
+    `(async () => {
+      const until = ${PAGE_UNTIL}
+      const section = document.querySelector('[data-e2e="now-demo"]')
+      const toggle = section?.querySelector('[data-e2e="now-toggle"]')
+      const empty = { found: false, visibility: document.visibilityState, before: "", after: "",
+        listenersMounted: 0, timersMounted: 0, listenersUnmounted: 0, timersUnmounted: 0 }
+      if (!section || !toggle) return empty
+      const shown = () => section.querySelector('[data-e2e="now-reading"]')?.textContent ?? ""
+
+      const listeners = new Set()
+      const timers = new Map()
+      const add = document.addEventListener
+      const remove = document.removeEventListener
+      const set = globalThis.setTimeout
+      const clear = globalThis.clearTimeout
+      document.addEventListener = function (type, listener, options) {
+        if (type === "visibilitychange") listeners.add(listener)
+        return add.call(this, type, listener, options)
+      }
+      document.removeEventListener = function (type, listener, options) {
+        if (type === "visibilitychange") listeners.delete(listener)
+        return remove.call(this, type, listener, options)
+      }
+      globalThis.setTimeout = function (callback, ms, ...rest) {
+        const id = set.call(globalThis, (...args) => {
+          timers.delete(id)
+          return typeof callback === "function" ? callback(...args) : undefined
+        }, ms, ...rest)
+        timers.set(id, Date.now() + Number(ms ?? 0))
+        return id
+      }
+      globalThis.clearTimeout = function (id) {
+        timers.delete(id)
+        return clear.call(globalThis, id)
+      }
+      const midnightTimers = () => {
+        const midnight = new Date()
+        midnight.setUTCHours(24, 0, 0, 0)
+        return [...timers.values()].filter((due) => Math.abs(due - midnight.getTime()) < 5000)
+          .length
+      }
+
+      try {
+        toggle.click()
+        await until(() => shown() !== "")
+        const before = shown()
+        const listenersMounted = listeners.size
+        const timersMounted = midnightTimers()
+        await new Promise((resolve) => set.call(globalThis, resolve, 20))
+        document.dispatchEvent(new Event("visibilitychange"))
+        await until(() => shown() !== before)
+        const after = shown()
+        toggle.click()
+        await until(() => shown() === "")
+        return { found: true, visibility: document.visibilityState, before, after,
+          listenersMounted, timersMounted, listenersUnmounted: listeners.size,
+          timersUnmounted: midnightTimers() }
+      } finally {
+        document.addEventListener = add
+        document.removeEventListener = remove
+        globalThis.setTimeout = set
+        globalThis.clearTimeout = clear
+      }
+    })()`,
+    null,
+  )
+
+  const r = reading ?? {
+    found: false,
+    visibility: "(unread)",
+    before: "",
+    after: "",
+    listenersMounted: 0,
+    timersMounted: 0,
+    listenersUnmounted: 0,
+    timersUnmounted: 0,
+  }
+  check(
+    "mounting useNow sets one timer for the next midnight in its zone and one visibilitychange listener",
+    r.found && r.timersMounted === 1 && r.listenersMounted === 1,
+    r.found
+      ? `${r.timersMounted} midnight timer(s), ${r.listenersMounted} listener(s)`
+      : "no now-demo section with a toggle on the page",
+  )
+  check(
+    "useNow reads the clock again when the page reports itself visible",
+    r.found && r.visibility === "visible" && r.before !== "" && r.after > r.before,
+    `visibility ${r.visibility}: ${r.before || "(nothing)"} → ${r.after || "(nothing)"}`,
+  )
+  check(
+    "unmounting useNow clears its midnight timer and removes its visibilitychange listener",
+    r.found && r.timersMounted === 1 && r.listenersMounted === 1 && r.timersUnmounted === 0 &&
+      r.listenersUnmounted === 0,
+    `after unmount: ${r.timersUnmounted} midnight timer(s), ${r.listenersUnmounted} listener(s)`,
   )
 }
