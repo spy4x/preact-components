@@ -58,7 +58,7 @@ function fixture(files: Record<string, string>, extra: Partial<ServiceWorkerOpti
 async function run(plugin: ReturnType<typeof serviceWorker>, outDir = `dist`) {
   plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir } })
   plugin.buildEnd!()
-  await plugin.closeBundle!()
+  await plugin.closeBundle!.call({})
 }
 
 const define = (call: Record<string, unknown>) => call.define as Record<string, string>
@@ -67,7 +67,7 @@ describe(`serviceWorker`, () => {
   it(`builds nothing when the dev server shuts down`, async () => {
     const { calls, plugin } = fixture({ "index.html": `x` })
     plugin.configResolved!({ command: `serve`, root: `/app`, build: { outDir: `dist` } })
-    await plugin.closeBundle!()
+    await plugin.closeBundle!.call({})
     expect(calls).toHaveLength(0)
   })
 
@@ -75,19 +75,29 @@ describe(`serviceWorker`, () => {
     const { calls, plugin } = fixture({ "index.html": `x` })
     plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir: `dist` } })
     plugin.buildEnd!(new Error(`the app failed`))
-    await plugin.closeBundle!()
+    await plugin.closeBundle!.call({})
     expect(calls).toHaveLength(0)
   })
 
-  it(`skips the worker when the output folder is missing`, async () => {
+  it(`fails when the output folder is missing, rather than ship no worker`, async () => {
     const { calls, plugin } = fixture({}, {
       // deno-lint-ignore require-yield
       readDir: async function* () {
         throw Object.assign(new Error(`readdir '/app/dist'`), { name: `NotFound` })
       },
     })
-    await run(plugin)
+    await expect(run(plugin)).rejects.toThrow(`readdir '/app/dist'`)
     expect(calls).toHaveLength(0)
+  })
+
+  it(`builds into the output folder of the environment whose build closed`, async () => {
+    const { calls, plugin } = fixture({ "index.html": `x` })
+    // Vite resolves one config per environment; the last one seen is the server's.
+    plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir: `dist-ssr` } })
+    plugin.buildEnd!()
+    const client = { environment: { config: { build: { outDir: `./dist` } } } }
+    await plugin.closeBundle!.call(client)
+    expect((calls[0].build as { outDir: string }).outDir).toBe(`/app/dist`)
   })
 
   it(`builds the worker as one classic script named sw.js into the output folder`, async () => {
@@ -226,8 +236,9 @@ describe(`serviceWorker in the dev server`, () => {
   it(`answers a failed build with 500 and its message, then tries again`, async () => {
     const { build } = scriptedBuild([new Error(`sw.ts:3: unexpected token`), `fixed`])
     const { request } = devServer(fixture({}, { build }).plugin)
-    expect(await request(`/sw.js`)).toMatchObject({
+    expect(await request(`/sw.js`)).toEqual({
       status: 500,
+      headers: { "content-type": `text/plain`, "cache-control": `no-cache` },
       body: `sw.ts:3: unexpected token`,
     })
     expect(await request(`/sw.js`)).toMatchObject({ status: 200, body: `fixed` })

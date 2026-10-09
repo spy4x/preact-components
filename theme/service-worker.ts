@@ -13,13 +13,6 @@
 
 import type { VitePlugin } from "./vite.ts"
 
-/** Whether `error` says a file does not exist, in Deno's words or Node's. */
-export function isNotFound(error: unknown): boolean {
-  if (typeof error !== `object` || error === null) return false
-  const { name, code } = error as { name?: unknown; code?: unknown }
-  return name === `NotFound` || code === `ENOENT`
-}
-
 /**
  * A short hash of files, by path and content, so a change to any one of them, or a rename, changes
  * it. The order of the map does not matter.
@@ -97,8 +90,9 @@ async function readFiles(
  * Builds the worker at `entry` into the output folder once the app build is written, as one
  * classic script (`iife`). The build id, a hash of every other file in that folder, is defined in
  * the worker as `__BUILD_ID__` (see `buildIdName`); the worker uses it in its cache name. A failed
- * app build, or one that left no output folder, builds no worker, so the app build's own error is
- * the one reported.
+ * app build builds no worker, so the app build's own error is the one reported. With several
+ * environments, the worker goes into the output folder of the environment whose `closeBundle` runs
+ * it (Vite 6+).
  *
  * The dev server serves the same worker from memory at `/<fileName>` (under Vite's `base`), built
  * with the same settings, with `__BUILD_ID__` set to `"dev"` and `Cache-Control:
@@ -112,6 +106,7 @@ export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
   const buildIdName = options.buildIdName ?? `__BUILD_ID__`
   let command = ``
   let base = `/`
+  let root = ``
   let outDir = ``
   let appBuildFailed = false
   /** The worker build's config: `out` adds output settings to the shared ones. */
@@ -141,8 +136,8 @@ export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
     configResolved: (resolved) => {
       command = resolved.command
       base = resolved.base ?? `/`
-      const dir = resolved.build.outDir
-      outDir = dir.startsWith(`/`) ? dir : `${resolved.root}/${dir.replace(/^\.\//, ``)}`
+      root = resolved.root
+      outDir = resolved.build.outDir
     },
     configureServer(server) {
       if (options.dev === false) return
@@ -168,14 +163,12 @@ export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
     async closeBundle() {
       // The dev server calls `closeBundle` too, when it shuts down.
       if (command !== `build` || appBuildFailed) return
-      let files: Map<string, Uint8Array>
-      try {
-        files = await readFiles(options, outDir, outDir, `${outDir}/${fileName}`)
-      } catch (error) {
-        if (isNotFound(error)) return
-        throw error
-      }
-      await options.build(config(await buildIdOf(files), { outDir, emptyOutDir: false }))
+      // With several environments (client and server, as in Fresh), `configResolved` runs once per
+      // environment, so its last output folder may not be this one's. Vite 6+ names this one.
+      const dir = this?.environment?.config.build.outDir ?? outDir
+      const out = dir.startsWith(`/`) ? dir : `${root}/${dir.replace(/^\.\//, ``)}`
+      const files = await readFiles(options, out, out, `${out}/${fileName}`)
+      await options.build(config(await buildIdOf(files), { outDir: out, emptyOutDir: false }))
     },
   }
 }

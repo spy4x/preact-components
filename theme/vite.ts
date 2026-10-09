@@ -23,7 +23,6 @@ import { COMPONENT_CLASSES } from "./component-classes.ts"
 import { INK_CSS } from "./ink-css.ts"
 import { PRESET_CSS } from "./preset-css.ts"
 import { TOKENS_CSS } from "./tokens-css.ts"
-import { isNotFound } from "./service-worker.ts"
 import { canParse, satisfies, tryParse, tryParseRange } from "@std/semver"
 
 /** The part of Rollup's plugin context the hooks below call. */
@@ -91,6 +90,12 @@ export interface ViteResolvedConfig {
   build: { outDir: string }
 }
 
+/** The plugin context inside `closeBundle`: the environment being built, in Vite 6+. */
+export interface ViteBuildContext {
+  /** The environment whose build just closed, with its own resolved config. */
+  environment?: { config: { build: { outDir: string } } }
+}
+
 /** The part of a Node HTTP response a dev-server middleware writes. */
 export interface ViteServerResponse {
   /** The status code to send. */
@@ -150,7 +155,7 @@ export interface VitePlugin {
   /** Runs once the bundle is complete, with the error that ended it when it failed. */
   buildEnd?: (error?: Error) => void
   /** Runs once the build has written its files, and also after a failed build. */
-  closeBundle?: () => Promise<void>
+  closeBundle?: (this: ViteBuildContext) => Promise<void>
   /** Runs once the bundle is written in memory, before it reaches disk. */
   generateBundle?: (
     this: VitePluginContext,
@@ -299,6 +304,13 @@ export interface NpmSpecifiersOptions {
    * `code` is `ENOENT` (Node) means the file is absent; any other rejection fails the build.
    */
   readTextFile: (path: string) => Promise<string>
+}
+
+/** Whether `error` says a file does not exist, in Deno's words or Node's. */
+function isNotFound(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false
+  const { name, code } = error as { name?: unknown; code?: unknown }
+  return name === "NotFound" || code === "ENOENT"
 }
 
 /** The directory part of a `/`-separated path; the path itself at its root. */
