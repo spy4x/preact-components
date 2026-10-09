@@ -76,4 +76,26 @@ describe("createOnlineStatus", () => {
     expect(listeners.online.size).toBe(1)
     expect(listeners.offline.size).toBe(1)
   })
+  it("listens on the target passed to watch instead of the store's", () => {
+    const store = fakeTarget()
+    const passed = fakeTarget()
+    const status = createOnlineStatus({ target: store.target, navigator: { onLine: true } })
+    status.watch(passed.target)
+
+    passed.fire("offline")
+
+    expect(status.online.value).toBe(false)
+    expect(store.listeners.offline.size).toBe(0)
+  })
+
+  it("uses the store's target again on a watch that passes none", () => {
+    const store = fakeTarget()
+    const status = createOnlineStatus({ target: store.target, navigator: { onLine: true } })
+    status.watch(fakeTarget().target)
+    status.watch()
+
+    store.fire("offline")
+
+    expect(status.online.value).toBe(false)
+  })
 })

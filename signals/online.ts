@@ -40,9 +40,12 @@ export interface OnlineStatus {
    * Each call adds its own pair of listeners, so two callers can watch at once and stopping one
    * leaves the other following.
    *
+   * @param target Where this call listens, overriding {@link OnlinePorts.target} for this call
+   * only; `null` listens nowhere. Omitted, it is the store's `target`, then `globalThis.window`.
+   * A test passes a fake here and fires `offline` on it to drive the app offline.
    * @returns The function that removes this call's listeners. Calling it twice is harmless.
    */
-  watch(): () => void
+  watch(target?: OnlineTarget | null): () => void
 }
 
 /** `navigator.onLine`, or `true` when this runtime has nothing to ask. */
@@ -65,11 +68,13 @@ export function createOnlineStatus(ports: OnlinePorts = {}): OnlineStatus {
   const navigator = ports.navigator === undefined ? globalThis.navigator ?? null : ports.navigator
   const online = signal(readOnline(navigator))
 
-  function watch(): () => void {
+  function watch(override?: OnlineTarget | null): () => void {
     // Deno 2 has no `window`, so a server render resolves to no target and only re-reads.
-    const target = ports.target === undefined
-      ? (globalThis as { window?: OnlineTarget }).window ?? null
-      : ports.target
+    const target = override !== undefined
+      ? override
+      : ports.target !== undefined
+      ? ports.target
+      : (globalThis as { window?: OnlineTarget }).window ?? null
     const up = (): void => {
       online.value = true
     }

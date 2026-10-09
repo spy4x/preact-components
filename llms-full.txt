@@ -1584,8 +1584,9 @@ pin. The two are not drop-in identical, and one of the differences is silent:
 ## Design rules this package follows
 
 - **Ports, not singletons.** `buildModelStore` takes `fetch`, a `toast` port and a `session` flag;
-  `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard; `createOnlineStatus` takes `target` and `navigator`.
-  Every one has a browser default, and every one can be a test double.
+  `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard;
+  `createOnlineStatus` takes `target` and `navigator`. Every one has a browser default, and every
+  one can be a test double.
 - **Immutability is load-bearing.** Signals compare by reference, so per-row operation state lives in
   `Map`s that are copied on write, `list.all` sorts a copy, and toasts append to a new array.
 - **Honest types.** No optional members that are always present, no `as` casts in consumers. `op.delete`
@@ -1922,7 +1923,9 @@ reached the component under its old name, both clocks ran, and a toast lived whi
   it re-reads `navigator.onLine`, then follows the window's `online` and `offline` events. Each
   `watch()` adds its own listeners and returns the function that removes only those, so two
   callers can watch at once. With no `navigator.onLine` to ask, as on the server, `online` is
-  `true`.
+  `true`. `watch(target)` listens on `target` for that call only, so an app's test passes a fake
+  event target and fires `offline` on it to go offline; to reset, it calls the stop function and
+  `watch()` again, which re-reads `navigator.onLine`.
 - **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
   forward: each one re-reads every parameter into its signal, and a parameter that has left the
   address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
