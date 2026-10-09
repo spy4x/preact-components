@@ -464,7 +464,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (908 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (912 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -785,6 +785,12 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `SettingListProps` (type): What `SettingList` takes. Import: `@spy4x/preact-ui`
 - `SettingRow` (component): One setting: its name, its current value under it, and an optional action on the right that stays beside the text on a phone. Import: `@spy4x/preact-ui`
 - `SettingRowProps` (type): What `SettingRow` takes. Import: `@spy4x/preact-ui`
+- `ComparisonRow` (type): One capability of a `ComparisonTable`: a row, with one value per product. Import: `@spy4x/preact-ui`
+- `ComparisonTable` (component): A comparison of capabilities across products, for a public page: a legend, a real `<table>` and the method and fit that make it trustworthy. Import: `@spy4x/preact-ui`
+- `ComparisonTableLabels` (type): Every English word a `ComparisonTable` draws, each one replaceable. Import: `@spy4x/preact-ui`
+- `ComparisonTableProps` (type): Props of `ComparisonTable`. Import: `@spy4x/preact-ui`
+- `ComparisonValue` (type): How far a product covers one capability. Import: `@spy4x/preact-ui`
+- `defaultComparisonTableLabels` (helper): The English defaults of `ComparisonTableLabels`. Import: `@spy4x/preact-ui`
 - `StatusMark` (component): A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`. Import: `@spy4x/preact-ui`
 - `StatusMarkProps` (type): Props of `StatusMark`. Import: `@spy4x/preact-ui`
 - `StatusMarkStatus` (type): A project or feature's lifecycle state. Import: `@spy4x/preact-ui`

@@ -4162,6 +4162,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                      |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                       |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                      |
+| `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held         |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                       |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                              |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                             |
@@ -5903,6 +5904,12 @@ components and tests means exactly that: nothing outside this package should bui
   the enum or its plain numbers, so another package's same-valued enum passes without a cast.
 - `defaultPricingTableLabels`, `defaultPlanCardLabels` and `defaultUpgradePromptLabels` are the
   English words of each component; a translation replaces any of them through `labels`.
+
+### ComparisonTable (`./comparison-table`)
+
+- `defaultComparisonTableLabels` holds the English words of a `ComparisonTable`: the three value
+  labels and what each means in the legend, the column and "Ours" words, the method and fit terms
+  and the "Checked on" sentence. A translation replaces any of them through `labels`.
 
 ### ConfirmDialog (`./confirm-dialog`)
 

@@ -1531,7 +1531,9 @@ async function propNamesCheck(devtools: Devtools, width: number): Promise<void> 
     await openGuidePage(devtools, page.id)
     const read = await devtools.evaluate<{ names: number; wrapped: number; broken: string[] }>(
       `(() => {
+      // The props table only: a demo may render a table of its own, whose row headers are not names.
       const cells = [...document.querySelectorAll('article[id^="demo-"] table > tbody > tr > th[scope="row"]')]
+        .filter((cell) => !cell.closest('[data-card-part="demo"]'))
       const broken = []
       let wrapped = 0
       for (const cell of cells) {

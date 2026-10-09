@@ -318,6 +318,14 @@ export {
   SettingRow,
   type SettingRowProps,
 } from "./setting-row.tsx"
+export {
+  type ComparisonRow,
+  ComparisonTable,
+  type ComparisonTableLabels,
+  type ComparisonTableProps,
+  type ComparisonValue,
+  defaultComparisonTableLabels,
+} from "./comparison-table.tsx"
 export { StatusMark, type StatusMarkProps, type StatusMarkStatus } from "./status-mark.tsx"
 export { Table, type TableProps } from "./table.tsx"
 export { nextTabIndex, type TabItem, Tabs, type TabsProps } from "./tabs.tsx"
