@@ -359,6 +359,7 @@ export {
   useHotkeys,
   type UseHotkeysOptions,
 } from "./hotkeys.ts"
+export { useSucceeded } from "./use-succeeded.ts"
 export { Kbd, KBD_LABELS, type KbdLabels, type KbdProps, type KeyFace, keyFaces } from "./kbd.tsx"
 export {
   groupShortcuts,

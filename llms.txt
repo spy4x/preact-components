@@ -824,6 +824,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `useHotkeyClick` (hook): Bind a key to one element: pressing it clicks the element through `clickByHotkey`. Import: `@spy4x/preact-ui`
 - `useHotkeys` (hook): Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches. Import: `@spy4x/preact-ui`
 - `UseHotkeysOptions` (type): Options of `useHotkeys`. Import: `@spy4x/preact-ui`
+- `useSucceeded` (hook): Calls `onDone` once when an action that was pending ends without failing: how a dialog learns that its form went through and it can close. Import: `@spy4x/preact-ui`
 - `Kbd` (component): One key or a combination of keys, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key. Import: `@spy4x/preact-ui`
 - `KBD_LABELS` (constant): English defaults for every `KbdLabels` entry. Import: `@spy4x/preact-ui`
 - `KbdLabels` (type): The words `Kbd` shows or reads out for a key. Import: `@spy4x/preact-ui`
