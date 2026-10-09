@@ -1878,7 +1878,7 @@ async function toastrActionNarrowCheck(devtools: Devtools): Promise<void> {
   const show = (box: Box) => `${box.left}–${box.right} × ${box.top}–${box.bottom}`
 
   check(
-    `at ${NARROW_WIDTH}px a toast's long action label wraps, keeping the action and the dismiss ` +
+    `at ${NARROW_WIDTH}px a toast with a long action label keeps its action and its dismiss ` +
       "control inside the toast and the window",
     fits,
     !reading.ok
