@@ -7955,6 +7955,10 @@ interface ConflictReading {
   items: Array<{ id: string; buttons: string[] }>
   /** The heading's text. */
   heading: string
+  /** The heading's tag name, such as `H2`. */
+  headingTag: string
+  /** Each item's failure message, keyed by id, for the items that show one. */
+  failures: Record<string, string>
   /** The polite live region's text. */
   announced: string
   /** The card's log of callbacks that ran. */
@@ -7973,21 +7977,51 @@ function readConflicts(devtools: Devtools, root = CONFLICT_INLINE): Promise<Conf
       id: item.getAttribute("data-conflict-id"),
       buttons: [...item.querySelectorAll("button")].map((button) => button.textContent.trim()),
     }))
+    const failures = Object.fromEntries(
+      [...(root?.querySelectorAll("[data-conflict-id]") ?? [])]
+        .map((item) => [item.getAttribute("data-conflict-id"), item.querySelector(".text-danger")])
+        .filter(([, message]) => message)
+        .map(([id, message]) => [id, message.textContent]),
+    )
+    const heading = root?.querySelector("h2, h3, h4, h5, h6")
     const active = document.activeElement
     const item = active?.closest?.("[data-conflict-id]")
     return {
       items,
-      heading: root?.querySelector("h2")?.textContent ?? "",
+      failures,
+      heading: heading?.textContent ?? "",
+      headingTag: heading?.tagName ?? "",
       announced: root?.querySelector('[role="status"]')?.textContent ?? "",
       log: [...document.querySelectorAll('${CONFLICT} [data-e2e="conflict-log"] li')]
         .map((line) => line.textContent),
-      focus: active === document.body ? "body" : active?.tagName === "H2" ? "heading"
+      focus: active === document.body ? "body" : active === heading ? "heading"
         : item ? item.getAttribute("data-conflict-id") + ":" + active.textContent.trim()
         : active?.tagName ?? "",
     }
   })()`,
-    { items: [], heading: "", announced: "", log: [], focus: "" },
+    { items: [], heading: "", headingTag: "", failures: {}, announced: "", log: [], focus: "" },
   )
+}
+
+/**
+ * Start counting `unhandledrejection` events on the page, once. A callback's rejected promise that
+ * a component leaves uncaught lands here.
+ */
+function countUnhandledRejections(devtools: Devtools): Promise<unknown> {
+  return devtools.evaluate(`(() => {
+    if (globalThis.__unhandled === undefined) {
+      globalThis.__unhandled = 0
+      addEventListener("unhandledrejection", () => globalThis.__unhandled++)
+    }
+    return null
+  })()`)
+}
+
+/** How many `unhandledrejection` events the page saw since {@link countUnhandledRejections}. */
+async function unhandledRejections(devtools: Devtools): Promise<number> {
+  // Unhandled rejections are reported after a task boundary; give the page one.
+  await devtools.evaluate(`new Promise((resolve) => setTimeout(() => resolve(null), 50))`)
+  return devtools.evaluate<number>(`globalThis.__unhandled ?? -1`)
 }
 
 /** Focus the button labelled `label` in item `id`, so the next key press goes to it. */
@@ -8021,10 +8055,27 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
     "ConflictChooser offers the choices each reason allows",
     JSON.stringify(first.items) === JSON.stringify([
           { id: "1", buttons: ["Keep mine", "Use theirs"] },
-          { id: "2", buttons: ["Restore mine", "Discard mine"] },
+          { id: "2", buttons: ["Discard mine"] },
           { id: "3", buttons: ["Discard mine"] },
-        ]) && first.heading === "3 changes need your choice",
+        ]) && first.heading === "3 changes need your choice" && first.headingTag === "H2",
     JSON.stringify(first),
+  )
+
+  await countUnhandledRejections(devtools)
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-fail-next"]`)
+  const focusedFailing = await focusConflictButton(devtools, "1", "Keep mine")
+  await pressKey(devtools, "Enter")
+  await poll(async () => Boolean((await readConflicts(devtools)).failures["1"]), 2_000)
+  const failed = await readConflicts(devtools)
+  const uncaught = await unhandledRejections(devtools)
+  check(
+    "a choice whose promise rejects keeps the item, says so under it and in the live region, and leaves nothing uncaught",
+    focusedFailing && failed.items.length === 3 &&
+      failed.failures["1"] === "Your choice was not saved. Try again." &&
+      failed.announced === "Your choice was not saved. Try again." &&
+      failed.log.join("|") === "failed: Buy milk" && failed.focus === "1:Keep mine" &&
+      uncaught === 0,
+    JSON.stringify({ failed, uncaught }),
   )
 
   const focusedMine = await focusConflictButton(devtools, "1", "Keep mine")
@@ -8033,7 +8084,8 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   const kept = await readConflicts(devtools)
   check(
     "Enter on Keep mine runs onKeepMine, and focus moves to the next conflict's first button",
-    focusedMine && kept.log.join("|") === "keep mine: Buy milk" && kept.focus === "2:Restore mine",
+    focusedMine && kept.log.join("|") === "failed: Buy milk|keep mine: Buy milk" &&
+      kept.focus === "2:Discard mine" && Object.keys(kept.failures).length === 0,
     JSON.stringify(kept),
   )
 
@@ -8043,7 +8095,7 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   const used = await readConflicts(devtools)
   check(
     "Enter on Discard mine runs onUseTheirs for an item deleted elsewhere",
-    focusedTheirs && used.log[1] === "use theirs: Call the plumber" &&
+    focusedTheirs && used.log[2] === "use theirs: Call the plumber" &&
       used.focus === "3:Discard mine",
     JSON.stringify(used),
   )
@@ -8053,7 +8105,7 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   const empty = await readConflicts(devtools)
   check(
     "settling the last conflict moves focus to the heading and announces that all are resolved",
-    empty.log[2] === "use theirs: Rename the shared list" && empty.focus === "heading" &&
+    empty.log[3] === "use theirs: Rename the shared list" && empty.focus === "heading" &&
       empty.heading === "All conflicts resolved" && empty.announced === "All conflicts resolved",
     JSON.stringify(empty),
   )
@@ -8073,9 +8125,9 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   )
   const inDialog = await readConflicts(devtools, dialogChooser)
   check(
-    "inside a Modal, Enter on Use theirs runs onUseTheirs and focus stays in the dialog",
+    "inside a Modal, Enter on Use theirs runs onUseTheirs and focus stays in the dialog, under an h3",
     opened && focusedInDialog && inDialog.log.join("|") === "use theirs: Buy milk" &&
-      inDialog.focus === "2:Restore mine",
+      inDialog.focus === "2:Discard mine" && inDialog.headingTag === "H3",
     JSON.stringify(inDialog),
   )
   await pressKey(devtools, "Escape")
@@ -8097,8 +8149,12 @@ interface InstallReading {
   buttons: string[]
   /** The offer's text. */
   text: string
+  /** The offer's visible failure message, or `""`. */
+  failed: string
   /** The store's state line under it. */
   state: string
+  /** Where focus is: `state` (this case's state line, the card's `returnFocus`), `body`, or other. */
+  focus: string
 }
 
 /** Read one case of the install card: `prompt`, `ios` or `installed`. */
@@ -8108,15 +8164,30 @@ function readInstall(devtools: Devtools, name: string): Promise<InstallReading> 
     devtools,
     `(() => {
     const offer = document.querySelector('${part} section')
+    const state = document.querySelector('${part} [data-e2e="install-mode"]')
+    const active = document.activeElement
     return {
       shown: offer?.getAttribute("data-install-mode") ?? "",
       buttons: [...(offer?.querySelectorAll("button") ?? [])].map((b) => b.textContent.trim()),
       text: offer?.textContent ?? "",
-      state: document.querySelector('${part} [data-e2e="install-mode"]')?.textContent ?? "",
+      failed: offer?.querySelector(".text-danger")?.textContent ?? "",
+      state: state?.textContent ?? "",
+      focus: active === state ? "state" : active === document.body ? "body"
+        : active?.textContent?.trim() ?? active?.tagName ?? "",
     }
   })()`,
-    { shown: "", buttons: [], text: "", state: "" },
+    { shown: "", buttons: [], text: "", failed: "", state: "", focus: "" },
   )
+}
+
+/** Focus the button labelled `label` in the offer of case `name`. */
+function focusInstallButton(devtools: Devtools, name: string, label: string): Promise<boolean> {
+  return devtools.evaluate<boolean>(`(() => {
+    const button = [...document.querySelectorAll('${INSTALL_CARD} [data-e2e="install-${name}"] section button')]
+      .find((candidate) => candidate.textContent.trim() === ${JSON.stringify(label)})
+    button?.focus()
+    return document.activeElement === button
+  })()`)
 }
 
 /**
@@ -8125,12 +8196,15 @@ function readInstall(devtools: Devtools, name: string): Promise<InstallReading> 
  * Each case runs the real store on a fake window and navigator, so the catalogue never asks the
  * browser to install it: a browser that fires `beforeinstallprompt` and installs from the Install
  * button pressed with Enter, an iPhone that shows the Share steps and can be dismissed, and an app
- * already running standalone that shows nothing.
+ * already running standalone that shows nothing. Each case passes its state line as `returnFocus`,
+ * so the checks also prove where focus lands when the card leaves, and that a failing dialog or a
+ * failing store leaves no uncaught rejection.
  *
  * @param devtools The connected session, on the system page.
  */
 async function installPromptChecks(devtools: Devtools): Promise<void> {
   await centreInView(devtools, `document.querySelector('${INSTALL_CARD}')`)
+  await countUnhandledRejections(devtools)
   const before = await readInstall(devtools, "prompt")
   await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer"]`)
   await poll(async () => (await readInstall(devtools, "prompt")).shown === "prompt", 2_000)
@@ -8142,18 +8216,30 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
     JSON.stringify({ before, offered }),
   )
 
-  const focused = await devtools.evaluate<boolean>(`(() => {
-    const button = [...document.querySelectorAll('${INSTALL_CARD} [data-e2e="install-prompt"] section button')]
-      .find((candidate) => candidate.textContent.trim() === "Install")
-    button?.focus()
-    return document.activeElement === button
-  })()`)
+  // An event whose dialog fails to open replaces the good one.
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer-broken"]`)
+  const focusedBroken = await focusInstallButton(devtools, "prompt", "Install")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readInstall(devtools, "prompt")).shown === "", 2_000)
+  const broken = await readInstall(devtools, "prompt")
+  const uncaughtInstall = await unhandledRejections(devtools)
+  check(
+    "a dialog that fails to open ends the offer, moves focus to returnFocus, and leaves nothing uncaught",
+    focusedBroken && broken.shown === "" && broken.state.startsWith("mode: unavailable") &&
+      broken.focus === "state" && uncaughtInstall === 0,
+    JSON.stringify({ broken, uncaughtInstall }),
+  )
+
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer"]`)
+  await poll(async () => (await readInstall(devtools, "prompt")).shown === "prompt", 2_000)
+  const focused = await focusInstallButton(devtools, "prompt", "Install")
   await pressKey(devtools, "Enter")
   await poll(async () => (await readInstall(devtools, "prompt")).shown === "", 2_000)
   const installed = await readInstall(devtools, "prompt")
   check(
-    "Enter on Install opens the browser's dialog, and an accepted dialog ends the offer",
-    focused && installed.shown === "" && installed.state.startsWith("mode: installed"),
+    "Enter on Install opens the browser's dialog, an accepted dialog ends the offer, and focus moves to returnFocus",
+    focused && installed.shown === "" && installed.state.startsWith("mode: installed") &&
+      installed.focus === "state",
     JSON.stringify(installed),
   )
 
@@ -8164,12 +8250,28 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
       ios.text.includes("then Add to Home Screen."),
     JSON.stringify(ios),
   )
-  await click(devtools, `${INSTALL_CARD} [data-e2e="install-ios"] section button`)
+
+  await click(devtools, `${INSTALL_CARD} [data-e2e="install-fail-next"]`)
+  await focusInstallButton(devtools, "ios", "Not now")
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await readInstall(devtools, "ios")).failed !== "", 2_000)
+  const refused = await readInstall(devtools, "ios")
+  const uncaughtDismiss = await unhandledRejections(devtools)
+  check(
+    "Not now whose store write fails keeps the steps, says it did not work, and leaves nothing uncaught",
+    refused.shown === "ios" && refused.failed === "That did not work. Try again." &&
+      refused.state === "mode: ios, dismissed: false" && uncaughtDismiss === 0,
+    JSON.stringify({ refused, uncaughtDismiss }),
+  )
+
+  const focusedDismiss = await focusInstallButton(devtools, "ios", "Not now")
+  await pressKey(devtools, "Enter")
   await poll(async () => (await readInstall(devtools, "ios")).shown === "", 2_000)
   const dismissed = await readInstall(devtools, "ios")
   check(
-    "Not now hides the iOS steps and stores the dismissal",
-    dismissed.shown === "" && dismissed.state === "mode: ios, dismissed: true",
+    "Not now hides the iOS steps, stores the dismissal, and moves focus to returnFocus",
+    focusedDismiss && dismissed.shown === "" && dismissed.state === "mode: ios, dismissed: true" &&
+      dismissed.focus === "state",
     JSON.stringify(dismissed),
   )
 
