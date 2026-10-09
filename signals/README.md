@@ -29,6 +29,7 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                |
 | `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                     |
 | `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                      |
+| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                              |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                              |
 | `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                           |
 | `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                       |
@@ -82,7 +83,8 @@ pin. The two are not drop-in identical, and one of the differences is silent:
 
 - **Ports, not singletons.** `buildModelStore` takes `fetch`, a `toast` port and a `session` flag;
   `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard;
-  `createOnlineStatus` takes `target` and `navigator`. Every one has a browser default, and every
+  `createOnlineStatus` takes `target` and `navigator`; `createNow` takes `clock`, `timers` and
+  `visibility`. Every one has a browser default, and every
   one can be a test double. `createOnboardingState` takes a `dismissed` port with no default,
   because only the app knows where that flag is kept.
 - **Immutability is load-bearing.** Signals compare by reference, so per-row operation state lives in
@@ -472,6 +474,14 @@ const onboarding = createOnboardingState({ steps, dismissed: settingsPort })
   `true`. `watch(target)` listens on `target` for that call only, so an app's test passes a fake
   event target and fires `offline` on it to go offline; to reset, it calls the stop function and
   `watch()` again, which re-reads `navigator.onLine`.
+- **`useNow` moves at midnight, not every second.** It returns a signal holding the time the clock
+  last read, and reads it again at the first instant of each new day in `zone` (the runtime's own
+  zone by default) and whenever the page becomes visible again: a browser pauses a background tab's
+  timers, and a phone sleeps through midnight. A view that groups by "today" derives the day from it
+  (`isoDateInTz(now.value, zone)` from `@spy4x/time/tz`). The timer and the `visibilitychange`
+  listener go when the component unmounts. Outside a component, `createNow(options).start()` does
+  the same and returns the function that stops it; a test passes a `clock` and `timers` it moves
+  itself, and a `visibility` it flips.
 - **`useUrlFilters` re-reads the address every time it changes.** A link, a router push, back or
   forward: each one re-reads every parameter into its signal, and a parameter that has left the
   address takes its field back to `initialValue`. It did not always. The URL-to-signals effect was a
@@ -685,7 +695,9 @@ with a second fake `fetch` that holds every request open until the test answers 
 to one row can be put in flight and answered in the other order. `useUrlFilters` is the one
 exception: it needs a DOM and a router, so only its pure coercion helpers are covered here and its
 binding to the address bar is covered in a real browser, by `pages/checks/signals.ts` — run with
-`deno task --cwd pages build` and `deno task --cwd pages verify`.
+`deno task --cwd pages build` and `deno task --cwd pages verify`. `useNow` is split the same way:
+`now.test.ts` drives `createNow` with a fake clock, fake timers and a fake page, and the effect that
+starts it on mount and stops it on unmount is checked in the browser by the same file.
 
 The model store has a second file, `build-model-store.generated.test.ts`. The named tests fix one
 arrangement each and hold everything else still — three small row ids, two requests, a handful of

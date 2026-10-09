@@ -323,6 +323,12 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `createClipboard` (helper): Create a clipboard helper. Import: `@spy4x/preact-signals`
 - `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
 - `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
+- `createNow` (helper): Create a store holding the current time. Import: `@spy4x/preact-signals`
+- `NowOptions` (type): Options for `createNow` and `useNow`. Import: `@spy4x/preact-signals`
+- `NowStore` (type): The current time, and the wiring that keeps it current. Import: `@spy4x/preact-signals`
+- `NowTimers` (type): Timer port. Import: `@spy4x/preact-signals`
+- `NowVisibility` (type): Page-visibility port. Import: `@spy4x/preact-signals`
+- `useNow` (hook): The current time, on a signal that changes at each midnight in `zone` and whenever the page becomes visible again. Import: `@spy4x/preact-signals`
 - `createOnlineStatus` (helper): Create an online status store. Import: `@spy4x/preact-signals`
 - `OnlineNavigator` (type): Network-state port. Import: `@spy4x/preact-signals`
 - `OnlinePorts` (type): Everything the store needs from the outside. Import: `@spy4x/preact-signals`
