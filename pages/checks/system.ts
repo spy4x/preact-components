@@ -6980,11 +6980,19 @@ async function railShellChecks(devtools: Devtools): Promise<void> {
 
     // Each label is the entry's last child. Its `truncate` makes it `overflow: hidden`, so a column
     // taller than the tab shrinks the label below its own line and cuts the descenders off.
+    // The bar may grow with enlarged text, but at the default size its tabs fit its 64px.
     const clippedLabels = await readClippedTabLabels(devtools)
+    const tabRowHeight = await read(
+      devtools,
+      `document.querySelector('${RAIL_SHELL_TABBAR} ul')?.getBoundingClientRect().height ?? null`,
+      null as number | null,
+    )
     check(
-      "at 375px every RailShell tab label is as tall as its line, so no descender is cut off",
-      clippedLabels !== null && clippedLabels.length === 0,
-      JSON.stringify(clippedLabels),
+      "at 375px the RailShell tab bar's row stays 64px tall and every tab label is as tall as its " +
+        "line, so no descender is cut off",
+      tabRowHeight !== null && Math.abs(tabRowHeight - 64) < 0.5 && clippedLabels !== null &&
+        clippedLabels.length === 0,
+      JSON.stringify({ tabRowHeight, clippedLabels }),
     )
     // A reader who enlarges only the text (a minimum font size, or text zoom) gets taller labels
     // in a bar whose height did not grow with them.
