@@ -5,6 +5,7 @@ import { render } from "preact-render-to-string"
 import {
   ariaKeyShortcuts,
   clickByHotkey,
+  firesInFields,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
@@ -216,6 +217,26 @@ describe("clickByHotkey", () => {
     const event = keyEvent({ closest: () => dialog })
     expect(clickByHotkey(button.element, event)).toBe(false)
     expect(button.clicks).toBe(0)
+  })
+})
+
+describe("firesInFields", () => {
+  it("lets a Control, Command or mod chord fire in a text field", () => {
+    for (const keys of ["mod+k", "ctrl+k", "meta+k", "mod+shift+p", "ctrl+alt+k"]) {
+      expect([keys, firesInFields(keys)]).toEqual([keys, true])
+    }
+  })
+
+  it("keeps a plain key and an Alt chord out of a text field, since both type text", () => {
+    for (const keys of ["/", "k", "shift+k", "alt+p", "alt+shift+p"]) {
+      expect([keys, firesInFields(keys)]).toEqual([keys, false])
+    }
+  })
+
+  it("leaves the field its editing chords, such as mod+z", () => {
+    for (const keys of ["mod+a", "mod+c", "mod+v", "mod+x", "mod+z", "mod+y", "mod+shift+z"]) {
+      expect([keys, firesInFields(keys)]).toEqual([keys, false])
+    }
   })
 })
 

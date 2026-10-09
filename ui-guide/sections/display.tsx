@@ -58,6 +58,7 @@ import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
 import type { DemoFragment } from "../registry.ts"
+import { CommandPalette, type CommandPaletteOption } from "@spy4x/preact-ui/command-palette"
 
 /**
  * A one-square image, inline so the catalogue needs no network and no asset directory.
@@ -1842,6 +1843,56 @@ useHotkeys(bindings)
 />`,
     render: () => <SortableListDemo />,
   },
+  CommandPalette: {
+    summary:
+      "A search button and the dialog it opens, with results grouped under headings that the arrow keys move through.",
+    wide: false,
+    props: [
+      {
+        name: "options",
+        type: "{ id, label, detail?, hint?, group? }[]",
+        description: "Options it filters itself, folding case and accents. Or `search`, not both.",
+      },
+      {
+        name: "search",
+        type: "(query, signal) => Promise<options>",
+        description:
+          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored.",
+      },
+      { name: "onSelect", type: "(option) => void", description: "The picked option." },
+      {
+        name: "hotkeys",
+        type: "string[]",
+        default: `["/", "mod+k"]`,
+        description:
+          "What opens it; the trigger shows the first one, and `[]` turns them off. In a text field only a Control, Command or `mod` chord fires, never Alt, and never the field's editing keys (A, C, V, X, Z, Y).",
+      },
+      {
+        name: "debounce",
+        type: "number",
+        default: "200",
+        description: "Quiet milliseconds before `search`.",
+      },
+      {
+        name: "labels",
+        type: "Partial<CommandPaletteLabels>",
+        description:
+          "The field's name, placeholder, close button and the empty, loading and error words.",
+      },
+    ],
+    snippet: `const options = [
+  { id: "new", label: "New invoice", hint: "Action", group: "Actions" },
+  { id: "invoices", label: "Invoices", detail: "Billing", group: "Pages" },
+]
+<CommandPalette options={options} hotkeys={["mod+p"]} onSelect={(option) => run(option.id)} />
+
+<CommandPalette
+  search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
+  hotkeys={[]}
+  onSelect={open}
+/>`,
+    render: () => <CommandPaletteDemo />,
+  },
 } satisfies DemoFragment
 
 /** One card of the `KanbanBoard` demo. */
@@ -1964,6 +2015,92 @@ function SortableListDemo() {
           Reset
         </Button>
       </Cluster>
+    </Stack>
+  )
+}
+
+/** The local `CommandPalette` demo's options: two groups, and an accented name to fold. */
+const paletteOptions: readonly CommandPaletteOption[] = [
+  { id: "new", label: "New invoice", hint: "Action", group: "Actions" },
+  { id: "export", label: "Export to CSV", hint: "Action", group: "Actions" },
+  { id: "invoices", label: "Invoices", detail: "Billing", group: "Pages" },
+  { id: "customers", label: "Customers", detail: "Sales", group: "Pages" },
+  { id: "creme", label: "Crème brûlée", detail: "Recipes", group: "Pages" },
+  { id: "settings", label: "Settings", detail: "Account", group: "Pages" },
+]
+
+/** The names the remote `CommandPalette` demo's pretend server knows. */
+const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
+
+/**
+ * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
+ * quickly, so a stale answer arrives after the fresh one, and `boom` fails. It answers even after
+ * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
+ * query through `onAbort`.
+ */
+function paletteFruitSearch(
+  query: string,
+  signal: AbortSignal,
+  onAbort: (query: string) => void,
+): Promise<CommandPaletteOption[]> {
+  const needle = query.trim().toLowerCase()
+  const delay = needle.length === 1 ? 900 : 100
+  // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
+  // records which queries were aborted.
+  signal.addEventListener("abort", () => onAbort(query), { once: true })
+  return new Promise((resolve, reject) =>
+    setTimeout(() => {
+      if (needle === "boom") return reject(new Error("The pretend server failed"))
+      resolve(
+        paletteFruits
+          .filter((fruit) => fruit.toLowerCase().includes(needle))
+          .map((fruit) => ({ id: fruit, label: fruit, group: `Fruit with ${fruit[0]}` })),
+      )
+    }, delay)
+  )
+}
+
+/**
+ * `CommandPalette` both ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
+ * has no hotkey. `pages/checks/ui.ts` reads what each picked and how many searches started.
+ */
+function CommandPaletteDemo() {
+  const picked = useSignal("nothing yet")
+  const pickedRemote = useSignal("nothing yet")
+  const searches = useSignal(0)
+  const aborted = useSignal<string[]>([])
+  return (
+    <Stack>
+      <Cluster>
+        <CommandPalette
+          options={paletteOptions}
+          hotkeys={["mod+p"]}
+          dataE2E="palette-local"
+          labels={{ placeholder: "Jump to…" }}
+          onSelect={(option) => picked.value = option.label}
+        />
+        <CommandPalette
+          search={(query, signal) => {
+            searches.value++
+            return paletteFruitSearch(query, signal, (stale) => {
+              aborted.value = [...aborted.value, stale]
+            })
+          }}
+          hotkeys={[]}
+          dataE2E="palette-remote"
+          labels={{ placeholder: "Find a fruit…" }}
+          onSelect={(option) => pickedRemote.value = option.label}
+        />
+      </Cluster>
+      <DemoNote e2e="palette-picked">
+        Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
+        <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
+        <span data-e2e="palette-remote-searches">{searches.value}</span>; aborted{" "}
+        <span data-e2e="palette-remote-aborted">
+          {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
+        </span>. One letter answers slowly, longer queries quickly, and “boom” fails.
+      </DemoNote>
     </Stack>
   )
 }

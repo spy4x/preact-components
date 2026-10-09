@@ -62,6 +62,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                    |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                      |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                       |
+| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `debounce?`, `labels?`, `dataE2E?`                                                                                    |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                       |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                              |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                             |
@@ -1320,12 +1321,56 @@ the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a 
 the element and cancels the press only when the element is connected, enabled, not inert, rendered,
 and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
 `hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
-binds several elements in one `useHotkeys` call, as `Tabs` does. `useApplePlatform(apple)` answers
+binds several elements in one `useHotkeys` call, as `Tabs` does. `firesInFields(keys)` is its rule
+for text fields, which `CommandPalette` shares: a combination with Control, Command or `mod` fires
+while the reader types, one with only Alt does not (Option types a character on a Mac), and the
+field keeps its editing chords (`mod` with A, C, V, X, Z or Y). `useApplePlatform(apple)` answers
 whether `mod` means Command, reading the platform in an effect so the server render and the first
 browser render agree; `Kbd` and the `hotkey` prop use it.
 
 The parser and the matcher are framework-free and come from `@spy4x/platform/browser/hotkeys`
 in spy4x/ts-libs, which also documents the keyboard-layout and AltGr rules.
+
+## CommandPalette
+
+`CommandPalette` is a search button and the dialog it opens: one field and a list of results.
+The arrow keys move through the results, Home and End jump to either end, Enter picks the
+highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
+focus back on the button. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
+bound with `useHotkeys`; `hotkeys` names others, and `[]` turns them off. The button shows the
+first hotkey with `Kbd`. While the reader types in a text field, the rule is `firesInFields`, the
+same one a button's `hotkey` follows: a combination with Control, Command or `mod` still opens the
+palette; a plain key such as `/` or an Alt combination does not, since both type text; and the
+field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leaves Ctrl+K alone on a
+Mac, where it deletes to the end of the line; a caller who lists `ctrl+k` takes it from every
+field. The page behind does not scroll while the palette is open (a page an open `Modal` already
+locked stays as it is), and the highlighted result is scrolled
+into view as it moves. On a phone the button is an icon and the dialog fills the screen.
+
+It takes its results one of two ways, never both:
+
+- `options`: the palette filters the list itself as the reader types. Its default `filter` is
+  `rankOptions(options, query, limit)`: names equal to the query first, then names starting with
+  it, then names containing it, then options whose `detail` contains it, folding case and accents
+  the way `Combobox` does. Pass `filter` to rank differently.
+- `search(query, signal)`: the palette calls it with the empty query when it opens and then after
+  each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
+  and the stale answer is ignored even when the function does not listen to it. While a call runs
+  the list is empty and says "Searching…", so nothing from the previous query can be picked; a
+  rejection says the search failed.
+
+An option is `{ id, label, detail?, hint?, group? }`, and `onSelect` receives the same object, so
+it can carry whatever the app needs, such as an `href`. Options with a `group` are listed under a
+heading per group; `groupOptions(options)` is that grouping on its own: the unheaded options first,
+then each group in the order it first appears. `defaultCommandPaletteLabels` holds the English
+words, which `labels` overrides one by one.
+
+```tsx
+<CommandPalette
+  search={(query, signal) => fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json())}
+  onSelect={(option) => navigate(option.href)}
+/>
+```
 
 ## InlineEdit
 
@@ -1733,7 +1778,7 @@ components and tests means exactly that: nothing outside this package should bui
   it leaves alone. `nextComboboxState(state, key, count)` says what that key does to the highlight
   and the open state, wrapping at both ends, and `comboboxKeyAction(key, state, count)` adds whether
   to call `preventDefault()` and which option `Enter` selects. Together they are the whole keyboard
-  table, for a search field that should behave like a `Combobox`; the guide's own search uses them.
+  table, for a search field that should behave like a `Combobox`; `CommandPalette` uses them.
 - `typingState`, `openingState`, `selectableIndex`, `listboxContent`, `leavesCombobox`, `naming`,
   `activeDescendant`, `comboboxListboxId` and `comboboxOptionId` are exported for the package's own
   components and tests: the highlight a new query or a fresh open starts on, the empty message,

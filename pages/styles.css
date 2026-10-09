@@ -28,6 +28,11 @@
 @source "../signals";
 @source "../map";
 @source "./src";
+/*
+ * `pages/checks/theme.ts` builds a heading with `font-sans` at run time to prove a font class of
+ * its own beats --font-heading. No component renders that class, so it is emitted here.
+ */
+@source inline("font-sans");
 
 /*
  * The host page's own geometry. The guide draws its own sticky header, and anchored cards and
