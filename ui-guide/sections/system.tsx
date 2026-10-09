@@ -1,5 +1,5 @@
 /**
- * The System section: all nine of the package's components, live.
+ * The System section: every one of the package's components, live.
  *
  * Two of them are platform integration, and their cards are reduced on purpose:
  *
@@ -53,7 +53,11 @@ import {
   watchForUpdate,
   type WorkerLike,
 } from "@spy4x/preact-system/sw-updater"
-import { Button, Cluster, Field, Grid, Select, Stack } from "@spy4x/preact-ui"
+import { ConflictChooser, type ConflictItem } from "@spy4x/preact-system/conflict-chooser"
+import { InstallPrompt } from "@spy4x/preact-system/install-prompt"
+import { SyncStatus } from "@spy4x/preact-system/sync-status"
+import { createInstallPrompt, type InstallPromptEvent } from "@spy4x/preact-signals/install-prompt"
+import { Button, Cluster, Field, Grid, Modal, Select, Stack } from "@spy4x/preact-ui"
 import { makeStorage } from "@spy4x/platform/browser/storage"
 import { useSignal } from "@preact/signals"
 import { type } from "arktype"
@@ -1355,6 +1359,239 @@ function RailShellDemo() {
   )
 }
 
+/**
+ * `SyncStatus` driven by buttons standing in for a queue: go offline, queue a change, start a sync
+ * and end it either way. Retry starts a sync, as an app's own runner would.
+ */
+function SyncStatusDemo() {
+  const online = useSignal(true)
+  const pending = useSignal(2)
+  const syncing = useSignal(false)
+  const failed = useSignal(false)
+  const start = () => {
+    syncing.value = true
+    failed.value = false
+  }
+  return (
+    <Stack gap="md" data-e2e="sync-demo">
+      <div data-e2e="sync-mount">
+        <SyncStatus
+          online={online.value}
+          pending={pending.value}
+          syncing={syncing.value}
+          failed={failed.value}
+          onRetry={start}
+        />
+      </div>
+      <Cluster gap="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="sync-network"
+          onClick={() => (online.value = !online.value)}
+        >
+          {online.value ? "Go offline" : "Go online"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="sync-add"
+          onClick={() => pending.value++}
+        >
+          Queue a change
+        </Button>
+        <Button variant="outline" size="sm" data-e2e="sync-start" onClick={start}>
+          Start a sync
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="sync-succeed"
+          onClick={() => {
+            syncing.value = false
+            pending.value = 0
+          }}
+        >
+          Sync succeeds
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="sync-fail"
+          onClick={() => {
+            syncing.value = false
+            failed.value = true
+          }}
+        >
+          Sync fails
+        </Button>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/** Three conflicts, one per reason, as a queue would hand them over. */
+const sampleConflicts: ConflictItem[] = [
+  { id: "1", label: "Buy milk", reason: "version" },
+  { id: "2", label: "Call the plumber", reason: "gone" },
+  {
+    id: "3",
+    label: "Rename the shared list",
+    reason: "rejected",
+    message: "The server refused this change: you can no longer edit this list.",
+  },
+]
+
+/**
+ * `ConflictChooser` inline and in a dialog. A choice removes the item and logs which callback ran,
+ * the way an app removes an entry once its outbox settled it.
+ */
+function ConflictChooserDemo() {
+  const conflicts = useSignal<ConflictItem[]>(sampleConflicts)
+  const log = useSignal<string[]>([])
+  const dialog = useSignal(false)
+  const settle = (choice: string) => (id: string) => {
+    const item = conflicts.value.find((entry) => entry.id === id)
+    log.value = [...log.value, `${choice}: ${item?.label}`]
+    conflicts.value = conflicts.value.filter((entry) => entry.id !== id)
+  }
+  const chooser = (
+    <ConflictChooser
+      conflicts={conflicts.value}
+      onKeepMine={settle("keep mine")}
+      onUseTheirs={settle("use theirs")}
+    />
+  )
+  return (
+    <Stack gap="md" data-e2e="conflict-demo">
+      <div data-e2e="conflict-inline">{dialog.value ? null : chooser}</div>
+      <Cluster gap="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="conflict-reset"
+          onClick={() => {
+            conflicts.value = sampleConflicts
+            log.value = []
+          }}
+        >
+          Reset
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="conflict-dialog"
+          onClick={() => (dialog.value = true)}
+        >
+          Show in a dialog
+        </Button>
+      </Cluster>
+      <Modal
+        open={dialog.value}
+        onClose={() => {
+          dialog.value = false
+        }}
+        title="Sync conflicts"
+        cancelLabel="Close"
+      >
+        {dialog.value ? chooser : null}
+      </Modal>
+      <ol data-e2e="conflict-log" class="text-sm text-muted">
+        {log.value.map((line) => <li key={line}>{line}</li>)}
+      </ol>
+    </Stack>
+  )
+}
+
+const IPHONE = {
+  userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Safari/604.1",
+}
+const DESKTOP = { userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Safari/537.36" }
+
+/**
+ * A stand-in window for `createInstallPrompt`: it fires `beforeinstallprompt` when the card asks,
+ * with an event whose dialog accepts at once, so the catalogue never asks to install itself.
+ */
+function fakeInstallWindow() {
+  const listeners = new Set<(event: InstallPromptEvent) => void>()
+  return {
+    target: {
+      addEventListener: (type: string, listener: (event: InstallPromptEvent) => void) => {
+        if (type === "beforeinstallprompt") listeners.add(listener)
+      },
+      removeEventListener: (_type: string, listener: (event: InstallPromptEvent) => void) => {
+        listeners.delete(listener)
+      },
+    },
+    offer: () =>
+      listeners.forEach((listener) =>
+        listener({
+          preventDefault: () => {},
+          prompt: () => Promise.resolve(),
+          userChoice: Promise.resolve({ outcome: "accepted" as const }),
+        })
+      ),
+  }
+}
+
+/** One `createInstallPrompt` store on fake ports, and the card it draws. */
+function InstallCase(
+  { name, navigator, standalone, offer }: {
+    name: string
+    navigator: { userAgent: string }
+    standalone: boolean
+    offer?: boolean
+  },
+) {
+  const fake = useRef(fakeInstallWindow()).current
+  const store = useRef(
+    createInstallPrompt({
+      target: fake.target,
+      navigator,
+      matchMedia: () => ({ matches: standalone }),
+    }),
+  ).current
+  useEffect(() => store.watch(), [])
+  return (
+    <Stack gap="sm" data-e2e={`install-${name}`}>
+      <InstallPrompt
+        mode={store.visible.value ? store.mode.value : "unavailable"}
+        onInstall={store.install}
+        onDismiss={store.dismiss}
+      />
+      <p class="text-sm text-muted" data-e2e="install-mode">
+        mode: {store.mode.value}, dismissed: {String(store.dismissed.value)}
+      </p>
+      {offer
+        ? (
+          <div>
+            <Button variant="outline" size="sm" data-e2e="install-offer" onClick={fake.offer}>
+              Fire beforeinstallprompt
+            </Button>
+          </div>
+        )
+        : null}
+    </Stack>
+  )
+}
+
+/** The three cases `createInstallPrompt` tells apart, each on its own fake browser. */
+function InstallPromptDemo() {
+  return (
+    <Stack gap="xl">
+      <Part title="A browser with an install dialog">
+        <InstallCase name="prompt" navigator={DESKTOP} standalone={false} offer />
+      </Part>
+      <Part title="iPhone: no dialog, so the steps">
+        <InstallCase name="ios" navigator={IPHONE} standalone={false} />
+      </Part>
+      <Part title="Already running installed: nothing to offer">
+        <InstallCase name="installed" navigator={IPHONE} standalone />
+      </Part>
+    </Stack>
+  )
+}
+
 export const systemDemos = {
   Shell: {
     summary:
@@ -1821,5 +2058,103 @@ const tags = seoHeadTags(head)`,
         </Part>
       </Stack>
     ),
+  },
+  SyncStatus: {
+    summary:
+      "One compact line for a header that says whether offline changes reached the server: offline, waiting, syncing, or failed with a Retry.",
+    wide: true,
+    props: [
+      { name: "online", type: "boolean", description: "Whether the browser has a network." },
+      { name: "pending", type: "number", description: "How many changes wait to be sent." },
+      { name: "syncing", type: "boolean", default: "false", description: "A sync is running." },
+      {
+        name: "failed",
+        type: "boolean",
+        default: "false",
+        description: "The last sync failed; with `onRetry`, a Retry button shows.",
+      },
+      {
+        name: "labels",
+        type: "Partial<SyncStatusLabels>",
+        description: "Replaces any of the words; the counted ones are functions of `pending`.",
+      },
+    ],
+    snippet: `<SyncStatus
+  online={connection.online.value}
+  pending={pending.value}
+  syncing={syncing.value}
+  failed={failed.value}
+  onRetry={() => runSync()}
+/>`,
+    render: () => <SyncStatusDemo />,
+  },
+  ConflictChooser: {
+    summary:
+      "The changes the server did not take, each explained in plain words, with Keep mine and Use theirs; inline, or inside a `Modal`.",
+    wide: true,
+    props: [
+      {
+        name: "conflicts",
+        type: "ConflictItem[]",
+        description:
+          "Each with an `id`, a `label` and a `reason`: `version`, `gone` or `rejected`, which pick the words and the buttons.",
+      },
+      {
+        name: "onKeepMine",
+        type: "(id: string) => void | Promise",
+        description: "Keeps this person's version; a promise keeps the buttons busy.",
+      },
+      {
+        name: "onUseTheirs",
+        type: "(id: string) => void | Promise",
+        description: "Takes the server's version, or drops the change.",
+      },
+      {
+        name: "labels",
+        type: "ConflictChooserLabelOverrides",
+        description: "Replaces any of the words, per reason for the buttons.",
+      },
+    ],
+    snippet: `<ConflictChooser
+  conflicts={entries.filter((e) => e.conflict).map((e) => ({
+    id: String(e.seq),
+    label: e.payload.title,
+    reason: e.conflict.reason,
+  }))}
+  onKeepMine={(id) => outbox.keepMine(byId(id)).then(refresh)}
+  onUseTheirs={(id) => outbox.useTheirs(byId(id)).then(refresh)}
+/>`,
+    render: () => <ConflictChooserDemo />,
+  },
+  InstallPrompt: {
+    summary:
+      "A dismissible offer to install the app: an Install button where the browser has a dialog, and the Share steps on iPhone and iPad.",
+    wide: true,
+    props: [
+      {
+        name: "mode",
+        type: '"prompt" | "ios" | "installed" | "unavailable"',
+        description: "What to offer; `createInstallPrompt().mode` from preact-signals fits.",
+      },
+      {
+        name: "onInstall",
+        type: "() => void | Promise",
+        description: "Opens the browser's install dialog.",
+      },
+      {
+        name: "onDismiss",
+        type: "() => void",
+        description: "Hides the offer; the store remembers it through its port.",
+      },
+    ],
+    snippet: `const install = createInstallPrompt({ dismissed: localFlag("install-dismissed") })
+install.watch()
+
+<InstallPrompt
+  mode={install.visible.value ? install.mode.value : "unavailable"}
+  onInstall={install.install}
+  onDismiss={install.dismiss}
+/>`,
+    render: () => <InstallPromptDemo />,
   },
 } satisfies DemoFragment

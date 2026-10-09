@@ -346,7 +346,7 @@ const catalogue = {
     package: "system",
     title: "System",
     blurb:
-      "The frames an app is built in, its sign-in form and calendar, and the pieces that work with the browser: the page head, state handed over from the server, and the service-worker update prompt.",
+      "The frames an app is built in, its sign-in form and calendar, and the pieces that work with the browser: the page head, state handed over from the server, the service-worker update prompt, offline sync status and conflicts, and the install offer.",
     demos: systemDemos,
   },
   crud: {

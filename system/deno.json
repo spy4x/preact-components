@@ -12,7 +12,10 @@
     "./shell": "./shell.tsx",
     "./rail-shell": "./rail-shell.tsx",
     "./state-init": "./state-init.tsx",
-    "./boundary": "./boundary.ts"
+    "./boundary": "./boundary.ts",
+    "./conflict-chooser": "./conflict-chooser.tsx",
+    "./install-prompt": "./install-prompt.tsx",
+    "./sync-status": "./sync-status.tsx"
   },
   "imports": {
     // Fresh is pinned here and nowhere else, for one test file only: `seo-head.fresh.test.tsx`
