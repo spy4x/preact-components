@@ -6934,6 +6934,31 @@ async function railShellChecks(devtools: Devtools): Promise<void> {
       JSON.stringify(phone),
     )
 
+    // Each label is the entry's last child. Its `truncate` makes it `overflow: hidden`, so a column
+    // taller than the tab shrinks the label below its own line and cuts the descenders off.
+    const clippedLabels = await read(
+      devtools,
+      `(() => {
+        const bar = document.querySelector('${RAIL_SHELL_TABBAR}')
+        if (!bar) return null
+        const labels = [...bar.querySelectorAll("li > :is(a, button) > span:last-child")]
+        if (labels.length !== 5) return null
+        return labels
+          .map((label) => ({
+            text: label.textContent,
+            height: label.getBoundingClientRect().height,
+            line: parseFloat(getComputedStyle(label).lineHeight),
+          }))
+          .filter(({ height, line }) => !(height >= line - 0.5))
+      })()`,
+      null as { text: string; height: number; line: number }[] | null,
+    )
+    check(
+      "at 375px every RailShell tab label is as tall as its line, so no descender is cut off",
+      clippedLabels !== null && clippedLabels.length === 0,
+      JSON.stringify(clippedLabels),
+    )
+
     const lastLine = await read(
       devtools,
       `(async () => {
