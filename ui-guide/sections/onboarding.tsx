@@ -4,12 +4,14 @@
  * What only a browser shows — the next step's action and Dismiss reachable by Tab, focus staying in
  * the footer as steps complete (a button, then a link), focus moving to the heading when a step has
  * no action, and the Dismiss port firing — is driven by
- * `pages/checks/ui.ts`.
+ * `pages/checks/ui.ts`. The demo keeps its state in `createOnboardingState` from
+ * `@spy4x/preact-signals`, so those checks also load a page that uses it.
  */
 
 import { Button, Cluster, OnboardingChecklist, type OnboardingStep, Stack } from "@spy4x/preact-ui"
-import { useSignal } from "@preact/signals"
-import { useEffect, useRef } from "preact/hooks"
+import { useComputed, useSignal } from "@preact/signals"
+import { createOnboardingState } from "@spy4x/preact-signals/onboarding"
+import { useEffect, useMemo, useRef } from "preact/hooks"
 import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
 
@@ -76,30 +78,37 @@ function startingDone(): Set<string> {
 function OnboardingChecklistDemo() {
   const done = useSignal(startingDone())
   const dismissed = useSignal(0)
-  const hidden = useSignal(false)
   const showAgain = useRef<HTMLButtonElement>(null)
   const markDone = (id: string) => done.value = new Set([...done.value, id])
 
+  const steps = useComputed<OnboardingStep[]>(() =>
+    STEPS.map(({ id, title, description, kind }) => ({
+      id,
+      title,
+      description,
+      done: done.value.has(id),
+      action: kind === "button"
+        ? { label: title, onClick: () => markDone(id) }
+        : kind === "link"
+        ? { label: title, href: `#${id}`, navigate: () => markDone(id) }
+        : undefined,
+    }))
+  )
+  // The dismissed flag lives in memory here; an app keeps it in `localStorage` or a user setting.
+  const onboarding = useMemo(
+    () => createOnboardingState({ steps, dismissed: { read: () => false, write: () => {} } }),
+    [],
+  )
+  const hidden = !onboarding.visible.value
+
   // The card is gone after Dismiss, so the app moves focus: here, to the button that brings it back.
   useEffect(() => {
-    if (hidden.value) showAgain.current?.focus()
-  }, [hidden.value])
-
-  const steps: OnboardingStep[] = STEPS.map(({ id, title, description, kind }) => ({
-    id,
-    title,
-    description,
-    done: done.value.has(id),
-    action: kind === "button"
-      ? { label: title, onClick: () => markDone(id) }
-      : kind === "link"
-      ? { label: title, href: `#${id}`, navigate: () => markDone(id) }
-      : undefined,
-  }))
+    if (hidden) showAgain.current?.focus()
+  }, [hidden])
 
   return (
     <Stack>
-      {hidden.value
+      {hidden
         ? (
           <Button
             ref={showAgain}
@@ -107,7 +116,7 @@ function OnboardingChecklistDemo() {
             data-e2e="onboarding-show-again"
             onClick={() => {
               done.value = startingDone()
-              hidden.value = false
+              onboarding.reset()
             }}
           >
             Show the checklist again
@@ -115,11 +124,11 @@ function OnboardingChecklistDemo() {
         )
         : (
           <OnboardingChecklist
-            steps={steps}
+            steps={steps.value}
             description="A few steps to a working team space."
             onDismiss={() => {
               dismissed.value++
-              hidden.value = true
+              onboarding.dismiss()
             }}
           />
         )}
@@ -128,7 +137,7 @@ function OnboardingChecklistDemo() {
           variant="outline"
           size="sm"
           data-e2e="onboarding-confirm-email"
-          disabled={hidden.value || done.value.has("verify")}
+          disabled={hidden || done.value.has("verify")}
           onClick={() => markDone("verify")}
         >
           Pretend the e-mail link was opened
