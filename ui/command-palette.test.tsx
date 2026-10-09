@@ -77,9 +77,30 @@ describe("CommandPalette", () => {
     expect(html).toMatch(/<kbd[^>]*>\/<\/kbd>/)
   })
 
-  it("draws no hotkey hint when the hotkeys are turned off", () => {
+  it("draws no hotkey hint and announces no hotkey when the hotkeys are turned off", () => {
     const html = render(<CommandPalette options={options} onSelect={() => {}} hotkeys={[]} />)
     expect(html).not.toContain("<kbd")
+    expect(html).not.toContain("aria-keyshortcuts")
+  })
+
+  it("announces every hotkey on the trigger and shows the first as a button's hotkey hint", () => {
+    const html = render(<CommandPalette options={options} onSelect={() => {}} />)
+    expect(html).toMatch(/<button[^>]*\saria-keyshortcuts="\/ Control\+K"/)
+    expect(html).toMatch(
+      /<span class="hidden sm:contents"><span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex"><kbd[^>]*>\/<\/kbd><\/span><\/span><\/button>/,
+    )
+  })
+
+  it("takes the hint's words from kbdLabels", () => {
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        hotkeys={["mod+k"]}
+        kbdLabels={{ ctrl: "Strg" }}
+      />,
+    )
+    expect(html).toMatch(/<kbd[^>]*>Strg<\/kbd>/)
   })
 
   it("lists grouped options under a heading that names their group", () => {

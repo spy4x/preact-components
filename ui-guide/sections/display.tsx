@@ -1865,7 +1865,12 @@ useHotkeys(bindings)
         type: "string[]",
         default: `["/", "mod+k"]`,
         description:
-          "What opens it; the trigger shows the first one, and `[]` turns them off. In a text field only a Control, Command or `mod` chord fires, never Alt, and never the field's editing keys (A, C, V, X, Z, Y).",
+          "What opens it, by the rule of a button's `hotkey`: each clicks the trigger, which announces them all in `aria-keyshortcuts` and shows the first as its hint. `[]` turns them off. In a text field only a Control, Command or `mod` chord fires, never Alt, and never the field's editing keys (A, C, V, X, Z, Y).",
+      },
+      {
+        name: "kbdLabels",
+        type: "Partial<KbdLabels>",
+        description: "The words the trigger's hint shows for a key; see `KBD_LABELS`.",
       },
       {
         name: "debounce",

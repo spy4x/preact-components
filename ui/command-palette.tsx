@@ -3,8 +3,9 @@ import { IconSearch, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
-import { firesInFields, useHotkeys } from "./hotkeys.ts"
-import { Kbd } from "./kbd.tsx"
+import { HotkeyHint } from "./hotkey-hint.tsx"
+import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
+import type { KbdLabels } from "./kbd-keys.tsx"
 import {
   applyScrollLock,
   clientWidthWithoutScrollbar,
@@ -66,13 +67,17 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   onSelect: (option: T) => void
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
-   * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off. The
-   * trigger shows the first one. While the reader types in a text field, a combination with
+   * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off.
+   * Each one clicks the trigger, by the rule a button's `hotkey` follows, so it does nothing while
+   * the trigger is hidden. The trigger announces them all in `aria-keyshortcuts` and shows the
+   * first one, as a button's `hotkey` hint, where the screen is wide and the pointer fine. While the reader types in a text field, a combination with
    * Control, Command or `mod` still opens it; a plain key or an Alt combination does not, since
    * both type text, and the field keeps its editing chords (`mod` with A, C, V, X, Z or Y). See
    * `firesInFields`.
    */
   hotkeys?: readonly string[]
+  /** The words the trigger's hotkey hint shows for a key; see `KBD_LABELS`. */
+  kbdLabels?: Partial<KbdLabels>
   /** Overrides for the palette's words; see {@link defaultCommandPaletteLabels}. */
   labels?: Partial<CommandPaletteLabels>
   /**
@@ -210,7 +215,7 @@ interface Remote<T> {
 export function CommandPalette<T extends CommandPaletteOption>(
   props: CommandPaletteProps<T>,
 ): JSX.Element {
-  const { onSelect, hotkeys = DEFAULT_HOTKEYS, dataE2E, class: className } = props
+  const { onSelect, hotkeys = DEFAULT_HOTKEYS, kbdLabels, dataE2E, class: className } = props
   const labels = { ...defaultCommandPaletteLabels, ...props.labels }
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -312,11 +317,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
   }
 
   useHotkeys(
-    // The same rule as a button's `hotkey`: a Control, Command or `mod` chord opens the palette
-    // from a text field too, unless it is one of the field's editing chords.
-    hotkeys.map((keys) => ({ keys, handler: open, inFields: firesInFields(keys) })),
+    // A button's `hotkey` binding on the trigger: a Control, Command or `mod` chord opens the
+    // palette from a text field too, unless it is one of the field's editing chords.
+    hotkeys.map((keys) => hotkeyClickBinding(keys, () => trigger.current)),
     { enabled: hotkeys.length > 0 },
   )
+  const apple = useApplePlatform()
 
   const onKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
     const key = comboboxKey(event)
@@ -350,6 +356,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
     ? labels.empty
     : ""
   const firstHotkey = hotkeys[0]
+  const shortcuts = hotkeys.length === 0
+    ? undefined
+    : hotkeys.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
 
   const row = (option: T, index: number) => (
     <li
@@ -383,6 +392,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
         onClick={open}
         aria-haspopup="dialog"
         aria-label={labels.placeholder}
+        aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
         class={cn(
           // An icon button on a phone; a field-shaped button with its placeholder and hotkey from
@@ -394,7 +404,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
       >
         <IconSearch class="size-5 shrink-0 sm:size-4" />
         <span class="hidden flex-1 text-left sm:inline">{labels.placeholder}</span>
-        {firstHotkey !== undefined && <Kbd keys={firstHotkey} class="hidden sm:inline-flex" />}
+        {firstHotkey !== undefined && (
+          // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
+          // also keeps it off the icon-only trigger a narrow screen gets.
+          <span class="hidden sm:contents">
+            <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+          </span>
+        )}
       </button>
       <dialog
         ref={dialog}
