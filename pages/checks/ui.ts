@@ -818,7 +818,10 @@ async function roundCheckboxColourChecks(devtools: Devtools): Promise<void> {
   }
 }
 
-/** A keyboard-focused round box's outline in one palette, as {@link roundCheckboxFocusRingChecks} reads it. */
+/**
+ * A keyboard-focused round box's outline in one palette, as {@link roundCheckboxFocusRingChecks}
+ * reads it.
+ */
 interface RoundBoxRing {
   focused: boolean
   focusVisible: boolean
@@ -836,22 +839,28 @@ interface RoundBoxRing {
 
 /**
  * A round `Checkbox` reached by a real Tab press draws the components' focus ring (#621): a solid
- * 2 px outline in the palette's `--color-ring`, the colour `ring-focus` gives every other component,
- * in the light palette and in the dark one, and not the browser's own focus colour. The contrast of
- * that outline against the card behind the box, the surface and the canvas is reported in the
- * check's detail and held to 3:1, the floor for a focus indicator.
+ * 2 px outline in the palette's `--color-ring`, the colour `ring-focus` gives other components,
+ * in the light, dark and ink palettes, and not the browser's own focus colour. Ink sets no
+ * `--color-ring`, so there the box keeps the dark accent like every `ring-focus` component, while
+ * `.btn` draws ink's `--color-focus-ring`. The contrast of that outline against the card behind
+ * the box, the surface and the canvas is reported in the check's detail and held to 3:1, the
+ * floor for a focus indicator.
  *
- * The palette is switched while the box keeps its focus, and put back in `finally`.
+ * The palette is switched while the box keeps its focus; the `dark` class and the earlier
+ * `data-theme` value are put back in `finally`.
  *
  * @param devtools The connected session, on a hydrated page.
  */
 async function roundCheckboxFocusRingChecks(devtools: Devtools): Promise<void> {
-  const read = (dark: boolean) =>
+  const read = (palette: "light" | "dark" | "ink") =>
     devtools.evaluate<RoundBoxRing | null>(`(async () => {
     ${CONTRAST_HELPERS}
     const box = document.querySelector('${ROUND_CHECK}')
     if (!box) return null
-    document.documentElement.classList.toggle("dark", ${dark})
+    const root = document.documentElement
+    root.classList.toggle("dark", ${palette !== "light"})
+    if (${palette === "ink"}) root.setAttribute("data-theme", "ink")
+    else root.removeAttribute("data-theme")
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     const token = (name) => {
       const probe = document.createElement("div")
@@ -880,16 +889,17 @@ async function roundCheckboxFocusRingChecks(devtools: Devtools): Promise<void> {
     }
   })()`)
 
-  const wasDark = await devtools.evaluate<boolean>(
-    `document.documentElement.classList.contains("dark")`,
-  )
+  const was = await devtools.evaluate<{ dark: boolean; theme: string | null }>(`({
+    dark: document.documentElement.classList.contains("dark"),
+    theme: document.documentElement.getAttribute("data-theme"),
+  })`)
   try {
     // Focus the square box above it, then Tab: a real key press, so the round box matches
     // `:focus-visible` the way it does for a keyboard user.
     await devtools.evaluate<null>(`(document.querySelector('${SQUARE_CHECK}')?.focus(), null)`)
     await pressKey(devtools, "Tab")
-    for (const palette of ["light", "dark"] as const) {
-      const ring = await read(palette === "dark")
+    for (const palette of ["light", "dark", "ink"] as const) {
+      const ring = await read(palette)
       check(
         `in the ${palette} palette a round Checkbox reached by Tab draws a 2 px outline in ` +
           "--color-ring that clears 3:1 against the card, the surface and the canvas",
@@ -902,9 +912,15 @@ async function roundCheckboxFocusRingChecks(devtools: Devtools): Promise<void> {
       )
     }
   } finally {
-    await devtools.evaluate<null>(
-      `(document.documentElement.classList.toggle("dark", ${wasDark}), document.activeElement?.blur(), null)`,
-    )
+    await devtools.evaluate<null>(`(() => {
+      const root = document.documentElement
+      root.classList.toggle("dark", ${was.dark})
+      const theme = ${JSON.stringify(was.theme)}
+      if (theme === null) root.removeAttribute("data-theme")
+      else root.setAttribute("data-theme", theme)
+      document.activeElement?.blur()
+      return null
+    })()`)
   }
 }
 
