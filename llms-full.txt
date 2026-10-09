@@ -4068,7 +4068,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                             |
 | `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                           |
 | `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link)                                                                                                                                           |
-| `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link                                                                     |
+| `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                             |
 | `Card`                | `card`                 | `children`, `class` — a bordered surface                                                                                                                                                                                 |
 | `CardBody`            | `card`                 | `children`, `class`                                                                                                                                                                                                      |
 | `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                      |
@@ -4078,7 +4078,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                             |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`                                                                                                                                   |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                    |
-| `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`                                                                              |
+| `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                   |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                          |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                 |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                                                      |
@@ -4108,7 +4108,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                           |
 | `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onSwitch`                                                                                                                                                                                            |
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                      |
-| `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone                                                                           |
+| `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                |
 | `PageHeader`          | `page-header`          | `title` (one line, truncated), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?` |
 | `PageTitle`           | `page-title`           | `children`, `class`                                                                                                                                                                                                      |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                      |
@@ -4127,10 +4127,10 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                        |
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                               |
 | `Table`               | `table`                | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                            |
-| `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`                                                                                                                                                                                     |
+| `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                      |
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                               |
 | `Textarea`            | `input`                | native textarea attrs, `class`                                                                                                                                                                                           |
-| `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark                                                                              |
+| `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                   |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                         |
 | `ToggleChips`         | `toggle-chips`         | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                                                     |
 | `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                                             |
@@ -5300,6 +5300,43 @@ overrides one by one.
 `ShortcutsDialog` lists shortcuts under group headings, built on `Modal`.
 `groupShortcuts(shortcuts, defaultGroup)` is its grouping on its own: groups in the order they
 first appear, shortcuts without a description left out.
+
+### A hotkey on a button
+
+`Button`, `Tabs` (per tab), `CopyButton`, `ThemeToggle` and `PageAction` take a `hotkey` prop in the
+same syntax. Pressing the key clicks the button while it is mounted, enabled and shown. A plain key
+pressed in a text field types instead; a combination holding Control, Command or `mod`
+(`"mod+enter"`, `"mod+s"`) fires there too, because it types no text. A field's own editing chords
+stay with the field: `mod+a`, `mod+c`, `mod+v`, `mod+x`, `mod+z` and `mod+y`, with or without Shift,
+select, copy, paste, cut, undo and redo there, and click the button only when pressed outside a
+field. A press outside a dialog that holds the button does nothing, as does any press outside an
+open modal dialog. Holding a key down clicks once: its repeats are cancelled and click nothing. When
+two buttons share a key, the one whose listener was registered first (usually the one mounted first)
+clicks and the other does nothing; a disabled button passes the key on, so the next button with that
+key clicks. The button gets `aria-keyshortcuts`, and a `Kbd` hint inside it shows the key where the
+main pointer is fine (a mouse or a trackpad, never a phone). The hint is hidden from screen readers,
+which read `aria-keyshortcuts` instead; `hotkeyHint={false}` turns it off, an icon-only button has
+none unless `hotkeyHint` asks, and `kbdLabels` changes its words.
+
+```tsx
+<Button hotkey="n" onClick={addNote}>New note</Button>
+<Button hotkey="mod+enter" type="submit">Send</Button>
+```
+
+To list these keys in `ShortcutsDialog`, keep one array of `Shortcut` rows and pass each row's
+`keys` to its button's `hotkey`. The components register nowhere: a shared registry would be the
+ambient global state the component rules forbid.
+
+`ariaKeyShortcuts(keys, apple)` writes a combination in the syntax `aria-keyshortcuts` takes:
+`"mod+k"` becomes `"Control+K"`, or `"Meta+K"` on an Apple platform, `"shift+space"` becomes
+`"Shift+Space"`. `useHotkeyClick(keys, options)` binds a key to any element of your own: it returns
+the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a key press: it clicks
+the element and cancels the press only when the element is connected, enabled, not inert, rendered,
+and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
+`hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
+binds several elements in one `useHotkeys` call, as `Tabs` does. `useApplePlatform(apple)` answers
+whether `mod` means Command, reading the platform in an effect so the server render and the first
+browser render agree; `Kbd` and the `hotkey` prop use it.
 
 The parser and the matcher are framework-free and come from `@spy4x/platform/browser/hotkeys`
 in spy4x/ts-libs, which also documents the keyboard-layout and AltGr rules.

@@ -256,6 +256,59 @@ describe("Button busy", () => {
   })
 })
 
+describe("Button hotkey", () => {
+  it("announces the key with aria-keyshortcuts and shows it in a hint hidden from screen readers", () => {
+    const html = render(<Button hotkey="n">New note</Button>)
+    expect(html).toContain('aria-keyshortcuts="N"')
+    expect(html).toMatch(
+      /New note<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex"><kbd[^>]*>N<\/kbd><\/span><\/button>/,
+    )
+  })
+
+  it("writes mod as Control in the server render, before the platform is known", () => {
+    expect(render(<Button hotkey="mod+s">Save</Button>)).toContain(
+      'aria-keyshortcuts="Control+S"',
+    )
+  })
+
+  it("leaves the hint out when hotkeyHint is false, and keeps the announcement", () => {
+    const html = render(<Button hotkey="n" hotkeyHint={false}>New note</Button>)
+    expect(html).toContain('aria-keyshortcuts="N"')
+    expect(html).not.toContain("<kbd")
+  })
+
+  it("shows no hint on an icon button unless asked", () => {
+    const icon = render(<Button variant="icon" hotkey="n" aria-label="New note">+</Button>)
+    expect(icon).toContain('aria-keyshortcuts="N"')
+    expect(icon).not.toContain("<kbd")
+    expect(render(<Button variant="icon" hotkey="n" hotkeyHint aria-label="New">+</Button>))
+      .toContain("<kbd")
+  })
+
+  it("draws the hint's keys with the kbdLabels given", () => {
+    expect(render(<Button hotkey="ctrl+n" kbdLabels={{ ctrl: "Strg" }}>Neu</Button>))
+      .toContain(">Strg</kbd>")
+  })
+
+  it("gives a link the same announcement and hint", () => {
+    const html = render(<Button href="/new" hotkey="n">New</Button>)
+    expect(html).toContain('aria-keyshortcuts="N"')
+    expect(html).toContain("<kbd")
+  })
+
+  it("renders a button without a hotkey with no announcement, no hint and no hotkey attributes", () => {
+    const html = render(<Button>Save</Button>)
+    expect(html).toBe(
+      `<button type="button" class="${buttonClasses()}">Save</button>`,
+    )
+  })
+
+  it("puts none of its hotkey props on the element", () => {
+    const html = render(<Button hotkey="n" hotkeyHint kbdLabels={{}}>New</Button>)
+    expect(html).not.toMatch(/hotkey=|hotkeyhint|kbdlabels/i)
+  })
+})
+
 describe("buttonClasses", () => {
   it("appends a caller's classes after its own, merging nothing", () => {
     // Two utilities of the groups the variant and size already set: a merge would drop those.

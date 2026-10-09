@@ -1,6 +1,15 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useRef } from "preact/hooks"
+import { HotkeyHint } from "./hotkey-hint.tsx"
+import {
+  ariaKeyShortcuts,
+  type HotkeyBinding,
+  hotkeyClickBinding,
+  useApplePlatform,
+  useHotkeys,
+} from "./hotkeys.ts"
+import type { KbdLabels } from "./kbd-keys.tsx"
 
 /** One tab and the panel it controls. */
 export interface TabItem {
@@ -17,6 +26,12 @@ export interface TabItem {
   content?: ComponentChildren
   /** Disabled tabs are not clickable, not focusable and skipped by arrow navigation. */
   disabled?: boolean
+  /**
+   * A combination such as `"1"` or `"alt+2"`, written the way `useHotkeys` takes it. Pressing it
+   * selects the tab, as a click does, while the tab list is shown and the tab is enabled; a press in
+   * a text field does nothing. It also sets `aria-keyshortcuts` on the tab.
+   */
+  hotkey?: string
 }
 
 export interface TabsProps {
@@ -43,6 +58,13 @@ export interface TabsProps {
   panelClass?: string
   /** Sets `data-e2e` on every tab button, for end-to-end selectors. */
   tabDataE2E?: string
+  /**
+   * Whether a tab with a `hotkey` shows it in a `Kbd` hint after its label. Defaults to `true`. The
+   * hint is never shown where the main pointer is coarse, such as a phone.
+   */
+  hotkeyHint?: boolean
+  /** The words the hints show for a key; see `KBD_LABELS`. */
+  kbdLabels?: Partial<KbdLabels>
 }
 
 const listBase = "flex gap-1"
@@ -157,6 +179,9 @@ export function nextTabIndex(
  * selection follows focus on arrow keys, panels are `tabindex="0"` so a long panel is reachable
  * by keyboard, and `hidden` is set as both an attribute and a utility so a `display` utility in
  * `panelClass` cannot resurrect a hidden panel.
+ *
+ * A tab with a `hotkey` is selected by its key through `clickByHotkey`, so the press does what a
+ * click on the tab does, and nothing while the tab list is hidden or the tab is disabled.
  */
 export function Tabs(
   {
@@ -170,9 +195,19 @@ export function Tabs(
     tabClass,
     panelClass,
     tabDataE2E,
+    hotkeyHint = true,
+    kbdLabels,
   }: TabsProps,
 ): JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
+  const apple = useApplePlatform()
+  useHotkeys(
+    tabs.flatMap((tab): HotkeyBinding[] =>
+      tab.hotkey === undefined || tab.disabled === true ? [] : [
+        hotkeyClickBinding(tab.hotkey, () => document.getElementById(tabElementId(tab.id))),
+      ]
+    ),
+  )
   const activeIndex = tabs.findIndex((tab) => tab.id === active)
   const flags = tabs.map((tab) => tab.disabled === true)
   const focusIndex = rovingIndex(flags, activeIndex)
@@ -222,6 +257,9 @@ export function Tabs(
               aria-controls={lazy && !isActive ? undefined : panelElementId(tab.id)}
               tabindex={index === focusIndex ? 0 : -1}
               disabled={tab.disabled}
+              aria-keyshortcuts={tab.hotkey === undefined
+                ? undefined
+                : ariaKeyShortcuts(tab.hotkey, apple)}
               data-e2e={tabDataE2E}
               class={cn(
                 tabBase,
@@ -235,6 +273,9 @@ export function Tabs(
               onKeyDown={(event) => handleKeyDown(event, index)}
             >
               {tab.label}
+              {hotkeyHint && tab.hotkey !== undefined && (
+                <HotkeyHint keys={tab.hotkey} apple={apple} labels={kbdLabels} />
+              )}
             </button>
           )
         })}

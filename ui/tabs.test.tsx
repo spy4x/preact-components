@@ -301,3 +301,29 @@ function hasAttribute(tag: string, name: string): boolean {
 function tabTags(html: string): string[] {
   return html.match(/<button[^>]*role="tab"[^>]*>/g) ?? []
 }
+
+describe("Tabs hotkeys", () => {
+  const keyed: TabItem[] = [
+    { id: "k-one", label: "One", hotkey: "1" },
+    { id: "k-two", label: "Two" },
+    { id: "k-three", label: "Three", hotkey: "alt+3" },
+  ]
+
+  it("announces each tab's hotkey on that tab alone and shows it after the label", () => {
+    const tags = tabTags(render(<Tabs tabs={keyed} active="k-one" onChange={() => {}} />))
+    expect(tags[0]).toContain('aria-keyshortcuts="1"')
+    expect(hasAttribute(tags[1], "aria-keyshortcuts")).toBe(false)
+    expect(tags[2]).toContain('aria-keyshortcuts="Alt+3"')
+  })
+
+  it("draws a Kbd hint after a keyed tab's label, and none with hotkeyHint false", () => {
+    const shown = render(<Tabs tabs={keyed} active="k-one" onChange={() => {}} />)
+    expect(countOccurrences(shown, "data-hotkey-hint")).toBe(2)
+    expect(shown).toMatch(/One<span aria-hidden="true" data-hotkey-hint/)
+    const hidden = render(
+      <Tabs tabs={keyed} active="k-one" onChange={() => {}} hotkeyHint={false} />,
+    )
+    expect(hidden).not.toContain("data-hotkey-hint")
+    expect(hidden).toContain('aria-keyshortcuts="1"')
+  })
+})

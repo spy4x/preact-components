@@ -169,6 +169,53 @@ function BusyButtonDemo() {
 }
 
 /**
+ * `hotkey`: N clicks "New note", which counts its presses, unless the checkbox has disabled it or
+ * focus is in the text field, where N is typed instead. Control+Enter (Command+Enter on a Mac)
+ * clicks "Send" even from inside the field, because a combination holding a modifier types no text.
+ * Each button shows its key in a `Kbd` hint and announces it with `aria-keyshortcuts`.
+ * `pages/checks/ui.ts` drives all of it with real key presses.
+ */
+function HotkeyButtonDemo() {
+  const notes = useSignal(0)
+  const off = useSignal(false)
+  const sent = useSignal(0)
+  return (
+    <Cluster>
+      <Button
+        hotkey="n"
+        disabled={off.value}
+        data-e2e="hotkey-button"
+        onClick={() => notes.value += 1}
+      >
+        New note
+      </Button>
+      <label class="inline-flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={off.value}
+          data-e2e="hotkey-disable"
+          onChange={(event) => off.value = event.currentTarget.checked}
+        />
+        Disabled
+      </label>
+      <Input placeholder="Type n here" aria-label="Type n here" data-e2e="hotkey-field" />
+      <Button
+        hotkey="mod+enter"
+        variant="secondary"
+        data-e2e="hotkey-send"
+        onClick={() => sent.value += 1}
+      >
+        Send
+      </Button>
+      <DemoNote e2e="hotkey-count">
+        {notes.value} {notes.value === 1 ? "note" : "notes"}, sent {sent.value}{" "}
+        {sent.value === 1 ? "time" : "times"}
+      </DemoNote>
+    </Cluster>
+  )
+}
+
+/**
  * A busy submit button inside a form: Enter in the field submits once, and the busy button then
  * cancels every later press, including the one the browser makes on it when Enter is pressed in
  * the field again. The submit count proves the form was not sent twice.
@@ -204,8 +251,8 @@ function BusySubmitDemo() {
 /**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service. The
- * fourth's port always fails, to show the failure state. `pages/checks/ui.ts` presses the fourth
- * twice, and drives the first two with a clipboard it replaces.
+ * fourth's port always fails, to show the failure state. C presses the third. `pages/checks/ui.ts`
+ * presses the fourth twice, and drives the first two with a clipboard it replaces.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
@@ -219,6 +266,7 @@ function CopyButtonDemo() {
         <CopyButton
           textToCopy="INV-0007"
           title="Copy via port"
+          hotkey="c"
           copy={(text) => {
             lastCopy.value = text
           }}
@@ -270,7 +318,7 @@ function LinkDemo() {
  * A theme store of the card's own, so pressing the demo never changes the guide's palette: it keeps
  * nothing in storage and paints nothing (`apply` does nothing), and it reads the device's real
  * colour scheme, so the cycle starts from the opposite of whatever the device asks for. The readout
- * shows what an app's store would now paint.
+ * shows what an app's store would now paint. T steps the first toggle.
  */
 function ThemeToggleDemo() {
   const [store] = useState(() => createThemeStore({ storage: null, apply: () => {} }))
@@ -278,7 +326,7 @@ function ThemeToggleDemo() {
   return (
     <Stack gap="sm">
       <Cluster>
-        <ThemeToggle store={store} />
+        <ThemeToggle store={store} hotkey="t" />
         <DemoNote e2e="theme-toggle-readout">
           preference {store.preference.value}, an app would paint {store.actual.value}
         </DemoNote>
@@ -347,6 +395,25 @@ export const buttonDemos = {
         description: "Shown instead of the children while busy. An icon button shows no label.",
       },
       {
+        name: "hotkey",
+        type: "string",
+        description:
+          'A key such as `"n"` or `"mod+enter"` that clicks the button while it is shown and enabled. A plain key never fires while you type in a field; a combination holding Control, Command or `mod` does, except the editing chords a field keeps, such as `mod+z`. Sets `aria-keyshortcuts`.',
+      },
+      {
+        name: "hotkeyHint",
+        type: "boolean",
+        default: "true, false on an icon button",
+        description:
+          "Shows the key in a `Kbd` hint inside the button. Never shown where the main pointer is coarse, such as a phone.",
+      },
+      {
+        name: "kbdLabels",
+        type: "Partial<KbdLabels>",
+        default: "English",
+        description: "The words the hint shows for a key, such as Ctrl.",
+      },
+      {
         name: "ref",
         type: "Ref<HTMLButtonElement>",
         description: "Reaches the native `<button>`, so it can be focused.",
@@ -356,7 +423,9 @@ export const buttonDemos = {
 <Button variant="danger" disabled>Delete</Button>
 <Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>
 <Button href="/reports" navigate={router.navigate}>Reports</Button>
-<Button href="/book" size="none" class="px-6 py-3">Book a call</Button>`,
+<Button href="/book" size="none" class="px-6 py-3">Book a call</Button>
+<Button hotkey="n" onClick={addNote}>New note</Button>
+<Button hotkey="mod+enter" onClick={send}>Send</Button>`,
     render: () => (
       <Stack gap="lg">
         <ButtonMatrix />
@@ -364,6 +433,7 @@ export const buttonDemos = {
         <BusyButtonDemo />
         <BusySubmitDemo />
         <ButtonLinkDemo />
+        <HotkeyButtonDemo />
       </Stack>
     ),
   },
@@ -408,6 +478,12 @@ export const buttonDemos = {
         description: "How long either confirmation stays.",
       },
       {
+        name: "hotkey",
+        type: "string",
+        description:
+          "A key that copies, as `Button`'s does; with a title it shows in a hint, the icon alone shows none.",
+      },
+      {
         name: "data-*, id, …",
         type: "button attributes",
         description: "Passed to the button, for analytics among other things.",
@@ -415,7 +491,8 @@ export const buttonDemos = {
     ],
     snippet: `<CopyButton textToCopy={invoice.id} />
 <CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />
-<CopyButton textToCopy={() => input.value} data-umami-event="copy-input" />`,
+<CopyButton textToCopy={() => input.value} data-umami-event="copy-input" />
+<CopyButton textToCopy={invoice.id} title="Copy id" hotkey="c" />`,
     render: () => <CopyButtonDemo />,
   },
   Link: {
@@ -473,11 +550,17 @@ export const buttonDemos = {
         type: "string",
         description: "Utilities appended to the wrapper around the button and its hint.",
       },
+      {
+        name: "hotkey",
+        type: "string",
+        description:
+          "A key that steps the theme, as `Button`'s does. An icon button shows no hint unless `hotkeyHint` asks.",
+      },
     ],
     snippet: `const theme = createThemeStore()
 useEffect(() => theme.attach(), [])
 
-<ThemeToggle store={theme} />`,
+<ThemeToggle store={theme} hotkey="t" />`,
     render: () => <ThemeToggleDemo />,
   },
 } satisfies DemoFragment

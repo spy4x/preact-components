@@ -639,15 +639,31 @@ function DataTableServerDemo() {
 
 /** The tab ids of the horizontal demo, so the panel content and the ids cannot drift apart. */
 const overviewTabs: readonly TabItem[] = [
-  { id: "guide-tab-overview", label: "Overview", content: "Totals for the current period." },
-  { id: "guide-tab-detail", label: "Detail", content: "Every row behind the totals." },
+  {
+    id: "guide-tab-overview",
+    label: "Overview",
+    content: "Totals for the current period.",
+    hotkey: "1",
+  },
+  {
+    id: "guide-tab-detail",
+    label: "Detail",
+    content: "Every row behind the totals.",
+    hotkey: "2",
+  },
   {
     id: "guide-tab-archived",
     label: "Archived",
     content: "Rows hidden from the list.",
     disabled: true,
+    hotkey: "3",
   },
-  { id: "guide-tab-activity", label: "Activity", content: "Who changed what, and when." },
+  {
+    id: "guide-tab-activity",
+    label: "Activity",
+    content: "Who changed what, and when.",
+    hotkey: "4",
+  },
 ]
 
 /** Controlled tabs, `active` in and `onChange` out. */
@@ -657,7 +673,8 @@ function TabsDemo() {
   return (
     <Stack gap="sm">
       <DemoNote>
-        The left and right arrows move between tabs; Home and End jump to the ends.
+        The left and right arrows move between tabs; Home and End jump to the ends. 1 to 4 select a
+        tab; 3 does nothing, because Archived is disabled.
       </DemoNote>
       <Tabs
         tabs={overviewTabs}
@@ -1443,7 +1460,8 @@ export const displayDemos = {
       {
         name: "tabs",
         type: "TabItem[]",
-        description: "Each tab's id, label, panel content and whether it is disabled.",
+        description:
+          "Each tab's id, label, panel content, whether it is disabled, and an optional `hotkey` that selects it.",
       },
       {
         name: "active",
@@ -1451,10 +1469,22 @@ export const displayDemos = {
         description: "The selected tab's id, with `onChange` to change it.",
       },
       { name: "label", type: "string", description: "The tab list's accessible name." },
+      {
+        name: "hotkeyHint",
+        type: "boolean",
+        default: "true",
+        description: "Shows each tab's `hotkey` in a `Kbd` hint after its label.",
+      },
+      {
+        name: "kbdLabels",
+        type: "Partial<KbdLabels>",
+        default: "English",
+        description: "The words the hints show for a key.",
+      },
     ],
     snippet: `<Tabs
   tabs={[
-    { id: "overview", label: "Overview", content: <Overview /> },
+    { id: "overview", label: "Overview", content: <Overview />, hotkey: "1" },
     { id: "detail", label: "Detail", content: <Detail />, disabled: true },
   ]}
   active={view.value}
