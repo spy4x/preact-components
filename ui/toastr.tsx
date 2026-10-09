@@ -29,6 +29,7 @@ export interface ToastAction {
   /**
    * Runs when the button is pressed, by pointer or keyboard. It runs at most once per toast, and
    * the toast is dismissed through {@link ToastrProps.onDismiss} right after it, even when it throws.
+   * An async callback's rejection is not caught: handle it inside the callback.
    */
   onAction: () => void
 }
@@ -268,6 +269,15 @@ export function Toastr(
   }: ToastrProps,
 ): JSX.Element {
   const [paused, setPaused] = useState(false)
+  // Where focus was before it entered the stack, so dismissing the toast that holds focus can hand
+  // it back instead of dropping it on the page body.
+  const returnFocusTo = useRef<HTMLElement | null>(null)
+
+  function returnFocus(): void {
+    const target = returnFocusTo.current
+    returnFocusTo.current = null
+    if (target?.isConnected) target.focus()
+  }
 
   return (
     <div
@@ -282,7 +292,13 @@ export function Toastr(
       aria-live="polite"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      onFocusIn={() => setPaused(true)}
+      onFocusIn={(event) => {
+        setPaused(true)
+        const from = event.relatedTarget
+        // A move between toasts keeps the element focus first came from.
+        if (from instanceof Node && event.currentTarget.contains(from)) return
+        returnFocusTo.current = from instanceof HTMLElement ? from : null
+      }}
       onFocusOut={(event) => {
         // Defensive, and unreachable under Preact's deferred rendering: a focus move inside the
         // stack fires `focusout` and then `focusin` in the same task, and the re-render is deferred
@@ -303,6 +319,7 @@ export function Toastr(
           toast={toast}
           paused={paused}
           onDismiss={onDismiss}
+          returnFocus={returnFocus}
           dismissLabel={toast.dismissLabel ?? dismissLabel}
           enterFrom={corner.endsWith("left") ? "left" : "right"}
         />
@@ -317,6 +334,8 @@ interface ToastProps {
   /** Whether the stack is being read right now: the pointer is over it, or focus is inside it. */
   paused: boolean
   onDismiss: (id: ToastId) => void
+  /** Moves focus back to where it was before it entered the stack, if that element is still here. */
+  returnFocus: () => void
   /** Accessible name for this toast's dismiss control, already resolved by the stack. */
   dismissLabel: string
   /** The side this toast slides in from: its stack's corner side. */
@@ -343,12 +362,17 @@ interface ToastProps {
  * The action runs at most once. `acted` is a ref, not state, so a second click that lands before
  * the dismissal has re-rendered the stack — a double click, or a caller whose `onDismiss` takes the
  * toast away later — finds it already set and does nothing.
+ *
+ * Dismissing a toast through its own buttons while focus is inside it returns focus to where it
+ * was before it entered the stack. Focus is checked after the action has run, so an action that
+ * moved focus on purpose, to a dialog say, keeps it there.
  */
-function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps) {
+function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom }: ToastProps) {
   const duration = resolveDuration(toast)
   const remaining = useRef(duration)
   const dismiss = useRef(onDismiss)
   const acted = useRef(false)
+  const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     dismiss.current = onDismiss
@@ -376,18 +400,26 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
   const variant = toast.type ?? "info"
   const action = toast.action
 
+  function dismissHere(): void {
+    const node = root.current
+    const holdsFocus = node !== null && node.contains(document.activeElement)
+    onDismiss(toast.id)
+    if (holdsFocus) returnFocus()
+  }
+
   function runAction(): void {
     if (action === undefined || acted.current) return
     acted.current = true
     try {
       action.onAction()
     } finally {
-      onDismiss(toast.id)
+      dismissHere()
     }
   }
 
   return (
     <div
+      ref={root}
       role={variant === "error" ? "alert" : "status"}
       data-e2e={toast.dataE2E}
       class={cn(
@@ -417,7 +449,7 @@ function Toast({ toast, paused, onDismiss, dismissLabel, enterFrom }: ToastProps
             )}
           </div>
         </div>
-        <button type="button" onClick={() => onDismiss(toast.id)} aria-label={dismissLabel}>
+        <button type="button" onClick={dismissHere} aria-label={dismissLabel}>
           <svg
             class="size-4"
             viewBox="0 0 24 24"

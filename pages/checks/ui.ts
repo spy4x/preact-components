@@ -1726,8 +1726,59 @@ async function toastrActionChecks(devtools: Devtools): Promise<void> {
   await toastrActionKeyboardCheck(devtools)
   await toastrActionPointerCheck(devtools)
   await toastrActionOnceCheck(devtools)
+  await toastrActionFocusReturnCheck(devtools, "action")
+  await toastrActionFocusReturnCheck(devtools, "dismiss")
   await toastrActionNarrowCheck(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/**
+ * Dismissing the focused toast through its action, or through its dismiss control, hands focus
+ * back to the element it came from — the card's clear button here — instead of dropping it on the
+ * page body, where a keyboard user would have to start again from the top.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ * @param via Which of the toast's buttons Enter is pressed on.
+ */
+async function toastrActionFocusReturnCheck(
+  devtools: Devtools,
+  via: "action" | "dismiss",
+): Promise<void> {
+  const pushed = await devtools.evaluate<UndoPushed>(PUSH_UNDO)
+  await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.focus(), null)`)
+  await pressKey(devtools, "Tab")
+  if (via === "dismiss") await pressKey(devtools, "Tab")
+  const target = await devtools.evaluate<boolean>(`(() => {
+    const { toast, action } = globalThis.__verifyUndo ?? {}
+    const buttons = [...(toast?.querySelectorAll("button") ?? [])]
+    const wanted = ${via === "action" ? "action" : "buttons.at(-1)"}
+    return wanted != null && document.activeElement === wanted
+  })()`)
+  await pressKey(devtools, "Enter")
+  const gone = await poll(async () => !await devtools.evaluate<boolean>(UNDO_PRESENT), 3000)
+  const landed = await devtools.evaluate<{ onClear: boolean; tag: string }>(`(() => {
+    const active = document.activeElement
+    return {
+      onClear: active !== null && active === globalThis.__verifyToastr?.clear,
+      tag: active === null ? "nothing" : active.tagName + " " +
+        ((active.textContent ?? "").trim().slice(0, 40) || active.getAttribute("aria-label") || ""),
+    }
+  })()`)
+  const name = via === "action" ? "its action" : "its dismiss control"
+
+  check(
+    `Enter on ${name} closes a focused toast and returns focus to the button it came from`,
+    pushed.ok && target && gone && landed.onClear,
+    !pushed.ok
+      ? pushed.reason
+      : !target
+      ? `Tab from the clear button did not land on the toast's ${via} button`
+      : !gone
+      ? `Enter on ${name} left the toast on screen`
+      : !landed.onClear
+      ? `focus fell to ${landed.tag}, not to the card's clear button`
+      : `focus went back to the card's clear button after Enter on ${name}`,
+  )
 }
 
 /** One element's box in the viewport, in whole pixels. */
