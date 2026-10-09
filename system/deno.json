@@ -15,8 +15,8 @@
     "./boundary": "./boundary.ts",
     "./conflict-chooser": "./conflict-chooser.tsx",
     "./install-prompt": "./install-prompt.tsx",
-    "./sync-status": "./sync-status.tsx",
-    "./route-announcer": "./route-announcer.ts"
+    "./route-announcer": "./route-announcer.ts",
+    "./sync-status": "./sync-status.tsx"
   },
   "imports": {
     // Fresh is pinned here and nowhere else, for one test file only: `seo-head.fresh.test.tsx`

@@ -19,8 +19,8 @@ export interface RouteAnnouncerOptions {
    */
   path: string
   /**
-   * The page's name for `document.title` — the head store's `head.value.title`, when the app keeps
-   * one. Written on mount and whenever it changes. Left out, `document.title` is not touched: the
+   * The page's name for `document.title` — `store.head.value.title`, when the app keeps a head
+   * store from `createHeadStore`. Written on mount and whenever it changes. Left out, `document.title` is not touched: the
    * app sets it some other way, such as `SEOHead` in a framework that updates the head itself.
    */
   title?: string
@@ -52,7 +52,7 @@ function pathname(path: string): string {
  *
  * ```tsx
  * const [path] = useLocation()
- * useRouteAnnouncer({ path, title: head.value.title })
+ * useRouteAnnouncer({ path, title: store.head.value.title })
  * ```
  *
  * @param options See {@link RouteAnnouncerOptions}.
