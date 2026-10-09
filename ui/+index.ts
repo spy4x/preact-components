@@ -349,6 +349,7 @@ export {
   ariaKeyShortcuts,
   clickByHotkey,
   type HotkeyBinding,
+  hotkeyClickBinding,
   type HotkeyPress,
   type HotkeyProps,
   pickHotkey,

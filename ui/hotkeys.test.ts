@@ -6,6 +6,7 @@ import {
   ariaKeyShortcuts,
   clickByHotkey,
   type HotkeyBinding,
+  hotkeyClickBinding,
   type HotkeyPress,
   pickHotkey,
   useHotkeys,
@@ -141,9 +142,10 @@ function fakeButton(fields: Partial<FakeButton> = {}): FakeButton & { element: H
 }
 
 /** A key press whose target sits in no dialog; `prevented` says whether it was cancelled. */
-function keyEvent(target: unknown = null): KeyboardEvent & { prevented: boolean } {
+function keyEvent(target: unknown = null, repeat = false): KeyboardEvent & { prevented: boolean } {
   const event = {
     target,
+    repeat,
     prevented: false,
     preventDefault: () => void (event.prevented = true),
   }
@@ -181,11 +183,71 @@ describe("clickByHotkey", () => {
     }
   })
 
+  it("cancels a held key's repeats without clicking again", () => {
+    const button = fakeButton()
+    const event = keyEvent(null, true)
+    expect(clickByHotkey(button.element, event)).toBe(true)
+    expect([button.clicks, event.prevented]).toEqual([0, true])
+  })
+
+  it("clicks only a button inside the open modal dialog for a press on the page body", () => {
+    const outside = fakeButton()
+    const inside = fakeButton()
+    const modal = { contains: (node: unknown) => node === inside.element }
+    const body = { closest: () => null }
+    const saved = Object.getOwnPropertyDescriptor(globalThis, "document")
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { querySelector: (selector: string) => selector === "dialog:modal" ? modal : null },
+    })
+    try {
+      expect(clickByHotkey(outside.element, keyEvent(body))).toBe(false)
+      expect(clickByHotkey(inside.element, keyEvent(body))).toBe(true)
+    } finally {
+      if (saved === undefined) delete (globalThis as { document?: unknown }).document
+      else Object.defineProperty(globalThis, "document", saved)
+    }
+    expect([outside.clicks, inside.clicks]).toEqual([0, 1])
+  })
+
   it("does nothing for a button outside the dialog the key was pressed in", () => {
     const button = fakeButton()
     const dialog = { contains: () => false }
     const event = keyEvent({ closest: () => dialog })
     expect(clickByHotkey(button.element, event)).toBe(false)
     expect(button.clicks).toBe(0)
+  })
+})
+
+describe("hotkeyClickBinding", () => {
+  it("fires in a text field for a combination holding Control, Command or mod", () => {
+    for (const keys of ["mod+enter", "ctrl+s", "meta+k"]) {
+      const bound = hotkeyClickBinding(keys, () => null)
+      const key = keys.endsWith("enter") ? "Enter" : keys.slice(-1)
+      const held = { ctrlKey: !keys.startsWith("meta"), metaKey: keys.startsWith("meta") }
+      expect(pickHotkey([bound], press(key, { typing: true, ...held }), false)).toBe(bound)
+    }
+  })
+
+  it("leaves a plain key or an Alt combination typed in a text field alone", () => {
+    for (const keys of ["n", "shift+n", "alt+n"]) {
+      const bound = hotkeyClickBinding(keys, () => null)
+      const held = { shiftKey: keys.startsWith("shift"), altKey: keys.startsWith("alt") }
+      expect(pickHotkey([bound], press("n", { typing: true, ...held }), false)).toBeUndefined()
+      expect(pickHotkey([bound], press("n", held), false)).toBe(bound)
+    }
+  })
+
+  it("fires inside a dialog and leaves the key press for clickByHotkey to cancel", () => {
+    const bound = hotkeyClickBinding("n", () => null)
+    expect(pickHotkey([bound], press("n", { inDialog: true }), false)).toBe(bound)
+    expect(bound.preventDefault).toBe(false)
+  })
+
+  it("clicks the element it reads when the key is pressed", () => {
+    const button = fakeButton()
+    const bound = hotkeyClickBinding("n", () => button.element)
+    bound.handler(keyEvent())
+    expect(button.clicks).toBe(1)
   })
 })

@@ -147,9 +147,10 @@ export function useHotkeys(
 export interface HotkeyProps {
   /**
    * A combination such as `"n"`, `"shift+n"` or `"mod+k"`, written the way `useHotkeys` takes it.
-   * Pressing it clicks the button while the button is mounted, enabled and shown; a press in a text
-   * field does nothing, and so does one outside a dialog that holds the button. It also sets
-   * `aria-keyshortcuts`.
+   * Pressing it clicks the button while the button is mounted, enabled and shown. A plain key typed
+   * in a text field does nothing, but a combination holding Control, Command or `mod` fires there
+   * too, because it types no text. A press outside a dialog that holds the button does nothing. It
+   * also sets `aria-keyshortcuts`.
    */
   hotkey?: string
   /**
@@ -192,6 +193,10 @@ const ARIA_KEYS: Readonly<Record<string, string>> = {
  * bar is `Space`, a named key keeps its `KeyboardEvent.key` spelling (`ArrowUp`, `PageDown`), and
  * the `+` key is `Plus`, because a bare `+` would read as the separator.
  *
+ * Any other character stays as it is: `"?"` is `?`, not `Shift+/`. The specification prefers the
+ * keys that produce a shifted character, but which keys those are depends on the keyboard layout,
+ * and `useHotkeys` matches the character, not the keys.
+ *
  * @param keys The combination, such as `"mod+shift+k"`.
  * @param apple Whether `mod` means Command.
  * @throws {Error} When the combination cannot be read.
@@ -226,6 +231,9 @@ function openModal(): Element | null {
  * closed dialog), or outside the dialog the press landed in. While a modal dialog is open, only an
  * element inside it is clicked.
  *
+ * A key held down repeats its press. A repeat is cancelled, as the first press was, but clicks
+ * nothing: holding N makes one note, not twenty.
+ *
  * @param element The element to click, such as the button a hotkey belongs to.
  * @param event The key press.
  */
@@ -238,16 +246,51 @@ export function clickByHotkey(element: HTMLElement | null, event: KeyboardEvent)
   const scope = target?.closest?.(DIALOG_SELECTOR) ?? openModal()
   if (scope !== null && !scope.contains(element)) return false
   event.preventDefault()
-  element.click()
+  if (!event.repeat) element.click()
   return true
+}
+
+/**
+ * Whether a combination may fire while the reader types in a field: it holds Control, Command or
+ * `mod`, so pressing it types no text. Alt does not count, because on a Mac Option types a
+ * character.
+ *
+ * @param keys The combination, such as `"mod+enter"`.
+ * @throws {Error} When the combination cannot be read.
+ */
+function isChord(keys: string): boolean {
+  const hotkey = parseHotkey(keys)
+  return hotkey.ctrl || hotkey.meta || hotkey.mod
+}
+
+/**
+ * The {@link useHotkeys} binding that clicks an element through {@link clickByHotkey}. It fires in
+ * a dialog, and in a text field only for a combination that holds Control, Command or `mod`. It
+ * leaves the key press alone unless it clicks, so a disabled button passes its key on.
+ *
+ * @param keys The combination, such as `"n"` or `"mod+enter"`.
+ * @param element Reads the element when the key is pressed.
+ * @throws {Error} When the combination cannot be read.
+ */
+export function hotkeyClickBinding(
+  keys: string,
+  element: () => HTMLElement | null,
+): HotkeyBinding {
+  return {
+    keys,
+    inDialogs: true,
+    inFields: isChord(keys),
+    preventDefault: false,
+    handler: (event) => void clickByHotkey(element(), event),
+  }
 }
 
 /**
  * Bind a key to one element: pressing it clicks the element through {@link clickByHotkey}. Returns
  * the ref to put on that element. With `keys` left out, or `enabled` false, nothing listens.
  *
- * A press in a text field, a select or editable content does nothing, so typing the key never
- * clicks anything.
+ * A plain key pressed in a text field, a select or editable content does nothing, so typing never
+ * clicks anything; a combination holding Control, Command or `mod` fires there too.
  *
  * @param keys The combination, such as `"n"` or `"mod+enter"`.
  * @param options See {@link UseHotkeysOptions}.
@@ -258,12 +301,7 @@ export function useHotkeyClick<Target extends HTMLElement>(
 ): RefObject<Target> {
   const ref = useRef<Target>(null)
   useHotkeys(
-    keys === undefined ? [] : [{
-      keys,
-      inDialogs: true,
-      preventDefault: false,
-      handler: (event) => void clickByHotkey(ref.current, event),
-    }],
+    keys === undefined ? [] : [hotkeyClickBinding(keys, () => ref.current)],
     { ...options, enabled: keys !== undefined && (options.enabled ?? true) },
   )
   return ref

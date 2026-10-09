@@ -4,8 +4,8 @@ import { useRef } from "preact/hooks"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import {
   ariaKeyShortcuts,
-  clickByHotkey,
   type HotkeyBinding,
+  hotkeyClickBinding,
   useApplePlatform,
   useHotkeys,
 } from "./hotkeys.ts"
@@ -203,13 +203,9 @@ export function Tabs(
   const apple = useApplePlatform()
   useHotkeys(
     tabs.flatMap((tab): HotkeyBinding[] =>
-      tab.hotkey === undefined || tab.disabled === true ? [] : [{
-        keys: tab.hotkey,
-        inDialogs: true,
-        preventDefault: false,
-        handler: (event) =>
-          void clickByHotkey(document.getElementById(tabElementId(tab.id)), event),
-      }]
+      tab.hotkey === undefined || tab.disabled === true ? [] : [
+        hotkeyClickBinding(tab.hotkey, () => document.getElementById(tabElementId(tab.id))),
+      ]
     ),
   )
   const activeIndex = tabs.findIndex((tab) => tab.id === active)
