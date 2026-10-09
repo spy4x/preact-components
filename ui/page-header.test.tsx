@@ -200,3 +200,17 @@ describe("PageAction", () => {
     expect(html).not.toContain("<button")
   })
 })
+
+describe("PageAction hotkey", () => {
+  it("gives the button and the link its hotkey, announced and shown", () => {
+    for (
+      const html of [
+        render(<PageAction label="New task" Icon={IconPlus} onClick={() => {}} hotkey="p" />),
+        render(<PageAction label="New task" Icon={IconPlus} href="/new" hotkey="p" />),
+      ]
+    ) {
+      expect(html).toContain('aria-keyshortcuts="P"')
+      expect(html).toContain("data-hotkey-hint")
+    }
+  })
+})

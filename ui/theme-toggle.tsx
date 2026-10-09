@@ -4,6 +4,7 @@ import type { JSX } from "preact"
 import { useLayoutEffect, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
+import type { HotkeyProps } from "./hotkeys.ts"
 
 /**
  * The slice of a theme store {@link ThemeToggle} reads, described by shape so this package imports
@@ -41,7 +42,11 @@ export const defaultThemeToggleLabels: ThemeToggleLabels = {
   hint: "Auto mode",
 }
 
-export interface ThemeToggleProps {
+/**
+ * Props of {@link ThemeToggle}. `hotkey` cycles the theme from the keyboard; the button is icon-only,
+ * so it shows no `Kbd` hint unless `hotkeyHint` asks for one.
+ */
+export interface ThemeToggleProps extends HotkeyProps {
   /**
    * The app's theme store, normally `createThemeStore()` from `@spy4x/preact-signals/theme`. The
    * app owns it and calls its `attach()`; the button only reads it and calls `cycle()`.
@@ -86,7 +91,15 @@ const hintRegion = "pointer-events-none absolute top-full end-0 z-50 w-max pt-2"
  * first browser render agree.
  */
 export function ThemeToggle(
-  { store, labels, hintForMs = 2000, class: className }: ThemeToggleProps,
+  {
+    store,
+    labels,
+    hintForMs = 2000,
+    class: className,
+    hotkey,
+    hotkeyHint,
+    kbdLabels,
+  }: ThemeToggleProps,
 ): JSX.Element {
   const text = { ...defaultThemeToggleLabels, ...labels }
   // A number rather than a flag: each switch to auto gets a new one, so the effect below restarts
@@ -129,7 +142,15 @@ export function ThemeToggle(
 
   return (
     <span class={join("relative inline-flex", className)}>
-      <Button variant="icon" aria-label={label} title={label} onClick={onClick}>
+      <Button
+        variant="icon"
+        aria-label={label}
+        title={label}
+        onClick={onClick}
+        hotkey={hotkey}
+        hotkeyHint={hotkeyHint}
+        kbdLabels={kbdLabels}
+      >
         {icon}
       </Button>
       <span

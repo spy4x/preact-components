@@ -2,6 +2,7 @@ import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { IconArrowLeft, IconEllipsisVertical, type IconProps } from "@spy4x/preact-icons"
 import { Button, buttonClasses, type ButtonVariant } from "./button.tsx"
 import { Dropdown } from "./dropdown.tsx"
+import type { HotkeyProps } from "./hotkeys.ts"
 
 /**
  * A touch target of 44 px on a phone and the library's own 36 px from `sm` up, for a small button
@@ -144,7 +145,7 @@ export function MoreMenu({ label, dataE2E, children }: MoreMenuProps): JSX.Eleme
 }
 
 /** What {@link PageAction} takes: `href` makes it a link, otherwise it is a button. */
-export interface PageActionProps {
+export interface PageActionProps extends HotkeyProps {
   /** Visible from `sm` up, and always the accessible name. */
   label: string
   /** Shown on every screen; on a phone it is all a person sees of the action. */
@@ -170,8 +171,21 @@ export interface PageActionProps {
  * @param props See {@link PageActionProps}.
  */
 export function PageAction(
-  { label, Icon, href, navigate, onClick, variant = "primary", disabled, dataE2E }: PageActionProps,
+  {
+    label,
+    Icon,
+    href,
+    navigate,
+    onClick,
+    variant = "primary",
+    disabled,
+    dataE2E,
+    hotkey,
+    hotkeyHint,
+    kbdLabels,
+  }: PageActionProps,
 ): JSX.Element {
+  const keys = { hotkey, hotkeyHint, kbdLabels }
   const content = (
     <>
       <Icon class="size-5" aria-hidden="true" />
@@ -187,6 +201,7 @@ export function PageAction(
         disabled={disabled}
         class={TOUCH_TARGET}
         data-e2e={dataE2E}
+        {...keys}
       >
         {content}
       </Button>
@@ -199,6 +214,7 @@ export function PageAction(
         disabled={disabled}
         class={TOUCH_TARGET}
         data-e2e={dataE2E}
+        {...keys}
       >
         {content}
       </Button>

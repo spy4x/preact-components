@@ -101,3 +101,14 @@ describe("ThemeToggle", () => {
       .toMatch(/^<span class="relative inline-flex ml-auto">/)
   })
 })
+
+describe("ThemeToggle hotkey", () => {
+  it("announces its hotkey and, as an icon button, shows no hint unless asked", () => {
+    const store = storeOn("light")
+    const quiet = render(<ThemeToggle store={store} hotkey="t" />)
+    expect(quiet).toContain('aria-keyshortcuts="T"')
+    expect(quiet).not.toContain("data-hotkey-hint")
+    expect(render(<ThemeToggle store={store} hotkey="t" hotkeyHint />))
+      .toContain("data-hotkey-hint")
+  })
+})

@@ -208,3 +208,14 @@ describe("CopyButton's passthrough", () => {
     expect(calls).toEqual(["onClick", "copy"])
   })
 })
+
+describe("CopyButton hotkey", () => {
+  it("passes its hotkey to the button: a hint beside a title, none on the icon alone", () => {
+    const titled = render(<CopyButton textToCopy="x" title="Copy id" hotkey="c" />)
+    expect(titled).toContain('aria-keyshortcuts="C"')
+    expect(titled).toContain("data-hotkey-hint")
+    const icon = render(<CopyButton textToCopy="x" hotkey="c" />)
+    expect(icon).toContain('aria-keyshortcuts="C"')
+    expect(icon).not.toContain("data-hotkey-hint")
+  })
+})
