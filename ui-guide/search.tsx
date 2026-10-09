@@ -3,11 +3,14 @@
  *
  * The index is built from the registry, so a card added to a section is searchable with no second
  * edit. The dialog, its keys and its hotkeys (`/`, Ctrl+K and ⌘K) are the library's own
- * `CommandPalette`; this file keeps only the guide's index and its ranking.
+ * `CommandPalette`; this file keeps only the guide's index and what an empty query shows.
  */
 
-import { fold } from "@spy4x/preact-ui/combobox"
-import { CommandPalette, type CommandPaletteOption } from "@spy4x/preact-ui/command-palette"
+import {
+  CommandPalette,
+  type CommandPaletteOption,
+  rankOptions,
+} from "@spy4x/preact-ui/command-palette"
 import type { JSX } from "preact"
 import { useMemo } from "preact/hooks"
 import {
@@ -78,11 +81,8 @@ export function searchIndex(registry: PartialDemoRegistry, guidePlace = "Guide")
 }
 
 /**
- * The entries that match `query`, best first, at most `limit` of them.
- *
- * A name equal to the query comes first, then names that start with it, then names that contain
- * it, then entries whose place (`detail`) contains it; the index order breaks ties. Matching folds
- * case and accents the way the library's combobox does. An empty query matches the pages only.
+ * The entries that match `query`, best first, at most `limit` of them: `rankOptions` from the
+ * library, except that an empty query matches the pages only.
  *
  * @param entries The index.
  * @param query What the reader typed.
@@ -93,24 +93,10 @@ export function searchEntries<Entry extends SearchEntry>(
   query: string,
   limit = 12,
 ): Entry[] {
-  const needle = fold(query.trim())
-  if (needle === "") {
+  if (query.trim() === "") {
     return entries.filter((entry) => entry.kind === SearchKind.PAGE).slice(0, limit)
   }
-  const rank = (entry: Entry): number => {
-    const label = fold(entry.label)
-    if (label === needle) return 0
-    if (label.startsWith(needle)) return 1
-    if (label.includes(needle)) return 2
-    if (fold(entry.detail).includes(needle)) return 3
-    return -1
-  }
-  return entries
-    .map((entry, index) => ({ entry, index, rank: rank(entry) }))
-    .filter((scored) => scored.rank >= 0)
-    .sort((a, b) => a.rank - b.rank || a.index - b.index)
-    .slice(0, limit)
-    .map((scored) => scored.entry)
+  return rankOptions(entries, query, limit)
 }
 
 /** The word beside a result for each kind of entry. */
@@ -176,6 +162,9 @@ export function GuideSearch({ entries, labels, go }: GuideSearchProps): JSX.Elem
       options={options}
       filter={(all, query) => searchEntries(all, query)}
       onSelect={(option) => go(option.href)}
+      // Both chords on every platform, as the guide's search always had, rather than the
+      // library's `mod+k`.
+      hotkeys={["/", "ctrl+k", "meta+k"]}
       dataE2E="ui-guide-search"
       labels={{
         search: labels.search,
