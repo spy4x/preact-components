@@ -8347,8 +8347,8 @@ async function goToRoute(devtools: Devtools, route: string, path: string): Promi
 }
 
 /**
- * `useRouteAnnouncer` on the host page's demo: the first render moves nothing, a query-string change
- * keeps focus on the control pressed, and a path change titles the tab and moves focus to the new
+ * `useRouteAnnouncer` on the host page's demo: the first render moves nothing, a query-string or
+ * fragment change keeps focus on the control pressed, and a path change titles the tab and moves focus to the new
  * page's `<h1>`, or to the page when it has none.
  *
  * The System page is opened from another page first, so the demo mounts inside this block and its
@@ -8378,6 +8378,15 @@ async function routeAnnouncerChecks(devtools: Devtools): Promise<void> {
     queried && query.focus === "go-filter" && query.headingTabindex === "none" &&
       query.title === "Inbox — route demo",
     JSON.stringify(query),
+  )
+
+  const fragmented = await goToRoute(devtools, "fragment", "/inbox#unread")
+  const fragment = await readRoute(devtools)
+  check(
+    "useRouteAnnouncer keeps focus on the pressed control when only the fragment changes",
+    fragmented && fragment.focus === "go-fragment" && fragment.headingTabindex === "none" &&
+      fragment.title === "Inbox — route demo",
+    JSON.stringify(fragment),
   )
 
   const toSettings = await goToRoute(devtools, "settings", "/settings")

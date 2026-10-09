@@ -7,7 +7,8 @@
  * input from any router, so a path held in state is exactly what it sees in an app. The page region
  * is passed as `main`, because the catalogue's own `<main>` already holds this section.
  *
- * `/inbox` draws an `<h1>`, `/settings` draws none, so the two show both places focus can land. The
+ * `/inbox` draws an `<h1>` (announced as level 3, since the catalogue's System page has its own
+ * `<h1>`), `/settings` draws none, so the two show both places focus can land. The
  * title stays unset until the first press, so opening this page leaves the catalogue's own tab title
  * alone.
  */
@@ -20,6 +21,7 @@ import { useRef, useState } from "preact/hooks"
 const ROUTES = [
   { e2e: "inbox", path: "/inbox" },
   { e2e: "filter", path: "/inbox?filter=open" },
+  { e2e: "fragment", path: "/inbox#unread" },
   { e2e: "settings", path: "/settings" },
 ]
 
@@ -71,7 +73,13 @@ export function RouteAnnouncerDemo() {
         class="mt-3 rounded border border-gray-200 p-4 dark:border-gray-700"
       >
         {pageName(path) === "Inbox"
-          ? <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100">Inbox</h1>
+          ? (
+            // aria-level: the hook looks for an h1, but on the catalogue's System page this is a
+            // sub-heading, not a second page title.
+            <h1 aria-level={3} class="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Inbox
+            </h1>
+          )
           : null}
         <p class="text-sm text-gray-600 dark:text-gray-300">
           Showing <code data-e2e="route-demo-path">{path}</code>
