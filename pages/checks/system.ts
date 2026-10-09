@@ -8426,6 +8426,24 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
     JSON.stringify(announcements),
   )
 
+  // The card hands the chooser a new array on every render, as an app that derives its list while
+  // rendering does. Toggling "Fail the next choice" twice re-renders the card with the list still
+  // empty.
+  await recordAnnouncements(devtools)
+  await devtools.evaluate(`(() => {
+    const toggle = document.querySelector('${CONFLICT} [data-e2e="conflict-fail-next"]')
+    toggle.click()
+    return new Promise((resolve) => requestAnimationFrame(() => (toggle.click(), resolve(null))))
+  })()`)
+  const rerendered = await readConflicts(devtools)
+  const rerenderAnnouncements = await recordedAnnouncements(devtools)
+  check(
+    "a re-render that passes a fresh empty list after all are resolved says nothing again",
+    rerendered.items.length === 0 &&
+      !rerenderAnnouncements.some((line) => line.endsWith("All conflicts resolved")),
+    JSON.stringify({ rerendered, rerenderAnnouncements }),
+  )
+
   await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
   await click(devtools, `${CONFLICT} [data-e2e="conflict-dialog"]`)
   const dialogChooser = `${CONFLICT} dialog[open] section`

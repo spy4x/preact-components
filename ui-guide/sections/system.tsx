@@ -1493,7 +1493,8 @@ function ConflictChooserDemo() {
   }
   const chooser = (headingLevel: 2 | 3) => (
     <ConflictChooser
-      conflicts={conflicts.value}
+      // A new array on every render, as an app passes when it derives the list while rendering.
+      conflicts={conflicts.value.filter(() => true)}
       onKeepMine={settle("keep mine")}
       onUseTheirs={settle("use theirs")}
       headingLevel={headingLevel}
