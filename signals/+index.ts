@@ -40,6 +40,14 @@ export {
   type OnlineStatus,
   type OnlineTarget,
 } from "./online.ts"
+export {
+  createOnboardingState,
+  type OnboardingDismissedPort,
+  type OnboardingProgress,
+  type OnboardingState,
+  type OnboardingStateOptions,
+  type OnboardingStepFact,
+} from "./onboarding.ts"
 export { patchSignal } from "./patch-signal.ts"
 export {
   createThemeStore,

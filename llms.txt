@@ -328,6 +328,12 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `OnlinePorts` (type): Everything the store needs from the outside. Import: `@spy4x/preact-signals`
 - `OnlineStatus` (type): The browser's network state, and the wiring that keeps it current. Import: `@spy4x/preact-signals`
 - `OnlineTarget` (type): Event port. Import: `@spy4x/preact-signals`
+- `createOnboardingState` (helper): Create an onboarding store over the app's step facts and a port for the dismissed flag. Import: `@spy4x/preact-signals`
+- `OnboardingDismissedPort` (type): Where the "dismissed" flag lives: `localStorage`, a user setting on the server, or memory. Import: `@spy4x/preact-signals`
+- `OnboardingProgress` (type): How many steps are done, out of how many. Import: `@spy4x/preact-signals`
+- `OnboardingState` (type): The derived onboarding state, and the two ways to change the dismissed flag. Import: `@spy4x/preact-signals`
+- `OnboardingStateOptions` (type): What `createOnboardingState` takes. Import: `@spy4x/preact-signals`
+- `OnboardingStepFact` (type): What the store needs to know about one step. Import: `@spy4x/preact-signals`
 - `patchSignal` (helper): Merge `patch` into `signal`'s current value and notify subscribers. Import: `@spy4x/preact-signals`
 - `createThemeStore` (helper): Create a theme store. Import: `@spy4x/preact-signals`
 - `Theme` (type): A resolved theme: what is actually painted. Import: `@spy4x/preact-signals`
