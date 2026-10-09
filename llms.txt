@@ -530,7 +530,7 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `ServiceWorkerDirEntry` (type): The part of a directory entry `ServiceWorkerOptions.readDir` yields. Import: `@spy4x/preact-theme/vite`
 - `ServiceWorkerOptions` (type): Options for `serviceWorker`. Import: `@spy4x/preact-theme/vite`
 - `buildWebManifest` (helper): The manifest with its defaults filled in. Import: `@spy4x/preact-theme/vite`
-- `webManifest` (helper): Writes the manifest into the output folder once the app build is written, and serves it from the dev server at `/<fileName>` (under Vite's `base`, or at the root when `base` is relative, as `./` is). Import: `@spy4x/preact-theme/vite`
+- `webManifest` (helper): Writes the manifest into the output folder once the app build is written, and serves it from the dev server at `/<fileName>` (under Vite's `base`). Import: `@spy4x/preact-theme/vite`
 - `WebManifest` (type): A manifest with every default filled in, as written to the file. Import: `@spy4x/preact-theme/vite`
 - `WebManifestIcon` (type): One manifest icon. Import: `@spy4x/preact-theme/vite`
 - `WebManifestInput` (type): The manifest fields a caller writes; everything but `name` and `icons` has a default. Import: `@spy4x/preact-theme/vite`

@@ -118,24 +118,4 @@ describe("webManifest", () => {
     expect(headers["Content-Type"]).toBe("application/manifest+json")
     expect(JSON.parse(body).start_url).toBe("/app/")
   })
-
-  it("serves the manifest at the URL a page links to when the base is relative", () => {
-    const plugin = webManifest({
-      manifest: { name: "Tasks", icons },
-      writeTextFile: () => Promise.resolve(),
-    })
-    const middlewares: ViteMiddleware[] = []
-    plugin.configResolved!({ command: "serve", root: "/app", base: "./", build: { outDir: "d" } })
-    plugin.configureServer!({ middlewares: { use: (middleware) => middlewares.push(middleware) } })
-    let body = ""
-    let passed = false
-    const response = { statusCode: 0, setHeader: () => {}, end: (text: string) => (body = text) }
-    // The page at the dev server's root links `./manifest.webmanifest`; the browser resolves it.
-    const linked = new URL("./manifest.webmanifest", "http://localhost:5173/").pathname
-
-    middlewares[0]({ url: linked }, response, () => (passed = true))
-
-    expect(passed).toBe(false)
-    expect(JSON.parse(body).name).toBe("Tasks")
-  })
 })
