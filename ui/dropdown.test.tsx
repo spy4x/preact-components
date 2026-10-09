@@ -211,10 +211,17 @@ describe("DropdownItem", () => {
     expect(html).not.toContain("text-foreground")
   })
 
-  it("dims a disabled item, as a disabled Button is dimmed", () => {
-    const html = render(<DropdownItem disabled onClick={() => {}}>Archive</DropdownItem>)
+  it("dims a disabled item and only a disabled one, as a disabled Button is dimmed", () => {
+    // The dimming is `disabled:opacity-50`, which every item carries; what sets it off is the
+    // `disabled` attribute, so the test needs both on the same button and neither attribute on an
+    // enabled item.
+    const dimmedButton =
+      /<button\b[^>]*\sdisabled[\s=>][^>]*disabled:opacity-50|<button\b[^>]*disabled:opacity-50[^>]*\sdisabled[\s=>]/
+    const disabled = render(<DropdownItem disabled onClick={() => {}}>Archive</DropdownItem>)
+    const enabled = render(<DropdownItem onClick={() => {}}>Archive</DropdownItem>)
 
-    expect(html).toContain("disabled:opacity-50")
+    expect(disabled).toMatch(dimmedButton)
+    expect(enabled).not.toMatch(dimmedButton)
   })
 
   it("draws a disabled danger item in the default colour, like any disabled item", () => {
