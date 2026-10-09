@@ -170,12 +170,14 @@ function BusyButtonDemo() {
 
 /**
  * `hotkey`: N clicks "New note", which counts its presses, unless the checkbox has disabled it or
- * focus is in the text field, where N is typed instead. The button shows its key in a `Kbd` hint and
- * announces it with `aria-keyshortcuts`. `pages/checks/ui.ts` drives all of it with real key presses.
+ * focus is in the text field, where N is typed instead. Control+Enter (Command+Enter on a Mac)
+ * clicks "Send" even from inside the field, because a combination holding a modifier types no text.
+ * Each button shows its key in a `Kbd` hint and announces it with `aria-keyshortcuts`. `pages/checks/ui.ts` drives all of it with real key presses.
  */
 function HotkeyButtonDemo() {
   const notes = useSignal(0)
   const off = useSignal(false)
+  const sent = useSignal(0)
   return (
     <Cluster>
       <Button
@@ -196,8 +198,17 @@ function HotkeyButtonDemo() {
         Disabled
       </label>
       <Input placeholder="Type n here" aria-label="Type n here" data-e2e="hotkey-field" />
+      <Button
+        hotkey="mod+enter"
+        variant="secondary"
+        data-e2e="hotkey-send"
+        onClick={() => sent.value += 1}
+      >
+        Send
+      </Button>
       <DemoNote e2e="hotkey-count">
-        {notes.value} {notes.value === 1 ? "note" : "notes"}
+        {notes.value} {notes.value === 1 ? "note" : "notes"}, sent {sent.value}{" "}
+        {sent.value === 1 ? "time" : "times"}
       </DemoNote>
     </Cluster>
   )
@@ -386,7 +397,7 @@ export const buttonDemos = {
         name: "hotkey",
         type: "string",
         description:
-          'A key such as `"n"` or `"mod+k"` that clicks the button while it is shown and enabled, never while you type in a field. Sets `aria-keyshortcuts`.',
+          'A key such as `"n"` or `"mod+enter"` that clicks the button while it is shown and enabled. A plain key never fires while you type in a field; a combination holding Control, Command or `mod` does. Sets `aria-keyshortcuts`.',
       },
       {
         name: "hotkeyHint",
@@ -412,7 +423,8 @@ export const buttonDemos = {
 <Button type="submit" busy={saving.value} busyLabel="Confirming…">Confirm</Button>
 <Button href="/reports" navigate={router.navigate}>Reports</Button>
 <Button href="/book" size="none" class="px-6 py-3">Book a call</Button>
-<Button hotkey="n" onClick={addNote}>New note</Button>`,
+<Button hotkey="n" onClick={addNote}>New note</Button>
+<Button hotkey="mod+enter" onClick={send}>Send</Button>`,
     render: () => (
       <Stack gap="lg">
         <ButtonMatrix />

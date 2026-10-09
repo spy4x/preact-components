@@ -1290,9 +1290,13 @@ first appear, shortcuts without a description left out.
 ### A hotkey on a button
 
 `Button`, `Tabs` (per tab), `CopyButton`, `ThemeToggle` and `PageAction` take a `hotkey` prop in
-the same syntax. Pressing the key clicks the button while it is mounted, enabled and shown; a press
-in a text field types instead, and a press outside a dialog that holds the button does nothing, as
-does any press outside an open modal dialog. The button gets `aria-keyshortcuts`, and a `Kbd` hint
+the same syntax. Pressing the key clicks the button while it is mounted, enabled and shown. A plain
+key pressed in a text field types instead; a combination holding Control, Command or `mod`
+(`"mod+enter"`, `"mod+s"`) fires there too, because it types no text. A press outside a dialog that
+holds the button does nothing, as does any press outside an open modal dialog. Holding a key down
+clicks once: its repeats are cancelled and click nothing. When two buttons share a key, the one
+whose listener was registered first (usually the one mounted first) clicks and the other does
+nothing; a disabled button passes the key on, so the next button with that key clicks. The button gets `aria-keyshortcuts`, and a `Kbd` hint
 inside it shows the key where the main pointer is fine (a mouse or a trackpad, never a phone). The
 hint is hidden from screen readers, which read `aria-keyshortcuts` instead; `hotkeyHint={false}`
 turns it off, an icon-only button has none unless `hotkeyHint` asks, and `kbdLabels` changes its
@@ -1313,7 +1317,8 @@ ambient global state the component rules forbid.
 the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a key press: it clicks
 the element and cancels the press only when the element is connected, enabled, not inert, rendered,
 and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
-`useApplePlatform(apple)` answers whether `mod` means Command, reading the platform in an effect so
+`hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component
+that binds several elements in one `useHotkeys` call, as `Tabs` does. `useApplePlatform(apple)` answers whether `mod` means Command, reading the platform in an effect so
 the server render and the first browser render agree; `Kbd` and the `hotkey` prop use it.
 
 The parser and the matcher are framework-free and come from `@spy4x/platform/browser/hotkeys`
