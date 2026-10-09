@@ -1,5 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
+import { Fragment } from "preact"
 import { useApplePlatform } from "./hotkeys.ts"
 import {
   GROUP_CLASS,
@@ -8,6 +9,7 @@ import {
   type KbdLabels,
   KEY_CLASS,
   keyFaces,
+  sequenceSteps,
 } from "./kbd-keys.tsx"
 
 export { KBD_LABELS, type KbdLabels, type KeyFace, keyFaces } from "./kbd-keys.tsx"
@@ -15,8 +17,9 @@ export { KBD_LABELS, type KbdLabels, type KeyFace, keyFaces } from "./kbd-keys.t
 /** Props of {@link Kbd}. Pass `keys` or `children`. */
 export interface KbdProps {
   /**
-   * A combination such as `"mod+k"`, `"?"` or `"esc"`, written the way `useHotkeys` takes it.
-   * `mod` is ⌘ on Apple platforms and Ctrl elsewhere. Throws when the combination cannot be read.
+   * A combination such as `"mod+k"`, `"?"` or `"esc"`, written the way `useHotkeys` takes it, or a
+   * sequence of them separated by whitespace, such as `"g t"`: press `g`, then `t`. `mod` is ⌘ on
+   * Apple platforms and Ctrl elsewhere. Throws when a combination cannot be read.
    */
   keys?: string
   /** A key written by hand, used when there is no `keys`: `<Kbd>Tab</Kbd>`. */
@@ -33,8 +36,12 @@ export interface KbdProps {
 }
 
 /**
- * One key or a combination of keys, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders
- * an outer `<kbd>` holding one `<kbd>` per key.
+ * One key, a combination of keys or a sequence of presses, as the HTML `<kbd>` element:
+ * `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key.
+ *
+ * A sequence such as `<Kbd keys="g t" />` renders an outer `<kbd>` holding each press as above,
+ * with the word "then" between them as plain text with a space on each side, so it is read
+ * "G then T". The word is {@link KbdLabels.then}.
  *
  * A glyph that a screen reader may not read (⌘, ⌥, ⇧, ⌃ and the arrows) is hidden from it and
  * followed by its name in visually hidden text, so ⌘K is read as "Command K". Outside Apple
@@ -46,13 +53,31 @@ export function Kbd({ keys, children, apple, labels, class: className }: KbdProp
   const isApple = useApplePlatform(apple)
   if (keys === undefined) return <kbd class={cn(KEY_CLASS, className)}>{children}</kbd>
 
-  const faces = keyFaces(keys, isApple, { ...KBD_LABELS, ...labels })
+  const words = { ...KBD_LABELS, ...labels }
+  const steps = sequenceSteps(keys).map((step) => keyFaces(step, isApple, words))
+  if (steps.length === 1) {
+    return (
+      <KbdKeys
+        faces={steps[0]}
+        apple={isApple}
+        singleClass={cn(KEY_CLASS, className)}
+        groupClass={cn(GROUP_CLASS, className)}
+      />
+    )
+  }
+  // Inline, not flex: the spaces around "then" are real text, so the keys never run into the word
+  // when a screen reader or a copy joins them.
   return (
-    <KbdKeys
-      faces={faces}
-      apple={isApple}
-      singleClass={cn(KEY_CLASS, className)}
-      groupClass={cn(GROUP_CLASS, className)}
-    />
+    <kbd class={cn(SEQUENCE_CLASS, className)}>
+      {steps.map((faces, index) => (
+        <Fragment key={index}>
+          {index > 0 && ` ${words.then} `}
+          <KbdKeys faces={faces} apple={isApple} singleClass={KEY_CLASS} groupClass={GROUP_CLASS} />
+        </Fragment>
+      ))}
+    </kbd>
   )
 }
+
+/** The classes of the outer `<kbd>` around a sequence of presses. */
+const SEQUENCE_CLASS = "text-xs text-muted"

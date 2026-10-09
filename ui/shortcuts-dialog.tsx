@@ -4,7 +4,10 @@ import { Modal } from "./modal.tsx"
 
 /** One row of {@link ShortcutsDialog}. A `HotkeyBinding` from `useHotkeys` is one already. */
 export interface Shortcut {
-  /** The combination, such as `"mod+k"`, drawn with `Kbd`. */
+  /**
+   * The combination, such as `"mod+k"`, or a sequence of presses, such as `"g t"`, drawn with
+   * `Kbd`. `useHotkeys` takes one press only, so a sequence row is bound by another matcher.
+   */
   keys: string
   /** What it does. A shortcut without one is not listed. */
   description?: string

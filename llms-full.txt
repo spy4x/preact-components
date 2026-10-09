@@ -4356,7 +4356,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                      |
 | `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                        |
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs                                                                                                                                                                                                |
-| `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                              |
+| `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                     |
 | `InlineEdit`          | `inline-edit`          | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`                                                                             |
 | `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                                                                         |
 | `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                           |
@@ -5532,7 +5532,7 @@ component that calls it is mounted. A binding is `{ keys, handler }`, with an op
 `"/"`), a key with modifiers (`"shift+n"`, `"mod+k"`) or a named key (`"esc"`, `"up"`). `mod` is
 Command on Apple platforms and Control elsewhere; the platform is read when the listener is
 attached, or given as `options.apple`. Two-key sequences such as `"g i"` are not supported and
-throw.
+throw; `Kbd` and `ShortcutsDialog` still draw them, for a sequence bound by another matcher.
 
 A symbol typed with AltGr, such as `@` on a German keyboard, still runs a binding for that
 symbol: the hook asks the browser whether AltGr is held, so a real Control+Alt chord on a keyboard
@@ -5559,11 +5559,13 @@ useHotkeys(bindings)
 combination matches a key press and that may fire where the press landed.
 
 `Kbd` draws a combination as nested `<kbd>` elements: ⌘K on Apple platforms, Ctrl + K elsewhere.
+A sequence, written as its presses separated by whitespace (`"g t"`), draws each press that way with
+the word "then" between them, so it is read "G then T"; `labels.then` changes the word.
 The server and the first browser render draw Ctrl, and an effect switches to ⌘ on an Apple
 platform, unless `apple` says which. A glyph such as ⌘ is hidden from screen readers and followed
 by its name in visually hidden text. `keyFaces(keys, apple, labels)` returns the text and the name
-of each key `Kbd` draws, and `KBD_LABELS` holds the English words it uses, which `labels`
-overrides one by one.
+of each key of one combination `Kbd` draws, and `KBD_LABELS` holds the English words it uses,
+which `labels` overrides one by one.
 
 `ShortcutsDialog` lists shortcuts under group headings, built on `Modal`.
 `groupShortcuts(shortcuts, defaultGroup)` is its grouping on its own: groups in the order they

@@ -59,6 +59,20 @@ describe("ShortcutsDialog", () => {
     expect(html).not.toContain(">X</kbd>")
   })
 
+  it("lists a sequence row with its presses joined by then", () => {
+    const html = render(
+      <ShortcutsDialog
+        open
+        onClose={() => {}}
+        shortcuts={[{ keys: "g t", description: "Go to Today" }]}
+        apple={false}
+      />,
+    )
+    expect(html).toMatch(
+      />Go to Today<\/dt><dd><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>T<\/kbd>/,
+    )
+  })
+
   it("shows group headings only when there is more than one group", () => {
     const grouped = render(<ShortcutsDialog open onClose={() => {}} shortcuts={shortcuts} />)
     expect(grouped).toContain(">General</h3>")

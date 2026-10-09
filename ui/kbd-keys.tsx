@@ -44,6 +44,8 @@ export interface KbdLabels {
   left: string
   /** Name of the → key. */
   right: string
+  /** The word between the presses of a sequence such as `"g t"`, read as "G then T". */
+  then: string
 }
 
 /** English defaults for every {@link KbdLabels} entry. */
@@ -65,6 +67,7 @@ export const KBD_LABELS: Readonly<KbdLabels> = {
   down: "Down arrow",
   left: "Left arrow",
   right: "Right arrow",
+  then: "then",
 }
 
 /** How one key of a combination is drawn: what is on the key, and its name when that is a glyph. */
@@ -122,6 +125,17 @@ export function keyFaces(keys: string, apple: boolean, labels: KbdLabels = KBD_L
   }
   faces.push(keyFace(hotkey.key, labels))
   return faces
+}
+
+/**
+ * The presses of a sequence such as `"g t"`, in order: the text split at whitespace that is not
+ * next to a `+`, so `"mod + k"` stays one combination. A single combination is a sequence of one.
+ * Each press is checked when its faces are drawn, not here.
+ *
+ * @param keys The presses separated by whitespace, each written the way `useHotkeys` takes it.
+ */
+export function sequenceSteps(keys: string): string[] {
+  return keys.trim().split(/(?<!\+)\s+(?!\+)/)
 }
 
 /** The face of the one key that is not a modifier. */
