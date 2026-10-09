@@ -16,8 +16,9 @@ import { useSearchParams } from "wouter-preact"
  * address under a router whose search comes from the fragment.
  *
  * The value coercion and the read are pulled out into {@link resolveFilterValue} and
- * {@link readAddress} so they can be tested without a DOM. Everything else here is an effect, and `pages/checks/signals.ts` is where those are proven —
- * no test in this repository executes one.
+ * {@link readAddress} so they can be tested without a DOM. Everything else here is an effect,
+ * and `pages/checks/signals.ts` is where those are proven — no test in this repository executes
+ * one.
  */
 
 /** One filter, bound to one URL parameter. */
@@ -214,7 +215,8 @@ export function restoredAddress(fragment: string, after: AddressParts): string |
  * that value from the address would lose the key press. So on the first read only, a field whose
  * signal no longer holds the value it held at the first render keeps its value. The answer is
  * still the query string the *address* implies, which is what makes the hook's write effect see
- * the kept value as a change and write it to the address.
+ * the kept value as a change and write it to the address. The same holds for a filter a child
+ * component sets in its own mount effect, which runs before this one: it beats the address too.
  *
  * A later read passes no `rendered`, and the address wins for every field: back, forward, a link and
  * a push all happen after whatever the reader did before them.

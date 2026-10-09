@@ -20,9 +20,9 @@ import { check, type Devtools, inFreshFrame, PAGE_UNTIL, poll } from "./harness.
  * mount, which is the bug this file exists for. Eleven are something else and say so where they
  * are raised — the card that arrives on a filtered address, and the filter nobody touched while a
  * letter was typed early, are guards on the mount path; two assert that an address does *not*
- * move, which is the whole of what "reading never writes" means; five are counts, because "one change, one history entry" and "no `hashchange` fired" are numbers
- * rather than transitions; one asserts that a fragment stays absent; and the last collects what the
- * page threw.
+ * move, which is the whole of what "reading never writes" means; five are counts, because "one
+ * change, one history entry" and "no `hashchange` fired" are numbers rather than transitions; one
+ * asserts that a fragment stays absent; and the last collects what the page threw.
  *
  * The group about the fragment pairs every one of its assertions with a transition on the query
  * string, for the reason the shared rules give: "the fragment did not change" is also true of a
@@ -989,8 +989,9 @@ interface EarlyInput {
  * remount, the wait for the new field and the typing all happen in one task here, chained through
  * microtasks only, so the letter lands in the gap between the render and that effect on every run
  * rather than by chance — two protocol commands land in such a gap only by chance (see AGENTS.md).
- * `framed` is the proof: a frame that had already run would mean the effect could have, too. The
- * letter is typed as the page sees a key press: the field's value set, then an `input` event.
+ * `framed` records that no frame had run when the letter was typed; the microtask chain above is
+ * what makes that hold, so the flag guards against a change in scheduling rather than proving it.
+ * The letter is typed as the page sees a key press: the field's value set, then an `input` event.
  *
  * The address carries a `status` the reader did not touch, so the same remount also proves that a
  * value the address legitimately carries still loads on the first read. Back and forward close the
