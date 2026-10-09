@@ -35,6 +35,7 @@
     "./money-display": "./money-display.tsx",
     "./money-input": "./money-input.tsx",
     "./notice": "./notice.tsx",
+    "./onboarding-checklist": "./onboarding-checklist.tsx",
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./page-header": "./page-header.tsx",
     "./page-title": "./page-title.tsx",

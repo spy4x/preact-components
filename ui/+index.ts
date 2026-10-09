@@ -267,6 +267,14 @@ export {
   resolveMoneyInputEdit,
 } from "./money-input.tsx"
 export { Notice, type NoticeProps, type NoticeTone } from "./notice.tsx"
+export {
+  OnboardingChecklist,
+  type OnboardingChecklistProps,
+  type OnboardingStep,
+  type OnboardingStepAction,
+  type OnboardingStepButton,
+  type OnboardingStepLink,
+} from "./onboarding-checklist.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 export {
   MoreMenu,
