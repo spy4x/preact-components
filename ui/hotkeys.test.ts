@@ -229,6 +229,22 @@ describe("hotkeyClickBinding", () => {
     }
   })
 
+  it("leaves the field's editing chords such as mod+z to the field", () => {
+    for (const keys of ["mod+z", "mod+shift+z", "ctrl+c", "meta+v", "mod+x", "mod+a", "mod+y"]) {
+      const bound = hotkeyClickBinding(keys, () => null)
+      const key = keys.slice(-1)
+      const held = {
+        ctrlKey: !keys.startsWith("meta"),
+        metaKey: keys.startsWith("meta"),
+        shiftKey: keys.includes("shift"),
+      }
+      expect(pickHotkey([bound], press(key, { typing: true, ...held }), false)).toBeUndefined()
+      expect(pickHotkey([bound], press(key, held), false)).toBe(bound)
+    }
+    const send = hotkeyClickBinding("mod+enter", () => null)
+    expect(pickHotkey([send], press("Enter", { typing: true, ctrlKey: true }), false)).toBe(send)
+  })
+
   it("leaves a plain key or an Alt combination typed in a text field alone", () => {
     for (const keys of ["n", "shift+n", "alt+n"]) {
       const bound = hotkeyClickBinding(keys, () => null)

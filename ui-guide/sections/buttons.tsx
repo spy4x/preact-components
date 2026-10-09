@@ -172,7 +172,8 @@ function BusyButtonDemo() {
  * `hotkey`: N clicks "New note", which counts its presses, unless the checkbox has disabled it or
  * focus is in the text field, where N is typed instead. Control+Enter (Command+Enter on a Mac)
  * clicks "Send" even from inside the field, because a combination holding a modifier types no text.
- * Each button shows its key in a `Kbd` hint and announces it with `aria-keyshortcuts`. `pages/checks/ui.ts` drives all of it with real key presses.
+ * Each button shows its key in a `Kbd` hint and announces it with `aria-keyshortcuts`.
+ * `pages/checks/ui.ts` drives all of it with real key presses.
  */
 function HotkeyButtonDemo() {
   const notes = useSignal(0)
@@ -397,7 +398,7 @@ export const buttonDemos = {
         name: "hotkey",
         type: "string",
         description:
-          'A key such as `"n"` or `"mod+enter"` that clicks the button while it is shown and enabled. A plain key never fires while you type in a field; a combination holding Control, Command or `mod` does. Sets `aria-keyshortcuts`.',
+          'A key such as `"n"` or `"mod+enter"` that clicks the button while it is shown and enabled. A plain key never fires while you type in a field; a combination holding Control, Command or `mod` does, except the editing chords a field keeps, such as `mod+z`. Sets `aria-keyshortcuts`.',
       },
       {
         name: "hotkeyHint",

@@ -149,8 +149,9 @@ export interface HotkeyProps {
    * A combination such as `"n"`, `"shift+n"` or `"mod+k"`, written the way `useHotkeys` takes it.
    * Pressing it clicks the button while the button is mounted, enabled and shown. A plain key typed
    * in a text field does nothing, but a combination holding Control, Command or `mod` fires there
-   * too, because it types no text. A press outside a dialog that holds the button does nothing. It
-   * also sets `aria-keyshortcuts`.
+   * too, because it types no text. The field keeps its own editing chords (`mod+a`, `mod+c`,
+   * `mod+v`, `mod+x`, `mod+z`, `mod+y`). A press outside a dialog that holds the button does
+   * nothing. It also sets `aria-keyshortcuts`.
    */
   hotkey?: string
   /**
@@ -189,9 +190,9 @@ const ARIA_KEYS: Readonly<Record<string, string>> = {
  * `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key`
  * names them, joined by `+`.
  *
- * `mod` becomes `Meta` on Apple platforms and `Control` elsewhere. A letter is upper case, the space
- * bar is `Space`, a named key keeps its `KeyboardEvent.key` spelling (`ArrowUp`, `PageDown`), and
- * the `+` key is `Plus`, because a bare `+` would read as the separator.
+ * `mod` becomes `Meta` on Apple platforms and `Control` elsewhere. A letter is upper case, the
+ * space bar is `Space`, a named key keeps its `KeyboardEvent.key` spelling (`ArrowUp`, `PageDown`),
+ * and the `+` key is `Plus`, because a bare `+` would read as the separator.
  *
  * Any other character stays as it is: `"?"` is `?`, not `Shift+/`. The specification prefers the
  * keys that produce a shifted character, but which keys those are depends on the keyboard layout,
@@ -251,22 +252,31 @@ export function clickByHotkey(element: HTMLElement | null, event: KeyboardEvent)
 }
 
 /**
+ * Keys a text field answers with Control or Command held: select all, copy, paste, cut, undo and
+ * redo.
+ */
+const FIELD_EDITING_KEYS: ReadonlySet<string> = new Set(["a", "c", "v", "x", "z", "y"])
+
+/**
  * Whether a combination may fire while the reader types in a field: it holds Control, Command or
  * `mod`, so pressing it types no text. Alt does not count, because on a Mac Option types a
- * character.
+ * character. A field's own editing chords (`mod+a`, `mod+c`, `mod+v`, `mod+x`, `mod+z`, `mod+y`,
+ * with or without Shift) stay with the field, so a button with `hotkey="mod+z"` never takes Undo
+ * away from the text being typed.
  *
  * @param keys The combination, such as `"mod+enter"`.
  * @throws {Error} When the combination cannot be read.
  */
 function isChord(keys: string): boolean {
   const hotkey = parseHotkey(keys)
+  if (FIELD_EDITING_KEYS.has(hotkey.key)) return false
   return hotkey.ctrl || hotkey.meta || hotkey.mod
 }
 
 /**
  * The {@link useHotkeys} binding that clicks an element through {@link clickByHotkey}. It fires in
- * a dialog, and in a text field only for a combination that holds Control, Command or `mod`. It
- * leaves the key press alone unless it clicks, so a disabled button passes its key on.
+ * a dialog, and in a text field only for a combination that holds Control, Command or `mod` and
+ * is not one of the field's own editing chords, such as `mod+z`. It leaves the key press alone unless it clicks, so a disabled button passes its key on.
  *
  * @param keys The combination, such as `"n"` or `"mod+enter"`.
  * @param element Reads the element when the key is pressed.
@@ -290,7 +300,8 @@ export function hotkeyClickBinding(
  * the ref to put on that element. With `keys` left out, or `enabled` false, nothing listens.
  *
  * A plain key pressed in a text field, a select or editable content does nothing, so typing never
- * clicks anything; a combination holding Control, Command or `mod` fires there too.
+ * clicks anything; a combination holding Control, Command or `mod` fires there too, except the
+ * field's own editing chords, such as `mod+z`.
  *
  * @param keys The combination, such as `"n"` or `"mod+enter"`.
  * @param options See {@link UseHotkeysOptions}.
