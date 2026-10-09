@@ -6,6 +6,7 @@
  * inline list; for a dialog, put it inside `Modal` from `@spy4x/preact-ui`.
  */
 
+import { useSignal } from "@preact/signals"
 import { cn } from "@spy4x/preact-cn"
 import { Button } from "@spy4x/preact-ui/button"
 import type { ComponentChildren, JSX } from "preact"
@@ -116,8 +117,9 @@ export function offersKeepMine(item: ConflictItem): boolean {
  * A choice runs the caller's callback; the caller removes the item from `conflicts` once it is
  * settled. When that removes the item whose button had focus, focus moves to the next item's first
  * button, or to the heading when none is left, so a keyboard user is never dropped at the top of the
- * page. Nothing else moves focus. A polite live region says when the list is empty, and when a
- * callback's promise rejects; the rejection is caught here, and that item shows `labels.failed`.
+ * page. Nothing else moves focus. A polite live region says when a callback's promise rejects, and
+ * says once that the list became empty unless focus moved to the heading, which already says so.
+ * The rejection is caught here, and that item shows `labels.failed`.
  */
 export function ConflictChooser(
   { conflicts, onKeepMine, onUseTheirs, labels, headingLevel = 2, class: className }:
@@ -133,22 +135,44 @@ export function ConflictChooser(
   const [failedId, setFailedId] = useState<string | null>(null)
   /** The position of the item whose button was pressed, while its removal is awaited. */
   const chosenAt = useRef<number | null>(null)
-  const [hadConflicts, setHadConflicts] = useState(conflicts.length > 0)
+  /** Whether the list held a conflict since it was last announced as empty. */
+  const hadConflicts = useRef(conflicts.length > 0)
+  /**
+   * Whether the live region says `labels.resolved`. Decided after focus moves: a heading that takes
+   * focus already says it, and the region saying it too made a screen reader repeat it.
+   */
+  const sayResolved = useSignal(false)
 
   useEffect(() => {
-    if (conflicts.length > 0) setHadConflicts(true)
+    const focused = moveFocusAfterChoice()
+    if (conflicts.length > 0) {
+      hadConflicts.current = true
+      sayResolved.value = false
+    } else if (hadConflicts.current) {
+      // Once per transition to an empty list: a later empty list from the caller changes nothing.
+      hadConflicts.current = false
+      sayResolved.value = focused !== heading.current
+    }
+  }, [conflicts])
+
+  /**
+   * After a choice removed the item whose button had focus, focus the next item's first button, or
+   * the heading when none is left. Returns what it focused, or `null` when it left focus alone.
+   */
+  const moveFocusAfterChoice = (): HTMLElement | null => {
     const index = chosenAt.current
-    if (index === null || !root.current) return
+    if (index === null || !root.current) return null
     chosenAt.current = null
     const document = root.current.ownerDocument
     // Only when the pressed button is gone and focus fell to the body: anything else the person did
     // in the meantime wins.
-    if (document.activeElement && document.activeElement !== document.body) return
+    if (document.activeElement && document.activeElement !== document.body) return null
     const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
     const next = items[Math.min(index, items.length - 1)]
     const target = next?.querySelector<HTMLElement>("button") ?? heading.current
     target?.focus()
-  }, [conflicts])
+    return target
+  }
 
   const choose = (id: string, index: number, run: (id: string) => void | Promise<unknown>) => {
     if (busy.has(id)) return
@@ -193,7 +217,7 @@ export function ConflictChooser(
         {conflicts.length > 0 ? words.heading(conflicts.length) : words.resolved}
       </Heading>
       <p role="status" aria-live="polite" class="sr-only">
-        {failedLabel || (conflicts.length === 0 && hadConflicts ? words.resolved : "")}
+        {failedLabel || (conflicts.length === 0 && sayResolved.value ? words.resolved : "")}
       </p>
       {conflicts.length > 0
         ? (

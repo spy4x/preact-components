@@ -8283,6 +8283,55 @@ async function unhandledRejections(devtools: Devtools): Promise<number> {
   return devtools.evaluate<number>(`globalThis.__unhandled ?? -1`)
 }
 
+/**
+ * Start recording what a screen reader would say on its own: each time a live region's text changes
+ * to something non-empty, `globalThis.__announced` gets one `<region index>:<text>` line, and each
+ * time focus lands on an element, one `focus:<its text>` line, since a reader says what takes focus.
+ */
+function recordAnnouncements(devtools: Devtools): Promise<unknown> {
+  return devtools.evaluate(`(() => {
+    globalThis.__announcer?.disconnect()
+    if (globalThis.__announced === undefined) {
+      document.addEventListener("focusin", (event) => {
+        const target = event.target
+        globalThis.__announced?.push(
+          "focus:" + (target.getAttribute("aria-label") ?? target.textContent.trim()),
+        )
+      })
+    }
+    const regions = () => [...document.querySelectorAll(
+      '[aria-live]:not([aria-live="off"]), [role="status"], [role="alert"], [role="log"]',
+    )]
+    const last = new Map(regions().map((region) => [region, region.textContent]))
+    globalThis.__announced = []
+    globalThis.__announcer = new MutationObserver(() => {
+      regions().forEach((region, index) => {
+        const text = region.textContent
+        if (last.get(region) === text) return
+        last.set(region, text)
+        if (text) globalThis.__announced.push(index + ":" + text)
+      })
+    })
+    globalThis.__announcer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+    return null
+  })()`)
+}
+
+/** What {@link recordAnnouncements} saw, after the page had a moment to finish rendering. */
+async function recordedAnnouncements(devtools: Devtools): Promise<string[]> {
+  await devtools.evaluate(`new Promise((resolve) => setTimeout(() => resolve(null), 300))`)
+  return devtools.evaluate<string[]>(`(() => {
+    globalThis.__announcer?.disconnect()
+    const announced = globalThis.__announced ?? ["not recording"]
+    globalThis.__announced = null
+    return announced
+  })()`)
+}
+
 /** Focus the button labelled `label` in item `id`, so the next key press goes to it. */
 function focusConflictButton(
   devtools: Devtools,
@@ -8359,14 +8408,22 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
     JSON.stringify(used),
   )
 
+  await recordAnnouncements(devtools)
   await pressKey(devtools, "Enter")
   await poll(async () => (await readConflicts(devtools)).items.length === 0, 2_000)
   const empty = await readConflicts(devtools)
+  const announcements = await recordedAnnouncements(devtools)
   check(
-    "settling the last conflict moves focus to the heading and announces that all are resolved",
+    "settling the last conflict moves focus to the heading, which says that all are resolved",
     empty.log[3] === "use theirs: Rename the shared list" && empty.focus === "heading" &&
-      empty.heading === "All conflicts resolved" && empty.announced === "All conflicts resolved",
+      empty.heading === "All conflicts resolved" && empty.announced === "",
     JSON.stringify(empty),
+  )
+  check(
+    "settling the last conflict from the keyboard says All conflicts resolved once: the focused heading, not the live region too",
+    JSON.stringify(announcements.filter((line) => line.endsWith("All conflicts resolved"))) ===
+      JSON.stringify(["focus:All conflicts resolved"]),
+    JSON.stringify(announcements),
   )
 
   await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
@@ -8395,6 +8452,33 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
     2_000,
   )
   await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
+
+  // Settled while focus is elsewhere, as when an outbox settles items on its own: focus stays put,
+  // so the live region is the one to say it.
+  await poll(async () => (await readConflicts(devtools)).items.length === 3, 2_000)
+  await recordAnnouncements(devtools)
+  const settledAway = await devtools.evaluate<boolean>(`(() => {
+    const reset = document.querySelector('${CONFLICT} [data-e2e="conflict-reset"]')
+    reset.focus()
+    for (const id of ["1", "2", "3"]) {
+      document.querySelector('${CONFLICT_INLINE} [data-conflict-id="' + id + '"] button:last-child')
+        ?.click()
+    }
+    return document.activeElement === reset
+  })()`)
+  await poll(async () => (await readConflicts(devtools)).items.length === 0, 2_000)
+  const away = await readConflicts(devtools)
+  const awayAnnouncements = await recordedAnnouncements(devtools)
+  check(
+    "settling the last conflict while focus is elsewhere says All conflicts resolved once, from the live region",
+    settledAway && away.announced === "All conflicts resolved" &&
+      awayAnnouncements.filter((line) => line.endsWith("All conflicts resolved")).length === 1 &&
+      !awayAnnouncements.some((line) => line === "focus:All conflicts resolved"),
+    JSON.stringify({ away, awayAnnouncements }),
+  )
+  await click(devtools, `${CONFLICT} [data-e2e="conflict-reset"]`)
+  // Leave focus where the checks before this one left it, on the page body.
+  await devtools.evaluate(`document.activeElement?.blur()`)
 }
 
 /** The `InstallPrompt` card, one part per case. */

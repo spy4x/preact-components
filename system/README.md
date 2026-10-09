@@ -982,7 +982,9 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   "Restore mine", for an outbox whose `keepMine` re-creates a deleted item. It renders inline, which
   suits a phone; for a dialog, put it inside `Modal` from `@spy4x/preact-ui` and set
   `headingLevel` to fit the dialog's own title. When a choice removes the item whose button had
-  focus, focus moves to the next item, or to the heading once none is left. A callback may return
+  focus, focus moves to the next item, or to the heading once none is left. When the list empties,
+  a screen reader hears `labels.resolved` once: from the focused heading, or, when focus was
+  elsewhere, from the component's polite live region. A callback may return
   a promise: its item's buttons stay busy until it settles, and a rejection shows `labels.failed`
   under the item and announces it, with nothing left uncaught. `DEFAULT_CONFLICT_CHOOSER_LABELS`
   holds its English words; `labels` replaces any of them, per reason inside the records.
