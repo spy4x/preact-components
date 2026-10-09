@@ -12,6 +12,7 @@ import {
   pointerToCorner,
   poll,
   pressKey,
+  readAxNodes,
   readOr,
   samePixel,
   settledScroll,
@@ -21858,15 +21859,17 @@ interface TourReading {
   searchDescribedBy: string | null
   /** The Search field's inline `anchor-name`. */
   searchAnchor: string
-  /** The Search field's inline outline. */
+  /** The Search field's inline outline, which must go back to empty. */
   searchOutline: string
+  /** The outline the browser draws round the Search field. */
+  searchRing: Ring | null
   /** New project's `aria-describedby`. */
   newDescribedBy: string | null
-  /** New project's inline outline. */
-  newOutline: string
+  /** The outline the browser draws round New project. */
+  newRing: Ring | null
   /** The id of the step's body. */
   bodyId: string | null
-  /** How many elements on the page point at the step's body. */
+  /** How many elements other than the step itself point at the step's body. */
   describedByBody: number
   /** The Go to button's text, or `null` when the step has none. */
   goTo: string | null
@@ -21876,6 +21879,17 @@ interface TourReading {
   modal: boolean
   /** The page's scroll position, for a failure message. */
   scrollY: number
+}
+
+/** An outline as the browser draws it, from `getComputedStyle`. */
+interface Ring {
+  style: string
+  width: number
+}
+
+/** Whether a {@link Ring} is really drawn: a style other than `none`, wider than nothing. */
+function drawn(ring: Ring | null): boolean {
+  return ring !== null && ring.style !== "none" && ring.width > 0
 }
 
 /** A rounded box in viewport pixels. */
@@ -21906,6 +21920,11 @@ const TOUR_READING = `(() => {
       width: Math.round(rect.width),
     }
   }
+  const ring = (element) => {
+    if (!element) return null
+    const style = getComputedStyle(element)
+    return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) || 0 }
+  }
   const search = demo?.querySelector('[data-e2e="tour-search"]') ?? null
   const newProject = demo?.querySelector('[data-e2e="tour-new"]') ?? null
   const bodyId = surface?.querySelector('[id$="-body"]')?.id ?? null
@@ -21929,13 +21948,17 @@ const TOUR_READING = `(() => {
     searchDescribedBy: search?.getAttribute("aria-describedby") ?? null,
     searchAnchor: search?.style.getPropertyValue("anchor-name") ?? "",
     searchOutline: search?.style.outline ?? "",
+    searchRing: ring(search),
     newDescribedBy: newProject?.getAttribute("aria-describedby") ?? null,
-    newOutline: newProject?.style.outline ?? "",
+    newRing: ring(newProject),
     bodyId,
     describedByBody: bodyId === null
       ? 0
       : [...document.querySelectorAll("[aria-describedby]")]
-        .filter((element) => element.getAttribute("aria-describedby").split(" ").includes(bodyId))
+        .filter((element) =>
+          element !== surface &&
+          element.getAttribute("aria-describedby").split(" ").includes(bodyId)
+        )
         .length,
     goTo: goTo?.textContent.trim() ?? null,
     closed: demo?.querySelector('[data-e2e="tour-closed"]')?.textContent.trim() ?? "",
@@ -22060,11 +22083,22 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "Tour: the step's target keeps the app's own anchor-name and description and adds its own",
-    first.searchOutline.includes("solid") && first.bodyId !== null &&
+    drawn(first.searchRing) && first.bodyId !== null &&
       first.searchDescribedBy === `tour-search-hint ${first.bodyId}` &&
       first.searchAnchor.startsWith("--demo-search, --pc-anchor-"),
-    `outline "${first.searchOutline}", aria-describedby "${first.searchDescribedBy}", ` +
+    `drawn outline ${
+      JSON.stringify(first.searchRing)
+    }, aria-describedby "${first.searchDescribedBy}", ` +
       `anchor-name "${first.searchAnchor}"`,
+  )
+
+  const [dialog] = await readAxNodes(devtools, "#demo-Tour [data-coachmark-mode]")
+  check(
+    "Tour: a screen reader hears the step's text and its step count as the dialog's description",
+    dialog !== undefined && dialog.role === "dialog" && dialog.name === "Search everything" &&
+      dialog.description.includes("Type a name to find a project") &&
+      dialog.description.includes("Step 1 of 4"),
+    dialog === undefined ? "no step dialog in the accessibility tree" : JSON.stringify(dialog),
   )
 
   const stops: string[] = []
@@ -22109,9 +22143,10 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
       second.surface.right <= second.newProject.left)
   check(
     "Tour: Next moves focus to the next step's heading, beside its target",
-    second.onHeading && second.count === "Step 2 of 4" && second.newOutline.includes("solid") &&
+    second.onHeading && second.count === "Step 2 of 4" && drawn(second.newRing) &&
       beside,
-    `focus on ${second.active}, count "${second.count}", outline "${second.newOutline}", ` +
+    `focus on ${second.active}, count "${second.count}", ` +
+      `drawn outline ${JSON.stringify(second.newRing)}, ` +
       `surface ${JSON.stringify(second.surface)}, target ${JSON.stringify(second.newProject)}, ` +
       `scrollY ${beforeNext.scrollY} before Next, ${second.scrollY} after`,
   )
@@ -22135,8 +22170,13 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
       surface?.querySelector('[id$="-body"]'),
       surface?.querySelector("p"),
     ]
+    const target = ${TOUR_DEMO}?.querySelector('[data-e2e="tour-new"]')
     const settle = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-    const measure = () => parts.map((part) => part ? Math.round(seenRatio(part) * 100) / 100 : 0)
+    const round = (value) => Math.round(value * 100) / 100
+    const measure = () => [
+      ...parts.map((part) => part ? round(seenRatio(part)) : 0),
+      target ? round(seenRatio(target, getComputedStyle(target).outlineColor, { outside: true })) : 0,
+    ]
     try {
       root.classList.remove("dark")
       await settle()
@@ -22144,17 +22184,23 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
       root.classList.add("dark")
       await settle()
       const dark = measure()
-      return { light, dark, found: parts.every(Boolean) }
+      return { light, dark, found: parts.every(Boolean) && Boolean(target) }
     } finally {
       root.classList.toggle("dark", wasDark)
     }
   })()`)
   for (const palette of ["light", "dark"] as const) {
     const ratios = contrast[palette]
+    const text = ratios.slice(0, 3)
     check(
       `Tour: in the ${palette} palette the step's title, text and step count read at 4.5:1 or more`,
-      contrast.found && ratios.every((ratio) => ratio >= 4.5),
-      `title, body, count: ${ratios.join(", ")}`,
+      contrast.found && text.every((ratio) => ratio >= 4.5),
+      `title, body, count: ${text.join(", ")}`,
+    )
+    check(
+      `Tour: in the ${palette} palette the target's outline stands out from the page at 3:1 or more`,
+      contrast.found && ratios[3] >= 3,
+      `outline against the page: ${ratios[3]}`,
     )
   }
 
@@ -22175,6 +22221,7 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
     `modal opened ${withModal.modal}, then ${afterModal.modal}; tour open ${afterModal.open}, ` +
       `title "${afterModal.title}", readout "${afterModal.closed}"`,
   )
+  await tourModalBodyEscapeCheck(devtools)
 
   await devtools.evaluate<boolean>(focusTourButton("Next"))
   await pressKey(devtools, "Enter")
@@ -22214,6 +22261,64 @@ async function tourDesktopChecks(devtools: Devtools): Promise<void> {
     !escaped.open && escaped.closed === "onClose last said: escape." &&
       escaped.active === "tour-start",
     `open ${escaped.open}, readout "${escaped.closed}", focus on ${escaped.active}`,
+  )
+
+  // Opened by a script with nothing focused: there is no opener to go back to.
+  await devtools.evaluate<null>(`(() => {
+    document.activeElement?.blur?.()
+    ${TOUR_DEMO}?.querySelector('[data-e2e="tour-start"]')?.click()
+    return null
+  })()`)
+  await poll(async () => (await read()).onHeading, 3000)
+  await devtools.evaluate<null>(
+    `(${TOUR_DEMO}?.querySelector('[data-coachmark-mode] button[aria-label="Close"]')?.focus(), null)`,
+  )
+  await pressKey(devtools, "Enter")
+  await poll(async () => !(await read()).open, 3000)
+  const unfocused = await read()
+  check(
+    "Tour: closing a tour that opened with nothing focused puts focus on the step's target",
+    !unfocused.open && unfocused.closed === "onClose last said: skip." &&
+      unfocused.active === "tour-search",
+    `open ${unfocused.open}, readout "${unfocused.closed}", focus on ${unfocused.active}`,
+  )
+}
+
+/**
+ * Escape while a modal dialog is open and focus is on the page body, not inside the dialog: the
+ * key belongs to the dialog, so the tour stays open. Runs on the tour's second step, whose target
+ * opens the demo's `Modal`; the dialog is closed afterwards through its own Close button.
+ */
+async function tourModalBodyEscapeCheck(devtools: Devtools): Promise<void> {
+  const read = () => devtools.evaluate<TourReading>(TOUR_READING)
+  await devtools.evaluate<null>(
+    `(${TOUR_DEMO}?.querySelector('[data-e2e="tour-new"]')?.focus(), null)`,
+  )
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).modal, 3000)
+  const onBody = await devtools.evaluate<boolean>(`(() => {
+    document.activeElement?.blur?.()
+    return document.activeElement === document.body
+  })()`)
+  await pressKey(devtools, "Escape")
+  await devtools.evaluate<null>(TWO_FRAMES)
+  const after = await read()
+  await devtools.evaluate<null>(`(() => {
+    const dialog = document.querySelector("dialog[open]")
+    const close = [...(dialog?.querySelectorAll("button") ?? [])].find((button) =>
+      button.textContent.trim() === "Close" || button.getAttribute("aria-label") === "Close"
+    )
+    close?.click()
+    return null
+  })()`)
+  await poll(async () => !(await read()).modal, 3000)
+  const closed = await read()
+  check(
+    "Tour: Escape with a modal dialog open and focus on the page body leaves the tour open",
+    onBody && after.modal && after.open && after.title === "Start a project" &&
+      after.closed === "onClose last said: nothing yet." && !closed.modal,
+    `focus on the body ${onBody}, then modal open ${after.modal}, tour open ${after.open}, ` +
+      `title "${after.title}", readout "${after.closed}"; modal closed after ${!closed.modal}`,
   )
 }
 
@@ -22281,6 +22386,8 @@ interface CoachmarkReading {
   surface: StepBox | null
   target: StepBox | null
   active: string
+  /** The target's `tabindex` attribute, or `null` when it has none. */
+  tabIndex: string | null
 }
 
 /** A single `Coachmark` with a ref target: placed to its right, closed by ×, focus back. */
@@ -22309,6 +22416,8 @@ async function coachmarkCheck(devtools: Devtools): Promise<void> {
         target: box(demo?.querySelector('[data-e2e="coachmark-target"]')),
         active: active?.getAttribute("data-e2e") ?? active?.getAttribute("aria-label") ??
           active?.tagName ?? "nothing",
+        tabIndex: demo?.querySelector('[data-e2e="coachmark-target"]')?.getAttribute("tabindex") ??
+          null,
       }
     })()`)
   const toggle = `${demo}?.querySelector('[data-e2e="coachmark-toggle"]')`
@@ -22319,6 +22428,15 @@ async function coachmarkCheck(devtools: Devtools): Promise<void> {
   await devtools.evaluate<null>(TWO_FRAMES)
   const shown = await read()
   const gap = shown.surface && shown.target ? shown.surface.left - shown.target.right : NaN
+  const goTo = await devtools.evaluate<boolean>(`(() => {
+    const button = [...(${demo}?.querySelectorAll("[data-coachmark-mode] button") ?? [])]
+      .find((button) => button.textContent.trim().startsWith("Go to"))
+    button?.focus()
+    return button !== undefined
+  })()`)
+  await pressKey(devtools, "Enter")
+  await poll(async () => (await read()).active === "coachmark-target", 3000)
+  const wentTo = await read()
   await devtools.evaluate<null>(
     `(${demo}?.querySelector('[data-coachmark-mode] button[aria-label="Close"]')?.focus(), null)`,
   )
@@ -22335,5 +22453,12 @@ async function coachmarkCheck(devtools: Devtools): Promise<void> {
       `target ${
         JSON.stringify(shown.target)
       }; after × open ${closed.open}, focus on ${closed.active}`,
+  )
+  check(
+    "Coachmark: Go to makes a target that cannot take focus focusable, and closing takes that away",
+    goTo && wentTo.active === "coachmark-target" && wentTo.tabIndex === "-1" && !closed.open &&
+      closed.tabIndex === null,
+    `Go to found ${goTo}, focus on ${wentTo.active}, tabindex "${wentTo.tabIndex}"; after × ` +
+      `tabindex "${closed.tabIndex}"`,
   )
 }

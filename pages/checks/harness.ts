@@ -1195,6 +1195,8 @@ export async function openGuidePage(
 export interface AxNode {
   role: string
   name: string
+  /** The accessible description, as from `aria-describedby`; empty when there is none. */
+  description: string
   /** Whether Chromium leaves the element out of the tree, e.g. because it is not displayed. */
   ignored: boolean
 }
@@ -1218,7 +1220,12 @@ export async function readAxNodes(devtools: Devtools, selector: string): Promise
     const { nodes } = await devtools.send<
       {
         nodes: Array<
-          { ignored?: boolean; role?: { value?: string }; name?: { value?: string } }
+          {
+            ignored?: boolean
+            role?: { value?: string }
+            name?: { value?: string }
+            description?: { value?: string }
+          }
         >
       }
     >("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false })
@@ -1226,6 +1233,7 @@ export async function readAxNodes(devtools: Devtools, selector: string): Promise
     read.push({
       role: String(node?.role?.value ?? ""),
       name: String(node?.name?.value ?? ""),
+      description: String(node?.description?.value ?? ""),
       ignored: Boolean(node?.ignored),
     })
   }
