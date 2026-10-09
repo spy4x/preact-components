@@ -29,6 +29,16 @@ describe("createOnlineStatus", () => {
     expect(createOnlineStatus({ target: null, navigator: {} }).online.value).toBe(true)
   })
 
+  it("listens nowhere when watch is given null, even with a store target", () => {
+    const { target, fire } = fakeTarget()
+    const status = createOnlineStatus({ target, navigator: { onLine: true } })
+
+    status.watch(null)
+    fire("offline")
+
+    expect(status.online.value).toBe(true)
+  })
+
   it("re-reads the navigator when watching starts", () => {
     const navigator = { onLine: true }
     const status = createOnlineStatus({ target: fakeTarget().target, navigator })
