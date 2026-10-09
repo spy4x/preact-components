@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
+import { isComposingInput, useComposedQuery } from "./composed-query.ts"
+import { isImeKeyPress } from "./ime.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
 import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
 
@@ -225,9 +227,11 @@ export function CommandPalette<T extends CommandPaletteOption>(
   latest.current = props
 
   const remoteMode = props.search !== undefined
+  // While an input method composes, the results stay those of the text from before it began.
+  const composedQuery = useComposedQuery(input, query, (text) => onTyped(text))
   const results = props.search !== undefined
     ? remote.options
-    : (props.filter ?? rankOptions)(props.options, query)
+    : (props.filter ?? rankOptions)(props.options, composedQuery)
   const groups = groupOptions(results)
   const flat = groups.flatMap((group) => group.options)
 
@@ -312,7 +316,16 @@ export function CommandPalette<T extends CommandPaletteOption>(
   )
   const apple = useApplePlatform()
 
+  /** Follow a finished keystroke: highlight the first result, and ask `search` after the pause. */
+  const onTyped = (text: string) => {
+    setQuery(text)
+    setActiveIndex(0)
+    if (remoteMode) ask(text, latest.current.debounce ?? 200)
+  }
+
   const onKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
+    // An input method confirms or cancels a word with Enter and Escape; the word is not finished.
+    if (isImeKeyPress(event)) return
     const key = comboboxKey(event)
     if (key === undefined) return
     if (key === "Escape") {
@@ -437,9 +450,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
             value={query}
             onInput={(event) => {
               const text = event.currentTarget.value
-              setQuery(text)
-              setActiveIndex(0)
-              if (remoteMode) ask(text, latest.current.debounce ?? 200)
+              // A step of a word an input method is still building is only shown: the results
+              // and the search wait for the composition to end.
+              if (isComposingInput(event)) setQuery(text)
+              else onTyped(text)
             }}
             onKeyDown={onKeyDown}
             class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"

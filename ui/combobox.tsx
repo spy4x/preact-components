@@ -3,6 +3,7 @@ import { fold } from "@spy4x/platform/universal/text"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
+import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 
@@ -645,6 +646,7 @@ export function Combobox<T>({
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   /** Whether the last render had nothing to show, so the next one can tell arrival from a change. */
   const wasEmpty = useRef(true)
   const draftQuery = useSignal("")
@@ -660,7 +662,9 @@ export function Combobox<T>({
       items,
       text,
     )
-  const visible = visibleItems(draft)
+  // While an input method composes, the list stays filtered by the text from before it began.
+  const query = useComposedQuery(inputRef, draft, (text) => onTyped(text))
+  const visible = visibleItems(query)
   const listboxId = comboboxListboxId(id)
   const statusId = `${id}-status`
   // One pass over `items` per render, and then the selection tests below cost a lookup each. Rebuilt
@@ -671,7 +675,7 @@ export function Combobox<T>({
   const selectedIndex = selectionIndex(positions, value)
   const hasSelection = selectedIndex >= 0
   const hasText = draft.length > 0
-  const content = listboxContent(visible, draft, emptyMessage)
+  const content = listboxContent(visible, query, emptyMessage)
   // "No matches" is an answer, and an answer needs a question. A combobox nobody has opened and
   // nobody has typed in has asked nothing, so it says nothing — which is the whole of the defect
   // this guards: with an empty `items` list, a page whose options are still arriving over the
@@ -773,6 +777,15 @@ export function Combobox<T>({
     onQueryChange?.(next)
   }
 
+  /**
+   * Follow a finished keystroke: the list is re-read, so the highlight starts over on the first
+   * item the new query still leaves. Without this, Enter right after typing would select nothing.
+   */
+  const onTyped = (text: string) => {
+    setQuery(text)
+    apply(typingState(visibleItems(text), isDisabled))
+  }
+
   const close = () => {
     isOpen.value = false
     activeIndex.value = -1
@@ -839,6 +852,7 @@ export function Combobox<T>({
     <div class={cn("relative", className)} ref={rootRef}>
       <div class="relative flex items-center">
         <input
+          ref={inputRef}
           id={id}
           class={cn("pc-input font-normal tracking-normal pr-16", inputClass)}
           type="text"
@@ -869,10 +883,12 @@ export function Combobox<T>({
           autocomplete="off"
           onInput={(event) => {
             const text = event.currentTarget.value
+            if (!isComposingInput(event)) return onTyped(text)
+            // A step of a word an input method is still building. The field shows it and the list
+            // opens, as for any typing, so a render cannot swap the selection's text back in under
+            // the input method; the filter and the highlight wait for the composition to end.
             setQuery(text)
-            // The list is re-read on every keystroke, so the highlight starts over on the first item
-            // the new query still leaves. Without this, Enter right after typing would select nothing.
-            apply(typingState(visibleItems(text), isDisabled))
+            isOpen.value = true
           }}
           onFocus={() => {
             // Focus opens the list with the same starting highlight, which is what makes a click on
