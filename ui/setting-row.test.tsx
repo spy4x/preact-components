@@ -33,10 +33,19 @@ describe("SettingRow", () => {
     expect(render(<SettingRow label="Name" value="Ada" />).match(/<dd /g)?.length).toBe(1)
   })
 
+  it("reads name, then value, then action, so a screen reader hears the value first", () => {
+    const html = render(
+      <SettingRow label="Name" value="Ada" action={<button type="button">Edit name</button>} />,
+    )
+    const order = ["Name", "Ada", "Edit name"].map((text) => html.indexOf(text))
+    expect(order.every((at) => at >= 0)).toBe(true)
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+  })
+
   it("lets a long value shrink rather than push the action off the row", () => {
     const html = render(<SettingRow label="Name" value="Ada" action={<span>x</span>} />)
     expect(html).toContain("grid-cols-[minmax(0,1fr)_auto]")
-    expect(html).toMatch(/<dd class="min-w-0 [^"]*">Ada<\/dd>/)
+    expect(html).toMatch(/<dd class="[^"]*\bmin-w-0\b[^"]*">Ada<\/dd>/)
   })
 })
 

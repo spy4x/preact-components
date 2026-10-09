@@ -46,9 +46,10 @@ export function SettingRow({ label, value, action, dataE2E }: SettingRowProps): 
       class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-4 sm:px-6"
       data-e2e={dataE2E}
     >
-      <dt class="text-sm font-medium text-foreground">{label}</dt>
+      {/* Name, value, action in reading order; the grid draws the action on the right. */}
+      <dt class="col-start-1 text-sm font-medium text-foreground">{label}</dt>
+      <dd class="col-start-1 min-w-0 text-sm text-muted">{value}</dd>
       {action && <dd class="col-start-2 row-span-2 row-start-1 flex items-center">{action}</dd>}
-      <dd class="min-w-0 text-sm text-muted">{value}</dd>
     </div>
   )
 }
