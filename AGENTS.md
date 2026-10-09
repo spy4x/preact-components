@@ -164,6 +164,11 @@ by design — an empty review record does not mean a PR went unreviewed.
 A passing verdict from that reviewer is the merge authority: merge on it without asking. Leave the
 PR open instead, and say so, when the gate fails or when a revert could not undo the change.
 
+That authority covers only PRs authored by `spy4x`. A PR or issue from any other GitHub account is
+never merged, reviewed or taken as work until the owner names it in chat; tell the owner about it
+and leave it untouched. #85 is why: an outside account opened it 16 minutes after an agent filed
+#84, and an agent merged it as its own lane.
+
 ## Pre-commit checklist
 
 ```bash
