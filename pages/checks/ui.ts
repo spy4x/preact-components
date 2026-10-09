@@ -22969,6 +22969,12 @@ interface ComparisonTableScroll {
   found: boolean
   /** How far the page itself scrolls sideways, in pixels; 0 means it does not. */
   pageOverflow: number
+  /**
+   * How far the component's right edge runs past the window, in pixels; above 0 is off-screen.
+   * The guide clips its own content sideways, so the page alone would not show a component that
+   * overflows; this does.
+   */
+  pastViewport: number
   /** How far the table's container scrolls sideways, in pixels; above 0 means it does. */
   scrollerOverflow: number
   /** How far the container moved when asked to scroll by 120 px. */
@@ -22989,7 +22995,7 @@ function comparisonTableScroll(devtools: Devtools): Promise<ComparisonTableScrol
     const scroller = document.querySelector('#demo-ComparisonTable [data-e2e="comparison-scroller"]')
     const table = scroller?.querySelector("table")
     if (!scroller || !table) {
-      return { found: false, pageOverflow: 0, scrollerOverflow: 0, scrolled: 0,
+      return { found: false, pageOverflow: 0, pastViewport: 0, scrollerOverflow: 0, scrolled: 0,
         firstColumnMoved: 0, secondColumnMoved: 0 }
     }
     const frame = () => new Promise((done) => requestAnimationFrame(() => done()))
@@ -23008,6 +23014,7 @@ function comparisonTableScroll(devtools: Devtools): Promise<ComparisonTableScrol
     const reading = {
       found: true,
       pageOverflow: root.scrollWidth - root.clientWidth,
+      pastViewport: Math.ceil(scroller.parentElement.getBoundingClientRect().right - root.clientWidth),
       scrollerOverflow: scroller.scrollWidth - scroller.clientWidth,
       scrolled: scroller.scrollLeft,
       firstColumnMoved: Math.max(...before.map((left, index) => Math.abs(left - after[index]))),
@@ -23057,13 +23064,15 @@ async function comparisonTableChecks(devtools: Devtools): Promise<void> {
     await devtools.evaluate<null>(`${frame}.then(() => ${frame}).then(() => null)`)
     const scroll = await comparisonTableScroll(devtools)
     const detail = scroll.found
-      ? `page overflow ${scroll.pageOverflow}px, container overflow ${scroll.scrollerOverflow}px, ` +
+      ? `page overflow ${scroll.pageOverflow}px, past the window ${scroll.pastViewport}px, container overflow ${scroll.scrollerOverflow}px, ` +
         `scrolled ${scroll.scrolled}px, first column moved ${scroll.firstColumnMoved}px, second ` +
         `column moved ${scroll.secondColumnMoved}px`
       : "no ComparisonTable card with its scrolling container"
     check(
-      "at 375px the page does not scroll sideways while the ComparisonTable's container does",
-      scroll.found && scroll.pageOverflow <= 0 && scroll.scrollerOverflow > 0 &&
+      "at 375px the page does not scroll sideways and the ComparisonTable stays inside the window, " +
+        "while the table's own container does scroll",
+      scroll.found && scroll.pageOverflow <= 0 && scroll.pastViewport <= 0 &&
+        scroll.scrollerOverflow > 0 &&
         scroll.scrolled > 0,
       detail,
     )
