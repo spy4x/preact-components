@@ -1863,7 +1863,7 @@ useHotkeys(bindings)
       {
         name: "hotkeys",
         type: "string[]",
-        default: `["/", "ctrl+k", "meta+k"]`,
+        default: `["/", "mod+k"]`,
         description: "What opens it; the trigger shows the first one, and `[]` turns them off.",
       },
       {
@@ -1886,7 +1886,7 @@ useHotkeys(bindings)
 <CommandPalette options={options} hotkeys={["mod+p"]} onSelect={(option) => run(option.id)} />
 
 <CommandPalette
-  search={(query, signal) => fetch(\`/api/search?q=\${query}\`, { signal }).then((r) => r.json())}
+  search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
   hotkeys={[]}
   onSelect={open}
 />`,
@@ -2033,12 +2033,20 @@ const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Gr
 
 /**
  * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
- * quickly, so a stale answer arrives after the fresh one, and `boom` fails. It ignores `signal` on
- * purpose, so the palette alone has to drop the stale answer.
+ * quickly, so a stale answer arrives after the fresh one, and `boom` fails. It answers even after
+ * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
+ * query through `onAbort`.
  */
-function paletteFruitSearch(query: string): Promise<CommandPaletteOption[]> {
+function paletteFruitSearch(
+  query: string,
+  signal: AbortSignal,
+  onAbort: (query: string) => void,
+): Promise<CommandPaletteOption[]> {
   const needle = query.trim().toLowerCase()
   const delay = needle.length === 1 ? 900 : 100
+  // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
+  // records which queries were aborted.
+  signal.addEventListener("abort", () => onAbort(query), { once: true })
   return new Promise((resolve, reject) =>
     setTimeout(() => {
       if (needle === "boom") return reject(new Error("The pretend server failed"))
@@ -2060,6 +2068,7 @@ function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
   const pickedRemote = useSignal("nothing yet")
   const searches = useSignal(0)
+  const aborted = useSignal<string[]>([])
   return (
     <Stack>
       <Cluster>
@@ -2071,9 +2080,11 @@ function CommandPaletteDemo() {
           onSelect={(option) => picked.value = option.label}
         />
         <CommandPalette
-          search={(query) => {
+          search={(query, signal) => {
             searches.value++
-            return paletteFruitSearch(query)
+            return paletteFruitSearch(query, signal, (stale) => {
+              aborted.value = [...aborted.value, stale]
+            })
           }}
           hotkeys={[]}
           dataE2E="palette-remote"
@@ -2084,8 +2095,10 @@ function CommandPaletteDemo() {
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
-        <span data-e2e="palette-remote-searches">{searches.value}</span>. One letter answers slowly,
-        longer queries quickly, and “boom” fails.
+        <span data-e2e="palette-remote-searches">{searches.value}</span>; aborted{" "}
+        <span data-e2e="palette-remote-aborted">
+          {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
+        </span>. One letter answers slowly, longer queries quickly, and “boom” fails.
       </DemoNote>
     </Stack>
   )

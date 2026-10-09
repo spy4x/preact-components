@@ -21195,9 +21195,10 @@ async function clickSelector(devtools: Devtools, selector: string): Promise<bool
  * group headings, typing filters them with accents folded, its own hotkey (mod+P) opens it from a
  * text field, Escape then closes it onto its trigger rather than the field, and the arrows, Home,
  * End and Enter move and pick.
- * The remote palette: a stale answer that arrives after a fresh one is ignored, a rejected search
- * shows the error, and a query nothing matches says so. At a phone's width the guide's own search,
- * the same component, fills the screen.
+ * The remote palette: a stale call is aborted and its late answer ignored, Enter while a search
+ * runs picks nothing, a rejected search shows the error, and a query nothing matches says so. The
+ * guide's own search, the same component, keeps the highlight in view, locks the page's scroll, and
+ * fills the screen at a phone's width.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -21329,6 +21330,8 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
   await devtools.send("Input.insertText", { text: "a" })
   const slowStarted = await poll(async () => (await searches()) === started + 1, 3_000)
   const loading = await read(REMOTE)
+  const aborted = () => text(`[data-e2e="palette-remote-aborted"]`)
+  const abortedBefore = await aborted()
   await devtools.send("Input.insertText", { text: "p" })
   const fast = await until(
     REMOTE,
@@ -21338,16 +21341,38 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
   // lands, 900ms after it started, and an absence has no state to poll for.
   await new Promise((done) => setTimeout(done, 1_200))
   const after = await read(REMOTE)
+  const abortedAfter = await aborted()
   check(
-    "the CommandPalette shows Searching… while a search runs, and ignores a stale answer that arrives after a fresh one",
+    "the CommandPalette shows Searching… with no results while a search runs, and ignores a stale answer that arrives after a fresh one",
     remoteClicked && loaded && slowStarted && loading.status === "Searching…" && loading.busy &&
+      loading.statusShown && loading.results.length === 0 &&
       fast && after.results.join() === "Apple,Apricot,Grape,Papaya" &&
       after.groups.join() === "Fruit with A:2,Fruit with G:1,Fruit with P:1" &&
       after.query === "ap",
     `opened ${remoteClicked}, first answer ${loaded} (local open ${localOpen}, remote open ` +
-      `${remoteOpen}); "a" started ${slowStarted}, status ` +
-      `"${loading.status}", busy ${loading.busy}; "ap" answered ${fast}; 1.2s later ` +
-      `${after.results.join(", ")} under ${after.groups.join(", ")}`,
+      `${remoteOpen}); "a" started ${slowStarted}, status "${loading.status}" shown ` +
+      `${loading.statusShown}, busy ${loading.busy}, ${loading.results.length} results; "ap" ` +
+      `answered ${fast}; 1.2s later ${after.results.join(", ")} under ${after.groups.join(", ")}`,
+  )
+  check(
+    "the CommandPalette aborts the signal of a search a newer query made stale",
+    abortedBefore === "none" && abortedAfter === "“a”",
+    `aborted while "a" ran: ${abortedBefore}; after "ap": ${abortedAfter}`,
+  )
+
+  // Enter at once after a slow query: the previous query's results are gone, so nothing is picked.
+  const pickedBefore = await text(`[data-e2e="palette-remote-picked"]`)
+  await clear(REMOTE)
+  await devtools.send("Input.insertText", { text: "b" })
+  await pressKey(devtools, "Enter")
+  const midLoad = await read(REMOTE)
+  const pickedMidLoad = await text(`[data-e2e="palette-remote-picked"]`)
+  const answeredB = await until(REMOTE, `state.results.join() === "Banana,Blackberry"`)
+  check(
+    "Enter while a CommandPalette search runs picks nothing from the previous query's results",
+    midLoad.open && pickedMidLoad === pickedBefore && answeredB,
+    `after Enter: open ${midLoad.open}, results ${midLoad.results.join(", ") || "none"}, ` +
+      `onSelect got "${pickedMidLoad}" (before "${pickedBefore}"); "b" answered ${answeredB}`,
   )
 
   await clear(REMOTE)
@@ -21372,8 +21397,66 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
     `"boom" → error shown ${failed}; "zz" → "${last.status}" shown ${last.statusShown}`,
   )
 
-  // At a phone's width the guide's header search, the same component, is an icon and a full sheet.
+  // The guide's header search, the same component with 12 results for "e": more than its list
+  // shows at once.
   const GUIDE = "ui-guide-search"
+  const guideClicked = await clickSelector(devtools, trigger(GUIDE))
+  const guideOpened = await until(GUIDE, "state.focusInField")
+  await devtools.send("Input.insertText", { text: "e" })
+  const many = await until(GUIDE, "state.results.length === 12")
+  await pressKey(devtools, "End")
+  const inView = await poll(
+    () =>
+      devtools.evaluate<boolean>(`(() => {
+        const field = document.querySelector('[data-e2e="${GUIDE}"] [role="combobox"]')
+        const option = document.getElementById(field.getAttribute("aria-activedescendant"))
+        const list = document.querySelector('[data-e2e="${GUIDE}"] [role="listbox"]').parentElement
+        const row = option.getBoundingClientRect()
+        const box = list.getBoundingClientRect()
+        return option === [...list.querySelectorAll('[role="option"]')].at(-1) &&
+          row.top >= box.top && row.bottom <= box.bottom
+      })()`),
+    2_000,
+  )
+  check(
+    "End in the guide's search scrolls the last result into the list's visible area",
+    guideClicked && guideOpened && many && inView,
+    `opened ${guideOpened}; 12 results for "e" ${many}; last result in view ${inView}`,
+  )
+
+  // The page behind does not scroll under the wheel while the palette is open, as behind Modal.
+  // Focus returning to an earlier trigger may still be scrolling the page smoothly, so it settles
+  // first and the wheel is measured from where it stopped.
+  await settledScroll(devtools)
+  const scrollBefore = await devtools.evaluate<number>("scrollY")
+  const locked = await devtools.evaluate<string>(
+    "getComputedStyle(document.scrollingElement).overflowY",
+  )
+  await devtools.send("Input.dispatchMouseEvent", {
+    type: "mouseWheel",
+    x: 8,
+    y: 700,
+    deltaX: 0,
+    // Towards the top when there is room, so a page already at its end can still move.
+    deltaY: scrollBefore > 1_000 ? -600 : 600,
+  })
+  await new Promise((done) => setTimeout(done, 600))
+  const scrollWhileOpen = await devtools.evaluate<number>("scrollY")
+  await pressKey(devtools, "Escape")
+  const guideClosed = await until(GUIDE, "!state.open")
+  await closeIfOpen(GUIDE)
+  const released = await devtools.evaluate<string>(
+    "getComputedStyle(document.scrollingElement).overflowY",
+  )
+  check(
+    "the page behind an open CommandPalette does not scroll, and scrolls again once it closes",
+    locked === "hidden" && scrollWhileOpen === scrollBefore && guideClosed &&
+      released !== "hidden",
+    `overflow while open ${locked}; scrollY ${scrollBefore} → ${scrollWhileOpen} after a wheel ` +
+      `over the backdrop; closed ${guideClosed}, overflow after ${released}`,
+  )
+
+  // At a phone's width the guide's header search, the same component, is an icon and a full sheet.
   await devtools.send("Emulation.setDeviceMetricsOverride", {
     width: NARROW_WIDTH,
     height: 800,

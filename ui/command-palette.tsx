@@ -6,6 +6,13 @@ import { parseHotkey } from "@spy4x/platform/browser/hotkeys"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { useHotkeys } from "./hotkeys.ts"
 import { Kbd } from "./kbd.tsx"
+import {
+  applyScrollLock,
+  clientWidthWithoutScrollbar,
+  type ScrollLock,
+  scrollLockPadding,
+  type ScrollLockTarget,
+} from "./modal.tsx"
 
 /** One result the palette lists. Extend it with whatever `onSelect` needs, such as an `href`. */
 export interface CommandPaletteOption {
@@ -48,11 +55,11 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
 }
 
 /**
- * The hotkeys a palette opens on when the caller names none: `/`, Ctrl+K and ⌘K. Both chords on
- * every platform rather than `mod+k`, so a Mac reader on a PC keyboard, or the reverse, is not
- * left guessing which one this machine wants.
+ * The hotkeys a palette opens on when the caller names none: `/`, and ⌘K on Apple platforms or
+ * Ctrl+K elsewhere. `mod+k` rather than both chords, so a Mac keeps Ctrl+K, which deletes to the
+ * end of the line in a text field.
  */
-const DEFAULT_HOTKEYS: readonly string[] = ["/", "ctrl+k", "meta+k"]
+const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
 
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
@@ -60,7 +67,7 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   onSelect: (option: T) => void
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
-   * `["/", "ctrl+k", "meta+k"]`: `/`, Ctrl+K and ⌘K on every platform. `[]` turns them off. The
+   * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off. The
    * trigger shows the first one. A combination with Control, Command, Alt or `mod` opens it from a
    * text field too; a plain key never does.
    */
@@ -122,13 +129,14 @@ export interface CommandPaletteGroup<T extends CommandPaletteOption> {
  * The options that match `query`, best first, at most `limit` of them: names equal to the query,
  * then names that start with it, then names that contain it, then options whose `detail` contains
  * it. The input order breaks ties. Matching folds case and accents the way `Combobox` does, and an
- * empty query matches every option.
+ * empty query matches every option. It reads only `label` and `detail`, so any list with those
+ * fields can be ranked.
  *
  * @param options The options to search.
  * @param query What the reader typed.
  * @param limit The most results to return.
  */
-export function rankOptions<T extends CommandPaletteOption>(
+export function rankOptions<T extends Pick<CommandPaletteOption, "label" | "detail">>(
   options: readonly T[],
   query: string,
   limit = 50,
@@ -189,7 +197,8 @@ interface Remote<T> {
  * A search trigger and the dialog it opens: one field and a list of results that the arrow keys
  * move through, as `Combobox` does. Home and End jump to either end, Enter picks the highlighted
  * result, and Escape, the close button or a click on the backdrop closes it, with focus back on the
- * trigger. `/`, Ctrl+K and ⌘K open it from anywhere unless `hotkeys` says otherwise.
+ * trigger. `/` and ⌘K (Ctrl+K off Apple platforms) open it unless `hotkeys` says otherwise. The page
+ * behind does not scroll while it is open.
  *
  * Give `options` to have it filter a list itself, or `search` to ask a server, which it calls after
  * a pause in typing, cancelling a stale call. Results with a `group` are listed under headings. On
@@ -211,6 +220,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const [remote, setRemote] = useState<Remote<T>>({ status: Status.IDLE, options: [] })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const call = useRef<AbortController | null>(null)
+  const lock = useRef<ScrollLock | null>(null)
   const latest = useRef(props)
   latest.current = props
 
@@ -234,7 +244,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
     cancel()
     const search = latest.current.search
     if (search === undefined) return
-    setRemote((previous) => ({ ...previous, status: Status.LOADING }))
+    // The previous query's answer goes at once, so Enter or a click cannot pick from it while the
+    // new one loads.
+    setRemote({ status: Status.LOADING, options: [] })
     timer.current = setTimeout(() => {
       timer.current = undefined
       const controller = new AbortController()
@@ -258,7 +270,16 @@ export function CommandPalette<T extends CommandPaletteOption>(
     }, delay)
   }
 
-  useEffect(() => cancel, [])
+  /** Lets the page scroll again, if the palette locked it. */
+  const unlock = () => {
+    lock.current?.release()
+    lock.current = null
+  }
+
+  useEffect(() => () => {
+    cancel()
+    unlock()
+  }, [])
 
   const open = () => {
     if (dialog.current?.open) return
@@ -268,6 +289,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
       setRemote({ status: Status.IDLE, options: [] })
       ask("", 0)
     }
+    // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses.
+    const widthBefore = document.documentElement.clientWidth
+    const widthLocked = clientWidthWithoutScrollbar(document.documentElement)
+    lock.current = applyScrollLock(
+      document as unknown as ScrollLockTarget,
+      scrollLockPadding(widthBefore, widthLocked),
+    )
     dialog.current?.showModal()
     input.current?.focus()
   }
@@ -308,6 +336,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const listbox = `${id}-results`
   const optionId = (index: number) => `${id}-result-${index}`
   const active = flat.length === 0 ? -1 : Math.min(activeIndex, flat.length - 1)
+
+  // Keep the highlighted result on screen, as `Combobox` does: the list scrolls by just the row
+  // that went past its edge, and a row already in view does not move it.
+  useEffect(() => {
+    if (active < 0 || !dialog.current?.open) return
+    document.getElementById(optionId(active))?.scrollIntoView({ block: "nearest" })
+  }, [active, flat.length])
   const status = remote.status === Status.LOADING && remoteMode
     ? labels.loading
     : remote.status === Status.ERROR && remoteMode
@@ -368,6 +403,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
         data-e2e={dataE2E}
         onClose={() => {
           cancel()
+          unlock()
           trigger.current?.focus()
         }}
         onClick={(event) => {
