@@ -122,7 +122,7 @@ describe("createNow", () => {
   })
 
   it("changes at 22:00Z on Berlin's 23-hour spring day", () => {
-    const time = fakeTime("2026-03-29T12:00:00Z")
+    const time = fakeTime("2026-03-28T23:30:00Z")
     const store = createNow({
       zone: "Europe/Berlin",
       clock: time.clock,
@@ -132,14 +132,14 @@ describe("createNow", () => {
     store.start()
 
     time.advance("2026-03-29T21:59:59.999Z")
-    expect(store.now.value.toISOString()).toBe("2026-03-29T12:00:00.000Z")
+    expect(store.now.value.toISOString()).toBe("2026-03-28T23:30:00.000Z")
 
     time.advance("2026-03-29T22:00:01Z")
     expect(store.now.value.toISOString()).toBe("2026-03-29T22:00:00.000Z")
   })
 
   it("changes at 23:00Z on Berlin's 25-hour autumn day", () => {
-    const time = fakeTime("2026-10-25T12:00:00Z")
+    const time = fakeTime("2026-10-24T22:30:00Z")
     const store = createNow({
       zone: "Europe/Berlin",
       clock: time.clock,
@@ -149,7 +149,7 @@ describe("createNow", () => {
     store.start()
 
     time.advance("2026-10-25T22:59:59.999Z")
-    expect(store.now.value.toISOString()).toBe("2026-10-25T12:00:00.000Z")
+    expect(store.now.value.toISOString()).toBe("2026-10-24T22:30:00.000Z")
 
     time.advance("2026-10-25T23:00:01Z")
     expect(store.now.value.toISOString()).toBe("2026-10-25T23:00:00.000Z")
