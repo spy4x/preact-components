@@ -2,7 +2,7 @@
  * `@spy4x/preact-theme/vite` — the Vite plugins a Deno app needs to use the `@spy4x/preact-*`
  * packages.
  *
- * Four plugins, each a factory an app lists in its `vite.config.ts`:
+ * Five plugins, each a factory an app lists in its `vite.config.ts`:
  *
  * - {@link preactThemeCss} answers the theme's `@import` lines in the app's stylesheet with the
  *   text this package exports, and appends `@source inline(...)` with {@link COMPONENT_CLASSES}.
@@ -11,10 +11,11 @@
  *   own copy, and fails when the versions differ.
  * - {@link serviceWorker} bundles a service worker after the app build, with a hash of the build
  *   defined in it.
+ * - {@link webManifest} writes `manifest.webmanifest` from a typed object with install defaults.
  *
  * The plugins are typed structurally ({@link VitePlugin}): this package takes no `vite`
  * dependency, and an object of this shape is accepted wherever Vite takes a plugin. Nothing here
- * calls a Deno-only API; the one plugin that reads files takes the reader as an option.
+ * calls a Deno-only API; a plugin that reads or writes files takes the reader or writer as an option.
  *
  * @module
  */
@@ -402,3 +403,10 @@ export function npmSpecifiers(options: NpmSpecifiersOptions): VitePlugin {
 
 export { buildIdOf, serviceWorker } from "./service-worker.ts"
 export type { ServiceWorkerDirEntry, ServiceWorkerOptions } from "./service-worker.ts"
+export { buildWebManifest, webManifest } from "./web-manifest.ts"
+export type {
+  WebManifest,
+  WebManifestIcon,
+  WebManifestInput,
+  WebManifestOptions,
+} from "./web-manifest.ts"
