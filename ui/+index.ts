@@ -58,6 +58,13 @@ export {
 } from "./button.tsx"
 export { Checkbox, type CheckboxProps, type CheckboxShape } from "./checkbox.tsx"
 export {
+  Coachmark,
+  type CoachmarkCloseReason,
+  type CoachmarkPlacement,
+  type CoachmarkProps,
+  type CoachmarkTarget,
+} from "./coachmark.tsx"
+export {
   Card,
   CardBody,
   type CardBodyProps,
@@ -339,6 +346,7 @@ export {
 export { ToggleField, type ToggleFieldProps } from "./toggle-field.tsx"
 export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "./tooltip.tsx"
+export { Tour, type TourCloseReason, type TourProps, type TourStep } from "./tour.tsx"
 export {
   type ImageElementLike,
   resolveImage,

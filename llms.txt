@@ -458,7 +458,7 @@ The design-system CSS every component in this repo styles against: design tokens
 
 Install: `deno add jsr:@spy4x/preact-theme`
 
-- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (901 classes). Import: `@spy4x/preact-theme`
+- `COMPONENT_CLASSES` (constant): Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (905 classes). Import: `@spy4x/preact-theme`
 - `INK_CSS` (constant): ./ink.css's exact contents. Import: `@spy4x/preact-theme`
 - `PRESET_CSS` (constant): ./preset.css's exact contents. Import: `@spy4x/preact-theme`
 - `TOKENS_CSS` (constant): ./tokens.css's exact contents. Import: `@spy4x/preact-theme`
@@ -543,6 +543,11 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `Checkbox` (component): Render the box and its label. Import: `@spy4x/preact-ui`
 - `CheckboxProps` (type): Checkbox with its own label. Import: `@spy4x/preact-ui`
 - `CheckboxShape` (type): The box's outline: the theme's square `.pc-checkbox`, or a circle, as a task list's check. Import: `@spy4x/preact-ui`
+- `Coachmark` (component): One hint anchored to one element of the page, shown while the app says `open`. Import: `@spy4x/preact-ui`
+- `CoachmarkCloseReason` (type): Why a coachmark asked to close: Escape anywhere on the page, or its own × button. Import: `@spy4x/preact-ui`
+- `CoachmarkPlacement` (type): Side of the target a coachmark sits on. Import: `@spy4x/preact-ui`
+- `CoachmarkProps` (type): Props of `Coachmark`. Import: `@spy4x/preact-ui`
+- `CoachmarkTarget` (type): The element a coachmark points at: a CSS selector, or a ref the app holds. Import: `@spy4x/preact-ui`
 - `Card` (component): Card surface. Import: `@spy4x/preact-ui`
 - `CardBody` (component): Card body: the content region of a `Card`. Import: `@spy4x/preact-ui`
 - `CardBodyProps` (type): Props of `CardBody`. Import: `@spy4x/preact-ui`
@@ -808,6 +813,10 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `Tooltip` (component): Supplementary hint attached to a trigger, revealed on hover and on keyboard focus. Import: `@spy4x/preact-ui`
 - `TooltipPlacement` (type): Side of the trigger the tooltip is anchored to. Import: `@spy4x/preact-ui`
 - `TooltipProps` (type): Props of `Tooltip`. Import: `@spy4x/preact-ui`
+- `Tour` (component): A guided tour: one `Coachmark` for the step at `index`, with the step count, Skip, Back and Next (Done on the last step). Import: `@spy4x/preact-ui`
+- `TourCloseReason` (type): Why a tour asked to close: Done on the last step, Skip or × on any step, or Escape. Import: `@spy4x/preact-ui`
+- `TourProps` (type): Props of `Tour`. Import: `@spy4x/preact-ui`
+- `TourStep` (type): One stop of a `Tour`. Import: `@spy4x/preact-ui`
 - `ImageElementLike` (type): The view of a clicked element this component needs. Import: `@spy4x/preact-ui`
 - `resolveImage` (helper): Turn an event target into a lightbox image, or `null` when the event missed an image. Import: `@spy4x/preact-ui`
 - `ZoomableImages` (component): Zoomable images inside a container, opening the shared `Lightbox`. Import: `@spy4x/preact-ui`

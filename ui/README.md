@@ -60,6 +60,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                                                |
 | `CardHeader`          | `card`                 | `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`                                                                                                                     |
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                    |
+| `Coachmark`           | `coachmark`            | `open`, `target` (a CSS selector or a ref), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                         |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                      |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                       |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                      |
@@ -123,6 +124,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                                                                       |
 | `ToggleSwitch`        | `toggle-switch`        | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                                                                           |
 | `Tooltip`             | `tooltip`              | `content`, `label`, `placement`, `focusable`                                                                                                                                                                                                       |
+| `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`            |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                               |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?` — asks before leaving with unsaved changes                                                                                             |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                    |
@@ -1659,6 +1661,43 @@ become a link or gone, so focus falls to the page. Once every step is done the c
 Finish, which calls `onDismiss`, and a status region announces `completeMessage`. After `onDismiss`
 the app stops rendering the card and moves focus somewhere sensible, since the control that had it
 is gone.
+
+## Tour and Coachmark
+
+`Coachmark` is one hint beside one control; `Tour` walks a list of them with the step count, Skip,
+Back and Next (Done on the last step). The app owns `open` and `index`, so it can also move the
+tour on when the user does what a step asks, and it decides whether a finished tour shows again.
+
+```tsx
+<Tour
+  steps={[
+    { id: "search", target: "#search", title: "Search everything", body: "Find anything." },
+    { id: "new", target: newButton, title: "Start a project", placement: "right" },
+  ]}
+  open={open.value}
+  index={index.value}
+  onIndexChange={(next) => index.value = next}
+  onClose={() => open.value = false}
+/>
+```
+
+The surface is a `popover="manual"` element in the top layer, placed beside its target by CSS anchor
+positioning, which flips it when there is no room. A browser without anchor positioning gets the
+same placement measured in script, again on scroll and resize. Below 640 px wide, and when the
+target is missing or cannot be shown, the step is a sheet along the bottom edge, and a missing
+target logs a warning. While a step is shown its target has an outline, an extra `anchor-name` and
+`aria-describedby` pointing at the step's text; each goes back to what it was afterwards.
+
+It is not modal: Tab is not trapped and the page stays usable. Opening focuses the heading, and so
+does every new step. The last control, Go to, focuses the target and leaves the step open. Escape
+asks to close, unless a modal dialog is open or the key came from inside a dialog, so Escape in a
+`Modal` the step opened closes only that dialog. On close, focus returns to where it was when the
+tour opened, unless the user has already moved it somewhere else. The step's dialog is described by
+its text and, in `Tour`, its step count, so a screen reader announces both.
+
+A target that is off-screen is scrolled into view at once. If the page is still running a smooth
+scroll of its own at that moment, that scroll can win and leave the target off-screen; the step then
+shows as a sheet until the target is back on screen, and never points at the wrong control.
 
 ## Billing
 

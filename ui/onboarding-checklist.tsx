@@ -97,8 +97,8 @@ function defaultProgressLabel(done: number, total: number): string {
  * when the footer goes away — the next step has no action, or every step is done and there is no
  * `onDismiss` — it moves focus to the card's heading. Either move happens only when the footer's
  * focused control was itself removed; once the user has moved focus elsewhere, or clicked empty
- * space, a later step change leaves focus alone. Once every step is done the control becomes Finish, which calls
- * `onDismiss`, and a status region announces `completeMessage`.
+ * space, a later step change leaves focus alone. Once every step is done the control becomes
+ * Finish, which calls `onDismiss`, and a status region announces `completeMessage`.
  *
  * @param props See {@link OnboardingChecklistProps}.
  */
