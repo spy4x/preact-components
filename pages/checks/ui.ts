@@ -19877,6 +19877,84 @@ async function onboardingChecklistChecks(devtools: Devtools): Promise<void> {
     })()`)
     if (!(await read()).present) await devtools.evaluate<null>(ONBOARDING_SHOW_AGAIN)
   }
+  try {
+    await onboardingChecklistClickAwayCheck(devtools, read)
+  } finally {
+    await devtools.evaluate<null>(ONBOARDING_SHOW_AGAIN)
+  }
+}
+
+/**
+ * After the user clicks away from the footer's action, a step completed by a script leaves focus
+ * and scroll where they are. Tab puts focus on the first open step's button, a real click on the
+ * card's description (not focusable) drops it to the page, and the page goes back to the top. A
+ * script then completes the step, so the button turns into a link: the card must not pull focus
+ * into that link, which would also scroll the page back down to it.
+ *
+ * @param devtools The connected session, on the guide's `ui` page, with the card in its start state.
+ * @param read Reads the card's {@link OnboardingReading}.
+ */
+async function onboardingChecklistClickAwayCheck(
+  devtools: Devtools,
+  read: () => Promise<OnboardingReading>,
+): Promise<void> {
+  const card = `document.querySelector('#demo-OnboardingChecklist [role="region"]')`
+  await centreInView(devtools, `${card}?.querySelector("h2")`)
+  const spots = await devtools.evaluate<{ x: number; y: number }[] | null>(`(() => {
+    const heading = ${card}?.querySelector("h2")?.getBoundingClientRect()
+    const blank = ${card}?.querySelector(".pc-card-body > p")?.getBoundingClientRect()
+    if (!heading || !blank) return null
+    return [
+      { x: Math.round(heading.left + 4), y: Math.round(heading.top + heading.height / 2) },
+      { x: Math.round(blank.left + 4), y: Math.round(blank.top + blank.height / 2) },
+    ]
+  })()`)
+  if (spots !== null) await clickAtPoint(devtools, spots[0])
+  await pressKey(devtools, "Tab")
+  await pressKey(devtools, "Tab")
+  const onButton = await read()
+  if (spots !== null) await clickAtPoint(devtools, spots[1])
+  const clickedAway = await read()
+  await devtools.evaluate<null>(`(scrollTo({ top: 0, behavior: "instant" }), null)`)
+  await settledScroll(devtools, { target: 0 })
+  const before = await devtools.evaluate<number>("Math.round(globalThis.scrollY)")
+  const offscreen = await devtools.evaluate<boolean>(
+    `(${card}?.getBoundingClientRect().top ?? 0) > innerHeight`,
+  )
+  await devtools.evaluate<null>(`(${card}?.querySelector(".pc-card-footer button")?.click(), null)`)
+  await poll(async () => (await read()).progress === "3", 3000)
+  // A focus move would scroll smoothly and may start a few frames late, so watch for a full second
+  // and keep the farthest the page moved.
+  const scrolled = await devtools.evaluate<number>(`new Promise((resolve) => {
+    let farthest = Math.round(globalThis.scrollY)
+    const started = performance.now()
+    const tick = () => {
+      const now = Math.round(globalThis.scrollY)
+      if (Math.abs(now - ${before}) > Math.abs(farthest - ${before})) farthest = now
+      if (performance.now() - started < 1000) requestAnimationFrame(tick)
+      else resolve(farthest)
+    }
+    requestAnimationFrame(tick)
+  })`)
+  const after = await read()
+  check(
+    "OnboardingChecklist: after the user clicks away, a step completed by script leaves focus and scroll alone",
+    spots !== null && onButton.onPrimary && onButton.primary === "Invite a teammate" &&
+      clickedAway.active === "the page" && offscreen && after.progress === "3" &&
+      after.primaryTag === "A" && after.active === "the page" && scrolled === before,
+    spots === null
+      ? "no heading or description in the OnboardingChecklist card"
+      : !onButton.onPrimary || onButton.primary !== "Invite a teammate"
+      ? `two Tabs from the heading landed on ${onButton.active}, not "Invite a teammate"`
+      : clickedAway.active !== "the page"
+      ? `clicking the description left focus on ${clickedAway.active}`
+      : !offscreen
+      ? `the card was still in view after scrolling to the top (scrollY ${before})`
+      : after.progress !== "3" || after.primaryTag !== "A"
+      ? `the scripted click did not complete the step (aria-valuenow ${after.progress}, ` +
+        `footer ${after.primaryTag})`
+      : `focus on ${after.active}, scrollY ${before} before and up to ${scrolled} after`,
+  )
 }
 
 /**
