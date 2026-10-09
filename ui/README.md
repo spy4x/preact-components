@@ -915,7 +915,8 @@ on screen carries the message then. While the status is `"failed"` the region's 
 with `text-danger` rather than `text-muted`, and the region carries the `enhanced-form-error` class
 for an app that wants to style the failure text itself. Focus moves to the region only when both
 hold, and only once per submit: focus was inside this form the moment the visitor submitted — a
-real click or keypress on the submit button leaves it there, a `form.requestSubmit()` called from outside the form, or a
+real click or keypress on the submit button leaves it there, a `form.requestSubmit()` called from
+outside the form, or a
 submit that started while focus was already elsewhere, does not — and the browser has since dropped
 focus to `<body>`, which is what disabling the fieldset for `"sending"` does. The moment that recovery
 happens, the first condition is cleared, so a visitor who then clicks on plain text — landing on
