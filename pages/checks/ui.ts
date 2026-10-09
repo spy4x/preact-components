@@ -20497,6 +20497,8 @@ interface HotkeyButtonState {
   hintHidden: boolean
   /** The text field's value. */
   field: string
+  /** Presses the "Send" button (`hotkey="mod+enter"`) counted. */
+  sent: number
 }
 
 /** Reads {@link HotkeyButtonState} off the `Button` card in one round trip. */
@@ -20511,6 +20513,7 @@ const HOTKEY_BUTTON_STATE = `(() => {
     hintWidth: hint === null ? 0 : hint.getBoundingClientRect().width,
     hintHidden: hint?.getAttribute("aria-hidden") === "true",
     field: card.querySelector('[data-e2e="hotkey-field"]').value,
+    sent: Number(card.querySelector('[data-e2e="hotkey-count"]').textContent.match(/sent (\\d+)/)[1]),
   }
 })()`
 
@@ -20530,7 +20533,8 @@ const RECORD_PREVENTED = `(window.__hotkeyPrevented = "no press", window.addEven
  *
  * On `Button`: the button announces N as `aria-keyshortcuts="N"` and shows N in a hint that this
  * fine-pointer browser displays and screen readers skip. N pressed with focus on the page clicks
- * it once. N typed in the card's text field lands in the field and clicks nothing. With the card's
+ * it once. N typed in the card's text field lands in the field and clicks nothing, while Control+Enter
+ * pressed there clicks "Send" (`hotkey="mod+enter"`), since a chord types no text. With the card's
  * checkbox disabling the button, N clicks nothing and leaves the press uncancelled, so the key is
  * still the page's: a disabled button does not take it.
  *
@@ -20586,6 +20590,20 @@ async function hotkeyPropChecks(devtools: Devtools): Promise<void> {
     "N typed in a text field lands in the field and does not click the Button",
     typed.field === "n" && typed.count === pressed.count,
     `field ${JSON.stringify(typed.field)}, count ${pressed.count} → ${typed.count}`,
+  )
+
+  // Control+Enter: no text, as a real Control+Enter in Chromium types none into a text field.
+  await pressChord(devtools, { key: "Enter", code: "Enter", keyCode: 13, modifiers: 2 })
+  await poll(() => devtools.evaluate<boolean>(`${HOTKEY_BUTTON_STATE}.sent > ${typed.sent}`), 3_000)
+  await settle()
+  const chord = await read()
+  const stillFocused = await devtools.evaluate<boolean>(`document.activeElement === ${field}`)
+  check(
+    "Control+Enter pressed in a text field clicks the Button with hotkey mod+enter, once",
+    chord.sent === typed.sent + 1 && chord.field === "n" && chord.count === typed.count &&
+      stillFocused,
+    `sent ${typed.sent} → ${chord.sent}, field ${JSON.stringify(chord.field)}, notes ` +
+      `${typed.count} → ${chord.count}, focus stayed in the field ${stillFocused}`,
   )
 
   await devtools.evaluate<null>(`(${toggle}.click(), null)`)
