@@ -466,6 +466,19 @@ describe("UpgradePrompt", () => {
     expect(html).toMatch(/<a [^>]*>See plans<\/a>/)
   })
 
+  it("draws no box of its own, so it sits inside a card without a box in a box", () => {
+    const root = render(<UpgradePrompt href="/pricing" />).match(/^<div class="([^"]*)"/)?.[1]
+
+    expect(root).toBeDefined()
+    expect(root).not.toMatch(/\b(border|bg|p|px|py|rounded)(-|\b)/)
+  })
+
+  it("frames itself with the caller's class", () => {
+    const html = render(<UpgradePrompt href="/pricing" class="rounded-md border p-4" />)
+
+    expect(html).toMatch(/^<div class="[^"]*rounded-md border p-4"/)
+  })
+
   it("keeps the real href when a router port is given", () => {
     const html = render(<UpgradePrompt href="/pricing" navigate={() => {}} />)
 
