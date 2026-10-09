@@ -24,7 +24,7 @@
 import { useSignal } from "@preact/signals"
 import { type FilterField, useUrlFilters } from "@spy4x/preact-signals/use-url-filters"
 import { buttonClasses } from "@spy4x/preact-ui/button"
-import { useState } from "preact/hooks"
+import { useRef, useState } from "preact/hooks"
 import { Link, Router } from "wouter-preact"
 
 /** Classes shared by the links and the buttons that drive the demo. */
@@ -71,6 +71,7 @@ function sizeField(signal: FilterField<Size>["signal"]): FilterField<Size> {
  */
 export function UrlFilterDemo() {
   const [instance, setInstance] = useState(0)
+  const [focusSearch, setFocusSearch] = useState(false)
 
   return (
     <section data-e2e="url-filters" class="border-t border-gray-200 pt-6 dark:border-gray-700">
@@ -93,7 +94,7 @@ export function UrlFilterDemo() {
       </p>
 
       <Router ssrPath="/" ssrSearch="">
-        <LiveFilters key={instance} />
+        <LiveFilters key={instance} focusSearch={focusSearch} />
       </Router>
 
       <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -101,10 +102,24 @@ export function UrlFilterDemo() {
         <button
           type="button"
           data-e2e="url-filters-remount"
-          onClick={() => setInstance((current) => current + 1)}
+          onClick={() => {
+            setFocusSearch(false)
+            setInstance((current) => current + 1)
+          }}
           class={CONTROL}
         >
           remount
+        </button>
+        <button
+          type="button"
+          data-e2e="url-filters-remount-search"
+          onClick={() => {
+            setFocusSearch(true)
+            setInstance((current) => current + 1)
+          }}
+          class={CONTROL}
+        >
+          remount, search focused
         </button>
         <span class="text-xs text-gray-600 dark:text-gray-400">
           a fresh card starts from whatever the address says
@@ -115,18 +130,30 @@ export function UrlFilterDemo() {
 }
 
 /**
- * Three filters bound to the address: `status`, a string defaulting to nothing; `page`, a number
- * defaulting to 1; and `size`, an allow-list with a custom parser. Every default is cleared from
- * the query string rather than written to it, which is what keeps an unfiltered address clean.
+ * Four filters bound to the address: `status`, a string defaulting to nothing; `page`, a number
+ * defaulting to 1; `size`, an allow-list with a custom parser; and `q`, a search field the reader
+ * types into. Every default is cleared from the query string rather than written to it, which is
+ * what keeps an unfiltered address clean.
+ *
+ * `focusSearch` focuses the search field the moment it is in the page, from a ref callback rather
+ * than an effect, the way an app does when a shortcut opens its search view. A key pressed then can
+ * reach the field before the hook has read the address, and the hook has to keep it.
+ * It focuses once per mount; `preventScroll` because the card is far down the page and focusing
+ * must not move it.
  */
-function LiveFilters() {
+function LiveFilters({ focusSearch }: { focusSearch: boolean }) {
   const status = useSignal("")
   const page = useSignal(1)
   const size = useSignal<Size>("md")
+  const query = useSignal("")
+  // A ref callback written inline runs again on every render, and this card re-renders on every
+  // filter change: without this, each one would pull focus back into the search field.
+  const focused = useRef(false)
   const { filters, clearFilters } = useUrlFilters({
     status: { signal: status, urlParam: "status", initialValue: "" },
     page: { signal: page, urlParam: "page", initialValue: 1 },
     size: sizeField(size),
+    query: { signal: query, urlParam: "q", initialValue: "" },
   })
 
   return (
@@ -151,6 +178,22 @@ function LiveFilters() {
           </dd>
         </div>
       </dl>
+
+      <label class="flex flex-wrap items-center gap-2 text-sm">
+        <span class="text-xs text-gray-600 dark:text-gray-400">search (q)</span>
+        <input
+          type="search"
+          data-e2e="url-filters-query"
+          value={filters.query}
+          onInput={(event) => filters.query.value = event.currentTarget.value}
+          ref={(node) => {
+            if (!node || !focusSearch || focused.current) return
+            focused.current = true
+            node.focus({ preventScroll: true })
+          }}
+          class="rounded border border-gray-300 px-2 py-1 font-mono dark:border-gray-600 dark:bg-gray-900"
+        />
+      </label>
 
       <div class="flex flex-wrap items-center gap-2">
         <span class="text-xs text-gray-600 dark:text-gray-400">Address → filters</span>
