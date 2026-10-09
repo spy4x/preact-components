@@ -4079,6 +4079,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `DropdownItem`        | `dropdown`             | `href`, `onClick`, `type`, `disabled`, `danger`, `class` — a `role="menuitem"` out of the tab order once its `Dropdown` has hydrated, a plain link or button before                                                      |
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`                                                                                                           |
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                            |
+| `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                      |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty)                                                                                                                                                                                   |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?`, `suffix?`                                                                                                                                                    |
 | `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                   |
@@ -5475,6 +5476,28 @@ const theme = createThemeStore()
 useEffect(() => theme.attach(), [])
 
 <ThemeToggle store={theme} labels={{ hint: "Automatisch" }} />
+```
+
+## ErrorBoundary, ErrorState or a danger Notice
+
+Three components show that something failed. Pick by who expected the failure and how much of the
+page it takes:
+
+- **`ErrorBoundary`** wraps a whole view or app and catches what nobody expected: a render that
+  throws. It replaces the broken view with a reload screen (`role="alert"`), and hands the error to
+  `onError` once, for your reporter. It catches only in the browser: Preact's server renderer runs
+  no error boundary, so a throw during a server render still throws.
+- **`ErrorState`** shows an expected failure where its result would have been: the request behind a
+  list or a report failed, and you have a message to say so. It renders nothing for an empty
+  message, so the error value can go straight in.
+- **`Notice` with `tone="danger"`** is a page-wide banner about a problem the reader must act on,
+  with a title, a body and usually an action, such as a payment that failed. Add `urgent` when it
+  appears while the reader is on the page.
+
+```tsx
+<ErrorBoundary onError={reportError} headingLevel={1} dataE2E="render-error">
+  <App />
+</ErrorBoundary>
 ```
 
 ## UnsavedGuard

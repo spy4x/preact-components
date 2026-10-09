@@ -16,6 +16,7 @@ import {
   defaultToastDuration,
   type DialogTone,
   EmptyState,
+  ErrorBoundary,
   ErrorState,
   LoadingSkeleton,
   LoadingSpinner,
@@ -609,6 +610,60 @@ function UnsavedGuardDemo() {
   )
 }
 
+/** Props of {@link FragileView}. */
+interface FragileViewProps {
+  broken: boolean
+  onBreak: () => void
+}
+
+/** A view that throws while it renders once its button has been pressed. */
+function FragileView({ broken, onBreak }: FragileViewProps) {
+  if (broken) throw new Error("The ErrorBoundary demo view broke on purpose.")
+  return (
+    <Button onClick={onBreak} data-e2e="error-boundary-break">
+      Break this view
+    </Button>
+  )
+}
+
+/**
+ * A view that breaks on a click, inside an `ErrorBoundary`.
+ *
+ * The reload port is the demo's own: it counts the press, then mounts a fresh boundary over a
+ * mended view, so the card works again and the catalogue is never really reloaded.
+ * `pages/checks/ui.ts` drives this card and reads both counters.
+ */
+function ErrorBoundaryDemo() {
+  const broken = useSignal(false)
+  const mount = useSignal(0)
+  const caught = useSignal(0)
+  const reloads = useSignal(0)
+
+  return (
+    <Stack gap="sm">
+      <ErrorBoundary
+        key={mount.value}
+        headingLevel={4}
+        dataE2E="error-boundary-screen"
+        onError={() => caught.value++}
+        onReload={() => {
+          reloads.value++
+          broken.value = false
+          mount.value++
+        }}
+      >
+        <FragileView broken={broken.value} onBreak={() => broken.value = true} />
+      </ErrorBoundary>
+      <DemoNote>
+        Errors reported:{" "}
+        <span data-e2e="error-boundary-caught">{caught.value}</span>. Reloads asked for:{" "}
+        <span data-e2e="error-boundary-reloads">{reloads.value}</span>. This demo's reload mounts
+        the view again instead of reloading the page.
+      </DemoNote>
+    </Stack>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -636,6 +691,52 @@ export const feedbackDemos = {
 // A 404 page whose whole content is the empty state:
 <EmptyState headingLevel={1} title="Page not found" />`,
     render: () => <EmptyStateDemo />,
+  },
+  ErrorBoundary: {
+    summary:
+      "Catches a view that throws while it renders and shows a reload screen instead of a blank page.",
+    wide: false,
+    props: [
+      {
+        name: "onError",
+        type: "(error: unknown) => void",
+        description: "Called once with each caught error, for your reporter.",
+      },
+      {
+        name: "onReload",
+        type: "() => void",
+        default: "location.reload()",
+        description: "What the button does.",
+      },
+      {
+        name: "title",
+        type: "string",
+        default: `"Something went wrong."`,
+        description: "The headline.",
+      },
+      {
+        name: "description",
+        type: "string",
+        default: `"Reloading the page usually fixes it."`,
+        description: "The line under it.",
+      },
+      {
+        name: "reloadLabel",
+        type: "string",
+        default: `"Reload the page"`,
+        description: "The button's text.",
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4",
+        default: `3`,
+        description: "The title's heading tag; 1 when the boundary guards the whole page.",
+      },
+    ],
+    snippet: `<ErrorBoundary onError={reportError} headingLevel={1}>
+  <App />
+</ErrorBoundary>`,
+    render: () => <ErrorBoundaryDemo />,
   },
   ErrorState: {
     summary: "An inline error message, which renders nothing when there is no error to show.",
