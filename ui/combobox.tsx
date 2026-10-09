@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { fold } from "@spy4x/platform/universal/text"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
@@ -48,23 +49,14 @@ export interface ComboboxKeyResult extends ComboboxState {
   handled: boolean
 }
 
-/** Diacritic marks left over after `String.prototype.normalize("NFD")` splits an accented letter. */
-const diacritics = /[\u0300-\u036f]/g
-
 /**
- * Fold a string for searching: Unicode-decompose, drop the combining marks, then lower-case.
+ * Fold a string for searching: accents removed and lower-cased, so `"são"` and `"sao"` fold alike.
  *
- * `NFD` plus the mark strip is the platform's own accent folding, so `"são"` and `"sao"` fold to
- * the same `"sao"`, and `"ÉCU"` to `"ecu"` — no dependency, no hand-written accent table. Case
- * folding is `toLowerCase()`, deliberately not `toLocaleLowerCase()`: a Turkish locale folds `I` to
- * `ı`, which would make a match depend on the host locale.
- *
- * @param value Text to fold.
- * @returns The folded text.
+ * Re-exported from `@spy4x/platform/universal/text`, so `ui` keeps one copy of the rule its apps
+ * share. Marks are stripped only after Latin, Greek and Cyrillic letters: in Devanagari, Thai and
+ * similar scripts they are vowel signs, so Hindi `"का"` and `"कि"` stay apart.
  */
-export function fold(value: string): string {
-  return value.normalize("NFD").replace(diacritics, "").toLowerCase()
-}
+export { fold }
 
 /** The identity rule for item text: `String(item)`. Exported so a `getLabel` can fall back to it. */
 export function defaultGetLabel<T>(item: T): string {
