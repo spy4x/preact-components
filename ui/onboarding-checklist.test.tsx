@@ -29,7 +29,7 @@ function footerOf(html: string): string {
 }
 
 describe("OnboardingChecklist", () => {
-  it("names its region by its heading, which defaults to Get started", () => {
+  it("names its region by its heading, which defaults to Get started and can take focus", () => {
     const html = render(<OnboardingChecklist steps={steps} />)
     const labelledBy = html.match(/role="region" aria-labelledby="([^"]+)"/)?.[1]
     expect(labelledBy).toBeDefined()
