@@ -150,7 +150,7 @@ function renderTag(tag: HeadTag) {
       return (
         <script
           {...tag.attrs}
-          // The body is JSON this module serialised, with `<` escaped; see `jsonLdText`.
+          // The body is JSON this module serialised, with `<`, `>` and `&` escaped; see `jsonLdText`.
           dangerouslySetInnerHTML={{ __html: tag.text ?? "" }}
         />
       )

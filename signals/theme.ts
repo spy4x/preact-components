@@ -292,7 +292,8 @@ export interface ThemeBootstrapOptions {
 
 /**
  * A value as a JavaScript literal that is also safe inside an inline `<script>` element: the
- * JSON-LD escape from ts-libs, which turns `<` into `\u003c`, is exactly that.
+ * JSON-LD escape from ts-libs, which writes `<`, `>`, `&`, U+2028 and U+2029 as `\u` escapes, is
+ * exactly that.
  */
 const scriptLiteral = jsonLdText
 
