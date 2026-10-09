@@ -4207,8 +4207,9 @@ the toast arrives. Pressing it, by pointer, Enter or Space, runs `onAction` once
 the toast through `onDismiss`, even when `onAction` throws; a second press that lands before the
 stack re-renders does nothing. An async `onAction`'s rejection is not caught. Dismissing a toast
 through its action or its dismiss control while focus is inside it returns focus to the element it
-came from, unless the action moved focus itself or that element has left the page. A toast with an action and no `duration` of its own stays `defaultToastActionDuration`
-(10000 ms) instead of 5000, so there is time to read it and reach the button, and like every toast
+came from, unless the action moved focus itself or that element has left the page. A toast with
+an action and no `duration` of its own stays `defaultToastActionDuration` (10000 ms) instead of
+5000, so there is time to read it and reach the button, and like every toast
 it holds while the pointer or focus is on it. `createToastStore` carries a message's `action` onto
 its entry, so `toast.info({ body: "Note deleted", action: { label: "Undo", onAction: restore } })`
 is the whole call.
