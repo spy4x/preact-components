@@ -142,6 +142,50 @@ function DropdownRow(
 }
 
 /**
+ * Every shape of `DropdownItem` in one standing menu. The routed link's `navigate` port only
+ * records where it was asked to go, so a plain click shows the count below instead of loading the
+ * page. `pages/checks/ui.ts` clicks it, and measures the two disabled items against each other.
+ */
+function DropdownItemDemo() {
+  const navigated = useSignal(0)
+  return (
+    <Stack gap="sm">
+      <div class="w-56" role="menu" aria-orientation="vertical" aria-label="Item shapes">
+        <DropdownItem href="#inputs">A link, because it has an href</DropdownItem>
+        <DropdownItem
+          href="#/system"
+          navigate={() => navigated.value++}
+          dataE2E="dropdown-item-routed"
+        >
+          A link the app routes, through navigate
+        </DropdownItem>
+        <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
+        <DropdownItem danger onClick={() => {}}>Destructive, through danger</DropdownItem>
+        <DropdownItem disabled onClick={() => {}} dataE2E="dropdown-item-disabled">
+          Disabled
+        </DropdownItem>
+        <DropdownItem danger disabled onClick={() => {}} dataE2E="dropdown-item-disabled-danger">
+          Disabled and destructive
+        </DropdownItem>
+        <form
+          method="post"
+          action="form-demo/"
+          role="none"
+          onSubmit={(event) => event.preventDefault()}
+        >
+          <DropdownItem type="submit">A submit button, through type</DropdownItem>
+        </form>
+      </div>
+      <span class="text-sm text-muted" data-e2e="dropdown-item-navigated">
+        {navigated.value === 0
+          ? "navigate not called yet"
+          : `navigate called ${navigated.value} ${navigated.value === 1 ? "time" : "times"}`}
+      </span>
+    </Stack>
+  )
+}
+
+/**
  * The four anchorings, every item a `DropdownItem`.
  *
  * The icon triggers pass `triggerLabel`, because they render no text a screen reader could read;
@@ -1159,6 +1203,12 @@ export const inputDemos = {
     wide: true,
     props: [
       { name: "href", type: "string", description: "Makes the item a link to this address." },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "The app's router, called on a plain click on a link item instead of loading the page.",
+      },
       { name: "onClick", type: "() => void", description: "What a button item does." },
       {
         name: "type",
@@ -1171,7 +1221,7 @@ export const inputDemos = {
         name: "disabled",
         type: "boolean",
         default: "false",
-        description: "Greys it out; the arrow keys skip it.",
+        description: "Dims it, and drops the red of `danger`; the arrow keys skip it.",
       },
       {
         name: "danger",
@@ -1182,28 +1232,14 @@ export const inputDemos = {
       { name: "class", type: "string", description: "Extra classes, merged over its own." },
     ],
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
+<DropdownItem href="/regions/1" navigate={router.navigate}>Open</DropdownItem>
 <DropdownItem danger onClick={archive}>Archive</DropdownItem>
 <DropdownItem disabled onClick={archive}>Archive</DropdownItem>
+<DropdownItem danger disabled onClick={remove}>Delete</DropdownItem>
 <form method="post" action="/sign-out" role="none">
   <DropdownItem type="submit">Sign out</DropdownItem>
 </form>`,
-    render: () => (
-      <div class="w-56" role="menu" aria-orientation="vertical" aria-label="Item shapes">
-        <DropdownItem href="#inputs">A link, because it has an href</DropdownItem>
-        <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
-        <DropdownItem danger onClick={() => {}}>Destructive, through danger</DropdownItem>
-        <DropdownItem disabled onClick={() => {}}>Disabled</DropdownItem>
-        <form
-          method="post"
-          action="form-demo/"
-          role="none"
-          onSubmit={(event) =>
-            event.preventDefault()}
-        >
-          <DropdownItem type="submit">A submit button, through type</DropdownItem>
-        </form>
-      </div>
-    ),
+    render: () => <DropdownItemDemo />,
   },
   Combobox: {
     summary:

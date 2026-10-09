@@ -4,6 +4,7 @@ import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext, useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { readFallback } from "./dropdown-fallback.ts"
 import { buttonClasses } from "./button.tsx"
+import { followLinkClick } from "./link.tsx"
 
 /**
  * How the trigger button gets its accessible name. One of the two is required, which is what makes
@@ -130,23 +131,40 @@ export function dropdownOpensUp(
  */
 const DropdownEnhanced = createContext(true)
 
+/**
+ * A disabled item is dimmed the way a disabled `Button` is, and takes no hover, so it cannot look
+ * pressable.
+ */
 const itemClasses =
-  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover"
-/** Text colour of a {@link DropdownItemProps.danger} item, in both themes. */
+  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
+/**
+ * Text colour of a {@link DropdownItemProps.danger} item, in both themes. A disabled item leaves it
+ * out, so a disabled destructive action looks like any other disabled item rather than a live one.
+ */
 const dangerClasses = "text-red-600 dark:text-red-400"
 
 export interface DropdownItemProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
   href?: string
+  /**
+   * Called with `href` on a plain click instead of the browser following the link — the app's
+   * router, passed in, so choosing the item does not reload the app. A click with a modifier or a
+   * middle click stays the browser's, as on `Link` and a `Button` link. Ignored without `href`.
+   */
+  navigate?: (href: string) => void
+  /** Runs on every click, before `navigate`. */
   onClick?: () => void
   /**
    * The button form's `type`. `"submit"` makes the item the submit button of a `<form>` the caller
    * wraps around it, for an action that posts. Ignored when `href` is set.
    */
   type?: "button" | "submit"
-  /** Disables the button form. A disabled item is skipped by the arrow keys. */
+  /** Disables the button form. A disabled item is dimmed and skipped by the arrow keys. */
   disabled?: boolean
-  /** Renders the item in red, for an action that destroys or archives something. */
+  /**
+   * Renders the item in red, for an action that destroys or archives something. A disabled button
+   * item is not red: it looks like any other disabled item.
+   */
   danger?: boolean
   /** Extra utilities, merged over the item's own. */
   class?: string
@@ -169,6 +187,9 @@ export interface DropdownItemProps {
  * `role="menuitem"`, because no script answers the arrow keys yet, and it stays in the tab order,
  * because Tab is the only way a keyboard reaches it.
  *
+ * A link item given `navigate` hands a plain click to the app's router instead of loading the page,
+ * by the rule `Link` runs (`followLinkClick`).
+ *
  * For an action that posts, wrap it in a `<form role="none">` and pass `type="submit"`: the form
  * posts with or without JavaScript, and the item is still the menu's own once it hydrates.
  * Focus is styled like hover, because focus now moves through these items without a pointer.
@@ -176,10 +197,21 @@ export interface DropdownItemProps {
  * @param props See {@link DropdownItemProps}.
  */
 export function DropdownItem(
-  { href, onClick, type = "button", disabled, danger, class: className, dataE2E, children }:
-    DropdownItemProps,
+  {
+    href,
+    navigate,
+    onClick,
+    type = "button",
+    disabled,
+    danger,
+    class: className,
+    dataE2E,
+    children,
+  }: DropdownItemProps,
 ): JSX.Element {
-  const classes = cn(itemClasses, danger && dangerClasses, className)
+  // `disabled` disables the button form only, so only there does it take the red away.
+  const disabledButton = href === undefined && disabled === true
+  const classes = cn(itemClasses, danger && !disabledButton && dangerClasses, className)
   const enhanced = useContext(DropdownEnhanced)
   const role = enhanced ? "menuitem" : undefined
   const tabindex = enhanced ? -1 : undefined
@@ -192,7 +224,10 @@ export function DropdownItem(
         role={role}
         tabindex={tabindex}
         data-e2e={dataE2E}
-        onClick={onClick}
+        onClick={(event) => {
+          onClick?.()
+          followLinkClick(event, { href, navigate })
+        }}
       >
         {children}
       </a>

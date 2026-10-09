@@ -211,6 +211,25 @@ describe("DropdownItem", () => {
     expect(html).not.toContain("text-foreground")
   })
 
+  it("dims a disabled item, as a disabled Button is dimmed", () => {
+    const html = render(<DropdownItem disabled onClick={() => {}}>Archive</DropdownItem>)
+
+    expect(html).toContain("disabled:opacity-50")
+  })
+
+  it("draws a disabled danger item in the default colour, like any disabled item", () => {
+    const html = render(<DropdownItem danger disabled onClick={() => {}}>Delete</DropdownItem>)
+
+    expect(html).toBe(render(<DropdownItem disabled onClick={() => {}}>Delete</DropdownItem>))
+    expect(html).not.toContain("text-red-")
+  })
+
+  it("keeps a danger link red, because disabled disables only the button form", () => {
+    const html = render(<DropdownItem href="/delete" danger disabled>Delete</DropdownItem>)
+
+    expect(html).toContain("text-red-600")
+  })
+
   it("leaves an item without danger in the default grey", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
 
