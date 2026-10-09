@@ -251,6 +251,37 @@ describe("DropdownItem", () => {
     expect(html).not.toContain("text-foreground")
     expect(html).toContain("px-4 py-2")
   })
+
+  it("announces its hotkey and shows it at the right edge of a link or button item", () => {
+    for (
+      const html of [
+        render(<DropdownItem href="/edit" hotkey="mod+e">Edit</DropdownItem>),
+        render(<DropdownItem onClick={() => {}} hotkey="mod+e">Edit</DropdownItem>),
+      ]
+    ) {
+      expect(attrOf(html, /<(a|button)\b[^>]*>/, "aria-keyshortcuts")).toBe("Control+E")
+      expect(html).toMatch(
+        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ml-auto pl-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
+      )
+    }
+  })
+
+  it("leaves the hint out when hotkeyHint is false, and takes the hint's words from kbdLabels", () => {
+    const hidden = render(<DropdownItem hotkey="mod+e" hotkeyHint={false}>Edit</DropdownItem>)
+    expect(hidden).not.toContain("data-hotkey-hint")
+    expect(attrOf(hidden, /<button\b[^>]*>/, "aria-keyshortcuts")).toBe("Control+E")
+
+    const html = render(
+      <DropdownItem hotkey="mod+e" kbdLabels={{ ctrl: "Strg" }}>Edit</DropdownItem>,
+    )
+    expect(html).toMatch(/<kbd[^>]*>Strg<\/kbd>/)
+  })
+
+  it("has no hint and no aria-keyshortcuts without a hotkey", () => {
+    const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
+    expect(html).not.toContain("aria-keyshortcuts")
+    expect(html).not.toContain("data-hotkey-hint")
+  })
 })
 
 describe("nextMenuIndex", () => {

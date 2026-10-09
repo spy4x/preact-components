@@ -1723,6 +1723,7 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-Shell": 1,
   "demo-PageHeader": 2,
   "demo-MoreMenu": 1,
+  "demo-DropdownItem": 1,
 }
 
 /**
@@ -20640,6 +20641,8 @@ async function hotkeyPropChecks(devtools: Devtools): Promise<void> {
   await themeToggleHotkeyCheck(devtools)
   await copyButtonHotkeyCheck(devtools)
   await pageActionHotkeyCheck(devtools)
+  await dropdownItemHotkeyChecks(devtools)
+  await commandPaletteHotkeyAnnouncementCheck(devtools)
 }
 
 /**
@@ -21528,4 +21531,216 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
   } finally {
     await devtools.send("Emulation.clearDeviceMetricsOverride")
   }
+}
+
+/** What one read of the `DropdownItem` card's hotkey menu sees. */
+interface DropdownHotkeyState {
+  /** The status line under the menu: what the keys chose. */
+  status: string
+  /** Whether the menu is open, by its trigger's `aria-expanded`. */
+  open: boolean
+  /** Whether focus is on the page itself rather than on any element. */
+  focusOnBody: boolean
+  /** `aria-keyshortcuts` of the three items, in order. */
+  shortcuts: (string | null)[]
+}
+
+/** Reads {@link DropdownHotkeyState} off the `DropdownItem` card in one round trip. */
+const DROPDOWN_HOTKEY_STATE = `(() => {
+  const card = document.querySelector("#demo-DropdownItem")
+  return {
+    status: card.querySelector('[data-e2e="dropdown-hotkey-status"]').textContent,
+    open: card.querySelector('[data-e2e="dropdown-hotkey-trigger"]')
+      .getAttribute("aria-expanded") === "true",
+    focusOnBody: document.activeElement === document.body,
+    shortcuts: ["item", "link", "disabled"].map((name) =>
+      card.querySelector(\`[data-e2e="dropdown-hotkey-\${name}"]\`).getAttribute("aria-keyshortcuts")
+    ),
+  }
+})()`
+
+/** Shift and one letter, as a US keyboard types it. */
+function shiftLetter(letter: string): Chord {
+  const upper = letter.toUpperCase()
+  return {
+    key: upper,
+    code: `Key${upper}`,
+    keyCode: upper.charCodeAt(0),
+    text: upper,
+    modifiers: 8,
+  }
+}
+
+/**
+ * `DropdownItem`'s `hotkey` (#610), on the card's menu of three items. Each item announces its key
+ * in `aria-keyshortcuts`, and the open menu shows each key in a hint at the item's right edge.
+ * With the menu closed: Shift+E chooses its item once, and the menu stays closed with focus where
+ * it was; Shift+R hands the routed link's address to `navigate` and the link's click is cancelled,
+ * so the page does not load it; Shift+D chooses nothing, because its item is disabled, and leaves
+ * the press uncancelled.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function dropdownItemHotkeyChecks(devtools: Devtools): Promise<void> {
+  const trigger =
+    `document.querySelector('#demo-DropdownItem [data-e2e="dropdown-hotkey-trigger"]')`
+  const present = await devtools.evaluate<boolean>(`${trigger} !== null`)
+  check("the DropdownItem card's hotkey menu is on the page", present)
+  if (!present) return
+  await centreInView(devtools, trigger)
+  const read = () => devtools.evaluate<DropdownHotkeyState>(DROPDOWN_HOTKEY_STATE)
+  const settle = () => new Promise((done) => setTimeout(done, 200))
+  const blur = () => devtools.evaluate<null>(`(document.activeElement?.blur(), null)`)
+
+  const start = await read()
+  check(
+    "each DropdownItem with a hotkey announces it in aria-keyshortcuts",
+    start.shortcuts.join() === "Shift+E,Shift+R,Shift+D",
+    `aria-keyshortcuts ${JSON.stringify(start.shortcuts)}`,
+  )
+
+  // The hints are measured in the open menu: a closed one renders none of its items.
+  await devtools.evaluate<null>(`(${trigger}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`${DROPDOWN_HOTKEY_STATE}.open`), 3_000)
+  const hints = await devtools.evaluate<
+    { name: string; hint: string; gapToEdge: number; afterText: boolean; hidden: boolean }[]
+  >(`["item", "link", "disabled"].map((name) => {
+    const item = document.querySelector(\`#demo-DropdownItem [data-e2e="dropdown-hotkey-\${name}"]\`)
+    const hint = item.querySelector("[data-hotkey-hint]")
+    const box = item.getBoundingClientRect()
+    const hintBox = hint?.getBoundingClientRect()
+    const range = document.createRange()
+    range.selectNodeContents(item.firstChild)
+    const textRight = range.getBoundingClientRect().right
+    return {
+      name,
+      hint: hint?.textContent ?? "",
+      gapToEdge: hintBox ? box.right - parseFloat(getComputedStyle(item).paddingRight) -
+        hintBox.right : NaN,
+      afterText: hintBox !== undefined && hintBox.width > 0 && hintBox.left > textRight,
+      hidden: hint?.getAttribute("aria-hidden") === "true",
+    }
+  })`)
+  await devtools.evaluate<null>(`(${trigger}.click(), null)`)
+  await poll(() => devtools.evaluate<boolean>(`!${DROPDOWN_HOTKEY_STATE}.open`), 3_000)
+  check(
+    "an open menu shows each DropdownItem's hotkey in a hint at the item's right edge, hidden " +
+      "from screen readers",
+    hints.map((hint) => hint.hint).join() === "Shift+E,Shift+R,Shift+D" &&
+      hints.every((hint) => Math.abs(hint.gapToEdge) < 1 && hint.afterText && hint.hidden),
+    hints.map((hint) =>
+      `${hint.name}: "${hint.hint}", ${hint.gapToEdge}px short of the edge, after the text ` +
+      `${hint.afterText}, aria-hidden ${hint.hidden}`
+    ).join("; "),
+  )
+
+  await blur()
+  const closed = await read()
+  await pressChord(devtools, shiftLetter("e"))
+  await poll(
+    () => devtools.evaluate<boolean>(`${DROPDOWN_HOTKEY_STATE}.status.includes("chosen 1,")`),
+    3_000,
+  )
+  await settle()
+  const chosen = await read()
+  check(
+    "Shift+E chooses its DropdownItem once with the menu closed, which stays closed with focus " +
+      "where it was",
+    !closed.open && chosen.status.startsWith("chosen 1,") && !chosen.open && chosen.focusOnBody,
+    `before: open ${closed.open}, "${closed.status}"; after: "${chosen.status}", open ` +
+      `${chosen.open}, focus on the page ${chosen.focusOnBody}`,
+  )
+
+  // The link's click is read from a document listener, which then cancels it anyway, so the check
+  // never lets the page really navigate.
+  await devtools.evaluate<null>(`(window.__dropdownLinkClick = "no click",
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest?.('[data-e2e="dropdown-hotkey-link"]')) return
+      window.__dropdownLinkClick = event.defaultPrevented
+      event.preventDefault()
+    }, { once: true }), null)`)
+  const hashBefore = await devtools.evaluate<string>(`location.hash`)
+  await pressChord(devtools, shiftLetter("r"))
+  await poll(
+    () => devtools.evaluate<boolean>(`${DROPDOWN_HOTKEY_STATE}.status.includes("#/system")`),
+    3_000,
+  )
+  await settle()
+  const routed = await read()
+  const linkClick = await devtools.evaluate<boolean | string>(`window.__dropdownLinkClick`)
+  const hashAfter = await devtools.evaluate<string>(`location.hash`)
+  check(
+    "Shift+R follows a closed menu's link DropdownItem through its navigate port, not a page load",
+    routed.status.endsWith("routed to #/system") && linkClick === true &&
+      hashAfter === hashBefore && !routed.open,
+    `"${routed.status}"; click cancelled by the item ${linkClick}; hash ${hashBefore} → ` +
+      `${hashAfter}; open ${routed.open}`,
+  )
+
+  await blur()
+  await devtools.evaluate<null>(RECORD_PREVENTED)
+  await pressChord(devtools, shiftLetter("d"))
+  await settle()
+  const disabled = await read()
+  const prevented = await devtools.evaluate<boolean | string>(`window.__hotkeyPrevented`)
+  check(
+    "Shift+D does not choose a disabled DropdownItem, and leaves the key press to the page",
+    disabled.status.includes("disabled chosen 0") && prevented === false && !disabled.open,
+    `"${disabled.status}"; press cancelled ${prevented}; open ${disabled.open}`,
+  )
+}
+
+/**
+ * The `CommandPalette` trigger's hotkeys come from a button's `hotkey` machinery (#610): the card's
+ * local palette (`hotkeys={["mod+p"]}`) announces Control+P, or Meta+P on an Apple platform, in
+ * `aria-keyshortcuts` and shows the same key in a hint screen readers skip; the guide's own search
+ * announces all three of its keys; the remote palette, whose hotkeys are off, announces and shows
+ * nothing.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function commandPaletteHotkeyAnnouncementCheck(devtools: Devtools): Promise<void> {
+  const read = await devtools.evaluate<
+    {
+      apple: boolean
+      local: string | null
+      hint: string
+      hintWidth: number
+      hintHidden: boolean
+      guide: string | null
+      remote: string | null
+      remoteHint: boolean
+    } | null
+  >(`(() => {
+    const local = document.querySelector('[data-e2e="palette-local-open"]')
+    const remote = document.querySelector('[data-e2e="palette-remote-open"]')
+    const guide = document.querySelector('[data-e2e="ui-guide-search-open"]')
+    if (!local || !remote || !guide) return null
+    const hint = local.querySelector("[data-hotkey-hint]")
+    return {
+      apple: /mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || ""),
+      local: local.getAttribute("aria-keyshortcuts"),
+      hint: hint?.textContent ?? "",
+      hintWidth: hint?.getBoundingClientRect().width ?? 0,
+      hintHidden: hint?.getAttribute("aria-hidden") === "true",
+      guide: guide.getAttribute("aria-keyshortcuts"),
+      remote: remote.getAttribute("aria-keyshortcuts"),
+      remoteHint: remote.querySelector("[data-hotkey-hint], kbd") !== null,
+    }
+  })()`)
+  if (read === null) {
+    check("the CommandPalette card and the guide's search are on the page", false)
+    return
+  }
+  const mod = read.apple ? "Meta" : "Control"
+  const face = read.apple ? "⌘P" : "Ctrl+P"
+  check(
+    "the CommandPalette trigger announces its hotkeys in aria-keyshortcuts and shows the first in " +
+      "a hotkey hint, and a palette with none announces and shows nothing",
+    read.local === `${mod}+P` && read.hint === face && read.hintWidth > 0 && read.hintHidden &&
+      read.guide === "/ Control+K Meta+K" && read.remote === null && !read.remoteHint,
+    `local ${JSON.stringify(read.local)}, hint "${read.hint}" ${read.hintWidth}px wide, ` +
+      `aria-hidden ${read.hintHidden}; guide search ${JSON.stringify(read.guide)}; remote ` +
+      `${JSON.stringify(read.remote)}, hint ${read.remoteHint}`,
+  )
 }

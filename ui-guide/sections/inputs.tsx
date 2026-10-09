@@ -181,7 +181,62 @@ function DropdownItemDemo() {
           ? "navigate not called yet"
           : `navigate called ${navigated.value} ${navigated.value === 1 ? "time" : "times"}`}
       </span>
+      <DropdownItemHotkeyDemo />
     </Stack>
+  )
+}
+
+/**
+ * `DropdownItem`'s `hotkey`, in a real `Dropdown`: each key chooses its item with the menu open or
+ * closed, and the line below counts what ran. The disabled item's key counts nothing. The routed
+ * link's `navigate` records the address instead of going there. `pages/checks/ui.ts` presses
+ * every key with the menu closed and reads the line.
+ */
+function DropdownItemHotkeyDemo() {
+  const pressed = useSignal(0)
+  const disabledPressed = useSignal(0)
+  const routedTo = useSignal("nowhere")
+  return (
+    <DropdownRow
+      title={
+        <span data-e2e="dropdown-hotkey-status">
+          chosen {pressed.value}, disabled chosen {disabledPressed.value}, routed to{" "}
+          {routedTo.value}
+        </span>
+      }
+    >
+      <Dropdown
+        trigger="Item hotkeys"
+        triggerNamedByContent
+        triggerClasses="rounded-md px-3 py-2 text-sm ring-1 ring-subtle"
+        triggerDataE2E="dropdown-hotkey-trigger"
+        menuLabel="Item hotkeys"
+      >
+        <DropdownItem
+          hotkey="shift+e"
+          onClick={() => pressed.value++}
+          dataE2E="dropdown-hotkey-item"
+        >
+          Count a choice
+        </DropdownItem>
+        <DropdownItem
+          hotkey="shift+r"
+          href="#/system"
+          navigate={(href) => routedTo.value = href}
+          dataE2E="dropdown-hotkey-link"
+        >
+          Route to System
+        </DropdownItem>
+        <DropdownItem
+          hotkey="shift+d"
+          disabled
+          onClick={() => disabledPressed.value++}
+          dataE2E="dropdown-hotkey-disabled"
+        >
+          Disabled
+        </DropdownItem>
+      </Dropdown>
+    </DropdownRow>
   )
 }
 
@@ -1229,13 +1284,32 @@ export const inputDemos = {
         default: "false",
         description: "Colours it red, for an action that destroys or archives something.",
       },
+      {
+        name: "hotkey",
+        type: "string",
+        description:
+          "A key such as `mod+e` that chooses the item from anywhere on the page, with its menu open or closed, while the trigger is shown. A disabled item ignores it. A hint at the right edge shows it.",
+      },
+      {
+        name: "hotkeyHint",
+        type: "boolean",
+        default: "true",
+        description: "Whether the hint shows the key. It never shows for a coarse pointer.",
+      },
+      {
+        name: "kbdLabels",
+        type: "Partial<KbdLabels>",
+        description: "The words the hint shows for a key; see `KBD_LABELS`.",
+      },
       { name: "class", type: "string", description: "Extra classes, merged over its own." },
     ],
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
+<DropdownItem href="/regions/1" navigate={router.navigate} hotkey="mod+o">Open</DropdownItem>
 <DropdownItem href="/regions/1" navigate={router.navigate}>Open</DropdownItem>
 <DropdownItem danger onClick={archive}>Archive</DropdownItem>
 <DropdownItem disabled onClick={archive}>Archive</DropdownItem>
 <DropdownItem danger disabled onClick={remove}>Delete</DropdownItem>
+<DropdownItem onClick={duplicate} hotkey="shift+e">Duplicate</DropdownItem>
 <form method="post" action="/sign-out" role="none">
   <DropdownItem type="submit">Sign out</DropdownItem>
 </form>`,

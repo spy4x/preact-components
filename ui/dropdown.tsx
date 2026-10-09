@@ -1,9 +1,17 @@
 import { cn } from "@spy4x/preact-cn"
 import { useSignal } from "@preact/signals"
-import { type ComponentChildren, createContext, type JSX } from "preact"
+import { type ComponentChildren, createContext, type JSX, type RefObject } from "preact"
 import { useContext, useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { readFallback } from "./dropdown-fallback.ts"
 import { buttonClasses } from "./button.tsx"
+import { HotkeyHint } from "./hotkey-hint.tsx"
+import {
+  ariaKeyShortcuts,
+  hotkeyClickBinding,
+  type HotkeyProps,
+  useApplePlatform,
+  useHotkeys,
+} from "./hotkeys.ts"
 import { followLinkClick } from "./link.tsx"
 
 /**
@@ -132,6 +140,12 @@ export function dropdownOpensUp(
 const DropdownEnhanced = createContext(true)
 
 /**
+ * The trigger of the {@link Dropdown} around an item, which stands on screen for the item's
+ * `hotkey` while the menu is closed. `null` outside any dropdown, where the item stands for itself.
+ */
+const DropdownTrigger = createContext<RefObject<HTMLButtonElement> | null>(null)
+
+/**
  * A disabled item is dimmed the way a disabled `Button` is, and takes no hover, so it cannot look
  * pressable.
  */
@@ -143,7 +157,7 @@ const itemClasses =
  */
 const dangerClasses = "text-red-600 dark:text-red-400"
 
-export interface DropdownItemProps {
+export interface DropdownItemProps extends HotkeyProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
   href?: string
   /**
@@ -170,6 +184,14 @@ export interface DropdownItemProps {
   class?: string
   /** Sets `data-e2e` on the item. */
   dataE2E?: string
+  /**
+   * A combination such as `"mod+e"` that chooses the item from anywhere on the page, whether its
+   * menu is open or closed, while the menu's trigger is shown. It clicks the item, so a link item
+   * follows its link (through `navigate` when given) and a submit item posts its form; a disabled
+   * item does nothing and passes the key on. The rules for text fields and dialogs are `Button`'s.
+   * It sets `aria-keyshortcuts` on the item, and a hint at the item's right edge shows it.
+   */
+  hotkey?: string
   children: ComponentChildren
 }
 
@@ -190,6 +212,10 @@ export interface DropdownItemProps {
  * A link item given `navigate` hands a plain click to the app's router instead of loading the page,
  * by the rule `Link` runs (`followLinkClick`).
  *
+ * Its `hotkey` works while the menu is closed too, because a menu that shows a key next to an item
+ * teaches the reader to press it instead of opening the menu. A closed menu's items are not
+ * rendered, so the key asks whether the menu's trigger is shown, not the item.
+ *
  * For an action that posts, wrap it in a `<form role="none">` and pass `type="submit"`: the form
  * posts with or without JavaScript, and the item is still the menu's own once it hydrates.
  * Focus is styled like hover, because focus now moves through these items without a pointer.
@@ -206,9 +232,26 @@ export function DropdownItem(
     danger,
     class: className,
     dataE2E,
+    hotkey,
+    hotkeyHint = true,
+    kbdLabels,
     children,
   }: DropdownItemProps,
 ): JSX.Element {
+  const item = useRef<HTMLElement>(null)
+  const trigger = useContext(DropdownTrigger)
+  const apple = useApplePlatform()
+  useHotkeys(
+    hotkey === undefined
+      ? []
+      : [hotkeyClickBinding(hotkey, () => item.current, () => trigger?.current ?? item.current)],
+    { enabled: hotkey !== undefined },
+  )
+  const shortcuts = hotkey === undefined ? undefined : ariaKeyShortcuts(hotkey, apple)
+  const hint = hotkey !== undefined && hotkeyHint
+    ? <HotkeyHint keys={hotkey} apple={apple} labels={kbdLabels} class="ml-auto pl-4" />
+    : null
+
   // `disabled` disables the button form only, so only there does it take the red away.
   const disabledButton = href === undefined && disabled === true
   const classes = cn(itemClasses, danger && !disabledButton && dangerClasses, className)
@@ -219,10 +262,12 @@ export function DropdownItem(
   return href !== undefined
     ? (
       <a
+        ref={item as RefObject<HTMLAnchorElement>}
         href={href}
         class={classes}
         role={role}
         tabindex={tabindex}
+        aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
         onClick={(event) => {
           onClick?.()
@@ -230,19 +275,23 @@ export function DropdownItem(
         }}
       >
         {children}
+        {hint}
       </a>
     )
     : (
       <button
+        ref={item as RefObject<HTMLButtonElement>}
         type={type}
         class={classes}
         role={role}
         tabindex={tabindex}
         disabled={disabled}
+        aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
         onClick={onClick}
       >
         {children}
+        {hint}
       </button>
     )
 }
@@ -436,7 +485,9 @@ export function Dropdown(props: DropdownProps): JSX.Element {
 
   // Activating an item ends the interaction, so the menu closes and hands focus back. The click
   // lands on whatever is inside the item — an icon, a span — hence `closest` rather than `target`.
+  // An item's hotkey clicks it while the menu is closed too; focus then stays where the reader is.
   const handlePanelClick = (event: MouseEvent) => {
+    if (!isOpen.value) return
     if (!(event.target as HTMLElement | null)?.closest(`[role="menuitem"]`)) return
     close(true)
   }
@@ -469,7 +520,11 @@ export function Dropdown(props: DropdownProps): JSX.Element {
       aria-label={isEnhanced ? menuLabel : undefined}
       onClick={handlePanelClick}
     >
-      <DropdownEnhanced.Provider value={isEnhanced}>{children}</DropdownEnhanced.Provider>
+      <DropdownEnhanced.Provider value={isEnhanced}>
+        <DropdownTrigger.Provider value={isEnhanced ? triggerRef : null}>
+          {children}
+        </DropdownTrigger.Provider>
+      </DropdownEnhanced.Provider>
     </div>
   )
 
