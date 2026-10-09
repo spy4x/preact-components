@@ -551,6 +551,17 @@ install.watch()
   changed yet and does nothing. What a reader sees is the original defect: changing a filter takes
   the fragment out of the address bar, silently. Nothing in this repository configures `aroundNav`,
   so no check covers it.
+- **A filter the reader changes before the first read keeps its value.** The address is read in an
+  effect, after the first paint, so a field focused the moment it appears — a shortcut that opens a
+  search view, say — can take a key press before that read. Overwriting it from the address would
+  lose the letter ("hello" arriving as "ello"). So on the first read only, a filter whose signal no
+  longer holds what it held at the first render keeps the reader's value, and the hook writes it to
+  the address as an ordinary filter change: one history entry, fragment kept. Every other filter
+  still loads from the address, and every later read — back, forward, a link, a push — lets the
+  address win, because each of those happened after whatever the reader did. `readAddress` is that
+  rule. Reading the address during the render instead, so the effect had nothing to correct, would
+  have meant writing the signals during a render, which this library never does (#300), and a
+  signal owned by a parent has already rendered its old value by then.
 - **One address change costs one history entry**, in either direction, so one press of Back moves
   the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
   change rather than one per field. Preact's signals adapter batches writes inside an event handler
@@ -558,15 +569,17 @@ install.watch()
   application clearing from a timer or after a request.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
   a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch`,
-  `restoredAddress` and `clearFilterFields` — which between them hold the rules for dropping a
-  default, carrying a parameter the filters do not own, answering with the same string when nothing
-  changed, putting a fragment back on the address a write left behind, and clearing as one change.
+  `readAddress`, `restoredAddress` and `clearFilterFields` — which between them hold the rules for
+  dropping a default, carrying a parameter the filters do not own, answering with the same string
+  when nothing changed, keeping a value the reader changed before the first read, putting a fragment
+  back on the address a write left behind, and clearing as one change.
   The binding itself is an effect, and no
   test in this repository runs one: it is proven in a real browser by `pages/checks/signals.ts`,
   which drives a demo on the Pages host and asserts the filters change from one value to another as
   the address changes — including the history entry each change costs, an address the hook would
   spell differently, a parameter belonging to something else on the page, a field with a custom
-  `parser`, and the fragment surviving both a filter set and a clear with no `hashchange` fired.
+  `parser`, the fragment surviving both a filter set and a clear with no `hashchange` fired, and a
+  letter typed into a field focused on mount before the first read.
 - **`createThemeStore` reads nothing until `attach()`.** Creating the store touches neither
   `localStorage` nor `matchMedia`, so a module-level `createThemeStore()` is inert on a server —
   which matters on Deno, where `localStorage` is a real file shared by every request the process

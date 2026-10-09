@@ -17,12 +17,12 @@ import { check, type Devtools, inFreshFrame, PAGE_UNTIL, poll } from "./harness.
  *
  * Most assertions below are **transitions**: the filters read one way, the address changes, they
  * read another. A single end state would be satisfied by a hook that read the address only at
- * mount, which is the bug this file exists for. Nine are something else and say so where they are
- * raised — the card that arrives on a filtered address is a guard on the mount path; two assert
- * that an address does *not* move, which is the whole of what "reading never writes" means; four
- * are counts, because "one change, one history entry" and "no `hashchange` fired" are numbers
- * rather than transitions; one asserts that a fragment stays absent; and the last collects what the
- * page threw.
+ * mount, which is the bug this file exists for. Eleven are something else and say so where they
+ * are raised — the card that arrives on a filtered address, and the filter nobody touched while a
+ * letter was typed early, are guards on the mount path; two assert that an address does *not*
+ * move, which is the whole of what "reading never writes" means; five are counts, because "one
+ * change, one history entry" and "no `hashchange` fired" are numbers rather than transitions; one
+ * asserts that a fragment stays absent; and the last collects what the page threw.
  *
  * The group about the fragment pairs every one of its assertions with a transition on the query
  * string, for the reason the shared rules give: "the fragment did not change" is also true of a
@@ -214,6 +214,8 @@ interface FilterState {
   page: string
   /** The `size` filter, as that field's own parser produced it. */
   size: string
+  /** The search field's own value: the `q` filter as the reader sees it in the field. */
+  query: string
   /** `location.search` at the same instant, so a failure names the address the values disagree with. */
   search: string
   /** `location.hash` — the host page's own route, which no filter write is allowed to disturb. */
@@ -233,6 +235,7 @@ const UNREAD: FilterState = {
   status: "(unread)",
   page: "(unread)",
   size: "(unread)",
+  query: "(unread)",
   search: "(unread)",
   hash: "(unread)",
   href: "(unread)",
@@ -255,6 +258,10 @@ const STATE = `(() => {
     status: text("url-filters-status"),
     page: text("url-filters-page"),
     size: text("url-filters-size"),
+    query: (() => {
+      const node = document.querySelector('[data-e2e="url-filters-query"]')
+      return node ? node.value : "(missing)"
+    })(),
     search: location.search,
     hash: location.hash,
     href: location.href,
@@ -307,7 +314,7 @@ async function settled(devtools: Devtools, what: string): Promise<FilterState> {
   const stopped = await poll(async () => {
     const now = await read(devtools, STATE, UNREAD)
     const same = now.status !== "(unread)" && now.status === previous.status &&
-      now.page === previous.page && now.size === previous.size &&
+      now.page === previous.page && now.size === previous.size && now.query === previous.query &&
       now.search === previous.search && now.hash === previous.hash &&
       now.href === previous.href && now.entries === previous.entries
     previous = now
@@ -476,6 +483,7 @@ async function urlFilterChecks(devtools: Devtools): Promise<void> {
   const written = await writeChecks(devtools, linked)
   const backed = await backChecks(devtools, written)
   await fragmentChecks(devtools, backed)
+  await earlyInputChecks(devtools)
 
   await read(
     devtools,
@@ -962,6 +970,93 @@ async function fragmentChecks(devtools: Devtools, before: FilterState): Promise<
       !emptied.href.endsWith("?") && !emptied.href.includes("#"),
     `clicked clear on ${written.href}: the query string went "${emptied.search}" and the address ` +
       `settled at ${emptied.href}`,
+  )
+}
+
+/** What the page reports from the one task that remounts the card and types into its search field. */
+interface EarlyInput {
+  /** Whether the new card's search field was in the page and focused before anything was typed. */
+  focused: boolean
+  /** Whether an animation frame had run by the time the letter was typed. */
+  framed: boolean
+}
+
+/**
+ * A letter typed into a search field that was focused on mount, before the hook has read the
+ * address, survives that read and reaches the address.
+ *
+ * The hook reads the address in an effect, and Preact runs effects after an animation frame. The
+ * remount, the wait for the new field and the typing all happen in one task here, chained through
+ * microtasks only, so the letter lands in the gap between the render and that effect on every run
+ * rather than by chance — two protocol commands land in such a gap only by chance (see AGENTS.md).
+ * `framed` records that no frame had run when the letter was typed; the microtask chain above is
+ * what makes that hold, so the flag guards against a change in scheduling rather than proving it.
+ * The letter is typed as the page sees a key press: the field's value set, then an `input` event.
+ *
+ * The address carries a `status` the reader did not touch, so the same remount also proves that a
+ * value the address legitimately carries still loads on the first read. Back and forward close the
+ * group: a later read lets the address win again.
+ *
+ * @param devtools The connected session.
+ */
+async function earlyInputChecks(devtools: Devtools): Promise<void> {
+  const before = await act(
+    devtools,
+    push("?status=open", OWN_FRAGMENT),
+    `a push to ?status=open${OWN_FRAGMENT}`,
+  )
+  const typedAt = await read<EarlyInput | null>(
+    devtools,
+    `(async () => {
+      let framed = false
+      requestAnimationFrame(() => { framed = true })
+      const old = document.querySelector('[data-e2e="url-filters-query"]')
+      const button = document.querySelector('[data-e2e="url-filters-remount-search"]')
+      if (!button) throw new Error('no element with data-e2e="url-filters-remount-search"')
+      button.click()
+      let field = null
+      for (let i = 0; i < 100 && !field; i++) {
+        await Promise.resolve()
+        const node = document.querySelector('[data-e2e="url-filters-query"]')
+        if (node && node !== old && document.activeElement === node) field = node
+      }
+      if (!field) return { focused: false, framed }
+      field.value = "h"
+      field.dispatchEvent(new Event("input", { bubbles: true }))
+      return { focused: true, framed }
+    })()`,
+    null,
+  )
+  const typed = await settled(devtools, "a letter typed into the search field focused on mount")
+
+  check(
+    "a letter typed into a field focused on mount, before the first read, survives and reaches " +
+      "the address",
+    typedAt?.focused === true && typedAt.framed === false && before.query === "" &&
+      typed.query === "h" && typed.search === "?status=open&q=h" && typed.hash === OWN_FRAGMENT,
+    `field focused before typing: ${typedAt?.focused}, a frame had run: ${typedAt?.framed}; ` +
+      `the field reads "${before.query}" → "${typed.query}" and the address ` +
+      `${before.search}${before.hash} → ${typed.search}${typed.hash}`,
+  )
+  check(
+    "on that same first read, a filter the reader did not touch still loads from the address",
+    typed.status === "open" && typed.page === "1",
+    `status ${typed.status}, page ${typed.page} on ${typed.search}`,
+  )
+  check(
+    "keeping that letter costs one history entry, like any other filter change",
+    typed.entries - before.entries === 1,
+    `history.length ${before.entries} → ${typed.entries}`,
+  )
+
+  const back = await act(devtools, "history.back()", "one press of Back out of the typed letter")
+  const forward = await act(devtools, "history.forward()", "one press of Forward back onto it")
+  check(
+    "after the first read, back and forward move the search field with the address",
+    typed.query === "h" && back.query === "" && back.search === "?status=open" &&
+      forward.query === "h" && forward.search === "?status=open&q=h",
+    `"${typed.query}" → Back "${back.query}" on ${back.search} → Forward "${forward.query}" on ` +
+      `${forward.search}`,
   )
 }
 
