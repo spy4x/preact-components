@@ -111,7 +111,8 @@ export const badgeDemos = {
       {
         name: "text",
         type: "string",
-        description: "A plain text label. Give this or `children`, not both.",
+        description:
+          "A plain text label, shown in the case you give it. Give this or `children`, not both.",
       },
       {
         name: "children",
