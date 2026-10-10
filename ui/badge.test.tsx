@@ -24,8 +24,8 @@ describe("Badge", () => {
   it("renders a filled colour by name", () => {
     const html = render(<Badge text="open" color="green" />)
 
-    expect(html).toContain("bg-green-600")
-    expect(html).toContain("text-green-50")
+    expect(html).toContain("bg-success")
+    expect(html).toContain("text-(--color-success-foreground)")
   })
 
   it("draws the filled gray badge in the foreground colour, which the dark track needs", () => {

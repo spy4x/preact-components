@@ -45,9 +45,9 @@ describe("ToggleChips", () => {
     const home = html.match(/<button[^>]*>home</)?.[0] ?? ""
     const work = html.match(/<button[^>]*>work</)?.[0] ?? ""
 
-    expect(home).toContain("bg-green-600")
+    expect(home).toContain("bg-success")
     expect(work).toContain("border-control")
-    expect(work).not.toContain("bg-green-600")
+    expect(work).not.toContain("bg-success")
   })
 
   it("gives an unpressed chip readable hover text, and a pressed one none", () => {
