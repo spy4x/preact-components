@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { TOUCH_TARGET } from "./page-header.tsx"
 
 /** The window corner a {@link Toastr} stack sits in. */
 export type ToastCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right"
@@ -32,6 +33,11 @@ export interface ToastAction {
    * An async callback's rejection is not caught: handle it inside the callback.
    */
   onAction: () => void
+  /**
+   * Value of the `data-e2e` attribute on the action's button, so a test can press this one button
+   * without knowing its label. The attribute is absent when this is.
+   */
+  dataE2E?: string
 }
 
 export interface ToastItem {
@@ -438,10 +444,13 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
               // Named by its text alone — no `aria-label`, no `title` — so the toast's announcement
               // carries the label once, and the name a screen reader gives on focus is the same
               // word. It sits on its own line under the body, so a long label wraps there instead
-              // of pushing the dismiss control out of a narrow window.
+              // of pushing the dismiss control out of a narrow window. `TOUCH_TARGET` makes it at
+              // least 44 px each way on a phone; the button is not a flex box, so the label stays
+              // left-aligned under the body.
               <button
                 type="button"
-                class="mt-1 rounded py-1 text-left font-semibold underline underline-offset-4 break-words"
+                data-e2e={action.dataE2E}
+                class={`mt-1 rounded py-1 text-left font-semibold underline underline-offset-4 break-words ${TOUCH_TARGET}`}
                 onClick={runAction}
               >
                 {action.label}

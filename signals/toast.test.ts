@@ -302,6 +302,16 @@ describe("createToastStore actions", () => {
     expect(undone).toBe(1)
   })
 
+  it("carries an action's dataE2E onto its entry unchanged", () => {
+    const store = createToastStore({ nextId: counterIds() })
+    store.info({
+      body: "Note deleted",
+      action: { label: "Undo", onAction: () => {}, dataE2E: "note-undo" },
+    })
+
+    expect(store.list.value[0].action?.dataE2E).toBe("note-undo")
+  })
+
   it("gives an entry no action key when its message named none", () => {
     const store = createToastStore({ nextId: counterIds() })
     store.info({ body: "Saved" })

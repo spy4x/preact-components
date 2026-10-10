@@ -2445,7 +2445,136 @@ async function toastrActionChecks(devtools: Devtools): Promise<void> {
   await toastrActionFocusReturnCheck(devtools, "dismiss")
   await toastrActionKeepsMovedFocusCheck(devtools)
   await toastrActionNarrowCheck(devtools)
+  await toastrActionTargetCheck(devtools)
   await devtools.evaluate<null>(`(globalThis.__verifyToastr?.clear?.click(), null)`)
+}
+
+/** One toast's action button, as {@link toastrActionTargetCheck} reads it. */
+interface ActionTarget {
+  /** The button's `data-e2e`, or `null` when it has no such attribute. */
+  hook: string | null
+  /** The button's box in CSS pixels, where the toast's slide has ended. */
+  width: number
+  height: number
+}
+
+/** What {@link toastrActionTargetCheck} reads. */
+interface TargetReading {
+  ok: boolean
+  /** What was missing, when `ok` is false. */
+  reason: string
+  /** The hook the card says it gave the Undo toast's action, off its button's `data-action-hook`. */
+  wanted: string
+  /** How many elements in the stack carry that hook while the Undo toast is alone on it. */
+  hooked: number
+  /** Whether the one element carrying the hook is the button labelled Undo. */
+  hookIsAction: boolean
+  /** The Undo toast's action, whose store message named a `dataE2E` for it. */
+  short: ActionTarget
+  /** The long-label toast's action, whose store message named none. */
+  long: ActionTarget
+}
+
+/** The smallest side a touch target may have, in CSS pixels. */
+const TOUCH_TARGET_PX = 44
+
+/**
+ * #671: a toast's action button carries the `data-e2e` its store message asked for, carries none
+ * when the message asked for none, and at a phone's width is at least 44 px tall and wide — with a
+ * four-letter label, which would otherwise be narrower, and with one long enough to wrap.
+ *
+ * Both toasts come out of the card's real `createToastStore`, so the hook is read after it has
+ * crossed the store.
+ *
+ * @param devtools The connected session, on a hydrated page.
+ */
+async function toastrActionTargetCheck(devtools: Devtools): Promise<void> {
+  await devtools.send("Emulation.setDeviceMetricsOverride", {
+    width: NARROW_WIDTH,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  let reading: TargetReading
+  try {
+    reading = await devtools.evaluate<TargetReading>(`(async () => {
+      const { card, region, clear } = globalThis.__verifyToastr ?? {}
+      const undo = card?.querySelector('[data-e2e="toast-undo"]') ?? null
+      const long = card?.querySelector('[data-e2e="toast-undo-long"]') ?? null
+      const none = { hook: null, width: 0, height: 0 }
+      const blank = { wanted: "", hooked: 0, hookIsAction: false, short: none, long: none }
+      const wanted = undo?.dataset.actionHook ?? ""
+      if (!region || !clear || undo === null || long === null || wanted === "") {
+        return { ...blank, ok: false, reason: "the Toastr card is missing its live area, its " +
+          'clear button, its long-action button or an Undo button with a data-action-hook' }
+      }
+      const until = ${PAGE_UNTIL}
+      // Push one toast alone, wait for its slide to end, and read its action button.
+      const push = async (button, hook) => {
+        clear.click()
+        await until(() => region.children.length === 0)
+        button.click()
+        await until(() => region.querySelector('[data-e2e="' + hook + '"]') !== null)
+        const toast = region.querySelector('[data-e2e="' + hook + '"]')
+        const label = button.dataset.label ?? ""
+        const action = [...(toast?.querySelectorAll("button") ?? [])]
+          .find((candidate) => (candidate.textContent ?? "").trim() === label) ?? null
+        if (toast === null || action === null) return null
+        await until(() => toast.getAnimations({ subtree: true }).length === 0)
+        const rect = action.getBoundingClientRect()
+        return {
+          action,
+          target: { hook: action.getAttribute("data-e2e"), width: rect.width, height: rect.height },
+        }
+      }
+      const short = await push(undo, "guide-toast-undo")
+      const carriers = [...region.querySelectorAll('[data-e2e="' + wanted + '"]')]
+      const hookIsAction = short !== null && carriers.length === 1 && carriers[0] === short.action
+      const lengthy = await push(long, "guide-toast-undo-long")
+      if (short === null || lengthy === null) {
+        return { ...blank, ok: false, reason: "a toast arrived without a button labelled with " +
+          "its card button's data-label" }
+      }
+      return {
+        ok: true,
+        reason: "",
+        wanted,
+        hooked: carriers.length,
+        hookIsAction,
+        short: short.target,
+        long: lengthy.target,
+      }
+    })()`)
+  } finally {
+    await devtools.send("Emulation.clearDeviceMetricsOverride")
+  }
+
+  const show = (hook: string | null) => hook === null ? "no data-e2e" : `data-e2e="${hook}"`
+  check(
+    "a toast action's dataE2E, set on the store message, is the data-e2e of its button, and an " +
+      "action that names none has no data-e2e",
+    reading.ok && reading.short.hook === reading.wanted && reading.hooked === 1 &&
+      reading.hookIsAction && reading.long.hook === null,
+    !reading.ok
+      ? reading.reason
+      : `the card asked for "${reading.wanted}": the Undo button has ${
+        show(reading.short.hook)
+      }, ` +
+        `${reading.hooked} element(s) in the stack carry it, and the long action, which asked ` +
+        `for none, has ${show(reading.long.hook)}`,
+  )
+
+  const size = (target: ActionTarget) => `${target.width}×${target.height}`
+  const bigEnough = (target: ActionTarget) =>
+    target.width >= TOUCH_TARGET_PX && target.height >= TOUCH_TARGET_PX
+  check(
+    `at ${NARROW_WIDTH}px a toast's action button is at least ${TOUCH_TARGET_PX}px tall and ` +
+      "wide, with a short label and with a long one",
+    reading.ok && bigEnough(reading.short) && bigEnough(reading.long),
+    !reading.ok
+      ? reading.reason
+      : `short label ${size(reading.short)}, long label ${size(reading.long)}`,
+  )
 }
 
 /**

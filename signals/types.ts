@@ -58,6 +58,11 @@ export interface ToastAction {
    * that toast. An async callback's rejection is not caught: handle it inside the callback.
    */
   onAction: () => void
+  /**
+   * Test hook: `Toastr` puts it on the action's button as `data-e2e`, so a test can press this one
+   * button. Omitted, the button carries no such attribute.
+   */
+  dataE2E?: string
 }
 
 /** Notification content the store hands to its toast port. */

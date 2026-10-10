@@ -4,6 +4,7 @@ import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
+import { TOUCH_TARGET } from "./page-header.tsx"
 import {
   defaultToastActionDuration,
   defaultToastDuration,
@@ -249,6 +250,37 @@ describe("Toastr", () => {
     expect(dismissed).toEqual([7])
   })
 
+  it("puts an action's data-e2e on its button, and none when the action names none", () => {
+    const html = render(
+      <Toastr
+        toasts={[
+          {
+            id: 1,
+            body: "Note deleted",
+            action: { label: "Undo", onAction: () => {}, dataE2E: "note-undo" },
+          },
+          { id: 2, body: "Draft saved", action: { label: "Rename", onAction: () => {} } },
+        ]}
+        onDismiss={() => {}}
+      />,
+    )
+
+    expect(html.match(/<button[^>]*>Undo<\/button>/)?.[0]).toContain('data-e2e="note-undo"')
+    expect(html.match(/<button[^>]*>Rename<\/button>/)?.[0]).not.toContain("data-e2e")
+    expect(countOccurrences(html, "data-e2e")).toBe(1)
+  })
+
+  it("gives the action button the library's touch target", () => {
+    const html = render(
+      <Toastr
+        toasts={[{ id: 1, body: "Note deleted", action: { label: "Undo", onAction: () => {} } }]}
+        onDismiss={() => {}}
+      />,
+    )
+
+    expect(html.match(/<button[^>]*>Undo<\/button>/)?.[0]).toContain(TOUCH_TARGET)
+  })
+
   it("renders no action button for a toast without an action", () => {
     const html = render(<Toastr toasts={[{ id: 1, body: "Saved" }]} onDismiss={() => {}} />)
 
@@ -362,6 +394,15 @@ type SharedActionField = NonNullable<ToastEntry["action"] & ToastItem["action"]>
 const _actionIsTheSharedName: SharedActionField = { label: "Undo", onAction: () => {} }
 
 /**
+ * The same guard for the action's test hook: renaming `dataE2E` on either side's `ToastAction`, or
+ * retyping one side to something disjoint from `string`, makes this line a type error.
+ */
+type SharedActionHook = NonNullable<
+  NonNullable<ToastEntry["action"]>["dataE2E"] & NonNullable<ToastItem["action"]>["dataE2E"]
+>
+const _actionHookIsTheSharedName: SharedActionHook = "note-undo"
+
+/**
  * What these tests prove, and what they cannot.
  *
  * They build toasts through a real `createToastStore` and ask the component's own
@@ -449,6 +490,19 @@ describe("Toastr wired to createToastStore", () => {
     const html = render(<Toastr toasts={store.list.value} onDismiss={store.remove} />)
 
     expect(html).toMatch(/<button[^>]*>Undo<\/button>/)
+  })
+
+  it("renders the data-e2e a store entry's action carries on the action button", () => {
+    const store = createToastStore({ nextId: () => "undo" })
+    store.info({
+      body: "Note deleted",
+      action: { label: "Undo", onAction: () => {}, dataE2E: "note-undo" },
+    })
+
+    const html = render(<Toastr toasts={store.list.value} onDismiss={store.remove} />)
+
+    expect(store.list.value[0].action?.dataE2E).toBe("note-undo")
+    expect(html.match(/<button[^>]*>Undo<\/button>/)?.[0]).toContain('data-e2e="note-undo"')
   })
 
   it("shows the title the store filled in, and the one a caller gave it", () => {
