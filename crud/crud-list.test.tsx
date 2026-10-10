@@ -129,6 +129,12 @@ describe("CrudList", () => {
     expect(storeList({ store: fakeStore() })).not.toContain(`role="alert"`)
   })
 
+  it("names the Search button Search, or what the app calls it", () => {
+    expect(storeList({ store: fakeStore() })).toContain(`type="submit" title="Search"`)
+    expect(storeList({ store: fakeStore(), searchLabel: "Find a region" }))
+      .toContain(`type="submit" title="Find a region"`)
+  })
+
   it("binds the search box to the query signal", () => {
     expect(storeList({ store: fakeStore(), query: signal("north") })).toContain(`value="north"`)
   })
