@@ -55,6 +55,17 @@ const READY: Partial<Record<GuidePageId, (page: Page) => Promise<unknown>>> = {
 }
 
 /**
+ * An element whose contrast another spec measures, so the page's scan runs every rule on it except
+ * that one. A page with no entry is scanned whole.
+ */
+const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
+  // The Map's credit line is opaque and lies over tiles Leaflet blends with `plus-lighter`. axe
+  // 4.13 has no formula for that blend mode: it throws on this one element and then reports no
+  // contrast for the whole page. `map.spec.ts` measures the line with the tiles kept away.
+  map: '#demo-Map [data-e2e="map-attribution"]',
+}
+
+/**
  * One page in one palette: each axe rule fails on exactly as many elements as is known, and on
  * none when the rule is not listed.
  *
@@ -74,10 +85,22 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark"): Spec {
       }
       await READY[pageId]?.(page)
 
-      const { violations, passes } = await new AxeBuilder({ page }).analyze()
+      const apart = CONTRAST_ELSEWHERE[pageId]
+      const whole = new AxeBuilder({ page })
+      const scans = [await (apart ? whole.exclude(apart) : whole).analyze()]
+      if (apart) {
+        scans.push(
+          await new AxeBuilder({ page }).include(apart).disableRules(["color-contrast"]).analyze(),
+        )
+      }
+      const passes = scans[0].passes
+      const incomplete = scans.flatMap((scan) => scan.incomplete)
       const known = KNOWN_VIOLATIONS[pageId]
       const expected = (rule: string) => known[rule]?.[colorScheme === "light" ? 0 : 1] ?? 0
-      const found = new Map(violations.map(({ id, nodes }) => [id, nodes] as const))
+      const found = new Map<string, typeof passes[number]["nodes"]>()
+      for (const { id, nodes } of scans.flatMap((scan) => scan.violations)) {
+        found.set(id, [...found.get(id) ?? [], ...nodes])
+      }
 
       const problems: string[] = []
       for (const [rule, nodes] of found) {
@@ -96,11 +119,25 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark"): Spec {
           )
         }
       }
+      // A rule axe could not run comes back as "incomplete" too, with this check on the element
+      // it stopped at. It measured nothing, so it must not pass as "nothing found".
+      for (const { id, nodes } of incomplete) {
+        for (const node of nodes) {
+          const crash = [...node.any, ...node.all, ...node.none]
+            .find((check) => check.id === "error-occurred")
+          if (crash) {
+            problems.push(
+              `${id} did not run, at ${node.target.join(" ")}: ${JSON.stringify(crash.data)}`,
+            )
+          }
+        }
+      }
       if (problems.length > 0) throw new Error(problems.join(" | "))
 
+      const measured = passes.find(({ id }) => id === "color-contrast")?.nodes.length ?? 0
       const listed = Object.keys(known).filter((rule) => expected(rule) > 0)
         .map((rule) => `${rule} ×${expected(rule)}`)
-      return `${passes.length} rules pass` +
+      return `${passes.length} rules pass, contrast on ${measured} elements` +
         (listed.length > 0 ? `; known and not held: ${listed.join(", ")}` : "")
     },
   }
