@@ -14,6 +14,9 @@
     // The spacing scale and the checker that holds a file's classes to it: plain TypeScript, no
     // Deno API, so an app runs it from its own test on its own sources (README → "Spacing").
     "./spacing": "./spacing.ts",
+    // The spacing check as a ready test an app registers with its own test function, and the file
+    // walk the boundary runner in `system/` shares. Apart from `./spacing` because it reads files.
+    "./spacing-runner": "./spacing-runner.ts",
     // Build-time Vite plugins for an app that imports these packages; see `vite.ts`.
     "./vite": "./vite.ts"
   },

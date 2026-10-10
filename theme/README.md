@@ -321,23 +321,34 @@ CSS with `@apply`, HTML — and uses no Deno API, so an app can call it from its
 the whole test an app built from `spy4x/template` needs, run with `--allow-read`:
 
 ```ts
-// spacing.test.ts
-import { findOffScaleSpacing } from "@spy4x/preact-theme/spacing"
-import { expect } from "@std/expect"
-import { walk } from "@std/fs/walk"
+// tests/spacing.test.ts
+import { registerSpacingTests } from "@spy4x/preact-theme/spacing-runner"
 
-Deno.test("every spacing class is on the scale", async () => {
-  const found: string[] = []
-  for (const root of ["apps", "libs"]) {
-    for await (const file of walk(root, { exts: [".ts", ".tsx", ".css"], skip: [/\.test\./] })) {
-      for (const v of findOffScaleSpacing(await Deno.readTextFile(file.path))) {
-        found.push(`${file.path}:${v.line}:${v.column} ${v.className} — ${v.reason}`)
-      }
-    }
-  }
-  expect(found).toEqual([])
+registerSpacingTests({
+  test: Deno.test,
+  root: new URL("../", import.meta.url),
+  directories: ["apps", "libs"],
+  requiredFiles: ["apps/spa/src/app.tsx"],
 })
 ```
+
+The `@spy4x/preact-theme/spacing-runner` subpath holds that runner and the file walk under it. It
+imports no test framework: you pass your own `test` function, and a failure is a thrown `Error`.
+[`docs/app-checks.md`](../docs/app-checks.md) has every option.
+
+- `registerSpacingTests(options)` registers one test that reads every source file in
+  `options.directories` and fails with each finding as `file:line:column class — reason`. It fails
+  too when a directory is missing or holds no file to check, so the guard cannot pass by walking
+  nothing.
+- `guardFiles(options)` is the walk on its own: the files under each directory with one of
+  `extensions`, as sorted paths relative to the root. It leaves out test files and
+  `skipDirectories`, and throws for an empty `directories` list, a missing or empty directory, a
+  symbolic link with a checked extension and a file under `requiredFiles` it did not find.
+- `guardRoot(root)` turns a path or a `file:` URL into a path with no trailing separator.
+- `DEFAULT_SKIPPED_DIRECTORIES` is `node_modules`, `dist`, `build`, `.vite` and `_fresh`;
+  `DEFAULT_SPACING_EXTENSIONS` is `.ts`, `.tsx`, `.css` and `.html`.
+- `SpacingRunnerOptions` and `GuardWalkOptions` type the options, `GuardTest` the test function and
+  `GuardFileSystem` the reader passed as `fs` (Deno's file system by default).
 
 Leave test files out: they spell out classes to assert on. Comments are read, because Tailwind's
 own scanner reads them and emits CSS for a class it finds there; a word counts only when it has the

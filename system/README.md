@@ -927,15 +927,28 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   and `appDirectories` (directory names such as `"apps"` that a relative import must not resolve
   into) default to none, because only the app knows them.
 
-```ts
-import { fromFileUrl } from "@std/path"
-import { checkModule } from "@spy4x/preact-system/boundary"
+`@spy4x/preact-system/boundary-runner` is that test, ready to register. It imports no test
+framework: you pass your own `test` function, and a failure is a thrown `Error` that lists every
+violation. [`docs/app-checks.md`](../docs/app-checks.md) has every option.
 
-Deno.test("screens stay pure", async () => {
-  const filename = fromFileUrl(new URL("./screens/profile.tsx", import.meta.url))
-  const source = await Deno.readTextFile(filename)
-  const found = checkModule(source, { filename, appAliases: ["@api/"], appDirectories: ["apps"] })
-  if (found.length > 0) throw new Error(found.map((v) => v.message).join("\n"))
+- `registerBoundaryTests(options)` registers a test that runs the rule over every module in
+  `options.directories`, and fails too when a directory is missing or holds no module. With
+  `boundary.appAliases`, `refusedImports` or `allowedImports` set, it registers a second test that
+  checks those lists: each alias and refused import must be refused, each allowed import must pass.
+- `BoundaryRunnerOptions` types the options; `DEFAULT_BOUNDARY_EXTENSIONS` is `.ts` and `.tsx`.
+
+```ts
+// tests/ui-boundary.test.ts
+import { registerBoundaryTests } from "@spy4x/preact-system/boundary-runner"
+
+registerBoundaryTests({
+  test: Deno.test,
+  root: new URL("../", import.meta.url),
+  directories: ["libs/ui"],
+  boundary: { appAliases: ["@api/"], appDirectories: ["apps"] },
+  requiredFiles: ["libs/ui/auth-screen.tsx"],
+  refusedImports: ["../../apps/spa/src/state/auth.ts"],
+  allowedImports: ["./progressive.tsx"],
 })
 ```
 
@@ -947,6 +960,38 @@ This library's own components are not pure screens in that sense: several keep l
 signal and touch `document` inside an effect, which "Component rules" in `AGENTS.md` allows.
 `boundary.test.ts` holds `ui/` and `system/` to the narrower part that does apply: no router, no
 `@spy4x/preact-signals` store, no network call and no `history` or storage access.
+
+## The Playwright base configuration
+
+`@spy4x/preact-system/playwright` is a development tool too: the Playwright options every app
+shares, so an app's `playwright.config.ts` holds only its own values.
+
+- `playwrightBaseConfig(options)` takes the app's `baseURL`, whether the run is in CI (`ci`), the
+  device from the app's own Playwright (`chromium: devices["Desktop Chrome"]`) and optional extra
+  `use` options. It returns `testDir` (`./e2e`), `testMatch` (any `*.e2e.ts`), `outputDir`, the CI
+  switches (`forbidOnly`, two `retries`), one worker, the timeouts, the HTML and list reporters, a
+  trace kept for each failed test, `data-e2e` as the test id attribute and one `chromium` project.
+- `PlaywrightBaseOptions`, `PlaywrightBaseConfig`, `PlaywrightBaseUse` and `PlaywrightReporter` type
+  what goes in and what comes out.
+
+```ts
+// playwright.config.ts
+import { defineConfig, devices } from "@playwright/test"
+import { playwrightBaseConfig } from "@spy4x/preact-system/playwright"
+
+export default defineConfig({
+  ...playwrightBaseConfig({
+    baseURL: "http://app.localhost",
+    ci: !!Deno.env.get("CI"),
+    chromium: devices["Desktop Chrome"],
+  }),
+  webServer: { command: "deno task start", url: "http://app.localhost/health" },
+})
+```
+
+The module imports nothing, `@playwright/test` included, so this package pins no Playwright
+version. [`docs/app-checks.md`](../docs/app-checks.md) lists every shared value, says how to
+override one, and has the CI step that installs Deno into the Playwright image.
 
 ## Not in this package
 

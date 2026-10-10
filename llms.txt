@@ -490,6 +490,14 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `BoundaryLintPlugin` (type): A Deno lint plugin, typed as far as `boundaryPlugin` builds one. Import: `@spy4x/preact-system/boundary`
 - `boundaryPlugin` (helper): Build the Deno lint plugin `ui` with one rule, `boundary`, from the lists in `options`. Import: `@spy4x/preact-system/boundary`
 - `checkModule` (helper): Check one module's source against the boundary and return every violation Deno reports. Import: `@spy4x/preact-system/boundary`
+- `DEFAULT_BOUNDARY_EXTENSIONS` (constant): The file extensions the boundary guard reads by default: modules only. Import: `@spy4x/preact-system/boundary-runner`
+- `BoundaryRunnerOptions` (type): What `registerBoundaryTests` needs: where the screens are, and what they must not use. Import: `@spy4x/preact-system/boundary-runner`
+- `registerBoundaryTests` (helper): Register the boundary tests for an app's folders of pure screens. Import: `@spy4x/preact-system/boundary-runner`
+- `PlaywrightReporter` (type): One reporter: its name, then its options when it takes any. Import: `@spy4x/preact-system/playwright`
+- `PlaywrightBaseUse` (type): The `use` options `playwrightBaseConfig` sets for every app. Import: `@spy4x/preact-system/playwright`
+- `PlaywrightBaseOptions` (type): What an app tells `playwrightBaseConfig`. Import: `@spy4x/preact-system/playwright`
+- `PlaywrightBaseConfig` (type): What `playwrightBaseConfig` returns: a value for Playwright's `defineConfig`. Import: `@spy4x/preact-system/playwright`
+- `playwrightBaseConfig` (helper): Build the Playwright configuration every app shares. Import: `@spy4x/preact-system/playwright`
 
 ## @spy4x/preact-theme
 
@@ -507,6 +515,15 @@ Install: `deno add jsr:@spy4x/preact-theme`
 - `SpacingGap` (type): A named gap: a key of `SPACING_GAPS`. Import: `@spy4x/preact-theme/spacing`
 - `SpacingViolation` (type): One spacing class that breaks the scale, and where it is. Import: `@spy4x/preact-theme/spacing`
 - `findOffScaleSpacing` (helper): Finds every spacing class in `source` that uses a step outside `SPACING_STEPS` or an arbitrary value, written in square brackets or as a custom property in parentheses; every arbitrary property that sets padding, margin, a gap or their scroll forms; and every use of Tailwind's spacing function whose argument is not a numeric step. Import: `@spy4x/preact-theme/spacing`
+- `DEFAULT_SKIPPED_DIRECTORIES` (constant): Directory names a guard does not descend into by default: installed packages, build output and caches, which hold compiled classes and bundled code rather than source. Import: `@spy4x/preact-theme/spacing-runner`
+- `DEFAULT_SPACING_EXTENSIONS` (constant): The file extensions the spacing guard reads by default. Import: `@spy4x/preact-theme/spacing-runner`
+- `GuardFileSystem` (type): The file access a guard needs: the three reading methods of `FileSystemPort` from `@spy4x/platform/server/ports`. Import: `@spy4x/preact-theme/spacing-runner`
+- `GuardTest` (type): The function a runner registers its tests with: `Deno.test`, or `it` from `@std/testing/bdd`. Import: `@spy4x/preact-theme/spacing-runner`
+- `GuardWalkOptions` (type): Where a guard looks for files, and which ones it reads. Import: `@spy4x/preact-theme/spacing-runner`
+- `SpacingRunnerOptions` (type): What `registerSpacingTests` needs: the walk, and the function that registers a test. Import: `@spy4x/preact-theme/spacing-runner`
+- `guardRoot` (helper): The root as a path without a trailing separator, so `${guardRoot(root)}/${file}` is a file's absolute path. Import: `@spy4x/preact-theme/spacing-runner`
+- `guardFiles` (helper): Every file a guard should read: the files under each of `options.directories` with one of `options.extensions`, test files and skipped directories left out, as sorted paths relative to the root with `/` separators. Import: `@spy4x/preact-theme/spacing-runner`
+- `registerSpacingTests` (helper): Register one test that holds every spacing class in the app's sources to the scale: padding, margin, gap, `space-x/y` and scroll spacing use only the steps in `SPACING_STEPS`, never an arbitrary value. Import: `@spy4x/preact-theme/spacing-runner`
 - `VitePluginContext` (type): The part of Rollup's plugin context the hooks below call. Import: `@spy4x/preact-theme/vite`
 - `VitePartialResolvedId` (type): What `ViteResolveContext.resolve` answers: the id another plugin resolved a module to. Import: `@spy4x/preact-theme/vite`
 - `ViteOptimizedDep` (type): The dependency optimizer's record of one pre-bundled import. Import: `@spy4x/preact-theme/vite`
