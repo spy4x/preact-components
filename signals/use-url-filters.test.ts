@@ -105,6 +105,27 @@ describe("readAddress", () => {
     expect(agreed).toBe("q=hello&page=3")
   })
 
+  it("keeps a value changed since the last read, and loads the rest from the newer address", () => {
+    const { fields, rendered: held } = searchFields()
+    readAddress(fields, "q=hel&page=2", held)
+    fields.q.signal.value = "hell"
+
+    const agreed = readAddress(fields, "q=hel&page=3", held)
+
+    expect(fields.q.signal.value).toBe("hell")
+    expect(fields.page.signal.value).toBe(3)
+    expect(agreed).toBe("q=hel&page=3")
+  })
+
+  it("lets the address win for a filter that still holds what the last read loaded", () => {
+    const { fields, rendered: held } = searchFields()
+    readAddress(fields, "q=hello", held)
+
+    readAddress(fields, "q=hell", held)
+
+    expect(fields.q.signal.value).toBe("hell")
+  })
+
   it("lets the address win on a later read, as back and forward need", () => {
     const { fields } = searchFields()
     fields.q.signal.value = "typed"

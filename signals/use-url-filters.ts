@@ -209,37 +209,43 @@ export function restoredAddress(fragment: string, after: AddressParts): string |
  * Read the address into the filters, and answer with the query string they now agree on.
  *
  * Every field takes the value its parameter implies (see {@link resolveFilterValue}), with one
- * exception, and the exception is why this takes `rendered`. The hook reads the address in an
- * effect, which runs after the first paint, and a reader can change a filter in between: a field
- * focused the moment it appears takes the first key press before the effect has run. Overwriting
- * that value from the address would lose the key press. So on the first read only, a field whose
- * signal no longer holds the value it held at the first render keeps its value. The answer is
- * still the query string the *address* implies, which is what makes the hook's write effect see
- * the kept value as a change and write it to the address. The same holds for a filter a child
- * component sets in its own mount effect, which runs before this one: it beats the address too.
+ * exception, and the exception is why this takes `held`. The hook reads the address in an effect, a
+ * frame after the render that reported it, and writes a changed filter to the address a frame after
+ * the change. A reader can change a filter inside either gap: a field focused the moment it appears
+ * takes the first key press before the first read, and a key pressed while typing fast lands
+ * between the last write and the next read. Overwriting that value from the address would lose the
+ * key press. So a field whose signal no longer holds the value in `held` keeps its value. The
+ * answer is still the query string the *address* implies, which is what makes the hook's write
+ * effect see the kept value as a change and write it to the address. The same holds for a filter a
+ * child component sets in its own mount effect, which runs before the first read: it beats the
+ * address too.
  *
- * A later read passes no `rendered`, and the address wins for every field: back, forward, a link and
- * a push all happen after whatever the reader did before them.
+ * Every other field loads from the address and its entry in `held` is set to what it loaded, so
+ * the next read compares against this one. Back, forward, a link and a push therefore win for every
+ * field the reader has not changed in the last frame.
+ *
+ * Without `held`, the address wins for every field.
  *
  * @param fields The fields, keyed as the hook was given them.
  * @param search The query string the router reports, with or without its leading `?`.
- * @param rendered What each field's signal held when the hook first rendered, by the same keys; only
- *                 for the first read after mounting.
+ * @param held What each field's signal held when the filters and the address last agreed, by the
+ *             same keys: at the first render, after a read, after a write. Updated in place for
+ *             each field this read loads.
  * @returns The query string the address implies for these fields — what the write compares against.
  */
 export function readAddress<T extends Record<string, FilterField>>(
   fields: T,
   search: string,
-  rendered?: Readonly<Record<string, unknown>>,
+  held?: Record<string, unknown>,
 ): string {
   const params = new URLSearchParams(search)
   const writes: FilterWrite[] = []
   for (const [key, field] of Object.entries(fields)) {
     const fromAddress = resolveFilterValue(field, params.get(field.urlParam))
     writes.push(filterWrite(field, fromAddress))
-    const changedEarly = rendered !== undefined && key in rendered &&
-      field.signal.peek() !== rendered[key]
-    if (!changedEarly) field.signal.value = fromAddress
+    if (held !== undefined && key in held && field.signal.peek() !== held[key]) continue
+    field.signal.value = fromAddress
+    if (held !== undefined) held[key] = fromAddress
   }
   return filterSearch(search, writes)
 }
@@ -295,21 +301,17 @@ export function readAddress<T extends Record<string, FilterField>>(
  * **One address change costs one history entry**, whichever direction it came from, so one press of
  * Back moves the reader once. `clearFilters` is one change, not one per field.
  *
- * **A filter the reader changes before the first read keeps its value.** The address is read in an
- * effect, after the first paint, so a field focused the moment it appears can take a key press
- * first. On that first read only, a filter whose signal no longer holds what it held at the first
- * render keeps the reader's value, and the hook writes it to the address as an ordinary filter
- * change: one history entry, fragment kept. Every other filter loads from the address as usual,
- * and every later read — back, forward, a link — lets the address win. {@link readAddress} is that
- * rule.
- *
- * **An address older than the filters is not read.** The read follows the render that reported the
- * address, a frame behind it. A filter the reader changes in that gap is written to the address at
- * once, so the address the pending read was about to use is the older of the two; that read is
- * skipped, and the one for the address just written follows. Without this, fast typing into a
- * bound field set the field back for a few milliseconds after a key, and a key pressed then lost
- * the letter before it. Back, forward and a link are never older than the filters, so they are
- * always read.
+ * **A filter the reader has just changed keeps its value over an older address.** The address is
+ * read in an effect, a frame after the render that reported it, and a changed filter is written a
+ * frame after the change, so a read can meet a filter the address has not caught up with: a field
+ * focused the moment it appears takes a key press before the first read, and fast typing puts a
+ * key between a write and the read that follows it. Such a filter keeps the reader's value, and
+ * the hook writes it to the address as an ordinary filter change: one history entry, fragment
+ * kept. Every other filter loads from the address as usual ({@link readAddress} is that rule), and
+ * a read of an address this hook has already written past is skipped whole. Before this, typing
+ * fast set the field back for a few milliseconds after a key, and a key pressed then lost the
+ * letter before it. Back, forward and a link still win over any filter the reader has not changed
+ * within the last frame.
  */
 export function useUrlFilters<T extends Record<string, FilterField>>(fields: T): UrlFilters<T> {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -348,45 +350,51 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   latestSearch.current = search
   const agreed = useRef(search)
 
-  // What every filter held when this hook first rendered, taken once and with `peek` so the render
-  // subscribes to nothing. The first read below compares against it and then sets it to `null`:
-  // only that read can be older than a change the reader made, because every later one answers an
-  // address change that happened after it.
-  const rendered = useRef<Record<string, unknown> | null | undefined>(undefined)
-  if (rendered.current === undefined) {
-    rendered.current = Object.fromEntries(
+  // What every filter held when the filters and the address last agreed: at the first render, after
+  // a read (which sets the entries it loads) and after the write effect has run. Taken with `peek`
+  // so the render subscribes to nothing. A read keeps a filter that has moved away from it.
+  const held = useRef<Record<string, unknown> | undefined>(undefined)
+  const hold = (): void => {
+    held.current = Object.fromEntries(
       Object.entries(fields).map(([key, field]) => [key, field.signal.peek()]),
     )
   }
+  if (held.current === undefined) hold()
 
   useEffect(() => {
-    // A filter can change, and be written to the address, between the render that reported
-    // `search` and this effect: the next key press in a search field lands there. `search` is then
-    // older than the filters, and reading it would set them back, so a key pressed before the
-    // newer address is read would be typed onto the older value and a letter lost. The write moved
-    // `latestSearch` on; the render that reports the address it wrote runs this effect again.
+    // A write can land between the render that reported `search` and this effect: the next key
+    // press in a search field does. `search` is then older than the address, and reading it would
+    // set the filters back until the newer one is read. The write moved `latestSearch` on, and the
+    // render that reports the address it wrote runs this effect again.
     if (search !== latestSearch.current) return
     isInitializing.value = true
-    agreed.current = readAddress(fields, search, rendered.current ?? undefined)
-    rendered.current = null
+    agreed.current = readAddress(fields, search, held.current)
     isInitializing.value = false
   }, [search])
 
   // signals → URL. Values are read first so this effect stays subscribed to every filter even on
-  // the runs it skips.
+  // the runs it skips. It runs a frame after the change that woke it, not with it.
   //
   // The read above flips `isInitializing`, which re-runs this effect after every address change —
   // including the ones this effect made. Without a comparison it would write every time: each
   // address change cost two history entries instead of one, so the browser's Back button did
   // nothing the first time it was pressed, and the write at mount replaced the whole address,
   // taking any fragment the page was carrying with it.
+  //
+  // The comparison starts from `agreed`, not from `latestSearch`: the address can have moved on
+  // since the last read (a render is ahead of its read by a frame), and filters that have not
+  // changed must not answer that with a write. They used to, which pushed the address a second
+  // time, and pushed an older one back over a write another `useUrlFilters` on the page had just
+  // made.
   useSignalEffect(() => {
     const pending = Object.values(fields).map((field) => filterWrite(field, field.signal.value))
     if (isInitializing.value) return
 
-    const next = filterSearch(latestSearch.current, pending)
-    if (next === agreed.current) return
+    const unchanged = filterSearch(agreed.current, pending) === agreed.current
+    hold()
+    if (unchanged) return
 
+    const next = filterSearch(latestSearch.current, pending)
     latestSearch.current = next
     agreed.current = next
 

@@ -2060,22 +2060,28 @@ install.watch()
 - **A filter the reader changes before the first read keeps its value.** The address is read in an
   effect, after the first paint, so a field focused the moment it appears — a shortcut that opens a
   search view, say — can take a key press before that read. Overwriting it from the address would
-  lose the letter ("hello" arriving as "ello"). So on the first read only, a filter whose signal no
-  longer holds what it held at the first render keeps the reader's value, and the hook writes it to
-  the address as an ordinary filter change: one history entry, fragment kept. Every other filter
-  still loads from the address, and every later read — back, forward, a link, a push — lets the
-  address win, because each of those happened after whatever the reader did. `readAddress` is that
-  rule. Reading the address during the render instead, so the effect had nothing to correct, would
+  lose the letter ("hello" arriving as "ello"). So a filter whose signal no longer holds what it
+  held at the first render keeps the reader's value, and the hook writes it to the address as an
+  ordinary filter change: one history entry, fragment kept. Every other filter still loads from
+  the address. `readAddress` is that rule, and the next point is the same rule after the first
+  read. Reading the address during the render instead, so the effect had nothing to correct, would
   have meant writing the signals during a render, which this library never does (#300), and a
   signal owned by a parent has already rendered its old value by then.
-- **An address older than the filters is not read.** The read runs in an effect, a frame behind the
-  render that reported the address. A filter the reader changes in that gap, such as the next key in
-  a search field, is written to the address at once, so the address the pending read holds is now
-  the older of the two. That read is skipped; the render for the address just written runs the read
-  again. It used to run, which set a typed-into field back for 5 to 24 ms after about one key in
+- **A filter the reader has just changed keeps its value over an older address.** The read runs in
+  an effect, a frame behind the render that reported the address, and a changed filter is written a
+  frame after the change. Typing fast into a bound field puts a key inside those gaps. A read of an
+  address the hook has already written past is skipped, and on any read a filter that no longer
+  holds what it held when filters and address last agreed keeps its value and is written as an
+  ordinary change. Before, such a read set the field back for 5 to 24 ms after about one key in
   five, and a key pressed in that time was typed onto the older value: "hello" could arrive as
-  "helo". Back, forward and a link are reported by a render of their own and are always read.
-  `pages/e2e/signals.spec.ts` types into the demo's search field to hold this.
+  "helo". Back, forward, a link and a push still win over any filter the reader has not changed
+  within the last frame.
+- **Filters that have not changed never write.** The write decides by comparing the filters with
+  what they held at the last read, not with the address the router last reported, which can be a
+  frame ahead of that read. The older comparison pushed the address a second time when the address
+  changed twice within a frame, and on a page with two `useUrlFilters` the one nobody touched could
+  push an older address back over the other one's write. `pages/e2e/signals.spec.ts` holds both
+  rules in a browser.
 - **One address change costs one history entry**, in either direction, so one press of Back moves
   the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
   change rather than one per field. Preact's signals adapter batches writes inside an event handler
