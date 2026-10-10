@@ -30,6 +30,20 @@ re-checks that against every package's dry-run file list, before each release ta
 | `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                                                                                                                                                                                                                                                        |
 | `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                                                                                                                                                                                                                                                   |
 
+## What belongs
+
+Decisions already taken with the test in `AGENTS.md` ("What belongs in this library"):
+
+- Kept: `Calendar`, the image lightbox, `SWUpdater`, `SEOHead` with its `head` store, and the theme
+  logic in `signals/`.
+- Removed as tied to one app: `TimeSlots` and `BookingSubmit` (its booking flow), `flattenRoutes`
+  (its route table), and `Breadcrumb` (the breadcrumb data stayed in the `head` store; nothing
+  generic was left in the visible component).
+- Removed as a renamed copy of a generic component: `ConfidenceMeter`, which duplicated `Progress`.
+- Removed because its implementation was not good enough to share: `CompareChart`.
+- Brought back: the `ThemeToggle` button, now in `ui/` on top of `createThemeStore` from
+  `signals/` (owner decision, 2026-10-02, #517). It had been removed while its logic stayed.
+
 ## Rules
 
 - **Preact + Tailwind only.** No React.
