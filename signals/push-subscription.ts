@@ -232,8 +232,8 @@ function port<T>(given: T | null | undefined, fallback: () => T | undefined): T 
  *   save: (subscription) => server.savePushSubscription(subscription),
  *   remove: (endpoint) => server.removePushSubscription(endpoint),
  * })
- * // in the settings view
- * useEffect(() => push.start(), [])
+ * // once, when the app starts, so every page load repairs a lost subscription
+ * push.start()
  * ```
  */
 export function createPushSubscription(

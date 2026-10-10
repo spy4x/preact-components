@@ -523,6 +523,11 @@ went wrong.
   it from the push service's "gone" answer to its next message.
 - The app must register a service worker (`SWUpdater` does). Without one, turning on fails with a
   message, not an endless spinner.
+- **The repair runs where the store starts.** `usePushSubscription` makes one store per mount, so
+  an app that mounts it only on its settings screen repairs a lost subscription or a changed key
+  only when the person opens settings. To repair on every page load, create one store with
+  `createPushSubscription` when the app starts, call `start()` there, and draw `PushSettings` from
+  it.
 - `serviceWorker`, `notification`, `navigator`, `matchMedia` and `visibility` are ports with the
   browser's own as defaults, so a test needs no browser. Nothing is touched before `start()`,
   `refresh()` or an action, so the store can be created on a server.
