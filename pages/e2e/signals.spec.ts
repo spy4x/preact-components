@@ -109,8 +109,7 @@ function typingSpec(first: number): Spec {
       await watchOverwrites(page)
       for (let run = first; run <= last; run++) {
         await field.pressSequentially(WORD, { delay: KEY_DELAY_MS })
-        const held = await settledQuery(page)
-        if (held !== WORD) throw new Error(`run ${run} of ${RUNS}: the field holds "${held}"`)
+        await queryBecomes(page, WORD)
         await field.fill("")
         await queryBecomes(page, "")
         const overwritten = await field.getAttribute(OVERWRITTEN)
@@ -139,6 +138,52 @@ export const specs: readonly Spec[] = [
         if (held !== FAST_WORD) throw new Error(`run ${run} of 2: the field holds "${held}"`)
         await field.fill("")
         await queryBecomes(page, "")
+      }
+    },
+  },
+  {
+    name: "useUrlFilters: a letter typed in the frame an address change is read in is kept, " +
+      "and the other filters follow the address",
+    pageId: "ui",
+    run: async (page) => {
+      // The hook reads an address change in a timer after the next frame. Typing from a frame
+      // callback registered with the change puts the letter after the render and before that read.
+      await page.locator(QUERY).evaluate((field: HTMLInputElement) => {
+        history.pushState(null, "", `?status=open${location.hash}`)
+        requestAnimationFrame(() => {
+          field.value = "x"
+          field.dispatchEvent(new Event("input", { bubbles: true }))
+        })
+      })
+      await queryBecomes(page, "x")
+      await page.locator(`[data-e2e="url-filters-status"]`).filter({ hasText: "open" }).waitFor()
+      await page.waitForFunction(() => location.search === "?status=open&q=x")
+    },
+  },
+  {
+    name: "useUrlFilters: an address that changes again as the last change is read costs no " +
+      "history entry of the hook's own",
+    pageId: "ui",
+    run: async (page) => {
+      const entries = await page.evaluate(() => history.length)
+      // The second change is made in the same task as the read of the first, which is when the
+      // status shows it: after the hook's read, before the frame its write effect runs in.
+      await page.locator(`[data-e2e="url-filters-status"]`).evaluate((status) => {
+        new MutationObserver((_, observer) => {
+          if (!status.textContent?.includes("open")) return
+          observer.disconnect()
+          history.pushState(null, "", `?status=open&tab=2${location.hash}`)
+        }).observe(status, { childList: true, characterData: true, subtree: true })
+        history.pushState(null, "", `?status=open${location.hash}`)
+      })
+      await page.waitForFunction(() => location.search === "?status=open&tab=2")
+      // Two frames: the write effect woken by the first read has run by the end of the first.
+      await page.evaluate(() =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      )
+      const after = await page.evaluate(() => `${history.length} ${location.search}`)
+      if (after !== `${entries + 2} ?status=open&tab=2`) {
+        throw new Error(`${entries} entries, then two pushes left "${after}"`)
       }
     },
   },
