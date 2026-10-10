@@ -1317,6 +1317,24 @@ describe("theme preset", () => {
     expect(btn).toContain("outline-width: 2px")
   })
 
+  it("rings a keyboard-focused square checkbox and hides the forms plugin's focus shadow", async () => {
+    const css = await preset()
+    // The whole rule, nested blocks included: up to the brace that closes the one it opens.
+    const start = css.indexOf(".pc-checkbox {")
+    let end = css.indexOf("{", start) + 1
+    for (let depth = 1; depth > 0; end++) depth += css[end] === "{" ? 1 : css[end] === "}" ? -1 : 0
+    const box = css.slice(start, end)
+    expect(box).not.toContain("--tw-ring-color: transparent")
+    expect(box.slice(box.indexOf("&:focus {"), box.indexOf("&:focus-visible {"))).toContain(
+      "box-shadow: none",
+    )
+    const ring = box.slice(box.indexOf("&:focus-visible {"))
+    expect(ring).toContain(
+      "outline: 2px solid var(--color-ring, var(--color-accent-900, oklch(0.381 0.176 304.987)))",
+    )
+    expect(ring).toContain("outline-offset: 2px")
+  })
+
   it("emits the scrollbar vendor pseudos", async () => {
     const css = await preset()
     expect(css).toContain("&::-webkit-scrollbar-thumb")
