@@ -33,7 +33,8 @@ const strokeWidths: Record<SpinnerSize, string> = {
 }
 
 /**
- * Inline spinner with an accessible live region.
+ * Inline spinner with an accessible live region. It stands still when the system asks for reduced
+ * motion.
  *
  * Contains no application state: the source component returned `null` unless the app's
  * `isLoading` signal was set. Render it conditionally instead — `<Show>` or `&&` — so the
@@ -49,7 +50,7 @@ export function LoadingSpinner(
       aria-live="polite"
     >
       <svg
-        class={cn("animate-spin text-selected", sizeClasses[size])}
+        class={cn("animate-spin text-selected motion-reduce:animate-none", sizeClasses[size])}
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
