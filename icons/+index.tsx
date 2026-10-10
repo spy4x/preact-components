@@ -1489,7 +1489,7 @@ export function IconLoading(props: IconProps): JSX.Element {
       stroke-linecap="round"
       stroke-linejoin="round"
       {...iconA11y(props)}
-      class={`animate-spin shrink-0 ${props.class || "size-5"}`}
+      class={`animate-spin motion-reduce:animate-none shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
       <path d="M12 2v4" />
@@ -1912,7 +1912,7 @@ export function IconSpinner(props: IconProps): JSX.Element {
       stroke-width="2.5"
       stroke-linecap="round"
       {...iconA11y(props)}
-      class={`animate-spin shrink-0 ${props.class || "size-5"}`}
+      class={`animate-spin motion-reduce:animate-none shrink-0 ${props.class || "size-5"}`}
     >
       {iconTitle(props)}
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
