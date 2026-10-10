@@ -62,9 +62,7 @@ import { pageHref, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
-import { type E2eTarget, runSpecs } from "./e2e/runner.ts"
-import { uiSpecs } from "./e2e/ui.spec.ts"
-import { uiGuideSpecs } from "./e2e/ui-guide.spec.ts"
+import { type E2eTarget, loadSpecs, runSpecs } from "./e2e/runner.ts"
 import {
   BlockOutcome,
   centreInView,
@@ -1427,13 +1425,15 @@ function onPage(
 let e2eTarget: E2eTarget | undefined
 
 /**
- * Run every Playwright spec under `pages/e2e/`: one file per package, listed here.
+ * Run every Playwright spec under `pages/e2e/`. The runner reads the directory, so no list here
+ * can leave a spec file out.
  *
- * @throws When the browser phase has not started the browser and the server yet.
+ * @throws When the browser phase has not started the browser and the server yet, or a spec file
+ * exports no specs.
  */
 async function e2eSpecs(): Promise<void> {
   if (!e2eTarget) throw new Error("the e2e block ran before the browser and the server existed")
-  await runSpecs(e2eTarget, [...uiSpecs, ...uiGuideSpecs])
+  await runSpecs(e2eTarget, await loadSpecs())
 }
 
 /**
@@ -1446,9 +1446,10 @@ async function e2eSpecs(): Promise<void> {
  * `signals` has no catalogue section any more and still has a file: its checks drive the demo the
  * host page renders at the end of the UI page.
  *
- * `ui` runs last of the packages on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
- * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
- * that ran after it — a failure there would then take down checks that have nothing to do with it.
+ * `ui` runs last of the packages on purpose: its Modal checks (kept last within `ui.ts` for the
+ * same reason) open a real modal dialog, and a dialog that refused to close would sit in the top
+ * layer above every check that ran after it — a failure there would then take down checks that
+ * have nothing to do with it.
  * Isolating the blocks from each other does not make that ordering redundant: it keeps a throw from
  * dropping the later packages, while the order keeps a *passing* block from leaving the page in a
  * state the next one cannot work in.

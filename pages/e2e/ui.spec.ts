@@ -1,7 +1,7 @@
 /** Playwright specs for `ui/` components, on the guide's UI page. */
 import type { Spec } from "./runner.ts"
 
-export const uiSpecs: readonly Spec[] = [
+export const specs: readonly Spec[] = [
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
     pageId: "ui",

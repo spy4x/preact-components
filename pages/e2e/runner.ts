@@ -50,6 +50,33 @@ const ACTION_TIMEOUT_MS = 10_000
 const SPEC_TIMEOUT_MS = 60_000
 
 /**
+ * Read every spec out of every `*.spec.ts` file in this directory, in file-name order.
+ *
+ * The directory is the list: a spec file cannot exist and be left out of a run. A spec file that
+ * does not export a `specs` list with at least one spec is an error rather than an empty file,
+ * because it would otherwise look covered and run nothing.
+ *
+ * @returns The specs of every file, in file-name order and each file's own order.
+ * @throws When a spec file exports no `specs` list, or an empty one.
+ */
+export async function loadSpecs(): Promise<Spec[]> {
+  const directory = new URL("./", import.meta.url)
+  const files: string[] = []
+  for await (const entry of Deno.readDir(directory)) {
+    if (entry.isFile && entry.name.endsWith(".spec.ts")) files.push(entry.name)
+  }
+  const specs: Spec[] = []
+  for (const file of files.sort()) {
+    const module: { specs?: unknown } = await import(new URL(file, directory).href)
+    if (!Array.isArray(module.specs) || module.specs.length === 0) {
+      throw new Error(`pages/e2e/${file} exports no \`specs\` list with a spec in it`)
+    }
+    specs.push(...module.specs as Spec[])
+  }
+  return specs
+}
+
+/**
  * Run every spec in its own browser context and record one check for each.
  *
  * A spec that throws or outlives its deadline is one failed check; the specs after it still run.
@@ -94,11 +121,17 @@ export async function runSpecs(target: E2eTarget, specs: readonly Spec[]): Promi
         check(spec.name, false, describeError(error).replace(/\s+/g, " ").trim())
       } finally {
         clearTimeout(deadline)
-        await context.close().catch(() => {})
+        await context.close().catch((error) =>
+          console.error(
+            `e2e: closing the context of "${spec.name}" failed: ${describeError(error)}`,
+          )
+        )
       }
     }
   } finally {
     // Detaches Playwright; the browser itself is `verify`'s to stop.
-    await browser.close().catch(() => {})
+    await browser.close().catch((error) =>
+      console.error(`e2e: detaching Playwright failed: ${describeError(error)}`)
+    )
   }
 }

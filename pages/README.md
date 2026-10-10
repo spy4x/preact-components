@@ -178,9 +178,10 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 ### A Playwright spec
 
 - **Where.** `e2e/<package>.spec.ts`, one file per package, created with the package's first spec
-  — `e2e/ui.spec.ts` for a `ui/` component, `e2e/ui-guide.spec.ts` for the guide as a whole. A new
-  file is added to the list in `e2eSpecs` in `verify.ts`.
-- **Shape.** A file exports a list of `Spec` (`e2e/runner.ts`): a name that says what is proven, the
+  — `e2e/ui.spec.ts` for a `ui/` component, `e2e/ui-guide.spec.ts` for the guide as a whole. The
+  runner reads the directory, so every `*.spec.ts` file there runs; a file that exports no spec
+  fails the `e2e` block.
+- **Shape.** A file exports `specs`, a list of `Spec` (`e2e/runner.ts`): a name that says what is proven, the
   guide page to start on, the palette, and a `run(page)` that throws when the behaviour does not
   hold. The runner opens that page in a fresh browser context, waits for hydration, and records
   one check per spec. A spec that throws, or takes over 60 seconds, is one failed check, and the
@@ -189,12 +190,13 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
   `locator.filter({ hasText })`. No sleeps and no polling loops. The dependency is
   `playwright-core`, which has no `expect`; a state is asserted by waiting for a locator that
   matches only in that state, such as `toggle.and(page.locator('[aria-checked="true"]'))`.
-- **Accessibility.** `e2e/ui-guide.spec.ts` runs every axe-core rule on every guide page, in the
-  light and the dark palette. `KNOWN_VIOLATIONS` there names the rules each page broke when axe
-  first ran; a new violation fails, and so does a listed rule the page no longer breaks, so the
-  list only shrinks. axe reports what it cannot decide as "incomplete", and the spec does not
-  fail on those. For one component's markup, run `new AxeBuilder({ page }).include(selector)` in
-  that package's spec.
+- **Accessibility.** `e2e/ui-guide.spec.ts` runs axe's default rule set on every guide page, in
+  the light and the dark palette, once the page's late content is drawn (the Map's tiles).
+  `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
+  axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
+  the number with it and the list only shrinks. axe reports what it cannot decide as
+  "incomplete", and the spec does not fail on those. For one component's markup, run
+  `new AxeBuilder({ page }).include(selector)` in that package's spec.
 - **How they run.** As the last block of `verify`'s browser phase, named `e2e`, after the blocks
   under `checks/`. Playwright attaches to the Chromium `verify` already launched
   (`connectOverCDP`) and uses the same preview server, so there is no second browser, nothing is
