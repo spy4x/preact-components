@@ -61,7 +61,7 @@ describe("CopyBlock", () => {
     expect(classes).not.toContain("whitespace-pre-wrap")
   })
 
-  it("makes a single-line block's text a Tab stop named Text to copy, or by the caller", () => {
+  it("server-renders a single-line block's text as a Tab stop named Text to copy, or by the caller", () => {
     const tag = codeTag(render(<CopyBlock text={command} singleLine />))
     expect(tag).toContain('role="group"')
     expect(tag).toContain('aria-label="Text to copy"')
