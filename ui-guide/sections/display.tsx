@@ -50,7 +50,7 @@ import {
 import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
-import { useId } from "preact/hooks"
+import { useId, useRef } from "preact/hooks"
 import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -358,19 +358,35 @@ function CardHeaderDemo() {
   )
 }
 
-/** A card with all three parts, the way most cards are written. */
+/**
+ * A card with all three parts, the way most cards are written. Its `ref` reaches the card's own
+ * `<div>`: "Focus via ref" moves focus there, as a page does after it adds a card to a list.
+ */
 function CardDemo() {
+  const cardRef = useRef<HTMLDivElement>(null)
   return (
-    <Card>
-      <CardHeader title="Ada Lovelace" action={<Button variant="ghost" size="sm">Edit</Button>} />
-      <CardBody>
-        <p class="text-sm text-muted">Administrator, since March 2026.</p>
-      </CardBody>
-      <CardFooter class="justify-end">
-        <Button variant="outline" size="sm">Dismiss</Button>
-        <Button size="sm">Open</Button>
-      </CardFooter>
-    </Card>
+    <Stack gap="sm">
+      <Card ref={cardRef} tabIndex={-1} data-e2e="ref-target">
+        <CardHeader title="Ada Lovelace" action={<Button variant="ghost" size="sm">Edit</Button>} />
+        <CardBody>
+          <p class="text-sm text-muted">Administrator, since March 2026.</p>
+        </CardBody>
+        <CardFooter class="justify-end">
+          <Button variant="outline" size="sm">Dismiss</Button>
+          <Button size="sm">Open</Button>
+        </CardFooter>
+      </Card>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => cardRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -1297,7 +1313,10 @@ export const displayDemos = {
   <CardHeader title="Invoices" action={<Button size="sm">New</Button>} />
   <CardBody>…</CardBody>
   <CardFooter><Button variant="outline" size="sm">Dismiss</Button></CardFooter>
-</Card>`,
+</Card>
+
+// A ref reaches the card's own element:
+<Card ref={cardRef} tabIndex={-1}>…</Card>`,
     render: () => <CardDemo />,
   },
   CardHeader: {

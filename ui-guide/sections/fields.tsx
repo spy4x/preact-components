@@ -128,9 +128,12 @@ function FieldDemo() {
 /** The search field of every list page in the ecosystem, as one component. */
 function InputButtonDemo() {
   const query = useSignal("")
+  const queryRef = useRef<HTMLInputElement>(null)
   return (
     <Stack gap="sm" class="max-w-xs">
       <InputButton
+        ref={queryRef}
+        data-e2e="ref-target"
         type="search"
         name="guide-input-button"
         icon={<IconSearch class="size-4" />}
@@ -143,6 +146,16 @@ function InputButtonDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         query: {query.value || "(empty)"}
       </p>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => queryRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -213,12 +226,15 @@ function InputDemo() {
   )
 }
 
-/** The same contract on the multi-line box. */
+/** The same contract on the multi-line box, and the same ref: it reaches the `<textarea>`. */
 function TextareaDemo() {
   const notes = useSignal("")
+  const notesRef = useRef<HTMLTextAreaElement>(null)
   return (
     <Stack gap="sm" class="max-w-xs">
       <Textarea
+        ref={notesRef}
+        data-e2e="ref-target"
         name="guide-textarea"
         rows={3}
         placeholder="Notes"
@@ -229,16 +245,29 @@ function TextareaDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         {notes.value.length} characters
       </p>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => notesRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
 
-/** `options` as data, and the selection read back off the event. */
+/** `options` as data, the selection read back off the event, and a ref on the `<select>`. */
 function SelectDemo() {
   const role = useSignal("editor")
+  const roleRef = useRef<HTMLSelectElement>(null)
   return (
     <Stack gap="sm" class="max-w-xs">
       <Select
+        ref={roleRef}
+        data-e2e="ref-target"
         name="guide-select"
         aria-label="Role"
         value={role.value}
@@ -252,6 +281,16 @@ function SelectDemo() {
       <p class="text-xs text-muted" data-e2e="controlled-value">
         role: {role.value}
       </p>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="ref-focus"
+          onClick={() => roleRef.current?.focus()}
+        >
+          Focus via ref
+        </Button>
+      </Cluster>
     </Stack>
   )
 }
@@ -554,7 +593,12 @@ export const fieldDemos = {
         type: "string | null",
         description: "An error under the control, which also marks it invalid.",
       },
-      { name: "required", type: "boolean", default: "false", description: "Marks the label." },
+      {
+        name: "required",
+        type: "boolean",
+        default: "false",
+        description: "Makes the control required and marks the label with a `*`.",
+      },
       {
         name: "suffix",
         type: "boolean",
@@ -593,14 +637,16 @@ export const fieldDemos = {
     render: () => <InputDemo />,
   },
   Textarea: {
-    summary: "A multi-line text field, with the same `value` in and `onInput` out as `Input`.",
+    summary:
+      "A multi-line text field, with the same `value` in and `onInput` out as `Input`, and a `ref` that reaches the `<textarea>`.",
     wide: false,
     snippet:
       `<Textarea rows={4} value={notes.value} onInput={(event) => notes.value = event.currentTarget.value} />`,
     render: () => <TextareaDemo />,
   },
   Select: {
-    summary: "A native drop-down list whose options are passed as data.",
+    summary:
+      "A native drop-down list whose options are passed as data, with a `ref` that reaches the `<select>`.",
     wide: false,
     snippet: `<Select
   value={role.value}
@@ -668,6 +714,11 @@ export const fieldDemos = {
         name: "value / onInput",
         type: "string / (event) => void",
         description: "The field's text, as on `Input`; every other input attribute passes through.",
+      },
+      {
+        name: "ref",
+        type: "Ref<HTMLInputElement>",
+        description: "Reaches the text field, so a form can focus it.",
       },
     ],
     snippet: `<InputButton
