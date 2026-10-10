@@ -961,6 +961,38 @@ signal and touch `document` inside an effect, which "Component rules" in `AGENTS
 `boundary.test.ts` holds `ui/` and `system/` to the narrower part that does apply: no router, no
 `@spy4x/preact-signals` store, no network call and no `history` or storage access.
 
+## The Playwright base configuration
+
+`@spy4x/preact-system/playwright` is a development tool too: the Playwright options every app
+shares, so an app's `playwright.config.ts` holds only its own values.
+
+- `playwrightBaseConfig(options)` takes the app's `baseURL`, whether the run is in CI (`ci`), the
+  device from the app's own Playwright (`chromium: devices["Desktop Chrome"]`) and optional extra
+  `use` options. It returns `testDir` (`./e2e`), `testMatch` (any `*.e2e.ts`), `outputDir`, the CI
+  switches (`forbidOnly`, two `retries`), one worker, the timeouts, the HTML and list reporters, a
+  trace kept for each failed test, `data-e2e` as the test id attribute and one `chromium` project.
+- `PlaywrightBaseOptions`, `PlaywrightBaseConfig`, `PlaywrightBaseUse` and `PlaywrightReporter` type
+  what goes in and what comes out.
+
+```ts
+// playwright.config.ts
+import { defineConfig, devices } from "@playwright/test"
+import { playwrightBaseConfig } from "@spy4x/preact-system/playwright"
+
+export default defineConfig({
+  ...playwrightBaseConfig({
+    baseURL: "http://app.localhost",
+    ci: !!Deno.env.get("CI"),
+    chromium: devices["Desktop Chrome"],
+  }),
+  webServer: { command: "deno task start", url: "http://app.localhost/health" },
+})
+```
+
+The module imports nothing, `@playwright/test` included, so this package pins no Playwright
+version. [`docs/app-checks.md`](../docs/app-checks.md) lists every shared value, says how to
+override one, and has the CI step that installs Deno into the Playwright image.
+
 ## Not in this package
 
 | Left out                            | Why                                                                                                                                                                                                          |
