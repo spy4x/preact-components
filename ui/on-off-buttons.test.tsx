@@ -30,6 +30,28 @@ describe("OnOffButtons", () => {
     expect(render(<OnOffButtons onSwitch={() => {}} />)).not.toContain("bg-selected")
   })
 
+  it("says which half is pressed with aria-pressed, not only with colour", () => {
+    expect(pressed(render(<OnOffButtons value onSwitch={() => {}} />))).toEqual(["true", "false"])
+    expect(pressed(render(<OnOffButtons value={false} onSwitch={() => {}} />)))
+      .toEqual(["false", "true"])
+  })
+
+  it("reports neither half pressed when value is undefined", () => {
+    expect(pressed(render(<OnOffButtons onSwitch={() => {}} />))).toEqual(["false", "false"])
+  })
+
+  it("names the pair as a group after its two labels by default", () => {
+    const html = render(<OnOffButtons onSwitch={() => {}} onLabel="Active" offLabel="Archived" />)
+
+    expect(html).toContain('<div role="group" aria-label="Active / Archived"')
+  })
+
+  it("names the group with the caller's label", () => {
+    const html = render(<OnOffButtons onSwitch={() => {}} label="Rows to show" />)
+
+    expect(html).toContain('<div role="group" aria-label="Rows to show"')
+  })
+
   it("renders the amounts under the labels", () => {
     const html = render(<OnOffButtons value onSwitch={() => {}} amount={{ on: 12, off: 3 }} />)
 
@@ -63,6 +85,11 @@ describe("OnOffButtons", () => {
       .toContain("flex-col")
   })
 })
+
+/** The `aria-pressed` value of each button, in document order. */
+function pressed(html: string): string[] {
+  return [...html.matchAll(/<button[^>]*aria-pressed="([^"]*)"/g)].map((match) => match[1])
+}
 
 function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1
