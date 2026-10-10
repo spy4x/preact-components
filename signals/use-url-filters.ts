@@ -302,6 +302,14 @@ export function readAddress<T extends Record<string, FilterField>>(
  * change: one history entry, fragment kept. Every other filter loads from the address as usual,
  * and every later read — back, forward, a link — lets the address win. {@link readAddress} is that
  * rule.
+ *
+ * **An address older than the filters is not read.** The read follows the render that reported the
+ * address, a frame behind it. A filter the reader changes in that gap is written to the address at
+ * once, so the address the pending read was about to use is the older of the two; that read is
+ * skipped, and the one for the address just written follows. Without this, fast typing into a
+ * bound field set the field back for a few milliseconds after a key, and a key pressed then lost
+ * the letter before it. Back, forward and a link are never older than the filters, so they are
+ * always read.
  */
 export function useUrlFilters<T extends Record<string, FilterField>>(fields: T): UrlFilters<T> {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -352,6 +360,12 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   }
 
   useEffect(() => {
+    // A filter can change, and be written to the address, between the render that reported
+    // `search` and this effect: the next key press in a search field lands there. `search` is then
+    // older than the filters, and reading it would set them back, so a key pressed before the
+    // newer address is read would be typed onto the older value and a letter lost. The write moved
+    // `latestSearch` on; the render that reports the address it wrote runs this effect again.
+    if (search !== latestSearch.current) return
     isInitializing.value = true
     agreed.current = readAddress(fields, search, rendered.current ?? undefined)
     rendered.current = null

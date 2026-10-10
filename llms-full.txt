@@ -2068,6 +2068,14 @@ install.watch()
   rule. Reading the address during the render instead, so the effect had nothing to correct, would
   have meant writing the signals during a render, which this library never does (#300), and a
   signal owned by a parent has already rendered its old value by then.
+- **An address older than the filters is not read.** The read runs in an effect, a frame behind the
+  render that reported the address. A filter the reader changes in that gap, such as the next key in
+  a search field, is written to the address at once, so the address the pending read holds is now
+  the older of the two. That read is skipped; the render for the address just written runs the read
+  again. It used to run, which set a typed-into field back for 5 to 24 ms after about one key in
+  five, and a key pressed in that time was typed onto the older value: "hello" could arrive as
+  "helo". Back, forward and a link are reported by a render of their own and are always read.
+  `pages/e2e/signals.spec.ts` types into the demo's search field to hold this.
 - **One address change costs one history entry**, in either direction, so one press of Back moves
   the reader once. `clearFilters` batches its writes through `clearFilterFields`, so clearing is one
   change rather than one per field. Preact's signals adapter batches writes inside an event handler
@@ -2237,7 +2245,8 @@ could have gone around. No network, no timers left running. The ordering rules a
 with a second fake `fetch` that holds every request open until the test answers it, so two writes
 to one row can be put in flight and answered in the other order. `useUrlFilters` is the one
 exception: it needs a DOM and a router, so only its pure coercion helpers are covered here and its
-binding to the address bar is covered in a real browser, by `pages/checks/signals.ts` — run with
+binding to the address bar is covered in a real browser, by `pages/checks/signals.ts` and
+`pages/e2e/signals.spec.ts` — run with
 `deno task --cwd pages build` and `deno task --cwd pages verify`. `useNow` is split the same way:
 `now.test.ts` drives `createNow` with a fake clock, fake timers and a fake page, and the effect that
 starts it on mount and stops it on unmount is checked in the browser by the same file.
