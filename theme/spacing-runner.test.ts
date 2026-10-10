@@ -147,7 +147,7 @@ describe("guardFiles", () => {
 })
 
 describe("registerSpacingTests", () => {
-  it("registers one test named after the directories and reads nothing until it runs", () => {
+  it("registers one test named after the directories", () => {
     const { test, tests } = collector()
     registerSpacingTests({ test, root: ROOT, directories: ["apps", "libs"], fs: memoryFs({}) })
     expect(tests.map((t) => t.name)).toEqual(["every spacing class in apps, libs is on the scale"])
