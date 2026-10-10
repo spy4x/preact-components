@@ -114,11 +114,11 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
-      "PushSettings: when the person blocks the prompt, the block explains how to allow notifications, has no button left, and the focus moves to the explanation",
+      "PushSettings: when the person blocks the prompt, the block explains how to allow notifications, has no button left, and the focus moves to the explanation, which is not announced a second time",
     pageId: "system",
     run: async (page) => {
       const push = pushCase(page, "deny")
-      const explanation = push.block.getByText("Your browser is blocking notifications")
+      const explanation = push.block.getByText("Notifications are blocked for this app")
 
       await push.statusIs("off")
       await push.turnOn.click()
@@ -127,6 +127,9 @@ export const specs: readonly Spec[] = [
       await push.holds(1, "no", 0)
       await push.block.getByRole("button").first().waitFor({ state: "detached" })
       await push.focusIsOn(explanation)
+      // The focused explanation is read out; the live region saying it too would say it twice.
+      const announced = await push.announced()
+      if (announced !== "") throw new Error(`the block also announced "${announced}"`)
       await push.axe("blocked")
     },
   },
@@ -143,8 +146,38 @@ export const specs: readonly Spec[] = [
 
       await push.statusIs("blocked")
       await push.announces(
-        "Your browser is blocking notifications from this site. To allow them, open the site settings next to the address bar, set Notifications to Allow, then come back here.",
+        "Notifications are blocked for this app. To allow them, open your browser's settings for this site, or your device's notification settings for this app, set Notifications to Allow, then come back here.",
       )
+    },
+  },
+  {
+    name:
+      "usePushSubscription: a key that arrives after the first render moves the block from checking to off, and taking the block off the page removes its listener",
+    pageId: "system",
+    run: async (page) => {
+      const root = page.locator(`${CARD} [data-e2e="push-late"]`)
+      const block = root.getByRole("group", { name: "Notifications" })
+      const statusIs = (status: string) =>
+        block.and(page.locator(`[data-push-status="${status}"]`)).waitFor()
+      /** Draws the count again, then waits for it to read this. */
+      const listeners = async (count: number) => {
+        await root.locator(`[data-e2e="push-count"]`).click()
+        await root.locator(`[data-e2e="push-listeners"]`).getByText(
+          `visibility listeners: ${count}`,
+          { exact: true },
+        ).waitFor()
+      }
+
+      await statusIs("checking")
+      await block.getByText("Checking this device…").waitFor()
+      await root.locator(`[data-e2e="push-give-key"]`).click()
+      await statusIs("off")
+      await block.getByRole("button", { name: "Turn on notifications" }).waitFor()
+      await listeners(1)
+
+      await root.locator(`[data-e2e="push-unmount"]`).click()
+      await block.waitFor({ state: "detached" })
+      await listeners(0)
     },
   },
   {

@@ -387,10 +387,10 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
   },
   "demo-PushSettings": {
     selector: `[data-e2e^="push-"] [data-push-status]`,
-    parts: 2,
-    reason:
-      "usePushSubscription reads the browser in an effect: the two blocks drawn from it are " +
-      "served as Checking this device and show their state and button only in the browser; the " +
+    parts: 3,
+    reason: "usePushSubscription reads the browser in an effect: two blocks drawn from it are " +
+      "served as Checking this device and show their state and button only in the browser, and " +
+      "the third, whose key has not arrived, still says so there; the " +
       "three blocks with a fixed state are compared like any other",
   },
 }

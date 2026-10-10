@@ -5,8 +5,9 @@
  * `@spy4x/preact-signals` on a stand-in browser that answers the permission prompt the way the case
  * says, and a stand-in server that counts what it was asked to store. What only a browser shows —
  * no prompt before the press, focus staying on the button through the change, focus moving to the
- * explanation when the browser blocks, the announcements, and a permission changed while the page
- * was hidden — is driven by `pages/e2e/system-push.spec.ts`.
+ * explanation when the browser blocks, the announcements, a permission changed while the page was
+ * hidden, a key that arrives after the first render, and the listener going when the block leaves
+ * the page — is driven by `pages/e2e/system-push.spec.ts`.
  */
 
 import { PushSettings } from "@spy4x/preact-system/push-settings"
@@ -86,6 +87,8 @@ function fakeBrowser(answer: "granted" | "denied") {
     /** How many times the page opened the permission prompt. */
     prompts: () => prompts,
     subscribed: () => subscription !== null,
+    /** How many `visibilitychange` listeners the page holds now. */
+    listening: () => listeners.size,
     /** Block the site in the browser's settings, then come back to the page. */
     blockWhileAway: () => {
       permission = "denied"
@@ -113,8 +116,9 @@ function PushCase({ name, answer }: { name: string; answer: "granted" | "denied"
   }
   const push = usePushSubscription({
     publicKey: DEMO_PUBLIC_KEY,
-    save: server(() => stored.value++),
-    remove: server(() => stored.value--),
+    // One device, so the server holds one subscription or none: `save` is an upsert.
+    save: server(() => (stored.value = 1)),
+    remove: server(() => (stored.value = 0)),
     sendTest: server(() => {}),
     onError: () => tick.value++,
     serviceWorker: browser.serviceWorker,
@@ -155,6 +159,64 @@ function PushCase({ name, answer }: { name: string; answer: "granted" | "denied"
   )
 }
 
+/**
+ * An app that fetches the server's key: the block is drawn before the key is there, and the app can
+ * take the block off the page.
+ */
+function LateKeyCase() {
+  const browser = useRef(fakeBrowser("granted")).current
+  const publicKey = useSignal<string | undefined>(undefined)
+  const shown = useSignal(true)
+  // Changed so the line under the block is drawn again after a listener was added or removed.
+  const tick = useSignal(0)
+  return (
+    <Stack gap="sm" data-e2e="push-late">
+      {shown.value
+        ? <LateKeyBlock browser={browser} publicKey={publicKey.value} />
+        : <p class="text-sm text-muted">The block is off the page.</p>}
+      <p class="text-xs text-muted" data-e2e="push-listeners" data-tick={tick.value}>
+        visibility listeners: {browser.listening()}
+      </p>
+      <Cluster gap="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="push-give-key"
+          onClick={() => (publicKey.value = DEMO_PUBLIC_KEY)}
+        >
+          The key arrives
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="push-unmount"
+          onClick={() => (shown.value = false)}
+        >
+          Take the block off the page
+        </Button>
+        <Button variant="outline" size="sm" data-e2e="push-count" onClick={() => tick.value++}>
+          Count the listeners again
+        </Button>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/** The block of {@link LateKeyCase}: its own component, so unmounting it unmounts the hook. */
+function LateKeyBlock(
+  { browser, publicKey }: { browser: ReturnType<typeof fakeBrowser>; publicKey?: string },
+) {
+  const push = usePushSubscription({
+    publicKey,
+    save: () => {},
+    remove: () => {},
+    serviceWorker: browser.serviceWorker,
+    notification: browser.notification,
+    visibility: browser.visibility,
+  })
+  return <PushSettings {...push} class="pc-card p-4" />
+}
+
 const noop = () => {}
 
 /** The two browsers a person can meet, then the states that have no button. */
@@ -167,6 +229,9 @@ function PushSettingsDemo() {
         </Part>
         <Part title="A browser where the person blocks it">
           <PushCase name="deny" answer="denied" />
+        </Part>
+        <Part title="An app whose key arrives after the block is drawn">
+          <LateKeyCase />
         </Part>
       </Grid>
       <Grid minColumnWidth="md" gap="xl">
@@ -219,9 +284,9 @@ export const pushSettingsDemos = {
     ],
     snippet: `const push = usePushSubscription({
   publicKey, // the server's VAPID public key; null when it has none
-  save: (subscription) => api.post("/push/subscriptions", subscription),
-  remove: (endpoint) => api.delete("/push/subscriptions", { endpoint }),
-  sendTest: () => api.post("/push/test"),
+  save: (subscription) => server.savePushSubscription(subscription),
+  remove: (endpoint) => server.removePushSubscription(endpoint),
+  sendTest: () => server.sendTestPush(),
 })
 
 <PushSettings {...push} />`,
