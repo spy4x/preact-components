@@ -867,8 +867,8 @@ function CopyBlockDemo() {
       </Stack>
       <Stack gap="sm" class="max-w-xs">
         <DemoNote>
-          With singleLine, scrolls sideways inside its box: Tab to the text, then press the arrow
-          keys.
+          With singleLine, text wider than its box scrolls sideways inside it: Tab to the text, then
+          press the arrow keys.
         </DemoNote>
         <CopyBlock
           text={install}
@@ -876,6 +876,13 @@ function CopyBlockDemo() {
           textLabel="Install command"
           copyLabel="Copy the one-line command"
         />
+      </Stack>
+      <Stack gap="sm" data-e2e="copy-block-fits">
+        <DemoNote>
+          With singleLine and text that fits, there is nothing to scroll, so the text is no Tab
+          stop.
+        </DemoNote>
+        <CopyBlock text="0192f7c1-4d5e" singleLine copyLabel="Copy the short id" />
       </Stack>
       <Stack gap="sm">
         <CopyBlock
@@ -1165,13 +1172,14 @@ export const displayDemos = {
         name: "headingLevel",
         type: "1 | 2 | 3 | 4 | 5 | 6",
         default: "1",
-        description: "The heading's level. The card uses 4 and 5, under its own `h3`.",
+        description:
+          "The heading's level. Leave it out for the page's one `h1`; the card uses 4 and 5, under its own `h3`.",
       },
       { name: "class", type: "string", description: "Utilities merged after the defaults." },
     ],
     snippet: `<Stack>
-  <PageTitle>Transactions</PageTitle>
-  <PageTitle headingLevel={2} class="text-xl sm:text-xl">Nested detail</PageTitle>
+  <PageTitle headingLevel={4}>Transactions</PageTitle>
+  <PageTitle headingLevel={5} class="text-xl sm:text-xl">Nested detail</PageTitle>
 </Stack>`,
     render: () => (
       <Stack>
@@ -1430,7 +1438,8 @@ export const displayDemos = {
         name: "textLabel",
         type: "string",
         default: `"Text to copy"`,
-        description: "Names the `singleLine` text, a Tab stop the arrow keys scroll.",
+        description:
+          "Names `singleLine` text that overflows its box: only then is it a Tab stop, which the arrow keys scroll.",
       },
       {
         name: "copy",

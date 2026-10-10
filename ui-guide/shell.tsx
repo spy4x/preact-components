@@ -156,6 +156,11 @@ export interface UIGuideLabels {
   startStylesBody?: string
   /** The theme install command's copy control. Defaults to `"Copy the theme install command"`. */
   copyThemeInstall?: string
+  /**
+   * The name of the theme install command's text, announced when it overflows its box and so
+   * scrolls. Defaults to `"Theme install command"`.
+   */
+  themeInstallText?: string
   /** The link to the theme's README. Defaults to `"How to build the stylesheet"`. */
   themeReadme?: string
   /** The second step's title: a component in use. Defaults to `"Use a component"`. */
@@ -184,6 +189,11 @@ export interface UIGuideLabels {
   designBy?: string
   /** The overview's install command's copy control. Defaults to `"Copy the install command"`. */
   copyInstall?: string
+  /**
+   * The name of the overview's install command's text, announced when it overflows its box and so
+   * scrolls. Defaults to `"Install command"`.
+   */
+  installText?: string
   /** The overview's package grid heading. Defaults to `"Packages"`. */
   packagesHeading?: string
   /**
@@ -243,6 +253,7 @@ const DEFAULT_LABELS:
       "Every part of this frame is a component from these packages, running on local state: filter and sort the projects, run the checks for a toast, add a project in the dialog. The header's switches repaint it.",
     copyExample: "Copy the dashboard's code",
     copyInstall: "Copy the install command",
+    installText: "Install command",
     whyHeading: "Why preact-components",
     why: DEFAULT_WHY,
     startHeading: "Get started",
@@ -251,6 +262,7 @@ const DEFAULT_LABELS:
     startStylesBody:
       "Components render against the theme's tokens and classes, compiled by Tailwind into your stylesheet.",
     copyThemeInstall: "Copy the theme install command",
+    themeInstallText: "Theme install command",
     themeReadme: "How to build the stylesheet",
     startUse: "Use a component",
     startUseBody:

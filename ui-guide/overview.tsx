@@ -240,6 +240,7 @@ export interface OverviewLabels {
   browse: string
   star: string
   copyInstall: string
+  installText: string
   stats: (totals: OverviewTotals) => string
   exampleHeading: string
   exampleTitle: string
@@ -252,6 +253,7 @@ export interface OverviewLabels {
   startStyles: string
   startStylesBody: string
   copyThemeInstall: string
+  themeInstallText: string
   themeReadme: string
   startUse: string
   startUseBody: string
@@ -334,6 +336,7 @@ export function Overview(
           text={install}
           singleLine
           copy={copy}
+          textLabel={labels.installText}
           copyLabel={labels.copyInstall}
           class="max-w-md bg-surface"
         />
@@ -406,6 +409,7 @@ export function Overview(
               text={THEME_INSTALL}
               singleLine
               copy={copy}
+              textLabel={labels.themeInstallText}
               copyLabel={labels.copyThemeInstall}
               class="bg-canvas max-sm:[&_code]:text-xs"
             />
