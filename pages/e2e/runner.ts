@@ -90,7 +90,8 @@ export async function runSpecs(target: E2eTarget, specs: readonly Spec[]): Promi
         ])
         check(spec.name, true, detail ?? "")
       } catch (error) {
-        check(spec.name, false, describeError(error))
+        // Playwright's message carries its call log on further lines; the report is one line each.
+        check(spec.name, false, describeError(error).replace(/\s+/g, " ").trim())
       } finally {
         clearTimeout(deadline)
         await context.close().catch(() => {})
