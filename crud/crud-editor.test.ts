@@ -132,6 +132,18 @@ describe("submitEditor", () => {
     expect(outcome.updated).toBe(false)
     expect(outcome.error?.message).toBe("server said no")
   })
+
+  it("returns the error of a store that throws instead of rejecting", async () => {
+    const fake = fakeStore()
+    const offline = () => Promise.reject(new Error("network is down"))
+    const store = { ...fake.store, create: offline, update: offline }
+
+    const added = await submitEditor({ mode: "add", store, value: region() })
+    const edited = await submitEditor({ mode: "edit", id: 3, store, value: region() })
+
+    expect(added).toEqual({ created: null, updated: false, error: { message: "network is down" } })
+    expect(edited).toEqual({ created: null, updated: false, error: { message: "network is down" } })
+  })
 })
 
 describe("toggleArchiveState", () => {

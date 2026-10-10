@@ -57,6 +57,8 @@ export interface CrudListBaseProps<M extends CrudModel> {
   /** Whether the current user may add. Defaults to `true`. */
   canAdd?: () => boolean
   searchPlaceholder?: string
+  /** Name of the Search button, for a screen reader and the tooltip. Defaults to `"Search"`. */
+  searchLabel?: string
   /** Debounce of the search box, in milliseconds. Defaults to `300`. */
   searchDelay?: number
   /** External search term, so a URL filter can own it. Defaults to a signal local to the list. */
@@ -146,7 +148,12 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
       <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-left" />
 
       <div class="flex gap-2 items-center">
-        <SearchBox value={query} placeholder={props.searchPlaceholder} delay={props.searchDelay} />
+        <SearchBox
+          value={query}
+          placeholder={props.searchPlaceholder}
+          label={props.searchLabel}
+          delay={props.searchDelay}
+        />
         {showStatus && <StatusSelect status={status} labels={props.statusFilter} />}
         {showAdd && (
           <div class="ml-auto">
@@ -186,27 +193,35 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
  * The input is bound to a draft signal, so a keystroke is never swallowed by the debounce, and the
  * settled term is copied into `value` once typing pauses. Binding the input's `value` to the
  * debounced signal instead is what dropped a typed term in one of the source lists.
+ *
+ * The magnifier is the form's submit button, so a click on it and Enter in the field both search
+ * now instead of waiting for the pause.
  */
 function SearchBox(
-  { value, placeholder, delay }: {
+  { value, placeholder, label, delay }: {
     value: Signal<string>
     placeholder?: string
+    label?: string
     delay?: number
   },
 ) {
   const draft = useSignal(value.value)
+  const commit = () => {
+    value.value = draft.value.trim()
+  }
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      value.value = draft.value.trim()
-    }, delay ?? defaultSearchDelay)
+    const timer = setTimeout(commit, delay ?? defaultSearchDelay)
     return () => clearTimeout(timer)
   }, [draft.value])
 
   return (
     <form
       class="w-full max-w-xs relative flex gap-2 items-center"
-      onSubmit={(event) => event.preventDefault()}
+      onSubmit={(event) => {
+        event.preventDefault()
+        commit()
+      }}
     >
       <input
         type="text"
@@ -216,7 +231,7 @@ function SearchBox(
         onInput={(event) => draft.value = event.currentTarget.value}
       />
       <div class="absolute right-1.5">
-        <button class="btn-input-icon" type="button" title="Search">
+        <button class="btn-input-icon" type="submit" title={label ?? "Search"}>
           <IconSearch class="size-4" />
         </button>
       </div>

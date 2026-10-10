@@ -1,5 +1,6 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
+import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { Stack } from "@spy4x/preact-ui/layout"
 import { PageTitle } from "@spy4x/preact-ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
@@ -97,10 +98,22 @@ export type CrudSubmitInput<M extends CrudRow> =
  *
  * Split out of the component so the routing is testable against a fake store: an add creates and
  * hands the new row back for navigation, an edit patches and asks for a reload, and an edit whose
- * archive is blocked writes nothing. A store failure is returned, never thrown — the store already
- * reported it through its own operation state and the toast port.
+ * archive is blocked writes nothing. A store failure is returned, never thrown, and so is a store
+ * that throws: its error comes back as the outcome's `error`, so the form can show it.
  */
 export async function submitEditor<M extends CrudRow>(
+  input: CrudSubmitInput<M>,
+): Promise<CrudSubmitOutcome<M>> {
+  try {
+    return await writeThroughStore(input)
+  } catch (thrown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown)
+    return { created: null, updated: false, error: { message } }
+  }
+}
+
+/** The store call {@link submitEditor} makes; a store that throws is caught there. */
+async function writeThroughStore<M extends CrudRow>(
   input: CrudSubmitInput<M>,
 ): Promise<CrudSubmitOutcome<M>> {
   if (input.mode === "add") {
@@ -187,9 +200,17 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   cancelHref: string
   /** Label of the Cancel link. Defaults to `"Cancel"`. */
   cancelLabel?: string
+  /**
+   * What a failed save is introduced with, before the store's own message. Defaults to
+   * `"Could not save"`.
+   */
+  saveErrorLabel?: string
   /** Called after a successful create, with the created row. Navigate from here. */
   onCreated?: (row: NoInfer<M>) => void
-  /** Whether the current user may change this entity. Defaults to `true`; `false` renders a read-only form. */
+  /**
+   * Whether the current user may change this entity. Defaults to `true`; `false` renders a
+   * read-only form, whose footer keeps Cancel as the way back and drops everything that writes.
+   */
   canChange?: () => boolean
   /**
    * Extra validation, run after the schema on every change.
@@ -271,6 +292,10 @@ export type CrudEditorProps<M extends CrudRow> = CrudEditorBaseProps<M> & CrudEd
  * `aria-describedby`, so a screen-reader user who lands on the disabled button — Tab skips it, but
  * browse mode does not — is told why. An issue here always fails {@link isValid}, the same as any
  * field's.
+ *
+ * A save the store refuses, or one that throws, is shown above Save too, in the library's
+ * `ErrorState` (a `role="alert"`, the same panel `CrudList` shows a failed load in), and stays
+ * until the next save.
  */
 export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.Element {
   const {
@@ -281,6 +306,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     title,
     cancelHref,
     cancelLabel,
+    saveErrorLabel,
     onCreated,
     canChange,
     validate,
@@ -292,6 +318,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   const vl = useSignal<ValidationModel<M>>({})
   const initialized = useSignal(false)
   const error = useSignal("")
+  const saveError = useSignal("")
   const blocked = useSignal<DeletionDependency[]>([])
   const archiveId = useId()
   const formIssueId = useId()
@@ -364,7 +391,9 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     }
   }
 
-  const state = editorState(editorStateInput((signal) => signal.value))
+  const stateInput = editorStateInput((signal) => signal.value)
+  const state = editorState(stateInput)
+  const editable = stateInput.canChange
 
   // An issue with no field of its own — a cross-field `.narrow`, or a value that was never an
   // object — is filed under `FORM_FIELD` rather than on one of the rows `children` renders, so
@@ -408,6 +437,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   async function submit(event: Event): Promise<void> {
     event.preventDefault()
     if (!readyToSave()) return
+    saveError.value = ""
 
     const outcome = props.mode === "add"
       ? await submitEditor({ mode: "add", store, value: vm.value })
@@ -419,6 +449,10 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         blocked: blocked.value.length,
       })
 
+    if (outcome.error !== null) {
+      const label = saveErrorLabel ?? "Could not save"
+      saveError.value = outcome.error.message ? `${label}: ${outcome.error.message}` : label
+    }
     if (outcome.created !== null) onCreated?.(outcome.created)
     if (outcome.updated) loadFromStore()
   }
@@ -452,35 +486,49 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 <p key={index} class="text-sm text-danger mt-2">{issue.message}</p>
               ))}
             </div>
+            {
+              /*
+              The failed save is the other kind of region. A `role="alert"` is announced when it is
+              added to the page with its text, so this one is rendered only while there is a
+              failure; the rule above is for polite `role="status"` regions.
+            */
+            }
+            <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-left" />
           </div>
-          {(canChange?.() ?? true) && (
-            <div class="pc-card-footer">
-              {props.footerSlot?.({ vm, vl })}
-              {props.mode === "edit" && archive !== undefined && (
-                <div class="flex gap-2 items-center">
-                  <input
-                    type="checkbox"
-                    id={archiveId}
-                    class="pc-checkbox"
-                    checked={Boolean(vm.value.deletedAt)}
-                    onChange={toggleArchive}
-                  />
-                  <label for={archiveId} class="pc-label">
-                    {archive.label ?? "Is Archived?"} {vm.value.deletedAt
-                      ? (
-                        <span
-                          title={formatTime(vm.value.deletedAt, { full: true })}
-                          class="text-red-500"
-                        >
-                          ({timeAgo(vm.value.deletedAt)})
-                        </span>
-                      )
-                      : ""}
-                  </label>
-                </div>
-              )}
+          {
+            /*
+            The footer stays for a read-only viewer, with Cancel alone: it is their only way back.
+            A link is not a form control, so the disabled fieldset around it does not switch it off.
+          */
+          }
+          <div class="pc-card-footer">
+            {editable && props.footerSlot?.({ vm, vl })}
+            {editable && props.mode === "edit" && archive !== undefined && (
+              <div class="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  id={archiveId}
+                  class="pc-checkbox"
+                  checked={Boolean(vm.value.deletedAt)}
+                  onChange={toggleArchive}
+                />
+                <label for={archiveId} class="pc-label">
+                  {archive.label ?? "Is Archived?"} {vm.value.deletedAt
+                    ? (
+                      <span
+                        title={formatTime(vm.value.deletedAt, { full: true })}
+                        class="text-red-500"
+                      >
+                        ({timeAgo(vm.value.deletedAt)})
+                      </span>
+                    )
+                    : ""}
+                </label>
+              </div>
+            )}
 
-              <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
+            <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
+            {editable && (
               <button
                 type="submit"
                 class="btn btn-primary"
@@ -490,8 +538,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 {state.busy && <IconLoading />}
                 Save
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </fieldset>
       </form>
 
