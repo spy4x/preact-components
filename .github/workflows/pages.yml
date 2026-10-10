@@ -30,14 +30,13 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # `pages/verify.ts` now bounds its own browser phase (`#239`), but this is the backstop for
-    # everything outside that phase — the build, the static phase, a hung `deno task check` — so a
-    # runner that wedges still frees itself well inside the platform's own default rather than
-    # waiting out a six-hour job timeout. 15 minutes is generous against the run this workflow
-    # actually does today: `check` and the build together take a small fraction of that, and
-    # `verify`'s own worst case is its 5-minute phase deadline plus the two bounded launch attempts
-    # ahead of it.
-    timeout-minutes: 15
+    # `pages/verify.ts` bounds its own browser phase: it stops after 90 seconds without a finished
+    # check and after 15 minutes in all. This is the backstop for everything outside that phase —
+    # the build, the static phase, a hung `deno task check` — so a runner that wedges frees itself
+    # long before the platform's six-hour default. 25 minutes sits above verify's own 15-minute
+    # ceiling plus `check` and the build, which take under two minutes together, so verify's named
+    # failure is always what ends a slow run, never this limit.
+    timeout-minutes: 25
     # Least privilege: this job reads the repository and nothing else. Writing the deployment and
     # minting its OIDC token belong to the deploy job below.
     permissions:
