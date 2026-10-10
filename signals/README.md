@@ -29,6 +29,7 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                     |
 | `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                          |
 | `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `isIosDevice`, `isStandalone` |
+| `push-subscription` | `usePushSubscription` / `createPushSubscription` — whether this device gets push notifications, and turning them on and off against the browser and the server                                              |
 | `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                                           |
 | `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                                                   |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                                                   |
@@ -482,6 +483,68 @@ const install = createInstallPrompt({
   },
 })
 install.watch()
+```
+
+## `usePushSubscription`, beside `PushSettings`
+
+`usePushSubscription(options)` answers "will this device notify me?" and returns the props
+`PushSettings` in `@spy4x/preact-system` takes: `status`, `busy`, `failed`, `sent`, `onEnable`,
+`onDisable` and, when `sendTest` is given, `onTest`. `createPushSubscription(options)` is the same
+store outside a component, with `status`, `busy`, `failed` and `sent` as signals and `refresh()`,
+`enable()`, `disable()`, `test()` and `start()`; no action ever rejects, and `onError` hears what
+went wrong.
+
+- `status` is `checking` until the browser was read, then `unsupported`, `needs-install` (an
+  iPhone or iPad in a browser tab, where push exists only in the home-screen app; told apart with
+  `isIosDevice` and `isStandalone`), `unavailable` (`publicKey` is `null` or empty), `blocked`
+  (the permission is `denied`), `off` or `on`. A `publicKey` of `undefined` means "still loading"
+  and stays `checking`: an app whose request for the key fails must pass `null`, or the block says
+  "Checking this device…" for ever.
+- **Turning on** asks for permission only then, and only when the browser has not asked before, so
+  the prompt never opens on page load. It subscribes with `publicKey` (the server's VAPID public
+  key, base64url, decoded here) and passes `subscription.toJSON()` to `save`. When `save` fails,
+  it asks the server to forget the endpoint, unsubscribes again and reports `off`, whatever the
+  browser then holds, so "Try again" is a press that can work. A subscription left over under
+  another key, which the browser refuses to replace by itself, is dropped and made again. A prompt
+  the person closes leaves `off` and is not a failure.
+- **On each page load** that finds the browser subscribed and allowed, the subscription goes to
+  `save` again, because the store cannot ask the server what it holds: this repairs a server that
+  lost it and a tab closed between subscribing and saving. One made with another server key is
+  replaced first (unsubscribe, `remove` the old endpoint, subscribe, `save`); the push service
+  refuses the new key's messages for it. **`save` must be an upsert by endpoint.** If this `save`
+  fails the status stays `on`, `onError` hears it with `"refresh"`, and it is tried again the next
+  time the page becomes visible.
+- **Turning off** calls `remove(endpoint)`, then unsubscribes. A failed `remove` leaves both in
+  place. `remove` must succeed for a subscription that is already gone.
+- The permission is read again each time the page becomes visible, so a change made in the
+  browser's settings shows when the person comes back. The browser drops the subscription itself
+  then, and the store calls `remove` for the endpoint it last saved. That call, like the one after
+  a failed `save`, is best effort: its failure goes to `onError` only, and the server still learns
+  it from the push service's "gone" answer to its next message.
+- The app must register a service worker (`SWUpdater` does). Without one, turning on fails with a
+  message, not an endless spinner.
+- **The repair runs where the store starts.** `usePushSubscription` makes one store per mount, so
+  an app that mounts it only on its settings screen repairs a lost subscription or a changed key
+  only when the person opens settings. To repair on every page load, create one store with
+  `createPushSubscription` when the app starts, call `start()` there, and draw `PushSettings` from
+  it.
+- `serviceWorker`, `notification`, `navigator`, `matchMedia` and `visibility` are ports with the
+  browser's own as defaults, so a test needs no browser. Nothing is touched before `start()`,
+  `refresh()` or an action, so the store can be created on a server.
+
+`save` receives the subscription and `remove` the endpoint; what the app sends to its server, and
+how it names the device, is the app's choice.
+
+```tsx
+function NotificationSettings({ publicKey }: { publicKey: string | null | undefined }) {
+  const push = usePushSubscription({
+    publicKey,
+    save: (subscription) => server.savePushSubscription(subscription),
+    remove: (endpoint) => server.removePushSubscription(endpoint),
+    sendTest: () => server.sendTestPush(),
+  })
+  return <PushSettings {...push} />
+}
 ```
 
 ## Notes and sharp edges

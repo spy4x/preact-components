@@ -385,6 +385,14 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
     reason: "@spy4x/preact-map, and Leaflet with it, loads when the map page opens: the served " +
       "slot holds a placeholder, and the browser's the map, its credit line and its list of places",
   },
+  "demo-PushSettings": {
+    selector: `[data-e2e^="push-"] [data-push-status]`,
+    parts: 3,
+    reason: "usePushSubscription reads the browser in an effect: two blocks drawn from it are " +
+      "served as Checking this device and show their state and button only in the browser, and " +
+      "the third, whose key has not arrived, still says so there; the " +
+      "three blocks with a fixed state are compared like any other",
+  },
 }
 
 /**

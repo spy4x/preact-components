@@ -363,6 +363,20 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `ThemeStorage` (type): Persistence port. Import: `@spy4x/preact-signals`
 - `ThemeStore` (type): A theme store: preference in, resolved theme out, plus the DOM wiring. Import: `@spy4x/preact-signals`
 - `ThemeValue` (type): What the user chose in the UI. Import: `@spy4x/preact-signals`
+- `createPushSubscription` (helper): Create the push store of this device. Import: `@spy4x/preact-signals`
+- `PushAction` (type): What the person asked for: turn on, turn off, or send a test notification. Import: `@spy4x/preact-signals`
+- `PushManagerLike` (type): The slice of `PushManager` this store uses. Import: `@spy4x/preact-signals`
+- `PushNotificationPort` (type): Permission port. Import: `@spy4x/preact-signals`
+- `PushRegistrationLike` (type): The slice of `ServiceWorkerRegistration` this store uses. Import: `@spy4x/preact-signals`
+- `PushServiceWorker` (type): Service-worker port. Import: `@spy4x/preact-signals`
+- `PushSettingsState` (type): What `usePushSubscription` returns: the props `PushSettings` takes, as plain values. Import: `@spy4x/preact-signals`
+- `PushStatus` (type): What the store reports about this device. Import: `@spy4x/preact-signals`
+- `PushSubscriptionData` (type): A push subscription as `PushSubscription.toJSON()` gives it: what the server stores. Import: `@spy4x/preact-signals`
+- `PushSubscriptionLike` (type): The slice of `PushSubscription` this store uses. Import: `@spy4x/preact-signals`
+- `PushSubscriptionOptions` (type): What `createPushSubscription` needs. Import: `@spy4x/preact-signals`
+- `PushSubscriptionStore` (type): The push state of this device, and the actions that change it. Import: `@spy4x/preact-signals`
+- `PushVisibility` (type): Page-visibility port. Import: `@spy4x/preact-signals`
+- `usePushSubscription` (hook): The push state of this device for one component, ready to spread into `PushSettings` from `@spy4x/preact-system`. Import: `@spy4x/preact-signals`
 - `createToastStore` (helper): Create a toast store. Import: `@spy4x/preact-signals`
 - `ToastEntry` (type): A toast as the store holds it. Import: `@spy4x/preact-signals`
 - `ToastOptions` (type): Injected collaborators and labels, all optional. Import: `@spy4x/preact-signals`
@@ -424,6 +438,12 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `InstallPrompt` (component): Offer to install the app, or explain how to on iOS. Import: `@spy4x/preact-system`
 - `InstallPromptLabels` (type): Every word `InstallPrompt` shows, each with an English default. Import: `@spy4x/preact-system`
 - `InstallPromptProps` (type): Props of `InstallPrompt`. Import: `@spy4x/preact-system`
+- `DEFAULT_PUSH_SETTINGS_LABELS` (constant): The English words `PushSettings` shows when the caller passes none. Import: `@spy4x/preact-system`
+- `PushSettings` (component): Say whether this device gets notifications, and turn them on or off. Import: `@spy4x/preact-system`
+- `PushSettingsAction` (type): The three things a person can ask for here. Import: `@spy4x/preact-system`
+- `PushSettingsLabels` (type): Every word `PushSettings` shows or announces, each with an English default. Import: `@spy4x/preact-system`
+- `PushSettingsProps` (type): Props of `PushSettings`. Import: `@spy4x/preact-system`
+- `PushSettingsStatus` (type): What the block shows. Import: `@spy4x/preact-system`
 - `RouteAnnouncerOptions` (type): Options of `useRouteAnnouncer`. Import: `@spy4x/preact-system`
 - `useRouteAnnouncer` (hook): On a route change, set `document.title` and move focus to the new page's main heading. Import: `@spy4x/preact-system`
 - `RailShell` (component): The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`

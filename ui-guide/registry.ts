@@ -41,6 +41,7 @@ import { formDemos } from "./sections/forms.tsx"
 import { inputDemos } from "./sections/inputs.tsx"
 import { layoutDemos } from "./sections/layout.tsx"
 import { mapDemos } from "./sections/map.tsx"
+import { pushSettingsDemos } from "./sections/push-settings.tsx"
 import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
@@ -245,6 +246,9 @@ export type SectionId =
   | "crud"
   | "map"
 
+/** The System section's cards: the section file's own, then the cards kept in their own files. */
+const systemSectionDemos = { ...systemDemos, ...pushSettingsDemos }
+
 const catalogue = {
   badges: {
     group: "foundations",
@@ -346,8 +350,8 @@ const catalogue = {
     package: "system",
     title: "System",
     blurb:
-      "The frames an app is built in, its sign-in form and calendar, and the pieces that work with the browser: the page head, state handed over from the server, the service-worker update prompt, offline sync status and conflicts, and the install offer.",
-    demos: systemDemos,
+      "The frames an app is built in, its sign-in form and calendar, and the pieces that work with the browser: the page head, state handed over from the server, the service-worker update prompt, offline sync status and conflicts, the install offer, and the notifications switch.",
+    demos: systemSectionDemos,
   },
   crud: {
     group: "data",
@@ -477,7 +481,7 @@ export const demoRegistry: DemoRegistry = {
   ...formDemos,
   ...surfaceDemos,
   ...chartsDemos,
-  ...systemDemos,
+  ...systemSectionDemos,
   ...crudDemos,
   ...mapDemos,
 }

@@ -20,6 +20,7 @@
     "./playwright": "./playwright.ts",
     "./conflict-chooser": "./conflict-chooser.tsx",
     "./install-prompt": "./install-prompt.tsx",
+    "./push-settings": "./push-settings.tsx",
     "./route-announcer": "./route-announcer.ts",
     "./sync-status": "./sync-status.tsx"
   },
