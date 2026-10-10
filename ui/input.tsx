@@ -62,10 +62,18 @@ export const Input: (
   return <input {...rest} ref={ref} class={join("pc-input", className)} />
 })
 
-/** Controlled multi-line input. See {@link Input} for the state contract. */
-export function Textarea({ class: className, ...rest }: TextareaProps): JSX.Element {
-  return <textarea {...rest} class={join("pc-textarea", className)} />
-}
+/**
+ * Controlled multi-line input. See {@link Input} for the state contract and for why it is wrapped
+ * in `forwardRef`: `<Textarea ref={box} />` hands `box` the native `<textarea>`.
+ */
+export const Textarea: (
+  props: TextareaProps & { ref?: Ref<HTMLTextAreaElement> },
+) => VNode | null = forwardRef<HTMLTextAreaElement, TextareaProps>("Textarea", function Textarea(
+  { class: className, ...rest },
+  ref,
+) {
+  return <textarea {...rest} ref={ref} class={join("pc-textarea", className)} />
+})
 
 /**
  * Controlled select.
@@ -74,16 +82,22 @@ export function Textarea({ class: className, ...rest }: TextareaProps): JSX.Elem
  * it, never set per option, so a model holding a value no option carries falls back to the browser's
  * blank state instead of mislabelling its first entry. A `placeholder` renders as the leading empty
  * option; without one, pass `value=""` and supply your own empty option in `options`.
+ *
+ * Wrapped in `forwardRef` like {@link Input}: `<Select ref={box} />` hands `box` the native
+ * `<select>`.
  */
-export function Select(
-  { class: className, options, placeholder, ...rest }: SelectProps,
-): JSX.Element {
+export const Select: (
+  props: SelectProps & { ref?: Ref<HTMLSelectElement> },
+) => VNode | null = forwardRef<HTMLSelectElement, SelectProps>("Select", function Select(
+  { class: className, options, placeholder, ...rest },
+  ref,
+) {
   return (
-    <select {...rest} class={join("pc-select", className)}>
+    <select {...rest} ref={ref} class={join("pc-select", className)}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((option) => (
         <option key={String(option.value)} value={String(option.value)}>{option.label}</option>
       ))}
     </select>
   )
-}
+})
