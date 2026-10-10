@@ -29,6 +29,7 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                     |
 | `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                          |
 | `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `isIosDevice`, `isStandalone` |
+| `push-subscription` | `usePushSubscription` / `createPushSubscription` — whether this device gets push notifications, and turning them on and off against the browser and the server                                              |
 | `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                                           |
 | `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                                                   |
 | `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                                                   |
@@ -482,6 +483,48 @@ const install = createInstallPrompt({
   },
 })
 install.watch()
+```
+
+## `usePushSubscription`, beside `PushSettings`
+
+`usePushSubscription(options)` answers "will this device notify me?" and returns the props
+`PushSettings` in `@spy4x/preact-system` takes: `status`, `busy`, `failed`, `sent`, `onEnable`,
+`onDisable` and, when `sendTest` is given, `onTest`. `createPushSubscription(options)` is the same
+store outside a component, with `status`, `busy`, `failed` and `sent` as signals and `refresh()`,
+`enable()`, `disable()`, `test()` and `start()`; no action ever rejects, and `onError` hears what
+went wrong.
+
+- `status` is `checking` until the browser was read, then `unsupported`, `needs-install` (an
+  iPhone or iPad in a browser tab, where push exists only in the home-screen app; told apart with
+  `isIosDevice` and `isStandalone`), `unavailable` (`publicKey` is `null` or empty), `blocked`
+  (the permission is `denied`), `off` or `on`. A `publicKey` of `undefined` means "still loading"
+  and stays `checking`.
+- **Turning on** asks for permission only then, and only when the browser has not asked before, so
+  the prompt never opens on page load. It subscribes with `publicKey` (the server's VAPID public
+  key, base64url, decoded here) and passes `subscription.toJSON()` to `save`. When `save` fails,
+  it unsubscribes again, so the browser and the server never disagree. A prompt the person closes
+  leaves `off` and is not a failure.
+- **Turning off** calls `remove(endpoint)`, then unsubscribes. A failed `remove` leaves both in
+  place. `remove` must succeed for a subscription that is already gone.
+- The permission is read again each time the page becomes visible, so a change made in the
+  browser's settings shows when the person comes back. The browser drops the subscription itself
+  then; the server learns it from the push service's "gone" answer to its next message.
+- The app must register a service worker (`SWUpdater` does). Without one, turning on fails with a
+  message, not an endless spinner.
+- `serviceWorker`, `notification`, `navigator`, `matchMedia` and `visibility` are ports with the
+  browser's own as defaults, so a test needs no browser. Nothing is touched before `start()`,
+  `refresh()` or an action, so the store can be created on a server.
+
+```tsx
+function NotificationSettings({ publicKey }: { publicKey: string | null | undefined }) {
+  const push = usePushSubscription({
+    publicKey,
+    save: (subscription) => api.post("/push/subscriptions", subscription),
+    remove: (endpoint) => api.delete("/push/subscriptions", { endpoint }),
+    sendTest: () => api.post("/push/test"),
+  })
+  return <PushSettings {...push} />
+}
 ```
 
 ## Notes and sharp edges
