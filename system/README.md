@@ -233,7 +233,7 @@ the URL stays the source of truth in both:
 ```
 
 The same rule covers the month arrows, with one addition: a month with nothing to show renders an
-inert `<span aria-disabled>`, because a `pointer-events-none` anchor is still focusable and still
+inert `<span aria-disabled>` in the arrow's role, because a `pointer-events-none` anchor is still focusable and still
 navigable with Enter.
 
 ## The calendar's keyboard
