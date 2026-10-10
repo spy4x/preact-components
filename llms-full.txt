@@ -6022,6 +6022,9 @@ while the dialog is open replaces the first `go`; there is never a second dialog
 only the newest. If the changes are saved while the dialog is open, it closes and nothing
 navigates. The guard knows no router: `go` is the app's own navigation, whatever it takes.
 
+One page with two dirty forms that share a `LeaveGuard` still shows one dialog: the `UnsavedGuard`
+that became dirty first draws it, and "Leave" calls only that guard's `onDiscard`.
+
 ## OnboardingChecklist
 
 A card of first steps for a new user. The app owns every fact: each step's `done` comes from the
@@ -6398,9 +6401,8 @@ components and tests means exactly that: nothing outside this package should bui
 - `defaultUnsavedGuardLabels` holds the dialog's English words; `labels` replaces any of them.
 - `createLeaveGuard()` makes the `LeaveGuard` an app shares between its `UnsavedGuard` (the
   `leaveGuard` prop) and the code that navigates. `leaveGuard.navigate(go)` runs `go` at once when
-  nothing is unsaved and asks first otherwise. Its `hold(holder)`, `asks(holder)`, `leave()` and
-  `stay()` are what `UnsavedGuard` drives the dialog with; an app that draws its own question can
-  call them too.
+  nothing is unsaved and asks first otherwise. `navigate` is its only member; `UnsavedGuard`
+  throws for a `leaveGuard` that `createLeaveGuard()` did not return.
 
 ### useSucceeded (`./use-succeeded`)
 

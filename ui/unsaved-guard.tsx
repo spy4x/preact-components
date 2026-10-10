@@ -11,9 +11,13 @@
 
 import type { JSX } from "preact"
 import { useEffect, useMemo, useRef } from "preact/hooks"
-import { signal } from "@preact/signals"
 import { ConfirmDialog } from "./confirm-dialog.tsx"
 import { type ClickModifiers, isPlainClick } from "./link.tsx"
+import {
+  createLeaveGuard,
+  type LeaveGuard,
+  leaveGuardInternals,
+} from "./unsaved-guard-internals.ts"
 
 /** The parts of a click that decide whether the browser would follow a link in this tab. */
 export interface UnsavedClick extends ClickModifiers {
@@ -86,79 +90,7 @@ export const defaultUnsavedGuardLabels: UnsavedGuardLabels = {
   stay: "Stay",
 }
 
-/**
- * The question "leave with unsaved changes?" for navigation an app starts from code: a sidebar
- * button, a keyboard shortcut, a redirect. The app creates one with {@link createLeaveGuard}, gives
- * it to its {@link UnsavedGuard} as `leaveGuard`, and wraps its own navigation in `navigate`.
- */
-export interface LeaveGuard {
-  /**
-   * Runs `go` at once when no `UnsavedGuard` holds this guard, which is whenever nothing is
-   * unsaved. Otherwise it asks first, in the guard's dialog: "Leave" runs `go`, "Stay" drops it.
-   *
-   * A call that arrives while the question is already on screen replaces the earlier `go`: the
-   * dialog stays as it is, and "Leave" runs only the newest one.
-   *
-   * @param go The navigation itself, such as `() => setLocation("/lists")`.
-   */
-  navigate(go: () => void): void
-  /**
-   * Marks unsaved changes on behalf of `holder`, until the returned function is called.
-   * `UnsavedGuard` calls this while its `when` is `true`; an app does not. When the last holder
-   * lets go, a question still on screen is dropped without navigating.
-   *
-   * @param holder Any object that stands for the caller, compared by identity.
-   * @returns The function that lets go. Calling it twice does nothing more.
-   */
-  hold(holder: object): () => void
-  /**
-   * Whether `holder` should show the question now: a navigation is waiting and `holder` is the
-   * earliest one still holding, so two guards that share this object never show two dialogs. It
-   * reads signals, so a component that calls it while rendering re-renders when the answer changes.
-   */
-  asks(holder: object): boolean
-  /** Answers "Leave": closes the question, then runs the waiting navigation. */
-  leave(): void
-  /** Answers "Stay": closes the question and drops the waiting navigation. */
-  stay(): void
-}
-
-/**
- * Creates a {@link LeaveGuard}. Create one for the app, outside any component, so the code that
- * navigates and the `UnsavedGuard` that asks share it.
- *
- * It knows no router and touches no global: the app passes its own navigation to `navigate` each
- * time.
- */
-export function createLeaveGuard(): LeaveGuard {
-  const holders = signal<readonly { holder: object }[]>([])
-  const waiting = signal<(() => void) | null>(null)
-  return {
-    navigate(go) {
-      if (holders.value.length === 0) go()
-      else waiting.value = go
-    },
-    hold(holder) {
-      // Its own entry, so a release called twice cannot let go of a later hold by the same holder.
-      const entry = { holder }
-      holders.value = [...holders.value, entry]
-      return () => {
-        if (!holders.value.includes(entry)) return
-        holders.value = holders.value.filter((other) => other !== entry)
-        if (holders.value.length === 0) waiting.value = null
-      }
-    },
-    asks: (holder) => waiting.value !== null && holders.value[0]?.holder === holder,
-    leave() {
-      const go = waiting.value
-      waiting.value = null
-      go?.()
-    },
-    stay() {
-      waiting.value = null
-    },
-  }
-}
+export { createLeaveGuard, type LeaveGuard }
 
 export interface UnsavedGuardProps {
   /** Whether there are unsaved changes. The guard listens only while this is `true`. */
@@ -180,7 +112,8 @@ export interface UnsavedGuardProps {
   /**
    * The app's {@link LeaveGuard}. With it, a navigation the app starts from code through
    * `leaveGuard.navigate(go)` gets the same question in the same dialog as a link click. Left out,
-   * only links and the tab itself are guarded.
+   * only links and the tab itself are guarded. It must come from `createLeaveGuard()`; any other
+   * object throws.
    */
   leaveGuard?: LeaveGuard
 }
@@ -216,6 +149,7 @@ export function UnsavedGuard(
   const words = { ...defaultUnsavedGuardLabels, ...labels }
   const own = useMemo(createLeaveGuard, [])
   const guard = leaveGuard ?? own
+  const asking = leaveGuardInternals(guard)
   // Stands for this component in the guard, which shows the question through one holder only.
   const holder = useRef({}).current
   // Read at click time, so a caller's inline function does not re-add the listeners every render.
@@ -224,7 +158,7 @@ export function UnsavedGuard(
 
   useEffect(() => {
     if (!when) return
-    const release = guard.hold(holder)
+    const release = asking.hold(holder)
     const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault()
     const onClick = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null
@@ -254,9 +188,9 @@ export function UnsavedGuard(
       removeEventListener("beforeunload", beforeUnload)
       document.removeEventListener("click", onClick, true)
     }
-  }, [when, guard])
+  }, [when, guard, asking])
 
-  if (!when || !guard.asks(holder)) return null
+  if (!when || !asking.asks(holder)) return null
   return (
     <ConfirmDialog
       title={words.title}
@@ -265,10 +199,13 @@ export function UnsavedGuard(
       cancelLabel={words.stay}
       tone="danger"
       onConfirm={() => {
+        // Taken out first: an `onDiscard` that unmounts this guard at once lets go of the guard,
+        // which drops whatever still waits in it.
+        const go = asking.take()
         onDiscard?.()
-        guard.leave()
+        go?.()
       }}
-      onCancel={() => guard.stay()}
+      onCancel={() => asking.stay()}
     />
   )
 }
