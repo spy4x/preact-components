@@ -45,7 +45,15 @@ function fakeBrowser(
     unsubscribeResult: true as boolean | "throw",
     /** Set to make the next new subscription fail, as a push service that is down would. */
     subscribeError: null as Error | null,
+    /** Set to make `unsubscribe()` wait for it, as a slow push service would. */
+    unsubscribeGate: null as Promise<void> | null,
     made: 0,
+  }
+  /** What `unsubscribe()` ends with, by `state.unsubscribeResult`. */
+  const drop = (): Promise<boolean> => {
+    if (state.unsubscribeResult === "throw") return Promise.reject(new Error("unsubscribe broke"))
+    if (state.unsubscribeResult) state.subscription = null
+    return Promise.resolve(state.unsubscribeResult)
   }
   const subscription = (key: number[] | null): PushSubscriptionLike => {
     const endpoint = `https://push.example/device-${++state.made}`
@@ -55,11 +63,7 @@ function fakeBrowser(
       toJSON: () => ({ endpoint, keys: { p256dh: "p", auth: "a" } }),
       unsubscribe: () => {
         calls.push("unsubscribe")
-        if (state.unsubscribeResult === "throw") {
-          return Promise.reject(new Error("unsubscribe broke"))
-        }
-        if (state.unsubscribeResult) state.subscription = null
-        return Promise.resolve(state.unsubscribeResult)
+        return state.unsubscribeGate ? state.unsubscribeGate.then(drop) : drop()
       },
     }
   }
@@ -519,59 +523,39 @@ describe("createPushSubscription: turning on", () => {
     expect(store.status.value).toBe("unavailable")
   })
 
-  it("a reading that ends while turning on is still saving changes neither the status nor the server", async () => {
-    const browser = fakeBrowser({ permission: "granted" })
-    let saves = 0
-    let saved = () => {}
-    const store = createPushSubscription({
-      publicKey: PUBLIC_KEY,
-      save: () => {
-        saves++
-        return new Promise<void>((resolve) => (saved = resolve))
-      },
-      remove: () => {},
-      ...browser.ports,
-    })
-    await store.refresh()
-
-    const turningOn = store.enable()
-    await settle()
-    await store.refresh()
-    expect(store.status.value).toBe("off")
-    expect(saves).toBe(1)
-    saved()
-    await turningOn
-
-    expect(store.status.value).toBe("on")
-  })
-
   it("a reading that started before turning on does not overwrite its result", async () => {
     const browser = fakeBrowser({ permission: "granted" })
-    const registration = await browser.ports.serviceWorker.getRegistration()
+    const server = fakeServer(browser.calls)
+    const registration = (await browser.ports.serviceWorker.getRegistration())!
     let release = () => {}
     let lookups = 0
+    const slow = {
+      pushManager: {
+        ...registration.pushManager,
+        // The first lookup, the reading's, found nothing and answers only when the test lets it.
+        getSubscription: () =>
+          lookups++ === 0
+            ? new Promise<null>((resolve) => (release = () => resolve(null)))
+            : registration.pushManager.getSubscription(),
+      },
+    }
     const store = createPushSubscription({
       publicKey: PUBLIC_KEY,
-      save: () => {},
-      remove: () => {},
+      save: server.save,
+      remove: server.remove,
       ...browser.ports,
-      serviceWorker: {
-        ready: browser.ports.serviceWorker.ready,
-        // The first lookup, the reading's, waits until the test lets it through.
-        getRegistration: () =>
-          lookups++ === 0
-            ? new Promise((resolve) => (release = () => resolve(registration)))
-            : Promise.resolve(registration),
-      },
+      serviceWorker: { ready: Promise.resolve(slow), getRegistration: () => Promise.resolve(slow) },
     })
 
     const older = store.refresh()
+    await settle()
     await store.enable()
     expect(store.status.value).toBe("on")
     release()
     await older
 
     expect(store.status.value).toBe("on")
+    expect(server.stored).toHaveLength(1)
   })
 
   it("waits for the save of the page load before it acts", async () => {
@@ -674,6 +658,24 @@ describe("createPushSubscription: turning off", () => {
     expect(server.stored.map((entry) => entry.endpoint)).toEqual([ENDPOINT])
   })
 
+  it("a reading that ends while turning off is in flight does not save the subscription back", async () => {
+    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
+    await store.refresh()
+    let unsubscribed = () => {}
+    browser.state.unsubscribeGate = new Promise((resolve) => (unsubscribed = resolve))
+
+    const turningOff = store.disable()
+    await settle()
+    await store.refresh()
+    expect(browser.calls).toEqual(["save", `remove ${ENDPOINT}`, "unsubscribe"])
+    expect(store.status.value).toBe("on")
+    unsubscribed()
+    await turningOff
+
+    expect(store.status.value).toBe("off")
+    expect(server.stored).toEqual([])
+  })
+
   it("reports blocked, not off, when notifications were blocked while turning off", async () => {
     const { store, browser, server } = setup({ permission: "granted", subscribed: true })
     await store.refresh()
@@ -753,6 +755,19 @@ describe("createPushSubscription: coming back to the page", () => {
     await settle()
     expect(browser.calls).toHaveLength(2)
     stop()
+  })
+
+  it("asks the server to forget a device turned on in this page load once it is blocked", async () => {
+    const { store, browser, server } = setup()
+    await store.enable()
+    expect(server.stored).toHaveLength(1)
+
+    browser.state.permission = "denied"
+    browser.state.subscription = null
+    await store.refresh()
+
+    expect(store.status.value).toBe("blocked")
+    expect(server.stored).toEqual([])
   })
 
   it("reports off again when the block was lifted while the page was hidden", async () => {
