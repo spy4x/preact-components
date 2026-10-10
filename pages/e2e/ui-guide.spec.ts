@@ -16,21 +16,19 @@ type KnownCount = readonly [light: number, dark: number]
  * listed for a page allows no failing element there.
  */
 const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>> = {
-  overview: { "color-contrast": [3, 3] },
+  overview: {},
   ui: {
-    "color-contrast": [6, 4],
     "heading-order": [2, 2],
     "image-alt": [1, 1],
     "link-name": [1, 1],
     "scrollable-region-focusable": [1, 1],
   },
   icons: { "heading-order": [1, 1] },
-  theme: { "color-contrast": [1, 3], "scrollable-region-focusable": [1, 1] },
+  theme: { "scrollable-region-focusable": [1, 1] },
   charts: {},
   map: {},
   system: {
     "aria-prohibited-attr": [1, 1],
-    "color-contrast": [44, 44],
     "heading-order": [1, 1],
     "landmark-main-is-top-level": [2, 2],
     "landmark-no-duplicate-main": [1, 1],
