@@ -12,6 +12,7 @@ import {
   Checkbox,
   Cluster,
   ConfirmDialog,
+  createLeaveGuard,
   defaultToastActionDuration,
   defaultToastDuration,
   type DialogTone,
@@ -34,7 +35,8 @@ import {
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
-import { useMemo, useRef, useState } from "preact/hooks"
+import { render } from "preact"
+import { useEffect, useMemo, useRef, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -604,17 +606,42 @@ function ConfirmDialogDemo() {
 const ownsUnsavedDemo = (url: URL) =>
   url.pathname.includes("/unsaved-demo/") || url.pathname === globalThis.location?.pathname
 
+/** Where the demo's buttons and key presses go, by the letter pressed with Alt. */
+const unsavedDemoPlaces: Record<string, string> = { KeyL: "lists", KeyU: "upcoming" }
+
 /**
- * Links of every kind the guard looks at. A click the guard leaves alone reaches the wrapper, which
+ * Links of every kind the guard looks at, and navigation started from code: two buttons and two key
+ * presses that go through a `LeaveGuard`. A click the guard leaves alone reaches the wrapper, which
  * cancels it and says where the browser would have gone, so trying a link never leaves the guide.
  */
 function UnsavedGuardDemo() {
   const dirty = useSignal(false)
   const outcome = useSignal("nothing yet")
+  const calls = useSignal(0)
+  const leaveGuard = useMemo(createLeaveGuard, [])
   const link = "pc-link text-sm"
+  /** What an app's sidebar button or shortcut does: its own navigation, sent through the guard. */
+  const go = (place: string) => {
+    calls.value += 1
+    leaveGuard.navigate(() => outcome.value = `navigate("unsaved-demo/${place}") from code`)
+  }
 
   return (
-    <Stack gap="sm">
+    <Stack
+      gap="sm"
+      onKeyDown={(event: KeyboardEvent) => {
+        const place = event.altKey ? unsavedDemoPlaces[event.code] : undefined
+        if (!place) return
+        event.preventDefault()
+        go(place)
+      }}
+    >
+      <Input
+        aria-label="Draft"
+        placeholder="Type to make a change"
+        onInput={() => dirty.value = true}
+        data-e2e="unsaved-draft"
+      />
       <Checkbox
         checked={dirty.value}
         onChange={(event) => dirty.value = event.currentTarget.checked}
@@ -650,13 +677,96 @@ function UnsavedGuardDemo() {
           <a class={link} href="#" data-unsaved="empty-hash">An action link (#)</a>
         </Cluster>
       </div>
+      <Cluster>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => go("lists")}
+          data-e2e="unsaved-go-lists"
+        >
+          Go to Lists
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => go("upcoming")}
+          data-e2e="unsaved-go-upcoming"
+        >
+          Go to Upcoming
+        </Button>
+      </Cluster>
+      <DemoNote>
+        The buttons navigate from code, as a sidebar does. With the focus in this card, Alt+L and
+        Alt+U do the same, as a keyboard shortcut does.
+      </DemoNote>
+      <DemoNote e2e="unsaved-calls">Navigations from code: {calls.value}</DemoNote>
       <DemoNote e2e="unsaved-outcome">Outcome: {outcome.value}</DemoNote>
       <UnsavedGuard
         when={dirty.value}
+        leaveGuard={leaveGuard}
         owns={ownsUnsavedDemo}
         navigate={(href) => outcome.value = `navigate("${href}")`}
         onDiscard={() => dirty.value = false}
       />
+    </Stack>
+  )
+}
+
+/**
+ * An `UnsavedGuard` with no `leaveGuard`, as an app that guards only its links uses it. The guard
+ * lives in a Preact root of its own so that `onDiscard` can remove it from the page at once, the
+ * way an app does when dropping the changes closes the form: "Leave" must still navigate.
+ */
+function UnsavedGuardAloneDemo() {
+  const dirty = useSignal(false)
+  const outcome = useSignal("nothing yet")
+  const host = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = host.current
+    if (!root || !dirty.value) return
+    render(
+      <UnsavedGuard
+        when
+        owns={ownsUnsavedDemo}
+        navigate={(href) => outcome.value = `navigate("${href}")`}
+        onDiscard={() => {
+          render(null, root)
+          dirty.value = false
+        }}
+      />,
+      root,
+    )
+    return () => render(null, root)
+  }, [dirty.value])
+
+  return (
+    <Stack gap="sm">
+      <DemoNote>
+        A form of its own, with no leave guard. Leaving drops the change and removes the guard from
+        the page in the same step.
+      </DemoNote>
+      <Input
+        aria-label="Second draft"
+        placeholder="Type to make a change"
+        onInput={() => dirty.value = true}
+        data-e2e="unsaved-alone-draft"
+      />
+      <div
+        onClick={(event) => {
+          if (event.defaultPrevented) return
+          event.preventDefault()
+          outcome.value = "the browser follows the link"
+        }}
+      >
+        <a class="pc-link text-sm" href="unsaved-demo/notes/4" data-e2e="unsaved-alone-link">
+          In-app page
+        </a>
+      </div>
+      <DemoNote e2e="unsaved-alone-state">
+        Unsaved: {dirty.value ? "yes" : "no"}. Outcome: {outcome.value}
+      </DemoNote>
+      <div ref={host} />
     </Stack>
   )
 }
@@ -1011,7 +1121,7 @@ export const feedbackDemos = {
   },
   UnsavedGuard: {
     summary:
-      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link.",
+      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link or on a navigation the app starts from code.",
     wide: true,
     props: [
       { name: "when", type: "boolean", description: "Whether there are unsaved changes." },
@@ -1028,7 +1138,13 @@ export const feedbackDemos = {
       {
         name: "onDiscard",
         type: "() => void",
-        description: "Called on Leave, before `navigate`, to drop the changes.",
+        description: "Called on Leave, before the navigation, to drop the changes.",
+      },
+      {
+        name: "leaveGuard",
+        type: "LeaveGuard",
+        description:
+          "The app's `createLeaveGuard()`. A button or shortcut that calls `leaveGuard.navigate(go)` gets the same dialog: Leave runs `go`, Stay drops it. With nothing unsaved, `go` runs at once.",
       },
       {
         name: "labels",
@@ -1036,14 +1152,24 @@ export const feedbackDemos = {
         description: "Replaces the dialog's English words: `title`, `message`, `leave`, `stay`.",
       },
     ],
-    snippet: `<UnsavedGuard
+    snippet: `// Once for the app, outside any component.
+export const leaveGuard = createLeaveGuard()
+
+<UnsavedGuard
   when={draft.value !== saved.value}
   navigate={(href) => setLocation(href)}
   owns={(url) => url.pathname.startsWith("/notes/")}
   onDiscard={() => draft.value = saved.value}
+  leaveGuard={leaveGuard}
 />
-<a href="/notes/7?latest" data-unsaved-ok>Load the latest version</a>`,
-    render: () => <UnsavedGuardDemo />,
+<a href="/notes/7?latest" data-unsaved-ok>Load the latest version</a>
+<Button onClick={() => leaveGuard.navigate(() => setLocation("/lists"))}>Lists</Button>`,
+    render: () => (
+      <Stack gap="lg">
+        <UnsavedGuardDemo />
+        <UnsavedGuardAloneDemo />
+      </Stack>
+    ),
   },
   Toastr: {
     summary: "Short notifications stacked in a corner that go away on their own or when dismissed.",

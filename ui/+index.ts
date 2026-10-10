@@ -442,8 +442,10 @@ export {
   type ThemeToggleStore,
 } from "./theme-toggle.tsx"
 export {
+  createLeaveGuard,
   defaultUnsavedGuardLabels,
   guardedHref,
+  type LeaveGuard,
   type UnsavedClick,
   UnsavedGuard,
   type UnsavedGuardLabels,

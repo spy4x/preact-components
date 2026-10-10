@@ -1,7 +1,14 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { guardedHref, type UnsavedClick, UnsavedGuard, type UnsavedLink } from "./unsaved-guard.tsx"
+import { leaveGuardInternals } from "./unsaved-guard-internals.ts"
+import {
+  createLeaveGuard,
+  guardedHref,
+  type UnsavedClick,
+  UnsavedGuard,
+  type UnsavedLink,
+} from "./unsaved-guard.tsx"
 
 const here = { href: "https://app.example/notes/7?tab=body" }
 const plain: UnsavedClick = {
@@ -119,10 +126,151 @@ describe("guardedHref", () => {
   })
 })
 
+describe("createLeaveGuard", () => {
+  /**
+   * A guard, the private half `UnsavedGuard` drives it with, the navigations that ran, a `go` that
+   * records its name, and `leave`, which answers "Leave" the way `UnsavedGuard` does.
+   */
+  const setup = () => {
+    const ran: string[] = []
+    const guard = createLeaveGuard()
+    const asking = leaveGuardInternals(guard)
+    return {
+      guard,
+      asking,
+      ran,
+      go: (name: string) => () => ran.push(name),
+      leave: () => asking.take()?.(),
+    }
+  }
+
+  it("navigates at once and asks nothing while nobody holds it", () => {
+    const { guard, asking, ran, go } = setup()
+    const editor = {}
+    guard.navigate(go("lists"))
+    expect(ran).toEqual(["lists"])
+    expect(asking.asks(editor)).toBe(false)
+  })
+
+  it("holds a navigation back and asks while it is held", () => {
+    const { guard, asking, ran, go } = setup()
+    const editor = {}
+    asking.hold(editor)
+    guard.navigate(go("lists"))
+    expect(ran).toEqual([])
+    expect(asking.asks(editor)).toBe(true)
+  })
+
+  it("runs the navigation once on leave and stops asking", () => {
+    const { guard, asking, ran, go, leave } = setup()
+    const editor = {}
+    asking.hold(editor)
+    guard.navigate(go("lists"))
+    leave()
+    leave()
+    expect(ran).toEqual(["lists"])
+    expect(asking.asks(editor)).toBe(false)
+  })
+
+  it("drops the navigation on stay, so a later leave runs nothing", () => {
+    const { guard, asking, ran, go, leave } = setup()
+    const editor = {}
+    asking.hold(editor)
+    guard.navigate(go("lists"))
+    asking.stay()
+    expect(asking.asks(editor)).toBe(false)
+    leave()
+    expect(ran).toEqual([])
+  })
+
+  it("keeps one question for two navigations in a row, and leave runs only the newest", () => {
+    const { guard, asking, ran, go, leave } = setup()
+    const editor = {}
+    asking.hold(editor)
+    guard.navigate(go("today"))
+    guard.navigate(go("lists"))
+    expect(asking.asks(editor)).toBe(true)
+    leave()
+    expect(ran).toEqual(["lists"])
+    expect(asking.asks(editor)).toBe(false)
+  })
+
+  it("navigates at once again after the holder lets go", () => {
+    const { guard, asking, ran, go } = setup()
+    const release = asking.hold({})
+    release()
+    guard.navigate(go("lists"))
+    expect(ran).toEqual(["lists"])
+  })
+
+  it("drops a waiting navigation when the last holder lets go", () => {
+    const { guard, asking, ran, go, leave } = setup()
+    const editor = {}
+    const release = asking.hold(editor)
+    guard.navigate(go("lists"))
+    release()
+    expect(asking.asks(editor)).toBe(false)
+    leave()
+    expect(ran).toEqual([])
+  })
+
+  it("asks through the earliest holder only, then through the next when that one lets go", () => {
+    const { guard, asking, ran, go } = setup()
+    const first = {}
+    const second = {}
+    const releaseFirst = asking.hold(first)
+    asking.hold(second)
+    guard.navigate(go("lists"))
+    expect([asking.asks(first), asking.asks(second)]).toEqual([true, false])
+    releaseFirst()
+    expect([asking.asks(first), asking.asks(second)]).toEqual([false, true])
+    expect(ran).toEqual([])
+  })
+
+  it("hands the waiting navigation out on leave, so it still runs after the holder lets go", () => {
+    const { guard, asking, ran, go } = setup()
+    const release = asking.hold({})
+    guard.navigate(go("lists"))
+    const taken = asking.take()
+    release()
+    taken?.()
+    expect(ran).toEqual(["lists"])
+  })
+
+  it("ignores a second call of the same release, so another holder keeps holding", () => {
+    const { guard, asking, ran, go } = setup()
+    const first = {}
+    const releaseFirst = asking.hold(first)
+    releaseFirst()
+    asking.hold(first)
+    releaseFirst()
+    guard.navigate(go("lists"))
+    expect(ran).toEqual([])
+  })
+})
+
 describe("UnsavedGuard", () => {
   it("renders nothing on the server, dirty or not", () => {
     for (const when of [false, true]) {
       expect(render(<UnsavedGuard when={when} navigate={() => {}} owns={() => true} />)).toBe("")
     }
+  })
+
+  it("renders nothing on the server with a leave guard that already holds a navigation", () => {
+    const guard = createLeaveGuard()
+    leaveGuardInternals(guard).hold({})
+    guard.navigate(() => {})
+    expect(
+      render(<UnsavedGuard when navigate={() => {}} owns={() => true} leaveGuard={guard} />),
+    ).toBe("")
+  })
+
+  it("throws for a leave guard that createLeaveGuard did not make", () => {
+    const foreign = { navigate: (go: () => void) => go() }
+    expect(() =>
+      render(
+        <UnsavedGuard when={false} navigate={() => {}} owns={() => true} leaveGuard={foreign} />,
+      )
+    ).toThrow("createLeaveGuard()")
   })
 })

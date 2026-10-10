@@ -1,16 +1,23 @@
 /**
  * `UnsavedGuard` — asks before a person leaves a page with changes they have not saved.
  *
- * Two ways out of a page are covered: closing or reloading the tab, which gets the browser's own
- * question through `beforeunload`, and a click on an in-app link, which is held back and answered
- * with a {@link ConfirmDialog}. The browser's Back and Forward buttons are not covered: by the time
- * the page hears of them the address has already changed, and no event lets a page refuse them.
+ * Three ways out of a page are covered: closing or reloading the tab, which gets the browser's own
+ * question through `beforeunload`; a click on an in-app link, which is held back and answered with
+ * a {@link ConfirmDialog}; and a navigation the app starts from code, such as a sidebar button or a
+ * keyboard shortcut, once the app sends it through a {@link LeaveGuard}. The browser's Back and
+ * Forward buttons are not covered: by the time the page hears of them the address has already
+ * changed, and no event lets a page refuse them.
  */
 
 import type { JSX } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useMemo, useRef } from "preact/hooks"
 import { ConfirmDialog } from "./confirm-dialog.tsx"
 import { type ClickModifiers, isPlainClick } from "./link.tsx"
+import {
+  createLeaveGuard,
+  type LeaveGuard,
+  leaveGuardInternals,
+} from "./unsaved-guard-internals.ts"
 
 /** The parts of a click that decide whether the browser would follow a link in this tab. */
 export interface UnsavedClick extends ClickModifiers {
@@ -83,20 +90,32 @@ export const defaultUnsavedGuardLabels: UnsavedGuardLabels = {
   stay: "Stay",
 }
 
+export { createLeaveGuard, type LeaveGuard }
+
 export interface UnsavedGuardProps {
   /** Whether there are unsaved changes. The guard listens only while this is `true`. */
   when: boolean
-  /** Moves the app's router to an address, after the person chose to leave. */
+  /** Moves the app's router to an address, after the person chose to leave by a link. */
   navigate: (href: string) => void
   /**
    * Whether the app's router handles an address. A same-origin link it does not own, such as a
    * server-rendered page or a file, is left to the browser, which then asks through `beforeunload`.
    */
   owns: (url: URL) => boolean
-  /** Called when the person chose to leave, just before `navigate`, to drop the unsaved changes. */
+  /**
+   * Called when the person chose to leave, just before the navigation, to drop the unsaved
+   * changes.
+   */
   onDiscard?: () => void
   /** Replaces any of the dialog's English words. */
   labels?: Partial<UnsavedGuardLabels>
+  /**
+   * The app's {@link LeaveGuard}. With it, a navigation the app starts from code through
+   * `leaveGuard.navigate(go)` gets the same question in the same dialog as a link click. Left out,
+   * only links and the tab itself are guarded. It must come from `createLeaveGuard()`; any other
+   * object throws.
+   */
+  leaveGuard?: LeaveGuard
 }
 
 /**
@@ -104,6 +123,14 @@ export interface UnsavedGuardProps {
  * reloading the tab gets the browser's own question, and a plain click on an in-app link `owns`
  * accepts opens a dialog: "Leave" calls `onDiscard` and `navigate` with the link's address, and
  * "Stay" closes the dialog. A link marked `data-unsaved-ok` is never held back.
+ *
+ * Navigation started from code is covered once the app shares a {@link LeaveGuard}: pass it as
+ * `leaveGuard` and call `leaveGuard.navigate(() => setLocation("/lists"))` where a button or a
+ * shortcut used to call the router. While `when` is `true` that opens the same dialog: "Leave"
+ * calls `onDiscard` and runs the navigation, "Stay" drops it and gives the focus back to the
+ * element that had it when the dialog opened, such as the button that was pressed. While `when` is
+ * `false` it navigates at once. A second navigation while the dialog is open replaces the first;
+ * there is never a second dialog.
  *
  * The guard listens in the capture phase on `document`, so it decides before the link's own click
  * handler, or any ancestor's, has run: the only earlier cancellation it sees is a capture listener
@@ -113,23 +140,25 @@ export interface UnsavedGuardProps {
  * The browser's Back button cannot be held back: the address has already changed when the page
  * hears of it.
  *
- * It renders nothing until a click is held back, and its listeners are added in an effect, so it
- * renders on a server.
+ * It renders nothing until a navigation is held back, and its listeners are added in an effect, so
+ * it renders on a server.
  */
 export function UnsavedGuard(
-  { when, navigate, owns, onDiscard, labels }: UnsavedGuardProps,
+  { when, navigate, owns, onDiscard, labels, leaveGuard }: UnsavedGuardProps,
 ): JSX.Element | null {
   const words = { ...defaultUnsavedGuardLabels, ...labels }
-  const [leaveTo, setLeaveTo] = useState<string | null>(null)
-  // Read at click time, so a caller's inline predicate does not re-add the listeners every render.
-  const ownsRef = useRef(owns)
-  ownsRef.current = owns
+  const own = useMemo(createLeaveGuard, [])
+  const guard = leaveGuard ?? own
+  const asking = leaveGuardInternals(guard)
+  // Stands for this component in the guard, which shows the question through one holder only.
+  const holder = useRef({}).current
+  // Read at click time, so a caller's inline function does not re-add the listeners every render.
+  const latest = useRef({ owns, navigate })
+  latest.current = { owns, navigate }
 
   useEffect(() => {
-    if (!when) {
-      setLeaveTo(null)
-      return
-    }
+    if (!when) return
+    const release = asking.hold(holder)
     const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault()
     const onClick = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null
@@ -143,24 +172,25 @@ export function UnsavedGuard(
           allowed: link.hasAttribute("data-unsaved-ok"),
         },
         location,
-        (url) => ownsRef.current(url),
+        (url) => latest.current.owns(url),
       )
       if (to === null) return
       event.preventDefault()
       // This listener runs in the capture phase, before the router's own link handler, which
       // would otherwise navigate.
       event.stopPropagation()
-      setLeaveTo(to)
+      guard.navigate(() => latest.current.navigate(to))
     }
     addEventListener("beforeunload", beforeUnload)
     document.addEventListener("click", onClick, true)
     return () => {
+      release()
       removeEventListener("beforeunload", beforeUnload)
       document.removeEventListener("click", onClick, true)
     }
-  }, [when])
+  }, [when, guard, asking])
 
-  if (!when || leaveTo === null) return null
+  if (!when || !asking.asks(holder)) return null
   return (
     <ConfirmDialog
       title={words.title}
@@ -169,12 +199,13 @@ export function UnsavedGuard(
       cancelLabel={words.stay}
       tone="danger"
       onConfirm={() => {
-        const to = leaveTo
-        setLeaveTo(null)
+        // Taken out first: an `onDiscard` that unmounts this guard at once lets go of the guard,
+        // which drops whatever still waits in it.
+        const go = asking.take()
         onDiscard?.()
-        navigate(to)
+        go?.()
       }}
-      onCancel={() => setLeaveTo(null)}
+      onCancel={() => asking.stay()}
     />
   )
 }
