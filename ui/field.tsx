@@ -78,9 +78,13 @@ export interface FieldProps {
   suffix?: boolean
   /** Message to show under the control. Empty, `null` or `undefined` renders nothing and wires nothing. */
   error?: string | null
-  /** Helper text under the control. */
+  /** Helper text under the control. An empty string renders nothing and wires nothing. */
   hint?: ComponentChildren
-  /** Adds `required` and a `*` after the label. The native attribute is what the browser validates. */
+  /**
+   * Marks the control `required` and draws a `*` after the label. The native attribute is what the
+   * browser validates and what a screen reader announces; the `*` is hidden from it. A function
+   * child sets `required` on its control itself.
+   */
   required?: boolean
   /** Renders the label dimmed. The `disabled` attribute itself belongs on the control. */
   disabled?: boolean
@@ -181,6 +185,10 @@ const hintText = "mt-2 text-sm text-muted"
  * value was rejected — `aria-describedby` announces the message but not the invalid state. That
  * marking is `wireElement`'s, so it applies to the element-child form only: a function child is
  * handed the wiring and sets `aria-invalid` itself.
+ *
+ * `required` works the same way: the element child gets the native `required` attribute, so the
+ * browser enforces it and a screen reader announces it, and a function child sets it itself. A
+ * control that is already `required` stays so whatever the field says.
  */
 export function Field(
   {
@@ -198,12 +206,14 @@ export function Field(
 ): JSX.Element {
   const message = typeof error === "string" && error.length > 0 ? error : undefined
   const errorId = message === undefined ? undefined : `${id}-error`
-  const hintId = hint === undefined || hint === null || hint === false ? undefined : `${id}-hint`
+  const hintId = hint === undefined || hint === null || hint === false || hint === ""
+    ? undefined
+    : `${id}-hint`
   const ariaDescribedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined
   const wiring: FieldWiring = { id, errorId, hintId, "aria-describedby": ariaDescribedBy }
   const control = typeof children === "function"
     ? children(wiring)
-    : wireElement(children, id, ariaDescribedBy, message !== undefined)
+    : wireElement(children, id, ariaDescribedBy, message !== undefined, required === true)
 
   const labelElement = label === undefined || label === null
     ? null
@@ -263,6 +273,8 @@ export function labelTarget(labelFor: FieldLabelFor | undefined, id: string): st
  * @param id The control's `id`, and the label's `for`.
  * @param ariaDescribedBy The message ids to append to whatever the control already describes.
  * @param invalid Whether to mark the control `aria-invalid`.
+ * @param required Whether to mark the control `required`. `false` leaves the control's own
+ * `required` alone, so it is added to the clone only when set.
  * @throws When `child` is not a single element — an array or a text child has no element to wire, and
  * cloning one would render `<undefined>` into the document instead of failing.
  */
@@ -271,6 +283,7 @@ function wireElement(
   id: string,
   ariaDescribedBy: string | undefined,
   invalid: boolean,
+  required: boolean,
 ): ComponentChild {
   if (!isValidElement(child)) {
     throw new TypeError(
@@ -289,5 +302,6 @@ function wireElement(
     id,
     "aria-describedby": describedBy,
     "aria-invalid": invalid ? true : undefined,
-  } as JSX.HTMLAttributes<HTMLElement>)
+    ...(required ? { required: true } : {}),
+  } as JSX.InputHTMLAttributes<HTMLInputElement>)
 }

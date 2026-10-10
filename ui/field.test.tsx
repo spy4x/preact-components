@@ -190,17 +190,56 @@ describe("Field", () => {
     expect(html).toContain("text-muted")
   })
 
-  it("marks a required field on the label in the danger colour and leaves required native to the control", () => {
+  it("marks a required field on the label in the danger colour, hidden from a screen reader", () => {
     const html = render(
       <Field id="email" label="Email" required>
-        <input id="email" required />
+        <input />
       </Field>,
     )
 
-    expect(html).toContain('aria-hidden="true"')
     expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
-    expect(html.match(/required/g)?.length ?? 0).toBeGreaterThan(0)
     expect(labelFors(html)).toEqual(["email"])
+  })
+
+  it("puts the native required attribute on the control of a required field", () => {
+    const html = render(
+      <Field id="email" label="Email" required>
+        <input type="email" />
+      </Field>,
+    )
+
+    expect(html).toContain('<input type="email" id="email" required/>')
+  })
+
+  it("leaves the control without required when the field is not required", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <input type="email" />
+      </Field>,
+    )
+
+    expect(html).not.toContain("required")
+  })
+
+  it("keeps a control's own required when the field does not ask for it", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <input type="email" required />
+      </Field>,
+    )
+
+    expect(html).toContain('<input type="email" required id="email"/>')
+  })
+
+  it("renders no paragraph and no aria-describedby for an empty hint", () => {
+    const html = render(
+      <Field id="email" label="Email" hint="">
+        <input type="email" />
+      </Field>,
+    )
+
+    expect(html).not.toContain("<p")
+    expect(html).not.toContain("aria-describedby")
   })
 
   it("dims the label of a disabled field without stealing focus semantics", () => {
