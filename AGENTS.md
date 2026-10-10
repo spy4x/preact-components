@@ -108,12 +108,12 @@ runs `lint --fix` then `fmt`. The manifest defines the rest (`publish:dry`, `pri
 ## Behaviour needs a browser check
 
 String-render tests never run an effect, a ref, a key press, a focus change or a timer. Behaviour
-behind one is unproven until a check in the package's own file under `pages/checks/` covers it
-(never in `pages/verify.ts`); those files are the coverage list. Read
-[`pages/README.md`](./pages/README.md), "Writing a browser check", first. Always run
-`deno task --cwd pages build` before `deno task --cwd pages verify`; `--static` and `--only` are not
-full runs, and CI passes neither. The GitHub workflow runs `check`, `publish:dry`, the build and
-`verify` on every PR into `main`, and the Pages deploy waits for them.
+behind one is unproven until a browser check covers it. A new check, and an existing one you edit,
+is a Playwright spec in `pages/e2e/<package>.spec.ts`, with axe-core for accessibility (#667);
+untouched checks stay in `pages/checks/`. Read [`pages/README.md`](./pages/README.md), "Writing a
+browser check", first. Always run `deno task --cwd pages build` before
+`deno task --cwd pages verify`; `--static` and `--only` are not full runs, and CI passes neither.
+GitHub runs `check`, `publish:dry`, the build and `verify` on every PR; the Pages deploy waits.
 
 ## Releases
 
