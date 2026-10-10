@@ -83,7 +83,7 @@ export const DEFAULT_PUSH_SETTINGS_LABELS: PushSettingsLabels = {
     "On an iPhone or iPad, notifications work once the app is on your home screen. Tap Share, then Add to Home Screen, and open the app from there.",
   unavailable: "Notifications are not set up on this server.",
   blocked:
-    "Your browser is blocking notifications from this site. To allow them, open the site settings next to the address bar, set Notifications to Allow, then come back here.",
+    "Notifications are blocked for this app. To allow them, open your browser's settings for this site, or your device's notification settings for this app, set Notifications to Allow, then come back here.",
   off: "Notifications are off on this device.",
   on: "Notifications are on for this device.",
   enable: "Turn on notifications",
@@ -144,8 +144,9 @@ export interface PushSettingsProps {
  * One `role="status"` region is in the block from the first render and stays empty until something
  * changes, so a screen reader hears "turned on", "turned off", a failure or a sent test, and
  * nothing on page load. Turn on and Turn off are the same button, so focus stays on it through the
- * change; a failure message is the description of the button it belongs to; when the button leaves (the browser blocked notifications), focus moves to the sentence
- * that explains why instead of falling to the page body.
+ * change; a failure message is the description of the button it belongs to; when the button leaves
+ * (the browser blocked notifications), focus moves to the sentence that explains why instead of
+ * falling to the page body, and the live region stays empty so the sentence is heard once.
  */
 export function PushSettings(
   { status, busy, failed, sent, onEnable, onDisable, onTest, labels, class: className }:
@@ -160,6 +161,8 @@ export function PushSettings(
   const previous = useRef(status)
   /** Set while rendering with focus inside the block, read once the render is in the page. */
   const hadFocus = useRef(false)
+  /** Set when focus was moved to the explanation, which a screen reader then reads by itself. */
+  const movedFocus = useRef(false)
 
   // Read before this render reaches the page: once a focused button is gone, focus has already
   // fallen to the body. A server render has no document.
@@ -172,6 +175,7 @@ export function PushSettings(
     const element = block.current
     if (hadFocus.current && element && !element.contains(element.ownerDocument.activeElement)) {
       description.current?.focus()
+      movedFocus.current = true
     }
   })
 
@@ -182,6 +186,10 @@ export function PushSettings(
     previous.current = status
     // The first reading of the device is not news; a change after it is.
     if (before === status || before === "checking") return
+    const focused = movedFocus.current
+    movedFocus.current = false
+    // The focused explanation is read out already; announcing it too would say it twice.
+    if (focused) return void (announcement.value = "")
     announcement.value = status === "on"
       ? words.turnedOn
       : status === "off"

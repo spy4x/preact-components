@@ -1,5 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { options, type VNode } from "preact"
 import { render } from "preact-render-to-string"
 import {
   DEFAULT_PUSH_SETTINGS_LABELS,
@@ -19,6 +20,33 @@ function html(props: Partial<PushSettingsProps> & { status: PushSettingsStatus }
 function buttons(markup: string): string[] {
   return [...markup.matchAll(/<button[^>]*>(?:<span[^>]*>.*?<\/span>)?([^<]*)<\/button>/g)]
     .map((match) => match[1])
+}
+
+/**
+ * Render the block and return what a press on one of its buttons runs. A server render has no
+ * click, so the handler is taken from the button's props as Preact creates it.
+ */
+function pressOf(
+  action: "toggle" | "test",
+  props: Partial<PushSettingsProps> & { status: PushSettingsStatus },
+): () => void {
+  let press: (() => void) | undefined
+  const before = options.vnode
+  options.vnode = (vnode: VNode) => {
+    const given = vnode.props as { "data-push-action"?: string; onClick?: () => void }
+    // The block's own vnode for the button, not the <button> element Button draws from it.
+    if (typeof vnode.type === "function" && given["data-push-action"] === action) {
+      press = given.onClick
+    }
+    before?.(vnode)
+  }
+  try {
+    html(props)
+  } finally {
+    options.vnode = before
+  }
+  if (!press) throw new Error(`the block rendered no ${action} button`)
+  return press
 }
 
 const EMPTY_STATUS = '<p role="status" class="sr-only"></p>'
@@ -62,10 +90,13 @@ describe("PushSettings", () => {
     expect(buttons(markup)).toEqual([])
   })
 
-  it("says how to allow notifications when the browser blocks them, with no button", () => {
+  it("says how to allow notifications, in a browser tab or an installed app, when they are blocked, with no button", () => {
     const markup = html({ status: "blocked", onTest: noop })
 
-    expect(markup).toContain("set Notifications to Allow, then come back here.")
+    expect(markup).toContain(
+      "open your browser's settings for this site, or your device's notification settings for this app, set Notifications to Allow",
+    )
+    expect(markup).not.toContain("address bar")
     expect(buttons(markup)).toEqual([])
   })
 
@@ -99,6 +130,25 @@ describe("PushSettings", () => {
     expect(busyButtons(html({ status: "on", busy: "disable", onTest: noop }))).toEqual(["toggle"])
     expect(busyButtons(html({ status: "on", busy: "test", onTest: noop }))).toEqual(["test"])
     expect(busyButtons(html({ status: "on", onTest: noop }))).toEqual([])
+  })
+
+  it("runs the action of the pressed button, and ignores every press while an action runs", () => {
+    const pressed: string[] = []
+    const handlers = {
+      onEnable: () => pressed.push("enable"),
+      onDisable: () => pressed.push("disable"),
+      onTest: () => pressed.push("test"),
+    }
+
+    pressOf("toggle", { status: "off", ...handlers })()
+    pressOf("toggle", { status: "on", ...handlers })()
+    pressOf("test", { status: "on", ...handlers })()
+    expect(pressed).toEqual(["enable", "disable", "test"])
+
+    pressOf("toggle", { status: "off", busy: "enable", ...handlers })()
+    pressOf("toggle", { status: "on", busy: "test", ...handlers })()
+    pressOf("test", { status: "on", busy: "disable", ...handlers })()
+    expect(pressed).toEqual(["enable", "disable", "test"])
   })
 
   it("shows each action's own failure message and ties it to the button that failed", () => {
