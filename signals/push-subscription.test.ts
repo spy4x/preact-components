@@ -139,7 +139,7 @@ function setup(
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 
 describe("createPushSubscription: reading the device", () => {
-  it("reports checking and touches nothing until it is asked to read", () => {
+  it("reports checking and listens to nothing until it is asked to read", () => {
     const { store, browser } = setup()
 
     expect(store.status.value).toBe("checking")
@@ -195,6 +195,8 @@ describe("createPushSubscription: reading the device", () => {
 
     expect(noWorker.store.status.value).toBe("unsupported")
     expect(noNotification.store.status.value).toBe("unsupported")
+    // Decided from the missing port, not from an error caught on the way.
+    expect(noNotification.server.errors).toEqual([])
     expect(noManager.store.status.value).toBe("unsupported")
   })
 
@@ -352,16 +354,16 @@ describe("createPushSubscription: turning on", () => {
     expect(store.failed.value).toBe("enable")
   })
 
-  it("is busy with enable while it runs, and ignores a second action until it ends", async () => {
-    const { store, browser } = setup()
+  it("is busy with the action while it runs, and ignores a second action until it ends", async () => {
+    const { store, browser } = setup({ permission: "granted", subscribed: true })
 
-    const first = store.enable()
-    expect(store.busy.value).toBe("enable")
-    await store.disable()
+    const first = store.disable()
+    expect(store.busy.value).toBe("disable")
+    await store.enable()
     await first
 
-    expect(browser.calls).toEqual(["prompt", "subscribe userVisibleOnly=true", "save"])
-    expect(store.status.value).toBe("on")
+    expect(browser.calls).toEqual([`remove ${ENDPOINT}`, "unsubscribe"])
+    expect(store.status.value).toBe("off")
     expect(store.busy.value).toBe(null)
   })
 })
