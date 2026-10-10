@@ -1500,7 +1500,7 @@ function ConflictChooserDemo() {
     log.value = [...log.value, `${choice}: ${item?.label}`]
     conflicts.value = conflicts.value.filter((entry) => entry.id !== id)
   }
-  const chooser = (headingLevel: 3 | 4) => (
+  const chooser = (headingLevel: 2 | 3) => (
     <ConflictChooser
       conflicts={conflicts.value}
       onKeepMine={settle("keep mine")}
@@ -1510,7 +1510,7 @@ function ConflictChooserDemo() {
   )
   return (
     <Stack gap="md" data-e2e="conflict-demo">
-      <div data-e2e="conflict-inline">{dialog.value ? null : chooser(4)}</div>
+      <div data-e2e="conflict-inline">{dialog.value ? null : chooser(2)}</div>
       <Cluster gap="sm">
         <Button
           variant="outline"
@@ -1554,16 +1554,21 @@ function ConflictChooserDemo() {
       <ol data-e2e="conflict-log" class="text-sm text-muted">
         {log.value.map((line) => <li key={line}>{line}</li>)}
       </ol>
-      <Part title="Before any conflict arrives">
+      {
+        /* A plain caption and a level 3 heading: the chooser above keeps the component's default
+          `<h2>`, and a captioning `<h4>` or a level 5 heading after it would skip a level. */
+      }
+      <Stack gap="sm">
+        <p class="text-xs font-semibold text-muted">Before any conflict arrives</p>
         <div data-e2e="conflict-empty">
           <ConflictChooser
             conflicts={[]}
             onKeepMine={() => {}}
             onUseTheirs={() => {}}
-            headingLevel={5}
+            headingLevel={3}
           />
         </div>
-      </Part>
+      </Stack>
     </Stack>
   )
 }
