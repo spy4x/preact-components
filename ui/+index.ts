@@ -402,6 +402,17 @@ export {
 } from "./command-palette.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
 export {
+  defaultQuickAddLabels,
+  QUICK_ADD_ANNOUNCE_PAUSE_MS,
+  QuickAdd,
+  type QuickAddDueLabel,
+  quickAddDueLabel,
+  type QuickAddLabels,
+  quickAddParts,
+  type QuickAddPartsOptions,
+  type QuickAddProps,
+} from "./quick-add.tsx"
+export {
   type ToggleChipOption,
   ToggleChips,
   toggleChipSelection,
