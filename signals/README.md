@@ -393,10 +393,12 @@ toast.info({ body: "Read this one", duration: 20_000 })
   number is matched by its string form.
 - **`dataE2E` on a message** reaches its entry and `Toastr` renders it on that toast as `data-e2e`,
   so a test can wait for one message.
-- **`action` on a message**, a `ToastAction` of `{ label, onAction }`, reaches its entry, and
-  `Toastr` renders it as a button that runs `onAction` once and dismisses the toast:
-  `toast.info({ body: "Note deleted", action: { label: "Undo", onAction: restore } })`. Named no
-  `duration`, such a toast stays ten seconds under `Toastr` instead of five.
+- **`action` on a message**, a `ToastAction` of `{ label, onAction, dataE2E? }`, reaches its entry
+  as the same object, and `Toastr` renders it as a button that runs `onAction` once and dismisses
+  the toast: `toast.info({ body: "Note deleted", action: { label: "Undo", onAction: restore } })`.
+  Named no `duration`, such a toast stays ten seconds under `Toastr` instead of five. The action's
+  own `dataE2E` becomes `data-e2e` on that button:
+  `action: { label: "Undo", onAction: restore, dataE2E: "note-undo" }`.
 - **`list` appends the newest toast last**, so the documented wiring renders oldest at the top. A
   caller who wants the newest first hands `Toastr` a reversed copy.
 

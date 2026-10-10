@@ -153,6 +153,12 @@ const undoBody = "Draft deleted"
 const undoLabel = "Undo"
 
 /**
+ * The `data-e2e` the card's Undo toast gives its action button through `action.dataE2E`. The other
+ * two toasts with an action name none, so their buttons carry no hook.
+ */
+const undoActionHook = "guide-toast-undo-action"
+
+/**
  * A long action label, so the card shows how a label too long for one line wraps instead of
  * pushing the dismiss control out of a narrow window. The toast stays until it is dismissed, so it
  * can be looked at on a phone.
@@ -276,12 +282,17 @@ function ToastrDemo() {
           data-e2e="toast-undo"
           data-duration={undoMs}
           data-label={undoLabel}
+          data-action-hook={undoActionHook}
           onClick={() =>
             store.info({
               body: undoBody,
               duration: undoMs,
               dataE2E: "guide-toast-undo",
-              action: { label: undoLabel, onAction: () => undone.value++ },
+              action: {
+                label: undoLabel,
+                onAction: () => undone.value++,
+                dataE2E: undoActionHook,
+              },
             })}
         >
           with an Undo action
@@ -332,9 +343,11 @@ function ToastrDemo() {
         own stays <span data-e2e="toast-default-duration">{defaultToastDuration}</span> ms, or{" "}
         <span data-e2e="toast-action-duration">{defaultToastActionDuration}</span>{" "}
         ms with an action; the Undo toast here asks for {undoMs} ms. Undone:{" "}
-        <span data-e2e="toast-undo-count">{undone.value}</span>. Each toast shows the title it was
-        pushed with, or its kind's default. Rename puts focus in the name field, and it stays there
-        once the toast closes. Hover the stack to pause every timer.
+        <span data-e2e="toast-undo-count">{undone.value}</span>. The Undo button carries{" "}
+        <code>data-e2e="{undoActionHook}"</code>, from its action's{" "}
+        <code>dataE2E</code>. Each toast shows the title it was pushed with, or its kind's default.
+        Rename puts focus in the name field, and it stays there once the toast closes. Hover the
+        stack to pause every timer.
       </DemoNote>
       {toasts.length === 0 ? <DemoNote>Nothing pushed yet.</DemoNote> : null}
       <Toastr

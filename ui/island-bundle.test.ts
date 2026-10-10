@@ -22,6 +22,9 @@ import { fromFileUrl } from "@std/path"
 /** A string `tailwind-merge`'s minified code carries: one of its Tailwind class-group names. */
 const TAILWIND_MERGE_MARKER = "oldstyle-nums"
 
+/** A string only `Button`'s hotkey code carries: the attribute it writes for its `hotkey` prop. */
+const BUTTON_HOTKEY_MARKER = "aria-keyshortcuts"
+
 /**
  * A ceiling on each component island, well under the ~28 KB `tailwind-merge` alone would add on
  * top of it. `Button`'s `hotkey` prop (#610) put Preact's hooks, the hotkey parser and the key
@@ -87,4 +90,11 @@ describe("a browser bundle of a library component", () => {
       )
     })
   }
+
+  it("carries none of Button's hotkey code for an island that renders only Toastr", async () => {
+    // `Toastr` calls `cn`, so it cannot join the cases above. `Button` is what writes
+    // `aria-keyshortcuts`; the string in this bundle means `Toastr` imported something that
+    // imports `Button`, which once cost 19 KB minified for one class-name constant (#671).
+    expect(await bundle("island-toastr.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
+  })
 })
