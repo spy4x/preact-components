@@ -14,6 +14,11 @@ export interface CopyBlockProps {
    */
   singleLine?: boolean
   /**
+   * Accessible name of the text of a `singleLine` block, which is a Tab stop so that a keyboard
+   * can scroll it. Defaults to `"Text to copy"`. A block that wraps has no Tab stop and no name.
+   */
+  textLabel?: string
+  /**
    * Injected clipboard port, forwarded to {@link CopyButton}: it reports a failure by throwing,
    * rejecting or returning `false`. Left out, the browser clipboard API is used, falling back to
    * `execCommand("copy")` on an insecure origin.
@@ -39,7 +44,9 @@ export interface CopyBlockProps {
  * A box of monospace text with a copy control beside it: an install command, an API key, an id.
  *
  * The text is never clipped. By default it wraps inside the box, breaking anywhere a line has to;
- * `singleLine` keeps it on one line and lets it scroll sideways inside its own box instead.
+ * `singleLine` keeps it on one line and lets it scroll sideways inside its own box instead. That
+ * box is a Tab stop named `textLabel`, so the arrow keys scroll it: a group, not a landmark, so
+ * several blocks on one page do not fill the landmark list.
  *
  * The copy, its confirmation and its announcement are all `CopyButton`'s: a copy that worked is
  * announced as `copiedLabel` and one that failed as `failedLabel`, in a polite live region that
@@ -52,6 +59,7 @@ export function CopyBlock(
   {
     text,
     singleLine = false,
+    textLabel = "Text to copy",
     copy,
     copyLabel = "Copy",
     copiedLabel,
@@ -68,9 +76,12 @@ export function CopyBlock(
       )}
     >
       <code
+        {...(singleLine ? { role: "group", "aria-label": textLabel, tabIndex: 0 } : {})}
         class={cn(
           "min-w-0 flex-1 self-center font-mono text-sm",
-          singleLine ? "overflow-x-auto whitespace-pre" : "whitespace-pre-wrap wrap-anywhere",
+          singleLine
+            ? "overflow-x-auto whitespace-pre focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+            : "whitespace-pre-wrap wrap-anywhere",
         )}
       >
         {text}
