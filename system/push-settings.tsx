@@ -38,7 +38,7 @@ export type PushSettingsAction = "enable" | "disable" | "test"
 
 /** Every word {@link PushSettings} shows or announces, each with an English default. */
 export interface PushSettingsLabels {
-  /** The block's accessible name and heading. Defaults to `"Notifications"`. */
+  /** The block's title, which is also its accessible name. Defaults to `"Notifications"`. */
   title: string
   /** Shown while the state is `checking`. */
   checking: string
@@ -140,6 +140,7 @@ export interface PushSettingsProps {
 /**
  * Say whether this device gets notifications, and turn them on or off.
  *
+ * The block is a group named by its title, not a landmark: a settings page has many such blocks.
  * One `role="status"` region is in the block from the first render and stays empty until something
  * changes, so a screen reader hears "turned on", "turned off", a failure or a sent test, and
  * nothing on page load. Turn on and Turn off are the same button, so focus stays on it through the
@@ -151,8 +152,9 @@ export function PushSettings(
     PushSettingsProps,
 ): JSX.Element {
   const words = { ...DEFAULT_PUSH_SETTINGS_LABELS, ...labels }
-  const block = useRef<HTMLElement>(null)
+  const block = useRef<HTMLDivElement>(null)
   const description = useRef<HTMLParagraphElement>(null)
+  const titleId = useId()
   const messageId = useId()
   const announcement = useSignal("")
   const previous = useRef(status)
@@ -199,14 +201,15 @@ export function PushSettings(
   }
 
   return (
-    <section
+    <div
       ref={block}
-      aria-label={words.title}
+      role="group"
+      aria-labelledby={titleId}
       data-push-status={status}
       class={cn("flex flex-col gap-3", className)}
     >
       <div class="flex flex-col gap-1">
-        <p class="font-medium">{words.title}</p>
+        <p id={titleId} class="font-medium">{words.title}</p>
         <p ref={description} tabIndex={-1} class="text-sm text-muted outline-hidden">
           {words[DESCRIPTIONS[status]]}
         </p>
@@ -252,6 +255,6 @@ export function PushSettings(
         )
         : null}
       <p role="status" class="sr-only">{announcement.value}</p>
-    </section>
+    </div>
   )
 }

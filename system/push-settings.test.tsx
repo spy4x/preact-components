@@ -26,8 +26,12 @@ const EMPTY_STATUS = '<p role="status" class="sr-only"></p>'
 describe("PushSettings", () => {
   it("names the block Notifications and marks which state it shows", () => {
     const markup = html({ status: "off" })
+    const group = markup.match(
+      /^<div role="group" aria-labelledby="([^"]+)" data-push-status="off"/,
+    )
 
-    expect(markup).toContain('<section aria-label="Notifications" data-push-status="off"')
+    expect(group).not.toBe(null)
+    expect(markup).toContain(`<p id="${group?.[1]}" class="font-medium">Notifications</p>`)
   })
 
   it("says it is checking, with no button, before the device was read", () => {
@@ -142,7 +146,7 @@ describe("PushSettings", () => {
       labels: { title: "Reminders", off: "This phone stays quiet.", enable: "Remind me here" },
     })
 
-    expect(markup).toContain('aria-label="Reminders"')
+    expect(markup).toContain(">Reminders</p>")
     expect(markup).toContain("This phone stays quiet.")
     expect(buttons(markup)).toEqual(["Remind me here"])
     expect(html({ status: "on", labels: { title: "Reminders" } }))
@@ -151,7 +155,7 @@ describe("PushSettings", () => {
 
   it("adds the caller's classes to the block", () => {
     expect(html({ status: "off", class: "pc-card p-4" })).toMatch(
-      /<section[^>]*class="[^"]*pc-card p-4"/,
+      /^<div role="group"[^>]*class="[^"]*pc-card p-4"/,
     )
   })
 })
