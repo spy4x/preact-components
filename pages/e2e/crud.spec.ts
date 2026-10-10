@@ -28,22 +28,19 @@ export const specs: readonly Spec[] = [
       const form = card.locator("form").first()
       const refuse = card.locator(`[data-e2e="refuse-saves"]`)
       const save = form.getByRole("button", { name: "Save" })
-
-      // The region is on the page, empty, before there is anything to announce.
-      await form.locator(`[role="alert"]:empty`).waitFor({ state: "attached" })
+      const alert = form.getByRole("alert")
 
       await refuse.click()
       await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
       await form.getByLabel("Name", { exact: true }).fill("Night shift")
       await page.keyboard.press("Tab")
       await save.click()
-      await form.getByRole("alert")
-        .filter({ hasText: "Could not save: the server refused the row" }).waitFor()
+      await alert.filter({ hasText: "Could not save: the server refused the row" }).waitFor()
 
       await refuse.click()
       await refuse.and(page.locator(`[aria-pressed="false"]`)).waitFor()
       await save.click()
-      await form.locator(`[role="alert"]:empty`).waitFor({ state: "attached" })
+      await alert.waitFor({ state: "detached" })
       await card.locator(`[data-e2e="model"]`)
         .filter({ hasText: `onCreated received: #100 "Night shift"` }).waitFor()
     },

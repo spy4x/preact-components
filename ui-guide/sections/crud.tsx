@@ -564,7 +564,7 @@ function CrudListDemo() {
         data-e2e="patient-search"
         onClick={() => patient.value = !patient.value}
       >
-        Wait a minute after typing, so only Enter or the Search button searches
+        Search only on Enter or the button
       </Button>
       <CrudList
         store={store}
@@ -572,6 +572,8 @@ function CrudListDemo() {
         match={(row, word) => search(row.name, word)}
         query={query}
         searchDelay={patient.value ? 60_000 : undefined}
+        // In a flex column the list's own `mx-auto` would size it to its content, past a phone's edge.
+        class="w-full"
         addHref="#crud"
         canAdd={() => true}
         header={

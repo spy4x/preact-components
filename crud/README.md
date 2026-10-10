@@ -189,7 +189,7 @@ The harness is the six parts, once:
    and is listed by `DeletionValidation`.
 5. **Submit**: an add calls `create` and hands the new row to `onCreated` (navigate from there); an
    edit calls `update` and reloads the row from the store. A save the store refuses, or one that
-   throws, is shown above Save in a `role="alert"` region as `Could not save: <the store's message>`
+   throws, is shown above Save in an `ErrorState` (a `role="alert"`) as `Could not save: <the store's message>`
    (`saveErrorLabel` replaces the first part) and stays until the next save.
 6. **Chrome**: page title, error line, card, footer with the archive toggle, Cancel and Save, and the
    dependency block. A viewer `canChange` refuses gets the fields disabled and a footer with Cancel
