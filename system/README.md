@@ -39,6 +39,7 @@ Extracted from earlier source applications.
 | `SyncStatus`      | `sync-status`      | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
 | `ConflictChooser` | `conflict-chooser` | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
 | `InstallPrompt`   | `install-prompt`   | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
+| `PushSettings`    | `push-settings`    | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -1045,6 +1046,20 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   element `returnFocus` returns, which must be focusable: a button, or an element with
   `tabIndex={-1}`. Without one, focus falls to the page body. A rejected `onInstall` shows `labels.failed` in the card.
   `DEFAULT_INSTALL_PROMPT_LABELS` holds its English words.
+- **`PushSettings`** is the block in an app's settings that says whether this device gets
+  notifications and turns them on or off. It shows one state: `checking`, `unsupported`,
+  `needs-install` (an iPhone or iPad in a browser tab: add the app to the home screen first),
+  `unavailable` (the server has no keys), `blocked` (how to allow them in the browser, and no
+  button, because none could work), `off` (Turn on) or `on` (Turn off and, with `onTest`, Send a
+  test notification). It touches no browser API and never asks for permission: `onEnable` does,
+  so the browser's prompt opens only after the press. `usePushSubscription` in
+  `@spy4x/preact-signals` returns exactly these props. `busy` names the action whose button shows
+  a spinner, and `failed` the one whose message shows under the buttons. An always-present
+  `role="status"` region announces "turned on", "turned off", a failure and a sent test, and
+  nothing on page load. Turn on and Turn off are one button, so focus stays on it; when the
+  button leaves because the browser blocked notifications, focus moves to the explanation. The
+  block has no frame of its own: pass `class="pc-card p-4"` for a card.
+  `DEFAULT_PUSH_SETTINGS_LABELS` holds its English words.
 - The update banner is `SWUpdater`, above; there is no second one.
 
 ### Wiring them to an `Outbox`
