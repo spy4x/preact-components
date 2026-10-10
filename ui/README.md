@@ -127,7 +127,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tooltip`             | `tooltip`              | `content`, `label`, `placement`, `focusable`                                                                                                                                                                                                       |
 | `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`            |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                               |
-| `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?` — asks before leaving with unsaved changes                                                                                             |
+| `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes                                        |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                    |
 
 ## Usage
@@ -1652,6 +1652,31 @@ already changed, and no event lets a page refuse it.
 />
 ```
 
+### Navigation started from code
+
+A sidebar button or a keyboard shortcut changes the route from code, so there is no link click to
+hold back. Create one `LeaveGuard` for the app, give it to the guard as `leaveGuard`, and send
+those navigations through it:
+
+```tsx
+// leave-guard.ts, once for the app
+export const leaveGuard = createLeaveGuard()
+
+// the page with the form
+<UnsavedGuard when={dirty} navigate={setLocation} owns={owns} leaveGuard={leaveGuard} />
+
+// a sidebar button, a shortcut, a redirect
+leaveGuard.navigate(() => setLocation("/lists"))
+```
+
+While `when` is `true`, `leaveGuard.navigate(go)` opens the same dialog as a link click: "Leave"
+calls `onDiscard` and then `go`, and "Stay" drops `go` and gives the focus back to the element that
+had it when the dialog opened: the button that was pressed, or the field a shortcut was typed in.
+While `when` is `false`, or with no `UnsavedGuard` on the page, `go` runs at once. A second call
+while the dialog is open replaces the first `go`; there is never a second dialog, and "Leave" runs
+only the newest. If the changes are saved while the dialog is open, it closes and nothing
+navigates. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+
 ## OnboardingChecklist
 
 A card of first steps for a new user. The app owns every fact: each step's `done` comes from the
@@ -2026,6 +2051,11 @@ components and tests means exactly that: nothing outside this package should bui
   address to hold back, as path, query and hash, or `null` when the browser or the link should
   handle the click. `UnsavedClick` and `UnsavedLink` are the fields it reads.
 - `defaultUnsavedGuardLabels` holds the dialog's English words; `labels` replaces any of them.
+- `createLeaveGuard()` makes the `LeaveGuard` an app shares between its `UnsavedGuard` (the
+  `leaveGuard` prop) and the code that navigates. `leaveGuard.navigate(go)` runs `go` at once when
+  nothing is unsaved and asks first otherwise. Its `hold(holder)`, `asks(holder)`, `leave()` and
+  `stay()` are what `UnsavedGuard` drives the dialog with; an app that draws its own question can
+  call them too.
 
 ### useSucceeded (`./use-succeeded`)
 
