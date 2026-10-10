@@ -20324,8 +20324,8 @@ interface UnsavedReading {
 /**
  * Put a probe on every demo link. It records whether a click reached the link and whether it was
  * already cancelled when it did, then cancels it, so no check really navigates (the pattern in
- * AGENTS.md, moved from the document to the link, because the guard stops a click it holds back
- * from reaching the document's own listeners).
+ * `pages/README.md`, "Writing a browser check", moved from the document to the link, because the
+ * guard stops a click it holds back from reaching the document's own listeners).
  */
 const UNSAVED_PROBE_INSTALL = `(() => {
   globalThis.__unsavedProbe = {}

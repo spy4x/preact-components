@@ -115,11 +115,6 @@ passed, while throttled runs found failures on the first try. A check that fails
 check to fix, not to re-run: poll on the state it asserts, read in the same evaluate as the action,
 or measure a duration with the page's own clock.
 
-`verify` denies downloads for the whole run: right after it connects, it calls
-`Browser.setDownloadBehavior` with `deny`, falls back to `Page.setDownloadBehavior`, and prints a note
-and carries on if neither exists. A check that exports a file reads its bytes inside the page, so it
-never needs the file on disk.
-
 This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`, on a runner image that ships Google Chrome. The deploy job
@@ -160,6 +155,106 @@ full run under load.
 
 When a run stops on either limit, read the named last check before raising a number: a stall
 after a check that usually takes a second is a hang to fix, not a limit to widen.
+
+A browser that dies mid-run fails the run, naming the last check that passed. Teardown also runs on
+SIGINT, SIGTERM and SIGHUP: it closes the browser over DevTools, then kills only processes whose
+command line carries this run's exact `--user-data-dir`. Chromium's crash-reporter processes carry
+no profile argument; they exit on their own shortly after the browser.
+
+## Writing a browser check
+
+Every test `deno task test` runs renders a component to an HTML string, so none of them executes an
+effect, a ref, a key press, a focus change or a timer. Behaviour behind one of those is proven only
+by a check here, and is unproven until one covers it.
+
+- **Where.** A check goes in its package's own file under `checks/` — `checks/ui.ts` for a `ui/`
+  component, `checks/system.ts` for a `system/` one — never in `verify.ts`, which keeps the static
+  phase and the browser startup and calls every package's file in one fixed order. Every package
+  the catalogue demonstrates has a file, even an empty one, so a first check touches nobody else's
+  file; `cn/` has none, as nothing in it can be driven. The shared helpers (`check`, `poll`,
+  `pressKey`, `centreInView`, `settledScroll`, the `Devtools` session) live in `checks/harness.ts`;
+  import them, never redefine them.
+- **Coverage is the files.** No document lists which components are covered: read the names
+  passed to `check(...)` in the package's file. A component with no check there is unproven.
+- **Build first.** Run `deno task --cwd pages build` before every `verify`; `verify` refuses a stale
+  `dist/` (see "Commands").
+- **Mutations.** Prove a mutation in its own throwaway worktree, at a path no other run uses, and
+  never rebuild a worktree while a `verify` is still running against it.
+
+### Keys and focus
+
+- Chromium activates a focused button on Enter only when the key-down carries `text: "\r"`.
+  `pressKey(devtools, "Enter")` sends it, so it acts like a real Enter press (#261). Space needs no
+  `text` field.
+- A key press that must trigger the browser's own action (activating a button) goes through
+  `Input.dispatchKeyEvent`: a synthesised `KeyboardEvent` is untrusted, so the browser does not act
+  on it, though the page's own listeners still receive it.
+- `Input.insertText` delivers its whole string as one `input` event. A check about what happens
+  between keystrokes sends one character per call.
+- A page that has never had a real click or key press has no focus, and Chromium sends no `focus`
+  or `blur` event for a scripted `.focus()` or `.blur()` there. A check that needs those events
+  clicks first (#273). A block run alone with `--only` meets this; a full run hides it.
+
+### Pointer and hover
+
+- `verify.ts` launches the browser with a `--blink-settings` flag that gives it a hover-capable, fine
+  pointer; headless Chromium otherwise answers `(hover: none)` and `(pointer: none)`. Tailwind
+  compiles every `hover:` and `group-hover:` utility inside `@media (hover: hover)`, so hover styles
+  apply and a check may lean on one. A hover style written by hand as `&:hover` in
+  `theme/preset.css` is ungated and applies on any device. A check right after hydration asserts the
+  browser still answers `(hover: hover)` and `(pointer: fine)`.
+- The browser delivers real mouse events, so a pointer left resting on an element by an earlier
+  check changes its computed colour and can pause a timer. A check either parks the pointer away and
+  reads back where it landed, or asserts the element is not `:hover` before reading a style off it.
+- A check that locates an element with `elementFromPoint` decides whether a child of the element
+  counts as the element. Counting a trigger's own hint as the trigger once let a Tooltip check pass
+  with every trigger hidden (#301).
+
+### Scrolling
+
+- The catalogue scrolls smoothly. To bring an element into view before aiming at it, use
+  `centreInView`: it works out where the page's own smooth scroll will stop and waits until the page
+  is there. Do not swap it for an instant scroll, which loses to a smooth scroll already running
+  under load (#269). `checks/system.ts` (its own `settleScroll` helper, 13 instant `scrollIntoView`
+  calls) and the `ZoomableImages` checks in `checks/ui.ts` (three more) still scroll instantly;
+  move them to `centreInView` when one of them next fails.
+- After anything else that scrolls or reloads, wait with `settledScroll` before aiming the pointer
+  or reading a position. Tell it about the scroll you expect — its `target` when you know where it
+  ends, or the position it starts `from` — because two equal reads 100 ms apart cannot tell a scroll
+  that has not started from one that has stopped. Without either, it answers only whether anything
+  is moving now.
+- The page must not scroll itself on load (#255). A check right after hydration reads `scrollY`
+  every 100 ms for 2 s and requires 0 on every read, so a block that scrolls on its own is caught at
+  the source.
+
+### Timing, navigation and files
+
+- `<details>` fires `toggle` as a queued task after the click that opened it, so a listener an
+  effect attaches on open is not there yet when a fast Escape arrives. A check that must land in
+  that gap waits two animation frames, then clicks and dispatches the key inside one
+  `Runtime.evaluate`.
+- A check that clicks a link reads `defaultPrevented` from a `document` listener that then cancels
+  the event, rather than letting the page navigate: a real navigation leaves the page moving after
+  the check's wait returns.
+- A back/forward-cache restore can be driven: navigate away, then `Page.navigateToHistoryEntry`;
+  `Page.frameNavigated` reports `type: "BackForwardCacheRestore"`.
+- The published Pages site answers a POST with 405. A form's no-JavaScript path is proven against
+  the local preview server, which serves the page for a POST too.
+- `verify` denies downloads for the whole run (`Browser.setDownloadBehavior` with `deny`, falling
+  back to `Page.setDownloadBehavior`, and a printed note if neither exists, after which the run
+  carries on). A check that exports a file reads its bytes inside the page.
+
+### Hydration and signals
+
+- Preact keeps a text field's value while hydrating and fires no `input` event for it, so text typed
+  before the bundle ran is invisible to the component until it reads the field on mount. `MoneyInput`
+  does; a new input component that keeps its own state has to as well.
+- Preact replaces text that differs between server and browser during hydration and logs nothing,
+  so the console check cannot see it. The "Server and browser text" check under "Verification"
+  compares every card; a change that renders differently in the two fails there.
+- A signal read during a render subscribes the component, so a render (or a card's demo) that then
+  writes that signal re-renders forever. `verify` reports it only as a load timeout, and a
+  server-render test cannot reproduce it (#300).
 
 ## How a build works
 

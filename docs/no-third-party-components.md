@@ -183,6 +183,11 @@ grep -rnE ':\s*"(npm|jsr):[^"]*[\^~]' --include=deno.json --include=deno.jsonc .
 A lockfile change appearing in a diff is the signal that a dependency was added or moved. That is
 review reading a diff, not CI failing a build.
 
+One narrow exception: `deno task --cwd pages verify`, which the GitHub workflow runs, fails when
+`deno.lock` records a specifier with no version (`jsr:…@*`), whoever wrote it, and when the run
+itself changes the lockfile (#283). It checks the lockfile's shape, not which dependencies it
+holds.
+
 ### Nothing in CI checks the allowlist
 
 Woodpecker (`.woodpecker.yml`) runs `deno task check`, which is exactly `fmt:check`, `lint`,

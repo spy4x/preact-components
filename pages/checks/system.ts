@@ -1628,8 +1628,8 @@ const NO_AUTH_MODE_LINK: AuthModeLinkState = { href: "", switches: "", location:
  *
  * A `document` click listener, the last to see each click, records whether `AuthForm` had already
  * cancelled it and then cancels it itself, so no click here really navigates or opens a tab
- * (`AGENTS.md`, wave six). The card counts `onModeChange` calls, and the link's `href` moves to the
- * other mode's page when the mode really changed.
+ * (`pages/README.md`, "Writing a browser check"). The card counts `onModeChange` calls, and the
+ * link's `href` moves to the other mode's page when the mode really changed.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -5956,8 +5956,8 @@ const SHELL_PORT_UNREAD: ShellPortState = { navigations: "", path: "", href: "",
 /**
  * Add a `document` click listener that records, for every click on a link, its `href` and whether
  * the event was already cancelled when it arrived, then cancels it so the page never really
- * navigates or opens a tab (`AGENTS.md`, wave six). It runs after the shell's own handler, which is
- * attached to the link itself.
+ * navigates or opens a tab (`pages/README.md`, "Writing a browser check"). It runs after the
+ * shell's own handler, which is attached to the link itself.
  */
 function installShellClickSpy(devtools: Devtools): Promise<boolean> {
   return read(
@@ -6228,8 +6228,8 @@ async function shellStickySidebarCheck(devtools: Devtools): Promise<void> {
  *
  * Whether the browser's navigation was cancelled is read by a `document` click listener, the last
  * to see the event: it records `defaultPrevented` as the shell left it, then cancels the event
- * itself, so neither click ever really navigates or opens a tab (`AGENTS.md`, wave six). The card
- * counts `navigate` calls and shows the path it was given.
+ * itself, so neither click ever really navigates or opens a tab (`pages/README.md`, "Writing a
+ * browser check"). The card counts `navigate` calls and shows the path it was given.
  *
  * @param devtools The connected session, on a hydrated page. Leaves the viewport at desktop width;
  * `shellChecks`' own `finally` clears it.
@@ -6444,8 +6444,8 @@ async function openShellUserMenu(devtools: Devtools): Promise<boolean> {
  * The submit is read from a `document` listener rather than let through: it records whether the
  * form's own hydrated handler had already cancelled the post, then cancels it anyway, so a broken
  * handler shows up as `prevented: false` instead of a real navigation away from the catalogue
- * (`AGENTS.md`, wave six). The listener runs in the bubble phase, after Preact's own handler on the
- * form, and is removed in a `finally`.
+ * (`pages/README.md`, "Writing a browser check"). The listener runs in the bubble phase, after
+ * Preact's own handler on the form, and is removed in a `finally`.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -7417,13 +7417,13 @@ async function setRailShellRouteLinks(devtools: Devtools, on: boolean): Promise<
  *
  * Whether the browser's navigation was cancelled is read by `document` listeners for `click` and
  * `auxclick`, the last to see the event: each records `defaultPrevented` as the shell left it, then
- * cancels the event itself, so no click really navigates or opens a tab (`AGENTS.md`, wave six).
- * The card prints the key and `href` the port was handed. Each check that expects the port left
- * uncalled compares that line with what it read just before its own click, not with what an
- * earlier check left there, so a broken plain click fails only its own check (#648). Each aim
- * centres the card's frame again first, so a click lands on a link in view whatever moved the page
- * since the last one. `finally` removes the listeners, turns the port back on and puts the card
- * back on its first entry.
+ * cancels the event itself, so no click really navigates or opens a tab (`pages/README.md`,
+ * "Writing a browser check"). The card prints the key and `href` the port was handed. Each check
+ * that expects the port left uncalled compares that line with what it read just before its own
+ * click, not with what an earlier check left there, so a broken plain click fails only its own
+ * check (#648). Each aim centres the card's frame again first, so a click lands on a link in view
+ * whatever moved the page since the last one. `finally` removes the listeners, turns the port back
+ * on and puts the card back on its first entry.
  *
  * @param devtools The connected session, on a hydrated page, at desktop width.
  */
