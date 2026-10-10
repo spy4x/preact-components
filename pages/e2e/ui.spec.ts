@@ -59,7 +59,7 @@ export const specs: readonly Spec[] = [
   }),
   {
     name: "CopyBlock with singleLine and text that fits: the text is no Tab stop and has no " +
-      "role or name, until its box gets too narrow for it",
+      "role or name, until its box gets too narrow for it or its text gets too wide",
     pageId: "ui",
     run: async (page) => {
       const card = page.locator("#demo-CopyBlock")
@@ -82,6 +82,13 @@ export const specs: readonly Spec[] = [
       await text.evaluate((node) => node.parentElement?.style.setProperty("width", "120px"))
       await scrolling.waitFor()
       await text.evaluate((node) => node.parentElement?.style.removeProperty("width"))
+      await plain.waitFor()
+
+      // Wider text in the same box overflows too: the text is watched, not only the box.
+      const line = text.locator("span")
+      await line.evaluate((node) => node.style.setProperty("letter-spacing", "3em"))
+      await scrolling.waitFor()
+      await line.evaluate((node) => node.style.removeProperty("letter-spacing"))
       await plain.waitFor()
       return `the stop before the copy button is a ${stop}`
     },
