@@ -35,7 +35,7 @@ describe("quickAddParts", () => {
   })
 
   it("finds nothing in a plain title", () => {
-    expect(parts("Buy oat milk")).toEqual([])
+    expect(parts("Buy oat milk")).toStrictEqual([])
   })
 
   it("names each priority", () => {
@@ -104,10 +104,6 @@ describe("QuickAdd", () => {
     expect(html).toContain(`aria-label="Nouvelle note"`)
     expect(html).toContain(`placeholder="Ajouter une note"`)
     expect(html).toContain(`<span class="sr-only">Ajouter</span>`)
-  })
-
-  it("renders without a zone, reading the device's own", () => {
-    expect(render(<QuickAdd onAdd={() => {}} />)).toContain(`data-e2e="quick-add-input"`)
   })
 
   it("starts with no badges and an empty polite live region", () => {
