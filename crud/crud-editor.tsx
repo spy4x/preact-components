@@ -1,5 +1,6 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
+import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { Stack } from "@spy4x/preact-ui/layout"
 import { PageTitle } from "@spy4x/preact-ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
@@ -292,8 +293,9 @@ export type CrudEditorProps<M extends CrudRow> = CrudEditorBaseProps<M> & CrudEd
  * browse mode does not — is told why. An issue here always fails {@link isValid}, the same as any
  * field's.
  *
- * A save the store refuses, or one that throws, is shown above Save too, in an alert region that
- * is on the page from the first render for the same reason, and stays until the next save.
+ * A save the store refuses, or one that throws, is shown above Save too, in the library's
+ * `ErrorState` (a `role="alert"`, the same panel `CrudList` shows a failed load in), and stays
+ * until the next save.
  */
 export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.Element {
   const {
@@ -483,10 +485,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 <p key={index} class="text-sm text-danger mt-2">{issue.message}</p>
               ))}
             </div>
-            {/* Rendered empty for the same reason: an alert that arrives with its text may be missed. */}
-            <div role="alert">
-              {saveError.value !== "" && <p class="text-sm text-danger mt-2">{saveError.value}</p>}
-            </div>
+            <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-left" />
           </div>
           {
             /*
