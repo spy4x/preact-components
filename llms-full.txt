@@ -456,6 +456,8 @@ The interfaces here describe the slice actually consumed, and nothing else.
 | `statusFilter`                  | on                | `false`, or `{ label, active, archived }` for a different wording |
 | `query`, `status`               | local signals     | hand over the signals to own them (URL filters, a parent page)    |
 | `searchDelay`                   | `300`             | debounce of the search box                                        |
+| `searchPlaceholder`             | `"Search"`        | placeholder of the search box                                     |
+| `searchLabel`                   | `"Search"`        | name of the Search button, which searches at once, as Enter does  |
 
 `rows` is how the two variants the store cannot express are built. A nested list scoped to a parent
 passes a selector (`state.child.childrenOfParent(parentId)`); a read-only collection with no
@@ -498,9 +500,12 @@ The harness is the six parts, once:
 4. **Dependencies**: `archive.dependencies(row)` is asked first, and a non-empty answer blocks Save
    and is listed by `DeletionValidation`.
 5. **Submit**: an add calls `create` and hands the new row to `onCreated` (navigate from there); an
-   edit calls `update` and reloads the row from the store.
+   edit calls `update` and reloads the row from the store. A save the store refuses, or one that
+   throws, is shown above Save in a `role="alert"` region as `Could not save: <the store's message>`
+   (`saveErrorLabel` replaces the first part) and stays until the next save.
 6. **Chrome**: page title, error line, card, footer with the archive toggle, Cancel and Save, and the
-   dependency block. Save is live only when the form is initialised, valid, idle and unblocked. Any
+   dependency block. A viewer `canChange` refuses gets the fields disabled and a footer with Cancel
+   alone, so there is still a way back. Save is live only when the form is initialised, valid, idle and unblocked. Any
    `FORM_FIELD` message from part 2 renders as a live region above Save — present on every
    render, empty until such an issue arrives, and named by Save's `aria-describedby` at all times, so
    a screen-reader user who reaches the (possibly disabled) button is told why. arktype's default
@@ -511,19 +516,20 @@ The harness is the six parts, once:
    editor ends at the form's bottom edge in any parent layout; once the block holds a list, the
    section's 24px gap separates it from the form (#279).
 
-| Prop         | Default             | Notes                                                           |
-| ------------ | ------------------- | --------------------------------------------------------------- |
-| `blank`      | —                   | the add-mode row; the row type is inferred from it              |
-| `schema`     | —                   | arktype schema validated on every change; omit if there is none |
-| `entity`     | —                   | "Add **Region**", "Region not found", dependency sentence       |
-| `title`      | `Add/Edit <entity>` | full title override                                             |
-| `canChange`  | `true`              | a port, because the library has no auth                         |
-| `archive`    | no toggle           | `{}` turns the archive toggle on; `{ label, dependencies }`     |
-| `onCreated`  | —                   | navigate where the created row belongs                          |
-| `validate`   | —                   | extra checks after the schema                                   |
-| `cancelHref` | —                   | where Cancel points                                             |
-| `notice`     | —                   | slot between the field grid and the footer                      |
-| `footerSlot` | —                   | slot at the start of the footer                                 |
+| Prop             | Default             | Notes                                                           |
+| ---------------- | ------------------- | --------------------------------------------------------------- |
+| `blank`          | —                   | the add-mode row; the row type is inferred from it              |
+| `schema`         | —                   | arktype schema validated on every change; omit if there is none |
+| `entity`         | —                   | "Add **Region**", "Region not found", dependency sentence       |
+| `title`          | `Add/Edit <entity>` | full title override                                             |
+| `canChange`      | `true`              | a port, because the library has no auth; `false` leaves Cancel  |
+| `archive`        | no toggle           | `{}` turns the archive toggle on; `{ label, dependencies }`     |
+| `onCreated`      | —                   | navigate where the created row belongs                          |
+| `validate`       | —                   | extra checks after the schema                                   |
+| `cancelHref`     | —                   | where Cancel points                                             |
+| `saveErrorLabel` | `"Could not save"`  | what a failed save is introduced with                           |
+| `notice`         | —                   | slot between the field grid and the footer                      |
+| `footerSlot`     | —                   | slot at the start of the footer                                 |
 
 ## Field rows
 
@@ -695,7 +701,10 @@ differs from a validated form in three ways, and each one is a slot or a port on
   duplicated; `conflictIssue` turns it into an issue whose payload is that row's id, so the message
   appears beside the control and disables Save through the existing rule.
 - **Removal instead of archiving.** Delete ends the row and Restore brings it back, written into
-  `footerSlot`.
+  `footerSlot`. Each asks first in the library's `ConfirmDialog`, never the browser's `confirm()`:
+  `confirmDelete` and `confirmRestore` are the questions, `confirmDeleteTitle` and
+  `confirmRestoreTitle` the headings, `deleteLabel` and `restoreLabel` name the confirming action,
+  and `confirmCancelLabel` the cancelling one. All have English defaults.
 
 `association-editor.tsx` is the composition, not a copy:
 
@@ -782,7 +791,7 @@ the same rules.
 - `submitEditor({ mode, store, value, id, blocked })` sends a submit to the store and returns a
   promise of the outcome: an add creates the row and returns it as `created`, an edit updates it and
   returns `updated: true`, and an edit whose archive is blocked writes nothing. A store error is
-  returned, never thrown.
+  returned, never thrown, and a store that throws has its error returned the same way.
 - `toggleArchiveState(row, dependencies)` is the archive checkbox's next state: archiving stamps
   `deletedAt` with now and lists what `dependencies` says still points at the row in `blocked`;
   un-archiving clears both.

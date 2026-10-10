@@ -37,7 +37,7 @@ import type { CrudEditorStore } from "@spy4x/preact-crud/store"
 import type { OperationState } from "@spy4x/preact-crud"
 import { Button, Dropdown, DropdownItem, Stack } from "@spy4x/preact-ui"
 import { IconEllipsisVertical } from "@spy4x/preact-icons"
-import { computed, type ReadonlySignal, signal, useSignal } from "@preact/signals"
+import { computed, type ReadonlySignal, type Signal, signal, useSignal } from "@preact/signals"
 import { search } from "@spy4x/platform/universal/text"
 import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"
 import { type } from "arktype"
@@ -331,11 +331,30 @@ function CrudEditorDemo() {
   // save re-renders the card, and a fresh `makeTeamStore()` on that render would reset the log.
   const { store, writes, rows } = useMemo(() => makeTeamStore(), [])
   const created = useSignal("nothing created yet")
+  // The same store with a `create` the button below can make fail, the way a server would.
+  const refusing = useSignal(false)
+  const demoStore = useMemo<CrudEditorStore<Team>>(() => ({
+    ...store,
+    create: (data) =>
+      refusing.value
+        ? Promise.resolve({ error: { message: "the server refused the row" }, result: null })
+        : store.create(data),
+  }), [])
 
   return (
     <Stack>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={refusing.value}
+        data-e2e="refuse-saves"
+        onClick={() => refusing.value = !refusing.value}
+      >
+        Make the store refuse every save
+      </Button>
       <CrudEditor
-        store={store}
+        store={demoStore}
         mode="add"
         blank={blankTeam()}
         schema={teamCrossFieldSchema}
@@ -390,9 +409,20 @@ function CrudEditorDemo() {
  */
 function CrudEditorArchiveDemo() {
   const { store } = useMemo(() => makeTeamStore(), [])
+  const readOnly = useSignal(false)
 
   return (
-    <div data-e2e="archive-demo">
+    <Stack data-e2e="archive-demo">
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={readOnly.value}
+        data-e2e="read-only"
+        onClick={() => readOnly.value = !readOnly.value}
+      >
+        View as someone who may not change the team
+      </Button>
       <CrudEditor
         store={store}
         mode="edit"
@@ -402,7 +432,7 @@ function CrudEditorArchiveDemo() {
         entity="Team"
         title="Edit a team"
         cancelHref="#crud"
-        canChange={() => true}
+        canChange={() => !readOnly.value}
         archive={{
           dependencies: () => [{
             kind: "Teams",
@@ -412,7 +442,7 @@ function CrudEditorArchiveDemo() {
       >
         {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
       </CrudEditor>
-    </div>
+    </Stack>
   )
 }
 
@@ -422,23 +452,49 @@ function AssociationEditorDemo() {
   // re-renders the card, and a fresh `makeAssociationStore()` on that render would drop the change.
   const { store, rows } = useMemo(() => makeAssociationStore(), [])
   const removed = rows.value.filter((row) => Boolean(row.deletedAt)).length
+  const editing = useSignal(false)
+  // Everything but the mode. The row being edited is not its own duplicate.
+  const shared = {
+    store,
+    blank: blankTeam(),
+    entity: "supplier association",
+    cancelHref: "#crud",
+    conflictField: "name",
+    conflict: (row: Team, all: Team[]) =>
+      all.find((entry) => entry.id !== row.id && entry.name === row.name),
+    conflictMessage: "A supplier with that name already exists.",
+    conflictRemovedMessage: "That supplier existed before and was removed — restore it instead.",
+    children: ({ vm, vl }: { vm: Signal<Team>; vl: ReadonlySignal<ValidationModel<Team>> }) => (
+      <TextField vm={vm} vl={vl} name="name" label="Supplier name" />
+    ),
+  } as const
 
   return (
     <Stack>
-      <AssociationEditor
-        store={store}
-        mode="add"
-        blank={blankTeam()}
-        entity="Supplier association"
-        title="Add a supplier"
-        cancelHref="#crud"
-        conflictField="name"
-        conflict={(row, all) => all.find((entry) => entry.name === row.name)}
-        conflictMessage="A supplier with that name already exists."
-        conflictRemovedMessage="That supplier existed before and was removed — restore it instead."
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={editing.value}
+        data-e2e="edit-association"
+        onClick={() => editing.value = !editing.value}
       >
-        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Supplier name" />}
-      </AssociationEditor>
+        Edit an existing association, which adds Delete
+      </Button>
+      {
+        // Keyed, so switching the mode mounts a fresh editor instead of re-using the other's form.
+        editing.value
+          ? (
+            <AssociationEditor
+              key="edit"
+              {...shared}
+              mode="edit"
+              editId={102}
+              title="Edit a supplier"
+            />
+          )
+          : <AssociationEditor key="add" {...shared} mode="add" title="Add a supplier" />
+      }
       <Caption>
         Type <code>Paper supplier</code> for a duplicate, or <code>Ink supplier</code>{" "}
         for one that was removed.
@@ -496,39 +552,53 @@ function CrudListDemo() {
   // would silently reset the rows the first time something did.
   const { store } = useMemo(() => makeTeamStore(), [])
   const query = useSignal("")
+  const patient = useSignal(false)
 
   return (
-    <CrudList
-      store={store}
-      title="Teams"
-      match={(row, word) => search(row.name, word)}
-      query={query}
-      addHref="#crud"
-      canAdd={() => true}
-      header={
-        <>
-          <th scope="col" class="text-left">Name</th>
-          <th scope="col" class="text-left">Members</th>
-        </>
-      }
-      row={(row) => (
-        <>
-          <td class="text-foreground">{row.name}</td>
-          <td class="tabular-nums">{row.members}</td>
-        </>
-      )}
-      actions={(row) => (
-        <Dropdown
-          trigger={<IconEllipsisVertical />}
-          triggerLabel={`Actions for ${row.name}`}
-          menuLabel={`Actions for ${row.name}`}
-        >
-          <DropdownItem href={`#crud-${row.id}`}>Edit</DropdownItem>
-          <DropdownItem onClick={() => {}}>Duplicate</DropdownItem>
-          <DropdownItem danger onClick={() => {}}>Archive</DropdownItem>
-        </Dropdown>
-      )}
-    />
+    <Stack>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={patient.value}
+        data-e2e="patient-search"
+        onClick={() => patient.value = !patient.value}
+      >
+        Wait a minute after typing, so only Enter or the Search button searches
+      </Button>
+      <CrudList
+        store={store}
+        title="Teams"
+        match={(row, word) => search(row.name, word)}
+        query={query}
+        searchDelay={patient.value ? 60_000 : undefined}
+        addHref="#crud"
+        canAdd={() => true}
+        header={
+          <>
+            <th scope="col" class="text-left">Name</th>
+            <th scope="col" class="text-left">Members</th>
+          </>
+        }
+        row={(row) => (
+          <>
+            <td class="text-foreground">{row.name}</td>
+            <td class="tabular-nums">{row.members}</td>
+          </>
+        )}
+        actions={(row) => (
+          <Dropdown
+            trigger={<IconEllipsisVertical />}
+            triggerLabel={`Actions for ${row.name}`}
+            menuLabel={`Actions for ${row.name}`}
+          >
+            <DropdownItem href={`#crud-${row.id}`}>Edit</DropdownItem>
+            <DropdownItem onClick={() => {}}>Duplicate</DropdownItem>
+            <DropdownItem danger onClick={() => {}}>Archive</DropdownItem>
+          </Dropdown>
+        )}
+      />
+    </Stack>
   )
 }
 
@@ -642,6 +712,19 @@ export const crudDemos = {
         default: "no add link",
         description: "Where the add link leads; `canAdd` decides whether it shows.",
       },
+      {
+        name: "searchDelay",
+        type: "number",
+        default: "300",
+        description:
+          "Milliseconds the search waits after the last key; Enter and the Search button search at once.",
+      },
+      {
+        name: "searchLabel",
+        type: "string",
+        default: `"Search"`,
+        description: "The Search button's name, for a screen reader and the tooltip.",
+      },
     ],
     snippet: `<CrudList
   title="Teams"
@@ -683,8 +766,25 @@ export const crudDemos = {
         type: "string",
         description: "The row's kind, used in the default title and messages.",
       },
-      { name: "cancelHref", type: "string", description: "Where Cancel leads." },
+      {
+        name: "cancelHref",
+        type: "string",
+        description: "Where Cancel leads; a read-only viewer keeps this link.",
+      },
       { name: "blank", type: "M", description: "The row an add form starts from." },
+      {
+        name: "canChange",
+        type: "() => boolean",
+        default: "may change",
+        description:
+          "Whether the viewer may change the row; `false` disables the fields and leaves Cancel alone in the footer.",
+      },
+      {
+        name: "saveErrorLabel",
+        type: "string",
+        default: `"Could not save"`,
+        description: "What a failed save is introduced with, before the store's own message.",
+      },
       {
         name: "schema",
         type: "Type",
@@ -771,6 +871,25 @@ export const crudDemos = {
         type: "string",
         default: "an English sentence",
         description: "What to say when the duplicate was removed and can be restored.",
+      },
+      {
+        name: "confirmDelete",
+        type: "string",
+        default: "an English sentence",
+        description:
+          "The question the dialog asks before Delete removes the row; `confirmRestore` is its twin.",
+      },
+      {
+        name: "confirmDeleteTitle",
+        type: "string",
+        default: "Delete <entity>?",
+        description: "The dialog's heading; `confirmRestoreTitle` is its twin.",
+      },
+      {
+        name: "confirmCancelLabel",
+        type: "string",
+        default: `"Cancel"`,
+        description: "The label of the dialog's cancelling action.",
       },
     ],
     snippet: `<AssociationEditor
