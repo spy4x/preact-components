@@ -186,6 +186,25 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
+      "UnsavedGuard without a leave guard: a click on an in-app link opens the dialog, and Leave navigates to the link's address although onDiscard removes the guard at once",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-UnsavedGuard")
+      const state = card.locator(`[data-e2e="unsaved-alone-state"]`)
+      const dialog = page.getByRole("alertdialog", { name: "Leave without saving?" })
+
+      await card.locator(`[data-e2e="unsaved-alone-draft"]`).fill("An unsaved change")
+      await state.getByText("Unsaved: yes. Outcome: nothing yet", { exact: true }).waitFor()
+      await card.locator(`[data-e2e="unsaved-alone-link"]`).click()
+      await dialog.waitFor()
+      await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+      await state.getByText(/^Unsaved: no\. Outcome: navigate\("\/.*unsaved-demo\/notes\/4"\)$/)
+        .waitFor()
+      await dialog.waitFor({ state: "detached" })
+    },
+  },
+  {
+    name:
       "UnsavedGuard: with nothing unsaved, a button and a key press navigate through the leave guard at once, with no dialog",
     pageId: "ui",
     run: async (page) => {

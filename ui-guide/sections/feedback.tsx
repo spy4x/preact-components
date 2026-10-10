@@ -35,7 +35,8 @@ import {
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
-import { useMemo, useRef, useState } from "preact/hooks"
+import { render } from "preact"
+import { useEffect, useMemo, useRef, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -711,6 +712,65 @@ function UnsavedGuardDemo() {
   )
 }
 
+/**
+ * An `UnsavedGuard` with no `leaveGuard`, as an app that guards only its links uses it. The guard
+ * lives in a Preact root of its own so that `onDiscard` can remove it from the page at once, the
+ * way an app does when dropping the changes closes the form: "Leave" must still navigate.
+ */
+function UnsavedGuardAloneDemo() {
+  const dirty = useSignal(false)
+  const outcome = useSignal("nothing yet")
+  const host = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = host.current
+    if (!root || !dirty.value) return
+    render(
+      <UnsavedGuard
+        when
+        owns={ownsUnsavedDemo}
+        navigate={(href) => outcome.value = `navigate("${href}")`}
+        onDiscard={() => {
+          render(null, root)
+          dirty.value = false
+        }}
+      />,
+      root,
+    )
+    return () => render(null, root)
+  }, [dirty.value])
+
+  return (
+    <Stack gap="sm">
+      <DemoNote>
+        A form of its own, with no leave guard. Leaving drops the change and removes the guard from
+        the page in the same step.
+      </DemoNote>
+      <Input
+        aria-label="Second draft"
+        placeholder="Type to make a change"
+        onInput={() => dirty.value = true}
+        data-e2e="unsaved-alone-draft"
+      />
+      <div
+        onClick={(event) => {
+          if (event.defaultPrevented) return
+          event.preventDefault()
+          outcome.value = "the browser follows the link"
+        }}
+      >
+        <a class="pc-link text-sm" href="unsaved-demo/notes/4" data-e2e="unsaved-alone-link">
+          In-app page
+        </a>
+      </div>
+      <DemoNote e2e="unsaved-alone-state">
+        Unsaved: {dirty.value ? "yes" : "no"}. Outcome: {outcome.value}
+      </DemoNote>
+      <div ref={host} />
+    </Stack>
+  )
+}
+
 /** Props of {@link FragileView}. */
 interface FragileViewProps {
   broken: boolean
@@ -1104,7 +1164,12 @@ export const leaveGuard = createLeaveGuard()
 />
 <a href="/notes/7?latest" data-unsaved-ok>Load the latest version</a>
 <Button onClick={() => leaveGuard.navigate(() => setLocation("/lists"))}>Lists</Button>`,
-    render: () => <UnsavedGuardDemo />,
+    render: () => (
+      <Stack gap="lg">
+        <UnsavedGuardDemo />
+        <UnsavedGuardAloneDemo />
+      </Stack>
+    ),
   },
   Toastr: {
     summary: "Short notifications stacked in a corner that go away on their own or when dismissed.",
