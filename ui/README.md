@@ -970,7 +970,7 @@ one it uses for its own focus restore.
 
 **Left and Right are attached once, on mount, directly on the `<dialog>` element**, reading `open`,
 the current position and the total from a ref updated every render — the same shape
-`ui/tooltip.tsx`'s Escape listener uses. This is the defensive shape `AGENTS.md`'s Escape-race rule
+`ui/tooltip.tsx`'s Escape listener uses. This is the defensive shape the Escape-timing note in `pages/README.md`
 asks for; it is not fixing a race this component was measured to have. A listener gated on `open`
 instead, registered in an effect keyed to it alongside the `showModal()` effect, was measured to
 work too: both effects commit in the same batch, so a key pressed in the same task as the opening

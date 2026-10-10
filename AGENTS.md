@@ -134,7 +134,8 @@ kebab-case, `+main.ts` / `+lib.ts` entry points, colocated deterministic behavio
 (`it("rejects an expired token")`). Imports: relative, `jsr:`, then `npm:` only when unavoidable.
 `interface` for extensible shapes, `enum` for finite constants (from 1), `type` only for unions and
 intersections. Named exports, `async`/`await`, explicit `throw` on a missing value, JSDoc on any
-non-trivial function, class or interface over 10 lines. A new dependency needs a reason in the PR.
+non-trivial function, class or interface over 10 lines. Minimise dependencies: a new one needs
+a reason in the PR.
 
 ## Component rules
 
@@ -162,7 +163,7 @@ component's root carries no margin: siblings are spaced by the parent's named ga
 rows are never deleted but carry `deletedAt`, set and cleared by an optional archive checkbox in the
 normal update, and the list filters active from archived; the store is shaped like
 `buildModelStore` (`CrudListStore` and `CrudEditorStore` in `crud/store.ts`, proven by
-`crud/store.test.ts`); a `canChange` port (boolean, from the app) decides who may edit, and
+`crud/store.test.ts` with no adapter); a `canChange` port (boolean, from the app) decides who may edit, and
 `CrudList` takes `canAdd` the same way.
 
 **Labels.** Every user-visible string has an English default and a prop that overrides it; nothing

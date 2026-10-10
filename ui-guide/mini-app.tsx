@@ -8,7 +8,7 @@
  * `Modal` holding a `Field` form. Every number and row is neutral demo data written here; the
  * component holds no app state, reads no address and makes no request.
  *
- * Rules it keeps, from `AGENTS.md`'s wave-eight notes:
+ * Rules it keeps, from `pages/README.md`, "Writing a browser check":
  *
  * - **No signal is read and written in one render.** Everything the render reads is `useState`, and
  *   every write happens in an event handler. The toast store's list is a signal, read here and

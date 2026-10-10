@@ -186,7 +186,9 @@ by a check here, and is unproven until one covers it.
 - Chromium activates a focused button on Enter only when the key-down carries `text: "\r"`.
   `pressKey(devtools, "Enter")` sends it, so it acts like a real Enter press (#261). Space needs no
   `text` field.
-- Key events go through `Input.dispatchKeyEvent`: the browser ignores a synthesised `KeyboardEvent`.
+- A key press that must trigger the browser's own action (activating a button) goes through
+  `Input.dispatchKeyEvent`: a synthesised `KeyboardEvent` is untrusted, so the browser does not act
+  on it, though the page's own listeners still receive it.
 - `Input.insertText` delivers its whole string as one `input` event. A check about what happens
   between keystrokes sends one character per call.
 - A page that has never had a real click or key press has no focus, and Chromium sends no `focus`

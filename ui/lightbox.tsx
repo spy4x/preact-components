@@ -32,7 +32,7 @@
  * (registered in an effect keyed to it, alongside the `showModal()` effect) turns out **not** to
  * leave a gap here — both effects commit in the same batch, so a key pressed in the same task as
  * the opening click still finds a listener. Attaching on mount is simply the same defensive shape
- * `AGENTS.md`'s Escape-race rule asks for, applied here too, not a fix for a race this component
+ * the Escape-timing note in `pages/README.md` asks for, applied here too, not a fix for a race this component
  * was measured to have.
  *
  * **The counter is visible, not only announced.** A sighted reader sees the same "3 of 8" a screen
