@@ -1019,7 +1019,10 @@ function PackagePage(
         </p>
       </header>
 
-      {page.id === "icons" ? <IconGallery copy={copy} /> : null}
+      {
+        /* The gallery has no section heading above it: its card is headed one level under the page. */
+      }
+      {page.id === "icons" ? <IconGallery copy={copy} headingLevel={nested ? 3 : 2} /> : null}
       {page.id !== "icons" &&
           page.sections.every((section) => section.names.every((name) => !(name in registry)))
         ? <p class="text-sm text-muted">{labels.comingSoon}</p>

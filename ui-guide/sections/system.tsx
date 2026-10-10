@@ -120,7 +120,13 @@ function SeoHeadTagList() {
         {seoHeadTags(pageHead).length} tags, in document order: the array{" "}
         <code>&lt;SEOHead /&gt;</code> renders.
       </p>
-      <pre class="max-h-72 overflow-auto font-mono text-xs text-foreground">
+      <pre
+        class="max-h-72 overflow-auto font-mono text-xs text-foreground"
+        role="group"
+        aria-label="The tags SEOHead renders"
+        tabindex={0}
+        data-e2e="seo-head-tags"
+      >
         <code>{JSON.stringify(seoHeadTags(pageHead), null, 2)}</code>
       </pre>
     </Stack>
@@ -1169,6 +1175,7 @@ function ShellDemo() {
     <div class="overflow-hidden" data-e2e="shell-demo">
       <Shell
         class="h-[480px] min-h-0"
+        labels={{ nav: "Shell demo navigation" }}
         brand={<span class="text-lg font-semibold text-foreground">Acme</span>}
         currentPath={path.value}
         navigate={(href) => {
@@ -1333,6 +1340,7 @@ function RailShellDemo() {
     >
       <RailShell
         class="min-h-full"
+        labels={{ nav: "RailShell demo navigation" }}
         items={railShellItems}
         currentKey={current.value}
         primary={{ key: "compose", label: "Write", Icon: IconPencilSquare }}
@@ -1492,7 +1500,7 @@ function ConflictChooserDemo() {
     log.value = [...log.value, `${choice}: ${item?.label}`]
     conflicts.value = conflicts.value.filter((entry) => entry.id !== id)
   }
-  const chooser = (headingLevel: 2 | 3) => (
+  const chooser = (headingLevel: 3 | 4) => (
     <ConflictChooser
       conflicts={conflicts.value}
       onKeepMine={settle("keep mine")}
@@ -1502,7 +1510,7 @@ function ConflictChooserDemo() {
   )
   return (
     <Stack gap="md" data-e2e="conflict-demo">
-      <div data-e2e="conflict-inline">{dialog.value ? null : chooser(2)}</div>
+      <div data-e2e="conflict-inline">{dialog.value ? null : chooser(4)}</div>
       <Cluster gap="sm">
         <Button
           variant="outline"

@@ -124,11 +124,19 @@ function CardDemo() {
 /**
  * `.pc-scrollbar` is the only overflow rule in the preset: horizontal scrolling plus a 4px themed
  * scrollbar, so a wide table or a row of chips stays inside its card instead of widening the page.
+ * The class cannot make its element reachable: a box with nothing focusable in it needs
+ * `tabindex="0"`, a role and a name from the markup, as here, or a keyboard cannot scroll it.
  */
 function ScrollbarDemo() {
   return (
     <Stack gap="sm" class="max-w-md">
-      <div class="pc-scrollbar flex gap-2" data-e2e="scrollbar">
+      <div
+        class="pc-scrollbar flex gap-2"
+        role="group"
+        aria-label="Months"
+        tabindex={0}
+        data-e2e="scrollbar"
+      >
         {[
           "January",
           "February",
@@ -149,7 +157,8 @@ function ScrollbarDemo() {
         ))}
       </div>
       <p class="text-xs text-muted" data-e2e="scrollbar-note">
-        Twelve months in one 28rem row: the row scrolls, the page does not.
+        Twelve months in one 28rem row: the row scrolls, the page does not. It is a named Tab stop,
+        so the arrow keys scroll it too.
       </p>
     </Stack>
   )
@@ -488,7 +497,7 @@ export const surfaceDemos = {
     summary:
       "Lets a row wider than its box, such as a strip of chips, scroll sideways behind a thin themed scrollbar.",
     wide: false,
-    snippet: `<div class="pc-scrollbar flex gap-3">
+    snippet: `<div class="pc-scrollbar flex gap-3" role="group" aria-label="Months" tabindex={0}>
   {months.map((month) => (
     <span class="rounded-primary border border-subtle px-3 py-1 text-sm">{month}</span>
   ))}

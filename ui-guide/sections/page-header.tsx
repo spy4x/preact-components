@@ -35,6 +35,7 @@ function PageHeaderDemo() {
     <Stack>
       <PageHeader
         title={LONG_PAGE_TITLE}
+        headingLevel={4}
         subtitle="Personal"
         back={{ href: "#lists", label: "Back to lists" }}
         navigate={() => last.value = "Back to lists"}
@@ -57,6 +58,7 @@ function PageHeaderDemo() {
       />
       <PageHeader
         title={name.value}
+        headingLevel={4}
         heading={
           <InlineEdit
             class="[&>button]:text-xl [&>button]:font-semibold sm:[&>button]:text-2xl"
@@ -136,12 +138,19 @@ export const pageHeaderDemos = {
       {
         name: "title",
         type: "string",
-        description: "The `h1`; it stays on one line and truncates, with its full text as tooltip.",
+        description:
+          "The heading; it stays on one line and truncates, with its full text as tooltip.",
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4 | 5 | 6",
+        default: "1",
+        description: "The heading's level. The cards here use 4, under the card's own `h3`.",
       },
       {
         name: "heading",
         type: "ComponentChildren",
-        description: "Drawn inside the `h1` in place of `title`, such as a field that renames.",
+        description: "Drawn inside the heading in place of `title`, such as a field that renames.",
       },
       { name: "subtitle", type: "ComponentChildren", description: "One quiet line under it." },
       {
