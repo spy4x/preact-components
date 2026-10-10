@@ -69,6 +69,14 @@ describe("PageHeader", () => {
     expect(html).toContain(">Personal</p>")
   })
 
+  it("draws the title at the level the caller picks, and no h1 then", () => {
+    const html = render(<PageHeader title="Notes" headingLevel={2} />)
+    expect(html).toMatch(
+      /<h2 [^>]*title="Notes"[^>]*><span class="block truncate">Notes<\/span><\/h2>/,
+    )
+    expect(html).not.toContain("<h1")
+  })
+
   it("draws a heading inside the h1 in place of the title text, which stays the tooltip", () => {
     const html = render(
       <PageHeader title="Trip" heading={<input aria-label="List name" value="Trip" />} />,
