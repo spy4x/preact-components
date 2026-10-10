@@ -3,8 +3,8 @@
  *
  * Importing `playwrightBaseConfig` in a Deno test proves nothing about that file: Playwright loads
  * its configuration with its own loader, which finds only packages in `node_modules`, and the
- * documented import once failed there while every Deno test passed. So this test takes the three
- * blocks from the docs as they are written (`.npmrc`, `deno.jsonc`, `playwright.config.ts`), puts
+ * documented import once failed there while every Deno test passed. So this test takes the two
+ * blocks from the docs as they are written (`deno.jsonc`, `playwright.config.ts`), puts
  * them in an empty folder with two spec files, and runs `playwright test --list` on it, the way an
  * app's `e2e` task starts Playwright.
  *
@@ -58,7 +58,6 @@ async function listThroughPlaywright(docs: string, config: string): Promise<List
 
   const folder = await Deno.makeTempDir({ prefix: "playwright-config-" })
   try {
-    await Deno.writeTextFile(join(folder, ".npmrc"), docsBlock(docs, "# .npmrc"))
     await Deno.writeTextFile(join(folder, "deno.jsonc"), manifest)
     await Deno.writeTextFile(join(folder, "playwright.config.ts"), config)
     await Deno.mkdir(join(folder, "e2e"))

@@ -991,8 +991,8 @@ export default defineConfig({
 
 The import is the package's npm name, `@jsr/spy4x__preact-system`: Playwright loads its
 configuration file itself and finds only packages in `node_modules`, so the JSR name fails there
-with `Cannot find module`. [`docs/app-checks.md`](../docs/app-checks.md) has the one-time setup (an
-`.npmrc` and two lines in `deno.jsonc`), lists every shared value, says how to override one, and has
+with `Cannot find module`. [`docs/app-checks.md`](../docs/app-checks.md) has the one-time setup (two lines
+in `deno.jsonc`), lists every shared value, says how to override one, and has
 the CI step that installs Deno into the Playwright image.
 
 The module imports nothing, `@playwright/test` included, so this package pins no Playwright version.
