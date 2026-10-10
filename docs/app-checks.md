@@ -73,13 +73,34 @@ registerBoundaryTests({
 
 ## The Playwright configuration
 
-`playwrightBaseConfig` from `@spy4x/preact-system/playwright` returns the options every app shares.
-Spread it into `defineConfig` and write the app's own keys after it.
+`playwrightBaseConfig` returns the options every app shares. Spread it into `defineConfig` and write
+the app's own keys after it.
+
+**In `playwright.config.ts`, import it by the package's npm name.** Playwright loads that file
+itself, and its loader finds only packages in `node_modules`. A `jsr:` line in the import map puts
+nothing there, so `@spy4x/preact-system/playwright` fails in that one file with
+`Cannot find module`. JSR also serves each package from an npm registry, where this one is called
+`@jsr/spy4x__preact-system`, and Deno installs an npm package into `node_modules`. Deno knows that
+registry for the `@jsr` scope by itself, so no `.npmrc` is needed. Set it up once in `deno.jsonc`:
+the last import line and the second `exclude` entry are new, and `"nodeModulesDir": "auto"` is
+required (without it Playwright cannot find `@playwright/test` either).
+
+```jsonc
+// deno.jsonc
+{
+  "nodeModulesDir": "auto",
+  "minimumDependencyAge": { "age": "1440", "exclude": ["jsr:@spy4x/*", "npm:@jsr/spy4x__*"] },
+  "imports": {
+    "@playwright/test": "npm:@playwright/test@1.57.0",
+    "@jsr/spy4x__preact-system": "npm:@jsr/spy4x__preact-system@3.17.0"
+  }
+}
+```
 
 ```ts
 // playwright.config.ts
 import { defineConfig, devices } from "@playwright/test"
-import { playwrightBaseConfig } from "@spy4x/preact-system/playwright"
+import { playwrightBaseConfig } from "@jsr/spy4x__preact-system/playwright"
 
 export default defineConfig({
   ...playwrightBaseConfig({
@@ -95,6 +116,25 @@ export default defineConfig({
   },
 })
 ```
+
+`system/playwright-config.test.ts` writes these two blocks into an empty folder and lists a spec
+through Playwright, so they are known to load. What to know about the setup:
+
+- **The version** is any release from 3.17.0, the first with this export.
+- **The `exclude` entry** lets a release of ours younger than a day install under its npm name, as
+  `jsr:@spy4x/*` does for the JSR name. Deno applies the one-day rule even when the file has no
+  `minimumDependencyAge` line. Without the entry, write the lock file once with
+  `deno install --minimum-dependency-age=0`; an install from the lock file passes after that.
+- **The install grows.** The npm copy brings this package's own dependencies: 18 more `@jsr/*`
+  packages in `deno.lock` (the other packages of this library, `@spy4x/platform` and what it needs),
+  `nodemailer` where the app had none, and 15 to 17 MB in `node_modules`. Nothing loads them. Only
+  `playwright.config.ts` imports the npm name; every other file keeps `@spy4x/preact-system`.
+- **The `exclude` entry covers more than this package.** The pattern also lifts the one-day rule
+  for the `@spy4x` ts-libs packages that come along under their npm names, such as
+  `@jsr/spy4x__time`.
+- **The app holds the package twice,** as `jsr:@spy4x/preact-system` and as
+  `npm:@jsr/spy4x__preact-system`. Nothing keeps the two versions in step: keep the lines side by
+  side and move them by hand.
 
 | Option                                       | Shared value                                             |
 | -------------------------------------------- | -------------------------------------------------------- |

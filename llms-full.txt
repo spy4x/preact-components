@@ -3264,7 +3264,7 @@ shares, so an app's `playwright.config.ts` holds only its own values.
 ```ts
 // playwright.config.ts
 import { defineConfig, devices } from "@playwright/test"
-import { playwrightBaseConfig } from "@spy4x/preact-system/playwright"
+import { playwrightBaseConfig } from "@jsr/spy4x__preact-system/playwright"
 
 export default defineConfig({
   ...playwrightBaseConfig({
@@ -3276,9 +3276,13 @@ export default defineConfig({
 })
 ```
 
-The module imports nothing, `@playwright/test` included, so this package pins no Playwright
-version. [`docs/app-checks.md`](../docs/app-checks.md) lists every shared value, says how to
-override one, and has the CI step that installs Deno into the Playwright image.
+The import is the package's npm name, `@jsr/spy4x__preact-system`: Playwright loads its
+configuration file itself and finds only packages in `node_modules`, so the JSR name fails there
+with `Cannot find module`. [`docs/app-checks.md`](../docs/app-checks.md) has the one-time setup (two lines
+in `deno.jsonc`), lists every shared value, says how to override one, and has
+the CI step that installs Deno into the Playwright image.
+
+The module imports nothing, `@playwright/test` included, so this package pins no Playwright version.
 
 ## Not in this package
 
