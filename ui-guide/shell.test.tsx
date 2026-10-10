@@ -426,6 +426,22 @@ describe("the shell's other words", () => {
     expect(html).toContain('aria-label="Beispiel kopieren"')
     expect(html).toContain('aria-label="Befehl kopieren"')
   })
+
+  it("name the overview's two one-line commands in English, or from the labels", () => {
+    const english = render(<UIGuide hash="#/" />)
+    expect(english).toContain('<code role="group" aria-label="Install command"')
+    expect(english).toContain('<code role="group" aria-label="Theme install command"')
+
+    const german = render(
+      <UIGuide
+        hash="#/"
+        labels={{ installText: "Installationsbefehl", themeInstallText: "Befehl für das Thema" }}
+      />,
+    )
+    expect(german).toContain('<code role="group" aria-label="Installationsbefehl"')
+    expect(german).toContain('<code role="group" aria-label="Befehl für das Thema"')
+    expect(german).not.toContain('aria-label="Install command"')
+  })
 })
 
 describe("the card grid", () => {

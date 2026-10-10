@@ -866,8 +866,23 @@ function CopyBlockDemo() {
         <CopyBlock text={install} copyLabel="Copy command" copiedLabel="Command copied" />
       </Stack>
       <Stack gap="sm" class="max-w-xs">
-        <DemoNote>With singleLine, scrolls sideways inside its box.</DemoNote>
-        <CopyBlock text={install} singleLine copyLabel="Copy the one-line command" />
+        <DemoNote>
+          With singleLine, text wider than its box scrolls sideways inside it: Tab to the text, then
+          press the arrow keys.
+        </DemoNote>
+        <CopyBlock
+          text={install}
+          singleLine
+          textLabel="Install command"
+          copyLabel="Copy the one-line command"
+        />
+      </Stack>
+      <Stack gap="sm" data-e2e="copy-block-fits">
+        <DemoNote>
+          With singleLine and text that fits, there is nothing to scroll, so the text is no Tab
+          stop.
+        </DemoNote>
+        <CopyBlock text="0192f7c1-4d5e" singleLine copyLabel="Copy the short id" />
       </Stack>
       <Stack gap="sm">
         <CopyBlock
@@ -962,8 +977,9 @@ const demoNote = "text-xs text-muted"
  * progressive-enhancement claim in one element.
  *
  * A second, separate `[data-lightbox-bare]` container and its own `<ZoomableImages fallbackAlt="">`
- * show the opposite case: one image with no `alt` attribute at all, wrapped in a link, and
- * `fallbackAlt` turned off so nothing substitutes a name for it. That image is never marked a zoom
+ * show the opposite case: one image with an empty `alt`, which says it is decoration and is read
+ * the same as no `alt` at all, wrapped in a link that carries the name, and `fallbackAlt` turned
+ * off so nothing substitutes a name for the image. That image is never marked a zoom
  * control — no Tab stop, no role, no name a reader could act on — and a click on it is left for the
  * browser's own default action, so the link it sits in still works. The other two images above keep
  * the card's default `fallbackAlt`, unaffected by the second instance: each already carries a real
@@ -999,10 +1015,16 @@ function ZoomableImagesDemo() {
           <code>fallbackAlt=""</code>, an image with no description stays a plain image, and its
           link still works.
         </p>
-        <a href="#lightbox-bare-target" data-e2e="lightbox-bare-link" class="inline-block">
+        <a
+          href="#lightbox-bare-target"
+          aria-label="The link's target"
+          data-e2e="lightbox-bare-link"
+          class="inline-block"
+        >
           <img
             data-e2e="lightbox-bare-image"
             src={placeholder("9ca3af", 120, 80)}
+            alt=""
           />
         </a>
         <span id="lightbox-bare-target" class={demoNote}>
@@ -1144,14 +1166,27 @@ export const displayDemos = {
   PageTitle: {
     summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
     wide: false,
+    props: [
+      { name: "children", type: "ComponentChildren", description: "The heading's content." },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4 | 5 | 6",
+        default: "1",
+        description:
+          "The heading's level. Leave it out for the page's one `h1`; the card uses 4 and 5, under its own `h3`.",
+      },
+      { name: "class", type: "string", description: "Utilities merged after the defaults." },
+    ],
     snippet: `<Stack>
-  <PageTitle>Transactions</PageTitle>
-  <PageTitle class="text-xl sm:text-xl">Nested detail</PageTitle>
+  <PageTitle headingLevel={4}>Transactions</PageTitle>
+  <PageTitle headingLevel={5} class="text-xl sm:text-xl">Nested detail</PageTitle>
 </Stack>`,
     render: () => (
       <Stack>
-        <PageTitle>Transactions</PageTitle>
-        <PageTitle class="text-xl sm:text-xl">Nested detail, at a smaller size</PageTitle>
+        <PageTitle headingLevel={4}>Transactions</PageTitle>
+        <PageTitle headingLevel={5} class="text-xl sm:text-xl">
+          Nested detail, at a smaller size
+        </PageTitle>
       </Stack>
     ),
   },
@@ -1400,6 +1435,13 @@ export const displayDemos = {
         description: "Keeps the text on one line, scrolling inside the box instead of wrapping.",
       },
       {
+        name: "textLabel",
+        type: "string",
+        default: `"Text to copy"`,
+        description:
+          "Names `singleLine` text that overflows its box: only then is it a Tab stop, which the arrow keys scroll.",
+      },
+      {
         name: "copy",
         type: "(text) => void | boolean | Promise",
         default: "the clipboard",
@@ -1425,7 +1467,7 @@ export const displayDemos = {
       },
     ],
     snippet: `<CopyBlock text="deno add jsr:@spy4x/preact-ui" copyLabel="Copy command" />
-<CopyBlock text={apiKey} singleLine copyLabel="Copy API key" />`,
+<CopyBlock text={apiKey} singleLine textLabel="API key" copyLabel="Copy API key" />`,
     render: () => <CopyBlockDemo />,
   },
   AvatarGroup: {

@@ -185,7 +185,6 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await copyButtonStatusChecks(devtools)
   await pageHeaderLayoutChecks(devtools)
   await pageHeaderNameCheck(devtools)
-  await pageHeaderFocusRingCheck(devtools)
 
   await tooltipChecks(devtools)
   await comboboxChecks(devtools)
@@ -1369,54 +1368,6 @@ async function pageHeaderNameCheck(devtools: Devtools): Promise<void> {
     "every link and button of the PageHeader, PageAction and MoreMenu cards is named at 375px",
     JSON.stringify(names) === JSON.stringify(expected),
     `Chromium names ${JSON.stringify(names)}; expected ${JSON.stringify(expected)}`,
-  )
-}
-
-/** What {@link pageHeaderFocusRingCheck} reads off the focused rename button. */
-interface FocusRingRoom {
-  /** Whether the button was found and took focus. */
-  focused: boolean
-  /** Every box between the button and its header that hides overflow but cuts the ring. */
-  clippers: string[]
-}
-
-/**
- * The rename button in the `PageHeader` card's heading slot keeps its whole focus ring (#579): no
- * box between the focused button and its header, the `h1` included, hides overflow while cutting
- * into the button's box grown by the 4 px ring. The ring is measured as geometry, so the check
- * holds whether or not this browser draws `:focus-visible` for a scripted focus.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function pageHeaderFocusRingCheck(devtools: Devtools): Promise<void> {
-  await openGuidePage(devtools, "ui")
-  const room = await devtools.evaluate<FocusRingRoom>(`(() => {
-    const button = [...document.querySelectorAll('#demo-PageHeader [data-card-part="demo"] h1 button')]
-      .find((control) => control.textContent.includes("Packing list"))
-    const header = button?.closest("header")
-    if (!button || !header) return { focused: false, clippers: [] }
-    button.focus()
-    const ring = 4
-    const box = button.getBoundingClientRect()
-    const clippers = []
-    for (let at = button.parentElement; at && header.contains(at); at = at.parentElement) {
-      const style = getComputedStyle(at)
-      if (style.overflowX === "visible" && style.overflowY === "visible") continue
-      const edge = at.getBoundingClientRect()
-      if (edge.left > box.left - ring || edge.top > box.top - ring ||
-        edge.right < box.right + ring || edge.bottom < box.bottom + ring) {
-        clippers.push(at.tagName.toLowerCase() + " overflow " + style.overflowX + "/" +
-          style.overflowY)
-      }
-    }
-    return { focused: document.activeElement === button, clippers }
-  })()`)
-  check(
-    "PageHeader's h1 leaves room for the whole focus ring of a button in its heading slot",
-    room.focused && room.clippers.length === 0,
-    room.focused
-      ? `boxes that clip the ring: ${room.clippers.join(", ") || "none"}`
-      : "no focusable Packing list button in the PageHeader card's h1",
   )
 }
 

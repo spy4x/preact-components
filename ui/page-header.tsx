@@ -9,10 +9,15 @@ export { TOUCH_TARGET }
 
 /** What {@link PageHeader} takes. */
 export interface PageHeaderProps {
-  /** The page's `h1`. It stays on one line and truncates; the full text is its tooltip. */
+  /** The page's heading. It stays on one line and truncates; the full text is its tooltip. */
   title: string
   /**
-   * Drawn inside the `h1` in place of `title`, such as a field that renames in place. PageHeader does
+   * Level of the heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page already
+   * has its `<h1>`; the look stays the same.
+   */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6
+  /**
+   * Drawn inside the heading in place of `title`, such as a field that renames in place. PageHeader does
    * not truncate it: give it `min-w-0` and truncate inside, as `InlineEdit` does.
    */
   heading?: ComponentChildren
@@ -35,7 +40,7 @@ export interface PageHeaderProps {
   menuLabel?: string
   /** `data-e2e` of the overflow button. */
   menuDataE2E?: string
-  /** `data-e2e` of the `h1`. */
+  /** `data-e2e` of the heading. */
   titleDataE2E?: string
   /** `data-e2e` of the subtitle. */
   subtitleDataE2E?: string
@@ -53,6 +58,7 @@ export interface PageHeaderProps {
 export function PageHeader(
   {
     title,
+    headingLevel = 1,
     heading,
     subtitle,
     mark,
@@ -66,6 +72,7 @@ export function PageHeader(
     subtitleDataE2E,
   }: PageHeaderProps,
 ): JSX.Element {
+  const Heading = `h${headingLevel}` as "h1"
   return (
     <header class="flex min-w-0 items-center gap-3" data-e2e="page-header">
       {back && (
@@ -84,16 +91,16 @@ export function PageHeader(
       {mark}
       <div class="flex min-w-0 flex-1 flex-col gap-1">
         {
-          /* The plain title truncates in its own span: `truncate` on the h1 would clip the focus
+          /* The plain title truncates in its own span: `truncate` on the heading would clip the focus
             ring of whatever the heading slot puts there. */
         }
-        <h1
+        <Heading
           class="min-w-0 text-xl font-semibold text-foreground sm:text-2xl"
           title={title}
           data-e2e={titleDataE2E}
         >
           {heading ?? <span class="block truncate">{title}</span>}
-        </h1>
+        </Heading>
         {subtitle && (
           <p class="truncate text-sm text-muted" data-e2e={subtitleDataE2E}>{subtitle}</p>
         )}

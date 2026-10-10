@@ -4,6 +4,11 @@ import type { ComponentChildren, JSX } from "preact"
 export interface PageTitleProps {
   children: ComponentChildren
   /**
+   * Level of the heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page already
+   * has its `<h1>`; the look stays the same.
+   */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6
+  /**
    * Utilities merged after the defaults; a later utility in the same group wins.
    *
    * The heading carries no outer margin: the space under it is the parent's gap (`Stack`,
@@ -22,6 +27,9 @@ const defaultClasses =
  * utilities are inlined here so this package does not depend on the design-token layer for its
  * chrome.
  */
-export function PageTitle({ children, class: className }: PageTitleProps): JSX.Element {
-  return <h1 class={cn(defaultClasses, className)}>{children}</h1>
+export function PageTitle(
+  { children, headingLevel = 1, class: className }: PageTitleProps,
+): JSX.Element {
+  const Heading = `h${headingLevel}` as "h1"
+  return <Heading class={cn(defaultClasses, className)}>{children}</Heading>
 }

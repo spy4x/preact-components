@@ -9,7 +9,7 @@ type KnownCount = readonly [light: number, dark: number]
 
 /**
  * How many elements break each axe rule on each page today, per palette. They were found when axe
- * first ran (#667) and are left for the owner to turn into issues; no component was changed.
+ * first ran (#667); each entry that is left says beside it why it stays (#674).
  *
  * The count is exact. One more failing element fails the page's spec, and so does one fewer, so a
  * fix lowers its number in the same change and the list can only shrink. A rule that is not
@@ -17,24 +17,27 @@ type KnownCount = readonly [light: number, dark: number]
  */
 const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>> = {
   overview: {},
-  ui: {
-    "heading-order": [2, 2],
-    "image-alt": [1, 1],
-    "link-name": [1, 1],
-    "scrollable-region-focusable": [1, 1],
-  },
-  icons: { "heading-order": [1, 1] },
-  theme: { "scrollable-region-focusable": [1, 1] },
+  ui: {},
+  icons: {},
+  theme: {},
   charts: {},
   map: {},
+  // All three come from the page showing whole-page components several times inside one page,
+  // which an app does not do. `Shell` and `RailShell` each own the page's `<main>`, correct on an
+  // app's page, and their cards put two more inside the guide's own: both nested, and three in
+  // all. `AuthForm` names its `<form>` after its mode, and its card mounts it several times in the
+  // same two modes. The components are right, and a card cannot take a landmark off what it
+  // mounts, so these stay until the owner decides whether the shells may render a `div` in place
+  // of `<main>` and `AuthForm` may take a form name of its own.
   system: {
-    "aria-prohibited-attr": [1, 1],
-    "heading-order": [1, 1],
     "landmark-main-is-top-level": [2, 2],
     "landmark-no-duplicate-main": [1, 1],
-    "landmark-unique": [4, 4],
-    "scrollable-region-focusable": [1, 1],
+    // The unnamed `<main>` regions as one group, then the forms named "Sign in" and "Sign up".
+    "landmark-unique": [3, 3],
   },
+  // `CrudList` and `CrudEditor` head their page with `PageTitle`, an `<h1>`, so the heading of the
+  // card after each skips from 1 to 3. `PageTitle` takes `headingLevel` now; `crud/` does not
+  // pass one through yet.
   crud: { "heading-order": [3, 3] },
 }
 

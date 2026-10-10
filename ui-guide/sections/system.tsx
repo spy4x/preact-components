@@ -120,7 +120,13 @@ function SeoHeadTagList() {
         {seoHeadTags(pageHead).length} tags, in document order: the array{" "}
         <code>&lt;SEOHead /&gt;</code> renders.
       </p>
-      <pre class="max-h-72 overflow-auto font-mono text-xs text-foreground">
+      <pre
+        class="max-h-72 overflow-auto font-mono text-xs text-foreground"
+        role="group"
+        aria-label="The tags SEOHead renders"
+        tabindex={0}
+        data-e2e="seo-head-tags"
+      >
         <code>{JSON.stringify(seoHeadTags(pageHead), null, 2)}</code>
       </pre>
     </Stack>
@@ -1169,6 +1175,7 @@ function ShellDemo() {
     <div class="overflow-hidden" data-e2e="shell-demo">
       <Shell
         class="h-[480px] min-h-0"
+        labels={{ nav: "Shell demo navigation" }}
         brand={<span class="text-lg font-semibold text-foreground">Acme</span>}
         currentPath={path.value}
         navigate={(href) => {
@@ -1333,6 +1340,7 @@ function RailShellDemo() {
     >
       <RailShell
         class="min-h-full"
+        labels={{ nav: "RailShell demo navigation" }}
         items={railShellItems}
         currentKey={current.value}
         primary={{ key: "compose", label: "Write", Icon: IconPencilSquare }}
@@ -1546,16 +1554,21 @@ function ConflictChooserDemo() {
       <ol data-e2e="conflict-log" class="text-sm text-muted">
         {log.value.map((line) => <li key={line}>{line}</li>)}
       </ol>
-      <Part title="Before any conflict arrives">
+      {
+        /* A plain caption and a level 3 heading: the chooser above keeps the component's default
+          `<h2>`, and a captioning `<h4>` or a level 5 heading after it would skip a level. */
+      }
+      <Stack gap="sm">
+        <p class="text-xs font-semibold text-muted">Before any conflict arrives</p>
         <div data-e2e="conflict-empty">
           <ConflictChooser
             conflicts={[]}
             onKeepMine={() => {}}
             onUseTheirs={() => {}}
-            headingLevel={5}
+            headingLevel={3}
           />
         </div>
-      </Part>
+      </Stack>
     </Stack>
   )
 }

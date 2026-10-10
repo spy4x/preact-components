@@ -603,7 +603,18 @@ export function Calendar(
     const accessibleLabel = `${label}: ${monthLabel(target, locale)}`
 
     if (!enabled) {
-      return <span aria-disabled="true" aria-label={accessibleLabel} class={classes}>{glyph}</span>
+      // The role of the control it stands in for: a `span` with no role may carry neither
+      // `aria-label` nor `aria-disabled`, so a screen reader could drop both.
+      return (
+        <span
+          role={onSelectMonth ? "button" : "link"}
+          aria-disabled="true"
+          aria-label={accessibleLabel}
+          class={classes}
+        >
+          {glyph}
+        </span>
+      )
     }
     if (onSelectMonth) {
       return (

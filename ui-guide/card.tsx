@@ -79,6 +79,11 @@ export interface DemoCardProps {
   anchorId?: string
   /** Clipboard port, forwarded to the copy button. */
   copy?: (text: string) => void | Promise<void>
+  /**
+   * Level of the card's heading. Defaults to `3`, under a section's `<h2>`; a card that sits
+   * straight under the page's `<h1>`, as the icon gallery does, passes `2`.
+   */
+  headingLevel?: 2 | 3
   /** Extra classes on the card: the shell's column span. */
   class?: string
   /** The live example. */
@@ -115,11 +120,13 @@ export function DemoCard(
     props,
     anchorId,
     copy,
+    headingLevel = 3,
     class: className,
     children,
   }: DemoCardProps,
 ): JSX.Element {
   const labels = { ...DEFAULT_CARD_LABELS, ...labelOverrides }
+  const Heading = `h${headingLevel}` as "h3"
   return (
     <article
       id={anchorId ?? `demo-${name}`}
@@ -134,9 +141,9 @@ export function DemoCard(
       )}
     >
       <header class="flex flex-col gap-1 p-4 sm:p-6" data-card-part="header">
-        <h3 class="text-base font-semibold [overflow-wrap:anywhere] text-foreground">
+        <Heading class="text-base font-semibold [overflow-wrap:anywhere] text-foreground">
           {title ?? label}
-        </h3>
+        </Heading>
         {
           /* `anywhere`: a long identifier in a sentence wraps inside the card on a phone rather
           than pushing the card, and the page, wider than the screen. */

@@ -61,6 +61,22 @@ describe("CopyBlock", () => {
     expect(classes).not.toContain("whitespace-pre-wrap")
   })
 
+  it("server-renders a single-line block's text as a Tab stop named Text to copy, or by the caller", () => {
+    const tag = codeTag(render(<CopyBlock text={command} singleLine />))
+    expect(tag).toContain('role="group"')
+    expect(tag).toContain('aria-label="Text to copy"')
+    expect(tag).toContain('tabindex="0"')
+    expect(codeTag(render(<CopyBlock text={command} singleLine textLabel="Install command" />)))
+      .toContain('aria-label="Install command"')
+  })
+
+  it("gives a wrapping block's text no Tab stop, role or name", () => {
+    const tag = codeTag(render(<CopyBlock text={command} textLabel="Install command" />))
+    expect(tag).not.toContain("tabindex")
+    expect(tag).not.toContain("role=")
+    expect(tag).not.toContain("aria-label")
+  })
+
   it("lets the code shrink inside the row instead of pushing the button out", () => {
     expect(codeClasses(render(<CopyBlock text={command} />))).toContain("min-w-0")
   })

@@ -16,6 +16,12 @@ describe("PageTitle", () => {
     expect(html).not.toMatch(/class="[^"]*\bm[trblxy]?-/)
   })
 
+  it("renders the level the caller picks, with the same typography", () => {
+    const html = render(<PageTitle headingLevel={3}>Reports</PageTitle>)
+
+    expect(html).toMatch(/^<h3 class="[^"]*text-2xl[^"]*">Reports<\/h3>$/)
+  })
+
   it("lets the caller replace a default utility", () => {
     const html = render(<PageTitle class="text-xl">Reports</PageTitle>)
 

@@ -2,6 +2,7 @@
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Locator, Page } from "playwright-core"
 import type { Spec } from "./runner.ts"
+import { scrollRegionSpec } from "./scroll-region.ts"
 
 /** The parts of the `UnsavedGuard` card a spec drives, with a change already typed in its field. */
 async function unsavedGuardWithAChange(page: Page) {
@@ -47,6 +48,83 @@ export const specs: readonly Spec[] = [
       await label.click()
       await toggle.and(page.locator(`[aria-checked="false"]`)).waitFor()
       await report.filter({ hasText: "archived: off" }).waitFor()
+    },
+  },
+  scrollRegionSpec({
+    what: "CopyBlock with singleLine",
+    pageId: "ui",
+    selector: `#demo-CopyBlock code[aria-label]`,
+    name: "Install command",
+    key: "ArrowRight",
+  }),
+  {
+    name: "CopyBlock with singleLine and text that fits: the text is no Tab stop and has no " +
+      "role or name, until its box gets too narrow for it or its text gets too wide",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-CopyBlock")
+      const text = card.locator(`[data-e2e="copy-block-fits"] code`)
+      const plain = text.and(page.locator(":not([tabindex]):not([role]):not([aria-label])"))
+      const scrolling = text.and(page.getByRole("group", { name: "Text to copy", exact: true }))
+        .and(page.locator(`[tabindex="0"]`))
+      // The server renders the Tab stop; it goes once the mounted block has measured its text.
+      await plain.waitFor()
+
+      // Back from the block's own copy button, the stop before it is not the text.
+      const button = card.getByRole("button", { name: "Copy the short id" })
+      await button.focus()
+      await page.keyboard.press("Shift+Tab")
+      await button.and(page.locator(":focus")).waitFor({ state: "hidden" })
+      const stop = await page.locator(":focus").evaluate((node) => node.tagName)
+      if (stop === "CODE") throw new Error("Shift+Tab from the copy button landed on the text")
+
+      // A narrower box makes the same text overflow, and a wider one makes it fit again.
+      await text.evaluate((node) => node.parentElement?.style.setProperty("width", "120px"))
+      await scrolling.waitFor()
+      await text.evaluate((node) => node.parentElement?.style.removeProperty("width"))
+      await plain.waitFor()
+
+      // Wider text in the same box overflows too: the text is watched, not only the box.
+      const line = text.locator("span")
+      await line.evaluate((node) => node.style.setProperty("letter-spacing", "3em"))
+      await scrolling.waitFor()
+      await line.evaluate((node) => node.style.removeProperty("letter-spacing"))
+      await plain.waitFor()
+      return `the stop before the copy button is a ${stop}`
+    },
+  },
+  {
+    name: "PageHeader's heading leaves room for the whole focus ring of a button in its heading " +
+      "slot",
+    pageId: "ui",
+    run: async (page) => {
+      const button = page.locator(`#demo-PageHeader [data-card-part="demo"]`)
+        .getByRole("heading").getByRole("button", { name: "Packing list" })
+      await button.focus()
+      await button.and(page.locator(":focus")).waitFor()
+      // The ring is measured as geometry, so this holds whether or not the browser draws
+      // `:focus-visible` for a scripted focus: no box between the button and its header may hide
+      // overflow while cutting into the button's box grown by the 4 px ring (#579).
+      const clippers = await button.evaluate((control) => {
+        const ring = 4
+        const box = control.getBoundingClientRect()
+        const header = control.closest("header")
+        const found: string[] = []
+        for (let at = control.parentElement; at && header?.contains(at); at = at.parentElement) {
+          const style = getComputedStyle(at)
+          if (style.overflowX === "visible" && style.overflowY === "visible") continue
+          const edge = at.getBoundingClientRect()
+          if (
+            edge.left > box.left - ring || edge.top > box.top - ring ||
+            edge.right < box.right + ring || edge.bottom < box.bottom + ring
+          ) {
+            found.push(`${at.tagName.toLowerCase()} overflow ${style.overflowX}/${style.overflowY}`)
+          }
+        }
+        return header ? found : ["no header around the button"]
+      })
+      if (clippers.length > 0) throw new Error(`boxes that clip the ring: ${clippers.join(", ")}`)
+      return "boxes that clip the ring: none"
     },
   },
   // Forms and accessibility (#116): refs, `required`, `aria-pressed`, reduced motion.

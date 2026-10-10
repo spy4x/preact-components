@@ -1,5 +1,6 @@
 /** Playwright specs for the `theme/` classes, on the guide's theme page. */
 import type { Spec } from "./runner.ts"
+import { scrollRegionSpec } from "./scroll-region.ts"
 
 /** The outline a checkbox draws, and the colour `--color-ring` resolves to beside it. */
 interface Outline {
@@ -11,6 +12,13 @@ interface Outline {
 }
 
 export const specs: readonly Spec[] = [
+  scrollRegionSpec({
+    what: "the `.pc-scrollbar` card's row of months",
+    pageId: "theme",
+    selector: `#demo-class-scrollbar [data-e2e="scrollbar"]`,
+    name: "Months",
+    key: "ArrowRight",
+  }),
   {
     name: "a square `.pc-checkbox` reached with Tab draws the components' focus ring, and no " +
       "outline before",

@@ -105,6 +105,11 @@ export interface IconGalleryProps {
   copy?: (text: string) => void | Promise<void>
   /** Overrides for the gallery's own words. */
   labels?: Partial<IconGalleryLabels>
+  /**
+   * Level of the card's heading. Defaults to `3`; `2` when the gallery sits straight under the
+   * page's `<h1>`, with no section heading between them.
+   */
+  headingLevel?: 2 | 3
   class?: string
 }
 
@@ -115,7 +120,7 @@ export interface IconGalleryProps {
  * copied name are local visual state, so they stay inside the component; the clipboard is a port.
  */
 export function IconGallery(
-  { copy, labels: labelOverrides, class: className }: IconGalleryProps,
+  { copy, labels: labelOverrides, headingLevel, class: className }: IconGalleryProps,
 ): JSX.Element {
   const labels = { ...DEFAULT_ICON_GALLERY_LABELS, ...labelOverrides }
   const query = useSignal("")
@@ -137,6 +142,7 @@ export function IconGallery(
       snippet={GALLERY_SNIPPET}
       wide
       copy={copy}
+      headingLevel={headingLevel}
       class={className}
     >
       <Stack gap="md">

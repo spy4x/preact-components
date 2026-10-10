@@ -128,6 +128,13 @@ describe("iconSnippet", () => {
 })
 
 describe("IconGallery's card", () => {
+  it("heads the card with an h3, or with an h2 when the page has no section heading", () => {
+    expect(render(<IconGallery />)).toMatch(/<h3 [^>]*>Icon/)
+    const html = render(<IconGallery headingLevel={2} />)
+    expect(html).toMatch(/<h2 [^>]*>Icon/)
+    expect(html).not.toContain("<h3")
+  })
+
   it("is one wide guide card addressed as #icons", () => {
     const html = render(<IconGallery />)
 
