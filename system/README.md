@@ -927,15 +927,28 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   and `appDirectories` (directory names such as `"apps"` that a relative import must not resolve
   into) default to none, because only the app knows them.
 
-```ts
-import { fromFileUrl } from "@std/path"
-import { checkModule } from "@spy4x/preact-system/boundary"
+`@spy4x/preact-system/boundary-runner` is that test, ready to register. It imports no test
+framework: you pass your own `test` function, and a failure is a thrown `Error` that lists every
+violation. [`docs/app-checks.md`](../docs/app-checks.md) has every option.
 
-Deno.test("screens stay pure", async () => {
-  const filename = fromFileUrl(new URL("./screens/profile.tsx", import.meta.url))
-  const source = await Deno.readTextFile(filename)
-  const found = checkModule(source, { filename, appAliases: ["@api/"], appDirectories: ["apps"] })
-  if (found.length > 0) throw new Error(found.map((v) => v.message).join("\n"))
+- `registerBoundaryTests(options)` registers a test that runs the rule over every module in
+  `options.directories`, and fails too when a directory is missing or holds no module. With
+  `boundary.appAliases`, `refusedImports` or `allowedImports` set, it registers a second test that
+  checks those lists: each alias and refused import must be refused, each allowed import must pass.
+- `BoundaryRunnerOptions` types the options; `DEFAULT_BOUNDARY_EXTENSIONS` is `.ts` and `.tsx`.
+
+```ts
+// tests/ui-boundary.test.ts
+import { registerBoundaryTests } from "@spy4x/preact-system/boundary-runner"
+
+registerBoundaryTests({
+  test: Deno.test,
+  root: new URL("../", import.meta.url),
+  directories: ["libs/ui"],
+  boundary: { appAliases: ["@api/"], appDirectories: ["apps"] },
+  requiredFiles: ["libs/ui/auth-screen.tsx"],
+  refusedImports: ["../../apps/spa/src/state/auth.ts"],
+  allowedImports: ["./progressive.tsx"],
 })
 ```
 
