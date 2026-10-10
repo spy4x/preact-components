@@ -318,8 +318,12 @@ function ConfirmedAction(
           busy={running.value}
           onConfirm={() => {
             running.value = true
-            // A store reports a failure through its own operation state; either way the dialog goes.
-            run().then(close, close)
+            // A store reports a refusal through its own operation state. One that throws, when it
+            // is called or later, is logged, so the app's error reporting still sees it. Either
+            // way the dialog goes.
+            Promise.resolve().then(run).catch((error) =>
+              console.error(`${wording.label} failed`, error)
+            ).finally(close)
           }}
           onCancel={close}
         />
