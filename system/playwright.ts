@@ -74,10 +74,11 @@ export interface PlaywrightBaseConfig<Device extends object, Use extends object>
  * written after the spread replaces the shared one. `use` is the exception, because it is nested;
  * pass extra `use` options in `options.use` instead, where they are merged.
  *
- * @example
+ * @example In `playwright.config.ts`, by the package's npm name: Playwright loads that file itself
+ * and finds only packages in `node_modules` (`docs/app-checks.md` has the one-time setup).
  * ```ts
  * import { defineConfig, devices } from "@playwright/test"
- * import { playwrightBaseConfig } from "@spy4x/preact-system/playwright"
+ * import { playwrightBaseConfig } from "@jsr/spy4x__preact-system/playwright"
  *
  * export default defineConfig({
  *   ...playwrightBaseConfig({
