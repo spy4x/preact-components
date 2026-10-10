@@ -146,7 +146,7 @@ const EXPECTED_DARK_TOKENS: Record<string, string> = {
   "--color-border-subtle": "oklch(0.373 0.034 259.733)",
   "--color-border-control": "oklch(0.446 0.03 256.802)",
   "--color-foreground": "oklch(0.985 0.002 247.839)",
-  "--color-muted-foreground": "oklch(0.707 0.022 261.325)",
+  "--color-muted-foreground": "oklch(0.75 0.022 261.325)",
   "--color-placeholder": "oklch(0.707 0.022 261.325)",
   // #429: status text reads at 4.5:1 on the dark surface and canvas; the fills keep their steps.
   "--color-danger": "oklch(0.704 0.191 22.216)",
