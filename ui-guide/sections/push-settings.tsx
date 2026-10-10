@@ -6,7 +6,7 @@
  * says, and a stand-in server that counts what it was asked to store. What only a browser shows —
  * no prompt before the press, focus staying on the button through the change, focus moving to the
  * explanation when the browser blocks, the announcements, and a permission changed while the page
- * was hidden — is driven by `pages/e2e/push-settings.spec.ts`.
+ * was hidden — is driven by `pages/e2e/system-push.spec.ts`.
  */
 
 import { PushSettings } from "@spy4x/preact-system/push-settings"
