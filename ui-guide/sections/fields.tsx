@@ -540,13 +540,19 @@ function InlineEditDemo() {
   )
 }
 
+/** 01:00 on Sunday 8 March 2026 in Ho Chi Minh, when it is still Saturday the 7th in UTC. */
+const QUICK_ADD_DEMO_NOW = new Date("2026-03-07T18:00:00Z")
+
 /**
- * Two add fields. The first lists what `onAdd` received and has a button that holds it busy, so a
- * refused send can be seen. The second words its badges, its button and its due day itself.
+ * Three add fields. The first lists what `onAdd` received and has a button that holds it busy, so
+ * a refused send can be seen. The second reads its line on a fixed clock in a fixed time zone, so
+ * "tomorrow" is the same day for every visitor. The third words its badges, its button and its due
+ * day itself.
  */
 function QuickAddDemo() {
   const added = useSignal<string[]>([])
   const busy = useSignal(false)
+  const dated = useSignal("")
   return (
     <Stack gap="sm">
       <QuickAdd
@@ -571,6 +577,18 @@ function QuickAddDemo() {
           {busy.value ? "Finish saving" : "Hold it busy"}
         </Button>
       </Cluster>
+      <QuickAdd
+        dataE2E="quick-add-clock"
+        label="New reminder"
+        placeholder="Water the plants tomorrow"
+        hint="Read at 01:00 on Sunday 8 March 2026 in Ho Chi Minh"
+        zone="Asia/Ho_Chi_Minh"
+        now={() => QUICK_ADD_DEMO_NOW}
+        onAdd={({ title, due }) => dated.value = `${title}, due ${due?.date ?? "no day"}`}
+      />
+      <p class="text-xs text-muted" data-e2e="quick-add-clock-added">
+        added: {dated.value}
+      </p>
       <QuickAdd
         dataE2E="quick-add-worded"
         label="New expense"
@@ -945,7 +963,7 @@ export const fieldDemos = {
       {
         name: "dueLabel",
         type: "(date: string, now: Date, zone: string) => string",
-        default: "quickAddDueLabel",
+        default: `"Today", "Tomorrow", "Mon 5 Jan"`,
         description: "Words the due day; the time is always shown as typed.",
       },
       {
@@ -962,6 +980,9 @@ export const fieldDemos = {
   busy={saving.value}
   onAdd={(parsed) => createNote(parsed)}
 />
+
+// A fixed clock and zone, as a test passes them:
+<QuickAdd zone="Asia/Ho_Chi_Minh" now={() => new Date("2026-03-07T18:00:00Z")} onAdd={addReminder} />
 
 // Every word is the caller's to change:
 <QuickAdd

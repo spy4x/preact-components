@@ -1442,20 +1442,21 @@ reader hears "Tag work" once and not every letter of it.
 
 Enter or the button calls `onAdd` with the parsed line, empties the field and keeps focus in it. A
 line that leaves no title, such as `#work !high`, adds nothing: the `noTitle` message shows under
-the field, the live region speaks it, focus goes back to the field, and the next keystroke clears
-the message. A blank line adds nothing and says nothing. While `busy`, the field is read-only, the
-button is off, and a send adds nothing and keeps the typed text.
+the field and the live region speaks it. While it shows, the field is `aria-invalid` and its
+`aria-describedby` names the message before the hint, so a screen reader that comes back to the
+field hears why nothing was added. Focus goes back to the field, and the next keystroke clears the
+message. A blank line adds nothing and shows no message; focus still goes to the field. While
+`busy`, the field is read-only, the button is off, and a send adds nothing and keeps the typed
+text.
 
 `zone` is the IANA time zone "tomorrow" and "3pm" are read in; it defaults to the device's own.
 `now` is the clock, for a test to fix. Every string is a prop with an English default: `label`
 (the field's accessible name), `placeholder`, `hint`, and `labels`, which overrides any of
 `defaultQuickAddLabels` (`submit`, `recognised`, `noTitle`, and one function per kind of badge:
-`tag`, `context`, `due`, `priority`). `dueLabel(date, now, zone)` words the due day; the time is
-always shown as typed, because that is what `onAdd` receives.
-
-`quickAddDueLabel(date)` is the default `dueLabel`: the day in short English, such as
-`Mon, Oct 12`. `quickAddParts(parsed, { now, zone, labels?, dueLabel? })` is the list of badge
-texts on its own, for an app that shows the preview somewhere else.
+`tag`, `context`, `due`, `priority`). `dueLabel(date, now, zone)` words the due day. The default
+says "Today", "Tomorrow" or "Yesterday" for a viewer in `zone` and a short day such as `Mon 5 Jan`
+otherwise, through `relativeDayLabel` of `@spy4x/time`. The time is always shown as typed, because
+that is what `onAdd` receives.
 
 ```tsx
 <QuickAdd
