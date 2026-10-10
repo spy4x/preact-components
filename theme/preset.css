@@ -651,8 +651,19 @@
 }
 
 @utility pc-checkbox {
-  @apply size-5 rounded-sm border-gray-400 focus:ring-transparent;
+  @apply size-5 rounded-sm border-gray-400;
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
+
+  /* The ring a round `Checkbox` draws, for a keyboard user only. `@tailwindcss/forms` draws its
+     own ring as a shadow on every focus; it is switched off so the box never shows two (#122). */
+  &:focus {
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-ring, var(--color-accent-900, oklch(0.381 0.176 304.987)));
+    outline-offset: 2px;
+  }
 
   /* Without it Chromium draws a white box on a dark page (#347). */
   :where(.dark) & {

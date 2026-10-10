@@ -789,7 +789,7 @@ export function Calendar(
   )
 }
 
-const outOfMonthClass = "text-placeholder opacity-35"
+const outOfMonthClass = "text-placeholder"
 const disabledClass = "text-placeholder cursor-not-allowed"
 const noneLeftClass = "line-through decoration-control"
 const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-selected-hover"

@@ -163,7 +163,9 @@
     --color-border-strong: oklch(0.551 0.027 264.364); /* gray-500 */
 
     --color-foreground: oklch(0.985 0.002 247.839); /* gray-50 */
-    --color-muted-foreground: oklch(0.707 0.022 261.325); /* gray-400 */
+    /* A step lighter than gray-400, which read 3.96:1 on the gray-700 of a hovered row and of a
+       table's head: 4.6:1 there, and 6.5:1 on the surface. */
+    --color-muted-foreground: oklch(0.75 0.022 261.325);
     --color-placeholder: oklch(0.707 0.022 261.325); /* gray-400 */
 
     /* Status text: each reads at 4.5:1 or better on the surface and the canvas. */

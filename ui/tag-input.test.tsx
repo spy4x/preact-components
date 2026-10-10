@@ -223,6 +223,15 @@ describe("TagInput", () => {
     expect(html.match(/<button[^>]*\sdisabled(?=[\s>])/g)?.length).toBe(2)
   })
 
+  it("marks the tag list inactive only while the field is disabled", () => {
+    const tagList = (disabled: boolean) =>
+      render(<TagInput ariaLabel="Tags" value={["a"]} onChange={() => {}} disabled={disabled} />)
+        .match(/<ul[^>]*>/)?.[0]
+
+    expect(tagList(true)).toContain('aria-disabled="true"')
+    expect(tagList(false)).not.toContain("aria-disabled")
+  })
+
   it("gives every remove button and the text field a 44 px target, and lets chips wrap", () => {
     const html = render(<TagInput ariaLabel="Tags" value={["a"]} onChange={() => {}} />)
     expect(html).toMatch(/<button[^>]*class="[^"]*\bsize-11\b/)

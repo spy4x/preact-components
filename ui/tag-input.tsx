@@ -417,7 +417,13 @@ export function TagInput({
         }}
       >
         {value.length > 0 && (
-          <ul aria-label={tagsLabel} class="flex min-w-0 max-w-full flex-wrap gap-1">
+          <ul
+            aria-label={tagsLabel}
+            // A disabled field is dimmed as a whole; this tells assistive technology, and a
+            // contrast scan, that its chips are inactive and not merely faint.
+            aria-disabled={disabled ? "true" : undefined}
+            class="flex min-w-0 max-w-full flex-wrap gap-1"
+          >
             {value.map((tag, index) => (
               <li key={`${index}-${tag}`} class={chipClasses}>
                 <span class="truncate">{tag}</span>
@@ -428,8 +434,7 @@ export function TagInput({
                   disabled={disabled}
                   // Focus stays in the text field: the button is about to disappear.
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() =>
-                    removeAt(index)}
+                  onClick={() => removeAt(index)}
                 >
                   <CrossGlyph />
                 </button>

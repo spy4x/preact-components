@@ -55,10 +55,16 @@ const outlineClasses: Record<BadgeColor, string> = {
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
 
+/**
+ * Red, orange and green take the theme's status fills with the label each one is paired with, the
+ * pairs the status buttons and the toasts draw, so the label reads at 4.5:1 or better in both
+ * palettes: white on the danger fill, a near-black label on the warning fill (no pale label reaches
+ * 4.5:1 on an orange lighter than orange-700), and a pale green one on the success fill.
+ */
 const filledClasses: Record<BadgeColor, string> = {
-  red: "border-red-600 bg-red-600 text-red-50",
-  orange: "border-orange-400 bg-orange-400 text-orange-50",
-  green: "border-green-600 bg-green-600 text-green-50",
+  red: "border-transparent bg-danger-fill text-danger-fill-foreground",
+  orange: "border-transparent bg-warning text-(--color-warning-foreground)",
+  green: "border-transparent bg-success text-(--color-success-foreground)",
   gray: "border-subtle bg-track text-foreground",
   blue: "border-blue-600 bg-blue-600 text-blue-50",
   purple: "border-transparent bg-selected text-selected-foreground",
