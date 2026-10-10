@@ -126,6 +126,21 @@ describe("readAddress", () => {
     expect(fields.q.signal.value).toBe("hell")
   })
 
+  it("lets the address win after a parser returned NaN", () => {
+    const page: FilterField<number> = {
+      signal: signal(1),
+      urlParam: "page",
+      initialValue: 1,
+      parser: (value) => Number(value),
+    }
+    const held: Record<string, unknown> = { page: 1 }
+    readAddress({ page }, "page=abc", held)
+
+    readAddress({ page }, "page=2", held)
+
+    expect(page.signal.value).toBe(2)
+  })
+
   it("lets the address win on a later read, as back and forward need", () => {
     const { fields } = searchFields()
     fields.q.signal.value = "typed"

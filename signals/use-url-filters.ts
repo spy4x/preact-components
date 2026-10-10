@@ -243,7 +243,7 @@ export function readAddress<T extends Record<string, FilterField>>(
   for (const [key, field] of Object.entries(fields)) {
     const fromAddress = resolveFilterValue(field, params.get(field.urlParam))
     writes.push(filterWrite(field, fromAddress))
-    if (held !== undefined && key in held && field.signal.peek() !== held[key]) continue
+    if (held !== undefined && key in held && !Object.is(field.signal.peek(), held[key])) continue
     field.signal.value = fromAddress
     if (held !== undefined) held[key] = fromAddress
   }

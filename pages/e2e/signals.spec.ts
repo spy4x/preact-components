@@ -61,7 +61,8 @@ async function watchOverwrites(page: Page): Promise<void> {
 /**
  * What the search field holds once it and the address agree.
  *
- * The hook writes the address in the same task as the key press, and reads it back a frame later.
+ * The hook writes the address a frame after the key press, and reads it back a frame after the
+ * render that follows.
  * The two agreeing is the state every run comes to rest in, whether or not a letter was lost on the
  * way, so waiting for it never waits on the outcome under test.
  *
