@@ -241,8 +241,8 @@ by a check here, and is unproven until one covers it.
 - The published Pages site answers a POST with 405. A form's no-JavaScript path is proven against
   the local preview server, which serves the page for a POST too.
 - `verify` denies downloads for the whole run (`Browser.setDownloadBehavior` with `deny`, falling
-  back to `Page.setDownloadBehavior`, and a printed note if neither exists). A check that exports a
-  file reads its bytes inside the page.
+  back to `Page.setDownloadBehavior`, and a printed note if neither exists, after which the run
+  carries on). A check that exports a file reads its bytes inside the page.
 
 ### Hydration and signals
 

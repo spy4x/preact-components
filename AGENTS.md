@@ -163,8 +163,8 @@ component's root carries no margin: siblings are spaced by the parent's named ga
 rows are never deleted but carry `deletedAt`, set and cleared by an optional archive checkbox in the
 normal update, and the list filters active from archived; the store is shaped like
 `buildModelStore` (`CrudListStore` and `CrudEditorStore` in `crud/store.ts`, proven by
-`crud/store.test.ts` with no adapter); a `canChange` port (boolean, from the app) decides who may edit, and
-`CrudList` takes `canAdd` the same way.
+`crud/store.test.ts` with no adapter); a `canChange` port (boolean, from the app) decides who
+may edit, and `CrudList` takes `canAdd` the same way.
 
 **Labels.** Every user-visible string has an English default and a prop that overrides it; nothing
 throws for want of a label. The exception is a name only the caller knows, such as an icon-only
