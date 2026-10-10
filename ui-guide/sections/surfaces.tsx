@@ -393,10 +393,12 @@ function TokenClassesDemo() {
         <span class={`bg-info text-info-foreground ${swatch}`}>bg-info</span>
         <span class={`text-info border-info ${outlined}`}>text-info</span>
         <span class={`text-warning border-warning ${outlined}`}>border-warning</span>
-        <span class={`bg-danger-fill text-danger-foreground ${swatch}`}>bg-danger-fill</span>
-        <span class={`bg-danger-fill-hover text-danger-foreground ${swatch}`}>
+        <span class={`bg-danger-fill text-danger-fill-foreground ${swatch}`}>bg-danger-fill</span>
+        <span class={`bg-danger-fill-hover text-danger-fill-foreground ${swatch}`}>
           bg-danger-fill-hover
         </span>
+        {/* On a fixed red: the label reads below 4.5:1 on either palette's danger fill. */}
+        <span class={`bg-red-700 text-danger-foreground ${swatch}`}>text-danger-foreground</span>
         <span class={`bg-primary text-primary-foreground ${swatch}`}>text-primary-foreground</span>
         <span class={`bg-accent-900 text-accent-foreground ${swatch}`}>text-accent-foreground</span>
       </Cluster>
