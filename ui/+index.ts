@@ -406,10 +406,7 @@ export {
   QUICK_ADD_ANNOUNCE_PAUSE_MS,
   QuickAdd,
   type QuickAddDueLabel,
-  quickAddDueLabel,
   type QuickAddLabels,
-  quickAddParts,
-  type QuickAddPartsOptions,
   type QuickAddProps,
 } from "./quick-add.tsx"
 export {
