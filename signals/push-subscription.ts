@@ -13,11 +13,19 @@ import {
  *
  * A device is notified when three things agree: the browser allows notifications for the site, the
  * browser holds a push subscription, and the server has stored that subscription. This store keeps
- * them in step. Turning on asks for permission (only then, so the browser's prompt never opens on
- * page load), subscribes with the server's public key and hands the subscription to the caller's
- * `save`; when `save` fails it unsubscribes again. Turning off calls the caller's `remove`, then
- * unsubscribes. It reads the permission again whenever the page becomes visible, because a person
- * can change it in the browser's settings while the page is in the background.
+ * them in step as far as a page can. Turning on asks for permission (only then, so the browser's
+ * prompt never opens on page load), subscribes with the server's public key and hands the
+ * subscription to the caller's `save`; when `save` fails it unsubscribes again and reports `off`.
+ * Turning off calls the caller's `remove`, then unsubscribes. It reads the permission again
+ * whenever the page becomes visible, because a person can change it in the browser's settings
+ * while the page is in the background.
+ *
+ * The store cannot ask the server what it holds, so on each page load it hands a subscription the
+ * browser already has to `save` again: that repairs a server that lost it, or a tab closed between
+ * subscribing and saving. A subscription made with another server key (the key was changed) is
+ * replaced first, because the push service refuses the new key's messages for it. `save` must
+ * therefore be an upsert. If that `save` fails, the status stays `on`, `onError` is told, and the
+ * next time the page becomes visible it is tried again.
  *
  * The service worker, `Notification`, the navigator, `matchMedia` and the page arrive as ports, so
  * a test needs no browser and no push service. `PushSettings` in `@spy4x/preact-system` draws what
@@ -37,6 +45,8 @@ export interface PushSubscriptionData {
 /** The slice of `PushSubscription` this store uses. */
 export interface PushSubscriptionLike {
   readonly endpoint: string
+  /** What it was subscribed with. The key tells a subscription made for another server key. */
+  readonly options?: { readonly applicationServerKey?: ArrayBuffer | null }
   toJSON(): PushSubscriptionData
   unsubscribe(): Promise<boolean>
 }
@@ -87,7 +97,7 @@ export interface PushVisibility {
  * - `unavailable`: the server has no public key, so it cannot send any.
  * - `blocked`: the person, or a policy, denied notifications for this site in the browser.
  * - `off`: possible, and not subscribed on this device.
- * - `on`: allowed and subscribed on this device.
+ * - `on`: allowed and subscribed on this device, and the server was told (or is being told).
  */
 export type PushStatus =
   | "checking"
@@ -110,14 +120,18 @@ export interface PushSubscriptionOptions {
    */
   publicKey: string | null | undefined
   /**
-   * Store the subscription on the server for the signed-in person. A rejection, or a throw, undoes
-   * the browser's subscription, so the two never disagree.
+   * Store the subscription on the server for the signed-in person. It must be an upsert by
+   * endpoint: it runs when the person turns notifications on, and again on every page load that
+   * finds the browser subscribed. Reject, or throw, on failure: a failed turn-on then undoes the
+   * browser's subscription and reports `off`.
    */
   save(subscription: PushSubscriptionData): void | Promise<unknown>
   /**
-   * Delete the subscription with this endpoint from the server. It runs before the browser
-   * unsubscribes; a rejection leaves both in place. Deleting one that is already gone must succeed,
-   * because a retry after a failed unsubscribe calls it again.
+   * Delete the subscription with this endpoint from the server. On turn-off it runs before the
+   * browser unsubscribes, and a rejection leaves both in place. Deleting one that is already gone
+   * must succeed: it is also called, with its failure only reported to `onError`, for an endpoint
+   * the browser no longer uses (after a failed `save`, a replaced key, or a permission revoked
+   * while the page was away).
    */
   remove(endpoint: string): void | Promise<unknown>
   /** Ask the server to send this person a test notification. Left out, there is no test. */
@@ -149,12 +163,17 @@ export interface PushSubscriptionStore {
   failed: ReadonlySignal<PushAction | null>
   /** `true` once a test notification was sent. Cleared when the next action starts. */
   sent: ReadonlySignal<boolean>
-  /** Read the permission and the browser's subscription again. It never opens a prompt. */
+  /**
+   * Read the permission and the browser's subscription again. It never opens a prompt. The first
+   * reading that finds the browser subscribed also saves that subscription again; see the module
+   * text above.
+   */
   refresh(): Promise<void>
   /**
    * Turn notifications on for this device: ask for permission when the browser has not asked yet,
    * subscribe, and `save`. A dismissed prompt leaves `off` and is not a failure; a denied one gives
-   * `blocked`. Call it from a click: browsers show the prompt only after a gesture.
+   * `blocked`. A failure leaves `off`, so the next press tries again. Call it from a click:
+   * browsers show the prompt only after a gesture.
    */
   enable(): Promise<void>
   /** Turn notifications off for this device: `remove` from the server, then unsubscribe. */
@@ -182,6 +201,17 @@ function decodeBase64Url(text: string): Uint8Array<ArrayBuffer> {
   return bytes
 }
 
+/**
+ * Whether a subscription was made with this key. A browser that does not say which key it used
+ * counts as a match, so its subscription is kept.
+ */
+function madeWith(subscription: PushSubscriptionLike, key: Uint8Array): boolean {
+  const used = subscription.options?.applicationServerKey
+  if (!used) return true
+  const bytes = new Uint8Array(used)
+  return bytes.length === key.length && bytes.every((byte, index) => byte === key[index])
+}
+
 /** A port the caller gave, or the browser's own; `null` when neither exists. */
 function port<T>(given: T | null | undefined, fallback: () => T | undefined): T | null {
   return given === undefined ? fallback() ?? null : given
@@ -199,8 +229,8 @@ function port<T>(given: T | null | undefined, fallback: () => T | undefined): T 
  * ```ts
  * export const push = createPushSubscription({
  *   publicKey: config.pushPublicKey ?? null,
- *   save: (subscription) => api.post("/push/subscriptions", subscription),
- *   remove: (endpoint) => api.delete("/push/subscriptions", { endpoint }),
+ *   save: (subscription) => server.savePushSubscription(subscription),
+ *   remove: (endpoint) => server.removePushSubscription(endpoint),
  * })
  * // in the settings view
  * useEffect(() => push.start(), [])
@@ -214,8 +244,18 @@ export function createPushSubscription(
   const busy = signal<PushAction | null>(null)
   const failed = signal<PushAction | null>(null)
   const sent = signal(false)
-  /** Counts refreshes, so one that ends after a newer one started changes nothing. */
+  /** Counts readings and actions, so a reading that ends after a newer one changes nothing. */
   let reads = 0
+  /**
+   * What the server knows of the browser's subscription, as far as this store can tell: `unknown`
+   * until the first `save` of this page load, `told` after one succeeded, `refused` after a
+   * turn-on that did not reach it.
+   */
+  let server: "unknown" | "told" | "refused" = "unknown"
+  /** The endpoint the server was last told about, for a `remove` once the browser dropped it. */
+  let endpoint: string | null = null
+  /** The save-again of a page load while it runs. An action waits for it. */
+  let syncing: Promise<void> | null = null
 
   const serviceWorker = (): PushServiceWorker | null =>
     port(
@@ -251,28 +291,105 @@ export function createPushSubscription(
     return null
   }
 
-  async function lookUp(): Promise<PushStatus> {
+  /** What a reading found: the status, and the browser's subscription when it holds one. */
+  interface Reading {
+    status: PushStatus
+    manager?: PushManagerLike
+    subscription?: PushSubscriptionLike | null
+  }
+
+  async function lookUp(): Promise<Reading> {
     const known = settled()
-    if (known) return known
+    if (known) return { status: known }
     const registration = await serviceWorker()?.getRegistration()
-    if (registration && !registration.pushManager) return "unsupported"
-    const subscription = await registration?.pushManager?.getSubscription()
-    // A subscription the browser kept after the permission went back to "ask" delivers nothing.
-    return subscription && notification()?.permission === "granted" ? "on" : "off"
+    const manager = registration?.pushManager
+    if (registration && !manager) return { status: "unsupported" }
+    const subscription = await manager?.getSubscription()
+    // A subscription the browser kept after the permission went back to "ask" delivers nothing,
+    // and neither does one the server refused to store.
+    const usable = subscription && notification()?.permission === "granted" && server !== "refused"
+    return { status: usable ? "on" : "off", manager, subscription }
+  }
+
+  /** Tell the caller about a failure outside an action. */
+  function report(error: unknown): void {
+    read().onError?.(error, "refresh")
+  }
+
+  /** `remove` whose failure is reported and otherwise ignored: the server tidies up by itself. */
+  async function removeQuietly(endpoint: string): Promise<void> {
+    try {
+      await read().remove(endpoint)
+    } catch (error) {
+      report(error)
+    }
+  }
+
+  /** Subscribe with the server's key. */
+  function subscribe(manager: PushManagerLike, publicKey: string): Promise<PushSubscriptionLike> {
+    return manager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: decodeBase64Url(publicKey),
+    })
+  }
+
+  /** Drop a subscription made with another key, here and on the server, and make a new one. */
+  async function replace(
+    manager: PushManagerLike,
+    old: PushSubscriptionLike,
+    publicKey: string,
+  ): Promise<PushSubscriptionLike> {
+    if (!await old.unsubscribe()) {
+      throw new Error("createPushSubscription: the browser kept the old subscription")
+    }
+    await removeQuietly(old.endpoint)
+    return subscribe(manager, publicKey)
+  }
+
+  /**
+   * Bring the server in step with a subscription the browser already held when the page loaded:
+   * replace it when it was made with another key, then `save` it again.
+   */
+  async function sync(manager: PushManagerLike, found: PushSubscriptionLike): Promise<void> {
+    const current = read()
+    if (!current.publicKey) return
+    const subscription = madeWith(found, decodeBase64Url(current.publicKey))
+      ? found
+      : await replace(manager, found, current.publicKey)
+    await current.save(subscription.toJSON())
+    server = "told"
+    endpoint = subscription.endpoint
   }
 
   async function refresh(): Promise<void> {
     const mine = ++reads
-    let next: PushStatus
+    let next: Reading
     try {
       next = await lookUp()
     } catch (error) {
       // A page that may not use service workers at all, such as one served without HTTPS.
-      read().onError?.(error, "refresh")
-      next = "unsupported"
+      report(error)
+      next = { status: "unsupported" }
     }
     // An action sets the status itself when it ends; a newer refresh has fresher facts.
-    if (mine === reads && busy.value === null) status.value = next
+    if (mine !== reads || busy.value !== null) return
+    status.value = next.status
+    if (next.status === "on" && server === "unknown" && !syncing && next.manager) {
+      syncing = sync(next.manager, next.subscription!).catch(report)
+      await syncing
+      syncing = null
+      // A replacement that failed half-way may have left no subscription: read again.
+      if (server === "unknown" && mine === reads && busy.value === null) {
+        const after = await lookUp().catch(() => next)
+        if (mine === reads && busy.value === null) status.value = after.status
+      }
+    } else if ((next.status === "off" || next.status === "blocked") && endpoint) {
+      // The server still holds a subscription this device no longer uses.
+      const gone = endpoint
+      endpoint = null
+      server = "unknown"
+      await removeQuietly(gone)
+    }
   }
 
   /** Run one action: one at a time, never rejecting, with `busy` and `failed` kept for it. */
@@ -281,8 +398,11 @@ export function createPushSubscription(
     busy.value = action
     failed.value = null
     sent.value = false
+    // A reading that started earlier must not overwrite what this action ends with.
+    reads++
     let failure: { error: unknown } | null = null
     try {
+      await syncing
       await work()
     } catch (error) {
       failure = { error }
@@ -311,23 +431,43 @@ export function createPushSubscription(
         status.value = answer === "denied" ? "blocked" : "off"
         return
       }
+      // Until `save` succeeds the server does not know this device, so a failure from here on
+      // reports `off`, whatever the browser holds, and the next press starts again.
+      server = "refused"
       // `ready` never settles in an app that registered no service worker, so ask first.
       if (!await worker.getRegistration()) {
         throw new Error("createPushSubscription: the app has registered no service worker")
       }
       const manager = (await worker.ready).pushManager
       if (!manager) throw new Error("createPushSubscription: this browser has no push manager")
-      const subscription = await manager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: decodeBase64Url(current.publicKey),
-      })
+      let subscription: PushSubscriptionLike
+      try {
+        subscription = await subscribe(manager, current.publicKey)
+      } catch (error) {
+        // The browser refuses a second subscription under another key: one was left over.
+        const old = (error as { name?: string })?.name === "InvalidStateError"
+          ? await manager.getSubscription()
+          : null
+        if (!old) throw error
+        subscription = await replace(manager, old, current.publicKey)
+      }
       try {
         await current.save(subscription.toJSON())
       } catch (error) {
-        // The server does not know this device, so the browser must not think it is subscribed.
-        await subscription.unsubscribe().catch(() => false)
+        // The save may have reached the server before the connection dropped.
+        await removeQuietly(subscription.endpoint)
+        // The browser should not stay subscribed for a server that does not know it.
+        try {
+          if (!await subscription.unsubscribe()) {
+            report(new Error("createPushSubscription: the browser kept the subscription"))
+          }
+        } catch (unsubscribeError) {
+          report(unsubscribeError)
+        }
         throw error
       }
+      server = "told"
+      endpoint = subscription.endpoint
       status.value = "on"
     })
   }
@@ -338,6 +478,9 @@ export function createPushSubscription(
       const subscription = await registration?.pushManager?.getSubscription()
       if (subscription) {
         await read().remove(subscription.endpoint)
+        // Should the browser keep it, the next reading saves it again, so the two still agree.
+        server = "unknown"
+        endpoint = null
         if (!await subscription.unsubscribe()) {
           throw new Error("createPushSubscription: the browser kept the subscription")
         }
@@ -402,9 +545,9 @@ export interface PushSettingsState {
  * function NotificationSettings({ publicKey }: { publicKey: string | null | undefined }) {
  *   const push = usePushSubscription({
  *     publicKey,
- *     save: (subscription) => api.post("/push/subscriptions", subscription),
- *     remove: (endpoint) => api.delete("/push/subscriptions", { endpoint }),
- *     sendTest: () => api.post("/push/test"),
+ *     save: (subscription) => server.savePushSubscription(subscription),
+ *     remove: (endpoint) => server.removePushSubscription(endpoint),
+ *     sendTest: () => server.sendTestPush(),
  *   })
  *   return <PushSettings {...push} />
  * }

@@ -11,7 +11,11 @@ import {
 /** Base64url of the bytes 1, 2, 3, 250, 251, 252: it uses both `-` and `_`, and no padding. */
 const PUBLIC_KEY = "AQID-vv8"
 const PUBLIC_KEY_BYTES = [1, 2, 3, 250, 251, 252]
+/** Another server key: the bytes 9, 9, 9. */
+const OLD_KEY_BYTES = [9, 9, 9]
 const ENDPOINT = "https://push.example/device-1"
+/** The browser's second subscription: a new one gets a new address. */
+const ENDPOINT_2 = "https://push.example/device-2"
 
 const DESKTOP = { userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/141.0 Safari/537.36" }
 const IPHONE = { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1" }
@@ -21,7 +25,14 @@ const IPHONE = { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS
  * subscription it can hold, and every call made to it, in order.
  */
 function fakeBrowser(
-  start: { permission?: string; answer?: string; subscribed?: boolean; registered?: boolean } = {},
+  start: {
+    permission?: string
+    answer?: string
+    subscribed?: boolean
+    registered?: boolean
+    /** The key the subscription it starts with was made with; `null` for a browser that hides it. */
+    key?: number[] | null
+  } = {},
 ) {
   const calls: string[] = []
   const state = {
@@ -30,25 +41,49 @@ function fakeBrowser(
     registered: start.registered ?? true,
     subscription: null as PushSubscriptionLike | null,
     keys: [] as number[][],
-    unsubscribeResult: true,
+    /** What `unsubscribe()` does: drop it, keep it and answer `false`, or reject. */
+    unsubscribeResult: true as boolean | "throw",
+    /** Set to make the next new subscription fail, as a push service that is down would. */
+    subscribeError: null as Error | null,
+    made: 0,
   }
-  const subscription = (): PushSubscriptionLike => ({
-    endpoint: ENDPOINT,
-    toJSON: () => ({ endpoint: ENDPOINT, keys: { p256dh: "p", auth: "a" } }),
-    unsubscribe: () => {
-      calls.push("unsubscribe")
-      if (state.unsubscribeResult) state.subscription = null
-      return Promise.resolve(state.unsubscribeResult)
-    },
-  })
-  if (start.subscribed) state.subscription = subscription()
+  const subscription = (key: number[] | null): PushSubscriptionLike => {
+    const endpoint = `https://push.example/device-${++state.made}`
+    return {
+      endpoint,
+      options: { applicationServerKey: key && new Uint8Array(key).buffer },
+      toJSON: () => ({ endpoint, keys: { p256dh: "p", auth: "a" } }),
+      unsubscribe: () => {
+        calls.push("unsubscribe")
+        if (state.unsubscribeResult === "throw") {
+          return Promise.reject(new Error("unsubscribe broke"))
+        }
+        if (state.unsubscribeResult) state.subscription = null
+        return Promise.resolve(state.unsubscribeResult)
+      },
+    }
+  }
+  if (start.subscribed) {
+    state.subscription = subscription(start.key === undefined ? PUBLIC_KEY_BYTES : start.key)
+  }
   const registration = {
     pushManager: {
       getSubscription: () => Promise.resolve(state.subscription),
+      // As a browser: the same subscription again for the same key, a refusal for another key.
       subscribe: (options: { userVisibleOnly: boolean; applicationServerKey: Uint8Array }) => {
         calls.push(`subscribe userVisibleOnly=${options.userVisibleOnly}`)
-        state.keys.push([...options.applicationServerKey])
-        state.subscription = subscription()
+        const key = [...options.applicationServerKey]
+        state.keys.push(key)
+        const held = state.subscription
+        if (held) {
+          const used = held.options?.applicationServerKey
+          if (!used || String([...new Uint8Array(used)]) === String(key)) {
+            return Promise.resolve(held)
+          }
+          return Promise.reject(new DOMException("another key", "InvalidStateError"))
+        }
+        if (state.subscribeError) return Promise.reject(state.subscribeError)
+        state.subscription = subscription(key)
         return Promise.resolve(state.subscription)
       },
     },
@@ -96,17 +131,25 @@ function fakeBrowser(
 function fakeServer(calls: string[]) {
   const server = {
     stored: [] as PushSubscriptionData[],
-    fail: false,
+    failSave: false,
+    failRemove: false,
+    /** Runs inside `remove`, for a test that changes the browser while the server works. */
+    onRemove: () => {},
     errors: [] as Array<[string, PushAction | "refresh"]>,
+    /** An upsert, as the store asks of the caller: one entry per endpoint. */
     save: (subscription: PushSubscriptionData) => {
       calls.push("save")
-      if (server.fail) return Promise.reject(new Error("save refused"))
-      server.stored.push(subscription)
+      if (server.failSave) return Promise.reject(new Error("save refused"))
+      server.stored = [
+        ...server.stored.filter((entry) => entry.endpoint !== subscription.endpoint),
+        subscription,
+      ]
       return Promise.resolve()
     },
     remove: (endpoint: string) => {
       calls.push(`remove ${endpoint}`)
-      if (server.fail) return Promise.reject(new Error("remove refused"))
+      server.onRemove()
+      if (server.failRemove) return Promise.reject(new Error("remove refused"))
       server.stored = server.stored.filter((entry) => entry.endpoint !== endpoint)
       return Promise.resolve()
     },
@@ -156,12 +199,87 @@ describe("createPushSubscription: reading the device", () => {
     expect(browser.calls).toEqual([])
   })
 
-  it("reports on when permission is granted and the browser holds a subscription", async () => {
-    const { store } = setup({ permission: "granted", subscribed: true })
+  it("reports on, and saves the subscription again, when the browser holds one the server lost", async () => {
+    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
+    expect(server.stored).toEqual([])
 
     await store.refresh()
 
     expect(store.status.value).toBe("on")
+    expect(browser.calls).toEqual(["save"])
+    expect(server.stored).toEqual([{ endpoint: ENDPOINT, keys: { p256dh: "p", auth: "a" } }])
+  })
+
+  it("saves the browser's subscription once per page load, not on every reading", async () => {
+    const { store, browser } = setup({ permission: "granted", subscribed: true })
+
+    await store.refresh()
+    await store.refresh()
+
+    expect(browser.calls).toEqual(["save"])
+  })
+
+  it("replaces a subscription made with another server key when the page loads", async () => {
+    const { store, browser, server } = setup({
+      permission: "granted",
+      subscribed: true,
+      key: OLD_KEY_BYTES,
+    })
+    server.stored = [{ endpoint: ENDPOINT }]
+
+    await store.refresh()
+
+    expect(browser.calls).toEqual([
+      "unsubscribe",
+      `remove ${ENDPOINT}`,
+      "subscribe userVisibleOnly=true",
+      "save",
+    ])
+    expect(browser.state.keys).toEqual([PUBLIC_KEY_BYTES])
+    expect(server.stored.map((entry) => entry.endpoint)).toEqual([ENDPOINT_2])
+    expect(store.status.value).toBe("on")
+  })
+
+  it("keeps, and saves, a subscription whose key the browser does not tell", async () => {
+    const { store, browser } = setup({ permission: "granted", subscribed: true, key: null })
+
+    await store.refresh()
+
+    expect(browser.calls).toEqual(["save"])
+    expect(store.status.value).toBe("on")
+  })
+
+  it("tells onError when the save on page load fails, and tries again when the page is shown", async () => {
+    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
+    server.failSave = true
+    const stop = store.start()
+    await settle()
+    expect(store.status.value).toBe("on")
+    expect(store.failed.value).toBe(null)
+    expect(server.errors).toEqual([["save refused", "refresh"]])
+
+    server.failSave = false
+    browser.show("visible")
+    await settle()
+
+    expect(browser.calls).toEqual(["save", "save"])
+    expect(server.stored).toHaveLength(1)
+    stop()
+  })
+
+  it("reports off when replacing an old-key subscription fails after the old one was dropped", async () => {
+    const { store, browser, server } = setup({
+      permission: "granted",
+      subscribed: true,
+      key: OLD_KEY_BYTES,
+    })
+    browser.state.subscribeError = new Error("push service down")
+
+    await store.refresh()
+
+    expect(store.status.value).toBe("off")
+    expect(server.errors).toEqual([["push service down", "refresh"]])
+    expect(server.stored).toEqual([])
   })
 
   it("reports off for a subscription left over without the permission", async () => {
@@ -305,9 +423,9 @@ describe("createPushSubscription: turning on", () => {
     expect(store.failed.value).toBe(null)
   })
 
-  it("unsubscribes again when save fails, reports the failure, and stays off", async () => {
+  it("asks the server to forget it and unsubscribes again when save fails, reports the failure, and stays off", async () => {
     const { store, browser, server } = setup()
-    server.fail = true
+    server.failSave = true
 
     await store.enable()
 
@@ -315,6 +433,7 @@ describe("createPushSubscription: turning on", () => {
       "prompt",
       "subscribe userVisibleOnly=true",
       "save",
+      `remove ${ENDPOINT}`,
       "unsubscribe",
     ])
     expect(browser.state.subscription).toBe(null)
@@ -323,16 +442,164 @@ describe("createPushSubscription: turning on", () => {
     expect(server.errors).toEqual([["save refused", "enable"]])
   })
 
-  it("saves the subscription again when the browser already holds one", async () => {
-    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
+  for (const kept of [false, "throw"] as const) {
+    const how = kept === "throw" ? "unsubscribe rejects" : "the browser keeps the subscription"
+    it(`reports off, never on, when save fails and ${how}, and the next press succeeds`, async () => {
+      const { store, browser, server } = setup()
+      server.failSave = true
+      browser.state.unsubscribeResult = kept
+
+      await store.enable()
+
+      expect(browser.state.subscription).not.toBe(null)
+      expect(store.status.value).toBe("off")
+      expect(store.failed.value).toBe("enable")
+      expect(server.errors).toEqual([
+        [
+          kept === "throw"
+            ? "unsubscribe broke"
+            : "createPushSubscription: the browser kept the subscription",
+          "refresh",
+        ],
+        ["save refused", "enable"],
+      ])
+      // Coming back to the page does not turn it on behind the person's back either.
+      await store.refresh()
+      expect(store.status.value).toBe("off")
+      expect(server.stored).toEqual([])
+
+      server.failSave = false
+      await store.enable()
+
+      expect(store.status.value).toBe("on")
+      expect(store.failed.value).toBe(null)
+      expect(server.stored.map((entry) => entry.endpoint)).toEqual([ENDPOINT])
+    })
+  }
+
+  it("replaces a subscription left over under another key when the browser refuses a second one", async () => {
+    const { store, browser, server } = setup({ subscribed: true, key: OLD_KEY_BYTES })
+    server.stored = [{ endpoint: ENDPOINT }]
     await store.refresh()
-    expect(store.status.value).toBe("on")
+    expect(store.status.value).toBe("off")
 
     await store.enable()
 
-    expect(browser.calls).toEqual(["subscribe userVisibleOnly=true", "save"])
-    expect(server.stored).toHaveLength(1)
+    expect(browser.calls).toEqual([
+      "prompt",
+      "subscribe userVisibleOnly=true",
+      "unsubscribe",
+      `remove ${ENDPOINT}`,
+      "subscribe userVisibleOnly=true",
+      "save",
+    ])
+    expect(server.stored.map((entry) => entry.endpoint)).toEqual([ENDPOINT_2])
     expect(store.status.value).toBe("on")
+    expect(store.failed.value).toBe(null)
+  })
+
+  it("reports off with the failure when the left-over subscription cannot be dropped, never on", async () => {
+    const { store, browser } = setup({ subscribed: true, key: OLD_KEY_BYTES })
+    browser.state.unsubscribeResult = false
+
+    await store.enable()
+
+    expect(store.status.value).toBe("off")
+    expect(store.failed.value).toBe("enable")
+    expect(browser.calls).not.toContain("save")
+  })
+
+  it("fails without opening the prompt when the server has no key", async () => {
+    const { store, browser } = setup({}, { publicKey: null })
+
+    await store.enable()
+
+    expect(browser.calls).toEqual([])
+    expect(store.failed.value).toBe("enable")
+    expect(store.status.value).toBe("unavailable")
+  })
+
+  it("a reading that ends while turning on is still saving changes neither the status nor the server", async () => {
+    const browser = fakeBrowser({ permission: "granted" })
+    let saves = 0
+    let saved = () => {}
+    const store = createPushSubscription({
+      publicKey: PUBLIC_KEY,
+      save: () => {
+        saves++
+        return new Promise<void>((resolve) => (saved = resolve))
+      },
+      remove: () => {},
+      ...browser.ports,
+    })
+    await store.refresh()
+
+    const turningOn = store.enable()
+    await settle()
+    await store.refresh()
+    expect(store.status.value).toBe("off")
+    expect(saves).toBe(1)
+    saved()
+    await turningOn
+
+    expect(store.status.value).toBe("on")
+  })
+
+  it("a reading that started before turning on does not overwrite its result", async () => {
+    const browser = fakeBrowser({ permission: "granted" })
+    const registration = await browser.ports.serviceWorker.getRegistration()
+    let release = () => {}
+    let lookups = 0
+    const store = createPushSubscription({
+      publicKey: PUBLIC_KEY,
+      save: () => {},
+      remove: () => {},
+      ...browser.ports,
+      serviceWorker: {
+        ready: browser.ports.serviceWorker.ready,
+        // The first lookup, the reading's, waits until the test lets it through.
+        getRegistration: () =>
+          lookups++ === 0
+            ? new Promise((resolve) => (release = () => resolve(registration)))
+            : Promise.resolve(registration),
+      },
+    })
+
+    const older = store.refresh()
+    await store.enable()
+    expect(store.status.value).toBe("on")
+    release()
+    await older
+
+    expect(store.status.value).toBe("on")
+  })
+
+  it("waits for the save of the page load before it acts", async () => {
+    const browser = fakeBrowser({ permission: "granted", subscribed: true })
+    const calls: string[] = []
+    let saved = () => {}
+    const store = createPushSubscription({
+      publicKey: PUBLIC_KEY,
+      save: () => {
+        calls.push("save")
+        return new Promise<void>((resolve) => (saved = resolve))
+      },
+      remove: () => {
+        calls.push("remove")
+      },
+      ...browser.ports,
+    })
+    const reading = store.refresh()
+    await settle()
+
+    const turningOff = store.disable()
+    await settle()
+    expect(calls).toEqual(["save"])
+    saved()
+    await Promise.all([reading, turningOff])
+
+    expect(calls).toEqual(["save", "remove"])
+    expect(store.status.value).toBe("off")
   })
 
   it("fails instead of waiting for ever when the app registered no service worker", async () => {
@@ -383,32 +650,47 @@ describe("createPushSubscription: turning off", () => {
 
   it("keeps the browser's subscription and stays on when the server refuses the removal", async () => {
     const { store, browser, server } = setup({ permission: "granted", subscribed: true })
-    server.fail = true
+    await store.refresh()
+    server.failRemove = true
 
     await store.disable()
 
-    expect(browser.calls).toEqual([`remove ${ENDPOINT}`])
+    expect(browser.calls).toEqual(["save", `remove ${ENDPOINT}`])
     expect(browser.state.subscription).not.toBe(null)
     expect(store.status.value).toBe("on")
     expect(store.failed.value).toBe("disable")
   })
 
-  it("reports a failure and stays on when the browser keeps the subscription", async () => {
-    const { store, browser } = setup({ permission: "granted", subscribed: true })
+  it("reports a failure, stays on, and saves it again when the browser keeps the subscription", async () => {
+    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
+    await store.refresh()
     browser.state.unsubscribeResult = false
 
     await store.disable()
 
     expect(store.status.value).toBe("on")
     expect(store.failed.value).toBe("disable")
+    expect(browser.calls).toEqual(["save", `remove ${ENDPOINT}`, "unsubscribe", "save"])
+    expect(server.stored.map((entry) => entry.endpoint)).toEqual([ENDPOINT])
+  })
+
+  it("reports blocked, not off, when notifications were blocked while turning off", async () => {
+    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
+    await store.refresh()
+    server.onRemove = () => (browser.state.permission = "denied")
+
+    await store.disable()
+
+    expect(store.failed.value).toBe(null)
+    expect(store.status.value).toBe("blocked")
   })
 
   it("clears the last failure when the next action starts", async () => {
     const { store, server } = setup({ permission: "granted", subscribed: true })
-    server.fail = true
+    server.failRemove = true
     await store.disable()
     expect(store.failed.value).toBe("disable")
-    server.fail = false
+    server.failRemove = false
 
     await store.disable()
 
@@ -449,8 +731,8 @@ describe("createPushSubscription: the test notification", () => {
 })
 
 describe("createPushSubscription: coming back to the page", () => {
-  it("reports blocked when the permission was revoked while the page was hidden", async () => {
-    const { store, browser } = setup({ permission: "granted", subscribed: true })
+  it("reports blocked, and asks the server to forget the device, when the permission was revoked while the page was hidden", async () => {
+    const { store, browser, server } = setup({ permission: "granted", subscribed: true })
     const stop = store.start()
     await settle()
     expect(store.status.value).toBe("on")
@@ -464,6 +746,12 @@ describe("createPushSubscription: coming back to the page", () => {
     await settle()
 
     expect(store.status.value).toBe("blocked")
+    expect(browser.calls).toEqual(["save", `remove ${ENDPOINT}`])
+    expect(server.stored).toEqual([])
+    // Once is enough.
+    browser.show("visible")
+    await settle()
+    expect(browser.calls).toHaveLength(2)
     stop()
   })
 

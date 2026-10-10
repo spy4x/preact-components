@@ -498,30 +498,45 @@ went wrong.
   iPhone or iPad in a browser tab, where push exists only in the home-screen app; told apart with
   `isIosDevice` and `isStandalone`), `unavailable` (`publicKey` is `null` or empty), `blocked`
   (the permission is `denied`), `off` or `on`. A `publicKey` of `undefined` means "still loading"
-  and stays `checking`.
+  and stays `checking`: an app whose request for the key fails must pass `null`, or the block says
+  "Checking this device…" for ever.
 - **Turning on** asks for permission only then, and only when the browser has not asked before, so
   the prompt never opens on page load. It subscribes with `publicKey` (the server's VAPID public
   key, base64url, decoded here) and passes `subscription.toJSON()` to `save`. When `save` fails,
-  it unsubscribes again, so the browser and the server never disagree. A prompt the person closes
-  leaves `off` and is not a failure.
+  it asks the server to forget the endpoint, unsubscribes again and reports `off`, whatever the
+  browser then holds, so "Try again" is a press that can work. A subscription left over under
+  another key, which the browser refuses to replace by itself, is dropped and made again. A prompt
+  the person closes leaves `off` and is not a failure.
+- **On each page load** that finds the browser subscribed and allowed, the subscription goes to
+  `save` again, because the store cannot ask the server what it holds: this repairs a server that
+  lost it and a tab closed between subscribing and saving. One made with another server key is
+  replaced first (unsubscribe, `remove` the old endpoint, subscribe, `save`); the push service
+  refuses the new key's messages for it. **`save` must be an upsert by endpoint.** If this `save`
+  fails the status stays `on`, `onError` hears it with `"refresh"`, and it is tried again the next
+  time the page becomes visible.
 - **Turning off** calls `remove(endpoint)`, then unsubscribes. A failed `remove` leaves both in
   place. `remove` must succeed for a subscription that is already gone.
 - The permission is read again each time the page becomes visible, so a change made in the
   browser's settings shows when the person comes back. The browser drops the subscription itself
-  then; the server learns it from the push service's "gone" answer to its next message.
+  then, and the store calls `remove` for the endpoint it last saved. That call, like the one after
+  a failed `save`, is best effort: its failure goes to `onError` only, and the server still learns
+  it from the push service's "gone" answer to its next message.
 - The app must register a service worker (`SWUpdater` does). Without one, turning on fails with a
   message, not an endless spinner.
 - `serviceWorker`, `notification`, `navigator`, `matchMedia` and `visibility` are ports with the
   browser's own as defaults, so a test needs no browser. Nothing is touched before `start()`,
   `refresh()` or an action, so the store can be created on a server.
 
+`save` receives the subscription and `remove` the endpoint; what the app sends to its server, and
+how it names the device, is the app's choice.
+
 ```tsx
 function NotificationSettings({ publicKey }: { publicKey: string | null | undefined }) {
   const push = usePushSubscription({
     publicKey,
-    save: (subscription) => api.post("/push/subscriptions", subscription),
-    remove: (endpoint) => api.delete("/push/subscriptions", { endpoint }),
-    sendTest: () => api.post("/push/test"),
+    save: (subscription) => server.savePushSubscription(subscription),
+    remove: (endpoint) => server.removePushSubscription(endpoint),
+    sendTest: () => server.sendTestPush(),
   })
   return <PushSettings {...push} />
 }
