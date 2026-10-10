@@ -18,8 +18,8 @@
  * an Escape meant for something else.
  *
  * There is no pure logic here to unit test: every behaviour is a `document` listener or a focus
- * move, neither of which a string render executes (see `AGENTS.md` → Behaviour needs a second
- * pair). `pages/checks/system.ts` drives all of it in a real browser instead.
+ * move, neither of which a string render executes (see `pages/README.md`, "Writing a browser
+ * check"). `pages/checks/system.ts` drives all of it in a real browser instead.
  */
 
 import { useSignal } from "@preact/signals"

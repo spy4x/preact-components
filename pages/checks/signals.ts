@@ -988,7 +988,8 @@ interface EarlyInput {
  * The hook reads the address in an effect, and Preact runs effects after an animation frame. The
  * remount, the wait for the new field and the typing all happen in one task here, chained through
  * microtasks only, so the letter lands in the gap between the render and that effect on every run
- * rather than by chance — two protocol commands land in such a gap only by chance (see AGENTS.md).
+ * rather than by chance — two protocol commands land in such a gap only by chance (see
+ * `pages/README.md`, "Writing a browser check").
  * `framed` records that no frame had run when the letter was typed; the microtask chain above is
  * what makes that hold, so the flag guards against a change in scheduling rather than proving it.
  * The letter is typed as the page sees a key press: the field's value set, then an `input` event.
