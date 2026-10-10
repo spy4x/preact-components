@@ -177,6 +177,14 @@ describe("Calendar", () => {
     expect(html).toContain('aria-label="Next month: September 2026"')
   })
 
+  it("renders a dead month arrow in the button role when the arrows are buttons", () => {
+    const html = render(<Calendar {...base} onSelectMonth={() => {}} />)
+
+    expect(html).toContain(
+      '<span role="button" aria-disabled="true" aria-label="Previous month: July 2026"',
+    )
+  })
+
   it("links the month arrows in link mode", () => {
     const html = render(<Calendar {...base} monthAnchor="2026-08-01" minDate="2026-07-01" />)
 
@@ -184,12 +192,15 @@ describe("Calendar", () => {
     expect(html).toContain('href="?month=2026-09-01"')
   })
 
-  it("renders a dead month arrow as an inert span, not a navigable link", () => {
+  it("renders a dead month arrow as an inert span in the link role, not a navigable link", () => {
     const html = render(<Calendar {...base} />)
 
     // July 2026 is before the horizon and holds no availability, so the arrow is inert — a disabled
-    // anchor would still be focusable and still navigable with Enter.
-    expect(html).toContain('<span aria-disabled="true" aria-label="Previous month: July 2026"')
+    // anchor would still be focusable and still navigable with Enter. The role is what lets the
+    // span carry its name and its disabled state.
+    expect(html).toContain(
+      '<span role="link" aria-disabled="true" aria-label="Previous month: July 2026"',
+    )
     expect(html).not.toContain('href="?month=2026-07-01"')
     expect(html).not.toContain('aria-label="Previous month: July 2026" disabled')
   })
@@ -212,7 +223,9 @@ describe("Calendar", () => {
     const html = render(
       <Calendar {...base} monthAnchor="2026-10-01" minDate="2026-08-03" maxDate="2026-09-30" />,
     )
-    expect(html).toContain('<span aria-disabled="true" aria-label="Next month: November 2026"')
+    expect(html).toContain(
+      '<span role="link" aria-disabled="true" aria-label="Next month: November 2026"',
+    )
     expect(html).not.toContain('href="?month=2026-11-01"')
   })
 
