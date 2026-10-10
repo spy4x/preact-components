@@ -189,7 +189,10 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   cancelLabel?: string
   /** Called after a successful create, with the created row. Navigate from here. */
   onCreated?: (row: NoInfer<M>) => void
-  /** Whether the current user may change this entity. Defaults to `true`; `false` renders a read-only form. */
+  /**
+   * Whether the current user may change this entity. Defaults to `true`; `false` renders a
+   * read-only form, whose footer keeps Cancel as the way back and drops everything that writes.
+   */
   canChange?: () => boolean
   /**
    * Extra validation, run after the schema on every change.
@@ -365,6 +368,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   }
 
   const state = editorState(editorStateInput((signal) => signal.value))
+  const editable = canChange?.() ?? true
 
   // An issue with no field of its own — a cross-field `.narrow`, or a value that was never an
   // object — is filed under `FORM_FIELD` rather than on one of the rows `children` renders, so
@@ -453,34 +457,41 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
               ))}
             </div>
           </div>
-          {(canChange?.() ?? true) && (
-            <div class="pc-card-footer">
-              {props.footerSlot?.({ vm, vl })}
-              {props.mode === "edit" && archive !== undefined && (
-                <div class="flex gap-2 items-center">
-                  <input
-                    type="checkbox"
-                    id={archiveId}
-                    class="pc-checkbox"
-                    checked={Boolean(vm.value.deletedAt)}
-                    onChange={toggleArchive}
-                  />
-                  <label for={archiveId} class="pc-label">
-                    {archive.label ?? "Is Archived?"} {vm.value.deletedAt
-                      ? (
-                        <span
-                          title={formatTime(vm.value.deletedAt, { full: true })}
-                          class="text-red-500"
-                        >
-                          ({timeAgo(vm.value.deletedAt)})
-                        </span>
-                      )
-                      : ""}
-                  </label>
-                </div>
-              )}
+          </div>
+          {
+            /*
+            The footer stays for a read-only viewer, with Cancel alone: it is their only way back.
+            A link is not a form control, so the disabled fieldset around it does not switch it off.
+          */
+          }
+          <div class="pc-card-footer">
+            {editable && props.footerSlot?.({ vm, vl })}
+            {editable && props.mode === "edit" && archive !== undefined && (
+              <div class="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  id={archiveId}
+                  class="pc-checkbox"
+                  checked={Boolean(vm.value.deletedAt)}
+                  onChange={toggleArchive}
+                />
+                <label for={archiveId} class="pc-label">
+                  {archive.label ?? "Is Archived?"} {vm.value.deletedAt
+                    ? (
+                      <span
+                        title={formatTime(vm.value.deletedAt, { full: true })}
+                        class="text-red-500"
+                      >
+                        ({timeAgo(vm.value.deletedAt)})
+                      </span>
+                    )
+                    : ""}
+                </label>
+              </div>
+            )}
 
-              <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
+            <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
+            {editable && (
               <button
                 type="submit"
                 class="btn btn-primary"
@@ -490,8 +501,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 {state.busy && <IconLoading />}
                 Save
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </fieldset>
       </form>
 
