@@ -391,8 +391,9 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     }
   }
 
-  const state = editorState(editorStateInput((signal) => signal.value))
-  const editable = canChange?.() ?? true
+  const stateInput = editorStateInput((signal) => signal.value)
+  const state = editorState(stateInput)
+  const editable = stateInput.canChange
 
   // An issue with no field of its own — a cross-field `.narrow`, or a value that was never an
   // object — is filed under `FORM_FIELD` rather than on one of the rows `children` renders, so
@@ -485,6 +486,13 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 <p key={index} class="text-sm text-danger mt-2">{issue.message}</p>
               ))}
             </div>
+            {
+              /*
+              The failed save is the other kind of region. A `role="alert"` is announced when it is
+              added to the page with its text, so this one is rendered only while there is a
+              failure; the rule above is for polite `role="status"` regions.
+            */
+            }
             <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-left" />
           </div>
           {
