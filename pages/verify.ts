@@ -20,6 +20,7 @@
  * deno task build && deno task verify          # both phases
  * deno task verify --static                    # leave the browser out on purpose
  * deno task verify --only=system               # only the system package's browser checks
+ * deno task verify --only=e2e                  # only the Playwright specs under e2e/
  * deno task verify --cpu-throttle=6             # the page's CPU six times slower, see below
  * ```
  *
@@ -37,6 +38,9 @@
  * says which blocks, if any, are missing from the totals. `pages/checks/harness.ts` holds what more
  * than one of those files needs in common — the `Devtools` protocol client, the results ledger,
  * `poll` and `pressKey`.
+ *
+ * New and edited checks are Playwright specs under `pages/e2e/` instead (#667). They run as the last
+ * block, `e2e`, in the same browser and against the same preview server — see `e2e/runner.ts`.
  *
  * **`--only` is a debugging tool, never a substitute for a full run** (`#253`): reproducing a
  * block-order-dependent flake needs the other blocks left out, which used to mean hand-editing
@@ -58,6 +62,7 @@ import { pageHref, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
+import { type E2eTarget, loadSpecs, runSpecs } from "./e2e/runner.ts"
 import {
   BlockOutcome,
   centreInView,
@@ -808,6 +813,11 @@ async function browserPhase(): Promise<void> {
         const session = await launchChromium(chromium, lifecycle)
         if (!session) return
         const { devtools } = session
+        e2eTarget = {
+          url: server.url,
+          port: await debuggingPort(session.profile, LAUNCH_PORT_TIMEOUT_MS),
+          cpuThrottle: CPU_THROTTLE,
+        }
 
         await devtools.send("Runtime.enable", {})
         await devtools.send("Log.enable", {})
@@ -1409,6 +1419,24 @@ function onPage(
 }
 
 /**
+ * The browser and the preview server the `e2e` block's Playwright specs run against. Set by
+ * {@link browserPhase} once both exist, which is before any block runs.
+ */
+let e2eTarget: E2eTarget | undefined
+
+/**
+ * Run every Playwright spec under `pages/e2e/`. The runner reads the directory, so no list here
+ * can leave a spec file out.
+ *
+ * @throws When the browser phase has not started the browser and the server yet, or a spec file
+ * exports no specs.
+ */
+async function e2eSpecs(): Promise<void> {
+  if (!e2eTarget) throw new Error("the e2e block ran before the browser and the server existed")
+  await runSpecs(e2eTarget, await loadSpecs())
+}
+
+/**
  * Every workspace package's browser checks, in the one fixed order this file owns.
  *
  * Every package with something a browser can drive is named here, including the two that own no
@@ -1418,12 +1446,17 @@ function onPage(
  * `signals` has no catalogue section any more and still has a file: its checks drive the demo the
  * host page renders at the end of the UI page.
  *
- * `ui` runs last on purpose: its Modal checks (kept last within `ui.ts` for the same reason) open a
- * real modal dialog, and a dialog that refused to close would sit in the top layer above every check
- * that ran after it — a failure there would then take down checks that have nothing to do with it.
+ * `ui` runs last of the packages on purpose: its Modal checks (kept last within `ui.ts` for the
+ * same reason) open a real modal dialog, and a dialog that refused to close would sit in the top
+ * layer above every check that ran after it — a failure there would then take down checks that
+ * have nothing to do with it.
  * Isolating the blocks from each other does not make that ordering redundant: it keeps a throw from
  * dropping the later packages, while the order keeps a *passing* block from leaving the page in a
  * state the next one cannot work in.
+ *
+ * `e2e` is not a package: it is every Playwright spec under `pages/e2e/` (#667). It runs after the
+ * packages, and each spec opens its own page in its own browser context, so nothing a block above
+ * left on the first page reaches it.
  *
  * Every block but `ui-guide` runs on its package's page ({@link onPage}); `ui-guide` checks the
  * shell itself and moves between pages on its own.
@@ -1442,6 +1475,7 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
   { name: "charts", run: onPage("charts", chartsChecks) },
   { name: "map", run: onPage("map", mapChecks) },
   { name: "ui", run: onPage("ui", uiChecks) },
+  { name: "e2e", run: e2eSpecs },
 ]
 
 /**

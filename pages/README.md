@@ -31,6 +31,7 @@ usage blocks copy, the toasts fire and the deep links scroll.
 | `styles.css`              | The app-order stylesheet an app writes, plus the `@source` rules the scanner reads                        |
 | `verify.ts`               | Asserts the artefact's shape, then drives the built page in headless Chromium                             |
 | `checks/`                 | One browser-check file per workspace package, plus the shared `Devtools`/`check` harness                  |
+| `e2e/`                    | Playwright specs, one `<package>.spec.ts` per package that has one, and `runner.ts`; new checks go here   |
 | `screenshots.ts`          | Writes the README's screenshots and the social preview to `docs/screenshots/` from the built site         |
 | `serve.ts`                | Static server that mounts `dist/` at the deployed base (`deno task preview`)                              |
 | `src/app.tsx`             | The host page — the app shell this library deliberately does not ship                                     |
@@ -67,12 +68,14 @@ records a failed check and exits non-zero, because the browser phase carries eve
 behaviour the markup cannot show, and a run that quietly dropped it reported green for code nothing
 had executed. A `$CHROME_PATH` that does not run fails the same way, and says the configured path
 did not run rather than falling back to some other browser on the machine.
-`deno task --cwd pages verify --static` is the one explicit way to leave the browser phase out.
+`deno task --cwd pages verify --static` is the one explicit way to leave the browser phase out,
+the Playwright specs included.
 
 ### Running one block alone
 
 `deno task --cwd pages verify --only=system` restricts the browser phase to one workspace package's
-own checks — `--only=system,ui` for more than one. It exists because reproducing a flake that only
+own checks — `--only=system,ui` for more than one, and `--only=e2e` for the Playwright specs under
+`e2e/`, all of them. It exists because reproducing a flake that only
 shows up when the other blocks are _not_ run first needs the other blocks left out, and before
 `#253` the only way to do that was to hand-edit `PACKAGE_BLOCKS` in `pages/verify.ts` and revert it
 afterward; three separate reviews had already done exactly that.
@@ -167,6 +170,45 @@ Every test `deno task test` runs renders a component to an HTML string, so none 
 effect, a ref, a key press, a focus change or a timer. Behaviour behind one of those is proven only
 by a check here, and is unproven until one covers it.
 
+**A new check, and an existing check you edit, is a Playwright spec under `e2e/`; accessibility is
+checked with axe-core** (owner decision, 2026-10-10, #667). The checks under `checks/` run on a
+DevTools client written by hand; they stay there, untouched, until someone has a reason to edit
+one, and then that check moves to a spec. Nothing is moved for its own sake.
+
+### A Playwright spec
+
+- **Where.** `e2e/<package>.spec.ts`, one file per package, created with the package's first spec
+  — `e2e/ui.spec.ts` for a `ui/` component, `e2e/ui-guide.spec.ts` for the guide as a whole. The
+  runner reads the directory, so every `*.spec.ts` file there runs; a file that exports no spec
+  fails the `e2e` block.
+- **Shape.** A file exports `specs`, a list of `Spec` (`e2e/runner.ts`): a name that says what is proven, the
+  guide page to start on, the palette, and a `run(page)` that throws when the behaviour does not
+  hold. The runner opens that page in a fresh browser context, waits for hydration, and records
+  one check per spec. A spec that throws, or takes over 60 seconds, is one failed check, and the
+  specs after it still run.
+- **Waiting.** Use locators and let them wait: `locator.click()`, `locator.waitFor()`,
+  `locator.filter({ hasText })`. No sleeps and no polling loops. The dependency is
+  `playwright-core`, which has no `expect`; a state is asserted by waiting for a locator that
+  matches only in that state, such as `toggle.and(page.locator('[aria-checked="true"]'))`.
+- **Accessibility.** `e2e/ui-guide.spec.ts` runs axe's default rule set on every guide page, in
+  the light and the dark palette, once the page's late content is drawn (the Map's tiles).
+  `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
+  axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
+  the number with it and the list only shrinks. axe reports what it cannot decide as
+  "incomplete", and the spec does not fail on those. For one component's markup, run
+  `new AxeBuilder({ page }).include(selector)` in that package's spec.
+- **How they run.** As the last block of `verify`'s browser phase, named `e2e`, after the blocks
+  under `checks/`. Playwright attaches to the Chromium `verify` already launched
+  (`connectOverCDP`) and uses the same preview server, so there is no second browser, nothing is
+  downloaded, and `verify`'s deadlines, teardown and signal handling cover the specs too.
+  `--cpu-throttle` slows the specs' pages and stretches their timeouts as well.
+- **Build first** and **mutations**: as in the next section.
+
+### A check on the DevTools client
+
+Everything from here to "How a build works" is about the existing checks under `checks/`. Read it
+to understand one of them; a new check does not use these helpers.
+
 - **Where.** A check goes in its package's own file under `checks/` — `checks/ui.ts` for a `ui/`
   component, `checks/system.ts` for a `system/` one — never in `verify.ts`, which keeps the static
   phase and the browser startup and calls every package's file in one fixed order. Every package
@@ -175,7 +217,8 @@ by a check here, and is unproven until one covers it.
   `pressKey`, `centreInView`, `settledScroll`, the `Devtools` session) live in `checks/harness.ts`;
   import them, never redefine them.
 - **Coverage is the files.** No document lists which components are covered: read the names
-  passed to `check(...)` in the package's file. A component with no check there is unproven.
+  passed to `check(...)` in the package's file, and the spec names in `e2e/`. A component with no
+  check in either is unproven.
 - **Build first.** Run `deno task --cwd pages build` before every `verify`; `verify` refuses a stale
   `dist/` (see "Commands").
 - **Mutations.** Prove a mutation in its own throwaway worktree, at a path no other run uses, and
