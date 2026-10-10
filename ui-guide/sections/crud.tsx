@@ -146,6 +146,9 @@ function makeTeamStore() {
   return { store, rows, writes }
 }
 
+/** How long a held store answer is kept back before it arrives by itself. */
+const HOLD_MS = 8000
+
 /**
  * The association store: the editor slice plus the collection-wide list and the two endings.
  *
@@ -166,13 +169,19 @@ function makeAssociationStore() {
   const settledOp = signal<OperationState>(settled(null))
   const idle: ReadonlySignal<OperationState | undefined> = computed(() => undefined)
   // How often each ending reached the store, and a hold that keeps an answer back until released,
-  // so the card can show what the dialog does while a request is in flight.
+  // so the card can show what the dialog does while a request is in flight. A held answer also
+  // arrives by itself after `HOLD_MS`: the waiting dialog covers the switch that releases it, so
+  // without the timer a visitor could not leave the dialog.
   const calls = signal({ delete: 0, undelete: 0 })
   const held = signal(false)
   let release: (() => void)[] = []
   const answer = <T,>(result: T): Promise<T> =>
     held.value
-      ? new Promise((resolve) => release.push(() => resolve(result)))
+      ? new Promise((resolve) => {
+        const settle = () => resolve(result)
+        release.push(settle)
+        setTimeout(settle, HOLD_MS)
+      })
       : Promise.resolve(result)
   const setHeld = (next: boolean) => {
     held.value = next
@@ -506,7 +515,7 @@ function AssociationEditorDemo() {
         data-e2e="hold-answers"
         onClick={() => setHeld(!held.value)}
       >
-        Hold the store's answers, to see a dialog wait
+        Hold the store's answers for {HOLD_MS / 1000} seconds, to see a dialog wait
       </Button>
       {
         // Keyed, so switching the mode mounts a fresh editor instead of re-using the other's form.

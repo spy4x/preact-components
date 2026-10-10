@@ -215,4 +215,26 @@ export const specs: readonly Spec[] = [
       await calls.filter({ hasText: "asked to delete 1 times and to restore 0 times" }).waitFor()
     },
   },
+  {
+    name:
+      "AssociationEditor demo: a held store answer arrives by itself, so the waiting dialog lets the visitor go",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const hold = card.locator(`[data-e2e="hold-answers"]`)
+      const dialog = page.getByRole("alertdialog", { name: "Detach this supplier?" })
+      const confirm = dialog.locator(`[data-e2e="confirm-dialog-confirm"]`)
+
+      await card.locator(`[data-e2e="edit-association"]`).click()
+      await hold.click()
+      await card.getByRole("button", { name: "Delete", exact: true }).click()
+      await confirm.click()
+      await confirm.and(page.locator(`[aria-busy="true"]`)).waitFor()
+
+      // Nothing releases the hold: the dialog covers the switch, as it does for a visitor.
+      await dialog.waitFor({ state: "detached", timeout: 20_000 })
+      await card.locator(`[data-e2e="association-rows"]`).filter({ hasText: "2 of them removed" })
+        .waitFor()
+    },
+  },
 ]
