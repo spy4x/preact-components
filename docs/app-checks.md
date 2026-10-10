@@ -55,6 +55,11 @@ registerBoundaryTests({
 - **A guard that walks nothing fails.** The test fails when a directory does not exist, when it
   holds no file with a checked extension, and when a file under `requiredFiles` was not found. Name
   one file per app under `requiredFiles` that the app cannot lose.
+- **A symbolic link fails the test.** A link, or another special file, whose name has a checked
+  extension is neither read nor skipped: the test fails and names it. Put the file itself in the
+  folder, or leave its folder out with `skipDirectories`. A link with any other name, a test file's
+  name included, is passed over like any other file the guard does not read.
+- **An unreadable file fails the test** too, and so does an empty `directories` list.
 - **Left out:** test files (`*.test.ts`, `*.test.tsx`), which spell out classes and forbidden
   imports to assert on, and the directories `node_modules`, `dist`, `build`, `.vite` and `_fresh`
   wherever they appear below a walked directory. `skipDirectories` replaces that list. A folder

@@ -342,8 +342,8 @@ imports no test framework: you pass your own `test` function, and a failure is a
   nothing.
 - `guardFiles(options)` is the walk on its own: the files under each directory with one of
   `extensions`, as sorted paths relative to the root. It leaves out test files and
-  `skipDirectories`, and throws for a missing or empty directory and for a file under
-  `requiredFiles` it did not find.
+  `skipDirectories`, and throws for an empty `directories` list, a missing or empty directory, a
+  symbolic link with a checked extension and a file under `requiredFiles` it did not find.
 - `guardRoot(root)` turns a path or a `file:` URL into a path with no trailing separator.
 - `DEFAULT_SKIPPED_DIRECTORIES` is `node_modules`, `dist`, `build`, `.vite` and `_fresh`;
   `DEFAULT_SPACING_EXTENSIONS` is `.ts`, `.tsx`, `.css` and `.html`.

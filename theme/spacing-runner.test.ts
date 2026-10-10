@@ -134,6 +134,30 @@ describe("guardFiles", () => {
       .rejects.toThrow(`holds no .tsx file to check`)
   })
 
+  it("rejects an empty list of directories", async () => {
+    const fs = memoryFs({ "/repo/apps/app.tsx": "" })
+    await expect(guardFiles({ root: ROOT, directories: [], extensions: [".tsx"], fs }))
+      .rejects.toThrow("given no directory to walk in /repo")
+  })
+
+  it("rejects a symbolic link with a wanted name, and passes over one with another name", async () => {
+    const fs = memoryFs({ "/repo/apps/app.tsx": "" })
+    const withLink = (name: string): GuardFileSystem => ({
+      ...fs,
+      readDir: async (path) => [
+        ...await fs.readDir(path),
+        ...(path === "/repo/apps" ? [{ name, isDirectory: false, isFile: false }] : []),
+      ],
+    })
+    const walk = (name: string) =>
+      guardFiles({ root: ROOT, directories: ["apps"], extensions: [".tsx"], fs: withLink(name) })
+    await expect(walk("linked.tsx")).rejects.toThrow(
+      "cannot read apps/linked.tsx in /repo: it is a symbolic link",
+    )
+    expect(await walk("linked.md")).toEqual(["apps/app.tsx"])
+    expect(await walk("linked.test.tsx")).toEqual(["apps/app.tsx"])
+  })
+
   it("rejects when a required file was not walked", async () => {
     const fs = memoryFs({ "/repo/apps/web/src/app.tsx": "" })
     await expect(guardFiles({
@@ -185,6 +209,34 @@ describe("registerSpacingTests", () => {
       "libs/ui/index.html:1:14 p-7 — step 7 is not on the scale (0 px 1 2 3 4 6 8 12 16)",
       "libs/ui/page.css:1:16 gap-[13px] — arbitrary spacing value [13px]; use a step from the scale",
     ])
+  })
+
+  it("rejects a tree with exactly one spacing class off the scale", async () => {
+    const { test, tests } = collector()
+    const fs = memoryFs({ "/repo/apps/app.tsx": `export const a = <div class="p-5" />` })
+    registerSpacingTests({ test, root: ROOT, directories: ["apps"], fs })
+    await expect(Promise.resolve().then(tests[0].run)).rejects.toThrow(
+      "Spacing off the scale in 1 place(s):\napps/app.tsx:1:30 p-5",
+    )
+  })
+
+  it("rejects when a file the walk lists cannot be read", async () => {
+    const { test, tests } = collector()
+    const fs = memoryFs({ "/repo/apps/app.tsx": ON_SCALE, "/repo/apps/gone.tsx": ON_SCALE })
+    const unreadable: GuardFileSystem = {
+      ...fs,
+      readText: (path) => path.endsWith("gone.tsx") ? Promise.resolve(null) : fs.readText(path),
+    }
+    registerSpacingTests({ test, root: ROOT, directories: ["apps"], fs: unreadable })
+    await expect(Promise.resolve().then(tests[0].run)).rejects.toThrow(
+      "could not read apps/gone.tsx in /repo",
+    )
+  })
+
+  it("rejects when it is given no directory to walk", async () => {
+    const { test, tests } = collector()
+    registerSpacingTests({ test, root: ROOT, directories: [], fs: memoryFs({}) })
+    await expect(Promise.resolve().then(tests[0].run)).rejects.toThrow("given no directory to walk")
   })
 
   it("does not read a test file, which spells out classes to assert on", async () => {

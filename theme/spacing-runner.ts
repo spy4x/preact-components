@@ -98,8 +98,9 @@ export function guardRoot(root: string | URL): string {
  * `options.extensions`, test files and skipped directories left out, as sorted paths relative to
  * the root with `/` separators.
  *
- * @throws When a directory does not exist or holds no file to check, or when one of
- *   `options.requiredFiles` was not found.
+ * @throws When `options.directories` is empty, when a directory does not exist or holds no file to
+ *   check, when an entry with a wanted name is a symbolic link or another special file, or when
+ *   one of `options.requiredFiles` was not found.
  */
 export async function guardFiles(options: GuardWalkOptions): Promise<string[]> {
   const fs = options.fs ?? denoFileSystem
@@ -115,10 +116,19 @@ export async function guardFiles(options: GuardWalkOptions): Promise<string[]> {
       const path = `${directory}/${entry.name}`
       if (entry.isDirectory && !skipped.includes(entry.name)) files.push(...await walk(path))
       else if (entry.isFile && wanted(entry.name)) files.push(path)
+      else if (!entry.isDirectory && !entry.isFile && wanted(entry.name)) {
+        throw new Error(
+          `The guard cannot read ${path} in ${root}: it is a symbolic link or another special ` +
+            `file. Put the file itself there, or leave it out with skipDirectories.`,
+        )
+      }
     }
     return files
   }
 
+  if (options.directories.length === 0) {
+    throw new Error(`The guard was given no directory to walk in ${root}.`)
+  }
   const files: string[] = []
   for (const listed of options.directories) {
     const directory = listed.replace(/^\.?[\\/]+|[\\/]+$/g, "")

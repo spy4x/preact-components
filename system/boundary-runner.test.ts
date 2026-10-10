@@ -139,6 +139,22 @@ describe("registerBoundaryTests: the walk over the screens", () => {
     expect(await failure(onlyTests)).toContain(`"libs/ui" in /repo, which holds no .ts, .tsx file`)
   })
 
+  it("rejects when it is given no directory to walk", async () => {
+    const [walk] = register({ "/repo/libs/ui/screen.tsx": PURE }, { directories: [] })
+    expect(await failure(walk)).toContain("given no directory to walk in /repo")
+  })
+
+  it("rejects when a module the walk lists cannot be read", async () => {
+    const fs = memoryFs({ "/repo/libs/ui/screen.tsx": PURE, "/repo/libs/ui/gone.tsx": PURE })
+    const [walk] = register({}, {
+      fs: {
+        ...fs,
+        readText: (path) => path.endsWith("gone.tsx") ? Promise.resolve(null) : fs.readText(path),
+      },
+    })
+    expect(await failure(walk)).toBe("The guard could not read libs/ui/gone.tsx in /repo.")
+  })
+
   it("rejects when a file the app requires was not walked", async () => {
     const [walk] = register({ "/repo/libs/ui/screen.tsx": PURE }, {
       requiredFiles: ["libs/ui/auth-screen.tsx"],
@@ -150,6 +166,18 @@ describe("registerBoundaryTests: the walk over the screens", () => {
 describe("registerBoundaryTests: the check of the app's own lists", () => {
   it("registers no second test when there is no import to try", () => {
     expect(register({})).toHaveLength(1)
+  })
+
+  it("tries every alias when the app lists no other import", async () => {
+    const tests = register({}, { boundary: { appAliases: ["@api/", "@spa/"] } })
+    expect(tests).toHaveLength(2)
+    expect(await failure(tests[1])).toBeNull()
+    // An alias that is also listed as allowed can only fail if the alias import was tried.
+    const clash = register({}, {
+      boundary: { appAliases: ["@api/"] },
+      allowedImports: ["@api/x.ts"],
+    })
+    expect(await failure(clash[1])).toContain(`"@api/x.ts" should be allowed: `)
   })
 
   it("passes when every alias and listed import is refused and the allowed one passes", async () => {
