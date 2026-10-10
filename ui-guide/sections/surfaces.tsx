@@ -397,7 +397,7 @@ function TokenClassesDemo() {
         <span class={`bg-danger-fill-hover text-danger-fill-foreground ${swatch}`}>
           bg-danger-fill-hover
         </span>
-        {/* On a fixed red: the label reads below 4.5:1 on either palette's danger fill. */}
+        {/* On a fixed red: the label reads below 4.5:1 on red-600, the light fill and dark hover. */}
         <span class={`bg-red-700 text-danger-foreground ${swatch}`}>text-danger-foreground</span>
         <span class={`bg-primary text-primary-foreground ${swatch}`}>text-primary-foreground</span>
         <span class={`bg-accent-900 text-accent-foreground ${swatch}`}>text-accent-foreground</span>
