@@ -53,7 +53,7 @@ export const specs: readonly Spec[] = [
   scrollRegionSpec({
     what: "CopyBlock with singleLine",
     pageId: "ui",
-    selector: `#demo-CopyBlock code[tabindex="0"]`,
+    selector: `#demo-CopyBlock code[aria-label]`,
     name: "Install command",
     key: "ArrowRight",
   }),
