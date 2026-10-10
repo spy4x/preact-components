@@ -165,6 +165,22 @@ function makeAssociationStore() {
   ])
   const settledOp = signal<OperationState>(settled(null))
   const idle: ReadonlySignal<OperationState | undefined> = computed(() => undefined)
+  // How often each ending reached the store, and a hold that keeps an answer back until released,
+  // so the card can show what the dialog does while a request is in flight.
+  const calls = signal({ delete: 0, undelete: 0 })
+  const held = signal(false)
+  let release: (() => void)[] = []
+  const answer = <T,>(result: T): Promise<T> =>
+    held.value
+      ? new Promise((resolve) => release.push(() => resolve(result)))
+      : Promise.resolve(result)
+  const setHeld = (next: boolean) => {
+    held.value = next
+    if (next) return
+    const waiting = release
+    release = []
+    for (const settle of waiting) settle()
+  }
 
   const store: CrudAssociationStore<Team> = {
     list: {
@@ -187,27 +203,27 @@ function makeAssociationStore() {
       rows.value = rows.value.map((row) => (row.id === id ? updated : row))
       return Promise.resolve({ error: null, result: updated })
     },
-    delete: (id) => {
+    delete: async (id) => {
+      calls.value = { ...calls.value, delete: calls.value.delete + 1 }
       const row = rows.value.find((entry) => entry.id === id)
-      if (row === undefined) {
-        return Promise.resolve({ error: { message: `no row ${id}` }, result: null })
-      }
+      if (row === undefined) return { error: { message: `no row ${id}` }, result: null }
       const ended: Team = { ...row, deletedAt: new Date("2026-03-01T00:00:00.000Z") }
+      await answer(null)
       rows.value = rows.value.map((entry) => (entry.id === id ? ended : entry))
-      return Promise.resolve({ error: null, result: ended })
+      return { error: null, result: ended }
     },
-    undelete: (id) => {
+    undelete: async (id) => {
+      calls.value = { ...calls.value, undelete: calls.value.undelete + 1 }
       const row = rows.value.find((entry) => entry.id === id)
-      if (row === undefined) {
-        return Promise.resolve({ error: { message: `no row ${id}` }, result: null })
-      }
+      if (row === undefined) return { error: { message: `no row ${id}` }, result: null }
       const restored: Team = { ...row, deletedAt: null }
+      await answer(null)
       rows.value = rows.value.map((entry) => (entry.id === id ? restored : entry))
-      return Promise.resolve({ error: null, result: restored })
+      return { error: null, result: restored }
     },
   }
 
-  return { store, rows }
+  return { store, rows, calls, held, setHeld }
 }
 
 /** Teams a team can sit under — the option list of the select row. */
@@ -362,6 +378,7 @@ function CrudEditorDemo() {
         title="Add a team"
         cancelHref="#crud"
         canChange={() => true}
+        saveErrorLabel="The team was not saved"
         onCreated={(row) => created.value = `#${row.id} "${row.name}"`}
         notice={() => (
           // `notice` renders straight after the component's field grid, which leaves the gap to it.
@@ -450,7 +467,7 @@ function CrudEditorArchiveDemo() {
 function AssociationEditorDemo() {
   // `useMemo` rather than a bare call: the caption below reads `rows`, so a save or a restore
   // re-renders the card, and a fresh `makeAssociationStore()` on that render would drop the change.
-  const { store, rows } = useMemo(() => makeAssociationStore(), [])
+  const { store, rows, calls, held, setHeld } = useMemo(() => makeAssociationStore(), [])
   const removed = rows.value.filter((row) => Boolean(row.deletedAt)).length
   const editing = useSignal(false)
   // Everything but the mode. The row being edited is not its own duplicate.
@@ -481,6 +498,16 @@ function AssociationEditorDemo() {
       >
         Edit an existing association, which adds Delete
       </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={held.value}
+        data-e2e="hold-answers"
+        onClick={() => setHeld(!held.value)}
+      >
+        Hold the store's answers, to see a dialog wait
+      </Button>
       {
         // Keyed, so switching the mode mounts a fresh editor instead of re-using the other's form.
         editing.value
@@ -491,6 +518,12 @@ function AssociationEditorDemo() {
               mode="edit"
               editId={102}
               title="Edit a supplier"
+              // The edit form words its two dialogs itself; the add form keeps the defaults.
+              confirmDeleteTitle="Detach this supplier?"
+              confirmDelete="It can be attached again later."
+              confirmRestoreTitle="Attach this supplier again?"
+              confirmRestore="It comes back as it was."
+              confirmCancelLabel="Keep it as it is"
             />
           )
           : <AssociationEditor key="add" {...shared} mode="add" title="Add a supplier" />
@@ -502,6 +535,10 @@ function AssociationEditorDemo() {
       <Caption e2e="association-rows">
         The conflict port scans {rows.value.length} rows, {removed}{" "}
         of them removed. A save adds one.
+      </Caption>
+      <Caption e2e="association-calls">
+        The store was asked to delete {calls.value.delete} times and to restore{" "}
+        {calls.value.undelete} times.
       </Caption>
     </Stack>
   )
@@ -572,6 +609,7 @@ function CrudListDemo() {
         match={(row, word) => search(row.name, word)}
         query={query}
         searchDelay={patient.value ? 60_000 : undefined}
+        searchLabel="Search teams"
         // In a flex column the list's own `mx-auto` would size it to its content, past a phone's edge.
         class="w-full"
         addHref="#crud"
@@ -733,6 +771,7 @@ export const crudDemos = {
   store={teamStore}
   match={(row, word) => search(row.name, word)}
   query={query}
+  searchLabel="Search teams"
   header={<th scope="col">Name</th>}
   row={(row) => <td>{row.name}</td>}
   actions={(row) => (
@@ -818,6 +857,7 @@ export const crudDemos = {
   schema={teamBaseSchema}
   entity="Team"
   cancelHref="/teams"
+  saveErrorLabel="The team was not saved"
   archive={{}}
   onCreated={(row) => navigate(\`/teams/\${row.id}/edit\`)}
 >
@@ -900,6 +940,9 @@ export const crudDemos = {
   blank={blankAssociation}
   entity="Supplier association"
   cancelHref="/suppliers"
+  confirmDeleteTitle="Detach this supplier?"
+  confirmDelete="It can be attached again later."
+  confirmCancelLabel="Keep it as it is"
   conflictField="supplierId"
   conflict={(row, all) => all.find((entry) => entry.supplierId === row.supplierId)}
   conflictMessage="That supplier is already attached."

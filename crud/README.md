@@ -392,7 +392,9 @@ differs from a validated form in three ways, and each one is a slot or a port on
   `footerSlot`. Each asks first in the library's `ConfirmDialog`, never the browser's `confirm()`:
   `confirmDelete` and `confirmRestore` are the questions, `confirmDeleteTitle` and
   `confirmRestoreTitle` the headings, `deleteLabel` and `restoreLabel` name the confirming action,
-  and `confirmCancelLabel` the cancelling one. All have English defaults.
+  and `confirmCancelLabel` the cancelling one. All have English defaults. While the store has not
+  answered, the confirming button is busy and the dialog stays; a store that throws is logged with
+  `console.error` and the dialog closes.
 
 `association-editor.tsx` is the composition, not a copy:
 
