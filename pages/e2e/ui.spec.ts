@@ -1,6 +1,34 @@
 /** Playwright specs for `ui/` components, on the guide's UI page. */
-import type { Locator } from "playwright-core"
+import { AxeBuilder } from "@axe-core/playwright"
+import type { Locator, Page } from "playwright-core"
 import type { Spec } from "./runner.ts"
+
+/** The parts of the `UnsavedGuard` card a spec drives, with a change already typed in its field. */
+async function unsavedGuardWithAChange(page: Page) {
+  const card = page.locator("#demo-UnsavedGuard")
+  const draft = card.locator(`[data-e2e="unsaved-draft"]`)
+  const dialog = page.getByRole("alertdialog", { name: "Leave without saving?" })
+  const outcome = card.locator(`[data-e2e="unsaved-outcome"]`)
+  await draft.fill("An unsaved change")
+  await card.getByRole("checkbox", { name: "Unsaved changes", checked: true }).waitFor()
+  return {
+    card,
+    draft,
+    dialog,
+    // By hook, not by name: the dialog's corner button is named "Stay" as well.
+    stay: dialog.locator(`[data-e2e="confirm-dialog-cancel"]`),
+    leave: dialog.locator(`[data-e2e="confirm-dialog-confirm"]`),
+    lists: card.locator(`[data-e2e="unsaved-go-lists"]`),
+    /** Waits for the card to report one outcome, word for word. */
+    outcomeIs: (text: string) => outcome.getByText(`Outcome: ${text}`, { exact: true }).waitFor(),
+    /** Waits for the card to have counted this many navigations started from code. */
+    callsAre: (count: number) =>
+      card.locator(`[data-e2e="unsaved-calls"]`)
+        .getByText(`Navigations from code: ${count}`, { exact: true }).waitFor(),
+    /** Waits for the focus to be on one element. */
+    focusIsOn: (target: Locator) => target.and(page.locator(":focus")).waitFor(),
+  }
+}
 
 export const specs: readonly Spec[] = [
   {
@@ -98,6 +126,79 @@ export const specs: readonly Spec[] = [
         }
       }
       return `stopped ${Object.values(reduced).flat().length} animated elements`
+    },
+  },
+  {
+    name:
+      "UnsavedGuard: a button that navigates through the leave guard opens the dialog; Stay keeps the page and returns the focus to the button, Leave navigates",
+    pageId: "ui",
+    run: async (page) => {
+      const { card, dialog, stay, leave, lists, outcomeIs, focusIsOn } =
+        await unsavedGuardWithAChange(page)
+
+      await lists.click()
+      await dialog.waitFor()
+      // The dialog alone: while it is open the page behind it is inert, and axe skips that.
+      const { violations } = await new AxeBuilder({ page }).include("dialog[open]").analyze()
+      if (violations.length > 0) {
+        throw new Error(`axe on the open dialog: ${violations.map(({ id }) => id).join(", ")}`)
+      }
+      await stay.click()
+      await dialog.waitFor({ state: "detached" })
+      await focusIsOn(lists)
+      await outcomeIs("nothing yet")
+
+      await lists.click()
+      await leave.click()
+      await dialog.waitFor({ state: "detached" })
+      await outcomeIs(`navigate("unsaved-demo/lists") from code`)
+      // Leave dropped the change through `onDiscard`, so nothing is unsaved any more.
+      await card.getByRole("checkbox", { name: "Unsaved changes", checked: false }).waitFor()
+    },
+  },
+  {
+    name:
+      "UnsavedGuard: a key press that navigates through the leave guard opens the dialog; Stay returns the focus to the field, and a second key press replaces the first without a second dialog",
+    pageId: "ui",
+    run: async (page) => {
+      const { draft, dialog, stay, leave, outcomeIs, callsAre, focusIsOn } =
+        await unsavedGuardWithAChange(page)
+
+      await draft.press("Alt+KeyL")
+      await dialog.waitFor()
+      await stay.click()
+      await dialog.waitFor({ state: "detached" })
+      await focusIsOn(draft)
+      await outcomeIs("nothing yet")
+
+      await draft.press("Alt+KeyL")
+      await dialog.waitFor()
+      await callsAre(2)
+      // The focus is in the dialog now; the key reaches the card's handler from there.
+      await page.keyboard.press("Alt+KeyU")
+      await callsAre(3)
+      const open = await page.locator("dialog[open]").count()
+      if (open !== 1) throw new Error(`${open} dialogs are open after two navigations in a row`)
+      await leave.click()
+      await outcomeIs(`navigate("unsaved-demo/upcoming") from code`)
+      await page.locator("dialog[open]").waitFor({ state: "detached" })
+    },
+  },
+  {
+    name:
+      "UnsavedGuard: with nothing unsaved, a button and a key press navigate through the leave guard at once, with no dialog",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-UnsavedGuard")
+      const outcome = card.locator(`[data-e2e="unsaved-outcome"]`)
+      const upcoming = card.locator(`[data-e2e="unsaved-go-upcoming"]`)
+
+      await upcoming.click()
+      await outcome.getByText(`navigate("unsaved-demo/upcoming") from code`).waitFor()
+      await upcoming.press("Alt+KeyL")
+      await outcome.getByText(`navigate("unsaved-demo/lists") from code`).waitFor()
+      const open = await page.locator("dialog[open]").count()
+      if (open !== 0) throw new Error(`${open} dialogs are open with nothing unsaved`)
     },
   },
 ]

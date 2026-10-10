@@ -12,6 +12,7 @@ import {
   Checkbox,
   Cluster,
   ConfirmDialog,
+  createLeaveGuard,
   defaultToastActionDuration,
   defaultToastDuration,
   type DialogTone,
@@ -604,17 +605,42 @@ function ConfirmDialogDemo() {
 const ownsUnsavedDemo = (url: URL) =>
   url.pathname.includes("/unsaved-demo/") || url.pathname === globalThis.location?.pathname
 
+/** Where the demo's buttons and key presses go, by the letter pressed with Alt. */
+const unsavedDemoPlaces: Record<string, string> = { KeyL: "lists", KeyU: "upcoming" }
+
 /**
- * Links of every kind the guard looks at. A click the guard leaves alone reaches the wrapper, which
+ * Links of every kind the guard looks at, and navigation started from code: two buttons and two key
+ * presses that go through a `LeaveGuard`. A click the guard leaves alone reaches the wrapper, which
  * cancels it and says where the browser would have gone, so trying a link never leaves the guide.
  */
 function UnsavedGuardDemo() {
   const dirty = useSignal(false)
   const outcome = useSignal("nothing yet")
+  const calls = useSignal(0)
+  const leaveGuard = useMemo(createLeaveGuard, [])
   const link = "pc-link text-sm"
+  /** What an app's sidebar button or shortcut does: its own navigation, sent through the guard. */
+  const go = (place: string) => {
+    calls.value += 1
+    leaveGuard.navigate(() => outcome.value = `navigate("unsaved-demo/${place}") from code`)
+  }
 
   return (
-    <Stack gap="sm">
+    <Stack
+      gap="sm"
+      onKeyDown={(event: KeyboardEvent) => {
+        const place = event.altKey ? unsavedDemoPlaces[event.code] : undefined
+        if (!place) return
+        event.preventDefault()
+        go(place)
+      }}
+    >
+      <Input
+        aria-label="Draft"
+        placeholder="Type to make a change"
+        onInput={() => dirty.value = true}
+        data-e2e="unsaved-draft"
+      />
       <Checkbox
         checked={dirty.value}
         onChange={(event) => dirty.value = event.currentTarget.checked}
@@ -650,9 +676,33 @@ function UnsavedGuardDemo() {
           <a class={link} href="#" data-unsaved="empty-hash">An action link (#)</a>
         </Cluster>
       </div>
+      <Cluster>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => go("lists")}
+          data-e2e="unsaved-go-lists"
+        >
+          Go to Lists
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => go("upcoming")}
+          data-e2e="unsaved-go-upcoming"
+        >
+          Go to Upcoming
+        </Button>
+      </Cluster>
+      <DemoNote>
+        The buttons navigate from code, as a sidebar does. With the focus in this card, Alt+L and
+        Alt+U do the same, as a keyboard shortcut does.
+      </DemoNote>
+      <DemoNote e2e="unsaved-calls">Navigations from code: {calls.value}</DemoNote>
       <DemoNote e2e="unsaved-outcome">Outcome: {outcome.value}</DemoNote>
       <UnsavedGuard
         when={dirty.value}
+        leaveGuard={leaveGuard}
         owns={ownsUnsavedDemo}
         navigate={(href) => outcome.value = `navigate("${href}")`}
         onDiscard={() => dirty.value = false}
@@ -1011,7 +1061,7 @@ export const feedbackDemos = {
   },
   UnsavedGuard: {
     summary:
-      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link.",
+      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link or on a navigation the app starts from code.",
     wide: true,
     props: [
       { name: "when", type: "boolean", description: "Whether there are unsaved changes." },
@@ -1028,7 +1078,13 @@ export const feedbackDemos = {
       {
         name: "onDiscard",
         type: "() => void",
-        description: "Called on Leave, before `navigate`, to drop the changes.",
+        description: "Called on Leave, before the navigation, to drop the changes.",
+      },
+      {
+        name: "leaveGuard",
+        type: "LeaveGuard",
+        description:
+          "The app's `createLeaveGuard()`. A button or shortcut that calls `leaveGuard.navigate(go)` gets the same dialog: Leave runs `go`, Stay drops it. With nothing unsaved, `go` runs at once.",
       },
       {
         name: "labels",
@@ -1036,13 +1092,18 @@ export const feedbackDemos = {
         description: "Replaces the dialog's English words: `title`, `message`, `leave`, `stay`.",
       },
     ],
-    snippet: `<UnsavedGuard
+    snippet: `// Once for the app, outside any component.
+export const leaveGuard = createLeaveGuard()
+
+<UnsavedGuard
   when={draft.value !== saved.value}
   navigate={(href) => setLocation(href)}
   owns={(url) => url.pathname.startsWith("/notes/")}
   onDiscard={() => draft.value = saved.value}
+  leaveGuard={leaveGuard}
 />
-<a href="/notes/7?latest" data-unsaved-ok>Load the latest version</a>`,
+<a href="/notes/7?latest" data-unsaved-ok>Load the latest version</a>
+<Button onClick={() => leaveGuard.navigate(() => setLocation("/lists"))}>Lists</Button>`,
     render: () => <UnsavedGuardDemo />,
   },
   Toastr: {
