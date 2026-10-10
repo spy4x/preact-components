@@ -928,6 +928,12 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `InlineEdit` (component): A value shown as text that turns into a text field in place, for renaming a list, a tag or a column where it stands. Import: `@spy4x/preact-ui`
 - `inlineEditCommit` (helper): What an edit saves: the trimmed draft, or `null` when there is nothing to save because the draft is empty or matches the current value. Import: `@spy4x/preact-ui`
 - `InlineEditProps` (type): Props of `InlineEdit`. Import: `@spy4x/preact-ui`
+- `defaultQuickAddLabels` (helper): The English defaults of `QuickAddLabels`. Import: `@spy4x/preact-ui`
+- `QUICK_ADD_ANNOUNCE_PAUSE_MS` (constant): How long the typing must pause before the live region reads the recognised parts out. Import: `@spy4x/preact-ui`
+- `QuickAdd` (component): One field that adds an item to a list: type, press Enter. Import: `@spy4x/preact-ui`
+- `QuickAddDueLabel` (type): Words a due day for a badge. Import: `@spy4x/preact-ui`
+- `QuickAddLabels` (type): Every string `QuickAdd` shows or speaks apart from its `label`, `placeholder` and `hint`. Import: `@spy4x/preact-ui`
+- `QuickAddProps` (type): Props of `QuickAdd`. Import: `@spy4x/preact-ui`
 - `ToggleChipOption` (type): One chip of a `ToggleChips` group. Import: `@spy4x/preact-ui`
 - `ToggleChips` (component): A group of pressable chips for filtering a list — the clickable counterpart of `Badge`, which only shows text. Import: `@spy4x/preact-ui`
 - `toggleChipSelection` (helper): The selection after one chip is pressed, in multiple mode: the chip is added or removed, and the result keeps the order of `options` rather than the order of presses. Import: `@spy4x/preact-ui`

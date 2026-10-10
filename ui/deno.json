@@ -62,6 +62,7 @@
     "./kbd": "./kbd.tsx",
     "./shortcuts-dialog": "./shortcuts-dialog.tsx",
     "./inline-edit": "./inline-edit.tsx",
+    "./quick-add": "./quick-add.tsx",
     "./toggle-chips": "./toggle-chips.tsx",
     "./kanban-board": "./kanban-board.tsx",
     "./sortable-list": "./sortable-list.tsx",

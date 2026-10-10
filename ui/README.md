@@ -104,6 +104,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                  |
 | `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                             |
 | `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                                                                            |
+| `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood         |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                           |
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                                                                                 |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                      |
@@ -1429,6 +1430,43 @@ Escape pressed while an input method is still composing a word do not save or ca
 
 `inlineEditCommit(draft, value)` is the save rule on its own: the trimmed draft, or `null` when it
 is empty or matches the value, in which case the field closes without calling `onSave`.
+
+## QuickAdd
+
+One text field and an add button for putting items into a list one after another. The line is read
+by `parseQuickAdd` (`@spy4x/platform/universal/quick-add`): `#tag`, `@context`, a date (`tomorrow`,
+`friday`, `2026-03-14`), a time (`3pm`) and a priority (`!high`) are taken out of the title. Each
+recognised part shows as a badge under the field on every keystroke. A polite live region reads the
+same words out once the typing has paused for `QUICK_ADD_ANNOUNCE_PAUSE_MS` (600 ms), so a screen
+reader hears "Tag work" once and not every letter of it.
+
+Enter or the button calls `onAdd` with the parsed line, empties the field and keeps focus in it. A
+line that leaves no title, such as `#work !high`, adds nothing: the `noTitle` message shows under
+the field and the live region speaks it. While it shows, the field is `aria-invalid` and its
+`aria-describedby` names the message before the hint, so a screen reader that comes back to the
+field hears why nothing was added. Focus goes back to the field, and the next keystroke clears the
+message. A blank line adds nothing and shows no message; focus still goes to the field. While
+`busy`, the field is read-only, the button is off, and a send adds nothing and keeps the typed
+text.
+
+`zone` is the IANA time zone "tomorrow" and "3pm" are read in; it defaults to the device's own.
+`now` is the clock, for a test to fix. Every string is a prop with an English default: `label`
+(the field's accessible name), `placeholder`, `hint`, and `labels`, which overrides any of
+`defaultQuickAddLabels` (`submit`, `recognised`, `noTitle`, and one function per kind of badge:
+`tag`, `context`, `due`, `priority`). `dueLabel(date, now, zone)` words the due day. The default
+says "Today", "Tomorrow" or "Yesterday" for a viewer in `zone` and a short day such as `Mon 5 Jan`
+otherwise, through `relativeDayLabel` of `@spy4x/time`. The time is always shown as typed, because
+that is what `onAdd` receives.
+
+```tsx
+<QuickAdd
+  label="New note"
+  placeholder="Add a note"
+  hint="Added to Inbox"
+  busy={saving.value}
+  onAdd={(parsed) => createNote(parsed.title, parsed.tags, parsed.due)}
+/>
+```
 
 ## TagInput
 

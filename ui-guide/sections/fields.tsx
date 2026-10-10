@@ -17,6 +17,7 @@ import {
   Input,
   InputButton,
   MoneyInput,
+  QuickAdd,
   Radio,
   RadioGroup,
   Select,
@@ -539,6 +540,72 @@ function InlineEditDemo() {
   )
 }
 
+/** 01:00 on Sunday 8 March 2026 in Ho Chi Minh, when it is still Saturday the 7th in UTC. */
+const QUICK_ADD_DEMO_NOW = new Date("2026-03-07T18:00:00Z")
+
+/**
+ * Three add fields. The first lists what `onAdd` received and has a button that holds it busy, so
+ * a refused send can be seen. The second reads its line on a fixed clock in a fixed time zone, so
+ * "tomorrow" is the same day for every visitor. The third words its badges, its button and its due
+ * day itself.
+ */
+function QuickAddDemo() {
+  const added = useSignal<string[]>([])
+  const busy = useSignal(false)
+  const dated = useSignal("")
+  return (
+    <Stack gap="sm">
+      <QuickAdd
+        label="New note"
+        placeholder="Call Anna #work tomorrow 3pm !high"
+        hint={(parsed) => parsed.due ? "Added to Scheduled" : "Added to Inbox"}
+        busy={busy.value}
+        onAdd={({ title, tags, contexts, due, priority }) =>
+          added.value = [...added.value, JSON.stringify({ title, tags, contexts, due, priority })]}
+      />
+      <p class="text-xs text-muted" data-e2e="quick-add-added">
+        added {added.value.length}: {added.value.join(" ")}
+      </p>
+      <Cluster gap="sm">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-e2e="quick-add-busy"
+          onClick={() => busy.value = !busy.value}
+        >
+          {busy.value ? "Finish saving" : "Hold it busy"}
+        </Button>
+      </Cluster>
+      <QuickAdd
+        dataE2E="quick-add-clock"
+        label="New reminder"
+        placeholder="Water the plants tomorrow"
+        hint="Read at 01:00 on Sunday 8 March 2026 in Ho Chi Minh"
+        zone="Asia/Ho_Chi_Minh"
+        now={() => QUICK_ADD_DEMO_NOW}
+        onAdd={({ title, due }) => dated.value = `${title}, due ${due?.date ?? "no day"}`}
+      />
+      <p class="text-xs text-muted" data-e2e="quick-add-clock-added">
+        added: {dated.value}
+      </p>
+      <QuickAdd
+        dataE2E="quick-add-worded"
+        label="New expense"
+        placeholder="Coffee #food today"
+        labels={{
+          submit: "Add expense",
+          noTitle: "Say what the expense was for",
+          tag: (name) => `Category ${name}`,
+          due: (day) => `Paid ${day}`,
+        }}
+        dueLabel={(date) => date.split("-").reverse().join(".")}
+        onAdd={() => {}}
+      />
+    </Stack>
+  )
+}
+
 /** A multi-select tag filter and a single-select status filter, each echoing its value. */
 function ToggleChipsDemo() {
   const tags = useSignal<string[]>(["work"])
@@ -839,6 +906,92 @@ export const fieldDemos = {
   }}
 />`,
     render: () => <InlineEditDemo />,
+  },
+  QuickAdd: {
+    summary:
+      "A one-line field that adds an item to a list and shows, while you type, the tags, date and priority it understood.",
+    wide: false,
+    props: [
+      {
+        name: "onAdd",
+        type: "(parsed: QuickAddResult) => void",
+        description:
+          "Called on Enter or the button with the title and what was taken out of it; not while busy, and not for a line that leaves no title.",
+      },
+      {
+        name: "zone",
+        type: "string",
+        default: "the device's zone",
+        description: 'The IANA time zone "tomorrow" and "3pm" are read in.',
+      },
+      {
+        name: "now",
+        type: "() => Date",
+        default: "() => new Date()",
+        description: "The clock, for a test to fix.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"New item"`,
+        description: "The field's accessible name.",
+      },
+      {
+        name: "placeholder",
+        type: "string",
+        default: `"Add an item"`,
+        description: "Shown in the empty field.",
+      },
+      {
+        name: "hint",
+        type: "string | ((parsed: QuickAddResult) => string)",
+        description: "A quiet line under the field; a function follows what is typed.",
+      },
+      {
+        name: "busy",
+        type: "boolean",
+        default: "false",
+        description: "Makes the field read-only and the button off; a send adds nothing.",
+      },
+      {
+        name: "labels",
+        type: "Partial<QuickAddLabels>",
+        default: "defaultQuickAddLabels",
+        description:
+          "The button's name, the empty-title message, and the words of each kind of badge.",
+      },
+      {
+        name: "dueLabel",
+        type: "(date: string, now: Date, zone: string) => string",
+        default: `"Today", "Tomorrow", "Mon 5 Jan"`,
+        description: "Words the due day; the time is always shown as typed.",
+      },
+      {
+        name: "dataE2E",
+        type: "string",
+        default: `"quick-add"`,
+        description: "The form's `data-e2e`, and the prefix of its parts'.",
+      },
+    ],
+    snippet: `<QuickAdd
+  label="New note"
+  placeholder="Call Anna #work tomorrow 3pm !high"
+  hint={(parsed) => parsed.due ? "Added to Scheduled" : "Added to Inbox"}
+  busy={saving.value}
+  onAdd={(parsed) => createNote(parsed)}
+/>
+
+// A fixed clock and zone, as a test passes them:
+<QuickAdd zone="Asia/Ho_Chi_Minh" now={() => new Date("2026-03-07T18:00:00Z")} onAdd={addReminder} />
+
+// Every word is the caller's to change:
+<QuickAdd
+  label="New expense"
+  labels={{ submit: "Add expense", tag: (name) => \`Category \${name}\`, due: (day) => \`Paid \${day}\` }}
+  dueLabel={(date) => date.split("-").reverse().join(".")}
+  onAdd={addExpense}
+/>`,
+    render: () => <QuickAddDemo />,
   },
   ToggleChips: {
     summary:
