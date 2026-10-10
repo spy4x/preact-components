@@ -1,7 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
-import { TOUCH_TARGET } from "./page-header.tsx"
+import { TOUCH_TARGET } from "./touch-target.ts"
 
 /** The window corner a {@link Toastr} stack sits in. */
 export type ToastCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right"

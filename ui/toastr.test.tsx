@@ -4,7 +4,7 @@ import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
-import { TOUCH_TARGET } from "./page-header.tsx"
+import { TOUCH_TARGET } from "./touch-target.ts"
 import {
   defaultToastActionDuration,
   defaultToastDuration,
