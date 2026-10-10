@@ -12,6 +12,11 @@ export interface OnOffButtonsProps {
   onLabel?: string
   /** Text of the OFF half. Defaults to `"OFF"`. */
   offLabel?: string
+  /**
+   * Accessible name of the pair, which a screen reader says before the halves. Defaults to the two
+   * labels joined, `"ON / OFF"`; pass what the pair switches, such as `"Show archived"`.
+   */
+  label?: string
   class?: string
 }
 
@@ -30,25 +35,32 @@ const selectedFill =
  *
  * The selected half is a `primary` button filled with the selection colour, the other an `outline`
  * one. The halves are squared off against each other.
+ *
+ * The colour is not the only sign of the choice: each half carries `aria-pressed`, and the pair is
+ * a `role="group"` named by `label`. With `value` undefined both halves read "not pressed".
  */
 export function OnOffButtons(
-  { value, amount, onSwitch, onLabel = "ON", offLabel = "OFF", class: className }:
+  { value, amount, onSwitch, onLabel = "ON", offLabel = "OFF", label, class: className }:
     OnOffButtonsProps,
 ): JSX.Element {
   return (
-    <div class={cn(group, className)}>
+    <div role="group" aria-label={label ?? `${onLabel} / ${offLabel}`} class={cn(group, className)}>
       <Button
+        aria-pressed={value === true ? "true" : "false"}
         variant={value === true ? "primary" : "outline"}
         class={cn("flex-col rounded-r-none", value === true && selectedFill)}
-        onClick={() => onSwitch(true)}
+        onClick={() =>
+          onSwitch(true)}
       >
         <span>{onLabel}</span>
         {amount && <span class="text-xs">{amount.on}</span>}
       </Button>
       <Button
+        aria-pressed={value === false ? "true" : "false"}
         variant={value === false ? "primary" : "outline"}
         class={cn("-ml-px flex-col rounded-l-none", value === false && selectedFill)}
-        onClick={() => onSwitch(false)}
+        onClick={() =>
+          onSwitch(false)}
       >
         <span>{offLabel}</span>
         {amount && <span class="text-xs">{amount.off}</span>}

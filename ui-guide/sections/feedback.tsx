@@ -866,7 +866,8 @@ export const feedbackDemos = {
     ),
   },
   LoadingSpinner: {
-    summary: "A spinning circle for something that is loading, with an optional caption.",
+    summary:
+      "A spinning circle for something that is loading, with an optional caption, which stands still when the system asks for reduced motion.",
     wide: true,
     props: [
       {
@@ -907,7 +908,8 @@ export const feedbackDemos = {
     ),
   },
   LoadingSkeleton: {
-    summary: "Grey placeholder cards that hold a page's shape while its content loads.",
+    summary:
+      "Grey placeholder cards that hold a page's shape while its content loads, and stop pulsing when the system asks for reduced motion.",
     wide: false,
     snippet: `<LoadingSkeleton rows={1} />`,
     render: () => <LoadingSkeleton rows={1} />,

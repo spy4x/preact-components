@@ -1,5 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, JSX, Ref, VNode } from "preact"
+import { forwardRef } from "./forward-ref.ts"
 
 /**
  * An input with an icon button positioned inside it — the `.btn-input-icon` pattern.
@@ -42,39 +43,49 @@ export interface InputButtonProps
  * Render the input, the button and the chrome that positions them.
  *
  * Controlled like {@link Input}: `value` in, `onInput`/`onChange` out.
+ *
+ * Wrapped in `forwardRef` from `./forward-ref.ts` (see that file for why): the `ref` goes to the
+ * native `<input>`, not the wrapper or the button, because the input is what a form focuses.
  */
-export function InputButton(
-  {
-    class: className,
-    wrapperClass,
-    icon,
-    iconLabel,
-    iconMarginClass,
-    onClick,
-    disabled,
-    title,
-    ...rest
-  }: InputButtonProps,
-): JSX.Element {
-  return (
-    <div class={cn("relative", wrapperClass)}>
-      <input
-        {...rest}
-        disabled={disabled}
-        class={cn("pc-input", iconMarginClass ?? "pr-12", className)}
-      />
-      <div class="absolute top-1.5 right-1.5">
-        <button
-          type="button"
-          class="btn-input-icon"
-          title={title ?? iconLabel}
-          aria-label={iconLabel}
+export const InputButton: (
+  props: InputButtonProps & { ref?: Ref<HTMLInputElement> },
+) => VNode | null = forwardRef<HTMLInputElement, InputButtonProps>(
+  "InputButton",
+  function InputButton(
+    {
+      class: className,
+      wrapperClass,
+      icon,
+      iconLabel,
+      iconMarginClass,
+      onClick,
+      disabled,
+      title,
+      ...rest
+    },
+    ref,
+  ) {
+    return (
+      <div class={cn("relative", wrapperClass)}>
+        <input
+          {...rest}
+          ref={ref}
           disabled={disabled}
-          onClick={onClick}
-        >
-          {icon}
-        </button>
+          class={cn("pc-input", iconMarginClass ?? "pr-12", className)}
+        />
+        <div class="absolute top-1.5 right-1.5">
+          <button
+            type="button"
+            class="btn-input-icon"
+            title={title ?? iconLabel}
+            aria-label={iconLabel}
+            disabled={disabled}
+            onClick={onClick}
+          >
+            {icon}
+          </button>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  },
+)

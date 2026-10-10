@@ -1,5 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, JSX, Ref, VNode } from "preact"
+import { forwardRef } from "./forward-ref.ts"
 
 /**
  * Attributes of a card div.
@@ -71,10 +72,18 @@ export type CardHeaderProps =
  *
  * Emits the shipped `pc-card` utility and nothing else, so it carries no opinion about padding,
  * colour or width beyond the preset. Header, body and footer are all optional children.
+ *
+ * Wrapped in `forwardRef` from `./forward-ref.ts` (see that file for why): `<Card ref={box} />`
+ * hands `box` the card's `<div>`, to measure it, scroll it into view or focus it.
  */
-export function Card({ children, class: className, ...rest }: CardProps): JSX.Element {
-  return <div {...rest} class={cn("pc-card", className)}>{children}</div>
-}
+export const Card: (
+  props: CardProps & { ref?: Ref<HTMLDivElement> },
+) => VNode | null = forwardRef<HTMLDivElement, CardProps>("Card", function Card(
+  { children, class: className, ...rest },
+  ref,
+) {
+  return <div {...rest} ref={ref} class={cn("pc-card", className)}>{children}</div>
+})
 
 /**
  * Card header: a title plus a right-aligned action, or raw children.

@@ -8,10 +8,11 @@ export interface LoadingSkeletonProps {
 }
 
 const card = "rounded-lg border border-subtle bg-surface p-4"
-const bar = "animate-pulse rounded bg-track"
+const bar = "animate-pulse rounded bg-track motion-reduce:animate-none"
 
 /**
- * Placeholder layout shown while a result loads.
+ * Placeholder layout shown while a result loads. Its pulse stops when the system asks for reduced
+ * motion.
  *
  * `aria-hidden` on the whole tree: a screen reader should hear the caller's single polite
  * status message, not a stack of empty boxes.
@@ -22,7 +23,7 @@ export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonP
       <div class={cn(card, "flex items-center gap-4")}>
         <div class="inline-flex size-10 items-center justify-center rounded-xl border border-subtle bg-selected-soft text-selected">
           <svg
-            class="size-5 animate-pulse"
+            class="size-5 animate-pulse motion-reduce:animate-none"
             viewBox="0 0 24 24"
             fill="currentColor"
             aria-hidden="true"

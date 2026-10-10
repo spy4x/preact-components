@@ -118,6 +118,7 @@ function OnOffButtonsDemo() {
           amount={{ on: 128, off: 14 }}
           onLabel="Active"
           offLabel="Archived"
+          label="Rows to show"
         />
         <span class="text-sm text-muted">with counts and custom labels</span>
       </Cluster>
@@ -1191,8 +1192,17 @@ export const inputDemos = {
         default: `"ON" / "OFF"`,
         description: "The halves' text.",
       },
+      {
+        name: "label",
+        type: "string",
+        default: "the two labels, `ON / OFF`",
+        description: "The pair's name for a screen reader, which also hears which half is pressed.",
+      },
     ],
     snippet: `<OnOffButtons
+  label="Rows to show"
+  onLabel="Active"
+  offLabel="Archived"
   value={showActive.value}
   amount={{ on: 128, off: 14 }}
   onSwitch={(on) => showActive.value = on}

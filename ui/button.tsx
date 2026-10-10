@@ -152,7 +152,12 @@ export function buttonClasses(
 /** The spinner a busy {@link Button} shows; the button's own text or `aria-label` names it. */
 function BusySpinner(): JSX.Element {
   return (
-    <svg class="size-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      class="size-4 shrink-0 animate-spin motion-reduce:animate-none"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
     </svg>
