@@ -150,7 +150,8 @@ interface HistoryEntries extends EventTarget {
  * order they were added, so the router would draw the other page, and unmount the form, before a
  * `popstate` listener of the guard's ran at all. `currententrychange` comes before `popstate`, and
  * adding an entry takes effect at once, so by the time the router looks, the address is the form's
- * again and it draws nothing new. In a browser without the Navigation API nothing is held.
+ * again and it draws nothing new. In a browser without the Navigation API (Safari before 26.2,
+ * Firefox before 147) nothing is held.
  *
  * It leaves alone a step inside the page (only the fragment changes) and the step `ask`'s function
  * itself takes. A step to another document never reaches it: the browser unloads the page, and

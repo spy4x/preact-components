@@ -6148,13 +6148,14 @@ back.
 ### Back and Forward
 
 The browser's Back and Forward buttons, and `history.back()`, `forward()` and `go()`, get the same
-dialog, with no prop and no wiring. No event lets a page refuse Back, so when a step inside the app
-would leave the page (the path or the query changes), the guard at once adds a history entry with
-the page's own address and state on top of the entry the person went to. The app's router looks at
+dialog, with no prop and no wiring. The guard does not cancel the step; it puts the address back.
+When a step inside the app would leave the page (the path or the query changes), the guard at once
+adds a history entry with the page's own address and state on top of the entry the person went to. The app's router looks at
 the address after that and finds the form's page, so the form stays mounted with its text. "Leave"
 calls `onDiscard` and steps back from the new entry, which is where the person was going, however
 many entries away and in either direction. "Stay" closes the dialog. `navigate` and `owns` play no
-part in this.
+part in this. Cancelling the step, with the Navigation API's `navigate` event, is the other design
+and is not built here.
 
 What it cannot do:
 
@@ -6162,8 +6163,14 @@ What it cannot do:
   went to are gone, and that one is now one step back. After a Forward, that is the page that was
   ahead: Back reaches it.
 - It needs the Navigation API (`window.navigation`), whose `currententrychange` event comes before
-  the router's `popstate`. In a browser without it, Back and Forward leave at once and the changes
-  are lost.
+  the router's `popstate`. In a browser without it (Safari before 26.2, Firefox before 147), Back
+  and Forward leave at once and the changes are lost.
+- The toolbar's Back button pressed again right after a held step, with no click or key in
+  between, is not verified. Chromium may then skip the entries the app added, the guard's included,
+  and leave the app.
+- Two forms with changes on one page must share one `leaveGuard`: then one dialog asks for both.
+  Without it each guard holds the step on its own, and "Leave" in the first dialog is asked again
+  by the second.
 - A step to another document (another site, a server-rendered page, the page the tab showed before
   the app) unloads this one, so it gets the browser's own question through `beforeunload`, not the
   dialog.

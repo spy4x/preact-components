@@ -5,9 +5,10 @@
  * question through `beforeunload`; a click on an in-app link, which is held back and answered with
  * a {@link ConfirmDialog}; a navigation the app starts from code, such as a sidebar button or a
  * keyboard shortcut, once the app sends it through a {@link LeaveGuard}; and the browser's Back and
- * Forward buttons, in a browser that has the Navigation API. No event lets a page refuse Back, so
- * the guard puts the page's address back the moment it changes, before the app's router has looked
- * at it, and then asks in the same dialog.
+ * Forward buttons, in a browser that has the Navigation API. The guard does not cancel that step:
+ * it puts the page's address back the moment it changes, before the app's router has looked at it,
+ * and then asks in the same dialog. Cancelling the step, with the Navigation API's `navigate`
+ * event, is the other design and is not built here.
  */
 
 import type { JSX } from "preact"
@@ -152,7 +153,14 @@ export interface UnsavedGuardProps {
  *   went to are gone, and that one is now one step back; after Forward, that is the page that was
  *   ahead.
  * - It needs the Navigation API (`window.navigation`) to hear of the step before the router does.
- *   In a browser without it, Back and Forward leave at once and the changes are lost.
+ *   In a browser without it (Safari before 26.2, Firefox before 147), Back and Forward leave at
+ *   once and the changes are lost.
+ * - The toolbar's Back button pressed again right after a held step, with no click or key in
+ *   between, is not verified. Chromium may then skip the entries the app added, the guard's
+ *   included, and leave the app.
+ * - Two forms with changes on one page must share one `leaveGuard`: then one dialog asks for
+ *   both. Without it each guard holds the step on its own, and "Leave" in the first dialog is
+ *   asked again by the second.
  * - A step to another document (another site, a server-rendered page, the page the tab showed
  *   before the app) unloads this one, so it gets the browser's own question through
  *   `beforeunload`, not the dialog.
