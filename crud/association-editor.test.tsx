@@ -206,6 +206,62 @@ describe("AssociationEditor", () => {
     ).not.toContain("Restoring it keeps the record")
   })
 
+  it("words Save, Cancel, the removed line and the restore hint as the app asks", () => {
+    const removed = row({ id: 1, deletedAt: new Date("2025-01-01T00:00:00Z") })
+    const edit = render(
+      <AssociationEditor
+        {...shared}
+        mode="edit"
+        editId={1}
+        store={fakeStore().store}
+        blank={removed}
+        saveLabel="Keep changes"
+        cancelLabel="Back"
+        removedLabel={(ago) => `Detached ${ago}`}
+      >
+        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+      </AssociationEditor>,
+    )
+
+    expect(edit).toContain("Keep changes</button>")
+    expect(edit).not.toContain(">Save</button>")
+    expect(edit).toContain(">Back</a>")
+    expect(edit).toMatch(/Detached .+ ago/)
+    expect(edit).not.toContain("Removed ")
+
+    const add = render(
+      <AssociationEditor
+        {...shared}
+        mode="add"
+        store={fakeStore([row({ id: 5, zoneId: 0, deletedAt: new Date() })]).store}
+        restoreHint="Bring the old one back instead."
+      >
+        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+      </AssociationEditor>,
+    )
+
+    expect(add).toContain("Bring the old one back instead.")
+    expect(add).not.toContain("Restoring it keeps the record")
+  })
+
+  it("heads the form with an h1, or with the level the page asks for", () => {
+    const at = (headingLevel?: 2) =>
+      render(
+        <AssociationEditor
+          {...shared}
+          mode="add"
+          store={fakeStore().store}
+          headingLevel={headingLevel}
+        >
+          {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+        </AssociationEditor>,
+      )
+
+    expect(at()).toMatch(/<h1[^>]*>Add association<\/h1>/)
+    expect(at(2)).toMatch(/<h2[^>]*>Add association<\/h2>/)
+    expect(at(2)).not.toContain("<h1")
+  })
+
   it("adds no archive toggle: a junction row is removed, never archived", () => {
     const html = render(
       <AssociationEditor {...shared} mode="edit" editId={1} store={fakeStore().store}>

@@ -35,10 +35,7 @@ const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     // The unnamed `<main>` regions as one group, then the forms named "Sign in" and "Sign up".
     "landmark-unique": [3, 3],
   },
-  // `CrudList` and `CrudEditor` head their page with `PageTitle`, an `<h1>`, so the heading of the
-  // card after each skips from 1 to 3. `PageTitle` takes `headingLevel` now; `crud/` does not
-  // pass one through yet.
-  crud: { "heading-order": [3, 3] },
+  crud: {},
 }
 
 /**

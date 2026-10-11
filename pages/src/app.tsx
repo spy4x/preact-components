@@ -17,6 +17,9 @@
  * They were on the Signals page until the guide stopped showing helpers (#357); the browser checks
  * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
  *
+ * The CRUD page ends with {@link CrudListUrlDemo}, a `CrudList` whose search and page are in the
+ * address; `pages/e2e/crud.spec.ts` drives it.
+ *
  * The System page ends with {@link RouteAnnouncerDemo}, `useRouteAnnouncer` on a path the demo holds
  * itself; `pages/checks/system.ts` drives it.
  */
@@ -31,6 +34,7 @@ import {
 import { createThemeStore, ThemeValue } from "@spy4x/preact-signals/theme"
 import { useEffect } from "preact/hooks"
 import { AccentSwitch } from "./accent-switch.tsx"
+import { CrudListUrlDemo } from "./crud-list-url.tsx"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { NowDemo } from "./now-demo.tsx"
 import { RouteAnnouncerDemo } from "./route-announcer-demo.tsx"
@@ -126,6 +130,7 @@ export function App({ initialHash, version }: AppProps) {
             </div>
           ),
           system: <RouteAnnouncerDemo />,
+          crud: <CrudListUrlDemo />,
         }}
       />
     </div>

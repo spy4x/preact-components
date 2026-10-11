@@ -174,6 +174,12 @@ function makeAssociationStore() {
   // without the timer a visitor could not leave the dialog.
   const calls = signal({ delete: 0, undelete: 0 })
   const held = signal(false)
+  // Makes both endings fail the way a server would, so the card can show what a refusal looks like.
+  const refusing = signal(false)
+  const refusal = { error: { message: "the server refused the change" }, result: null }
+  // Makes both endings throw, the way a dropped connection does in a store that lets it through.
+  const throwing = signal(false)
+  const dropped = () => new Error("the connection dropped")
   let release: (() => void)[] = []
   const answer = <T,>(result: T): Promise<T> =>
     held.value
@@ -218,6 +224,8 @@ function makeAssociationStore() {
       if (row === undefined) return { error: { message: `no row ${id}` }, result: null }
       const ended: Team = { ...row, deletedAt: new Date("2026-03-01T00:00:00.000Z") }
       await answer(null)
+      if (throwing.value) throw dropped()
+      if (refusing.value) return refusal
       rows.value = rows.value.map((entry) => (entry.id === id ? ended : entry))
       return { error: null, result: ended }
     },
@@ -227,12 +235,14 @@ function makeAssociationStore() {
       if (row === undefined) return { error: { message: `no row ${id}` }, result: null }
       const restored: Team = { ...row, deletedAt: null }
       await answer(null)
+      if (throwing.value) throw dropped()
+      if (refusing.value) return refusal
       rows.value = rows.value.map((entry) => (entry.id === id ? restored : entry))
       return { error: null, result: restored }
     },
   }
 
-  return { store, rows, calls, held, setHeld }
+  return { store, rows, calls, held, setHeld, refusing, throwing }
 }
 
 /** Teams a team can sit under — the option list of the select row. */
@@ -385,6 +395,7 @@ function CrudEditorDemo() {
         schema={teamCrossFieldSchema}
         entity="Team"
         title="Add a team"
+        headingLevel={4}
         cancelHref="#crud"
         canChange={() => true}
         saveErrorLabel="The team was not saved"
@@ -436,9 +447,31 @@ function CrudEditorDemo() {
 function CrudEditorArchiveDemo() {
   const { store } = useMemo(() => makeTeamStore(), [])
   const readOnly = useSignal(false)
+  const worded = useSignal(false)
+  const missing = useSignal(false)
 
   return (
     <Stack data-e2e="archive-demo">
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={worded.value}
+        data-e2e="word-block"
+        onClick={() => worded.value = !worded.value}
+      >
+        Word the blocked archive as the app would
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={missing.value}
+        data-e2e="missing-row"
+        onClick={() => missing.value = !missing.value}
+      >
+        Edit a team the store does not hold
+      </Button>
       <Button
         variant="outline"
         size="sm"
@@ -451,15 +484,21 @@ function CrudEditorArchiveDemo() {
       </Button>
       <CrudEditor
         store={store}
+        // Keyed, so the other row is loaded by a fresh editor.
+        key={missing.value ? "missing" : "held"}
         mode="edit"
-        editId={1}
+        editId={missing.value ? 999 : 1}
         blank={blankTeam()}
         schema={teamCrossFieldSchema}
         entity="Team"
         title="Edit a team"
+        headingLevel={4}
         cancelHref="#crud"
+        saveLabel="Save the team"
+        notFoundLabel={missing.value ? "That team is no longer here" : undefined}
         canChange={() => !readOnly.value}
         archive={{
+          blockedLabel: worded.value ? "Move these out of the team first:" : undefined,
           dependencies: () => [{
             kind: "Teams",
             values: [{ title: "Support", url: "#crud" }],
@@ -476,7 +515,10 @@ function CrudEditorArchiveDemo() {
 function AssociationEditorDemo() {
   // `useMemo` rather than a bare call: the caption below reads `rows`, so a save or a restore
   // re-renders the card, and a fresh `makeAssociationStore()` on that render would drop the change.
-  const { store, rows, calls, held, setHeld } = useMemo(() => makeAssociationStore(), [])
+  const { store, rows, calls, held, setHeld, refusing, throwing } = useMemo(
+    () => makeAssociationStore(),
+    [],
+  )
   const removed = rows.value.filter((row) => Boolean(row.deletedAt)).length
   const editing = useSignal(false)
   // Everything but the mode. The row being edited is not its own duplicate.
@@ -485,6 +527,7 @@ function AssociationEditorDemo() {
     blank: blankTeam(),
     entity: "supplier association",
     cancelHref: "#crud",
+    headingLevel: 4,
     conflictField: "name",
     conflict: (row: Team, all: Team[]) =>
       all.find((entry) => entry.id !== row.id && entry.name === row.name),
@@ -517,6 +560,26 @@ function AssociationEditorDemo() {
       >
         Hold the store's answers for {HOLD_MS / 1000} seconds, to see a dialog wait
       </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={refusing.value}
+        data-e2e="refuse-endings"
+        onClick={() => refusing.value = !refusing.value}
+      >
+        Make the store refuse Delete and Restore
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={throwing.value}
+        data-e2e="throw-endings"
+        onClick={() => throwing.value = !throwing.value}
+      >
+        Make the store throw on Delete and Restore
+      </Button>
       {
         // Keyed, so switching the mode mounts a fresh editor instead of re-using the other's form.
         editing.value
@@ -533,6 +596,8 @@ function AssociationEditorDemo() {
               confirmRestoreTitle="Attach this supplier again?"
               confirmRestore="It comes back as it was."
               confirmCancelLabel="Keep it as it is"
+              restoreErrorLabel="The supplier was not attached again"
+              removedLabel={(ago) => `Detached ${ago}`}
             />
           )
           : <AssociationEditor key="add" {...shared} mode="add" title="Add a supplier" />
@@ -561,6 +626,7 @@ function AssociationEditorDemo() {
  */
 function DeletionValidationDemo() {
   const blocked = useSignal(false)
+  const worded = useSignal(false)
   const renders = useSignal(0)
   const dependencies = [
     {
@@ -582,8 +648,21 @@ function DeletionValidationDemo() {
         <Button variant="outline" size="sm" onClick={() => renders.value++}>
           Re-render for an unrelated reason
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={worded.value}
+          data-e2e="word-label"
+          onClick={() => worded.value = !worded.value}
+        >
+          Head the list with the app's own sentence
+        </Button>
       </Stack>
-      <DeletionValidation dependencies={blocked.value ? dependencies : []} model="Team" />
+      <DeletionValidation
+        dependencies={blocked.value ? dependencies : []}
+        model="Team"
+        label={worded.value ? "This team is still used by:" : undefined}
+      />
       <Caption>
         {blocked.value ? "" : "An empty list shows nothing. "}Re-rendered {renders.value}{" "}
         time{renders.value === 1 ? "" : "s"} for an unrelated reason.
@@ -599,9 +678,29 @@ function CrudListDemo() {
   const { store } = useMemo(() => makeTeamStore(), [])
   const query = useSignal("")
   const patient = useSignal(false)
+  const paged = useSignal(false)
 
   return (
     <Stack>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={paged.value}
+        data-e2e="page-rows"
+        onClick={() => paged.value = !paged.value}
+      >
+        Show two rows a page
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        data-e2e="clear-search"
+        onClick={() => query.value = ""}
+      >
+        Clear the search from outside the list, as a page's own link would
+      </Button>
       <Button
         variant="outline"
         size="sm"
@@ -615,10 +714,17 @@ function CrudListDemo() {
       <CrudList
         store={store}
         title="Teams"
+        headingLevel={4}
         match={(row, word) => search(row.name, word)}
         query={query}
         searchDelay={patient.value ? 60_000 : undefined}
         searchLabel="Search teams"
+        searchFieldLabel="Team name"
+        pageSize={paged.value ? 2 : undefined}
+        paginationLabels={{ label: "Pages of teams" }}
+        emptyTitle="No teams yet"
+        noMatchTitle="No team has that name"
+        noMatchDescription="Search for part of a team's name."
         // In a flex column the list's own `mx-auto` would size it to its content, past a phone's edge.
         class="w-full"
         addHref="#crud"
@@ -774,6 +880,53 @@ export const crudDemos = {
         default: `"Search"`,
         description: "The Search button's name, for a screen reader and the tooltip.",
       },
+      {
+        name: "searchFieldLabel",
+        type: "string",
+        default: "the placeholder",
+        description: "The search field's name for a screen reader.",
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4 | 5 | 6",
+        default: "1",
+        description: "The level of the title's heading; pick another when the page has its `<h1>`.",
+      },
+      {
+        name: "pageSize",
+        type: "number",
+        default: "every row",
+        description:
+          "Rows a page; with it a pager sits under the table. `paginationLabels` words the pager.",
+      },
+      {
+        name: "page",
+        type: "Signal<number>",
+        default: "a signal of the list's own",
+        description:
+          "The page number, so the address can own it. The list writes it on a press of the pager, and sets it to 1 together with its own search or status change; a `query` changed from outside leaves it alone.",
+      },
+      {
+        name: "loading",
+        type: "ReadonlySignal<boolean>",
+        default: "none",
+        description:
+          "With `rows`, true while the rows are on their way: the empty state waits. A `store` says so itself, through its list load.",
+      },
+      {
+        name: "emptyTitle",
+        type: "string",
+        default: `"Nothing here yet"`,
+        description:
+          "Shown in place of the table when the list has no row; `emptyDescription` adds a second line.",
+      },
+      {
+        name: "noMatchTitle",
+        type: "string",
+        default: `"Nothing matches your search"`,
+        description:
+          "Shown in place of the table when the search leaves no row; `noMatchDescription` adds a second line.",
+      },
     ],
     snippet: `<CrudList
   title="Teams"
@@ -781,6 +934,10 @@ export const crudDemos = {
   match={(row, word) => search(row.name, word)}
   query={query}
   searchLabel="Search teams"
+  searchFieldLabel="Team name"
+  pageSize={25}
+  emptyTitle="No teams yet"
+  noMatchTitle="No team has that name"
   header={<th scope="col">Name</th>}
   row={(row) => <td>{row.name}</td>}
   actions={(row) => (
@@ -836,6 +993,24 @@ export const crudDemos = {
         description: "What a failed save is introduced with, before the store's own message.",
       },
       {
+        name: "saveLabel",
+        type: "string",
+        default: `"Save"`,
+        description: "The Save button's label; `cancelLabel` words Cancel.",
+      },
+      {
+        name: "notFoundLabel",
+        type: "string",
+        default: "`<entity> not found`",
+        description: 'Shown when `mode="edit"` names a row the store does not hold.',
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4 | 5 | 6",
+        default: "1",
+        description: "The level of the title's heading; pick another when the page has its `<h1>`.",
+      },
+      {
         name: "schema",
         type: "Type",
         default: "none",
@@ -851,7 +1026,8 @@ export const crudDemos = {
         name: "archive",
         type: "ArchiveConfig<M>",
         default: "no archive checkbox",
-        description: "Adds the archive checkbox and what blocks it.",
+        description:
+          "Adds the archive checkbox and what blocks it; its `blockedLabel` replaces the sentence above the list of what has to be archived first.",
       },
       {
         name: "children",
@@ -948,6 +1124,25 @@ export const crudDemos = {
         default: `"Close"`,
         description: "The name of the cross in the dialog's corner.",
       },
+      {
+        name: "deleteErrorLabel",
+        type: "string",
+        default: `"Could not delete"`,
+        description:
+          "What a refused Delete is introduced with in its dialog, before the store's own message; `restoreErrorLabel` is its twin.",
+      },
+      {
+        name: "removedLabel",
+        type: "(ago: string) => string",
+        default: "Removed <ago>",
+        description: "The line beside Restore on a removed row.",
+      },
+      {
+        name: "restoreHint",
+        type: "string",
+        default: "an English sentence",
+        description: "The sentence beside the offer to restore a removed duplicate.",
+      },
     ],
     snippet: `<AssociationEditor
   store={associationStore}
@@ -958,6 +1153,7 @@ export const crudDemos = {
   confirmDeleteTitle="Detach this supplier?"
   confirmDelete="It can be attached again later."
   confirmCancelLabel="Keep it as it is"
+  deleteErrorLabel="The supplier was not detached"
   conflictField="supplierId"
   conflict={(row, all) => all.find((entry) => entry.supplierId === row.supplierId)}
   conflictMessage="That supplier is already attached."
@@ -1028,11 +1224,30 @@ export const crudDemos = {
     summary:
       "The rows that still point at a row and so stop it being archived; with none, it shows nothing.",
     wide: false,
+    props: [
+      {
+        name: "dependencies",
+        type: "{ kind: string; values: { title: string; url: string }[] }[]",
+        description: "What still points at the row, grouped by kind; with none, nothing is shown.",
+      },
+      {
+        name: "model",
+        type: "string",
+        description: "The entity's name in the default sentence above the list.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: "`To archive this <model>, please first archive:`",
+        description: "The sentence above the list, in the app's own words.",
+      },
+    ],
     snippet: `<DeletionValidation
   dependencies={[
     { kind: "Projects", values: [{ title: "Launch plan", url: "/projects/1/edit" }] },
   ]}
   model="Team"
+  label="This team is still used by:"
 />`,
     render: () => <DeletionValidationDemo />,
   },

@@ -21,14 +21,16 @@ import type {
  * - `ReadonlySignal` is what the store exposes, so a `computed` from the store, a `signal` from a
  *   test, and (via the `Signal extends ReadonlySignal` relationship) a `useSignal` all satisfy it.
  * - Everything optional in the state layer stays optional here. The scaffold reads `inProgress` and
- *   `error`; `result` is typed `unknown` and never touched.
+ *   `error`. `result` is typed `unknown` and its content is never touched; `CrudList` only checks
+ *   that the list load has one, which is how it knows the collection has loaded.
  */
 
 /**
  * The slice `CrudList` reads.
  *
  * `list.nonDeleted` and `list.deleted` are the two status slices, and `op.list` carries the load
- * error the banner shows. `signals/`' `list.nonDeleted`/`list.deleted` are exactly these, so any
+ * error the banner shows and, in a non-null `result`, the sign that the collection has loaded: the
+ * list shows its empty state only after that, or once the store holds a row. `signals/`' `list.nonDeleted`/`list.deleted` are exactly these, so any
  * model store satisfies this interface unchanged.
  */
 export interface CrudListStore<M extends CrudModel> {
@@ -39,7 +41,11 @@ export interface CrudListStore<M extends CrudModel> {
     deleted: ReadonlySignal<M[]>
   }
   op: {
-    /** Status of the collection load; its `error` drives the banner above the table. */
+    /**
+     * Status of the collection load. Its `error` drives the banner above the table, and a non-null
+     * `result` lets an empty list say so. A test double that leaves `result` at `null` with no row
+     * gets an empty table and no empty state.
+     */
     list: ReadonlySignal<OperationState>
   }
 }
