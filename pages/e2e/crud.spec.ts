@@ -448,4 +448,148 @@ export const specs: readonly Spec[] = [
       await field.and(focused).waitFor()
     },
   },
+  {
+    name:
+      "CrudList: an address that names a search and a page shows that page when opened, reloaded and reached with Back, and is left as it is; one search from the list adds one history entry",
+    pageId: "crud",
+    run: async (page) => {
+      const live = page.locator(`[data-e2e="crud-list-url-live"]`)
+      const rows = live.locator("tbody tr")
+      const pager = live.getByRole("navigation", { name: "Pages of addressed teams" })
+      const hydrated = page.locator(`html[data-hydrated="true"]`)
+      const search = () => page.evaluate(() => location.search)
+
+      // "a" leaves five teams, two a page: page 2 is Sales and Marketing.
+      const showsPageTwo = async (step: string) => {
+        await hydrated.waitFor()
+        await rows.filter({ hasText: "Sales" }).waitFor()
+        await rows.filter({ hasText: "Marketing" }).waitFor()
+        await pager.locator(`[aria-current="page"]`).filter({ hasText: "2" }).waitFor()
+        const now = await search()
+        if (now !== "?q=a&page=2") throw new Error(`${step}: the address became "${now}"`)
+      }
+
+      const address = new URL(page.url())
+      address.search = "?q=a&page=2"
+      await page.goto(address.href)
+      await showsPageTwo("opened")
+      await page.reload()
+      await showsPageTwo("reloaded")
+
+      // The list's own search goes back to page 1, as one step of the history.
+      const entries = await page.evaluate(() => history.length)
+      await live.getByRole("textbox", { name: "Team name in the address" }).fill("e")
+      await live.getByRole("button", { name: "Search the addressed teams", exact: true }).click()
+      await rows.filter({ hasText: "Design" }).waitFor()
+      await pager.locator(`[aria-current="page"]`).filter({ hasText: "1" }).waitFor()
+      await page.waitForFunction(() => location.search === "?q=e")
+      const after = await page.evaluate(() => history.length)
+      if (after !== entries + 1) {
+        throw new Error(`one search took the history from ${entries} entries to ${after}`)
+      }
+
+      await page.goBack()
+      await showsPageTwo("after Back")
+      // Forward is still there: nothing was written on the way back.
+      await page.goForward()
+      await page.waitForFunction(() => location.search === "?q=e")
+      await rows.filter({ hasText: "Design" }).waitFor()
+    },
+  },
+  {
+    name: "CrudList: a row keeps its own table row when a search moves it up the table",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-CrudList")
+      const rows = card.locator("tbody tr")
+
+      // Support is the second row. Marked in the page, not through Preact, so only the same
+      // element can still carry the mark once the search has taken the first row away.
+      await rows.filter({ hasText: "Design" }).waitFor()
+      await rows.filter({ hasText: "Support" })
+        .evaluate((row) => row.setAttribute("data-kept", "yes"))
+      await card.getByRole("textbox", { name: "Team name", exact: true }).fill("Supp")
+      await card.getByRole("button", { name: "Search teams", exact: true }).click()
+      await rows.filter({ hasText: "Design" }).waitFor({ state: "detached" })
+      await card.locator(`tbody tr[data-kept="yes"]`).filter({ hasText: "Support" }).waitFor()
+    },
+  },
+  {
+    name: "AssociationEditor: a second refusal in a row is a new alert that takes focus again",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const calls = card.locator(`[data-e2e="association-calls"]`)
+      const refuse = card.locator(`[data-e2e="refuse-endings"]`)
+      const dialog = page.getByRole("alertdialog", { name: "Detach this supplier?" })
+      const confirm = dialog.locator(`[data-e2e="confirm-dialog-confirm"]`)
+      const refusal = dialog.getByRole("alert")
+        .filter({ hasText: "Could not delete: the server refused the change" })
+        .and(page.locator(":focus"))
+
+      await card.locator(`[data-e2e="edit-association"]`).click()
+      await refuse.click()
+      await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+      await card.getByRole("button", { name: "Delete", exact: true }).click()
+      await confirm.click()
+      await refusal.waitFor()
+      await calls.filter({ hasText: "asked to delete 1 times" }).waitFor()
+
+      // The click moves focus to the button; the same words again have to take it back.
+      await confirm.click()
+      await calls.filter({ hasText: "asked to delete 2 times" }).waitFor()
+      await refusal.waitFor()
+    },
+  },
+  {
+    name:
+      "AssociationEditor: a store that throws on Delete leaves the dialog open with what went wrong, and the row as it was",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const rows = card.locator(`[data-e2e="association-rows"]`)
+      const calls = card.locator(`[data-e2e="association-calls"]`)
+      const throwing = card.locator(`[data-e2e="throw-endings"]`)
+      const dialog = page.getByRole("alertdialog", { name: "Detach this supplier?" })
+
+      await card.locator(`[data-e2e="edit-association"]`).click()
+      await throwing.click()
+      await throwing.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+      await card.getByRole("button", { name: "Delete", exact: true }).click()
+      await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+      await calls.filter({ hasText: "asked to delete 1 times" }).waitFor()
+      await dialog.getByRole("alert")
+        .filter({ hasText: "Could not delete: the connection dropped" })
+        .and(page.locator(":focus")).waitFor()
+      await rows.filter({ hasText: "1 of them removed" }).waitFor()
+    },
+  },
+  {
+    name:
+      "CrudEditor: the sentence above what blocks an archive is the app's own when it gives one",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+      const block = demo.getByRole("alert")
+
+      await demo.getByRole("checkbox").check()
+      await block.filter({ hasText: "To archive this Team, please first archive:" }).waitFor()
+
+      await demo.locator(`[data-e2e="word-block"]`).click()
+      await block.filter({ hasText: "Move these out of the team first:" }).waitFor()
+      await block.filter({ hasText: "please first archive" }).waitFor({ state: "detached" })
+    },
+  },
+  {
+    name: "CrudEditor: an edit of a row the store does not hold says so in the words the app gives",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+
+      await demo.getByRole("button", { name: "Save the team" }).waitFor()
+      await demo.locator(`[data-e2e="missing-row"]`).click()
+      await demo.getByText("That team is no longer here", { exact: true }).waitFor()
+      await demo.getByText("Team not found").waitFor({ state: "detached" })
+    },
+  },
 ]

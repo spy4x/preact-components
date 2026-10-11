@@ -442,40 +442,54 @@ The interfaces here describe the slice actually consumed, and nothing else.
 />
 ```
 
-| Prop                                     | Default                         | What it does                                                      |
-| ---------------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
-| `store`                                  | —                               | model store: the status slices, the count and the load error      |
-| `rows`                                   | —                               | a plain signal instead — nested, or a read-only collection        |
-| `error`                                  | `store.op.list`                 | the banner source for a signal-backed list                        |
-| `title` / `titleSlot`                    | —                               | the page title, or a slot for a back button or a parent entity    |
-| `badge`                                  | non-deleted count               | badge after the title; `false` hides it                           |
-| `match`                                  | —                               | whether one word matches a row; words are ANDed                   |
-| `header`, `row`                          | —                               | the table's cells, excluding the actions column                   |
-| `actions`                                | —                               | right-aligned actions cell; adds its own header cell              |
-| `addHref`, `addLabel`, `canAdd`          | —                               | the add action, hidden when there is nowhere to go                |
-| `statusFilter`                           | on                              | `false`, or `{ label, active, archived }` for a different wording |
-| `query`, `status`                        | local signals                   | hand over the signals to own them (URL filters, a parent page)    |
-| `searchDelay`                            | `300`                           | debounce of the search box                                        |
-| `searchPlaceholder`                      | `"Search"`                      | placeholder of the search box                                     |
-| `searchLabel`                            | `"Search"`                      | name of the Search button, which searches at once, as Enter does  |
-| `searchFieldLabel`                       | the placeholder                 | accessible name of the search field                               |
-| `headingLevel`                           | `1`                             | level of the title's heading, for a page that has its `<h1>`      |
-| `pageSize`                               | every row                       | rows a page; adds the pager once there is more than one page      |
-| `page`                                   | local signal                    | the page number, `1`-based, for a URL filter to own               |
-| `paginationLabels`                       | `Pagination`'s                  | `{ label, previousLabel, nextLabel, pageLabel }` of the pager     |
-| `emptyTitle`                             | `"Nothing here yet"`            | headline in place of the table when the list has no row           |
-| `noMatchTitle`                           | `"Nothing matches your search"` | the same when the search leaves no row                            |
-| `emptyDescription`, `noMatchDescription` | —                               | a second line under either headline                               |
+| Prop                                     | Default                         | What it does                                                         |
+| ---------------------------------------- | ------------------------------- | -------------------------------------------------------------------- |
+| `store`                                  | —                               | model store: the status slices, the count and the load error         |
+| `rows`                                   | —                               | a plain signal instead — nested, or a read-only collection           |
+| `error`                                  | `store.op.list`                 | the banner source for a signal-backed list                           |
+| `loading`                                | —                               | with `rows`: true while they are on their way; holds the empty state |
+| `title` / `titleSlot`                    | —                               | the page title, or a slot for a back button or a parent entity       |
+| `badge`                                  | non-deleted count               | badge after the title; `false` hides it                              |
+| `match`                                  | —                               | whether one word matches a row; words are ANDed                      |
+| `header`, `row`                          | —                               | the table's cells, excluding the actions column                      |
+| `actions`                                | —                               | right-aligned actions cell; adds its own header cell                 |
+| `addHref`, `addLabel`, `canAdd`          | —                               | the add action, hidden when there is nowhere to go                   |
+| `statusFilter`                           | on                              | `false`, or `{ label, active, archived }` for a different wording    |
+| `query`, `status`                        | local signals                   | hand over the signals to own them (URL filters, a parent page)       |
+| `searchDelay`                            | `300`                           | debounce of the search box                                           |
+| `searchPlaceholder`                      | `"Search"`                      | placeholder of the search box                                        |
+| `searchLabel`                            | `"Search"`                      | name of the Search button, which searches at once, as Enter does     |
+| `searchFieldLabel`                       | the placeholder                 | accessible name of the search field                                  |
+| `headingLevel`                           | `1`                             | level of the title's heading, for a page that has its `<h1>`         |
+| `pageSize`                               | every row                       | rows a page; adds the pager once there is more than one page         |
+| `page`                                   | local signal                    | the page number, `1`-based, for a URL filter to own                  |
+| `paginationLabels`                       | `Pagination`'s                  | `{ label, previousLabel, nextLabel, pageLabel }` of the pager        |
+| `emptyTitle`                             | `"Nothing here yet"`            | headline in place of the table when the list has no row              |
+| `noMatchTitle`                           | `"Nothing matches your search"` | the same when the search leaves no row                               |
+| `emptyDescription`, `noMatchDescription` | —                               | a second line under either headline                                  |
 
 A list with no row to show renders the library's `EmptyState` in place of the table, a
 `role="status"` with `emptyTitle`, or `noMatchTitle` when a search term is set. It is held back
-while `store.op.list` is in progress and when the load failed, where "nothing here" would be false.
+until the collection has loaded and when the load failed, where "nothing here" would be false. A
+store has loaded once `store.op.list` holds a non-null `result` or the store holds a row; a store
+built with `buildModelStore` sets that `result` when its list arrives. With `rows`, pass a `loading`
+signal that is true while the rows are on their way. A test double that leaves `result` at `null`
+and holds no row gets an empty table.
 
 Every row is rendered unless `pageSize` is given. With it, the rows the search and the status
 filter leave are cut into pages, and the library's `Pagination` sits under the table once they fill
-more than one. A new search term or status goes back to page 1, and a page past the end (rows were
-removed) shows the last page. Paging is opt-in so that a list an app already ships keeps showing
-every row after an upgrade.
+more than one. Paging is opt-in so that a list an app already ships keeps showing every row after
+an upgrade.
+
+`page` hands the page number over, for an address to own. The list writes it in two cases only: a
+press on the pager, and its own search box or status select, which set it to 1 in the same write as
+the new term or status, so `useUrlFilters` records one history entry. A `query` or `status` that
+changes from outside (an address with both `?q=` and `?page=`, a reload, Back) leaves the page
+alone. A page past the end (rows were removed) shows the last page; the signal keeps the number it
+was given, because writing it back would add a history entry nobody asked for.
+
+Table rows are keyed by the row's `id`, so an open menu or a typed draft stays with its row when a
+search or a page turn moves it.
 
 The search field follows `query`: when something outside the list changes it, such as Back
 restoring an earlier search from the address, the field shows that term.
@@ -850,7 +864,7 @@ deno test crud/       # from the repository root
 Every module has a colocated suite: the time labels (`time.test.ts`), the save-enabled
 rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
-actions column, empty state and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
+actions column, empty state (on the real `buildModelStore` too) and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
 `buildModelStore` (`store.test.ts`), and the ported regions resource
 (`examples/regions.test.tsx`). No network, no timers left running.
 
