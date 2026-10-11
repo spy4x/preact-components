@@ -469,6 +469,17 @@ export const specs: readonly Spec[] = [
         if (now !== "?q=a&page=2") throw new Error(`${step}: the address became "${now}"`)
       }
 
+      // Every step below is counted against the history as it was before the address was opened,
+      // so a write the list makes by itself at any point shows up as an entry too many.
+      const before = await page.evaluate(() => history.length)
+      const entries = async (expected: number, step: string) => {
+        const now = await page.evaluate(() => history.length)
+        if (now !== before + expected) {
+          throw new Error(`${step}: ${now - before} history entries, expected ${expected}`)
+        }
+      }
+      const field = live.getByRole("textbox", { name: "Team name in the address" })
+
       const address = new URL(page.url())
       address.search = "?q=a&page=2"
       await page.goto(address.href)
@@ -476,24 +487,33 @@ export const specs: readonly Spec[] = [
       await page.reload()
       await showsPageTwo("reloaded")
 
+      // Enter with the term as it is searches again: nothing changed, so the page stays. The
+      // pager's own press is then the second entry, not the third.
+      await field.press("Enter")
+      await pager.getByRole("button", { name: "Page 3", exact: true }).click()
+      await rows.filter({ hasText: "Legal" }).waitFor()
+      await page.waitForFunction(() => location.search === "?q=a&page=3")
+      await entries(2, "after Enter and a press on Page 3")
+
       // The list's own search goes back to page 1, as one step of the history.
-      const entries = await page.evaluate(() => history.length)
-      await live.getByRole("textbox", { name: "Team name in the address" }).fill("e")
+      await field.fill("e")
       await live.getByRole("button", { name: "Search the addressed teams", exact: true }).click()
       await rows.filter({ hasText: "Design" }).waitFor()
       await pager.locator(`[aria-current="page"]`).filter({ hasText: "1" }).waitFor()
       await page.waitForFunction(() => location.search === "?q=e")
-      const after = await page.evaluate(() => history.length)
-      if (after !== entries + 1) {
-        throw new Error(`one search took the history from ${entries} entries to ${after}`)
-      }
+      await entries(3, "after one search")
 
+      await page.goBack()
+      await page.waitForFunction(() => location.search === "?q=a&page=3")
+      await rows.filter({ hasText: "Legal" }).waitFor()
       await page.goBack()
       await showsPageTwo("after Back")
       // Forward is still there: nothing was written on the way back.
       await page.goForward()
+      await page.goForward()
       await page.waitForFunction(() => location.search === "?q=e")
       await rows.filter({ hasText: "Design" }).waitFor()
+      await entries(3, "after Back and Forward")
     },
   },
   {
