@@ -1119,6 +1119,12 @@ export const crudDemos = {
         description: "The label of the dialog's cancelling action.",
       },
       {
+        name: "confirmCloseLabel",
+        type: "string",
+        default: `"Close"`,
+        description: "The name of the cross in the dialog's corner.",
+      },
+      {
         name: "deleteErrorLabel",
         type: "string",
         default: `"Could not delete"`,

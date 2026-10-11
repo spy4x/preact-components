@@ -508,7 +508,7 @@ describe("filteredRunLine", () => {
     const line = filteredRunLine(["theme", "system", "ui"], ["system"])
 
     expect(line).toBe(
-      "FILTERED: ran system, left out theme, ui — not a full run; CI never passes --only",
+      "FILTERED: ran system, left out theme, ui — not a full run on its own",
     )
   })
 
@@ -521,7 +521,7 @@ describe("filteredRunLine", () => {
     const line = filteredRunLine(["theme", "system", "ui"], [])
 
     expect(line).toBe(
-      "FILTERED: ran (none), left out theme, system, ui — not a full run; CI never passes --only",
+      "FILTERED: ran (none), left out theme, system, ui — not a full run on its own",
     )
   })
 
@@ -529,7 +529,7 @@ describe("filteredRunLine", () => {
     const line = filteredRunLine(["theme", "ui"], ["theme", "ui"])
 
     expect(line).toBe(
-      "FILTERED: ran theme, ui, left out (none) — not a full run; CI never passes --only",
+      "FILTERED: ran theme, ui, left out (none) — not a full run on its own",
     )
   })
 })

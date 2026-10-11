@@ -640,7 +640,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `CardHeader` (component): Card header: a title plus a right-aligned action, or raw children. Import: `@spy4x/preact-ui`
 - `CardHeaderProps` (type): Props of a `CardHeader`, in one of two mutually exclusive modes. Import: `@spy4x/preact-ui`
 - `CardProps` (type): Props of `Card`. Import: `@spy4x/preact-ui`
-- `CANCEL_LABEL` (constant): English default for the cancelling action, which also names the header dismiss control. Import: `@spy4x/preact-ui`
+- `CANCEL_LABEL` (constant): English default for the cancelling action. Import: `@spy4x/preact-ui`
 - `CONFIRM_LABEL` (constant): English default for the confirming action, used when the caller names no verb. Import: `@spy4x/preact-ui`
 - `ConfirmDialog` (component): Confirmation panel: a title, one question, and two labelled actions. Import: `@spy4x/preact-ui`
 - `ConfirmDialogProps` (type): Props of `ConfirmDialog`. Import: `@spy4x/preact-ui`
