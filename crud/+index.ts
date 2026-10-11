@@ -12,7 +12,9 @@ export {
   type CrudListBaseProps,
   type CrudListProps,
   type CrudListSource,
+  type ListPage,
   listRows,
+  pageOf,
   rowsForStatus,
   type StatusFilterLabels,
 } from "./crud-list.tsx"

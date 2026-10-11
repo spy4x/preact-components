@@ -3,7 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { type ReadonlySignal, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
 import { search } from "@spy4x/platform/universal/text"
-import { CrudList, type CrudListBaseProps, listRows, rowsForStatus } from "./crud-list.tsx"
+import { CrudList, type CrudListBaseProps, listRows, pageOf, rowsForStatus } from "./crud-list.tsx"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
 
@@ -89,6 +89,31 @@ describe("listRows", () => {
     expect(listRows(fakeStore(), "archived", "old", match).map((row) => row.name)).toEqual([
       "Old North",
     ])
+  })
+})
+
+describe("pageOf", () => {
+  const five = [1, 2, 3, 4, 5]
+
+  it("cuts the page asked for out of the rows", () => {
+    expect(pageOf(five, 2, 2)).toEqual({ rows: [3, 4], page: 2, pageCount: 3 })
+  })
+
+  it("shows the last page when the page asked for is past the end", () => {
+    expect(pageOf(five, 9, 2)).toEqual({ rows: [5], page: 3, pageCount: 3 })
+  })
+
+  it("shows the first page for a page below one, or one that is no number", () => {
+    expect(pageOf(five, 0, 2).rows).toEqual([1, 2])
+    expect(pageOf(five, Number.NaN, 2).rows).toEqual([1, 2])
+  })
+
+  it("counts one page for an empty list", () => {
+    expect(pageOf([], 1, 10)).toEqual({ rows: [], page: 1, pageCount: 1 })
+  })
+
+  it("shows one row a page for a page size below one", () => {
+    expect(pageOf(five, 1, 0)).toEqual({ rows: [1], page: 1, pageCount: 5 })
   })
 })
 
@@ -198,6 +223,125 @@ describe("CrudList", () => {
       canAdd: () => false,
     })
     expect(html).not.toContain("Add new")
+  })
+
+  it("shows an empty state in place of the table when the list has no row", () => {
+    const html = storeList({ store: fakeStore([], []) })
+
+    expect(html).toContain(`role="status"`)
+    expect(html).toContain(">Nothing here yet</h2>")
+    expect(html).not.toContain("<table")
+    expect(storeList({ store: fakeStore() })).not.toContain(`role="status"`)
+  })
+
+  it("words the empty state as the app asks", () => {
+    const html = storeList({
+      store: fakeStore([], []),
+      emptyTitle: "No regions yet",
+      emptyDescription: "Add the first one.",
+    })
+
+    expect(html).toContain(">No regions yet</h2>")
+    expect(html).toContain("Add the first one.")
+    expect(html).not.toContain("Nothing here yet")
+  })
+
+  it("says the search matched nothing, in the default or the app's wording", () => {
+    const html = storeList({ store: fakeStore(), query: signal("west") })
+    expect(html).toContain(">Nothing matches your search</h2>")
+    expect(html).not.toContain("Nothing here yet")
+
+    const worded = storeList({
+      store: fakeStore(),
+      query: signal("west"),
+      noMatchTitle: "No such region",
+      noMatchDescription: "Try a shorter name.",
+    })
+    expect(worded).toContain(">No such region</h2>")
+    expect(worded).toContain("Try a shorter name.")
+  })
+
+  it("keeps the table, and no empty state, while the rows are still loading", () => {
+    const loading: CrudListStore<Region> = {
+      list: { nonDeleted: signal([]), deleted: signal([]) },
+      op: { list: signal({ inProgress: true, result: null, error: null }) },
+    }
+    const html = storeList({ store: loading })
+
+    expect(html).toContain("<table")
+    expect(html).not.toContain(`role="status"`)
+  })
+
+  it("shows the load error without claiming the list is empty", () => {
+    const html = storeList({ store: fakeStore([], [], { message: "gateway is down" }) })
+
+    expect(html).toContain("gateway is down")
+    expect(html).not.toContain(`role="status"`)
+  })
+
+  it("shows the empty state of a signal-backed list", () => {
+    expect(signalList({ rows: signal<Region[]>([]) })).toContain(">Nothing here yet</h2>")
+  })
+
+  const manyRows = [live(1, "North"), live(2, "South"), live(3, "East"), live(4, "West")]
+
+  it("renders every row and no pager when no page size is given", () => {
+    const html = storeList({ store: fakeStore(manyRows) })
+
+    expect(html.match(/<td>/g)?.length).toBe(4)
+    expect(html).not.toContain(`aria-label="Pagination"`)
+  })
+
+  it("renders one page of rows and a pager when the rows fill more than one page", () => {
+    const html = storeList({ store: fakeStore(manyRows), pageSize: 3 })
+
+    expect(html.match(/<td>/g)?.length).toBe(3)
+    expect(html).not.toContain("<td>West</td>")
+    expect(html).toContain(`<nav aria-label="Pagination"`)
+    expect(html).toContain(`aria-current="page" aria-label="Page 1"`)
+  })
+
+  it("renders the page the caller's signal names", () => {
+    const html = storeList({ store: fakeStore(manyRows), pageSize: 3, page: signal(2) })
+
+    expect(html.match(/<td>/g)?.length).toBe(1)
+    expect(html).toContain("<td>West</td>")
+  })
+
+  it("renders no pager when the rows fit on one page", () => {
+    const html = storeList({ store: fakeStore(manyRows), pageSize: 4 })
+
+    expect(html.match(/<td>/g)?.length).toBe(4)
+    expect(html).not.toContain("<nav")
+  })
+
+  it("words the pager as the app asks", () => {
+    const html = storeList({
+      store: fakeStore(manyRows),
+      pageSize: 3,
+      paginationLabels: { label: "Region pages", previousLabel: "Earlier", nextLabel: "Later" },
+    })
+
+    expect(html).toContain(`<nav aria-label="Region pages"`)
+    expect(html).toContain("Earlier")
+    expect(html).toContain("Later")
+  })
+
+  it("names the search field after its placeholder, or what the app calls it", () => {
+    expect(storeList({ store: fakeStore() })).toContain(`aria-label="Search"`)
+    expect(storeList({ store: fakeStore(), searchPlaceholder: "Find" }))
+      .toContain(`aria-label="Find"`)
+    expect(storeList({ store: fakeStore(), searchFieldLabel: "Search regions" }))
+      .toContain(`placeholder="Search" aria-label="Search regions"`)
+  })
+
+  it("heads the list with an h1, or with the level the page asks for", () => {
+    expect(storeList({ store: fakeStore() })).toMatch(/<h1[^>]*><span>Regions<\/span>/)
+
+    const nested = storeList({ store: fakeStore([], []), headingLevel: 2 })
+    expect(nested).toMatch(/<h2[^>]*><span>Regions<\/span>/)
+    expect(nested).not.toContain("<h1")
+    expect(nested).toContain(">Nothing here yet</h3>")
   })
 
   it("replaces the default title with the caller's slot", () => {
