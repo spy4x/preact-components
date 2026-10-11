@@ -299,7 +299,103 @@ export const specs: readonly Spec[] = [
     },
   },
   ...quickAddSpecs(),
+  ...removalSpecs(),
 ]
+
+/** The parts of the `ErrorState` card's removal demo a spec drives. */
+function removalDemo(page: Page) {
+  const demo = page.locator(`#demo-ErrorState [data-e2e="removal-demo"]`)
+  const dialog = page.locator(`[data-e2e="removal-dialog"]`)
+  const error = dialog.locator(`[data-e2e="removal-error"]`)
+  const open = (name: string) => demo.getByRole("button", { name: `Remove ${name}`, exact: true })
+  return {
+    dialog,
+    error,
+    open,
+    reset: demo.locator(`[data-e2e="removal-reset"]`),
+    keep: dialog.locator(`[data-e2e="confirm-dialog-cancel"]`),
+    /** Ticks one of the demo's two checkboxes. */
+    tick: (name: string) => demo.getByRole("checkbox", { name }).check(),
+    /** Opens a row's dialog and confirms the removal. */
+    confirm: async (name: string) => {
+      await open(name).click()
+      await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+    },
+    /** Waits for the dialog to be gone with its row, and for the focus to be on one element. */
+    removedWithFocusOn: async (target: Locator) => {
+      await dialog.waitFor({ state: "detached" })
+      await target.and(page.locator(":focus")).waitFor()
+    },
+  }
+}
+
+/** `ErrorState` with `focusOnAppear`, `useFreshError` and `useFocusAfterRemoval`, on one list. */
+function removalSpecs(): Spec[] {
+  return [
+    {
+      name:
+        "ErrorState with focusOnAppear: a refusal that appears in the dialog that asked takes focus, and axe passes the dialog",
+      pageId: "ui",
+      run: async (page) => {
+        const { error, tick, confirm } = removalDemo(page)
+        await tick("Refuse the next removal")
+        await confirm("Ada")
+        await error.filter({ hasText: "Ada could not be removed." }).and(page.locator(":focus"))
+          .waitFor()
+        const { violations } = await new AxeBuilder({ page }).include("dialog[open]").analyze()
+        if (violations.length > 0) {
+          throw new Error(`axe on the open dialog: ${violations.map(({ id }) => id).join(", ")}`)
+        }
+      },
+    },
+    {
+      name:
+        "useFreshError: a dialog opened again does not show the last refusal, and shows the next one although its text is the same",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, error, open, keep, tick, confirm } = removalDemo(page)
+        await tick("Refuse the next removal")
+        await confirm("Ada")
+        await error.waitFor()
+        await keep.click()
+        await dialog.waitFor({ state: "detached" })
+
+        await open("Ada").click()
+        await dialog.waitFor()
+        // The dialog and its error come from one render, so an error that is shown is there now.
+        if (await error.count() !== 0) throw new Error("the dialog opened on the last refusal")
+
+        await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+        await error.filter({ hasText: "Ada could not be removed." }).waitFor()
+      },
+    },
+    {
+      name:
+        "useFocusAfterRemoval: a removed row hands focus to the row that took its place, the last row to the one before it, and the only row to the fallback",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, reset, confirm, removedWithFocusOn } = removalDemo(page)
+        await confirm("Grace")
+        await removedWithFocusOn(open("Linus"))
+        await confirm("Linus")
+        await removedWithFocusOn(open("Ada"))
+        await confirm("Ada")
+        await removedWithFocusOn(reset)
+      },
+    },
+    {
+      name:
+        "useFocusAfterRemoval with earlier off: the last of several rows hands focus to the fallback, past the rows before it",
+      pageId: "ui",
+      run: async (page) => {
+        const { reset, tick, confirm, removedWithFocusOn } = removalDemo(page)
+        await tick("Skip earlier rows")
+        await confirm("Linus")
+        await removedWithFocusOn(reset)
+      },
+    },
+  ]
+}
 
 /**
  * A spec proving one component hands its `ref` the native element: the card's "Focus via ref"

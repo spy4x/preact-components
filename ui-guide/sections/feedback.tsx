@@ -32,6 +32,8 @@ import {
   Toastr,
   type ToastVariant,
   UnsavedGuard,
+  useFocusAfterRemoval,
+  useFreshError,
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
@@ -829,6 +831,128 @@ function ErrorBoundaryDemo() {
   )
 }
 
+/** The people the {@link RemovalDemo} list starts with, and comes back to. */
+const REMOVAL_PEOPLE: readonly string[] = ["Ada", "Grace", "Linus"]
+
+/** How long the {@link RemovalDemo}'s pretend request takes, in milliseconds. */
+const REMOVAL_REQUEST_MS = 200
+
+/**
+ * A list whose rows are removed behind a confirmation, with a pretend request that the first
+ * checkbox makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
+ * focus), `useFreshError` (the dialog opens again without it) and `useFocusAfterRemoval` (a removed
+ * row hands focus to its neighbour, or to "Bring everyone back"). `pages/e2e/ui.spec.ts` drives it.
+ */
+function RemovalDemo() {
+  const [people, setPeople] = useState(REMOVAL_PEOPLE)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<{ id: string; message: string } | null>(null)
+  const [refuse, setRefuse] = useState(false)
+  const [skipEarlier, setSkipEarlier] = useState(false)
+  const list = useRef<HTMLUListElement>(null)
+  const reset = useRef<HTMLButtonElement>(null)
+  useFocusAfterRemoval(list, people, removingId, {
+    fallback: () => reset.current,
+    earlier: !skipEarlier,
+  })
+  const remove = (id: string) => {
+    setRefusal(null)
+    setRemovingId(id)
+    setTimeout(() => {
+      if (refuse) setRefusal({ id, message: `${id} could not be removed.` })
+      else setPeople((current) => current.filter((name) => name !== id))
+      setRemovingId(null)
+    }, REMOVAL_REQUEST_MS)
+  }
+  return (
+    <Stack data-e2e="removal-demo">
+      <Cluster>
+        <Checkbox
+          checked={refuse}
+          onChange={(event) => setRefuse(event.currentTarget.checked)}
+          data-e2e="removal-refuse"
+        >
+          Refuse the next removal
+        </Checkbox>
+        <Checkbox
+          checked={skipEarlier}
+          onChange={(event) => setSkipEarlier(event.currentTarget.checked)}
+          data-e2e="removal-skip-earlier"
+        >
+          Skip earlier rows
+        </Checkbox>
+      </Cluster>
+      <ul ref={list} class="flex flex-col gap-2">
+        {people.map((name) => (
+          <RemovalRow
+            key={name}
+            name={name}
+            pending={removingId === name}
+            error={refusal?.id === name ? refusal.message : null}
+            onRemove={remove}
+          />
+        ))}
+      </ul>
+      <Cluster>
+        <Button
+          ref={reset}
+          variant="outline"
+          data-e2e="removal-reset"
+          onClick={() => setPeople(REMOVAL_PEOPLE)}
+        >
+          Bring everyone back
+        </Button>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/** One row of {@link RemovalDemo}: a name, its "Remove" button and the dialog that confirms it. */
+function RemovalRow(
+  { name, pending, error, onRemove }: {
+    name: string
+    pending: boolean
+    error: string | null
+    onRemove: (id: string) => void
+  },
+) {
+  const [asking, setAsking] = useState(false)
+  const [shown, opened] = useFreshError(error, pending)
+  return (
+    <li class="flex items-center justify-between gap-3" data-e2e="removal-row">
+      <span class="text-sm">{name}</span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          opened()
+          setAsking(true)
+        }}
+      >
+        Remove {name}
+      </Button>
+      {asking && (
+        <ConfirmDialog
+          title={`Remove ${name}?`}
+          confirmLabel="Remove"
+          cancelLabel="Keep"
+          tone="danger"
+          busy={pending}
+          busyLabel="Removing…"
+          dataE2E="removal-dialog"
+          onConfirm={() => onRemove(name)}
+          onCancel={() => setAsking(false)}
+        >
+          <Stack>
+            <p class="text-sm text-muted">{name} loses access right away.</p>
+            <ErrorState focusOnAppear message={shown} dataE2E="removal-error" />
+          </Stack>
+        </ConfirmDialog>
+      )}
+    </li>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -909,12 +1033,22 @@ export const feedbackDemos = {
     summary:
       "The message for an expected failure, where its result would have been; nothing when there is none.",
     wide: false,
-    snippet: `<ErrorState message={error.value} />`,
+    snippet: `<ErrorState message={error.value} />
+
+// A refusal inside the dialog that asked: it takes focus, and is gone when the dialog opens again.
+const [shown, opened] = useFreshError(error, pending)
+<ErrorState focusOnAppear message={shown} />
+
+// A removed row hands focus to the row that took its place.
+useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current })`,
     render: () => (
-      <Stack>
-        <ErrorState message="The report could not be generated: no accounts are connected." />
-        <ErrorState message="" />
-        <DemoNote>The second one has an empty message, so nothing shows.</DemoNote>
+      <Stack gap="lg">
+        <Stack>
+          <ErrorState message="The report could not be generated: no accounts are connected." />
+          <ErrorState message="" />
+          <DemoNote>The second one has an empty message, so nothing shows.</DemoNote>
+        </Stack>
+        <RemovalDemo />
       </Stack>
     ),
   },

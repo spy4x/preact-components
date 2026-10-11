@@ -379,6 +379,12 @@ export {
   type UseHotkeysOptions,
 } from "./hotkeys.ts"
 export { useSucceeded } from "./use-succeeded.ts"
+export { useFreshError } from "./use-fresh-error.ts"
+export {
+  type FocusAfterRemovalOptions,
+  type RowId,
+  useFocusAfterRemoval,
+} from "./use-focus-after-removal.ts"
 export { Kbd, KBD_LABELS, type KbdLabels, type KbdProps, type KeyFace, keyFaces } from "./kbd.tsx"
 export {
   groupShortcuts,

@@ -59,6 +59,8 @@
     "./zoomable-images": "./zoomable-images.tsx",
     "./hotkeys": "./hotkeys.ts",
     "./use-succeeded": "./use-succeeded.ts",
+    "./use-fresh-error": "./use-fresh-error.ts",
+    "./use-focus-after-removal": "./use-focus-after-removal.ts",
     "./kbd": "./kbd.tsx",
     "./shortcuts-dialog": "./shortcuts-dialog.tsx",
     "./inline-edit": "./inline-edit.tsx",
