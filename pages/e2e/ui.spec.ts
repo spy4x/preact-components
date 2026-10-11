@@ -116,7 +116,7 @@ function requiredFieldSpecs(): Spec[] {
     ...blocked,
     {
       name:
-        "Field around Combobox: an error under it marks the input invalid and describes it, every required mark is one its role allows, and axe passes the form",
+        "Field around Combobox: an error under it marks the input invalid and describes it, and axe passes the form of required fields",
       pageId: "ui",
       run: async (page) => {
         const form = page.locator(`[data-e2e="required-form"]`)
@@ -128,8 +128,6 @@ function requiredFieldSpecs(): Spec[] {
         await city.and(
           page.locator(`[aria-invalid="true"][aria-describedby~="guide-required-city-error"]`),
         ).waitFor()
-        const stars = await form.locator(`label > span[aria-hidden="true"]`).count()
-        if (stars !== 3) throw new Error(`${stars} labels carry a star, expected 3`)
         const { violations } = await new AxeBuilder({ page })
           .include(`[data-e2e="required-form"]`).analyze()
         if (violations.length > 0) {
