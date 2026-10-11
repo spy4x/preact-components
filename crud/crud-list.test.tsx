@@ -375,6 +375,14 @@ describe("CrudList", () => {
 
     expect(html).toContain("gateway is down")
     expect(html).not.toContain(`role="status"`)
+
+    // A signal-backed list has no load to wait for, so only the error holds the claim back.
+    const nested = signalList({
+      rows: signal<Region[]>([]),
+      error: signal({ message: "gateway is down" }),
+    })
+    expect(nested).toContain("gateway is down")
+    expect(nested).not.toContain(`role="status"`)
   })
 
   it("shows the empty state of a signal-backed list", () => {
