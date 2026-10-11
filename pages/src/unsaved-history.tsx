@@ -18,6 +18,7 @@ import type { JSX } from "preact"
 import { buttonClasses } from "@spy4x/preact-ui/button"
 import { Input } from "@spy4x/preact-ui/input"
 import { UnsavedGuard } from "@spy4x/preact-ui/unsaved-guard"
+import { useEffect } from "preact/hooks"
 import { Router, useLocation, useSearch } from "wouter-preact"
 
 /** The query parameter that names the view. */
@@ -103,6 +104,14 @@ function Editor(
   { navigate, previewLink }: { navigate: (href: string) => void; previewLink: JSX.Element },
 ) {
   const dirty = useSignal(false)
+  // What the line below reports. It is set in an effect, and a parent's effect runs after its
+  // child's, so "yes" means the guard is already listening: a check that reads it and presses Back
+  // at once cannot arrive between the render and the guard's own effect.
+  const guarded = useSignal(false)
+  const unsaved = dirty.value
+  useEffect(() => {
+    guarded.value = unsaved
+  }, [unsaved])
   return (
     <>
       <Input
@@ -112,7 +121,7 @@ function Editor(
         data-e2e="unsaved-history-draft"
       />
       <p class="text-sm text-gray-600 dark:text-gray-300" data-e2e="unsaved-history-state">
-        Unsaved: {dirty.value ? "yes" : "no"}
+        Unsaved: {guarded.value ? "yes" : "no"}
       </p>
       {previewLink}
       <UnsavedGuard
