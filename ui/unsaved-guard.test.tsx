@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { leaveGuardInternals } from "./unsaved-guard-internals.ts"
+import { leaveGuardInternals, leavesPage } from "./unsaved-guard-internals.ts"
 import {
   createLeaveGuard,
   guardedHref,
@@ -214,6 +214,18 @@ describe("createLeaveGuard", () => {
     expect(ran).toEqual([])
   })
 
+  it("is led by the earliest holder, with or without a navigation waiting, then by the next", () => {
+    const { asking } = setup()
+    const first = {}
+    const second = {}
+    expect(asking.leads(first)).toBe(false)
+    const release = asking.hold(first)
+    asking.hold(second)
+    expect([asking.leads(first), asking.leads(second)]).toEqual([true, false])
+    release()
+    expect([asking.leads(first), asking.leads(second)]).toEqual([false, true])
+  })
+
   it("asks through the earliest holder only, then through the next when that one lets go", () => {
     const { guard, asking, ran, go } = setup()
     const first = {}
@@ -246,6 +258,26 @@ describe("createLeaveGuard", () => {
     releaseFirst()
     guard.navigate(go("lists"))
     expect(ran).toEqual([])
+  })
+})
+
+describe("leavesPage", () => {
+  const editor = "https://app.example/notes/7?tab=body#title"
+
+  it("says a step to another path leaves the page", () => {
+    expect(leavesPage(editor, "https://app.example/notes?tab=body#title")).toBe(true)
+  })
+
+  it("says a step to another query of the same path leaves the page", () => {
+    expect(leavesPage(editor, "https://app.example/notes/7?tab=history#title")).toBe(true)
+    expect(leavesPage(editor, "https://app.example/notes/7#title")).toBe(true)
+  })
+
+  it("says a step that changes, adds or drops only the fragment stays on the page", () => {
+    for (const to of ["#body", "#", ""]) {
+      expect(leavesPage(editor, `https://app.example/notes/7?tab=body${to}`)).toBe(false)
+    }
+    expect(leavesPage(editor, editor)).toBe(false)
   })
 })
 

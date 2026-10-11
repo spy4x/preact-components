@@ -942,6 +942,12 @@ export const crudDemos = {
         default: `"Cancel"`,
         description: "The label of the dialog's cancelling action.",
       },
+      {
+        name: "confirmCloseLabel",
+        type: "string",
+        default: `"Close"`,
+        description: "The name of the cross in the dialog's corner.",
+      },
     ],
     snippet: `<AssociationEditor
   store={associationStore}

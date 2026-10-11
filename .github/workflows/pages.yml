@@ -30,6 +30,21 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # The browser run is split into three parts, one job each, because as one job it took 13 of the
+    # 15 minutes `pages/verify.ts` allows its browser phase (#696). Together the parts run every
+    # block once: `--except` names the blocks the other two took, so a block added later lands in
+    # `rest` without an edit here. `pages/README.md`, "Running a full run in parts", has the
+    # timings. One red part does not cancel the others, so a pull request sees every failure.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: ui
+            blocks: --only=ui
+          - part: e2e
+            blocks: --only=e2e
+          - part: rest
+            blocks: --except=ui,e2e
     # `pages/verify.ts` bounds its own browser phase: it stops after 90 seconds without a finished
     # check and after 15 minutes in all. This is the backstop for everything outside that phase —
     # the build, the static phase, a hung `deno task check` — so a runner that wedges frees itself
@@ -53,7 +68,9 @@ jobs:
       - name: Report the browser the verify step will drive
         run: google-chrome --version
 
+      # `check` and the publish dry-run do not depend on the part, so one part runs them.
       - name: Check
+        if: matrix.part == 'rest'
         run: deno task check
 
       # Not part of `deno task check` — see the task's own comment in `deno.jsonc` for why — so it
@@ -61,6 +78,7 @@ jobs:
       # runs the bare task rather than `--allow-dirty`; a missing return type or a `theme/`-style CSS
       # export fails this step the same way a red `check` does, before the build or the deploy.
       - name: Dry-run the JSR publish
+        if: matrix.part == 'rest'
         run: deno task publish:dry
 
       - name: Build the demo
@@ -71,13 +89,15 @@ jobs:
       # the log reported one browser and drove another. Naming it also makes a runner image that
       # dropped Chrome fail here, loudly, instead of quietly running something else.
       - name: Verify the demo in a real browser
-        run: deno task --cwd pages verify
+        run: deno task --cwd pages verify ${{ matrix.blocks }}
         env:
           CHROME_PATH: google-chrome
 
       # Pages artefacts are for the deploy alone: a pull request neither publishes nor needs one.
+      # Every part builds the same `dist/`, and a run may hold one artefact of this name, so one
+      # part uploads it.
       - name: Upload the Pages artefact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && matrix.part == 'rest'
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages/dist

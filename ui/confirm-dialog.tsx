@@ -20,11 +20,18 @@ export interface ConfirmDialogProps {
    */
   confirmLabel?: string
   /**
-   * Label of the cancelling action, which is also the accessible name of the header dismiss
-   * control. Defaults to {@link CANCEL_LABEL}, for the same reason as
-   * {@link ConfirmDialogProps.confirmLabel}.
+   * Label of the cancelling action, the footer's first button. Defaults to {@link CANCEL_LABEL},
+   * for the same reason as {@link ConfirmDialogProps.confirmLabel}.
    */
   cancelLabel?: string
+  /**
+   * Accessible name and tooltip of the header dismiss control, the cross in the corner. Defaults
+   * to `"Close"`. It cancels like the footer's button, but is named for what it is, so a screen
+   * reader never reads the cancel wording twice. When it would repeat the name of a footer button
+   * (a caller whose cancelling or confirming action is itself "Close"), the corner control is left
+   * out: two buttons with one name cannot be told apart, and the footer's button already does it.
+   */
+  closeLabel?: string
   /**
    * Injected confirm port. Called with the click event, so a caller can read a form field or a
    * checkbox out of the dialog. The dialog does **not** close itself — the caller closes it from the
@@ -110,6 +117,7 @@ export function ConfirmDialog(
     children,
     confirmLabel,
     cancelLabel,
+    closeLabel,
     onConfirm,
     onCancel,
     tone = "default",
@@ -129,6 +137,9 @@ export function ConfirmDialog(
   // names it — see `labelOr`.
   const confirmText = labelOr(confirmLabel, CONFIRM_LABEL)
   const cancelText = labelOr(cancelLabel, CANCEL_LABEL)
+  const closeText = labelOr(closeLabel, CLOSE_LABEL)
+  // No two buttons of the panel share a name: `Modal` draws no corner control without a label.
+  const cornerLabel = closeText === cancelText || closeText === confirmText ? undefined : closeText
   // The question's own id, from the framework's hook for the same reason `Modal`'s title id is:
   // unique on a page, and the same string in the server's render and the browser's.
   const questionId = `confirm-question-${useId()}`
@@ -142,7 +153,7 @@ export function ConfirmDialog(
       titleId={titleId}
       role="alertdialog"
       ariaDescribedBy={hasQuestion(children ?? message) ? questionId : undefined}
-      cancelLabel={cancelText}
+      cancelLabel={cornerLabel}
       tone={tone}
       closeOnBackdrop={closeOnBackdrop}
       dataE2E={dataE2E}
@@ -183,8 +194,11 @@ export function ConfirmDialog(
 /** English default for the confirming action, used when the caller names no verb. */
 export const CONFIRM_LABEL = "Confirm"
 
-/** English default for the cancelling action, which also names the header dismiss control. */
+/** English default for the cancelling action. */
 export const CANCEL_LABEL = "Cancel"
+
+/** English default name of the header dismiss control, as in the library's other dialogs. */
+const CLOSE_LABEL = "Close"
 
 /** `data-e2e` a {@link ConfirmDialog}'s confirm button carries when the caller names none. */
 const CONFIRM_DATA_E2E = "confirm-dialog-confirm"
@@ -207,7 +221,7 @@ const CANCEL_DATA_E2E = "confirm-dialog-cancel"
  * testable without rendering a component.
  *
  * @param label The caller's label; blank and whitespace-only count as absent.
- * @param fallback The default to fall back to — {@link CONFIRM_LABEL} or {@link CANCEL_LABEL}.
+ * @param fallback The default to fall back to, such as {@link CONFIRM_LABEL}.
  * @returns The trimmed label, for the visible control and the accessible name.
  */
 export function labelOr(label: string | undefined, fallback: string): string {

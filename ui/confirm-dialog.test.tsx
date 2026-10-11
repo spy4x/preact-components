@@ -121,8 +121,25 @@ describe("ConfirmDialog", () => {
     expect(html.match(/<button/g)?.length).toBe(3)
   })
 
-  it("makes the cancel label the header dismiss control's accessible name", () => {
-    expect(render(dialog())).toContain('aria-label="Keep it"')
+  it("names the header dismiss control Close, not with the cancel label", () => {
+    const html = render(dialog())
+
+    expect(html).toContain('aria-label="Close"')
+    expect(html).not.toContain('aria-label="Keep it"')
+  })
+
+  it("names the header dismiss control with closeLabel, and Close when it arrives blank", () => {
+    expect(render(dialog({ closeLabel: "Schließen" }))).toContain('aria-label="Schließen"')
+    expect(render(dialog({ closeLabel: "  " }))).toContain('aria-label="Close"')
+  })
+
+  it("leaves the header dismiss control out when a footer button has its name", () => {
+    for (const overrides of [{ cancelLabel: "Close" }, { confirmLabel: "Close" }]) {
+      const html = render(dialog(overrides))
+
+      expect(html).not.toContain("aria-label=")
+      expect(html.match(/<button/g)?.length).toBe(2)
+    }
   })
 
   it("names the verb on the confirming button rather than an OK default", () => {
@@ -139,7 +156,7 @@ describe("ConfirmDialog", () => {
 
     expect(html).toContain(`>${CONFIRM_LABEL}</button>`)
     expect(html).toContain(`>${CANCEL_LABEL}</button>`)
-    expect(html).toContain(`aria-label="${CANCEL_LABEL}"`)
+    expect(html).not.toContain(`aria-label="${CANCEL_LABEL}"`)
   })
 
   it("renders the panel rather than raising when a label arrives blank", () => {
