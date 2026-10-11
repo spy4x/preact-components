@@ -1,12 +1,13 @@
 /**
  * `UnsavedGuard` — asks before a person leaves a page with changes they have not saved.
  *
- * Three ways out of a page are covered: closing or reloading the tab, which gets the browser's own
+ * Four ways out of a page are covered: closing or reloading the tab, which gets the browser's own
  * question through `beforeunload`; a click on an in-app link, which is held back and answered with
- * a {@link ConfirmDialog}; and a navigation the app starts from code, such as a sidebar button or a
- * keyboard shortcut, once the app sends it through a {@link LeaveGuard}. The browser's Back and
- * Forward buttons are not covered: by the time the page hears of them the address has already
- * changed, and no event lets a page refuse them.
+ * a {@link ConfirmDialog}; a navigation the app starts from code, such as a sidebar button or a
+ * keyboard shortcut, once the app sends it through a {@link LeaveGuard}; and the browser's Back and
+ * Forward buttons, in a browser that has the Navigation API. No event lets a page refuse Back, so
+ * the guard puts the page's address back the moment it changes, before the app's router has looked
+ * at it, and then asks in the same dialog.
  */
 
 import type { JSX } from "preact"
@@ -15,6 +16,7 @@ import { ConfirmDialog } from "./confirm-dialog.tsx"
 import { type ClickModifiers, isPlainClick } from "./link.tsx"
 import {
   createLeaveGuard,
+  holdHistory,
   type LeaveGuard,
   leaveGuardInternals,
 } from "./unsaved-guard-internals.ts"
@@ -137,8 +139,25 @@ export interface UnsavedGuardProps {
  * on `window`. A link it holds back never reaches its own handler. Mark an in-page action link
  * `data-unsaved-ok` to keep its handler working.
  *
- * The browser's Back button cannot be held back: the address has already changed when the page
- * hears of it.
+ * The browser's Back and Forward buttons, and `history.back()`, `forward()` and `go()`, are held
+ * back too, with no prop and no wiring. When a step inside the app would leave the page (the path
+ * or the query changes), the guard at once adds a history entry with the page's own address and
+ * state on top of the entry the person went to, so the router keeps the form mounted with its
+ * text, and opens the same dialog. "Leave" calls `onDiscard` and steps back from that new entry,
+ * which is where the person was going, however many entries away and in either direction. "Stay"
+ * closes the dialog. Another step while the dialog is open is answered the same way, in the one
+ * dialog. `navigate` and `owns` play no part in this. What it cannot do:
+ *
+ * - After "Stay" the form is on the new entry. The entries that were ahead of the one the person
+ *   went to are gone, and that one is now one step back; after Forward, that is the page that was
+ *   ahead.
+ * - It needs the Navigation API (`window.navigation`) to hear of the step before the router does.
+ *   In a browser without it, Back and Forward leave at once and the changes are lost.
+ * - A step to another document (another site, a server-rendered page, the page the tab showed
+ *   before the app) unloads this one, so it gets the browser's own question through
+ *   `beforeunload`, not the dialog.
+ * - A step that changes only the fragment is not held, as a link to a fragment of the same page is
+ *   not. A router that keeps its route in the fragment gets no question on Back.
  *
  * It renders nothing until a navigation is held back, and its listeners are added in an effect, so
  * it renders on a server.
@@ -181,10 +200,12 @@ export function UnsavedGuard(
       event.stopPropagation()
       guard.navigate(() => latest.current.navigate(to))
     }
+    const releaseHistory = holdHistory(() => asking.leads(holder), (go) => guard.navigate(go))
     addEventListener("beforeunload", beforeUnload)
     document.addEventListener("click", onClick, true)
     return () => {
       release()
+      releaseHistory()
       removeEventListener("beforeunload", beforeUnload)
       document.removeEventListener("click", onClick, true)
     }
