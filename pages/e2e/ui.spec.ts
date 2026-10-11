@@ -298,9 +298,201 @@ export const specs: readonly Spec[] = [
       if (open !== 0) throw new Error(`${open} dialogs are open with nothing unsaved`)
     },
   },
+  ...unsavedHistorySpecs(),
   ...quickAddSpecs(),
   ...removalSpecs(),
 ]
+
+/** The parts of the host page's `UnsavedGuard` Back and Forward demo a spec drives. */
+function unsavedHistoryDemo(page: Page) {
+  const demo = page.locator(`[data-e2e="unsaved-history"]`)
+  const draft = demo.locator(`[data-e2e="unsaved-history-draft"]`)
+  const dialog = page.getByRole("alertdialog", { name: "Leave without saving?" })
+  /** Waits for the router to show one view at that view's address. */
+  const viewIs = async (view: "list" | "edit" | "preview") => {
+    await demo.locator(`[data-e2e="unsaved-history-view"][data-view="${view}"]`).waitFor()
+    await page.waitForURL((url) => (url.searchParams.get("unsaved-note") ?? "list") === view)
+  }
+  /** Follows the demo's link to a view, which adds a history entry. */
+  const open = async (view: "edit" | "preview") => {
+    await demo.locator(`[data-e2e="unsaved-history-to-${view}"]`).click()
+    await viewIs(view)
+  }
+  /** Types a change into the editor and waits for the guard to know of it. */
+  const type = async () => {
+    await draft.fill("An unsaved change")
+    await demo.getByText("Unsaved: yes", { exact: true }).waitFor()
+  }
+  return {
+    draft,
+    dialog,
+    stay: dialog.locator(`[data-e2e="confirm-dialog-cancel"]`),
+    leave: dialog.locator(`[data-e2e="confirm-dialog-confirm"]`),
+    viewIs,
+    open,
+    /** Opens the editor with the preview one step ahead of it, then types a change. */
+    dirtyEditorWithAPageAhead: async () => {
+      await open("edit")
+      await open("preview")
+      // Nothing is typed yet, so this Back is not held; it leaves the preview ahead.
+      await page.goBack()
+      await viewIs("edit")
+      await type()
+    },
+    type,
+    /**
+     * Waits for the editor to be the view at its own address and history state, with the typed text
+     * still in the same field: a router that had followed the step would have drawn a new, empty
+     * one.
+     */
+    editorIsKept: async () => {
+      await dialog.waitFor({ state: "detached" })
+      await viewIs("edit")
+      await demo.getByText("Unsaved: yes", { exact: true }).waitFor()
+      const text = await draft.inputValue()
+      if (text !== "An unsaved change") throw new Error(`the field holds "${text}" after Stay`)
+      const state = await page.evaluate(() => JSON.stringify(history.state))
+      if (state !== `{"view":"edit"}`) throw new Error(`the entry's state is ${state} after Stay`)
+    },
+    /** Fails when the page shows any number of dialogs but this one. */
+    dialogsAre: async (count: number) => {
+      const open = await page.locator("dialog[open]").count()
+      if (open !== count) throw new Error(`${open} dialogs are open, not ${count}`)
+    },
+  }
+}
+
+/**
+ * `UnsavedGuard` against the browser's Back and Forward buttons, on the host page's demo, whose
+ * views a wouter router draws from the address.
+ */
+function unsavedHistorySpecs(): Spec[] {
+  return [
+    {
+      name:
+        "UnsavedGuard: Back with a change asks; Stay keeps the editor, its address and the typed text, and Leave arrives where Back was going",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, stay, leave, open, type, viewIs, editorIsKept } = unsavedHistoryDemo(page)
+        await open("edit")
+        await type()
+
+        await page.goBack()
+        await dialog.waitFor()
+        await stay.click()
+        await editorIsKept()
+
+        await page.goBack()
+        await dialog.waitFor()
+        await leave.click()
+        await viewIs("list")
+        await dialog.waitFor({ state: "detached" })
+      },
+    },
+    {
+      name: "UnsavedGuard: Forward with a change asks, and Leave arrives where Forward was going",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, leave, viewIs, dirtyEditorWithAPageAhead } = unsavedHistoryDemo(page)
+        await dirtyEditorWithAPageAhead()
+
+        await page.goForward()
+        await dialog.waitFor()
+        await viewIs("edit")
+        await leave.click()
+        await viewIs("preview")
+        await dialog.waitFor({ state: "detached" })
+      },
+    },
+    {
+      name:
+        "UnsavedGuard: Stay after Forward keeps the editor, its address and the typed text, as a new entry on top of the page Forward went to",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, stay, leave, viewIs, editorIsKept, dirtyEditorWithAPageAhead } =
+          unsavedHistoryDemo(page)
+        await dirtyEditorWithAPageAhead()
+
+        await page.goForward()
+        await dialog.waitFor()
+        await stay.click()
+        await editorIsKept()
+
+        // The preview is one step back now, not one step ahead.
+        await page.goBack()
+        await dialog.waitFor()
+        await leave.click()
+        await viewIs("preview")
+      },
+    },
+    {
+      name: "UnsavedGuard: Back with nothing unsaved leaves at once, with no dialog",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, viewIs, dialogsAre } = unsavedHistoryDemo(page)
+        await open("edit")
+        await page.goBack()
+        await viewIs("list")
+        await dialogsAre(0)
+      },
+    },
+    {
+      name:
+        "UnsavedGuard: a step back over three entries at once asks, and Leave arrives at the entry the person chose",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, leave, open, type, viewIs } = unsavedHistoryDemo(page)
+        await open("edit")
+        await open("preview")
+        await open("edit")
+        await type()
+
+        await page.evaluate(() => history.go(-3))
+        await dialog.waitFor()
+        await viewIs("edit")
+        await leave.click()
+        await viewIs("list")
+      },
+    },
+    {
+      name:
+        "UnsavedGuard: a second Back while the question is open is held too, in the one dialog, and Leave arrives where Back was going",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, leave, open, type, viewIs, dialogsAre } = unsavedHistoryDemo(page)
+        await open("edit")
+        await open("preview")
+        await open("edit")
+        await type()
+
+        await page.goBack()
+        await dialog.waitFor()
+        await page.goBack()
+        await viewIs("edit")
+        await dialogsAre(1)
+        await leave.click()
+        await viewIs("preview")
+        await dialogsAre(0)
+      },
+    },
+    {
+      name:
+        "UnsavedGuard in a browser without the Navigation API: Back with a change is not held, and leaves as the router draws it",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, type, viewIs, dialogsAre } = unsavedHistoryDemo(page)
+        await page.evaluate(() =>
+          Object.defineProperty(globalThis, "navigation", { value: undefined })
+        )
+        await open("edit")
+        await type()
+        await page.goBack()
+        await viewIs("list")
+        await dialogsAre(0)
+      },
+    },
+  ]
+}
 
 /** The parts of the `ErrorState` card's removal demo a spec drives. */
 function removalDemo(page: Page) {
