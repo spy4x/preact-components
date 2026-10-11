@@ -202,7 +202,10 @@ and this component dropped it.
 (640 px) a corner only picks the top or the bottom: the stack spans the width, 1rem from the left,
 the right and that edge, so a toast is centred and never leaves a narrow phone's screen. The dismiss
 button is a `TOUCH_TARGET`, 44 px each way on a phone and 36 px from `sm` up, around its 16 px
-cross. The toasts keep the order of
+cross. The stack's offsets and width are unprefixed classes whose values change at the breakpoints, so
+a caller's own unprefixed `top-*`, `right-*`, `bottom-*`, `left-*`, `w-*` or `max-w-*` in `class`
+replaces them at every window width: `class="top-20"` puts the stack under a header on a phone and
+on a desktop alike. The toasts keep the order of
 `toasts` in every corner, and each one slides in from its corner's side unless the reader prefers
 reduced motion.
 

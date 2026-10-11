@@ -1091,8 +1091,9 @@ async function toastrCard(page: Page, width: number) {
      * 0 with no slide.
      */
     pushAndReadStart: async (): Promise<number> => {
-      const start = stack.evaluate((element) =>
-        new Promise<string>((done) => {
+      // The observer is in place before the click: this call returns once it watches the stack.
+      const start = await stack.evaluateHandle((element) => ({
+        translate: new Promise<string>((done) => {
           new MutationObserver((records, observer) => {
             const added = records.flatMap((record) => [...record.addedNodes])
               .find((node) => node instanceof HTMLElement)
@@ -1100,10 +1101,10 @@ async function toastrCard(page: Page, width: number) {
             observer.disconnect()
             done(getComputedStyle(added as HTMLElement).translate)
           }).observe(element, { childList: true })
-        })
-      )
+        }),
+      }))
       await card.locator(`[data-e2e="toast-info"]`).click()
-      return parseFloat((await start).split(" ")[0]) || 0
+      return parseFloat((await start.evaluate((held) => held.translate)).split(" ")[0]) || 0
     },
     /** Empties the stack. A dispatched click, as for the picker below. */
     clear: async () => {
@@ -1158,12 +1159,12 @@ function toastSlideSpec(width: number): Spec {
  */
 function toastrSpecs(): Spec[] {
   return [
-    {
+    ...([320, 414] as const).map((width): Spec => ({
       name:
-        "Toastr: at 320 px wide, in each of the four corners, a toast is inside the window, 16 px from the left, the right and the corner's top or bottom edge",
+        `Toastr: at ${width} px wide, in each of the four corners, a toast is inside the window, 16 px from the left, the right and the corner's top or bottom edge`,
       pageId: "ui",
       run: async (page) => {
-        const { toast, push, moveTo, innerWidth } = await toastrCard(page, 320)
+        const { toast, push, moveTo, innerWidth } = await toastrCard(page, width)
         await push()
         const inner = await innerWidth()
         for (const corner of TOAST_CORNERS) {
@@ -1178,7 +1179,7 @@ function toastrSpecs(): Spec[] {
           }
         }
       },
-    },
+    })),
     {
       name:
         "Toastr: at 320 px wide the dismiss button is at least 44 px each way inside its toast, and Enter on it closes the toast",
@@ -1234,6 +1235,65 @@ function toastrSpecs(): Spec[] {
         }
       },
     })),
+    {
+      name:
+        "Toastr: the dismiss button adds no height: at 320 and 1440 px a toast is as tall as its text plus 16 px above and below",
+      pageId: "ui",
+      run: async (page) => {
+        const heights: string[] = []
+        for (const width of [320, 1440]) {
+          const { toast, push, moveTo, clear } = await toastrCard(page, width)
+          await push()
+          await moveTo("top-right")
+          const box = await boxOf(toast, "the toast")
+          const first = await boxOf(toast.locator("p").first(), "the toast's first line")
+          const last = await boxOf(toast.locator("p").last(), "the toast's last line")
+          const text = last.y + last.height - first.y
+          if (Math.abs(box.height - text - 32) > 0.5) {
+            throw new Error(
+              `at ${width} px the toast is ${box.height}px tall around ${text}px of text`,
+            )
+          }
+          heights.push(`${width}: ${box.height}px around ${text}px`)
+          await clear()
+        }
+        return heights.join(", ")
+      },
+    },
+    {
+      name:
+        "Toastr: a caller's own offsets place the stack from 640 px up: the mini-app's toast sits 17 px from the bottom and the right of its frame, and its empty stack has no height",
+      pageId: "overview",
+      run: async (page) => {
+        const frame = page.locator(`[data-e2e="mini-app"]`)
+        const stack = frame.locator(`[data-e2e="mini-app-toasts"]`)
+        const toast = stack.locator(`[role="status"]`)
+        const gaps: string[] = []
+        for (const width of [640, 768, 1440]) {
+          await page.setViewportSize({ width, height: 800 })
+          const empty = await stack.evaluate((element) => element.getBoundingClientRect().height)
+          if (empty !== 0) throw new Error(`at ${width} px the empty stack is ${empty}px tall`)
+          await frame.locator(`[data-e2e="mini-app-toast"]`).click()
+          await toast.waitFor()
+          await toast.evaluate((element) =>
+            Promise.all(element.getAnimations().map((animation) => animation.finished))
+          )
+          const outer = await boxOf(frame, "the mini-app's frame")
+          const box = await boxOf(toast, "the mini-app's toast")
+          const bottom = outer.y + outer.height - box.y - box.height
+          const right = outer.x + outer.width - box.x - box.width
+          if (Math.abs(bottom - 17) > 1 || Math.abs(right - 17) > 1) {
+            throw new Error(
+              `at ${width} px the toast is ${bottom}px from the bottom and ${right}px from the right`,
+            )
+          }
+          gaps.push(`${width}: ${bottom}px, ${right}px`)
+          await toast.getByRole("button", { name: "Dismiss" }).click()
+          await toast.waitFor({ state: "detached" })
+        }
+        return gaps.join("; ")
+      },
+    },
     toastSlideSpec(320),
     toastSlideSpec(1440),
     {

@@ -140,16 +140,29 @@ export interface ToastrProps {
 }
 
 /**
- * Where each corner puts the stack. On a phone, below `sm`, a corner only picks the top or the
- * bottom: the stack spans the window between two 1rem gutters (`inset-x-4` on the stack itself), so
- * it can never cross an edge. From `sm` up the stack is 2rem from both edges of its corner, and
- * `right-auto` or `left-auto` lets go of the far edge. `top-right` is the default.
+ * The stack's own offsets and width, as custom properties that change at a breakpoint. On a phone,
+ * below `sm`, the gutter is 1rem on every side and the stack is as wide as the room between the
+ * gutters, so it can never cross an edge. From `sm` up the gutter is 2rem, the far edge is let go
+ * (`auto`), and the width is capped at 20rem, 24rem from `md`.
+ *
+ * The values switch, not the classes: every offset and width class below is unprefixed, so a
+ * caller's own unprefixed `top-*`, `left-*`, `right-*`, `w-*` or `max-w-*` in `class` replaces it
+ * at every window width. A `sm:top-8` here would win over a caller's `top-20` from `sm` up.
+ */
+const stackSizing = "[--toastr-gap:1rem] [--toastr-far:1rem] [--toastr-width:auto] " +
+  "[--toastr-max:none] sm:[--toastr-gap:2rem] sm:[--toastr-far:auto] sm:[--toastr-width:100%] " +
+  "sm:[--toastr-max:20rem] md:[--toastr-max:24rem] w-(--toastr-width) max-w-(--toastr-max)"
+
+/**
+ * Where each corner puts the stack: `--toastr-gap` from the corner's two edges and `--toastr-far`
+ * from the opposite side, which is the same gutter on a phone and `auto` from `sm` up. `top-right`
+ * is the default.
  */
 const cornerClasses: Record<ToastCorner, string> = {
-  "top-left": "top-4 sm:top-8 sm:right-auto sm:left-8",
-  "top-right": "top-4 sm:top-8 sm:right-8 sm:left-auto",
-  "bottom-left": "bottom-4 sm:right-auto sm:bottom-8 sm:left-8",
-  "bottom-right": "bottom-4 sm:right-8 sm:bottom-8 sm:left-auto",
+  "top-left": "top-(--toastr-gap) right-(--toastr-far) left-(--toastr-gap)",
+  "top-right": "top-(--toastr-gap) right-(--toastr-gap) left-(--toastr-far)",
+  "bottom-left": "right-(--toastr-far) bottom-(--toastr-gap) left-(--toastr-gap)",
+  "bottom-right": "right-(--toastr-gap) bottom-(--toastr-gap) left-(--toastr-far)",
 }
 
 /**
@@ -293,9 +306,8 @@ export function Toastr(
     <div
       data-e2e={dataE2E}
       class={cn(
-        // The width cap is lifted below `sm` rather than added from `sm` up, so a caller's own
-        // `max-w-*` in `class` still replaces the cap at every width from `sm`.
-        "fixed inset-x-4 z-50 w-full max-w-xs space-y-4 max-sm:w-auto max-sm:max-w-none md:max-w-sm",
+        "fixed z-50 space-y-4",
+        stackSizing,
         cornerClasses[corner],
         className,
       )}

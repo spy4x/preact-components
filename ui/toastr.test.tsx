@@ -92,10 +92,15 @@ describe("Toastr", () => {
     const html = render(<Toastr toasts={[{ id: 1, body: "note" }]} onDismiss={() => {}} />)
 
     expect(stackClasses(html)).toEqual(
-      expect.arrayContaining(["fixed", "top-4", "sm:top-8", "sm:right-8", "sm:left-auto", "z-50"]),
+      expect.arrayContaining([
+        "fixed",
+        "z-50",
+        "top-(--toastr-gap)",
+        "right-(--toastr-gap)",
+        "left-(--toastr-far)",
+      ]),
     )
-    expect(stackClasses(html)).not.toContain("sm:left-8")
-    expect(stackClasses(html)).not.toContain("bottom-4")
+    expect(stackClasses(html).filter((name) => name.startsWith("bottom-"))).toEqual([])
   })
 
   it("renders the same markup with no corner as with top-right", () => {
@@ -106,48 +111,67 @@ describe("Toastr", () => {
     )
   })
 
-  it("puts the stack in the corner it is asked for from sm up", () => {
-    const expected: Record<ToastCorner, [string, string]> = {
-      "top-left": ["sm:top-8", "sm:left-8"],
-      "top-right": ["sm:top-8", "sm:right-8"],
-      "bottom-left": ["sm:bottom-8", "sm:left-8"],
-      "bottom-right": ["sm:bottom-8", "sm:right-8"],
-    }
-    for (const [corner, [vertical, horizontal]] of Object.entries(expected)) {
-      const classes = stackClasses(
-        render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner as ToastCorner} />),
-      )
-      const others = ["sm:top-8", "sm:bottom-8", "sm:left-8", "sm:right-8"]
-        .filter((edge) => edge !== vertical && edge !== horizontal)
-
-      expect(classes, corner).toEqual(expect.arrayContaining(["fixed", vertical, horizontal]))
-      for (const edge of others) expect(classes, `${corner} carries ${edge}`).not.toContain(edge)
-    }
-  })
-
-  it("spans a phone's width between two 1rem gutters, at the corner's top or bottom", () => {
+  it("puts the stack a gutter from its corner's two edges and lets the far side go", () => {
     for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"] as const) {
       const classes = stackClasses(
         render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner} />),
       )
-      const [edge, other] = corner.startsWith("top") ? ["top-4", "bottom-4"] : ["bottom-4", "top-4"]
+      const [vertical, horizontal] = corner.split("-")
+      const [otherVertical, otherHorizontal] = [
+        vertical === "top" ? "bottom" : "top",
+        horizontal === "left" ? "right" : "left",
+      ]
 
-      expect(classes, corner).toEqual(
-        expect.arrayContaining(["inset-x-4", "max-sm:w-auto", "max-sm:max-w-none", edge]),
-      )
-      expect(classes, corner).not.toContain(other)
+      expect(classes.filter((name) => /^(top|right|bottom|left)-/.test(name)).sort(), corner)
+        .toEqual([
+          `${vertical}-(--toastr-gap)`,
+          `${horizontal}-(--toastr-gap)`,
+          `${otherHorizontal}-(--toastr-far)`,
+        ].sort())
+      expect(classes.filter((name) => name.startsWith(`${otherVertical}-`)), corner).toEqual([])
     }
   })
 
-  it("lets a caller's own width replace the stack's cap", () => {
-    const classes = stackClasses(
-      render(<Toastr toasts={[]} onDismiss={() => {}} class="max-w-sm" />),
-    )
+  it("uses a 1rem gutter and the full width on a phone, 2rem and a capped width from sm up", () => {
+    const classes = stackClasses(render(<Toastr toasts={[]} onDismiss={() => {}} />))
 
-    expect(classes).toContain("max-w-sm")
-    expect(classes).not.toContain("max-w-xs")
-    // A cap of the stack's own at `sm` would win over the caller's unprefixed class there.
-    expect(classes.filter((name) => name.startsWith("sm:max-w-"))).toEqual([])
+    expect(classes).toEqual(expect.arrayContaining([
+      "[--toastr-gap:1rem]",
+      "[--toastr-far:1rem]",
+      "[--toastr-width:auto]",
+      "[--toastr-max:none]",
+      "sm:[--toastr-gap:2rem]",
+      "sm:[--toastr-far:auto]",
+      "sm:[--toastr-width:100%]",
+      "sm:[--toastr-max:20rem]",
+      "md:[--toastr-max:24rem]",
+      "w-(--toastr-width)",
+      "max-w-(--toastr-max)",
+    ]))
+  })
+
+  it("lets a caller's own unprefixed offsets and widths replace the stack's at every width", () => {
+    const own = ["top-20", "right-4", "bottom-auto", "left-4", "w-auto", "max-w-sm"]
+    for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"] as const) {
+      const classes = stackClasses(
+        render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner} class={own.join(" ")} />),
+      )
+      // No offset or width of the stack's own is left, under any breakpoint, to win over these.
+      const placing = classes.filter((name) =>
+        /^([a-z-]+:)?(top|right|bottom|left|inset|w|max-w)-/.test(name)
+      )
+
+      expect(placing.sort(), corner).toEqual([...own].sort())
+    }
+  })
+
+  it("keeps the stack's other offsets when a caller moves one", () => {
+    const classes = stackClasses(render(<Toastr toasts={[]} onDismiss={() => {}} class="top-20" />))
+
+    expect(classes).toEqual(
+      expect.arrayContaining(["top-20", "right-(--toastr-gap)", "left-(--toastr-far)"]),
+    )
+    expect(classes).not.toContain("top-(--toastr-gap)")
   })
 
   it("slides a toast in from the right in a right corner and from the left in a left one", () => {
@@ -312,6 +336,8 @@ describe("Toastr", () => {
 
     expect(button).toContain(TOUCH_TARGET)
     expect(button).toContain('type="button"')
+    expect(button).toContain("focus-visible:outline-2")
+    expect(button).toContain("focus-visible:outline-current")
   })
 
   it("renders no action button for a toast without an action", () => {
