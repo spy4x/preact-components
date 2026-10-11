@@ -377,7 +377,7 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
-      "AssociationEditor: a Restore the store refuses is shown in its dialog in the app's words, and leaving the dialog keeps the row removed",
+      "AssociationEditor: a Restore the store refuses is shown in its dialog in the app's words",
     pageId: "crud",
     run: async (page) => {
       const card = page.locator("#demo-AssociationEditor")
