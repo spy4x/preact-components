@@ -11,6 +11,7 @@ import {
   Button,
   Checkbox,
   Cluster,
+  Combobox,
   Field,
   Grid,
   InlineEdit,
@@ -22,6 +23,7 @@ import {
   RadioGroup,
   Select,
   Stack,
+  TagInput,
   Textarea,
   ToggleChips,
 } from "@spy4x/preact-ui"
@@ -123,6 +125,91 @@ function FieldDemo() {
         {query.value || "(empty)"}
       </p>
     </Stack>
+  )
+}
+
+const shippingCities = ["Lisbon", "Porto", "Atlantis"]
+
+/**
+ * An order form whose four fields are required, each around a control that enforces it in its own
+ * way: an amount, tags, a combobox and a radio group. The browser refuses the submit while one is
+ * empty, and the count under the form only moves when a submit goes through. "Reset" empties all
+ * four, so a browser check can leave out one at a time. Choosing Atlantis shows an error under the
+ * combobox, which its input then points at.
+ */
+function RequiredFieldsDemo() {
+  const price = useSignal<number | null>(null)
+  const tags = useSignal<string[]>([])
+  const city = useSignal<string | null>(null)
+  const plan = useSignal<string | null>(null)
+  const submits = useSignal(0)
+
+  return (
+    <form
+      data-e2e="required-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submits.value++
+      }}
+    >
+      <Stack gap="md">
+        <Grid minColumnWidth="sm" gap="md">
+          <Field id="guide-required-price" label="Price (EUR)" required>
+            <MoneyInput
+              value={price.value}
+              currency="EUR"
+              onChange={(value) => price.value = value}
+            />
+          </Field>
+          <Field id="guide-required-tags" label="Tags" required hint="At least one.">
+            <TagInput value={tags.value} onChange={(next) => tags.value = next} />
+          </Field>
+          <Field
+            id="guide-required-city"
+            label="Ships to"
+            required
+            error={city.value === "Atlantis" ? "We do not ship to Atlantis" : undefined}
+          >
+            <Combobox
+              items={shippingCities}
+              value={city.value}
+              onChange={(next) => city.value = next}
+              ariaLabel="Ships to"
+            />
+          </Field>
+          <Field id="guide-required-plan" labelFor={false} required>
+            <RadioGroup
+              legend="Delivery (required)"
+              name="guide-required-plan"
+              value={plan.value}
+              onChange={(value) => plan.value = value}
+              options={[
+                { value: "standard", label: "Standard" },
+                { value: "express", label: "Express" },
+              ]}
+            />
+          </Field>
+        </Grid>
+        <p class="text-xs text-muted" data-e2e="required-submits">submits: {submits.value}</p>
+        <Cluster gap="sm">
+          <Button type="submit" size="sm" data-e2e="required-submit">Place order</Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-e2e="required-reset"
+            onClick={() => {
+              price.value = null
+              tags.value = []
+              city.value = null
+              plan.value = null
+            }}
+          >
+            Reset
+          </Button>
+        </Cluster>
+      </Stack>
+    </form>
   )
 }
 
@@ -664,7 +751,8 @@ export const fieldDemos = {
         name: "required",
         type: "boolean",
         default: "false",
-        description: "Makes the control required and marks the label with a `*`.",
+        description:
+          "Hands `required` to the control, which enforces it, and marks the label with a `*`. The `*` also shows for a control that is `required` itself.",
       },
       {
         name: "suffix",
@@ -686,8 +774,18 @@ export const fieldDemos = {
 // A checkbox names itself with its own text, so Field adds only the hint and the wiring:
 <Field id="archived" hint="Hides the row from the list">
   <Checkbox checked={archived.value}>Archived</Checkbox>
+</Field>
+
+// Each control enforces required in its own way: at least one tag, an item chosen, a radio picked.
+<Field id="tags" label="Tags" required>
+  <TagInput value={tags.value} onChange={(next) => tags.value = next} />
 </Field>`,
-    render: () => <FieldDemo />,
+    render: () => (
+      <Stack gap="lg">
+        <FieldDemo />
+        <RequiredFieldsDemo />
+      </Stack>
+    ),
   },
   Input: {
     summary:
@@ -756,6 +854,22 @@ export const fieldDemos = {
   RadioGroup: {
     summary: "A set of radio buttons under one heading, of which one is picked.",
     wide: false,
+    props: [
+      { name: "legend", type: "ComponentChildren", description: "The group's name." },
+      { name: "name", type: "string", description: "The name every radio shares." },
+      { name: "options", type: "RadioOption[]", description: "The choices." },
+      {
+        name: "value / onChange",
+        type: "number | string | null / (value: string, event) => void",
+        description: "The picked value, and the port that reports a new pick.",
+      },
+      {
+        name: "required",
+        type: "boolean",
+        default: "false",
+        description: "One choice must be picked before the form submits; `Field` sets it.",
+      },
+    ],
     snippet: `<RadioGroup
   legend="Notification method"
   name="channel"
@@ -830,6 +944,12 @@ export const fieldDemos = {
         name: "name",
         type: "string",
         description: "Posts that integer in a hidden field of this name.",
+      },
+      {
+        name: "required",
+        type: "boolean",
+        default: "false",
+        description: "The browser refuses a submit while the field is empty; `Field` sets it.",
       },
     ],
     snippet: `<Field id="price" label="Price">

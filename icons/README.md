@@ -31,7 +31,8 @@ export interface IconProps {
   `IconUpwork` renders 20 × 20 at its default.
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
   the right of the `||` in `shrink-0 ${props.class || "<default size>"}`.
-  `IconLoading` and `IconSpinner` additionally hard-code `animate-spin`.
+  `IconLoading` and `IconSpinner` additionally hard-code `animate-spin`, and stand still under
+  reduced motion (`motion-reduce:animate-none`).
 - `IconStar` alone takes one more prop, `filled`. `<IconStar filled />` paints the same Feather
   drawing solid in the text colour and keeps its stroke, so it covers the outline's footprint
   exactly; without `filled` it is the outline it has always been.

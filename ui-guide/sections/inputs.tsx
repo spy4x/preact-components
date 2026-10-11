@@ -1158,6 +1158,11 @@ export const inputDemos = {
       },
       { name: "label", type: "string", description: "The switch's accessible name." },
       { name: "disabled", type: "boolean", default: "false", description: "Greys it out." },
+      {
+        name: "aria-invalid",
+        type: "boolean",
+        description: "Marks the switch invalid; `Field` sets it while it carries an error.",
+      },
     ],
     snippet: `<ToggleSwitch
   value={archived.value}
@@ -1380,6 +1385,24 @@ export const inputDemos = {
         default: `"Loading…"`,
         description: "What the field says while `loading` is set.",
       },
+      {
+        name: "required",
+        type: "boolean",
+        default: "false",
+        description:
+          "An item must be chosen: with none the browser refuses the submit; `Field` sets it.",
+      },
+      {
+        name: "requiredMessage",
+        type: "string",
+        default: `"Select an option"`,
+        description: "What the browser shows on a submit with nothing chosen.",
+      },
+      {
+        name: "aria-describedby / aria-invalid",
+        type: "string / boolean",
+        description: "Set by `Field`: its messages describe the input, and an error marks it.",
+      },
     ],
     snippet: `<Combobox
   items={cities}
@@ -1424,6 +1447,18 @@ export const inputDemos = {
         type: "boolean",
         default: "false",
         description: "No typing, no removing.",
+      },
+      {
+        name: "required",
+        type: "boolean",
+        default: "false",
+        description: "At least one tag: with none the browser refuses the submit; `Field` sets it.",
+      },
+      {
+        name: "requiredMessage",
+        type: "string",
+        default: `"Add at least one tag"`,
+        description: "What the browser shows on a submit with no tag.",
       },
       {
         name: "removeLabel",

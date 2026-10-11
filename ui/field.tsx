@@ -78,12 +78,16 @@ export interface FieldProps {
   suffix?: boolean
   /** Message to show under the control. Empty, `null` or `undefined` renders nothing and wires nothing. */
   error?: string | null
-  /** Helper text under the control. An empty string renders nothing and wires nothing. */
+  /**
+   * Helper text under the control. An empty string, `null`, `true` or `false` renders nothing and
+   * wires nothing, so `hint={condition && "text"}` is safe.
+   */
   hint?: ComponentChildren
   /**
-   * Marks the control `required` and draws a `*` after the label. The native attribute is what the
-   * browser validates and what a screen reader announces; the `*` is hidden from it. A function
-   * child sets `required` on its control itself.
+   * Hands `required` to the control and draws a `*` after the label; the `*` is hidden from a
+   * screen reader, which hears "required" from the control. The control is what enforces it: see
+   * "Required" on {@link Field} for which controls do. A control that is `required` by its own prop
+   * gets the `*` too, without this. A function child sets `required` on its control itself.
    */
   required?: boolean
   /** Renders the label dimmed. The `disabled` attribute itself belongs on the control. */
@@ -184,11 +188,27 @@ const hintText = "mt-2 text-sm text-muted"
  * An `error` also marks the control `aria-invalid`, which is the only place a screen reader learns a
  * value was rejected — `aria-describedby` announces the message but not the invalid state. That
  * marking is `wireElement`'s, so it applies to the element-child form only: a function child is
- * handed the wiring and sets `aria-invalid` itself.
+ * handed the wiring and sets `aria-invalid` itself. Without an `error` the control's own
+ * `aria-invalid` is left as the caller wrote it, so a control that validates itself stays marked.
  *
- * `required` works the same way: the element child gets the native `required` attribute, so the
- * browser enforces it and a screen reader announces it, and a function child sets it itself. A
- * control that is already `required` stays so whatever the field says.
+ * **Required.** `required` is handed to the element child as a prop, and the control decides what
+ * it means, because "empty" differs per control:
+ *
+ * - `Input`, `Textarea`, `Select`, `InputButton`, `Checkbox`, `FileInput`, `MoneyInput` and a plain
+ *   `<input>` carry the native `required` attribute, and the browser refuses the submit.
+ * - `RadioGroup` puts the native attribute on its radios: one of them must be picked.
+ * - `TagInput` (at least one tag) and `Combobox` (an item chosen) refuse the submit through the
+ *   browser's own validation with a message of their own, because their text field is empty while
+ *   they hold a value, and say `aria-required` to a screen reader.
+ * - `ToggleSwitch` has no empty state: it is on or off. `required` does nothing on it, so do not
+ *   mark such a field required.
+ * - A control of your own that ignores a `required` prop is not enforced: the `*` would promise
+ *   something nothing checks.
+ *
+ * The `*` shows when either side says so: `Field`'s own `required`, or a truthy `required` prop on
+ * the control (the element child, or the element a function child returns). A function child sets
+ * `required` on its control itself. A control that is already `required` stays so whatever the
+ * field says.
  */
 export function Field(
   {
@@ -206,7 +226,9 @@ export function Field(
 ): JSX.Element {
   const message = typeof error === "string" && error.length > 0 ? error : undefined
   const errorId = message === undefined ? undefined : `${id}-error`
-  const hintId = hint === undefined || hint === null || hint === false || hint === ""
+  // `true` and `false` render as nothing, the same as in any JSX child: `hint={flag && "text"}`.
+  const hintId = hint === undefined || hint === null || hint === false || hint === true ||
+      hint === ""
     ? undefined
     : `${id}-hint`
   const ariaDescribedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined
@@ -220,7 +242,9 @@ export function Field(
     : (
       <label for={labelTarget(labelFor, id)} class={join("pc-label", disabled && "opacity-50")}>
         {label}
-        {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
+        {(required === true || asksRequired(control)) && (
+          <span aria-hidden="true" class="ml-1 text-danger">*</span>
+        )}
       </label>
     )
 
@@ -272,7 +296,9 @@ export function labelTarget(labelFor: FieldLabelFor | undefined, id: string): st
  * @param child The single control element, validated rather than trusted.
  * @param id The control's `id`, and the label's `for`.
  * @param ariaDescribedBy The message ids to append to whatever the control already describes.
- * @param invalid Whether to mark the control `aria-invalid`.
+ * @param invalid Whether to mark the control `aria-invalid`. `false` leaves the control's own
+ * `aria-invalid` alone: the key is added to the clone only when set, because a key that is present
+ * with `undefined` would overwrite the control's value.
  * @param required Whether to mark the control `required`. `false` leaves the control's own
  * `required` alone, so it is added to the clone only when set.
  * @throws When `child` is not a single element — an array or a text child has no element to wire, and
@@ -301,7 +327,23 @@ function wireElement(
   return cloneElement(child, {
     id,
     "aria-describedby": describedBy,
-    "aria-invalid": invalid ? true : undefined,
+    ...(invalid ? { "aria-invalid": true } : {}),
     ...(required ? { required: true } : {}),
   } as JSX.InputHTMLAttributes<HTMLInputElement>)
+}
+
+/**
+ * Whether the control asks to be required by its own `required` prop, for the label's `*`.
+ *
+ * Reads the prop off the element only: a control nested deeper, inside a wrapper a function child
+ * returns, is out of sight, and `Field`'s own `required` draws the `*` for it.
+ *
+ * @param control The wired control, as rendered.
+ * @returns `true` for a truthy `required`, read through a signal when the caller passed one.
+ */
+function asksRequired(control: ComponentChild): boolean {
+  if (!isValidElement(control)) return false
+  const own = (control.props as { required?: unknown }).required
+  const value = typeof own === "object" && own !== null && "value" in own ? own.value : own
+  return value !== undefined && value !== null && value !== false
 }

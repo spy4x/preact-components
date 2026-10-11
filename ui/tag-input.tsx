@@ -207,6 +207,15 @@ export interface TagInputProps {
   "aria-describedby"?: string
   /** Set by `Field` while it carries an error. Either this or `error` marks the field invalid. */
   "aria-invalid"?: boolean | string
+  /**
+   * At least one tag is needed: with none, the browser refuses the form's submit and shows
+   * `requiredMessage`, and a screen reader hears "required". Not the native attribute, which would
+   * look at the text field: that is empty whenever the tags are chips. `Field` sets it from its own
+   * `required`.
+   */
+  required?: boolean
+  /** What the browser shows on a submit with no tag. English default, `"Add at least one tag"`. */
+  requiredMessage?: string
   /** Name of a chip's remove button. English default, `"Remove tag work"`. */
   removeLabel?: (tag: string) => string
   /** Name of the list of chips. English default, `"Tags"`. */
@@ -266,6 +275,8 @@ export function TagInput({
   error,
   "aria-describedby": callerDescribedBy,
   "aria-invalid": callerInvalid,
+  required = false,
+  requiredMessage = "Add at least one tag",
   removeLabel = (tag) => `Remove tag ${tag}`,
   tagsLabel = "Tags",
   suggestionsLabel = "Suggestions",
@@ -296,6 +307,13 @@ export function TagInput({
   const errorId = message === undefined ? undefined : `${id}-error`
   const describedBy = [callerDescribedBy, errorId].filter(Boolean).join(" ") || undefined
   const invalid = message !== undefined || callerInvalid === true || callerInvalid === "true"
+  const missing = required && value.length === 0
+
+  // The browser's own validation carries the rule, as it does for a native `required`: while a
+  // required field holds no tag, the form does not submit and the browser shows the message.
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(missing ? requiredMessage : "")
+  }, [missing, requiredMessage])
 
   useEffect(() => {
     // Text typed before the bundle ran is in the field but not in the draft: Preact keeps a field's
@@ -454,6 +472,7 @@ export function TagInput({
           aria-label={ariaLabel}
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
+          aria-required={required || undefined}
           aria-expanded={shown}
           aria-controls={listboxId}
           aria-activedescendant={activeDescendant(id, { activeIndex: active, isOpen: shown })}

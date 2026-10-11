@@ -62,7 +62,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                                              |
 | `Coachmark`           | `coachmark`            | `open`, `target` (a CSS selector or a ref), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                   |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                |
-| `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                                                 |
+| `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                |
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                   |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                  |
@@ -76,7 +76,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                        |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                               |
-| `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (sets `required` on the control), `suffix?`                                                                                                                                                                       |
+| `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                          |
 | `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                                                       |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                 |
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                |
@@ -91,7 +91,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `LoadingSpinner`      | `loading-spinner`      | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion                                                                                                                                                     |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                                                                                                       |
 | `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                  |
-| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`                                                                                                                                     |
+| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                        |
 | `MoreMenu`            | `page-header`          | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                                                                                                   |
 | `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`; `status` without it), `data-*`; renders nothing when empty                                                                                  |
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                               |
@@ -106,7 +106,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                                                                                                      |
 | `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood                                   |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                                                     |
-| `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`                                                                                                                                                                                                                           |
+| `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                             |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                               |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                   |
@@ -118,13 +118,13 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                   |
 | `Table`               | `table`                | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                                |
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                          |
-| `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                   |
+| `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                  |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                               |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                       |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                     |
 | `ToggleChips`         | `toggle-chips`         | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                                                                                                         |
 | `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                                                                                                 |
-| `ToggleSwitch`        | `toggle-switch`        | `value`, `onToggle`, `disabled`, `label`                                                                                                                                                                                                                                     |
+| `ToggleSwitch`        | `toggle-switch`        | `value`, `onToggle`, `disabled`, `label`, `aria-invalid?`; no `required`: a switch is never empty                                                                                                                                                                            |
 | `Tooltip`             | `tooltip`              | `content`, `label`, `placement`, `focusable`                                                                                                                                                                                                                                 |
 | `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`                                      |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                         |
@@ -307,7 +307,7 @@ classes, as before element content existed.
 ## Button
 
 `busy` is for the time between a press and the end of the work it started: a payment being
-confirmed, a form being saved. The button shows a spinner, sets `aria-busy="true"` and
+confirmed, a form being saved. The button shows a spinner, which stands still under reduced motion, sets `aria-busy="true"` and
 `aria-disabled="true"`, and cancels every press, so its `onClick` does not run again and a submit
 button does not send its form a second time. It does not set `disabled`, because a disabled button
 drops focus to the page and a keyboard user who pressed Enter would lose their place. `busyLabel`
@@ -507,6 +507,12 @@ was would point `aria-activedescendant` at an element the page no longer holds. 
 list on screen, so it is dropped for as long as the list is too short to hold it: shrink the list and
 the highlight goes, grow it back and it returns to the row it was on. Only the value every reader
 takes is clamped; the position itself is kept, because a list that comes back is the same list.
+
+**Inside `Field`** the input takes the field's `id`, `aria-describedby` (kept beside the empty
+message's own), `aria-invalid` and `required`, so a message under the field is read when the input
+takes focus. `required` means an item is chosen. With none, the browser refuses the form's submit
+and shows `requiredMessage` (`"Select an option"`), and the input says `aria-required`. It is not the
+native `required` attribute, which a typed query that chose nothing would satisfy.
 
 ## DateRangePicker
 
@@ -1205,6 +1211,10 @@ has run — value, message and validity all applied the same way a real keystrok
 never a stale one; a form submitted right after posts what was actually typed, or is blocked by
 `setCustomValidity` if that text did not parse.
 
+`required` puts the native attribute on the visible field, so the browser refuses a submit while it
+is empty; `aria-invalid` marks it for a reason of the caller's. `Field` sets both, from its own
+`required` and `error`.
+
 ## FileInput
 
 A real `<input type="file">`, hidden with `sr-only` rather than `display: none`, so it keeps the
@@ -1489,7 +1499,12 @@ prop with an English default: `placeholder`, `removeLabel`, `tagsLabel`, `sugges
 `addedMessage`, `removedMessage` and `duplicateMessage`.
 
 Inside `Field`, leave `label` and `error` out: `Field` renders both, and its wiring sets the field's
-`id`, `aria-describedby` and `aria-invalid`.
+`id`, `aria-describedby`, `aria-invalid` and `required`.
+
+`required` means at least one tag. With none, the browser refuses the form's submit and shows
+`requiredMessage` (`"Add at least one tag"`), and the field says `aria-required`. It is not the
+native `required` attribute: that looks at the text field, which is empty whenever the tags are
+chips, so it would block a form that has tags.
 
 ## ToggleChips
 

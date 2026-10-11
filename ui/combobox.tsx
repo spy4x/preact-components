@@ -506,6 +506,21 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   query?: string
   /** Called on every keystroke with the raw input value. */
   onQueryChange?: (query: string) => void
+  /**
+   * An item must be chosen: with none, the browser refuses the form's submit and shows
+   * `requiredMessage`, and a screen reader hears "required". Not the native attribute, which would
+   * be satisfied by a typed query that chose nothing. `Field` sets it from its own `required`.
+   */
+  required?: boolean
+  /** What the browser shows on a submit with nothing chosen. English default, `"Select an option"`. */
+  requiredMessage?: string
+  /**
+   * Ids of the elements that describe the field, typically an error and a hint; `Field` sets it.
+   * The field's own empty message is kept beside them.
+   */
+  "aria-describedby"?: string
+  /** Marks the field invalid; `Field` sets it while it carries an error. */
+  "aria-invalid"?: boolean | string
   /** Utilities for the wrapper. */
   class?: string
   /** Utilities for the search input. */
@@ -638,6 +653,10 @@ export function Combobox<T>({
   clearLabel = "Clear selection",
   query: controlledQuery,
   onQueryChange,
+  required = false,
+  requiredMessage = "Select an option",
+  "aria-describedby": callerDescribedBy,
+  "aria-invalid": callerInvalid,
   class: className,
   inputClass,
   listboxClass,
@@ -718,6 +737,13 @@ export function Combobox<T>({
   const active = activeIndex.value >= visible.length ? -1 : activeIndex.value
   // Which channel names this combobox, so each of the two labelled elements picks a consistent one.
   const named = naming({ ariaLabel, "aria-labelledby": ariaLabelledBy })
+  const missing = required && !hasSelection
+
+  // The browser's own validation carries the rule, as it does for a native `required`: while a
+  // required field has nothing chosen, the form does not submit and the browser shows the message.
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(missing ? requiredMessage : "")
+  }, [missing, requiredMessage])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -872,7 +898,10 @@ export function Combobox<T>({
           // spoken as part of the field's identity long after the number was true. Zero matches
           // never carries a count, so while `answersEmpty` holds the region's text is exactly the
           // empty message and nothing else.
-          aria-describedby={answersEmpty ? statusId : undefined}
+          aria-describedby={[callerDescribedBy, answersEmpty ? statusId : undefined]
+            .filter(Boolean).join(" ") || undefined}
+          aria-invalid={callerInvalid === true || callerInvalid === "true" ? true : undefined}
+          aria-required={required || undefined}
           aria-expanded={isOpen.value}
           aria-controls={listboxId}
           aria-activedescendant={activeDescendant(id, {
