@@ -21,6 +21,7 @@
  * deno task verify --static                    # leave the browser out on purpose
  * deno task verify --only=system               # only the system package's browser checks
  * deno task verify --only=e2e                  # only the Playwright specs under e2e/
+ * deno task verify --except=ui,e2e             # every block but those two
  * deno task verify --cpu-throttle=6             # the page's CPU six times slower, see below
  * ```
  *
@@ -42,12 +43,17 @@
  * New and edited checks are Playwright specs under `pages/e2e/` instead (#667). They run as the last
  * block, `e2e`, in the same browser and against the same preview server — see `e2e/runner.ts`.
  *
- * **`--only` is a debugging tool, never a substitute for a full run** (`#253`): reproducing a
+ * **One `--only` run is never a substitute for a full run** (`#253`): reproducing a
  * block-order-dependent flake needs the other blocks left out, which used to mean hand-editing
  * `PACKAGE_BLOCKS` — three separate reviews already had to. `ONLY`'s own doc below covers what it
  * does; `report`'s `note` parameter is what marks a filtered run's last printed line, so it can
- * never be mistaken for a full run's; CI never passes `--only`, and `pages/README.md` documents it
- * for anyone reaching for it locally.
+ * never be mistaken for a full run's, and `pages/README.md` documents it for anyone reaching for
+ * it locally.
+ *
+ * **A full run may be split into parts** (#696): `--only=ui`, `--only=e2e` and `--except=ui,e2e`
+ * together run every block exactly once, each part with its own browser and its own limits. CI
+ * runs those three as three jobs; `--except` names the blocks the other parts took, so a block
+ * added to `PACKAGE_BLOCKS` later lands in the last part without anyone listing it.
  */
 
 import { dirname, join } from "node:path"
@@ -201,13 +207,30 @@ async function lockfileChecks(): Promise<void> {
  * filtered run's very last printed line as filtered, and `pages/README.md`'s "Running one block
  * alone" section.
  */
-const ONLY = (() => {
-  const arg = Deno.args.find((value) => value.startsWith("--only="))
+const ONLY = blockNamesOf("--only=")
+
+/**
+ * `--except=ui,e2e` runs every package block but those — `undefined` when the flag was not passed.
+ *
+ * It is the last part of a full run split into parts (#696): the other parts name their blocks
+ * with `--only`, and this one takes whatever is left, so no block can fall between the parts. Like
+ * `--only` it marks the run's last line as filtered, and an unknown name is a failed check.
+ */
+const EXCEPT = blockNamesOf("--except=")
+
+/**
+ * The block names one flag lists, such as `--only=system,ui`.
+ *
+ * @param prefix The flag up to and including its `=`.
+ * @returns The names, or `undefined` when the flag was not passed; empty when it named nothing.
+ */
+function blockNamesOf(prefix: string): string[] | undefined {
+  const arg = Deno.args.find((value) => value.startsWith(prefix))
   if (!arg) return undefined
-  return arg.slice("--only=".length).split(",").map((name) => name.trim()).filter((name) =>
+  return arg.slice(prefix.length).split(",").map((name) => name.trim()).filter((name) =>
     name.length > 0
   )
-})()
+}
 
 /**
  * `--cpu-throttle=6` runs the page's main thread six times slower, through Chromium's own
@@ -755,6 +778,31 @@ async function browserPhase(): Promise<void> {
   // goes anywhere near a browser, not a failure buried among checks that never had anything to do
   // with it.
   let activeBlocks = PACKAGE_BLOCKS
+  if (ONLY && EXCEPT) {
+    check("--only and --except are not passed together", false, "both were passed")
+    return
+  }
+  if (EXCEPT) {
+    // The same three refusals as `--only` below, for the same reason: a part of a split run that
+    // quietly ran no block, or fewer than it was meant to, would report a spotless short run.
+    const selection = selectBlocks(PACKAGE_BLOCKS, EXCEPT)
+    if (EXCEPT.length === 0 || selection.unknown.length > 0) {
+      check(
+        "--except names only known package blocks, and at least one",
+        false,
+        `${
+          EXCEPT.length === 0 ? "--except was empty" : `unknown: ${selection.unknown.join(", ")}`
+        }` +
+          ` — known blocks: ${PACKAGE_BLOCKS.map((block) => block.name).join(", ")}`,
+      )
+      return
+    }
+    if (selection.excluded.length === 0) {
+      check("--except leaves at least one package block to run", false, "it named every block")
+      return
+    }
+    activeBlocks = selection.excluded
+  }
   if (ONLY) {
     // `--only=` with nothing after the `=` parses to an empty list rather than `undefined` — still
     // truthy, so still worth its own name here rather than silently selecting zero blocks and
@@ -1479,7 +1527,8 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
 ]
 
 /**
- * The line that marks a filtered `--only` run as filtered — `undefined` on every full run.
+ * The line that marks a run filtered by `--only` or `--except` as filtered — `undefined` on every
+ * full run.
  *
  * Names the blocks that ran, from {@link ranBlockNames} — not the blocks `ONLY` asked for, and not
  * the blocks committed: a refused request commits nothing, and a run whose browser never starts
@@ -1492,7 +1541,7 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
  * which is the defect this replaces.
  */
 function filteredRunNote(): string | undefined {
-  if (!ONLY) return undefined
+  if (!ONLY && !EXCEPT) return undefined
   return filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
 }
 

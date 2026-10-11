@@ -376,7 +376,7 @@ export function filteredRunLine(all: readonly string[], ran: readonly string[]):
   const excluded = all.filter((name) => !ran.includes(name))
   return `FILTERED: ran ${ran.join(", ") || "(none)"}, left out ${
     excluded.join(", ") || "(none)"
-  } — not a full run; CI never passes --only`
+  } — not a full run on its own`
 }
 
 /**
