@@ -568,6 +568,7 @@ function ConfirmDialogDemo() {
           title="Archive invoice INV-0007?"
           confirmLabel="Archive"
           cancelLabel="Cancel"
+          closeLabel="Close without archiving"
           onConfirm={() => {
             outcome.value = "confirmed: archive INV-0007"
             target.value = null
@@ -1284,6 +1285,19 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         description: "The confirming button's text.",
       },
       {
+        name: "cancelLabel",
+        type: "string",
+        default: `"Cancel"`,
+        description: "The cancelling button's text.",
+      },
+      {
+        name: "closeLabel",
+        type: "string",
+        default: `"Close"`,
+        description:
+          "The name of the cross in the corner, which cancels too. Left out when a footer button has the same name.",
+      },
+      {
         name: "tone",
         type: `"default" | "danger"`,
         default: `"default"`,
@@ -1346,7 +1360,8 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
       {
         name: "labels",
         type: "Partial<UnsavedGuardLabels>",
-        description: "Replaces the dialog's English words: `title`, `message`, `leave`, `stay`.",
+        description:
+          "Replaces the dialog's English words: `title`, `message`, `leave`, `stay`, and `close` for the cross in its corner.",
       },
     ],
     snippet: `// Once for the app, outside any component.

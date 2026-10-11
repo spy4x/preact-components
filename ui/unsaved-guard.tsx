@@ -83,6 +83,8 @@ export interface UnsavedGuardLabels {
   leave: string
   /** The button that stays. Defaults to `"Stay"`. */
   stay: string
+  /** The name of the cross in the dialog's corner, which stays too. Defaults to `"Close"`. */
+  close?: string
 }
 
 /** The English words of {@link UnsavedGuard}'s dialog. */
@@ -226,6 +228,7 @@ export function UnsavedGuard(
       message={words.message}
       confirmLabel={words.leave}
       cancelLabel={words.stay}
+      closeLabel={words.close}
       tone="danger"
       onConfirm={() => {
         // Taken out first: an `onDiscard` that unmounts this guard at once lets go of the guard,
