@@ -122,8 +122,9 @@ behind one is unproven until a browser check covers it. A new check, and an exis
 is a Playwright spec in `pages/e2e/<package>.spec.ts`, with axe-core for accessibility (#667);
 untouched checks stay in `pages/checks/`. Read [`pages/README.md`](./pages/README.md), "Writing a
 browser check", first. Always run `deno task --cwd pages build` before
-`deno task --cwd pages verify`; `--static` and `--only` are not full runs, and CI passes neither.
-GitHub runs `check`, `publish:dry`, the build and `verify` on every PR; the Pages deploy waits.
+`deno task --cwd pages verify`; `--static` and one `--only` run are not full runs. On a busy machine
+run it in its three parts (same file, "Running a full run in parts"), as CI does: GitHub runs
+`check`, `publish:dry`, the build and the three parts on every PR; the Pages deploy waits.
 
 ## Releases
 

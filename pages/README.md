@@ -80,13 +80,46 @@ shows up when the other blocks are _not_ run first needs the other blocks left o
 `#253` the only way to do that was to hand-edit `PACKAGE_BLOCKS` in `pages/verify.ts` and revert it
 afterward; three separate reviews had already done exactly that.
 
-This is a debugging tool, never a substitute for a full run, and the output says so loudly: a
+One filtered run is never a substitute for a full run, and the output says so loudly: a
 filtered run's very last printed line reads `FILTERED: ran <blocks>, left out <blocks>` — passed to
 `report()` as its `note`, so it prints after every check line and the summary, not somewhere earlier
-a reader could mistake for part of the run's setup. CI never passes `--only`. An unknown block name
+a reader could mistake for part of the run's setup. An unknown block name
 is a failed check (`--only names only known package blocks`) rather than a run that silently did
 less than it was asked — `pages/checks/harness.test.ts`'s `selectBlocks` cases cover that and the
 ordering and de-duplication `pages/verify.ts` relies on.
+
+### Running a full run in parts
+
+A full run is every block. It may be one command or these three, which together run every block
+exactly once:
+
+```bash
+deno task --cwd pages verify --only=ui
+deno task --cwd pages verify --only=e2e
+deno task --cwd pages verify --except=ui,e2e
+```
+
+`--except` runs every block but the ones it names, so a block added later lands in the third part
+without anyone listing it. An unknown name, an empty list, a list that names every block, and
+`--only` together with `--except` are each a failed check. Each part starts its own browser and has
+its own limits (see "How long a run may take"), repeats the static phase and the startup checks,
+and ends with its own `FILTERED:` line. All three green is a full run; one or two are not.
+
+CI runs the three as three jobs. On a workstation, use the parts when other browser runs share the
+machine: run them one after another, or side by side in three terminals. One command is still fine
+on a quiet machine.
+
+Why the split (#696), measured on 2026-10-11 and 2026-10-12 with about 1,210 checks:
+
+| Where                                          | As one run                      | `ui` | `e2e` | The other nine blocks |
+| ---------------------------------------------- | ------------------------------- | ---- | ----- | --------------------- |
+| CI, browser phase                              | 779s of the 900s ceiling        | 354s | 195s  | 227s                  |
+| 16 cores, load average 17 to 31, whole command | stopped at 900s, `e2e` not done | 502s | 517s  | 276s                  |
+
+In the one CI run the `ui` block took 353s, the 86 specs of `e2e` 205s, `system` 85s, `ui-guide`
+52s, `theme` 41s and startup 11s. The run is long because it is many checks one after another, not
+because a few are slow: the two longest steps took 31s and 20s. The workstation's three parts ran
+side by side. `e2e` is the part that grows, since every new check is a spec.
 
 ### Running under load
 
@@ -120,8 +153,9 @@ or measure a duration with the page's own clock.
 
 This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
-`main` and on every push to `main`, on a runner image that ships Google Chrome. The deploy job
-waits for that job, so a red check, a red publish dry-run or a red `verify` blocks the publish.
+`main` and on every push to `main`, on a runner image that ships Google Chrome. `verify` runs there
+as three jobs, one per part (see "Running a full run in parts"). The deploy job waits for all
+three, so a red check, a red publish dry-run or a red part of `verify` blocks the publish.
 
 ### How long a run may take
 
@@ -132,14 +166,16 @@ last check that finished:
   meets, so a hung run dies about 90 seconds after its last check, however many checks came
   before. It bounds the gap between two checks, not the run, so adding checks does not move it.
 - **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
-  never stops, not a budget a healthy run comes near.
+  never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
+  busy workstation (#696), which is why a full run can be split: each part has its own 15 minutes
+  and the longest takes six in CI (see "Running a full run in parts").
 
 Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call,
 or a wait for one DevTools event such as a page load, gets when its caller names none. Each launch
 attempt keeps its own 30-second deadline.
 
-How they were sized (#466), on a 16-core machine with other lanes running `verify` alongside, the
-load average noted at the start and end of each run:
+How they were sized (#466), when the suite had 715 checks, on a 16-core machine with other lanes
+running `verify` alongside, the load average noted at the start and end of each run:
 
 | Run                                    | Load average | Browser phase                                            | Longest gap between two checks |
 | -------------------------------------- | ------------ | -------------------------------------------------------- | ------------------------------ |
@@ -150,8 +186,8 @@ load average noted at the start and end of each run:
 
 The longest single step, a theme contrast sweep, took 24 seconds at a throttle of 4; 90 seconds
 is about fourteen times the longest unthrottled gap and also covers the slowest browser start (two
-30-second launch attempts, then hydration). The ceiling is about three times the unthrottled phase
-under load. The `ui` block is the largest (318 checks, 134s unthrottled, 204s at a throttle of 4),
+30-second launch attempts, then hydration). The ceiling was about three times the unthrottled phase
+under load. The `ui` block was the largest (318 checks, 134s unthrottled, 204s at a throttle of 4),
 but no one check in it is slow: the KanbanBoard checks took 7s together, and the time is spread
 over real timers and smooth scrolls. The old single five-minute limit was simply smaller than a
 full run under load.
