@@ -319,10 +319,10 @@ describe("CrudList", () => {
     expect(worded).toContain("Try a shorter name.")
   })
 
-  it("keeps the table, and no empty state, while the rows are still loading", () => {
+  it("keeps the table, and no empty state, while a store that loaded before is loading again", () => {
     const loading: CrudListStore<Region> = {
       list: { nonDeleted: signal([]), deleted: signal([]) },
-      op: { list: signal({ inProgress: true, result: null, error: null }) },
+      op: { list: signal({ inProgress: true, result: [], error: null }) },
     }
     const html = storeList({ store: loading })
 
