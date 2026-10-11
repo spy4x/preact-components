@@ -34,6 +34,11 @@ export interface LeaveGuardInternals {
    */
   hold(holder: object): () => void
   /**
+   * Whether `holder` is the earliest one still holding: the one guard that asks, and the one that
+   * holds a history step back, however many guards share this `LeaveGuard`.
+   */
+  leads(holder: object): boolean
+  /**
    * Whether `holder` should show the question now: a navigation is waiting and `holder` is the
    * earliest one still holding, so two guards that share a `LeaveGuard` never show two dialogs. It
    * reads signals, so a component that calls it while rendering re-renders when the answer changes.
@@ -80,6 +85,7 @@ export function createLeaveGuard(): LeaveGuard {
         if (holders.value.length === 0) waiting.value = null
       }
     },
+    leads: (holder) => holders.value[0]?.holder === holder,
     asks: (holder) => waiting.value !== null && holders.value[0]?.holder === holder,
     take() {
       const go = waiting.value
@@ -104,4 +110,84 @@ export function leaveGuardInternals(guard: LeaveGuard): LeaveGuardInternals {
     throw new Error("UnsavedGuard: `leaveGuard` must be an object that createLeaveGuard() returned")
   }
   return found
+}
+
+/**
+ * Whether a history step from one address to another leaves the page a form is on: the path or the
+ * query differs. A step that changes only the fragment stays on the page, as a link to a fragment of
+ * the same page does.
+ *
+ * @param from The address before the step, absolute.
+ * @param to The address after it, absolute.
+ */
+export function leavesPage(from: string, to: string): boolean {
+  const before = new URL(from)
+  const after = new URL(to)
+  return before.pathname !== after.pathname || before.search !== after.search
+}
+
+/** One entry of the tab's history, as the Navigation API describes it. */
+interface HistoryEntry {
+  /** The entry's name, the same for as long as the entry exists. */
+  key: string
+  /** The entry's address; `null` when the browser hides it. */
+  url: string | null
+}
+
+/** The parts of the browser's `navigation` object the guard reads. It cancels nothing through it. */
+interface HistoryEntries extends EventTarget {
+  currentEntry: HistoryEntry | null
+}
+
+/**
+ * Holds back the browser's Back and Forward buttons while a form has unsaved changes, until the
+ * returned function is called. A step that would leave the page is answered at once by a new
+ * history entry with the page's own address and state, and handed to `ask` as the function that
+ * repeats the step: one step back from that new entry, which is where the person went.
+ *
+ * It listens for the Navigation API's `currententrychange`, not for `popstate`. A router listens
+ * for `popstate` and was there first, and a browser may call the listeners of `window` in the
+ * order they were added, so the router would draw the other page, and unmount the form, before a
+ * `popstate` listener of the guard's ran at all. `currententrychange` comes before `popstate`, and
+ * adding an entry takes effect at once, so by the time the router looks, the address is the form's
+ * again and it draws nothing new. In a browser without the Navigation API (Safari before 26.2,
+ * Firefox before 147) nothing is held.
+ *
+ * It leaves alone a step inside the page (only the fragment changes) and the step `ask`'s function
+ * itself takes. A step to another document never reaches it: the browser unloads the page, and
+ * `beforeunload` asks.
+ *
+ * @param leads Whether this hold is the one that acts now. The others keep track and do nothing.
+ * @param ask Called with the function that repeats the step the person took.
+ * @returns The function that stops holding.
+ */
+export function holdHistory(leads: () => boolean, ask: (go: () => void) => void): () => void {
+  const entries = (globalThis as { navigation?: HistoryEntries }).navigation
+  if (!entries?.currentEntry) return () => {}
+  const read = () => ({ url: location.href, state: history.state as unknown })
+  /** The address and state of the entry the form is on. */
+  let here = read()
+  /** The entry "Leave" steps back to, until it arrives there. */
+  let leavingTo: string | null = null
+  const onEntryChange = (event: Event) => {
+    const now = entries.currentEntry
+    const travelled = (event as Event & { navigationType?: string }).navigationType === "traverse"
+    if (
+      travelled && now && now.key !== leavingTo && leads() && leavesPage(here.url, location.href)
+    ) {
+      const { key } = now
+      history.pushState(here.state, "", here.url)
+      ask(() => {
+        leavingTo = key
+        history.back()
+      })
+      return
+    }
+    // The app or a link moved inside the page, or this is where "Leave" was going: the form, if it
+    // is still there, is on this entry now.
+    leavingTo = null
+    here = read()
+  }
+  entries.addEventListener("currententrychange", onEntryChange)
+  return () => entries.removeEventListener("currententrychange", onEntryChange)
 }

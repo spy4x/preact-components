@@ -8,10 +8,12 @@
  * the guide reports, and manual scroll restoration, because this page is the whole app and the
  * guide scrolls on its first read itself.
  *
- * The UI page ends with three demos that are not cards. Two need a page that owns an address:
- * {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals, and
- * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop. The third,
- * {@link NowDemo}, is `useNow`, a hook with no markup of its own, mounted and unmounted on a button.
+ * The UI page ends with four demos that are not cards. Three need a page that owns an address:
+ * {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals,
+ * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop, and
+ * {@link UnsavedHistoryDemo}, `UnsavedGuard` against the browser's Back and Forward buttons. The
+ * fourth, {@link NowDemo}, is `useNow`, a hook with no markup of its own, mounted and unmounted on
+ * a button.
  * They were on the Signals page until the guide stopped showing helpers (#357); the browser checks
  * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
  *
@@ -33,6 +35,7 @@ import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { NowDemo } from "./now-demo.tsx"
 import { RouteAnnouncerDemo } from "./route-announcer-demo.tsx"
 import { AUTHOR, LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY, THEME_KEY } from "./site.ts"
+import { UnsavedHistoryDemo } from "./unsaved-history.tsx"
 import { UrlFilterDemo } from "./url-filters.tsx"
 
 /**
@@ -119,6 +122,7 @@ export function App({ initialHash, version }: AppProps) {
               <UrlFilterDemo />
               <DataTableSortDemo />
               <NowDemo />
+              <UnsavedHistoryDemo />
             </div>
           ),
           system: <RouteAnnouncerDemo />,

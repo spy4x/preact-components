@@ -701,6 +701,10 @@ function UnsavedGuardDemo() {
         The buttons navigate from code, as a sidebar does. With the focus in this card, Alt+L and
         Alt+U do the same, as a keyboard shortcut does.
       </DemoNote>
+      <DemoNote>
+        Back and Forward are held too. A card never changes the address, so that is shown at the end
+        of this page, under "UnsavedGuard, Back and Forward".
+      </DemoNote>
       <DemoNote e2e="unsaved-calls">Navigations from code: {calls.value}</DemoNote>
       <DemoNote e2e="unsaved-outcome">Outcome: {outcome.value}</DemoNote>
       <UnsavedGuard
@@ -1314,7 +1318,7 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
   },
   UnsavedGuard: {
     summary:
-      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link or on a navigation the app starts from code.",
+      "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link, on a navigation the app starts from code, and on the browser's Back and Forward buttons.",
     wide: true,
     props: [
       { name: "when", type: "boolean", description: "Whether there are unsaved changes." },

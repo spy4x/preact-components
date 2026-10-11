@@ -150,6 +150,13 @@ const LIBRARY_BOUNDARY = {
   ],
 }
 
+/**
+ * The one module that may use `history`, and nothing else {@link LIBRARY_BOUNDARY} forbids:
+ * `UnsavedGuard` holds back the browser's Back and Forward buttons by putting the page's address
+ * back, which no prop or port can do for it without every app wiring its router in.
+ */
+const HISTORY_ALLOWED = "ui/unsaved-guard-internals.ts"
+
 /** Every `.ts` and `.tsx` module under `dir` but the tests, as absolute paths. */
 async function modules(dir: string): Promise<string[]> {
   const found: string[] = []
@@ -172,9 +179,12 @@ describe("this library's own components", () => {
     const found: string[] = []
     for (const file of files) {
       const source = await Deno.readTextFile(file)
-      for (const { message } of checkModule(source, { ...LIBRARY_BOUNDARY, filename: file })) {
-        found.push(`${relative(ROOT, file)}: ${message}`)
-      }
+      const name = relative(ROOT, file)
+      const forbiddenGlobals = LIBRARY_BOUNDARY.forbiddenGlobals.filter((global) =>
+        global !== "history" || name !== HISTORY_ALLOWED
+      )
+      const options = { ...LIBRARY_BOUNDARY, forbiddenGlobals, filename: file }
+      for (const { message } of checkModule(source, options)) found.push(`${name}: ${message}`)
     }
     expect(found).toEqual([])
   })
