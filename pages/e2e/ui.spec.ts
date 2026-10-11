@@ -59,11 +59,12 @@ function confirmDialogNameSpecs(): Spec[] {
         const card = page.locator("#demo-ConfirmDialog")
         const archive = page.getByRole("alertdialog", { name: "Archive invoice INV-0007?" })
         await card.getByRole("button", { name: "Archive invoice" }).click()
-        await buttonsAreNamed(archive, ["Close without archiving", "Cancel", "Archive"])
+        await archive.waitFor()
         const { violations } = await new AxeBuilder({ page }).include("dialog[open]").analyze()
         if (violations.length > 0) {
           throw new Error(`axe on the open dialog: ${violations.map(({ id }) => id).join(", ")}`)
         }
+        await buttonsAreNamed(archive, ["Close without archiving", "Cancel", "Archive"])
         await archive.getByRole("button", { name: "Close without archiving" }).click()
         await archive.waitFor({ state: "detached" })
         await card.getByText("Outcome: nothing confirmed yet", { exact: true }).waitFor()
