@@ -26,20 +26,21 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component         | Subpath            | Ports / key props                                                                                                                                                                           |
-| ----------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthForm`        | `auth-form`        | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
-| `SEOHead`         | `seo-head`         | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
-| `SWUpdater`       | `sw-updater`       | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
-| `Calendar`        | `calendar`         | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader`      | `site-header`      | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
-| `Shell`           | `shell`            | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
-| `StateInit`       | `state-init`       | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`       | `rail-shell`       | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `header?`, `children`, `labels?`, `class?`                                                                |
-| `SyncStatus`      | `sync-status`      | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
-| `ConflictChooser` | `conflict-chooser` | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
-| `InstallPrompt`   | `install-prompt`   | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
-| `PushSettings`    | `push-settings`    | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
+| Component         | Subpath             | Ports / key props                                                                                                                                                                           |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthForm`        | `auth-form`         | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
+| `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
+| `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
+| `Calendar`        | `calendar`          | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
+| `SiteHeader`      | `site-header`       | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
+| `Shell`           | `shell`             | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
+| `StateInit`       | `state-init`        | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
+| `RailShell`       | `rail-shell`        | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `header?`, `children`, `labels?`, `class?`                                                                |
+| `SyncStatus`      | `sync-status`       | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
+| `SavedCopyNotice` | `saved-copy-notice` | `savedAt`, `formatTime?`, `labels?`, `class?`                                                                                                                                               |
+| `ConflictChooser` | `conflict-chooser`  | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
+| `InstallPrompt`   | `install-prompt`    | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
+| `PushSettings`    | `push-settings`     | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -1014,7 +1015,7 @@ sections above describe what changed.
 
 ## Offline sync and install
 
-Three components for an offline-first app. None of them imports a queue or a store: they take
+Components for an offline-first app. None of them imports a queue or a store: they take
 plain values and callbacks, so they work with any outbox and ship on their own.
 
 - **`SyncStatus`** is one compact line for a header or a status bar: offline, "3 changes waiting
@@ -1024,6 +1025,19 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   words tells the states apart without colour. `syncState(input)` is the precedence it uses, most
   urgent first: offline, failed, syncing, waiting, synced. `DEFAULT_SYNC_STATUS_LABELS` holds its
   English words.
+- **`SavedCopyNotice`** is the banner above a list that says the list is a copy saved on this
+  device, and when: "The server is out of reach. This copy was saved on this device: 12/10/2026
+  14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
+  reading is, and an app often shows both. Render it always and pass `savedAt` (a `Date` or epoch
+  milliseconds) only while a saved copy is on screen: with `null` it is an empty `role="status"`
+  region that takes no room, so the notice is announced when the copy arrives. It is announced
+  once for each copy, because the time is worded when `savedAt` changes and not on every render.
+  For the same reason `formatTime` should return a clock time, which stays true, and not "5
+  minutes ago", which would stay on screen as it was. The default is the date and the time in the
+  host's time zone from `formatTime` in `@spy4x/platform/universal/time`, with the date even for
+  today. `labels.title` and `labels.body(time)` replace the words, and
+  `DEFAULT_SAVED_COPY_NOTICE_LABELS` holds the English ones. `data-saved-at` on the element is
+  the time as an ISO string.
 - **`ConflictChooser`** lists the changes the server did not take. Each says in plain words what
   happened, changed elsewhere (`version`), deleted elsewhere (`gone`) or refused by the server
   (`rejected`), and offers the choices that make sense: "Keep mine" and "Use theirs" for a change
@@ -1070,7 +1084,12 @@ does not import it.
 
 ```tsx
 import { createInstallPrompt, createOnlineStatus } from "@spy4x/preact-signals"
-import { ConflictChooser, InstallPrompt, SyncStatus } from "@spy4x/preact-system"
+import {
+  ConflictChooser,
+  InstallPrompt,
+  SavedCopyNotice,
+  SyncStatus,
+} from "@spy4x/preact-system"
 
 const connection = createOnlineStatus()
 const install = createInstallPrompt({ dismissed: localFlag("install-dismissed") })
@@ -1094,6 +1113,8 @@ const byId = (id: string) => entries.value.find((entry) => String(entry.seq) ===
   failed={failed.value}
   onRetry={() => runSync()}
 />
+// `savedAt` is when the list on screen was saved, or null once the server has answered.
+<SavedCopyNotice savedAt={savedAt.value} />
 <ConflictChooser
   conflicts={conflicts}
   onKeepMine={(id) => outbox.keepMine(byId(id)).then(refresh)}
