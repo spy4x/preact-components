@@ -114,7 +114,9 @@ export interface ToastrProps {
    */
   onDismiss: (id: ToastId) => void
   /**
-   * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`.
+   * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`. In a
+   * window narrower than `sm` (640 px) the stack spans the width instead, 1rem from the left, the
+   * right and the corner's top or bottom edge, so a toast never leaves a narrow phone's screen.
    *
    * The toasts keep the order of {@link ToastrProps.toasts} in every corner, top to bottom, and each
    * one slides in from the corner's side: from the right in a right corner, from the left in a left
@@ -138,14 +140,16 @@ export interface ToastrProps {
 }
 
 /**
- * Where each corner puts the stack. `top-right` is the placement the stack had before `corner`
- * existed, so a caller that passes nothing renders exactly as it did.
+ * Where each corner puts the stack. On a phone, below `sm`, a corner only picks the top or the
+ * bottom: the stack spans the window between two 1rem gutters (`inset-x-4` on the stack itself), so
+ * it can never cross an edge. From `sm` up the stack is 2rem from both edges of its corner, and
+ * `right-auto` or `left-auto` lets go of the far edge. `top-right` is the default.
  */
 const cornerClasses: Record<ToastCorner, string> = {
-  "top-left": "top-8 left-8",
-  "top-right": "top-8 right-8",
-  "bottom-left": "bottom-8 left-8",
-  "bottom-right": "bottom-8 right-8",
+  "top-left": "top-4 sm:top-8 sm:right-auto sm:left-8",
+  "top-right": "top-4 sm:top-8 sm:right-8 sm:left-auto",
+  "bottom-left": "bottom-4 sm:right-auto sm:bottom-8 sm:left-8",
+  "bottom-right": "bottom-4 sm:right-8 sm:bottom-8 sm:left-auto",
 }
 
 /**
@@ -289,7 +293,9 @@ export function Toastr(
     <div
       data-e2e={dataE2E}
       class={cn(
-        "fixed z-50 w-full max-w-xs space-y-4 md:max-w-sm",
+        // The width cap is lifted below `sm` rather than added from `sm` up, so a caller's own
+        // `max-w-*` in `class` still replaces the cap at every width from `sm`.
+        "fixed inset-x-4 z-50 w-full max-w-xs space-y-4 max-sm:w-auto max-sm:max-w-none md:max-w-sm",
         cornerClasses[corner],
         className,
       )}
@@ -458,7 +464,19 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
             )}
           </div>
         </div>
-        <button type="button" onClick={dismissHere} aria-label={dismissLabel}>
+        {
+          // `TOUCH_TARGET` makes the button at least 44 px each way on a phone and 36 px from `sm`
+          // up, around a cross that stays 16 px. The negative margins take back what the target
+          // adds, so the toast is no taller and the cross sits where it did; `self-start` keeps it
+          // on the first line of a long message. The focus outline is drawn inside the button, in
+          // the toast's own text colour, so it shows on every variant's fill.
+        }
+        <button
+          type="button"
+          class={`-my-3 -mr-3 inline-flex shrink-0 items-center self-start rounded sm:-my-2 sm:-mr-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current ${TOUCH_TARGET}`}
+          onClick={dismissHere}
+          aria-label={dismissLabel}
+        >
           <svg
             class="size-4"
             viewBox="0 0 24 24"

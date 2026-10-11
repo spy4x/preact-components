@@ -300,6 +300,7 @@ export const specs: readonly Spec[] = [
   },
   ...quickAddSpecs(),
   ...removalSpecs(),
+  ...toastrSpecs(),
 ]
 
 /** The parts of the `ErrorState` card's removal demo a spec drives. */
@@ -743,5 +744,119 @@ function quickAddSpecs(): Spec[] {
     },
     quickAddAxe("light"),
     quickAddAxe("dark"),
+  ]
+}
+
+const TOAST_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const
+
+/**
+ * The `Toastr` card with one toast pushed at the given window width, and a way to move the stack
+ * out of the card into a window corner.
+ */
+async function toastrAt(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 800 })
+  const card = page.locator("#demo-Toastr")
+  await card.locator(`[data-e2e="toast-info"]`).click()
+  const stack = page.locator(`[data-e2e="guide-toastr"]`)
+  const toast = stack.locator(`[data-e2e="guide-toast-info"]`)
+  await toast.waitFor()
+  // The toast slides in; a box read before it lands is some pixels to the side.
+  await toast.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished))
+  )
+  return {
+    stack,
+    toast,
+    dismiss: toast.getByRole("button", { name: "Dismiss" }),
+    /** Puts the stack in a corner. A dispatched click: a toast may lie over the radio by now. */
+    moveTo: async (corner: typeof TOAST_CORNERS[number]) => {
+      await card.locator(`input[name="guide-toastr-corner"][value="${corner}"]`)
+        .dispatchEvent("click")
+      await stack.and(page.locator(":not(.static)")).waitFor()
+    },
+  }
+}
+
+/** A locator's box, or an error naming what had none. */
+async function boxOf(locator: Locator, what: string) {
+  const box = await locator.boundingBox()
+  if (!box) throw new Error(`${what} has no box`)
+  return box
+}
+
+/** `Toastr` on a phone and at `sm`: where the stack sits, and how large the dismiss button is. */
+function toastrSpecs(): Spec[] {
+  return [
+    {
+      name:
+        "Toastr: at 320 px wide, in each of the four corners, a toast is inside the window with the same 16 px gap on the left and the right",
+      pageId: "ui",
+      run: async (page) => {
+        const { toast, moveTo } = await toastrAt(page, 320)
+        for (const corner of TOAST_CORNERS) {
+          await moveTo(corner)
+          const box = await boxOf(toast, `the toast in ${corner}`)
+          const [left, right] = [box.x, 320 - box.x - box.width]
+          if (Math.abs(left - 16) > 0.5 || Math.abs(right - 16) > 0.5) {
+            throw new Error(`${corner}: ${left}px to the left and ${right}px to the right`)
+          }
+          if (box.y < 0 || box.y + box.height > 800) {
+            throw new Error(`${corner}: the toast leaves the window: ${JSON.stringify(box)}`)
+          }
+        }
+      },
+    },
+    {
+      name:
+        "Toastr: at 320 px wide the dismiss button is at least 44 px each way inside its toast, and Enter on it closes the toast",
+      pageId: "ui",
+      run: async (page) => {
+        const { toast, dismiss, moveTo } = await toastrAt(page, 320)
+        await moveTo("top-right")
+        const frame = await boxOf(toast, "the toast")
+        const box = await boxOf(dismiss, "the dismiss button")
+        if (box.width < 44 || box.height < 44) {
+          throw new Error(`the dismiss button is ${box.width} × ${box.height} px`)
+        }
+        if (
+          box.x < frame.x || box.y < frame.y || box.x + box.width > frame.x + frame.width + 0.5 ||
+          box.y + box.height > frame.y + frame.height + 0.5
+        ) {
+          throw new Error(
+            `the button leaves its toast: ${JSON.stringify(box)} in ${JSON.stringify(frame)}`,
+          )
+        }
+        await dismiss.focus()
+        await page.keyboard.press("Enter")
+        await toast.waitFor({ state: "detached" })
+        return `${box.width} × ${box.height} px`
+      },
+    },
+    {
+      name:
+        "Toastr: at 640 px wide the stack is 320 px wide, 32 px from both edges of its corner, and the dismiss button is at least 36 px each way",
+      pageId: "ui",
+      run: async (page) => {
+        const { stack, dismiss, moveTo } = await toastrAt(page, 640)
+        for (const corner of TOAST_CORNERS) {
+          await moveTo(corner)
+          const box = await boxOf(stack, `the stack in ${corner}`)
+          const side = corner.endsWith("left") ? box.x : 640 - box.x - box.width
+          const edge = corner.startsWith("top") ? box.y : 800 - box.y - box.height
+          if (
+            Math.abs(box.width - 320) > 0.5 || Math.abs(side - 32) > 0.5 ||
+            Math.abs(edge - 32) > 0.5
+          ) {
+            throw new Error(
+              `${corner}: ${box.width}px wide, ${side}px and ${edge}px from its edges`,
+            )
+          }
+        }
+        const button = await boxOf(dismiss, "the dismiss button")
+        if (button.width < 36 || button.height < 36) {
+          throw new Error(`the dismiss button is ${button.width} × ${button.height} px`)
+        }
+      },
+    },
   ]
 }
