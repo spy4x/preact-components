@@ -2111,6 +2111,8 @@ components and tests means exactly that: nothing outside this package should bui
   render afterwards finds a success already counted. An action that starts and ends inside one
   batched update never runs it, because the hook never sees `pending` as `true`.
 
+The `Button` card's "Save" demo uses it.
+
 ### useFreshError (`./use-fresh-error`)
 
 - `useFreshError(error, pending)` returns `[shown, opened]`, so a dialog opened again does not start
@@ -2129,9 +2131,14 @@ components and tests means exactly that: nothing outside this package should bui
   removal is running, else `null`. When that id leaves `ids`, focus moves to the row that took its
   place, else the nearest later row, else the nearest earlier one, else `options.fallback()`.
   `options.earlier: false` skips the earlier rows for the fallback. `options.target(row)` picks the
-  control of a row; by default it is the row's first enabled button, link or field. A row that
+  control of a row; by default it is the row's first enabled button, link or field. A row whose
+  control does not take focus, such as a button that is not shown, is passed over. A row that
   leaves for another reason moves nothing, and neither does a removal that was refused. Render a
   row's confirmation dialog inside the row, so that it leaves with it.
+  Take the row out of `ids` in the same update that clears `removingId`, or earlier, while the
+  removal still runs; never later. When `removingId` clears first and the list is loaded again a
+  render afterwards, the hook has stopped waiting and focus falls to the body. A row that leaves
+  early moves focus once, when it leaves, and the end of its request moves nothing more.
 
 A row that confirms its removal in a dialog uses all three with `ConfirmDialog` and `ErrorState`:
 
@@ -2174,8 +2181,6 @@ useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
   fallback: () => inviteButton.current,
 })
 ```
-
-The `Button` card's "Save" demo uses it.
 
 ## Tests
 
