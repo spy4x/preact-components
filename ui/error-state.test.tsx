@@ -31,6 +31,17 @@ describe("ErrorState", () => {
     expect(html).not.toMatch(/red-\d/)
   })
 
+  it("is no focus target unless asked, and with focusOnAppear holds focus without a Tab stop", () => {
+    expect(render(<ErrorState message="Nope" />)).not.toContain("tabindex")
+    expect(render(<ErrorState message="Nope" focusOnAppear />)).toContain('tabindex="-1"')
+  })
+
+  it("stamps the caller's data-e2e on the alert", () => {
+    expect(render(<ErrorState message="Nope" dataE2E="save-error" />)).toMatch(
+      /<div role="alert"[^>]*data-e2e="save-error"/,
+    )
+  })
+
   it("appends a caller class", () => {
     expect(render(<ErrorState message="Nope" class="max-w-full" />)).toContain("max-w-full")
   })

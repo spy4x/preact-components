@@ -32,6 +32,8 @@ import {
   Toastr,
   type ToastVariant,
   UnsavedGuard,
+  useFocusAfterRemoval,
+  useFreshError,
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { useSignal } from "@preact/signals"
@@ -829,6 +831,187 @@ function ErrorBoundaryDemo() {
   )
 }
 
+/** The people the {@link RemovalDemo} list starts with, and comes back to. */
+const REMOVAL_PEOPLE: readonly string[] = ["Ada", "Grace", "Linus"]
+
+/** How long the {@link RemovalDemo}'s pretend request takes, in milliseconds. */
+const REMOVAL_REQUEST_MS = 200
+
+/** What a {@link RemovalDemo} row can start with, in front of its "Remove" button. */
+const removalLeads = {
+  none: "Nothing",
+  link: "A link, and the hook is told to focus the button",
+  field: "A hidden field",
+  unseen: "A button that is not shown, in the last row only",
+} as const
+
+/** One key of {@link removalLeads}. */
+type RemovalLead = keyof typeof removalLeads
+
+/**
+ * A list whose rows are removed behind a confirmation, with a pretend request that the first
+ * checkbox makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
+ * focus), `useFreshError` (the dialog opens again without it) and `useFocusAfterRemoval` (a removed
+ * row hands focus to its neighbour, or to "Bring everyone back").
+ *
+ * The other controls are there for `pages/e2e/ui.spec.ts`, which drives every one: a removal that
+ * takes the row at once and ends by hand, a person who leaves with no removal running, and rows
+ * that start with something other than their button. The last line is written from an effect that
+ * runs after the hook's, so a check that reads it knows the hook has finished with that state.
+ */
+function RemovalDemo() {
+  const [people, setPeople] = useState(REMOVAL_PEOPLE)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<{ id: string; message: string } | null>(null)
+  const [refuse, setRefuse] = useState(false)
+  const [skipEarlier, setSkipEarlier] = useState(false)
+  const [atOnce, setAtOnce] = useState(false)
+  const [lead, setLead] = useState<RemovalLead>("none")
+  const list = useRef<HTMLUListElement>(null)
+  const reset = useRef<HTMLButtonElement>(null)
+  useFocusAfterRemoval(list, people, removingId, {
+    fallback: () => reset.current,
+    earlier: !skipEarlier,
+    target: lead === "link" ? (row) => row.querySelector("button") : undefined,
+  })
+  const state = `on the list: ${people.join(", ") || "nobody"} · removing ${removingId ?? "nobody"}`
+  const [settled, setSettled] = useState(state)
+  useEffect(() => setSettled(state), [state])
+  const leave = (id: string) => setPeople((current) => current.filter((name) => name !== id))
+  const remove = (id: string, attempt: number) => {
+    setRemovingId(id)
+    if (atOnce) return leave(id)
+    setTimeout(() => {
+      if (refuse) {
+        const message = attempt === 1
+          ? `${id} could not be removed.`
+          : `${id} still could not be removed.`
+        setRefusal({ id, message })
+      } else {
+        setRefusal(null)
+        leave(id)
+      }
+      setRemovingId(null)
+    }, REMOVAL_REQUEST_MS)
+  }
+  return (
+    <Stack data-e2e="removal-demo">
+      <Cluster>
+        <Checkbox
+          checked={refuse}
+          onChange={(event) => setRefuse(event.currentTarget.checked)}
+        >
+          Refuse the next removal
+        </Checkbox>
+        <Checkbox
+          checked={skipEarlier}
+          onChange={(event) => setSkipEarlier(event.currentTarget.checked)}
+        >
+          Skip earlier rows
+        </Checkbox>
+        <Checkbox
+          checked={atOnce}
+          onChange={(event) => setAtOnce(event.currentTarget.checked)}
+        >
+          Take the row at once, and end the request by hand
+        </Checkbox>
+      </Cluster>
+      <RadioGroup
+        legend="Each row starts with"
+        name="guide-removal-lead"
+        options={entries(removalLeads).map(([value, label]) => ({ value, label }))}
+        value={lead}
+        onChange={(value) => setLead(value as RemovalLead)}
+      />
+      <ul ref={list} class="flex flex-col gap-2">
+        {people.map((name) => (
+          <RemovalRow
+            key={name}
+            name={name}
+            lead={lead === "unseen" && name !== people.at(-1) ? "none" : lead}
+            pending={removingId === name && !atOnce}
+            error={refusal?.id === name ? refusal.message : null}
+            onRemove={remove}
+          />
+        ))}
+      </ul>
+      <Cluster>
+        <Button
+          ref={reset}
+          variant="outline"
+          data-e2e="removal-reset"
+          onClick={() => setPeople(REMOVAL_PEOPLE)}
+        >
+          Bring everyone back
+        </Button>
+        <Button variant="outline" data-e2e="removal-leave" onClick={() => leave("Grace")}>
+          Grace leaves by herself
+        </Button>
+        <Button variant="outline" data-e2e="removal-end" onClick={() => setRemovingId(null)}>
+          End the request
+        </Button>
+      </Cluster>
+      <DemoNote e2e="removal-settled">{settled}</DemoNote>
+    </Stack>
+  )
+}
+
+/**
+ * One row of {@link RemovalDemo}: a name, what the row starts with, its "Remove" button and the
+ * dialog that confirms it. It counts the attempts since its dialog opened, so the demo can word a
+ * second refusal differently.
+ */
+function RemovalRow(
+  { name, lead, pending, error, onRemove }: {
+    name: string
+    lead: RemovalLead
+    pending: boolean
+    error: string | null
+    onRemove: (id: string, attempt: number) => void
+  },
+) {
+  const [asking, setAsking] = useState(false)
+  const attempts = useRef(0)
+  const [shown, opened] = useFreshError(error, pending)
+  return (
+    <li class="flex items-center justify-between gap-3" data-e2e="removal-row">
+      <span class="text-sm">{name}</span>
+      {lead === "link" && <a href="#demo-ErrorState" class="text-sm underline">About {name}</a>}
+      {lead === "field" && <input type="hidden" name="person" value={name} />}
+      {lead === "unseen" && <button type="button" hidden>Not shown</button>}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          opened()
+          attempts.current = 0
+          setAsking(true)
+        }}
+      >
+        Remove {name}
+      </Button>
+      {asking && (
+        <ConfirmDialog
+          title={`Remove ${name}?`}
+          confirmLabel="Remove"
+          cancelLabel="Keep"
+          tone="danger"
+          busy={pending}
+          busyLabel="Removing…"
+          dataE2E="removal-dialog"
+          onConfirm={() => onRemove(name, ++attempts.current)}
+          onCancel={() => setAsking(false)}
+        >
+          <Stack>
+            <p class="text-sm text-muted">{name} loses access right away.</p>
+            <ErrorState focusOnAppear message={shown} dataE2E="removal-error" />
+          </Stack>
+        </ConfirmDialog>
+      )}
+    </li>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -909,12 +1092,22 @@ export const feedbackDemos = {
     summary:
       "The message for an expected failure, where its result would have been; nothing when there is none.",
     wide: false,
-    snippet: `<ErrorState message={error.value} />`,
+    snippet: `<ErrorState message={error.value} />
+
+// A refusal inside the dialog that asked: it takes focus, and is gone when the dialog opens again.
+const [shown, opened] = useFreshError(error, pending)
+<ErrorState focusOnAppear message={shown} />
+
+// A removed row hands focus to the row that took its place.
+useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current })`,
     render: () => (
-      <Stack>
-        <ErrorState message="The report could not be generated: no accounts are connected." />
-        <ErrorState message="" />
-        <DemoNote>The second one has an empty message, so nothing shows.</DemoNote>
+      <Stack gap="lg">
+        <Stack>
+          <ErrorState message="The report could not be generated: no accounts are connected." />
+          <ErrorState message="" />
+          <DemoNote>The second one has an empty message, so nothing shows.</DemoNote>
+        </Stack>
+        <RemovalDemo />
       </Stack>
     ),
   },

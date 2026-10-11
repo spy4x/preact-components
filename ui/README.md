@@ -75,7 +75,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`                                                                                                                                     |
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                      |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                              |
-| `ErrorState`          | `error-state`          | `message` (renders nothing when empty)                                                                                                                                                                                                             |
+| `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                     |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (sets `required` on the control), `suffix?`                                                                                                                                             |
 | `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                             |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                       |
@@ -1647,7 +1647,9 @@ page it takes:
   Preact's server renderer runs no error boundary, so a throw during a server render still throws.
 - **`ErrorState`** shows an expected failure where its result would have been: the request behind a
   list or a report failed, and you have a message to say so. It renders nothing for an empty
-  message, so the error value can go straight in.
+  message, so the error value can go straight in. With `focusOnAppear` it takes focus when the
+  message appears: use that for a refusal that belongs to no field, inside the dialog that asked or
+  under the row it is about, so a keyboard or screen reader user lands on it.
 - **`Notice` with `tone="danger"`** is a page-wide banner about a problem the reader must act on,
   with a title, a body and usually an action, such as a payment that failed. Add `urgent` when it
   appears while the reader is on the page.
@@ -2108,7 +2110,77 @@ components and tests means exactly that: nothing outside this package should bui
   Set `failed` in the same update that turns `pending` false, never later: a failure that arrives a
   render afterwards finds a success already counted. An action that starts and ends inside one
   batched update never runs it, because the hook never sees `pending` as `true`.
-  The `Button` card's "Save" demo uses it.
+
+The `Button` card's "Save" demo uses it.
+
+### useFreshError (`./use-fresh-error`)
+
+- `useFreshError(error, pending)` returns `[shown, opened]`, so a dialog opened again does not start
+  on the last refusal. Call `opened()` in the handler that opens the dialog: the error that is there
+  then comes back as `null` until the next attempt starts (`pending` turns `true`). After that
+  every error is shown, including one with the same text as the hidden one. Errors are compared
+  with `Object.is`; `undefined` counts as none. Call the hook in the component that outlives the
+  dialog, such as the row that opens it.
+
+### useFocusAfterRemoval (`./use-focus-after-removal`)
+
+- `useFocusAfterRemoval(list, ids, removingId, options?)` keeps focus on the page when a row
+  leaves a list because its own removal went through. Without it the row's button goes with the
+  row and focus falls to the page's body. `list` is a ref to the element whose children are the
+  rows (a `<ul>`, a `<tbody>`), `ids` their ids in the order drawn, and `removingId` the id whose
+  removal is running, else `null`. When that id leaves `ids`, focus moves to the row that took its
+  place, else the nearest later row, else the nearest earlier one, else `options.fallback()`.
+  `options.earlier: false` skips the earlier rows for the fallback. `options.target(row)` picks the
+  control of a row; by default it is the row's first enabled button, link or field. A row whose
+  control does not take focus, such as a button that is not shown, is passed over. A row that
+  leaves for another reason moves nothing, and neither does a removal that was refused. Render a
+  row's confirmation dialog inside the row, so that it leaves with it.
+  Take the row out of `ids` in the same update that clears `removingId`, or earlier, while the
+  removal still runs; never later. When `removingId` clears first and the list is loaded again a
+  render afterwards, the hook has stopped waiting and focus falls to the body. A row that leaves
+  early moves focus once, when it leaves, and the end of its request moves nothing more.
+
+A row that confirms its removal in a dialog uses all three with `ConfirmDialog` and `ErrorState`:
+
+```tsx
+function Row({ member, pending, error, onRemove }: RowProps) {
+  const [asking, setAsking] = useState(false)
+  useSucceeded(pending, error, () => setAsking(false))
+  const [shown, opened] = useFreshError(error, pending)
+  return (
+    <li>
+      {member.name}
+      <Button
+        onClick={() => {
+          opened()
+          setAsking(true)
+        }}
+      >
+        Remove
+      </Button>
+      {asking && (
+        <ConfirmDialog
+          title={`Remove ${member.name}?`}
+          confirmLabel="Remove"
+          tone="danger"
+          busy={pending}
+          onConfirm={() => onRemove(member.id)}
+          onCancel={() => setAsking(false)}
+        >
+          <p>They lose access right away.</p>
+          <ErrorState focusOnAppear message={shown} />
+        </ConfirmDialog>
+      )}
+    </li>
+  )
+}
+
+// In the list: `removingId` is the id whose removal is running, else `null`.
+const list = useRef<HTMLUListElement>(null)
+useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
+  fallback: () => inviteButton.current,
+})
+```
 
 ## Tests
 
