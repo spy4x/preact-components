@@ -423,15 +423,16 @@ function RemovedConflict<M extends CrudRow>(
 ) {
   const offer = useRef<HTMLDivElement>(null)
   // The form a restore is running in, kept until the offer has gone and focus can move.
-  const restoredIn = useRef<HTMLFormElement | null>(null)
+  // A signal read with `peek`, so writing it never re-renders.
+  const restoredIn = useSignal<HTMLFormElement | null>(null)
   const conflicting = conflict(vm.value, store.list.all.value)
   const restorable = isRestorable(conflicting)
 
   useEffect(() => {
-    if (restorable || restoredIn.current === null) return
-    const control = restoredIn.current.querySelector<HTMLElement>(`[aria-invalid="true"]`)
-    restoredIn.current = null
-    control?.focus()
+    const form = restoredIn.peek()
+    if (restorable || form === null) return
+    restoredIn.value = null
+    form.querySelector<HTMLElement>(`[aria-invalid="true"]`)?.focus()
   }, [restorable])
 
   if (!isRestorable(conflicting)) return null
@@ -454,13 +455,13 @@ function RemovedConflict<M extends CrudRow>(
           // Noted before the store is asked, not after it answers: the store's own write can
           // take the offer away before this function resumes, and the effect above would then
           // find nothing to move focus in.
-          restoredIn.current = offer.current?.closest("form") ?? null
+          restoredIn.value = offer.current?.closest("form") ?? null
           try {
             const outcome = await actions.restore(id)
-            if (outcome.error !== null) restoredIn.current = null
+            if (outcome.error !== null) restoredIn.value = null
             return outcome
           } catch (error) {
-            restoredIn.current = null
+            restoredIn.value = null
             throw error
           }
         }}
