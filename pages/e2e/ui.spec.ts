@@ -477,15 +477,22 @@ function unsavedHistorySpecs(): Spec[] {
     },
     {
       name:
-        "UnsavedGuard in a browser without the Navigation API: Back with a change is not held, and leaves as the router draws it",
+        "UnsavedGuard in a browser without the Navigation API: a link with a change still asks, and Back is not held",
       pageId: "ui",
       run: async (page) => {
-        const { open, type, viewIs, dialogsAre } = unsavedHistoryDemo(page)
+        const { open, type, viewIs, dialogsAre, dialog, stay, editorIsKept } = unsavedHistoryDemo(
+          page,
+        )
         await page.evaluate(() =>
           Object.defineProperty(globalThis, "navigation", { value: undefined })
         )
         await open("edit")
         await type()
+        // The rest of the guard works as before: a link out of the form is still held.
+        await page.locator(`[data-e2e="unsaved-history-to-preview"]`).click()
+        await dialog.waitFor()
+        await stay.click()
+        await editorIsKept()
         await page.goBack()
         await viewIs("list")
         await dialogsAre(0)
