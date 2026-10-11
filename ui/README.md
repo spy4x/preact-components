@@ -198,7 +198,14 @@ a heading. Until [#207](https://github.com/spy4x/preact-components/issues/207) t
 and this component dropped it.
 
 `corner` puts the stack in one of the window's four corners, 2rem from both edges: `"top-left"`,
-`"top-right"` (the default), `"bottom-left"` or `"bottom-right"`. The toasts keep the order of
+`"top-right"` (the default), `"bottom-left"` or `"bottom-right"`. In a window narrower than `sm`
+(640 px) a corner only picks the top or the bottom: the stack spans the width, 1rem from the left,
+the right and that edge, so a toast is centred and never leaves a narrow phone's screen. The dismiss
+button is a `TOUCH_TARGET`, 44 px each way on a phone and 36 px from `sm` up, around its 16 px
+cross. The stack's offsets and width are unprefixed classes whose values change at the breakpoints, so
+a caller's own unprefixed `top-*`, `right-*`, `bottom-*`, `left-*`, `w-*` or `max-w-*` in `class`
+replaces them at every window width: `class="top-20"` puts the stack under a header on a phone and
+on a desktop alike. The toasts keep the order of
 `toasts` in every corner, and each one slides in from its corner's side unless the reader prefers
 reduced motion.
 
