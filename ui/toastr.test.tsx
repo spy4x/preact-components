@@ -146,6 +146,8 @@ describe("Toastr", () => {
 
     expect(classes).toContain("max-w-sm")
     expect(classes).not.toContain("max-w-xs")
+    // A cap of the stack's own at `sm` would win over the caller's unprefixed class there.
+    expect(classes.filter((name) => name.startsWith("sm:max-w-"))).toEqual([])
   })
 
   it("slides a toast in from the right in a right corner and from the left in a left one", () => {
