@@ -114,12 +114,18 @@ Why the split (#696), measured on 2026-10-11 and 2026-10-12 with about 1,210 che
 | Where                                          | As one run                      | `ui` | `e2e` | The other nine blocks |
 | ---------------------------------------------- | ------------------------------- | ---- | ----- | --------------------- |
 | CI, browser phase                              | 779s of the 900s ceiling        | 354s | 195s  | 227s                  |
-| 16 cores, load average 17 to 31, whole command | stopped at 900s, `e2e` not done | 502s | 517s  | 276s                  |
+| 16 cores, load average 17 to 31, whole command | stopped at 900s, `e2e` not done | 502s | 517s  | 276s, one check red   |
 
 In the one CI run the `ui` block took 353s, the 86 specs of `e2e` 205s, `system` 85s, `ui-guide`
 52s, `theme` 41s and startup 11s. The run is long because it is many checks one after another, not
 because a few are slow: the two longest steps took 31s and 20s. The workstation's three parts ran
 side by side. `e2e` is the part that grows, since every new check is a spec.
+
+On that workstation the third part ended red, 439 of 440 checks: the `theme` block stopped at its
+accent sweep with `Runtime.evaluate did not answer within 15000ms`, and 276s is the time of that
+red run. Unchanged `main` stopped at the same step there, in every run under that load, and the
+step passes in CI, where it takes 4s. A lane that sees only that one failure on a busy machine has
+not broken anything; CI is the evidence for the `theme` block.
 
 ### Running under load
 
@@ -442,15 +448,17 @@ browser phase of `verify`. Woodpecker still runs `deno task check` on the same p
 
 The workflow triggers on pull requests into `main`, on pushes to `main`, and on manual dispatch.
 
-A `verify` job runs on all three: checkout → Deno 2.9.7 → print the browser version →
-`deno task check` → `deno task publish:dry` → `deno task --cwd pages build` → `deno task --cwd
-pages verify`, with `CHROME_PATH` naming the runner's Google Chrome so the browser reported in the
-log is the browser that is driven. That job holds `contents: read` and nothing else.
+Three `verify` jobs run on all three, one for each part of the browser run (`ui`, `e2e` and `rest`;
+see "Running a full run in parts"): checkout → Deno 2.9.7 → print the browser version →
+`deno task --cwd pages build` → `deno task --cwd pages verify` with that part's `--only` or
+`--except`, and `CHROME_PATH` naming the runner's Google Chrome so the browser reported in the log
+is the browser that is driven. Only the `rest` job also runs `deno task check` and
+`deno task publish:dry`, before the build. Each job holds `contents: read` and nothing else.
 
-Only on `main`, never on a pull request, the same job then runs `actions/upload-pages-artifact` over
-`pages/dist`, and a separate `deploy` job runs `actions/configure-pages` and `actions/deploy-pages`.
-`deploy` `needs` the `verify` job, so a red check, a failed build or a failed `verify` blocks the
-publish. `pages: write` and `id-token: write` exist on `deploy` alone, which is also where
+Only on `main`, never on a pull request, the `rest` job then runs `actions/upload-pages-artifact`
+over `pages/dist`, and a separate `deploy` job runs `actions/configure-pages` and
+`actions/deploy-pages`. `deploy` `needs` all three `verify` jobs, so a red check, a failed build or
+a failed part of `verify` blocks the publish. `pages: write` and `id-token: write` exist on `deploy` alone, which is also where
 `configure-pages` lives — it is the step that needs them, and the build never read its outputs,
 because the demo's base path is a constant in `src/site.ts`.
 
