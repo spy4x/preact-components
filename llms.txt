@@ -100,7 +100,9 @@ Install: `deno add jsr:@spy4x/preact-crud`
 - `CrudListBaseProps` (type): What every CRUD list needs, whatever it is listing. Import: `@spy4x/preact-crud`
 - `CrudListProps` (type): `CrudListBaseProps` plus one of the two row sources. Import: `@spy4x/preact-crud`
 - `CrudListSource` (type): Where a list reads its rows. Import: `@spy4x/preact-crud`
+- `ListPage` (type): One page of a list: its rows, its number and how many pages there are. Import: `@spy4x/preact-crud`
 - `listRows` (helper): The rows a store-backed list renders: the status slice, filtered by the search term. Import: `@spy4x/preact-crud`
+- `pageOf` (helper): Cut one page out of a list's rows. Import: `@spy4x/preact-crud`
 - `rowsForStatus` (helper): The status slice of a store's collection. Import: `@spy4x/preact-crud`
 - `StatusFilterLabels` (type): Wording of the status select. Import: `@spy4x/preact-crud`
 - `ArchiveConfig` (type): The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form already submits, plus whatever has to be archived first for it to be allowed. Import: `@spy4x/preact-crud`

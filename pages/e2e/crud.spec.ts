@@ -237,4 +237,215 @@ export const specs: readonly Spec[] = [
         .waitFor()
     },
   },
+  {
+    name:
+      "CrudList: a search that matches nothing shows an empty state in place of the blank table, and the table comes back with the rows",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-CrudList")
+      const empty = card.getByRole("status").filter({ hasText: "No team has that name" })
+
+      await card.locator("table.min-w-full").waitFor()
+      await card.getByPlaceholder("Search").fill("zzz")
+      await card.getByRole("button", { name: "Search teams", exact: true }).click()
+      await empty.filter({ hasText: "Search for part of a team's name." }).waitFor()
+      await empty.getByRole("heading", { name: "No team has that name", level: 4 }).waitFor()
+      await card.locator("table.min-w-full").waitFor({
+        state: "detached",
+      })
+
+      await card.getByPlaceholder("Search").fill("Des")
+      await card.getByRole("button", { name: "Search teams", exact: true }).click()
+      await card.locator("tbody tr").filter({ hasText: "Design" }).waitFor()
+      await empty.waitFor({ state: "detached" })
+    },
+  },
+  {
+    name:
+      "CrudList: the search field has a name of its own, and shows a search that was changed from outside the list",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-CrudList")
+      const rows = card.locator("tbody tr")
+      const field = card.getByRole("textbox", { name: "Team name", exact: true })
+
+      await field.fill("Supp")
+      await card.getByRole("button", { name: "Search teams", exact: true }).click()
+      await rows.filter({ hasText: "Design" }).waitFor({ state: "detached" })
+
+      // The page clears the search, as Back does when the address owns it: the rows come back,
+      // and the field no longer shows the old term (an empty field shows its placeholder).
+      await card.locator(`[data-e2e="clear-search"]`).click()
+      await rows.filter({ hasText: "Design" }).waitFor()
+      await field.and(page.locator(":placeholder-shown")).waitFor()
+    },
+  },
+  {
+    name:
+      "CrudList: with a page size the rows are paged by Pagination, and a new status starts again at page 1",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-CrudList")
+      const rows = card.locator("tbody tr")
+      const pager = card.getByRole("navigation", { name: "Pages of teams" })
+      const status = card.getByLabel("Status")
+
+      // Without a page size every row is there and there is no pager.
+      await rows.filter({ hasText: "Platform" }).waitFor()
+      await pager.waitFor({ state: "detached" })
+
+      await card.locator(`[data-e2e="page-rows"]`).click()
+      await pager.waitFor()
+      await rows.filter({ hasText: "Design" }).waitFor()
+      await rows.filter({ hasText: "Support" }).waitFor()
+      await rows.filter({ hasText: "Platform" }).waitFor({ state: "detached" })
+
+      await pager.getByRole("button", { name: "Page 2", exact: true }).click()
+      await rows.filter({ hasText: "Platform" }).waitFor()
+      await rows.filter({ hasText: "Design" }).waitFor({ state: "detached" })
+      await pager.locator(`[aria-current="page"]`).filter({ hasText: "2" }).waitFor()
+
+      // One archived row fits on one page, so the pager goes; back on Active it is page 1 again.
+      await status.selectOption("archived")
+      await rows.filter({ hasText: "Research" }).waitFor()
+      await pager.waitFor({ state: "detached" })
+      await status.selectOption("active")
+      await rows.filter({ hasText: "Design" }).waitFor()
+      await rows.filter({ hasText: "Platform" }).waitFor({ state: "detached" })
+      await pager.locator(`[aria-current="page"]`).filter({ hasText: "1" }).waitFor()
+    },
+  },
+  {
+    name:
+      "CrudList, CrudEditor and AssociationEditor head themselves at the level the page asks for, with no second h1",
+    pageId: "crud",
+    run: async (page) => {
+      for (
+        const [card, title] of [
+          ["#demo-CrudList", "Teams"],
+          ["#demo-CrudEditor", "Add a team"],
+          ["#demo-CrudEditor", "Edit a team"],
+          ["#demo-AssociationEditor", "Add a supplier"],
+        ]
+      ) {
+        await page.locator(card).getByRole("heading", { name: title, level: 4 }).waitFor()
+      }
+      const stray = await page.locator(
+        "#demo-CrudList h1, #demo-CrudEditor h1, #demo-AssociationEditor h1",
+      ).count()
+      if (stray !== 0) throw new Error(`${stray} crud demo titles are still an <h1>`)
+    },
+  },
+  {
+    name:
+      "AssociationEditor: a Delete the store refuses stays in its dialog as an alert that takes focus; the next try goes through and the footer then offers Restore",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const rows = card.locator(`[data-e2e="association-rows"]`)
+      const refuse = card.locator(`[data-e2e="refuse-endings"]`)
+      const remove = card.getByRole("button", { name: "Delete", exact: true })
+      const restore = card.getByRole("button", { name: "Restore", exact: true })
+      const dialog = page.getByRole("alertdialog", { name: "Detach this supplier?" })
+      const confirm = dialog.locator(`[data-e2e="confirm-dialog-confirm"]`)
+      const focused = page.locator(":focus")
+
+      await card.locator(`[data-e2e="edit-association"]`).click()
+      await refuse.click()
+      await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+
+      await remove.click()
+      await confirm.click()
+      await dialog.getByRole("alert")
+        .filter({ hasText: "Could not delete: the server refused the change" })
+        .and(focused).waitFor()
+      await dialog.filter({ hasText: "It can be attached again later." }).waitFor()
+      await rows.filter({ hasText: "1 of them removed" }).waitFor()
+
+      // The open dialog keeps the switch out of reach of a real click.
+      await refuse.dispatchEvent("click")
+      await refuse.and(page.locator(`[aria-pressed="false"]`)).waitFor()
+      await confirm.click()
+      await dialog.waitFor({ state: "detached" })
+      await rows.filter({ hasText: "2 of them removed" }).waitFor()
+
+      // The form shows the removal without being opened again, and focus is on the new action.
+      await restore.and(focused).waitFor()
+      await remove.waitFor({ state: "detached" })
+      await card.getByText(/^Detached .+ ago$/).waitFor()
+    },
+  },
+  {
+    name:
+      "AssociationEditor: a Restore the store refuses is shown in its dialog in the app's words, and leaving the dialog keeps the row removed",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const rows = card.locator(`[data-e2e="association-rows"]`)
+      const refuse = card.locator(`[data-e2e="refuse-endings"]`)
+      const restore = card.getByRole("button", { name: "Restore", exact: true })
+      const dialog = page.getByRole("alertdialog", { name: "Attach this supplier again?" })
+      const focused = page.locator(":focus")
+
+      await card.locator(`[data-e2e="edit-association"]`).click()
+      await card.getByRole("button", { name: "Delete", exact: true }).click()
+      await page.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+      await restore.waitFor()
+      await refuse.click()
+      await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+
+      await restore.click()
+      await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+      await dialog.getByRole("alert")
+        .filter({
+          hasText: "The supplier was not attached again: the server refused the change",
+        })
+        .and(focused).waitFor()
+
+      await dialog.locator(`[data-e2e="confirm-dialog-cancel"]`).click()
+      await dialog.waitFor({ state: "detached" })
+      await restore.and(focused).waitFor()
+      await rows.filter({ hasText: "2 of them removed" }).waitFor()
+    },
+  },
+  {
+    name:
+      "AssociationEditor: a refused Restore of a removed duplicate says so in the default words; once it goes through, focus moves to the field the duplicate is reported on",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const rows = card.locator(`[data-e2e="association-rows"]`)
+      const refuse = card.locator(`[data-e2e="refuse-endings"]`)
+      const field = card.getByLabel("Supplier name")
+      const restore = card.getByRole("button", { name: "Restore", exact: true })
+      const dialog = page.getByRole("alertdialog", { name: "Restore supplier association?" })
+      const confirm = dialog.locator(`[data-e2e="confirm-dialog-confirm"]`)
+      const focused = page.locator(":focus")
+
+      await field.fill("Ink supplier")
+      await page.keyboard.press("Tab")
+      await card.getByText(
+        "Restoring it keeps the record that was there before instead of creating a second one.",
+      ).waitFor()
+      await refuse.click()
+      await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+
+      await restore.click()
+      await confirm.click()
+      await dialog.getByRole("alert")
+        .filter({ hasText: "Could not restore: the server refused the change" })
+        .and(focused).waitFor()
+      await rows.filter({ hasText: "1 of them removed" }).waitFor()
+
+      await refuse.dispatchEvent("click")
+      await refuse.and(page.locator(`[aria-pressed="false"]`)).waitFor()
+      await confirm.click()
+      await dialog.waitFor({ state: "detached" })
+      await rows.filter({ hasText: "0 of them removed" }).waitFor()
+
+      // The offer, and the button that had focus, are gone; the person is on the field to change.
+      await restore.waitFor({ state: "detached" })
+      await field.and(focused).waitFor()
+    },
+  },
 ]

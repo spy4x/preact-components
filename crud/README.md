@@ -20,7 +20,7 @@ import { search } from "@spy4x/platform/universal/text"
 | `CheckboxField`      | `field`               | `vm`, `vl`, `name`, `label`, `hint?`, `span?`, `renderIssue?`                   |
 | `CrudEditor`         | `crud-editor`         | `mode`, `store`, `editId?`, `validate?`, `archive?`, `canChange?`, `onCreated?` |
 | `CrudList`           | `crud-list`           | `store` or `rows`, `title`, `match`, `header`, `row`, `actions?`, `addHref?`    |
-| `DeletionValidation` | `deletion-validation` | `dependencies`, `model` — the entities that block an archive                    |
+| `DeletionValidation` | `deletion-validation` | `dependencies`, `model`, `label?` — the entities that block an archive          |
 | `FieldIssues`        | `field`               | `vl`, `name`, `renderIssue?` — one field's issues                               |
 | `NumberField`        | `field`               | as `TextField`; commits `0` for an empty box                                    |
 | `SelectField`        | `field`               | as `TextField`, plus `options`                                                  |
@@ -130,22 +130,43 @@ The interfaces here describe the slice actually consumed, and nothing else.
 />
 ```
 
-| Prop                            | Default           | What it does                                                      |
-| ------------------------------- | ----------------- | ----------------------------------------------------------------- |
-| `store`                         | —                 | model store: the status slices, the count and the load error      |
-| `rows`                          | —                 | a plain signal instead — nested, or a read-only collection        |
-| `error`                         | `store.op.list`   | the banner source for a signal-backed list                        |
-| `title` / `titleSlot`           | —                 | the page title, or a slot for a back button or a parent entity    |
-| `badge`                         | non-deleted count | badge after the title; `false` hides it                           |
-| `match`                         | —                 | whether one word matches a row; words are ANDed                   |
-| `header`, `row`                 | —                 | the table's cells, excluding the actions column                   |
-| `actions`                       | —                 | right-aligned actions cell; adds its own header cell              |
-| `addHref`, `addLabel`, `canAdd` | —                 | the add action, hidden when there is nowhere to go                |
-| `statusFilter`                  | on                | `false`, or `{ label, active, archived }` for a different wording |
-| `query`, `status`               | local signals     | hand over the signals to own them (URL filters, a parent page)    |
-| `searchDelay`                   | `300`             | debounce of the search box                                        |
-| `searchPlaceholder`             | `"Search"`        | placeholder of the search box                                     |
-| `searchLabel`                   | `"Search"`        | name of the Search button, which searches at once, as Enter does  |
+| Prop                                     | Default                         | What it does                                                      |
+| ---------------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
+| `store`                                  | —                               | model store: the status slices, the count and the load error      |
+| `rows`                                   | —                               | a plain signal instead — nested, or a read-only collection        |
+| `error`                                  | `store.op.list`                 | the banner source for a signal-backed list                        |
+| `title` / `titleSlot`                    | —                               | the page title, or a slot for a back button or a parent entity    |
+| `badge`                                  | non-deleted count               | badge after the title; `false` hides it                           |
+| `match`                                  | —                               | whether one word matches a row; words are ANDed                   |
+| `header`, `row`                          | —                               | the table's cells, excluding the actions column                   |
+| `actions`                                | —                               | right-aligned actions cell; adds its own header cell              |
+| `addHref`, `addLabel`, `canAdd`          | —                               | the add action, hidden when there is nowhere to go                |
+| `statusFilter`                           | on                              | `false`, or `{ label, active, archived }` for a different wording |
+| `query`, `status`                        | local signals                   | hand over the signals to own them (URL filters, a parent page)    |
+| `searchDelay`                            | `300`                           | debounce of the search box                                        |
+| `searchPlaceholder`                      | `"Search"`                      | placeholder of the search box                                     |
+| `searchLabel`                            | `"Search"`                      | name of the Search button, which searches at once, as Enter does  |
+| `searchFieldLabel`                       | the placeholder                 | accessible name of the search field                               |
+| `headingLevel`                           | `1`                             | level of the title's heading, for a page that has its `<h1>`      |
+| `pageSize`                               | every row                       | rows a page; adds the pager once there is more than one page      |
+| `page`                                   | local signal                    | the page number, `1`-based, for a URL filter to own               |
+| `paginationLabels`                       | `Pagination`'s                  | `{ label, previousLabel, nextLabel, pageLabel }` of the pager     |
+| `emptyTitle`                             | `"Nothing here yet"`            | headline in place of the table when the list has no row           |
+| `noMatchTitle`                           | `"Nothing matches your search"` | the same when the search leaves no row                            |
+| `emptyDescription`, `noMatchDescription` | —                               | a second line under either headline                               |
+
+A list with no row to show renders the library's `EmptyState` in place of the table, a
+`role="status"` with `emptyTitle`, or `noMatchTitle` when a search term is set. It is held back
+while `store.op.list` is in progress and when the load failed, where "nothing here" would be false.
+
+Every row is rendered unless `pageSize` is given. With it, the rows the search and the status
+filter leave are cut into pages, and the library's `Pagination` sits under the table once they fill
+more than one. A new search term or status goes back to page 1, and a page past the end (rows were
+removed) shows the last page. Paging is opt-in so that a list an app already ships keeps showing
+every row after an upgrade.
+
+The search field follows `query`: when something outside the list changes it, such as Back
+restoring an earlier search from the address, the field shows that term.
 
 `rows` is how the two variants the store cannot express are built. A nested list scoped to a parent
 passes a selector (`state.child.childrenOfParent(parentId)`); a read-only collection with no
@@ -204,20 +225,23 @@ The harness is the six parts, once:
    editor ends at the form's bottom edge in any parent layout; once the block holds a list, the
    section's 24px gap separates it from the form (#279).
 
-| Prop             | Default             | Notes                                                           |
-| ---------------- | ------------------- | --------------------------------------------------------------- |
-| `blank`          | —                   | the add-mode row; the row type is inferred from it              |
-| `schema`         | —                   | arktype schema validated on every change; omit if there is none |
-| `entity`         | —                   | "Add **Region**", "Region not found", dependency sentence       |
-| `title`          | `Add/Edit <entity>` | full title override                                             |
-| `canChange`      | `true`              | a port, because the library has no auth; `false` leaves Cancel  |
-| `archive`        | no toggle           | `{}` turns the archive toggle on; `{ label, dependencies }`     |
-| `onCreated`      | —                   | navigate where the created row belongs                          |
-| `validate`       | —                   | extra checks after the schema                                   |
-| `cancelHref`     | —                   | where Cancel points                                             |
-| `saveErrorLabel` | `"Could not save"`  | what a failed save is introduced with                           |
-| `notice`         | —                   | slot between the field grid and the footer                      |
-| `footerSlot`     | —                   | slot at the start of the footer                                 |
+| Prop             | Default              | Notes                                                             |
+| ---------------- | -------------------- | ----------------------------------------------------------------- |
+| `blank`          | —                    | the add-mode row; the row type is inferred from it                |
+| `schema`         | —                    | arktype schema validated on every change; omit if there is none   |
+| `entity`         | —                    | "Add **Region**", "Region not found", dependency sentence         |
+| `title`          | `Add/Edit <entity>`  | full title override                                               |
+| `canChange`      | `true`               | a port, because the library has no auth; `false` leaves Cancel    |
+| `archive`        | no toggle            | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
+| `onCreated`      | —                    | navigate where the created row belongs                            |
+| `validate`       | —                    | extra checks after the schema                                     |
+| `cancelHref`     | —                    | where Cancel points                                               |
+| `saveErrorLabel` | `"Could not save"`   | what a failed save is introduced with                             |
+| `saveLabel`      | `"Save"`             | label of the Save button; `cancelLabel` is Cancel's               |
+| `notFoundLabel`  | `<entity> not found` | shown when `editId` names a row the store does not hold           |
+| `headingLevel`   | `1`                  | level of the title's heading, for a page that has its `<h1>`      |
+| `notice`         | —                    | slot between the field grid and the footer                        |
+| `footerSlot`     | —                    | slot at the start of the footer                                   |
 
 ## Field rows
 
@@ -262,7 +286,9 @@ Four behaviours the copies got wrong, now in one place:
 
 ## `DeletionValidation`
 
-`DeletionValidation` renders the entities that block an archive. It lives here rather than in `ui/`
+`DeletionValidation` renders the entities that block an archive, under the heading
+`To archive this <model>, please first archive:`, which `label` replaces (`archive.blockedLabel` on
+`CrudEditor`). It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
 page on every render — even with an empty list, as a zero-height node rather than nothing at all —
 empty until `dependencies` is non-empty, the pattern `ui/`'s toasts and combobox use, so a screen
@@ -393,8 +419,17 @@ differs from a validated form in three ways, and each one is a slot or a port on
   `confirmDelete` and `confirmRestore` are the questions, `confirmDeleteTitle` and
   `confirmRestoreTitle` the headings, `deleteLabel` and `restoreLabel` name the confirming action,
   and `confirmCancelLabel` the cancelling one. All have English defaults. While the store has not
-  answered, the confirming button is busy and the dialog stays; a store that throws is logged with
-  `console.error` and the dialog closes.
+  answered, the confirming button is busy and the dialog stays. When the store refuses, or throws,
+  the dialog stays open and shows `Could not delete: <the store's message>` in an `ErrorState` (a
+  `role="alert"`) that takes focus, so the person can try again or leave; `deleteErrorLabel` and
+  `restoreErrorLabel` replace the first part, and a store that throws is logged with
+  `console.error` as well. When it succeeds, the form's own copy of the row takes the new
+  `deletedAt`: the footer offers the opposite action at once, on the same button, which keeps
+  focus, and a later Save does not send the old value back. `removedLabel` words the line beside
+  Restore, and `restoreHint` the sentence beside the offer to restore a removed duplicate. After
+  that offer's restore, focus moves to the form's first invalid control, the field the duplicate is
+  now reported on. `saveLabel`, `cancelLabel`, `saveErrorLabel`, `notFoundLabel` and `headingLevel`
+  pass through to `CrudEditor`.
 
 `association-editor.tsx` is the composition, not a copy:
 
@@ -473,7 +508,8 @@ the same rules.
 
 - `rowsForStatus(store, status)` is the slice of a `CrudListStore` a status shows: the archived rows
   for `"archived"`, the active rows otherwise. `listRows(store, status, query, match)` filters that
-  slice by the search term the way `CrudList` does.
+  slice by the search term the way `CrudList` does. `pageOf(rows, page, pageSize)` cuts one page
+  out of those rows and returns `{ rows, page, pageCount }`, with the page brought into range.
 - `editorState({ initialized, validation, canChange, inProgress, blocked })` derives what the
   editor's buttons show: whether the form is valid, whether it is busy, and whether Save is enabled.
   Save needs a loaded, valid row, a user who may change it, no request in flight and nothing
@@ -502,6 +538,6 @@ deno test crud/       # from the repository root
 Every module has a colocated suite: the time labels (`time.test.ts`), the save-enabled
 rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
-and actions column (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
+actions column, empty state and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
 `buildModelStore` (`store.test.ts`), and the ported regions resource
 (`examples/regions.test.tsx`). No network, no timers left running.
