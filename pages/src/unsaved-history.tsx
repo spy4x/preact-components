@@ -17,8 +17,8 @@ import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { buttonClasses } from "@spy4x/preact-ui/button"
 import { Input } from "@spy4x/preact-ui/input"
-import { UnsavedGuard } from "@spy4x/preact-ui/unsaved-guard"
-import { useEffect } from "preact/hooks"
+import { createLeaveGuard, UnsavedGuard } from "@spy4x/preact-ui/unsaved-guard"
+import { useEffect, useMemo } from "preact/hooks"
 import { Router, useLocation, useSearch } from "wouter-preact"
 
 /** The query parameter that names the view. */
@@ -104,6 +104,13 @@ function Editor(
   { navigate, previewLink }: { navigate: (href: string) => void; previewLink: JSX.Element },
 ) {
   const dirty = useSignal(false)
+  // The second field is a second form with its own guard. The two share one `LeaveGuard`, as two
+  // forms on one page must, so one dialog asks for both.
+  const tagsDirty = useSignal(false)
+  const leaveGuard = useMemo(createLeaveGuard, [])
+  const owns = (url: URL) => url.pathname === location.pathname
+  const toView = (href: string) =>
+    navigate(viewHref(new URL(href, location.href).searchParams.get(VIEW_PARAM)))
   // What the line below reports. It is set in an effect, and a parent's effect runs after its
   // child's, so "yes" means the guard is already listening: a check that reads it and presses Back
   // at once cannot arrive between the render and the guard's own effect.
@@ -123,13 +130,26 @@ function Editor(
       <p class="text-sm text-gray-600 dark:text-gray-300" data-e2e="unsaved-history-state">
         Unsaved: {guarded.value ? "yes" : "no"}
       </p>
+      <Input
+        aria-label="Tags"
+        placeholder="A second form, with its own guard"
+        onInput={() => tagsDirty.value = true}
+        data-e2e="unsaved-history-tags"
+      />
       {previewLink}
       <UnsavedGuard
+        when={tagsDirty.value}
+        owns={owns}
+        navigate={toView}
+        onDiscard={() => tagsDirty.value = false}
+        leaveGuard={leaveGuard}
+      />
+      <UnsavedGuard
         when={dirty.value}
-        owns={(url) => url.pathname === location.pathname}
-        navigate={(href) =>
-          navigate(viewHref(new URL(href, location.href).searchParams.get(VIEW_PARAM)))}
+        owns={owns}
+        navigate={toView}
         onDiscard={() => dirty.value = false}
+        leaveGuard={leaveGuard}
       />
     </>
   )

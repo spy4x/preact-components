@@ -477,6 +477,64 @@ function unsavedHistorySpecs(): Spec[] {
     },
     {
       name:
+        "UnsavedGuard: with a change, the app's own replaceState and pushState open no dialog and are not undone, and Stay after Back keeps the replaced address",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, type, viewIs, dialogsAre, dialog, stay, editorIsKept } = unsavedHistoryDemo(
+          page,
+        )
+        const filterIs = (expected: string | null) => {
+          const filter = new URL(page.url()).searchParams.get("filter")
+          if (filter !== expected) throw new Error(`the address has filter=${filter}`)
+        }
+        await open("edit")
+        await type()
+        // The app changes the query of the form's own page, as a filter beside the form does.
+        await page.evaluate(() => {
+          const url = new URL(location.href)
+          url.searchParams.set("filter", "a")
+          history.replaceState(history.state, "", url)
+        })
+        await viewIs("edit")
+        await dialogsAre(0)
+        filterIs("a")
+        // The address the guard puts back is the replaced one, not the one it first saw.
+        await page.goBack()
+        await dialog.waitFor()
+        await stay.click()
+        await editorIsKept()
+        filterIs("a")
+        // The app navigates away from code without the guard, as it does after a save.
+        await page.evaluate(() => {
+          const url = new URL(location.href)
+          url.searchParams.set("unsaved-note", "preview")
+          history.pushState({ view: "preview" }, "", url)
+        })
+        await viewIs("preview")
+        await dialogsAre(0)
+      },
+    },
+    {
+      name:
+        "UnsavedGuard: two forms with changes that share a leave guard put one entry back, and Leave arrives where Back was going",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, type, viewIs, dialog, leave, dialogsAre } = unsavedHistoryDemo(page)
+        await open("edit")
+        // The second form first: the "Unsaved" line `type` waits for is drawn after both guards'
+        // effects.
+        await page.locator(`[data-e2e="unsaved-history-tags"]`).fill("An unsaved tag")
+        await type()
+        await page.goBack()
+        await dialog.waitFor()
+        await dialogsAre(1)
+        await leave.click()
+        await viewIs("list")
+        await dialogsAre(0)
+      },
+    },
+    {
+      name:
         "UnsavedGuard in a browser without the Navigation API: a link with a change still asks, and Back is not held",
       pageId: "ui",
       run: async (page) => {
