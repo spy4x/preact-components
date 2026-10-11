@@ -42,7 +42,7 @@ export const specs: readonly Spec[] = [
   }),
   {
     name: "SavedCopyNotice: the live region is in the page before the copy, its text changes " +
-      "once when the copy arrives, not when the notice renders again, and again for a newer copy",
+      "when the copy arrives, not when the notice renders again, and again for a newer copy",
     pageId: "system",
     run: async (page) => {
       const region = page.locator(SAVED_COPY_REGION)
