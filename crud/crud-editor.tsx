@@ -2,7 +2,7 @@ import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { Stack } from "@spy4x/preact-ui/layout"
-import { PageTitle } from "@spy4x/preact-ui/page-title"
+import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
@@ -196,10 +196,19 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   entity: string
   /** Full page title. Defaults to `Add <entity>` or `Edit <entity>`. */
   title?: ComponentChildren
+  /**
+   * Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page
+   * already has its `<h1>`; the look stays the same.
+   */
+  headingLevel?: PageTitleProps["headingLevel"]
+  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
+  notFoundLabel?: string
   /** Where Cancel points. */
   cancelHref: string
   /** Label of the Cancel link. Defaults to `"Cancel"`. */
   cancelLabel?: string
+  /** Label of the Save button. Defaults to `"Save"`. */
+  saveLabel?: string
   /**
    * What a failed save is introduced with, before the store's own message. Defaults to
    * `"Could not save"`.
@@ -266,6 +275,11 @@ export interface ArchiveConfig<M extends CrudRow> {
   /** Label of the checkbox. Defaults to `"Is Archived?"`. */
   label?: string
   /**
+   * Heading of the list of what blocks the archive. Defaults to
+   * `To archive this <entity>, please first archive:`.
+   */
+  blockedLabel?: string
+  /**
    * Entities blocking the archive of a row. A non-empty answer disables Save and is listed under
    * the form. Omit it when nothing can block the archive.
    */
@@ -304,8 +318,11 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     schema,
     entity,
     title,
+    headingLevel,
+    notFoundLabel,
     cancelHref,
     cancelLabel,
+    saveLabel,
     saveErrorLabel,
     onCreated,
     canChange,
@@ -332,7 +349,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
 
     const row = store.one.byId(props.editId).value
     if (row === undefined) {
-      error.value = `${entity} not found`
+      error.value = notFoundLabel ?? `${entity} not found`
       return
     }
 
@@ -459,7 +476,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
 
   return (
     <Stack as="section" gap="lg" class={cn("mx-auto max-w-6xl", className)}>
-      <PageTitle>
+      <PageTitle headingLevel={headingLevel}>
         {title ?? (props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`)}
       </PageTitle>
       {error.value !== "" && <p class="text-danger">{error.value}</p>}
@@ -536,7 +553,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 disabled={!state.saveEnabled}
               >
                 {state.busy && <IconLoading />}
-                Save
+                {saveLabel ?? "Save"}
               </button>
             )}
           </div>
@@ -554,7 +571,11 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         */
       }
       <div class={blocked.value.length === 0 ? "absolute" : undefined}>
-        <DeletionValidation dependencies={blocked.value} model={entity} />
+        <DeletionValidation
+          dependencies={blocked.value}
+          model={entity}
+          label={archive?.blockedLabel}
+        />
       </div>
     </Stack>
   )

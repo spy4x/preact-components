@@ -8,6 +8,8 @@ export interface DeletionValidationProps {
   dependencies: DeletionDependency[]
   /** Model name used in the sentence, for example `"Region"`. */
   model: string
+  /** Heading above the list. Defaults to `To archive this <model>, please first archive:`. */
+  label?: string
 }
 
 /**
@@ -40,7 +42,7 @@ export interface DeletionValidationProps {
  * wraps it to take it out of the flow while it is empty — `CrudEditor` does, see #279.
  */
 export function DeletionValidation(
-  { dependencies, model }: DeletionValidationProps,
+  { dependencies, model, label }: DeletionValidationProps,
 ): JSX.Element {
   const block = useRef<HTMLDivElement>(null)
   const lastScrolledFor = useRef<string | null>(null)
@@ -76,7 +78,7 @@ export function DeletionValidation(
           </div>
           <div class="ml-3">
             <h3 class="text-sm font-medium">
-              To archive this {model}, please first archive:
+              {label ?? `To archive this ${model}, please first archive:`}
             </h3>
             <div class="mt-2 text-sm max-w-xl">
               <ul role="list" class="list-disc space-y-1 pl-4">

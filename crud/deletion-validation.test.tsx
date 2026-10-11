@@ -44,6 +44,19 @@ describe("DeletionValidation", () => {
     expect(html).toContain("Weekly sweep")
   })
 
+  it("heads the list with the caller's sentence in place of the default", () => {
+    const html = render(
+      <DeletionValidation
+        dependencies={dependencies}
+        model="Region"
+        label="These still use the region:"
+      />,
+    )
+
+    expect(html).toContain("These still use the region:")
+    expect(html).not.toContain("To archive this Region")
+  })
+
   it("styles the region as the visible card once there are dependencies", () => {
     const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
     const match = html.match(/<div([^>]*)role="alert"/)
