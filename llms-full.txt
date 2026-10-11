@@ -704,7 +704,8 @@ differs from a validated form in three ways, and each one is a slot or a port on
   `footerSlot`. Each asks first in the library's `ConfirmDialog`, never the browser's `confirm()`:
   `confirmDelete` and `confirmRestore` are the questions, `confirmDeleteTitle` and
   `confirmRestoreTitle` the headings, `deleteLabel` and `restoreLabel` name the confirming action,
-  and `confirmCancelLabel` the cancelling one. All have English defaults. While the store has not
+  `confirmCancelLabel` the cancelling one and `confirmCloseLabel` the cross in the corner. All have
+  English defaults. While the store has not
   answered, the confirming button is busy and the dialog stays; a store that throws is logged with
   `console.error` and the dialog closes.
 
@@ -4521,7 +4522,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`                                                                                                                                                 |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                |
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                   |
-| `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                 |
+| `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                  |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                 |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                       |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                              |
@@ -6401,7 +6402,9 @@ components and tests means exactly that: nothing outside this package should bui
   blank. It is how `ConfirmDialog` resolves its button labels, and a host app can resolve its own
   translated strings the same way.
 - `CONFIRM_LABEL` (`"Confirm"`) and `CANCEL_LABEL` (`"Cancel"`) are the English defaults for the
-  confirming and cancelling actions.
+  confirming and cancelling actions. The cross in the corner is named by `closeLabel` (`"Close"`),
+  never by the cancel label, so no two buttons of the dialog share a name; it is left out when a
+  footer button already has that name.
 - `confirmVariant(tone)` maps a dialog's tone to its confirm button's variant: `"danger"` for a
   destructive decision, `"primary"` otherwise. Use it to give the button that opens the dialog the
   same variant.
@@ -6578,7 +6581,8 @@ components and tests means exactly that: nothing outside this package should bui
 - `guardedHref(click, link, here, owns)` is the rule `UnsavedGuard` applies to a click: the in-app
   address to hold back, as path, query and hash, or `null` when the browser or the link should
   handle the click. `UnsavedClick` and `UnsavedLink` are the fields it reads.
-- `defaultUnsavedGuardLabels` holds the dialog's English words; `labels` replaces any of them.
+- `defaultUnsavedGuardLabels` holds the dialog's English words; `labels` replaces any of them, and
+  its `close` names the cross in the dialog's corner (`"Close"`).
 - `createLeaveGuard()` makes the `LeaveGuard` an app shares between its `UnsavedGuard` (the
   `leaveGuard` prop) and the code that navigates. `leaveGuard.navigate(go)` runs `go` at once when
   nothing is unsaved and asks first otherwise. `navigate` is its only member; `UnsavedGuard`
