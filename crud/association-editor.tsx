@@ -1,13 +1,22 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { ConfirmDialog } from "@spy4x/preact-ui/confirm-dialog"
+import { ErrorState } from "@spy4x/preact-ui/error-state"
+import { Stack } from "@spy4x/preact-ui/layout"
 import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
+import { useEffect, useRef } from "preact/hooks"
 import { timeAgo } from "@spy4x/platform/universal/time"
 import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
-import { CrudEditor, type CrudEditorMode, type CrudEditorSlot } from "./crud-editor.tsx"
+import {
+  CrudEditor,
+  type CrudEditorBaseProps,
+  type CrudEditorMode,
+  type CrudEditorSlot,
+} from "./crud-editor.tsx"
+import { setField } from "./field.tsx"
 import type { CrudEditorStore } from "./store.ts"
-import type { CrudRow, OperationResult, OperationState } from "./types.ts"
+import type { CrudRow, OperationResult, OperationState, StoreErrorLike } from "./types.ts"
 
 /**
  * The editor for a junction row, composed from {@link CrudEditor} rather than rebuilt beside it.
@@ -22,7 +31,9 @@ import type { CrudRow, OperationResult, OperationState } from "./types.ts"
  *    and which blocks Save through the one rule the harness already has.
  * 3. **Removal instead of archiving.** A junction row means nothing on its own, so Delete ends it
  *    and Restore brings it back — written into `footerSlot`, since the harness only knows the soft
- *    delete that every other editor needs.
+ *    delete that every other editor needs. A removal or a restore the store refuses, or one that
+ *    throws, is shown in the dialog that asked, in the library's `ErrorState`, which takes focus;
+ *    one that succeeds is copied into the form, so the footer offers the opposite action at once.
  *
  * Ported from three of a source application's near-identical junction editors (215, 223 and 295
  * lines).
@@ -159,6 +170,36 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   deleteLabel?: string
   /** Label of the restore button. Defaults to `"Restore"`. */
   restoreLabel?: string
+  /**
+   * What a failed removal is introduced with, before the store's own message. Defaults to
+   * `"Could not delete"`.
+   */
+  deleteErrorLabel?: string
+  /**
+   * What a failed restore is introduced with, before the store's own message. Defaults to
+   * `"Could not restore"`.
+   */
+  restoreErrorLabel?: string
+  /**
+   * The line beside Restore on a removed row, given how long ago it was removed (`"2 days ago"`).
+   * Defaults to `` (ago) => `Removed ${ago}` ``. A function, because where the time falls in the
+   * sentence is the translator's business.
+   */
+  removedLabel?: (ago: string) => string
+  /**
+   * The sentence beside the offer to restore a removed duplicate. Defaults to an English sentence.
+   */
+  restoreHint?: string
+  /** Label of the Cancel link. Defaults to `"Cancel"`. */
+  cancelLabel?: string
+  /** Label of the Save button. Defaults to `"Save"`. */
+  saveLabel?: string
+  /** What a failed save is introduced with. Defaults to `"Could not save"`. */
+  saveErrorLabel?: string
+  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
+  notFoundLabel?: string
+  /** Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. */
+  headingLevel?: CrudEditorBaseProps<M>["headingLevel"]
   /** Schema for the row's own rules, if it has any. Usually omitted. */
   schema?: Type
   title?: ComponentChildren
@@ -205,12 +246,14 @@ export function AssociationEditor<M extends CrudRow>(
 
   const restoreWording: ConfirmWording = {
     label: restoreLabel ?? "Restore",
+    errorLabel: props.restoreErrorLabel ?? "Could not restore",
     title: props.confirmRestoreTitle ?? `Restore ${entity}?`,
     message: props.confirmRestore ?? `Are you sure you want to restore this ${entity}?`,
     cancelLabel: props.confirmCancelLabel,
   }
   const deleteWording: ConfirmWording = {
     label: deleteLabel ?? "Delete",
+    errorLabel: props.deleteErrorLabel ?? "Could not delete",
     title: props.confirmDeleteTitle ?? `Delete ${entity}?`,
     message: props.confirmDelete ?? `Are you sure you want to delete this ${entity}?`,
     cancelLabel: props.confirmCancelLabel,
@@ -223,6 +266,11 @@ export function AssociationEditor<M extends CrudRow>(
     cancelHref,
     schema,
     title,
+    headingLevel: props.headingLevel,
+    cancelLabel: props.cancelLabel,
+    saveLabel: props.saveLabel,
+    saveErrorLabel: props.saveErrorLabel,
+    notFoundLabel: props.notFoundLabel,
     onCreated,
     canChange,
     class: className,
@@ -242,6 +290,7 @@ export function AssociationEditor<M extends CrudRow>(
         vm={vm}
         conflict={conflict}
         restoreWording={restoreWording}
+        hint={props.restoreHint}
       />
     ),
     footerSlot: ({ vm }: CrudEditorSlot<M>) =>
@@ -251,6 +300,7 @@ export function AssociationEditor<M extends CrudRow>(
           vm={vm}
           deleteWording={deleteWording}
           restoreWording={restoreWording}
+          removedLabel={props.removedLabel}
         />
       ),
   }
@@ -270,14 +320,22 @@ interface ConfirmWording {
   message: string
   /** Label of the dialog's cancelling action; the dialog's own default when left out. */
   cancelLabel?: string
+  /** What a failure is introduced with, before the store's own message. */
+  errorLabel: string
 }
+
+/** What a store's removal or restore answers with, as far as the dialog reads it. */
+type ActionOutcome = { error: StoreErrorLike | null } | null | undefined
 
 /**
  * A button that asks before it acts: it opens a `ConfirmDialog`, and only the dialog's confirming
  * action runs `run`.
  *
- * The dialog stays open, busy, while `run` is in flight and closes when it settles, so focus goes
- * back to a button that is enabled again.
+ * The dialog stays open, busy, while `run` is in flight. When the store answers without an error it
+ * closes, so focus goes back to a button that is enabled again. When the store refuses, or throws,
+ * the dialog stays and shows why in an `ErrorState`, a `role="alert"` that takes focus, so the
+ * person is told and can try again or leave. A store that throws is logged as well, so the app's
+ * error reporting still sees it.
  */
 function ConfirmedAction(
   { wording, class: className, inProgress, danger, run }: {
@@ -287,14 +345,20 @@ function ConfirmedAction(
     inProgress: boolean
     /** The action destroys something: the dialog and its confirming action are tinted. */
     danger?: boolean
-    run: () => Promise<unknown>
+    run: () => Promise<ActionOutcome>
   },
 ) {
   const confirming = useSignal(false)
   const running = useSignal(false)
+  const failure = useSignal("")
   const close = () => {
     running.value = false
+    failure.value = ""
     confirming.value = false
+  }
+  const fail = (message: string) => {
+    running.value = false
+    failure.value = message ? `${wording.errorLabel}: ${message}` : wording.errorLabel
   }
 
   return (
@@ -311,37 +375,65 @@ function ConfirmedAction(
       {confirming.value && (
         <ConfirmDialog
           title={wording.title}
-          message={wording.message}
           confirmLabel={wording.label}
           cancelLabel={wording.cancelLabel}
           tone={danger ? "danger" : "default"}
           busy={running.value}
           onConfirm={() => {
             running.value = true
-            // A store reports a refusal through its own operation state. One that throws, when it
-            // is called or later, is logged, so the app's error reporting still sees it. Either
-            // way the dialog goes.
-            Promise.resolve().then(run).catch((error) =>
-              console.error(`${wording.label} failed`, error)
-            ).finally(close)
+            // Cleared first, so the same refusal twice in a row is a new message: it is announced
+            // and takes focus again.
+            failure.value = ""
+            Promise.resolve().then(run).then(
+              (outcome) => outcome?.error ? fail(outcome.error.message) : close(),
+              (error) => {
+                console.error(`${wording.label} failed`, error)
+                fail(error instanceof Error ? error.message : String(error))
+              },
+            )
           }}
           onCancel={close}
-        />
+        >
+          <Stack>
+            <p class="text-sm text-muted">{wording.message}</p>
+            <ErrorState focusOnAppear message={failure.value} class="mx-0 max-w-none text-left" />
+          </Stack>
+        </ConfirmDialog>
       )}
     </>
   )
 }
 
-/** The restore offer for a duplicate that was removed earlier. Renders nothing otherwise. */
+/**
+ * The restore offer for a duplicate that was removed earlier. Renders nothing otherwise.
+ *
+ * A restore that succeeds takes the offer away, and with it the button that had focus. Focus then
+ * goes to the form's first invalid control: the restored row is now a live duplicate, so that is
+ * the field it is reported on, which the person has to change next. A field row marks itself with
+ * `aria-invalid`; a caller's own control that does not keeps the browser's default.
+ */
 function RemovedConflict<M extends CrudRow>(
-  { store, vm, conflict, restoreWording }: {
+  { store, vm, conflict, restoreWording, hint }: {
     store: CrudAssociationStore<M>
     vm: Signal<M>
     conflict: (row: M, rows: M[]) => M | undefined
     restoreWording: ConfirmWording
+    hint?: string
   },
 ) {
+  const offer = useRef<HTMLDivElement>(null)
+  // The form a restore is running in, kept until the offer has gone and focus can move.
+  const restoredIn = useRef<HTMLFormElement | null>(null)
   const conflicting = conflict(vm.value, store.list.all.value)
+  const restorable = isRestorable(conflicting)
+
+  useEffect(() => {
+    if (restorable || restoredIn.current === null) return
+    const control = restoredIn.current.querySelector<HTMLElement>(`[aria-invalid="true"]`)
+    restoredIn.current = null
+    control?.focus()
+  }, [restorable])
+
   if (!isRestorable(conflicting)) return null
 
   const id = conflicting.id
@@ -349,27 +441,48 @@ function RemovedConflict<M extends CrudRow>(
   const actions = associationActions(store)
 
   return (
-    <div class="mt-4 flex items-center gap-3">
+    <div ref={offer} class="mt-4 flex items-center gap-3">
       <p class="text-sm text-red-600">
-        Restoring it keeps the record that was there before instead of creating a second one.
+        {hint ??
+          "Restoring it keeps the record that was there before instead of creating a second one."}
       </p>
       <ConfirmedAction
         wording={restoreWording}
         class="btn btn-primary-outline"
         inProgress={restoring}
-        run={() => actions.restore(id)}
+        run={async () => {
+          // Noted before the store is asked, not after it answers: the store's own write can
+          // take the offer away before this function resumes, and the effect above would then
+          // find nothing to move focus in.
+          restoredIn.current = offer.current?.closest("form") ?? null
+          try {
+            const outcome = await actions.restore(id)
+            if (outcome.error !== null) restoredIn.current = null
+            return outcome
+          } catch (error) {
+            restoredIn.current = null
+            throw error
+          }
+        }}
       />
     </div>
   )
 }
 
-/** Delete this row, or restore it when it was removed earlier. Sits at the start of the footer. */
+/**
+ * Delete this row, or restore it when it was removed earlier. Sits at the start of the footer.
+ *
+ * The form holds its own copy of the row, so a removal or a restore that succeeds is written into
+ * that copy: the footer then offers the opposite action, and a later Save does not send the old
+ * `deletedAt` back. One button serves both actions, so focus returns to it when the dialog closes.
+ */
 function AssociationFooter<M extends CrudRow>(
-  { store, vm, deleteWording, restoreWording }: {
+  { store, vm, deleteWording, restoreWording, removedLabel }: {
     store: CrudAssociationStore<M>
     vm: Signal<M>
     deleteWording: ConfirmWording
     restoreWording: ConfirmWording
+    removedLabel?: (ago: string) => string
   },
 ) {
   const id = vm.value.id
@@ -378,30 +491,28 @@ function AssociationFooter<M extends CrudRow>(
     ? store.op.undelete(id).value?.inProgress === true
     : store.op.delete(id).value?.inProgress === true
   const actions = associationActions(store)
-
-  if (removed) {
-    return (
-      <>
-        <ConfirmedAction
-          wording={restoreWording}
-          class="btn btn-primary-outline mr-auto"
-          inProgress={inProgress}
-          run={() => actions.restore(id)}
-        />
-        <span class="text-red-500 mr-auto" title={vm.value.deletedAt?.toString()}>
-          Removed {timeAgo(vm.value.deletedAt)}
-        </span>
-      </>
-    )
-  }
+  const ago = timeAgo(vm.value.deletedAt)
 
   return (
-    <ConfirmedAction
-      wording={deleteWording}
-      class="btn btn-danger mr-auto"
-      inProgress={inProgress}
-      danger
-      run={() => actions.remove(id)}
-    />
+    <>
+      <ConfirmedAction
+        wording={removed ? restoreWording : deleteWording}
+        class={removed ? "btn btn-primary-outline mr-auto" : "btn btn-danger mr-auto"}
+        inProgress={inProgress}
+        danger={!removed}
+        run={async () => {
+          const outcome = removed ? await actions.restore(id) : await actions.remove(id)
+          if (outcome.error === null) {
+            setField(vm, "deletedAt", removed ? null : outcome.result.deletedAt ?? new Date())
+          }
+          return outcome
+        }}
+      />
+      {removed && (
+        <span class="text-red-500 mr-auto" title={vm.value.deletedAt?.toString()}>
+          {removedLabel?.(ago) ?? `Removed ${ago}`}
+        </span>
+      )}
+    </>
   )
 }
