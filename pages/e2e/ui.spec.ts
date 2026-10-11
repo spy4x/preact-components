@@ -1237,11 +1237,12 @@ function toastrSpecs(): Spec[] {
     })),
     {
       name:
-        "Toastr: the dismiss button adds no height: at 320 and 1440 px a toast is as tall as its text plus 16 px above and below",
+        "Toastr: the dismiss button adds no height: at 414 and 1440 px a toast is as tall as its text plus 16 px above and below",
       pageId: "ui",
       run: async (page) => {
         const heights: string[] = []
-        for (const width of [320, 1440]) {
+        // At 414 px the title and a one-line body are 40 px, less than the 44 px button.
+        for (const width of [414, 1440]) {
           const { toast, push, moveTo, clear } = await toastrCard(page, width)
           await push()
           await moveTo("top-right")
