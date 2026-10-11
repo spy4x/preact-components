@@ -1489,13 +1489,12 @@ function SavedCopyNoticeDemo() {
     `${String(time.getHours()).padStart(2, "0")}:${String(time.getMinutes()).padStart(2, "0")}`
   return (
     <Stack gap="md" data-e2e="saved-copy-demo">
-      <div data-e2e="saved-copy-mount">
-        <SavedCopyNotice
-          savedAt={savedAt.value}
-          formatTime={(time) =>
-            renders.value === 0 ? clock(time) : `${clock(time)}, render ${renders.value}`}
-        />
-      </div>
+      <SavedCopyNotice
+        data-e2e="saved-copy-notice"
+        savedAt={savedAt.value}
+        formatTime={(time) =>
+          renders.value === 0 ? clock(time) : `${clock(time)}, render ${renders.value}`}
+      />
       <ul class="list-disc pl-6 text-sm">
         <li>Laptop, signed in on 3 October</li>
         <li>Phone, signed in on 9 October</li>
@@ -2316,6 +2315,12 @@ const tags = seoHeadTags(head)`,
         name: "labels",
         type: "Partial<SavedCopyNoticeLabels>",
         description: "Replaces `title` and `body(time)`.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description:
+          "Utilities for the banner, applied only while it shows. Any other attribute, such as `id` or `data-e2e`, lands on the element in both states.",
       },
     ],
     snippet: `<SavedCopyNotice savedAt={tokens.savedAt.value} />

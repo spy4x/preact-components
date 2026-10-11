@@ -466,7 +466,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `DEFAULT_SAVED_COPY_NOTICE_LABELS` (constant): The English words `SavedCopyNotice` shows when the caller passes none. Import: `@spy4x/preact-system`
 - `SavedCopyNotice` (component): Says that the list under it is a copy saved on this device, and when it was saved. Import: `@spy4x/preact-system`
 - `SavedCopyNoticeLabels` (type): Every word `SavedCopyNotice` shows. Import: `@spy4x/preact-system`
-- `SavedCopyNoticeProps` (type): Props of `SavedCopyNotice`. Import: `@spy4x/preact-system`
+- `SavedCopyNoticeProps` (type): What `SavedCopyNotice` takes. Import: `@spy4x/preact-system`
 - `HeadTag` (type): A serialisable `<head>` element, in document order. Import: `@spy4x/preact-system`
 - `HeadTagName` (type): Which `<head>` element a `HeadTag` describes. Import: `@spy4x/preact-system`
 - `SEOHead` (component): Render the head tag set for a page. Import: `@spy4x/preact-system`

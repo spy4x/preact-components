@@ -6,7 +6,7 @@ import { scrollRegionSpec } from "./scroll-region.ts"
 
 /** The `SavedCopyNotice` card and the live region of the notice mounted in it. */
 const SAVED_COPY = "#demo-SavedCopyNotice"
-const SAVED_COPY_REGION = `${SAVED_COPY} [data-e2e="saved-copy-mount"] > [role="status"]`
+const SAVED_COPY_REGION = `${SAVED_COPY} [role="status"][data-e2e="saved-copy-notice"]`
 
 /**
  * How many times the text inside the region changed since the last call, counting from the first.

@@ -37,7 +37,7 @@ Extracted from earlier source applications.
 | `StateInit`       | `state-init`        | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
 | `RailShell`       | `rail-shell`        | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `header?`, `children`, `labels?`, `class?`                                                                |
 | `SyncStatus`      | `sync-status`       | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
-| `SavedCopyNotice` | `saved-copy-notice` | `savedAt`, `formatTime?`, `labels?`, `class?`                                                                                                                                               |
+| `SavedCopyNotice` | `saved-copy-notice` | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
 | `ConflictChooser` | `conflict-chooser`  | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
 | `InstallPrompt`   | `install-prompt`    | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
 | `PushSettings`    | `push-settings`     | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
@@ -1037,7 +1037,12 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   host's time zone from `formatTime` in `@spy4x/platform/universal/time`, with the date even for
   today. `labels.title` and `labels.body(time)` replace the words, and
   `DEFAULT_SAVED_COPY_NOTICE_LABELS` holds the English ones. `data-saved-at` on the element is
-  the time as an ISO string.
+  the time as an ISO string. Any other attribute, such as `id` or `data-e2e`, lands on the element
+  in both states, so a test selects the notice by its own hook and reads whether it is empty. Make
+  it a direct child of the layout: empty, it is out of the flow and adds no gap, and a wrapper
+  element around it would add one. Only `null`, `undefined` and an invalid date mean "no copy";
+  `0` is 1 January 1970 and shows a banner. The banner has the look of a warning `Notice`, and a
+  test fails when the two drift apart.
 - **`ConflictChooser`** lists the changes the server did not take. Each says in plain words what
   happened, changed elsewhere (`version`), deleted elsewhere (`gone`) or refused by the server
   (`rejected`), and offers the choices that make sense: "Keep mine" and "Use theirs" for a change

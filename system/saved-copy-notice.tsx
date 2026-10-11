@@ -30,10 +30,16 @@ export const DEFAULT_SAVED_COPY_NOTICE_LABELS: SavedCopyNoticeLabels = {
   body: (time) => `The server is out of reach. This copy was saved on this device: ${time}.`,
 }
 
-export interface SavedCopyNoticeProps {
+/**
+ * What {@link SavedCopyNotice} takes. Any other attribute of a `<div>`, such as `id` or `data-*`,
+ * lands on the element in both states, while it is empty and while it shows.
+ */
+export interface SavedCopyNoticeProps
+  extends Omit<JSX.HTMLAttributes<HTMLDivElement>, "role" | "class" | "children"> {
   /**
    * When the copy on screen was saved: a `Date` or epoch milliseconds. `null`, `undefined` and an
-   * invalid date mean the list is fresh, and the notice shows nothing.
+   * invalid date mean the list is fresh, and the notice shows nothing. `0` is a time like any
+   * other, 1 January 1970, so an app with no time to give passes `null`, never `0`.
    */
   savedAt: Date | number | null | undefined
   /**
@@ -70,10 +76,12 @@ function clockTime(savedAt: Date): string {
  * change, so a re-render never changes the text, even with a `formatTime` whose answer depends on
  * the current time. A notice that mounts together with its text is often not announced at all.
  *
- * `data-saved-at` on the element holds the time of the copy as an ISO string.
+ * `data-saved-at` on the element holds the time of the copy as an ISO string. The banner looks like
+ * a warning `Notice` from `@spy4x/preact-ui`, which cannot be used inside it: `Notice` is a live
+ * region of its own and renders nothing while empty. A test holds the two looks together.
  */
 export function SavedCopyNotice(
-  { savedAt, formatTime = clockTime, labels, class: className }: SavedCopyNoticeProps,
+  { savedAt, formatTime = clockTime, labels, class: className, ...rest }: SavedCopyNoticeProps,
 ): JSX.Element {
   const words = { ...DEFAULT_SAVED_COPY_NOTICE_LABELS, ...labels }
   const time = copyTime(savedAt)
@@ -82,6 +90,7 @@ export function SavedCopyNotice(
 
   return (
     <div
+      {...rest}
       role="status"
       aria-live="polite"
       aria-atomic="true"

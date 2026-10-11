@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { Notice } from "@spy4x/preact-ui/notice"
 import { SavedCopyNotice } from "./saved-copy-notice.tsx"
 
 /** A copy saved at five past two in the afternoon, in whatever zone the test runs in. */
@@ -65,6 +66,27 @@ describe("SavedCopyNotice", () => {
 
     expect(words(html)).toMatch(/^The server is out of reach\./)
     expect(html).not.toContain("font-medium")
+  })
+
+  it("puts the caller's attributes on the element, empty and shown", () => {
+    for (const savedAt of [null, SAVED_AT]) {
+      const html = render(<SavedCopyNotice savedAt={savedAt} id="copy" data-e2e="saved-copy" />)
+
+      expect(html).toMatch(/^<div id="copy" data-e2e="saved-copy" role="status"/)
+    }
+  })
+
+  it("looks like a warning Notice: the same classes on the banner and the same icon", () => {
+    const notice = render(<Notice tone="warning" title="Saved copy">Body</Notice>)
+    const banner = render(<SavedCopyNotice savedAt={SAVED_AT} />)
+    const rootClasses = (html: string) =>
+      html.match(/^<div[^>]* class="([^"]*)"/)?.[1].split(" ").sort()
+    const icon = (html: string) => html.match(/<svg.*?<\/svg>/)?.[0]
+
+    expect(rootClasses(notice)?.length).toBeGreaterThan(0)
+    expect(rootClasses(banner)).toEqual(rootClasses(notice))
+    expect(icon(notice)).toBeDefined()
+    expect(icon(banner)).toBe(icon(notice))
   })
 
   it("adds the caller's utilities to the banner", () => {
