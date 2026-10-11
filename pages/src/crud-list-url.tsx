@@ -70,7 +70,9 @@ function LiveList() {
   return (
     // `Table` bleeds 16px past its container below `md`; the guide's page column clips at its own
     // edge, so the padding is given back here.
-    <div data-e2e="crud-list-url-live" class="mt-3 px-4 md:px-0">
+    // `data-card-part="demo"` marks this as a component's output, as the guide's cards mark theirs:
+    // the guide's checks of its own text leave it alone (the pager dims a Previous that cannot go).
+    <div data-e2e="crud-list-url-live" data-card-part="demo" class="mt-3 px-4 md:px-0">
       <CrudList
         rows={rows}
         title="Teams"
