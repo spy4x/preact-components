@@ -43,13 +43,18 @@ export interface StoreErrorLike {
 /**
  * Status of one in-flight store operation.
  *
- * `result` is deliberately `unknown`: the scaffold never reads it, and widening it is what keeps a
- * real `OperationState<M, E>` assignable here without a cast.
+ * `result` is deliberately `unknown`: the scaffold only asks whether it is there, and widening it
+ * is what keeps a real `OperationState<M, E>` assignable here without a cast. The one place that
+ * asks is `CrudList`, which takes a non-null `result` on the list load as "the collection has
+ * loaded" and holds its empty state back until then.
  */
 export interface OperationState<E = StoreErrorLike> {
   /** True between the start of a request and its settlement. */
   inProgress: boolean
-  /** The payload the operation settled with; never read by the scaffold. */
+  /**
+   * The payload the operation settled with, or `null` before it has. The scaffold never reads what
+   * is in it; `CrudList` only checks that the list load has one.
+   */
   result: unknown
   /** The failure the operation settled with, or `null`. */
   error: E | null

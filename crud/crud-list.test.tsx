@@ -6,6 +6,9 @@ import { search } from "@spy4x/platform/universal/text"
 import { CrudList, type CrudListBaseProps, listRows, pageOf, rowsForStatus } from "./crud-list.tsx"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
+import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
+import { RemoteEvent } from "@spy4x/preact-signals/types"
+import { type } from "arktype"
 
 interface Region extends CrudModel {
   name: string
@@ -22,7 +25,10 @@ const archived = (id: number, name: string): Region => ({
 const liveRows = [live(1, "North"), live(2, "South")]
 const archivedRows = [archived(3, "Old North")]
 
-/** A store with no network behind it: plain signals the test can read and write. */
+/**
+ * A store with no network behind it: plain signals the test can read and write. Its load has
+ * settled with the rows it holds, the way a store looks once its collection has arrived.
+ */
 function fakeStore(
   rows: Region[] = liveRows,
   deleted: Region[] = archivedRows,
@@ -30,8 +36,59 @@ function fakeStore(
 ): CrudListStore<Region> {
   return {
     list: { nonDeleted: signal(rows), deleted: signal(deleted) },
-    op: { list: signal({ inProgress: false, result: null, error }) },
+    op: {
+      list: signal({ inProgress: false, result: error ? null : [...rows, ...deleted], error }),
+    },
   }
+}
+
+/** A store whose load has not settled: no result yet, whatever rows it holds. */
+function unsettledStore(rows: Region[] = []): CrudListStore<Region> {
+  return {
+    list: { nonDeleted: signal(rows), deleted: signal([]) },
+    op: { list: signal({ inProgress: false, result: null, error: null }) },
+  }
+}
+
+const date = type("Date | string.date.iso.parse")
+const teamSchema = type({
+  id: "number",
+  name: "string",
+  createdAt: date,
+  updatedAt: date,
+  deletedAt: date.or("null"),
+})
+const teamBase = teamSchema.omit("id", "createdAt", "updatedAt", "deletedAt")
+const teamAt = new Date("2025-03-04T12:00:00Z")
+const team = (id: number, name: string) => ({
+  id,
+  name,
+  createdAt: teamAt,
+  updatedAt: teamAt,
+  deletedAt: null,
+})
+
+/** The real `buildModelStore`, as an application builds it; no request is ever sent. */
+function realStore() {
+  return buildModelStore({
+    model: "team",
+    endpoint: "/api/teams",
+    schemas: { full: teamSchema, create: teamBase, update: teamBase.partial() },
+    fetch: () => Promise.reject(new Error("no request is expected")),
+  })
+}
+
+/** Render a list on the real store. */
+function realList(store: ReturnType<typeof realStore>): string {
+  return render(
+    <CrudList
+      title="Teams"
+      store={store}
+      match={(row, word) => search(row.name, word)}
+      header={<th scope="col">Name</th>}
+      row={(row) => <td>{row.name}</td>}
+    />,
+  )
 }
 
 const match = (row: Region, word: string) => search(row.name, word)
@@ -56,6 +113,7 @@ function signalList(
   props: ListExtras & {
     rows: ReadonlySignal<Region[]>
     error?: ReadonlySignal<StoreErrorLike | null>
+    loading?: ReadonlySignal<boolean>
   },
 ): string {
   return render(<CrudList {...baseProps} {...props} />)
@@ -272,6 +330,46 @@ describe("CrudList", () => {
     expect(html).not.toContain(`role="status"`)
   })
 
+  it("on a real model store, shows the table before the first rows arrive and the empty state only after an empty list has", async () => {
+    const store = realStore()
+
+    const before = realList(store)
+    expect(before).toContain("<table")
+    expect(before).not.toContain(`role="status"`)
+
+    await store.onWs([], RemoteEvent.LIST)
+    const empty = realList(store)
+    expect(empty).toContain(">Nothing here yet</h2>")
+    expect(empty).not.toContain("<table")
+
+    await store.onWs([team(1, "Design")], RemoteEvent.LIST)
+    const filled = realList(store)
+    expect(filled).toContain("<td>Design</td>")
+    expect(filled).not.toContain(`role="status"`)
+  })
+
+  it("keeps the table for a store that holds no row and whose load has not settled", () => {
+    const html = storeList({ store: unsettledStore() })
+
+    expect(html).toContain("<table")
+    expect(html).not.toContain(`role="status"`)
+  })
+
+  it("says the search matched nothing over rows a store holds before any load settled", () => {
+    const html = storeList({ store: unsettledStore(liveRows), query: signal("west") })
+
+    expect(html).toContain(">Nothing matches your search</h2>")
+  })
+
+  it("keeps the table of a signal-backed list while its loading signal is true", () => {
+    const loading = signalList({ rows: signal<Region[]>([]), loading: signal(true) })
+    expect(loading).toContain("<table")
+    expect(loading).not.toContain(`role="status"`)
+
+    const loaded = signalList({ rows: signal<Region[]>([]), loading: signal(false) })
+    expect(loaded).toContain(">Nothing here yet</h2>")
+  })
+
   it("shows the load error without claiming the list is empty", () => {
     const html = storeList({ store: fakeStore([], [], { message: "gateway is down" }) })
 
@@ -319,12 +417,19 @@ describe("CrudList", () => {
     const html = storeList({
       store: fakeStore(manyRows),
       pageSize: 3,
-      paginationLabels: { label: "Region pages", previousLabel: "Earlier", nextLabel: "Later" },
+      paginationLabels: {
+        label: "Region pages",
+        previousLabel: "Earlier",
+        nextLabel: "Later",
+        pageLabel: (page) => `Sheet ${page}`,
+      },
     })
 
     expect(html).toContain(`<nav aria-label="Region pages"`)
     expect(html).toContain("Earlier")
     expect(html).toContain("Later")
+    expect(html).toContain(`aria-label="Sheet 2"`)
+    expect(html).not.toContain(`aria-label="Page 2"`)
   })
 
   it("names the search field after its placeholder, or what the app calls it", () => {
@@ -342,6 +447,13 @@ describe("CrudList", () => {
     expect(nested).toMatch(/<h2[^>]*><span>Regions<\/span>/)
     expect(nested).not.toContain("<h1")
     expect(nested).toContain(">Nothing here yet</h3>")
+  })
+
+  it("heads the empty state no deeper than h4, under a title at any level", () => {
+    const html = storeList({ store: fakeStore([], []), headingLevel: 5 })
+
+    expect(html).toMatch(/<h5[^>]*><span>Regions<\/span>/)
+    expect(html).toContain(">Nothing here yet</h4>")
   })
 
   it("replaces the default title with the caller's slot", () => {

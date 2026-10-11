@@ -7,9 +7,9 @@ import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
 import { Pagination, type PaginationProps } from "@spy4x/preact-ui/pagination"
 import { Stack } from "@spy4x/preact-ui/layout"
 import { Table } from "@spy4x/preact-ui/table"
-import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
+import { batch, type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useRef } from "preact/hooks"
+import { useEffect, useId } from "preact/hooks"
 import { filterRows } from "@spy4x/platform/universal/text"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
@@ -20,13 +20,23 @@ const defaultSearchDelay = 300
 /**
  * Where a list reads its rows.
  *
- * A model store gives the Active/Archived split, the count badge and the load error. A plain signal
- * is what a nested list scoped to a parent reads, and what a read-only collection with no
- * soft-delete column exposes; the status filter is then off and the error arrives as a prop.
+ * A model store gives the Active/Archived split, the count badge, the load error and whether the
+ * collection has loaded. A plain signal is what a nested list scoped to a parent reads, and what a
+ * read-only collection with no soft-delete column exposes; the status filter is then off, and the
+ * error and the loading flag arrive as props.
  */
 export type CrudListSource<M extends CrudModel> =
   | { store: CrudListStore<M> }
-  | { rows: ReadonlySignal<M[]>; error?: ReadonlySignal<StoreErrorLike | null> }
+  | {
+    rows: ReadonlySignal<M[]>
+    error?: ReadonlySignal<StoreErrorLike | null>
+    /**
+     * True while the rows are still on their way. The list then keeps its table and holds the
+     * empty state back, since "nothing here" is not known yet. Omit it for rows that are there
+     * from the first render.
+     */
+    loading?: ReadonlySignal<boolean>
+  }
 
 /**
  * What every CRUD list needs, whatever it is listing.
@@ -91,7 +101,13 @@ export interface CrudListBaseProps<M extends CrudModel> {
   pageSize?: number
   /**
    * External page number, `1`-based, so a URL filter can own it. Defaults to a signal local to the
-   * list. A new search term or status goes back to page 1. Ignored without `pageSize`.
+   * list. Ignored without `pageSize`.
+   *
+   * The list writes it in two cases only: a press on the pager, and its own search box or status
+   * select, which go back to page 1 in the same write as the new term or status. A `query` or
+   * `status` changed from outside (an address that carries both a search and a page, Back, a
+   * reload) leaves it alone. A number past the last page shows the last page and is not written
+   * back, so the signal keeps the number it was given.
    */
   page?: Signal<number>
   /** Wording of the pager: the names `Pagination` takes, each with its English default. */
@@ -170,14 +186,32 @@ export function pageOf<M>(rows: M[], page: number, pageSize: number): ListPage<M
 }
 
 /**
+ * Whether a store's collection has loaded: its load settled with a result, or it already holds a
+ * row.
+ *
+ * `inProgress` alone does not say so. A store that fills its collection from a pushed list, as
+ * `buildModelStore` does, never sets it, and before the first rows arrive its `op.list` is the
+ * same `{ inProgress: false, error: null }` as after an empty answer; only `result` tells the two
+ * apart. A row held with no settled load (one created before any list arrived) counts as loaded
+ * too, so a search over those rows can still say that nothing matches.
+ */
+function hasLoaded<M extends CrudModel>(store: CrudListStore<M>): boolean {
+  const load = store.op.list.value
+  if (load.inProgress) return false
+  return (load.result !== null && load.result !== undefined) ||
+    store.list.nonDeleted.value.length > 0 || store.list.deleted.value.length > 0
+}
+
+/**
  * Listed collection: title, count, search, status filter, an add action and a table.
  *
  * Rows come from a store or from a signal, the cells come from the caller, and the search term and
  * status live in signals the caller may take over. Nothing here knows which entity it is showing.
  *
  * A list with no row to show renders the library's `EmptyState` in place of the table, worded for
- * an empty collection or for a search that matched nothing. It is held back while the store is
- * still loading and when the load failed, where "nothing here" would be false. With `pageSize` the
+ * an empty collection or for a search that matched nothing. It is held back until the collection
+ * has loaded ({@link hasLoaded}, or the signal source's `loading`) and when the load failed, where
+ * "nothing here" would be false. With `pageSize` the
  * rows are paged by the library's `Pagination`.
  */
 export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Element {
@@ -200,23 +234,24 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
     ? props.store.list.nonDeleted.value.length
     : props.rows.value.length
   const error = "store" in props ? props.store.op.list.value.error : props.error?.value ?? null
-  const loading = "store" in props && props.store.op.list.value.inProgress
+  const loaded = "store" in props ? hasLoaded(props.store) : props.loading?.value !== true
 
-  // A new search term or status starts again at page 1: the page number belonged to the old rows.
-  // Written in an effect, never during the render that noticed the change.
-  const filter = `${effectiveStatus}\n${query.value}`
-  const lastFilter = useRef(filter)
-  useEffect(() => {
-    if (lastFilter.current === filter) return
-    lastFilter.current = filter
-    page.value = 1
-  }, [filter])
+  // The list's own search and status changes go back to page 1, in the same write as the change:
+  // the page number belonged to the old rows. A change from outside (the address, Back) is not
+  // the list's to answer, or it would overwrite the page that address names.
+  const paged = props.pageSize !== undefined
+  const toFirstPage = () => {
+    if (paged) page.value = 1
+  }
 
   const shown = props.pageSize === undefined
     ? { rows, page: 1, pageCount: 1 }
     : pageOf(rows, page.value, props.pageSize)
-  const showEmpty = rows.length === 0 && error === null && !loading
+  const showEmpty = rows.length === 0 && error === null && loaded
   const searching = query.value.trim() !== ""
+  // One level under the title, down to the deepest `EmptyState` draws. Under a title at level 4
+  // or deeper it stays at 4 and so sits at or above its title: `headingLevel` 5 and 6 are for a
+  // list nested that deep, where no level is left for it.
   const emptyHeadingLevel = Math.min((props.headingLevel ?? 1) + 1, 4) as 2 | 3 | 4
 
   const canAdd = props.canAdd?.() ?? true
@@ -239,8 +274,11 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
           fieldLabel={props.searchFieldLabel}
           label={props.searchLabel}
           delay={props.searchDelay}
+          onChange={toFirstPage}
         />
-        {showStatus && <StatusSelect status={status} labels={props.statusFilter} />}
+        {showStatus && (
+          <StatusSelect status={status} labels={props.statusFilter} onChange={toFirstPage} />
+        )}
         {showAdd && (
           <div class="ml-auto">
             <a href={props.addHref} class="btn btn-primary">
@@ -272,7 +310,8 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
                 )}
               </>
             }
-            // Keyed by id, so a page turn or a search moves a row's own state with the row.
+            // Keyed by id, so a page turn or a search moves a row's own state (an open menu, a
+            // typed draft) with the row instead of handing it to the row that takes its place.
             bodyKeys={shown.rows.map((row) => row.id)}
             bodySlots={shown.rows.map((row) => (
               <>
@@ -310,19 +349,29 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
  * The draft follows `value` when something else changes it, such as Back restoring an earlier
  * search from the address: without that the field would keep the term the rows no longer show.
  * A change that only trims what was typed is the box's own commit and leaves the draft alone.
+ *
+ * `onChange` runs inside the same `batch` as a commit that changes the term, and never for a
+ * commit that leaves it as it was (the typing pause after the address set it), so what it writes
+ * lands as one change with the term.
  */
 function SearchBox(
-  { value, placeholder, fieldLabel, label, delay }: {
+  { value, placeholder, fieldLabel, label, delay, onChange }: {
     value: Signal<string>
     placeholder?: string
     fieldLabel?: string
     label?: string
     delay?: number
+    onChange: () => void
   },
 ) {
   const draft = useSignal(value.value)
   const commit = () => {
-    value.value = draft.value.trim()
+    const term = draft.value.trim()
+    if (term === value.peek()) return
+    batch(() => {
+      value.value = term
+      onChange()
+    })
   }
 
   useEffect(() => {
@@ -360,9 +409,16 @@ function SearchBox(
   )
 }
 
-/** Active/Archived select, bound to the status signal the caller owns. */
+/**
+ * Active/Archived select, bound to the status signal the caller owns. `onChange` runs in the same
+ * `batch` as the new status.
+ */
 function StatusSelect(
-  { status, labels }: { status: Signal<CrudStatus>; labels?: false | StatusFilterLabels },
+  { status, labels, onChange }: {
+    status: Signal<CrudStatus>
+    labels?: false | StatusFilterLabels
+    onChange: () => void
+  },
 ) {
   const id = useId()
   const wording = labels === undefined || labels === false ? {} : labels
@@ -375,7 +431,13 @@ function StatusSelect(
           class="pc-input mt-1"
           value={status.value}
           // The two options below are the only values this select can report.
-          onChange={(event) => status.value = event.currentTarget.value as CrudStatus}
+          onChange={(event) => {
+            const next = event.currentTarget.value as CrudStatus
+            batch(() => {
+              status.value = next
+              onChange()
+            })
+          }}
         >
           <option value="active">{wording.active ?? "Active"}</option>
           <option value="archived">{wording.archived ?? "Archived"}</option>
