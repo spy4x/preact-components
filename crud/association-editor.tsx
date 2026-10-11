@@ -155,6 +155,8 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   confirmRestoreTitle?: string
   /** Label of both dialogs' cancelling action. Defaults to `"Cancel"`. */
   confirmCancelLabel?: string
+  /** Name of the cross in both dialogs' corner. Defaults to `"Close"`. */
+  confirmCloseLabel?: string
   /** Label of the remove button. Defaults to `"Delete"`. */
   deleteLabel?: string
   /** Label of the restore button. Defaults to `"Restore"`. */
@@ -208,12 +210,14 @@ export function AssociationEditor<M extends CrudRow>(
     title: props.confirmRestoreTitle ?? `Restore ${entity}?`,
     message: props.confirmRestore ?? `Are you sure you want to restore this ${entity}?`,
     cancelLabel: props.confirmCancelLabel,
+    closeLabel: props.confirmCloseLabel,
   }
   const deleteWording: ConfirmWording = {
     label: deleteLabel ?? "Delete",
     title: props.confirmDeleteTitle ?? `Delete ${entity}?`,
     message: props.confirmDelete ?? `Are you sure you want to delete this ${entity}?`,
     cancelLabel: props.confirmCancelLabel,
+    closeLabel: props.confirmCloseLabel,
   }
 
   const shared = {
@@ -270,6 +274,8 @@ interface ConfirmWording {
   message: string
   /** Label of the dialog's cancelling action; the dialog's own default when left out. */
   cancelLabel?: string
+  /** Name of the cross in the dialog's corner; the dialog's own default when left out. */
+  closeLabel?: string
 }
 
 /**
@@ -314,6 +320,7 @@ function ConfirmedAction(
           message={wording.message}
           confirmLabel={wording.label}
           cancelLabel={wording.cancelLabel}
+          closeLabel={wording.closeLabel}
           tone={danger ? "danger" : "default"}
           busy={running.value}
           onConfirm={() => {
