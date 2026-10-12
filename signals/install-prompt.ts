@@ -1,4 +1,6 @@
 import { computed, type ReadonlySignal, signal } from "@preact/signals"
+import { createSignedInHint } from "@spy4x/platform/browser/signed-in-hint"
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import type { OnboardingDismissedPort } from "./onboarding.ts"
 
 /**
@@ -11,7 +13,8 @@ import type { OnboardingDismissedPort } from "./onboarding.ts"
  * keeps one stored "dismissed" flag, so a person who said "not now" is not asked again.
  *
  * The window, the navigator, `matchMedia` and the flag's storage arrive as ports, so a test needs
- * no browser.
+ * no browser. {@link createStoredInstallPrompt} is the same store with the flag kept in the
+ * browser's storage, for an app that wants one call.
  */
 
 /** The slice of the `beforeinstallprompt` event this store uses. */
@@ -236,4 +239,51 @@ export function createInstallPrompt(ports: InstallPromptPorts = {}): InstallProm
     dismiss,
     watch,
   }
+}
+
+/** The storage key {@link createStoredInstallPrompt} keeps the "dismissed" flag under. */
+export const INSTALL_DISMISSED_KEY = "install-prompt-dismissed"
+
+/** What {@link createStoredInstallPrompt} takes: the store's ports, and where the flag is kept. */
+export interface StoredInstallPromptOptions extends Omit<InstallPromptPorts, "dismissed"> {
+  /** The storage key of the flag. Defaults to {@link INSTALL_DISMISSED_KEY}. */
+  key?: string
+  /**
+   * Where the flag is kept. Defaults to `globalThis.localStorage`, looked up on every call and
+   * treated as missing when the lookup throws. `null` means no storage: the flag lives in memory.
+   */
+  storage?: KeyValueStore | null
+}
+
+/**
+ * Create an install prompt store that remembers "not now" in the browser's storage.
+ *
+ * It is {@link createInstallPrompt} with the `dismissed` port filled in: the flag is the text `1`
+ * under {@link StoredInstallPromptOptions.key}, and any other stored text counts as not dismissed.
+ * Storage that is missing, blocked or full never throws here. A dismissal it could not keep still
+ * hides the offer until the page is loaded again, and then the offer shows again.
+ *
+ * On a server, pass `storage: null`: Deno has a `localStorage` every request would share.
+ *
+ * @example
+ * ```ts
+ * export const install = createStoredInstallPrompt()
+ * // in the client entry point, as early as possible: the event can fire before the app renders.
+ * install.watch()
+ * ```
+ */
+export function createStoredInstallPrompt(
+  { key = INSTALL_DISMISSED_KEY, storage, ...ports }: StoredInstallPromptOptions = {},
+): InstallPromptStore {
+  const flag = createSignedInHint<1>(key, {
+    validate: (value): value is 1 => value === 1,
+    storage,
+  })
+  return createInstallPrompt({
+    ...ports,
+    dismissed: {
+      read: () => flag.recall() !== null,
+      write: (value) => value ? flag.remember(1) : flag.forget(),
+    },
+  })
 }

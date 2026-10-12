@@ -21,20 +21,20 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 
 ## What is in the box
 
-| Module              | Exports                                                                                                                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                                        |
-| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint                      |
-| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                                               |
-| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                     |
-| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                          |
-| `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `isIosDevice`, `isStandalone` |
-| `push-subscription` | `usePushSubscription` / `createPushSubscription` — whether this device gets push notifications, and turning them on and off against the browser and the server                                              |
-| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                                           |
-| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                                                   |
-| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                                                   |
-| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                                                |
-| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                                            |
+| Module              | Exports                                                                                                                                                                                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build-model-store` | `buildModelStore` — CRUD over one REST collection, arktype-validated                                                                                                                                                                                                                           |
+| `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint                                                                                                         |
+| `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                                                                                                                                  |
+| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                                                                                                        |
+| `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                                                                                                             |
+| `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `createStoredInstallPrompt` — the same store with the flag kept in `localStorage`; `isIosDevice`, `isStandalone` |
+| `push-subscription` | `usePushSubscription` / `createPushSubscription` — whether this device gets push notifications, and turning them on and off against the browser and the server                                                                                                                                 |
+| `onboarding`        | `createOnboardingState` — whether to show onboarding, its next step, all done and progress, from the app's step facts and a stored dismissed flag                                                                                                                                              |
+| `now`               | `useNow` / `createNow` — the current time on a signal that moves at each midnight in a given zone and when the page becomes visible again                                                                                                                                                      |
+| `map-entry`         | `setMapEntry` / `deleteMapEntry` — immutable `Map` writes                                                                                                                                                                                                                                      |
+| `patch-signal`      | `patchSignal` — merge a partial object into a signal's value                                                                                                                                                                                                                                   |
+| `use-url-filters`   | `useUrlFilters` — two-way binding between URL params and signals                                                                                                                                                                                                                               |
 
 A toast in the store carries an `id`, a `title`, a `body`, a `type` and an optional `duration`;
 `Toastr` in `@spy4x/preact-ui` shows the title in bold above the body. A message that names no
@@ -482,6 +482,19 @@ const install = createInstallPrompt({
     write: (value) => localStorage.setItem("install-dismissed", value ? "1" : "0"),
   },
 })
+install.watch()
+```
+
+`createStoredInstallPrompt({ key?, storage?, ...ports })` is that store with the port filled in,
+for an app that keeps the flag in the browser: one call, no port to write. The flag is the text `1`
+under `key`, which defaults to `INSTALL_DISMISSED_KEY` (`install-prompt-dismissed`); any other
+stored text counts as not dismissed. `storage` defaults to `localStorage` and takes anything with
+`getItem`, `setItem` and `removeItem`. Storage that is missing, blocked or full never throws: a
+dismissal it could not keep still hides the offer until the page is loaded again. Pass
+`storage: null` on a server, where Deno's `localStorage` is shared by every request.
+
+```ts
+export const install = createStoredInstallPrompt()
 install.watch()
 ```
 

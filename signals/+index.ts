@@ -34,6 +34,8 @@ export {
 } from "./clipboard.ts"
 export {
   createInstallPrompt,
+  createStoredInstallPrompt,
+  INSTALL_DISMISSED_KEY,
   type InstallOutcome,
   type InstallPromptEvent,
   type InstallPromptMatchMedia,
@@ -44,6 +46,7 @@ export {
   type InstallPromptTarget,
   isIosDevice,
   isStandalone,
+  type StoredInstallPromptOptions,
 } from "./install-prompt.ts"
 export { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 export {

@@ -37,12 +37,40 @@ function pathname(path: string): string {
 }
 
 /**
+ * The element that names the current page: the first `<h1>` inside `main`, or `main` itself while
+ * the page has no `<h1>`. `null` when there is no `main`, or no document (on a server).
+ *
+ * It is where {@link useRouteAnnouncer} moves focus, and what to pass as `returnFocus` to a
+ * component that leaves the page while focus is inside it, such as `InstallPrompt`: the reader
+ * lands on the page's heading instead of the page body. Neither element is focusable by itself, so
+ * the one returned gets `tabindex="-1"` unless it already has a `tabindex`: focusable from script,
+ * still out of the Tab order. An `<h1>` outside `main` is never returned.
+ *
+ * It reads the document, so call it from an event handler or an effect, not during a render.
+ *
+ * ```tsx
+ * <InstallPrompt mode={mode} onInstall={install} onDismiss={dismiss} returnFocus={pageHeading} />
+ * ```
+ *
+ * @param main The element that holds the page. Defaults to the document's first `<main>`.
+ * @returns The heading or the page, ready for `focus()`, or `null`.
+ */
+export function pageHeading(main?: HTMLElement | null): HTMLElement | null {
+  if (typeof document === "undefined") return null
+  const page = main ?? document.querySelector<HTMLElement>("main")
+  if (!page) return null
+  const target = page.querySelector<HTMLElement>("h1") ?? page
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
+  return target
+}
+
+/**
  * On a route change, set `document.title` and move focus to the new page's main heading.
  *
- * Focus goes to the first `<h1>` inside `main` (the document's first `<main>` by default), or to
- * `main` itself when the page has no `<h1>`. Neither is focusable by itself, so the element gets
- * `tabindex="-1"` unless it already has a `tabindex`: focusable from script, still out of the Tab
- * order. The first render moves no focus — on a page load the browser has already put the reader at
+ * Focus goes to {@link pageHeading}: the first `<h1>` inside `main` (the document's first `<main>`
+ * by default), or `main` itself when the page has no `<h1>`. Neither is focusable by itself, so the
+ * element gets `tabindex="-1"` unless it already has a `tabindex`: focusable from script, still out
+ * of the Tab order. The first render moves no focus — on a page load the browser has already put the reader at
  * the top of the document, and taking focus there would skip the skip link. A change of query
  * string or fragment alone moves no focus either.
  *
@@ -68,10 +96,6 @@ export function useRouteAnnouncer({ path, title, main }: RouteAnnouncerOptions):
   useEffect(() => {
     if (shown.current === current) return
     shown.current = current
-    const page = main?.current ?? document.querySelector("main")
-    if (!page) return
-    const target = page.querySelector<HTMLElement>("h1") ?? page
-    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
-    target.focus()
+    pageHeading(main?.current)?.focus()
   }, [current])
 }

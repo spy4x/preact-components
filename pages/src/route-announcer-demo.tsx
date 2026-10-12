@@ -1,6 +1,7 @@
 /**
  * The host page's demo of `useRouteAnnouncer` from `@spy4x/preact-system`: a hook, so it has no
- * card in the catalogue. `pages/checks/system.ts` drives this section.
+ * card in the catalogue. `pages/checks/system.ts` drives this section. Its last button calls
+ * `pageHeading()` from the same module, which `pages/e2e/system.spec.ts` drives.
  *
  * The path is the section's own state, not the address bar: the catalogue routes by the address's
  * hash, and a demo that wrote to it would navigate the catalogue away. The hook takes the path as
@@ -13,7 +14,7 @@
  * alone.
  */
 
-import { useRouteAnnouncer } from "@spy4x/preact-system/route-announcer"
+import { pageHeading, useRouteAnnouncer } from "@spy4x/preact-system/route-announcer"
 import { buttonClasses } from "@spy4x/preact-ui/button"
 import { useRef, useState } from "preact/hooks"
 
@@ -66,6 +67,22 @@ export function RouteAnnouncerDemo() {
             {route.path}
           </button>
         ))}
+      </div>
+      <p class="measure mt-3 text-sm text-gray-600 dark:text-gray-300">
+        <code>pageHeading()</code>{" "}
+        is the same target without a route change: this guide page's heading, or its{" "}
+        <code>main</code> without one. Pass it as <code>returnFocus</code>{" "}
+        to a component that leaves the page.
+      </p>
+      <div class="mt-3">
+        <button
+          type="button"
+          data-e2e="route-demo-page-heading"
+          onClick={() => pageHeading()?.focus()}
+          class={buttonClasses("outline", "sm")}
+        >
+          Focus the page heading
+        </button>
       </div>
       <div
         ref={page}
