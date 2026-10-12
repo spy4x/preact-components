@@ -22971,7 +22971,7 @@ async function commandPaletteHotkeyAnnouncementCheck(devtools: Devtools): Promis
 interface TourReading {
   /** `true` while the step's surface is shown in the top layer. */
   open: boolean
-  /** The surface's `data-coachmark-mode`: `anchor`, `measured` or `sheet`. */
+  /** The surface's `data-coachmark-mode`: `measured` or `sheet`. */
   mode: string | null
   /** The step's heading text. */
   title: string | null
@@ -23198,35 +23198,14 @@ async function tourChecks(devtools: Devtools): Promise<void> {
 }
 
 /**
- * The tour at a desktop width, with CSS anchor positioning: placement, focus on open, Tab leaving
- * the step, Go to, Next, the first target's attributes coming back, Escape inside a `Modal`, the
- * missing-target sheet, contrast, and focus back on Start when the tour closes.
+ * The tour at a desktop width: Tab leaving the step, Go to, Next, the first target's attributes
+ * coming back, Escape inside a `Modal`, the missing-target sheet, contrast, and focus back on Start
+ * when the tour closes. Where the first step opens, and what it adds to its target, are Playwright
+ * specs in `e2e/ui.spec.ts`.
  */
 async function tourDesktopChecks(devtools: Devtools): Promise<void> {
   const read = () => devtools.evaluate<TourReading>(TOUR_READING)
-  const first = await startTour(devtools)
-  const gap = first.surface && first.search ? first.surface.top - first.search.bottom : NaN
-  const centre = first.search ? (first.search.left + first.search.right) / 2 : NaN
-  check(
-    "Tour: Start opens the first step below its target by anchor positioning, focus on its heading",
-    first.open && first.mode === "anchor" && first.onHeading &&
-      first.title === "Search everything" &&
-      first.count === "Step 1 of 4" && gap >= 6 && gap <= 10 && first.surface !== null &&
-      first.surface.left <= centre && first.surface.right >= centre,
-    `open ${first.open}, mode ${first.mode}, title "${first.title}", count "${first.count}", ` +
-      `focus on ${first.active}, gap ${gap}px, surface ${JSON.stringify(first.surface)}, ` +
-      `target ${JSON.stringify(first.search)}`,
-  )
-  check(
-    "Tour: the step's target keeps the app's own anchor-name and description and adds its own",
-    drawn(first.searchRing) && first.bodyId !== null &&
-      first.searchDescribedBy === `tour-search-hint ${first.bodyId}` &&
-      first.searchAnchor.startsWith("--demo-search, --pc-anchor-"),
-    `drawn outline ${
-      JSON.stringify(first.searchRing)
-    }, aria-describedby "${first.searchDescribedBy}", ` +
-      `anchor-name "${first.searchAnchor}"`,
-  )
+  await startTour(devtools)
 
   const [dialog] = await readAxNodes(devtools, "#demo-Tour [data-coachmark-mode]")
   check(
@@ -23537,7 +23516,10 @@ interface CoachmarkReading {
   tabIndex: string | null
 }
 
-/** A single `Coachmark` with a ref target: placed to its right, closed by ×, focus back. */
+/**
+ * A single `Coachmark` with a ref target: Go to and its tabindex. Where it sits, × and focus going
+ * back are a Playwright spec in `e2e/ui.spec.ts`.
+ */
 async function coachmarkCheck(devtools: Devtools): Promise<void> {
   const demo = `document.querySelector("#demo-Coachmark")`
   const read = () =>
@@ -23573,8 +23555,6 @@ async function coachmarkCheck(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Enter")
   await poll(async () => (await read()).open, 3000)
   await devtools.evaluate<null>(TWO_FRAMES)
-  const shown = await read()
-  const gap = shown.surface && shown.target ? shown.surface.left - shown.target.right : NaN
   const goTo = await devtools.evaluate<boolean>(`(() => {
     const button = [...(${demo}?.querySelectorAll("[data-coachmark-mode] button") ?? [])]
       .find((button) => button.textContent.trim().startsWith("Go to"))
@@ -23590,17 +23570,6 @@ async function coachmarkCheck(devtools: Devtools): Promise<void> {
   await pressKey(devtools, "Enter")
   await poll(async () => !(await read()).open, 3000)
   const closed = await read()
-  check(
-    "Coachmark: a ref target gets the hint on its right; × closes it and focus goes back to its opener",
-    shown.open && shown.mode === "anchor" && gap >= 6 && gap <= 10 && !closed.open &&
-      closed.active === "coachmark-toggle",
-    `open ${shown.open}, mode ${shown.mode}, gap ${gap}px, surface ${
-      JSON.stringify(shown.surface)
-    }, ` +
-      `target ${
-        JSON.stringify(shown.target)
-      }; after × open ${closed.open}, focus on ${closed.active}`,
-  )
   check(
     "Coachmark: Go to makes a target that cannot take focus focusable, and closing takes that away",
     goTo && wentTo.active === "coachmark-target" && wentTo.tabIndex === "-1" && !closed.open &&

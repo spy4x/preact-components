@@ -1832,11 +1832,15 @@ tour on when the user does what a step asks, and it decides whether a finished t
 />
 ```
 
-The surface is a `popover="manual"` element in the top layer, placed beside its target by CSS anchor
-positioning, which flips it when there is no room. A browser without anchor positioning gets the
-same placement measured in script, again on scroll and resize. Below 640 px wide, and when the
-target is missing or cannot be shown, the step is a sheet along the bottom edge, and a missing
-target logs a warning. While a step is shown its target has an outline, an extra `anchor-name` and
+The surface is a `popover="manual"` element in the top layer. It sits beside its target, centred on
+it, and flips to the opposite side when the asked one has no room; only that one other side is
+tried. The whole of it stays inside the window with an 8 px gutter: beside a target near an edge or
+a corner it shifts along the target instead of running past the edge, and when neither side has
+room it moves over the target. Its place is measured in script on every animation frame while it is
+shown, the same way in every browser, so it follows a scroll, a resize, a target that moves and a
+step whose text grows; on a fast scroll it can trail its target by a frame. Below 640 px wide, and
+when the target is missing or cannot be shown, the step is a sheet along the bottom edge, and a
+missing target logs a warning. While a step is shown its target has an outline and
 `aria-describedby` pointing at the step's text; each goes back to what it was afterwards.
 
 It is not modal: Tab is not trapped and the page stays usable. Opening focuses the heading, and so

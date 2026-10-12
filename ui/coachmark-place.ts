@@ -1,6 +1,6 @@
 /**
- * Where a `Coachmark` sits when the browser has no CSS anchor positioning. Pure geometry, kept out
- * of the component so it is tested without a browser; not exported from the package.
+ * Where a `Coachmark` sits beside its target. Pure geometry, kept out of the component so it is
+ * tested without a browser; not exported from the package.
  */
 
 import { shiftIntoView } from "./hint-bubble.ts"
@@ -42,20 +42,24 @@ function besides(side: CoachmarkSide, target: PlaceBox, width: number, height: n
   }
 }
 
-/** Whether a surface at `top`/`left` fits the viewport along the axis `side` moves it on. */
+/** The least room, in pixels, the surface keeps from every edge of the viewport. */
+const GUTTER = 8
+
+/** Whether a surface at `top`/`left` has room in the viewport along the axis `side` moves it on. */
 function fits(side: CoachmarkSide, top: number, left: number, width: number, height: number, view: {
   width: number
   height: number
 }): boolean {
   return side === "top" || side === "bottom"
-    ? top >= 0 && top + height <= view.height
-    : left >= 0 && left + width <= view.width
+    ? top >= GUTTER && top + height <= view.height - GUTTER
+    : left >= GUTTER && left + width <= view.width - GUTTER
 }
 
 /**
- * Place a surface of `width` × `height` on `side` of `target`. When it would leave the viewport on
- * that side and fits on the opposite one, it flips there. It is then shifted along the other axis
- * so it stays inside the viewport, the way `Tooltip`'s hint is.
+ * Place a surface of `width` × `height` on `side` of `target`. When it has no room on that side
+ * and has room on the opposite one, it flips there. It is then shifted so the whole of it stays
+ * inside the viewport with an 8 px gutter, the way `Tooltip`'s hint is: along the target's edge
+ * when the target is near a corner, and over the target when neither side has room.
  *
  * @param side The side the app asked for.
  * @param target The target's box, from `getBoundingClientRect()`.
@@ -80,10 +84,11 @@ export function placeCoachmark(
       spot = flipped
     }
   }
-  const across = chosen === "top" || chosen === "bottom"
-  const top = across ? spot.top : spot.top + shiftIntoView(spot.top, spot.top + height, view.height)
-  const left = across
-    ? spot.left + shiftIntoView(spot.left, spot.left + width, view.width)
-    : spot.left
-  return { top: Math.round(top), left: Math.round(left), side: chosen }
+  const down = shiftIntoView(spot.top, spot.top + height, view.height)
+  const across = shiftIntoView(spot.left, spot.left + width, view.width)
+  return {
+    top: Math.round(spot.top + down),
+    left: Math.round(spot.left + across),
+    side: chosen,
+  }
 }

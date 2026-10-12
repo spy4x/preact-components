@@ -4,7 +4,7 @@ import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX, RefObject } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
-import { COACHMARK_GAP, type CoachmarkSide, placeCoachmark } from "./coachmark-place.ts"
+import { type CoachmarkSide, placeCoachmark } from "./coachmark-place.ts"
 
 /** Side of the target a coachmark sits on. */
 export type CoachmarkPlacement = CoachmarkSide
@@ -24,7 +24,10 @@ export interface CoachmarkProps {
   title: string
   /** The body. It describes the target, which points at it through `aria-describedby`. */
   children?: ComponentChildren
-  /** Side of the target to sit on. Defaults to `"bottom"`; it flips when there is no room there. */
+  /**
+   * Side of the target to sit on. Defaults to `"bottom"`; it flips when there is no room there, and
+   * shifts along the target to stay inside the viewport.
+   */
   placement?: CoachmarkPlacement
   /** Called on Escape and on the × button. The app sets `open` to `false`. */
   onClose: (reason: CoachmarkCloseReason) => void
@@ -49,8 +52,12 @@ export interface CoachmarkProps {
 /** Below this viewport width, in pixels, a coachmark is drawn as a sheet along the bottom edge. */
 const SHEET_BELOW = 640
 
-/** How the surface is laid out: beside the target by CSS or by measurement, or as a sheet. */
-type CoachmarkMode = "anchor" | "measured" | "sheet"
+/** How the surface is laid out: beside the target, at a measured place, or as a sheet. */
+type CoachmarkMode = "measured" | "sheet"
+
+/** The surface's inline style while it is placed beside the target. */
+const placedStyle = (top: number, left: number) =>
+  `inset: auto; top: ${top}px; left: ${left}px; margin: 0;`
 
 const surfaceClasses =
   "w-80 rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-4 text-foreground shadow-popover"
@@ -76,12 +83,6 @@ function inViewport(box: DOMRect): boolean {
   return box.bottom > 0 && box.right > 0 && box.top < innerHeight && box.left < innerWidth
 }
 
-/** Whether this browser lays out `position-anchor`. Read at use, so a check can switch it off. */
-function anchorSupported(): boolean {
-  return typeof CSS !== "undefined" && typeof CSS.supports === "function" &&
-    CSS.supports("anchor-name: --a")
-}
-
 /** The target's accessible name, as far as a Go to label needs it: `aria-label`, else its text. */
 function nameOf(element: HTMLElement): string {
   return (element.getAttribute("aria-label") ?? element.textContent ?? "").trim().replace(
@@ -92,7 +93,6 @@ function nameOf(element: HTMLElement): string {
 
 /** What the coachmark changes on the target, as it was before, so it can be put back. */
 interface Saved {
-  anchorName: string
   outline: string
   outlineOffset: string
   describedBy: string | null
@@ -104,12 +104,16 @@ interface Saved {
  * list of them; an app that wants a single hint uses this alone.
  *
  * The surface is a `popover="manual"` element, so it sits in the top layer above every stacking
- * context with no portal. It is placed beside the target by CSS anchor positioning, which flips it
- * when there is no room. A browser without anchor positioning gets the same placement measured
- * with `getBoundingClientRect()`, again on scroll and resize. Below 640 px wide, and when the
- * target is missing, has no box or cannot be scrolled into view, the coachmark is a sheet along the
- * bottom edge instead. The target gets an outline, `anchor-name` and `aria-describedby` while the
- * coachmark is shown, and each goes back to what it was afterwards.
+ * context with no portal. It sits beside the target, centred on it, and flips to the opposite side
+ * when the asked one has no room. The whole of it stays inside the viewport with an 8 px gutter:
+ * near an edge or a corner it shifts along the target instead of running past the edge, and when
+ * neither side has room it moves over the target. The place is measured with
+ * `getBoundingClientRect()` on every animation frame while the coachmark is shown, so it follows a
+ * scroll, a resize, a target that moves and a surface that grows; on a fast scroll it can trail the
+ * target by a frame. Below 640 px wide, and when the target is missing, has no box or cannot be
+ * scrolled into view, the coachmark is a sheet along the bottom edge instead. The target gets an
+ * outline and `aria-describedby` while the coachmark is shown, and each goes back to what it was
+ * afterwards.
  *
  * The coachmark is not modal: the page stays usable, and Tab is not trapped. Opening it remembers
  * the focused element and focuses the heading; a new target or title focuses the heading again.
@@ -141,7 +145,6 @@ export function Coachmark(
   const id = useId()
   const headingId = `${id}-title`
   const bodyId = `${id}-body`
-  const anchorName = `--pc-anchor-${typeof CSS !== "undefined" ? CSS.escape(id) : id}`
   const hasBody = children != null && children !== false
   const surfaceRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -199,18 +202,11 @@ export function Coachmark(
       )
     } else {
       savedRef.current = {
-        anchorName: element.style.getPropertyValue("anchor-name"),
         outline: element.style.outline,
         outlineOffset: element.style.outlineOffset,
         describedBy: element.getAttribute("aria-describedby"),
         addedTabIndex: false,
       }
-      // Keep any anchor name the app gave the target, so its own anchored elements stay put.
-      const others = getComputedStyle(element).getPropertyValue("anchor-name").trim()
-      element.style.setProperty(
-        "anchor-name",
-        others && others !== "none" ? `${others}, ${anchorName}` : anchorName,
-      )
       element.style.outline = `2px solid ${TARGET_RING}`
       element.style.outlineOffset = "2px"
       if (hasBody) {
@@ -222,46 +218,37 @@ export function Coachmark(
       }
     }
 
+    // Measured on every frame while shown: a scroll, a resize, a target that moves and a surface
+    // that grows all change the place, and no single event or observer reports all four. It reads
+    // two boxes and renders only when the place changed.
     let frame = 0
     const layout = () => {
-      frame = 0
+      frame = requestAnimationFrame(layout)
       const current = targetRef.current
       const at = current?.getBoundingClientRect()
       if (!current || !at || innerWidth < SHEET_BELOW || !inViewport(at)) {
         mode.value = "sheet"
-      } else if (anchorSupported()) {
-        mode.value = "anchor"
-      } else {
-        mode.value = "measured"
-        const view = { width: document.documentElement.clientWidth, height: innerHeight }
-        const { top, left } = placeCoachmark(
-          placement,
-          at,
-          surface.offsetWidth,
-          surface.offsetHeight,
-          view,
-        )
-        spot.value = { top, left }
+        return
       }
-    }
-    const schedule = () => {
-      if (frame === 0) frame = requestAnimationFrame(layout)
+      // As a sheet the surface is as wide as the viewport. Give it the placed layout before its
+      // size is read; the render that follows writes the same style with the measured place.
+      if (mode.value !== "measured") surface.style.cssText = placedStyle(0, 0)
+      const { top, left } = placeCoachmark(
+        placement,
+        at,
+        surface.offsetWidth,
+        surface.offsetHeight,
+        { width: document.documentElement.clientWidth, height: innerHeight },
+      )
+      mode.value = "measured"
+      if (top !== spot.value.top || left !== spot.value.left) spot.value = { top, left }
     }
     layout()
-    // A measured surface has its real size only after the mode's render, so measure once more.
-    schedule()
-    addEventListener("scroll", schedule, { capture: true, passive: true })
-    addEventListener("resize", schedule, { passive: true })
 
     return () => {
-      removeEventListener("scroll", schedule, { capture: true })
-      removeEventListener("resize", schedule)
-      if (frame !== 0) cancelAnimationFrame(frame)
+      cancelAnimationFrame(frame)
       const saved = savedRef.current
       if (element !== null && saved !== null) {
-        const restore = (name: string, value: string) =>
-          value ? element.style.setProperty(name, value) : element.style.removeProperty(name)
-        restore("anchor-name", saved.anchorName)
         element.style.outline = saved.outline
         element.style.outlineOffset = saved.outlineOffset
         if (saved.describedBy === null) element.removeAttribute("aria-describedby")
@@ -312,11 +299,8 @@ export function Coachmark(
     element.focus()
   }
 
-  const style = mode.value === "anchor"
-    ? `position-anchor: ${anchorName}; position-area: ${placement}; ` +
-      `position-try-fallbacks: flip-block, flip-inline; inset: auto; margin: ${COACHMARK_GAP}px;`
-    : mode.value === "measured"
-    ? `inset: auto; top: ${spot.value.top}px; left: ${spot.value.left}px; margin: 0;`
+  const style = mode.value === "measured"
+    ? placedStyle(spot.value.top, spot.value.left)
     : "inset: auto 0 0 0; width: 100%; max-width: none; margin: 0;"
 
   return (
