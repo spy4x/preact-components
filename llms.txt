@@ -324,6 +324,8 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `CopyFeedback` (type): What to do about the outcome. Import: `@spy4x/preact-signals`
 - `createClipboard` (helper): Create a clipboard helper. Import: `@spy4x/preact-signals`
 - `createInstallPrompt` (helper): Create an install prompt store. Import: `@spy4x/preact-signals`
+- `createStoredInstallPrompt` (helper): Create an install prompt store that remembers "not now" in the browser's storage. Import: `@spy4x/preact-signals`
+- `INSTALL_DISMISSED_KEY` (constant): The storage key `createStoredInstallPrompt` keeps the "dismissed" flag under. Import: `@spy4x/preact-signals`
 - `InstallOutcome` (type): What the install dialog came to. Import: `@spy4x/preact-signals`
 - `InstallPromptEvent` (type): The slice of the `beforeinstallprompt` event this store uses. Import: `@spy4x/preact-signals`
 - `InstallPromptMatchMedia` (type): `matchMedia` port. Import: `@spy4x/preact-signals`
@@ -334,6 +336,7 @@ Install: `deno add jsr:@spy4x/preact-signals`
 - `InstallPromptTarget` (type): Event port. Import: `@spy4x/preact-signals`
 - `isIosDevice` (helper): Whether this is an iPhone, iPod or iPad, where no browser fires `beforeinstallprompt`. Import: `@spy4x/preact-signals`
 - `isStandalone` (helper): Whether the page runs as an installed app: the display mode is `standalone` or `minimal-ui`, or iOS's own flag says so. Import: `@spy4x/preact-signals`
+- `StoredInstallPromptOptions` (type): What `createStoredInstallPrompt` takes: the store's ports, and where the flag is kept. Import: `@spy4x/preact-signals`
 - `deleteMapEntry` (helper): Return a copy of `map` without `key`. Import: `@spy4x/preact-signals`
 - `setMapEntry` (helper): Return a copy of `map` with `key` set to `value`. Import: `@spy4x/preact-signals`
 - `createNow` (helper): Create a store holding the current time. Import: `@spy4x/preact-signals`
@@ -446,6 +449,7 @@ Install: `deno add jsr:@spy4x/preact-system`
 - `PushSettingsLabels` (type): Every word `PushSettings` shows or announces, each with an English default. Import: `@spy4x/preact-system`
 - `PushSettingsProps` (type): Props of `PushSettings`. Import: `@spy4x/preact-system`
 - `PushSettingsStatus` (type): What the block shows. Import: `@spy4x/preact-system`
+- `pageHeading` (helper): The element that names the current page: the first `<h1>` inside `main`, or `main` itself while the page has no `<h1>`. Import: `@spy4x/preact-system`
 - `RouteAnnouncerOptions` (type): Options of `useRouteAnnouncer`. Import: `@spy4x/preact-system`
 - `useRouteAnnouncer` (hook): On a route change, set `document.title` and move focus to the new page's main heading. Import: `@spy4x/preact-system`
 - `RailShell` (component): The frame: a skip link, the rail from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay. Import: `@spy4x/preact-system`
