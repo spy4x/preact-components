@@ -510,6 +510,8 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
    * An item must be chosen: with none, the browser refuses the form's submit and shows
    * `requiredMessage`, and a screen reader hears "required". Not the native attribute, which would
    * be satisfied by a typed query that chose nothing. `Field` sets it from its own `required`.
+   * A `value` that is not among `items` shows as an empty field and is refused like one. Items are
+   * compared by identity, so an object `value` must be the very object that is in `items`.
    */
   required?: boolean
   /** What the browser shows on a submit with nothing chosen. English default, `"Select an option"`. */

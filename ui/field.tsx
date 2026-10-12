@@ -199,7 +199,8 @@ const hintText = "mt-2 text-sm text-muted"
  * - `RadioGroup` puts the native attribute on its radios: one of them must be picked.
  * - `TagInput` (at least one tag) and `Combobox` (an item chosen) refuse the submit through the
  *   browser's own validation with a message of their own, because their text field is empty while
- *   they hold a value, and say `aria-required` to a screen reader.
+ *   they hold a value, and say `aria-required` to a screen reader. That message is set once the
+ *   page's script runs: a server-rendered form posted before then is not refused by these two.
  * - `ToggleSwitch` has no empty state: it is on or off. `required` does nothing on it, so do not
  *   mark such a field required.
  * - A control of your own that ignores a `required` prop is not enforced: the `*` would promise

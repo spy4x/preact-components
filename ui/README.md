@@ -519,7 +519,9 @@ takes is clamped; the position itself is kept, because a list that comes back is
 message's own), `aria-invalid` and `required`, so a message under the field is read when the input
 takes focus. `required` means an item is chosen. With none, the browser refuses the form's submit
 and shows `requiredMessage` (`"Select an option"`), and the input says `aria-required`. It is not the
-native `required` attribute, which a typed query that chose nothing would satisfy.
+native `required` attribute, which a typed query that chose nothing would satisfy. A `value` that is
+not among `items` shows as an empty field and is refused like one; items are compared by identity,
+so an object `value` must be the very object that is in `items`.
 
 ## DateRangePicker
 
