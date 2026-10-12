@@ -57,6 +57,7 @@ import {
 import { ConflictChooser, type ConflictItem } from "@spy4x/preact-system/conflict-chooser"
 import { InstallPrompt } from "@spy4x/preact-system/install-prompt"
 import { SyncStatus } from "@spy4x/preact-system/sync-status"
+import { SavedCopyNotice } from "@spy4x/preact-system/saved-copy-notice"
 import { createInstallPrompt, type InstallPromptEvent } from "@spy4x/preact-signals/install-prompt"
 import { Button, Cluster, Field, Grid, Modal, Select, Stack } from "@spy4x/preact-ui"
 import { makeStorage } from "@spy4x/platform/browser/storage"
@@ -1467,6 +1468,82 @@ function SyncStatusDemo() {
   )
 }
 
+/** The two copies the `SavedCopyNotice` demo shows: one saved at 14:05, a newer one at 14:07. */
+const SAVED_COPIES = [
+  new Date(2026, 9, 12, 14, 5).getTime(),
+  new Date(2026, 9, 12, 14, 7).getTime(),
+]
+
+/**
+ * `SavedCopyNotice` above a list, driven by buttons standing in for the server: lose it and the
+ * saved copy shows, a newer copy replaces it, reach it and the notice leaves.
+ *
+ * "Render again" renders the notice with different words for the same time, which is what a
+ * relative time does as minutes pass. The notice keeps the words it had when the copy arrived, so
+ * a screen reader hears it once; the count beside the button shows that the render happened.
+ */
+function SavedCopyNoticeDemo() {
+  const savedAt = useSignal<number | null>(null)
+  const renders = useSignal(0)
+  const clock = (time: Date) =>
+    `${String(time.getHours()).padStart(2, "0")}:${String(time.getMinutes()).padStart(2, "0")}`
+  return (
+    <Stack gap="md" data-e2e="saved-copy-demo">
+      <SavedCopyNotice
+        data-e2e="saved-copy-notice"
+        savedAt={savedAt.value}
+        formatTime={(time) =>
+          renders.value === 0 ? clock(time) : `${clock(time)}, render ${renders.value}`}
+      />
+      <ul class="list-disc pl-6 text-sm">
+        <li>Laptop, signed in on 3 October</li>
+        <li>Phone, signed in on 9 October</li>
+      </ul>
+      <Cluster gap="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="saved-copy-lose"
+          onClick={() => (savedAt.value = SAVED_COPIES[0])}
+        >
+          Lose the server
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="saved-copy-newer"
+          onClick={() => (savedAt.value = SAVED_COPIES[1])}
+        >
+          Show a newer copy
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="saved-copy-reach"
+          onClick={() => (savedAt.value = null)}
+        >
+          Reach the server
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="saved-copy-render"
+          onClick={() => renders.value++}
+        >
+          Render again
+        </Button>
+        <span class="text-sm text-muted" data-e2e="saved-copy-renders">
+          Rendered again {renders.value} times
+        </span>
+      </Cluster>
+      <p class="text-sm text-muted">
+        "Render again" words the same time differently on purpose. The notice keeps the words it had
+        when the copy arrived, so a screen reader hears it once.
+      </p>
+    </Stack>
+  )
+}
+
 /** Three conflicts, one per reason, as a queue would hand them over. */
 const sampleConflicts: ConflictItem[] = [
   { id: "1", label: "Buy milk", reason: "version" },
@@ -2215,6 +2292,49 @@ const tags = seoHeadTags(head)`,
   onRetry={() => runSync()}
 />`,
     render: () => <SyncStatusDemo />,
+  },
+  SavedCopyNotice: {
+    summary:
+      "The banner above a list that says it is a copy saved on this device, and when; announced once when the copy arrives.",
+    wide: true,
+    props: [
+      {
+        name: "savedAt",
+        type: "Date | number | null",
+        description:
+          "When the copy on screen was saved. `null` while the list is fresh: the notice is then an empty live region.",
+      },
+      {
+        name: "formatTime",
+        type: "(savedAt: Date) => string",
+        default: "date and clock time",
+        description:
+          "Words the time, once for each copy. Return a clock time, which stays true, not a relative one.",
+      },
+      {
+        name: "labels",
+        type: "Partial<SavedCopyNoticeLabels>",
+        description: "Replaces `title` and `body(time)`.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description:
+          "Utilities for the banner, applied only while it shows. Any other attribute, such as `id` or `data-e2e`, lands on the element in both states.",
+      },
+    ],
+    snippet: `<SavedCopyNotice savedAt={tokens.savedAt.value} />
+
+// Reworded and in another language
+<SavedCopyNotice
+  savedAt={tokens.savedAt.value}
+  formatTime={(savedAt) => timeOfDay.format(savedAt)}
+  labels={{
+    title: "Copie enregistrée",
+    body: (time) => \`Serveur injoignable. Copie enregistrée à \${time}.\`,
+  }}
+/>`,
+    render: () => <SavedCopyNoticeDemo />,
   },
   ConflictChooser: {
     summary:

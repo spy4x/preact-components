@@ -114,7 +114,9 @@ export interface ToastrProps {
    */
   onDismiss: (id: ToastId) => void
   /**
-   * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`.
+   * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`. In a
+   * window narrower than `sm` (640 px) the stack spans the width instead, 1rem from the left, the
+   * right and the corner's top or bottom edge, so a toast never leaves a narrow phone's screen.
    *
    * The toasts keep the order of {@link ToastrProps.toasts} in every corner, top to bottom, and each
    * one slides in from the corner's side: from the right in a right corner, from the left in a left
@@ -138,14 +140,29 @@ export interface ToastrProps {
 }
 
 /**
- * Where each corner puts the stack. `top-right` is the placement the stack had before `corner`
- * existed, so a caller that passes nothing renders exactly as it did.
+ * The stack's own offsets and width, as custom properties that change at a breakpoint. On a phone,
+ * below `sm`, the gutter is 1rem on every side and the stack is as wide as the room between the
+ * gutters, so it can never cross an edge. From `sm` up the gutter is 2rem, the far edge is let go
+ * (`auto`), and the width is capped at 20rem, 24rem from `md`.
+ *
+ * The values switch, not the classes: every offset and width class below is unprefixed, so a
+ * caller's own unprefixed `top-*`, `left-*`, `right-*`, `w-*` or `max-w-*` in `class` replaces it
+ * at every window width. A `sm:top-8` here would win over a caller's `top-20` from `sm` up.
+ */
+const stackSizing = "[--toastr-gap:1rem] [--toastr-far:1rem] [--toastr-width:auto] " +
+  "[--toastr-max:none] sm:[--toastr-gap:2rem] sm:[--toastr-far:auto] sm:[--toastr-width:100%] " +
+  "sm:[--toastr-max:20rem] md:[--toastr-max:24rem] w-(--toastr-width) max-w-(--toastr-max)"
+
+/**
+ * Where each corner puts the stack: `--toastr-gap` from the corner's two edges and `--toastr-far`
+ * from the opposite side, which is the same gutter on a phone and `auto` from `sm` up. `top-right`
+ * is the default.
  */
 const cornerClasses: Record<ToastCorner, string> = {
-  "top-left": "top-8 left-8",
-  "top-right": "top-8 right-8",
-  "bottom-left": "bottom-8 left-8",
-  "bottom-right": "bottom-8 right-8",
+  "top-left": "top-(--toastr-gap) right-(--toastr-far) left-(--toastr-gap)",
+  "top-right": "top-(--toastr-gap) right-(--toastr-gap) left-(--toastr-far)",
+  "bottom-left": "right-(--toastr-far) bottom-(--toastr-gap) left-(--toastr-gap)",
+  "bottom-right": "right-(--toastr-gap) bottom-(--toastr-gap) left-(--toastr-far)",
 }
 
 /**
@@ -289,7 +306,8 @@ export function Toastr(
     <div
       data-e2e={dataE2E}
       class={cn(
-        "fixed z-50 w-full max-w-xs space-y-4 md:max-w-sm",
+        "fixed z-50 space-y-4",
+        stackSizing,
         cornerClasses[corner],
         className,
       )}
@@ -458,7 +476,19 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
             )}
           </div>
         </div>
-        <button type="button" onClick={dismissHere} aria-label={dismissLabel}>
+        {
+          // `TOUCH_TARGET` makes the button at least 44 px each way on a phone and 36 px from `sm`
+          // up, around a cross that stays 16 px. The negative margins take back what the target
+          // adds, so the toast is no taller and the cross sits where it did; `self-start` keeps it
+          // on the first line of a long message. The focus outline is drawn inside the button, in
+          // the toast's own text colour, so it shows on every variant's fill.
+        }
+        <button
+          type="button"
+          class={`-my-3 -mr-3 inline-flex shrink-0 items-center self-start rounded sm:-my-2 sm:-mr-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current ${TOUCH_TARGET}`}
+          onClick={dismissHere}
+          aria-label={dismissLabel}
+        >
           <svg
             class="size-4"
             viewBox="0 0 24 24"

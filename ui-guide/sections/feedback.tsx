@@ -1403,7 +1403,8 @@ export const leaveGuard = createLeaveGuard()
         name: "corner",
         type: `"top-left" | "top-right" | "bottom-left" | "bottom-right"`,
         default: `"top-right"`,
-        description: "The window corner the stack sits in; toasts slide in from that side.",
+        description:
+          "The window corner the stack sits in; toasts slide in from that side. Below 640 px it picks the top or the bottom and the stack spans the width.",
       },
       {
         name: "label",

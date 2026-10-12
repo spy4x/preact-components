@@ -22,7 +22,8 @@
     "./install-prompt": "./install-prompt.tsx",
     "./push-settings": "./push-settings.tsx",
     "./route-announcer": "./route-announcer.ts",
-    "./sync-status": "./sync-status.tsx"
+    "./sync-status": "./sync-status.tsx",
+    "./saved-copy-notice": "./saved-copy-notice.tsx"
   },
   "imports": {
     // Fresh is pinned here and nowhere else, for one test file only: `seo-head.fresh.test.tsx`
