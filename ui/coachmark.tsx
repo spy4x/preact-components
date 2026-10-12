@@ -24,7 +24,10 @@ export interface CoachmarkProps {
   title: string
   /** The body. It describes the target, which points at it through `aria-describedby`. */
   children?: ComponentChildren
-  /** Side of the target to sit on. Defaults to `"bottom"`; it flips when there is no room there. */
+  /**
+   * Side of the target to sit on. Defaults to `"bottom"`; it flips when there is no room there, and
+   * shifts along the target to stay inside the viewport.
+   */
   placement?: CoachmarkPlacement
   /** Called on Escape and on the × button. The app sets `open` to `false`. */
   onClose: (reason: CoachmarkCloseReason) => void
@@ -49,7 +52,10 @@ export interface CoachmarkProps {
 /** Below this viewport width, in pixels, a coachmark is drawn as a sheet along the bottom edge. */
 const SHEET_BELOW = 640
 
-/** How the surface is laid out: beside the target by CSS or by measurement, or as a sheet. */
+/**
+ * How the surface is laid out: beside the target by CSS where it fits centred on the target, by
+ * measurement where it has to shift to stay inside the viewport, or as a sheet.
+ */
 type CoachmarkMode = "anchor" | "measured" | "sheet"
 
 const surfaceClasses =
@@ -104,9 +110,12 @@ interface Saved {
  * list of them; an app that wants a single hint uses this alone.
  *
  * The surface is a `popover="manual"` element, so it sits in the top layer above every stacking
- * context with no portal. It is placed beside the target by CSS anchor positioning, which flips it
- * when there is no room. A browser without anchor positioning gets the same placement measured
- * with `getBoundingClientRect()`, again on scroll and resize. Below 640 px wide, and when the
+ * context with no portal. It sits beside the target, centred on it, and flips to the opposite side
+ * when the asked one has no room. The whole of it stays inside the viewport with an 8 px gutter:
+ * near an edge or a corner it shifts along the target instead of running past the edge. CSS anchor
+ * positioning places it where it fits centred; where it has to shift, and in a browser without
+ * anchor positioning, the place is measured with `getBoundingClientRect()`, again on scroll and
+ * resize. Below 640 px wide, and when the
  * target is missing, has no box or cannot be scrolled into view, the coachmark is a sheet along the
  * bottom edge instead. The target gets an outline, `anchor-name` and `aria-describedby` while the
  * coachmark is shown, and each goes back to what it was afterwards.
@@ -150,6 +159,8 @@ export function Coachmark(
   const savedRef = useRef<Saved | null>(null)
   const mode = useSignal<CoachmarkMode>("sheet")
   const spot = useSignal({ top: 0, left: 0 })
+  /** The side of the target the surface is on: the asked one, or the opposite after a flip. */
+  const side = useSignal<CoachmarkPlacement>(placement)
   /** The shown target's name for Go to, or `null` when there is no target to go to. */
   const goToName = useSignal<string | null>(null)
   const openRef = useRef(open)
@@ -229,19 +240,22 @@ export function Coachmark(
       const at = current?.getBoundingClientRect()
       if (!current || !at || innerWidth < SHEET_BELOW || !inViewport(at)) {
         mode.value = "sheet"
-      } else if (anchorSupported()) {
-        mode.value = "anchor"
       } else {
-        mode.value = "measured"
         const view = { width: document.documentElement.clientWidth, height: innerHeight }
-        const { top, left } = placeCoachmark(
+        const placed = placeCoachmark(
           placement,
           at,
           surface.offsetWidth,
           surface.offsetHeight,
           view,
         )
-        spot.value = { top, left }
+        // CSS centres the surface on the target and, in some browsers, lets it run past the
+        // viewport's edge, so it places the surface only where that spot is inside the viewport.
+        mode.value = placed.centred && anchorSupported() ? "anchor" : "measured"
+        side.value = placed.side
+        if (placed.top !== spot.value.top || placed.left !== spot.value.left) {
+          spot.value = { top: placed.top, left: placed.left }
+        }
       }
     }
     const schedule = () => {
@@ -313,8 +327,8 @@ export function Coachmark(
   }
 
   const style = mode.value === "anchor"
-    ? `position-anchor: ${anchorName}; position-area: ${placement}; ` +
-      `position-try-fallbacks: flip-block, flip-inline; inset: auto; margin: ${COACHMARK_GAP}px;`
+    ? `position-anchor: ${anchorName}; position-area: ${side.value}; inset: auto; ` +
+      `margin: ${COACHMARK_GAP}px;`
     : mode.value === "measured"
     ? `inset: auto; top: ${spot.value.top}px; left: ${spot.value.left}px; margin: 0;`
     : "inset: auto 0 0 0; width: 100%; max-width: none; margin: 0;"
