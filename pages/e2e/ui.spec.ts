@@ -265,6 +265,89 @@ function confirmDialogNameSpecs(): Spec[] {
   ]
 }
 
+/** Where a coachmark spec pins the demo's target: CSS insets from the viewport's edges. */
+interface CoachmarkCorner {
+  name: string
+  style: string
+}
+
+/** The least room, in pixels, a coachmark keeps from every edge of the viewport. */
+const COACHMARK_MARGIN = 8
+
+/**
+ * A `Coachmark` beside a target pinned near an edge of the viewport, on each side in turn: the
+ * whole surface is inside the viewport with a margin, and a real click on × closes it.
+ *
+ * @param width The viewport's width.
+ * @param height The viewport's height.
+ * @param corners Where the target is pinned, one case per corner and side.
+ * @param shifted Whether every case leaves no room to centre the surface on the target, so each
+ * must be placed by measurement and not by CSS anchor positioning.
+ */
+function coachmarkInViewportSpec(
+  width: number,
+  height: number,
+  corners: readonly CoachmarkCorner[],
+  shifted: boolean,
+): Spec {
+  return {
+    name: `Coachmark: in a ${width}x${height} window, beside a target near the ` +
+      `${corners.map((corner) => corner.name).join(", ")}, on every side, the whole coachmark ` +
+      `is inside the window and × can be clicked` +
+      (shifted ? ", and its place is measured, not left to CSS" : ""),
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width, height })
+      const card = page.locator("#demo-Coachmark")
+      const target = card.locator(`[data-e2e="coachmark-target"]`)
+      const surface = card.locator("[data-coachmark-mode]")
+      const close = surface.getByRole("button", { name: "Close", exact: true })
+      const wrong: string[] = []
+      const seen: string[] = []
+      await card.scrollIntoViewIfNeeded()
+      for (const corner of corners) {
+        for (const side of ["right", "bottom", "left", "top"]) {
+          const at = `${corner.name}, ${side}`
+          await card.locator(`[data-e2e="coachmark-placement"]`).selectOption(side)
+          await target.evaluate(
+            (element, style) => element.setAttribute("style", `position: fixed; ${style}`),
+            corner.style,
+          )
+          // Dispatched, not clicked: the pinned target may cover the button.
+          await card.locator(`[data-e2e="coachmark-toggle"]`).dispatchEvent("click")
+          // A desktop width: beside the target, not the sheet.
+          await surface.and(page.locator(`:popover-open:not([data-coachmark-mode="sheet"])`))
+            .waitFor()
+          // A trial click waits until the button has stopped moving and can take a click.
+          const reachable = await close.click({ trial: true, timeout: 3000 }).then(
+            () => true,
+            () => false,
+          )
+          const box = await surface.boundingBox()
+          if (box === null) throw new Error(`${at}: the coachmark has no box`)
+          const inside = box.x >= COACHMARK_MARGIN && box.y >= COACHMARK_MARGIN &&
+            box.x + box.width <= width - COACHMARK_MARGIN &&
+            box.y + box.height <= height - COACHMARK_MARGIN
+          // Current Chromium keeps a surface placed by CSS inside the window by itself; older
+          // ones (143) let it run past the edge. Only this tells the two apart on a current one.
+          const mode = await surface.getAttribute("data-coachmark-mode")
+          if (shifted && mode !== "measured") wrong.push(`${at}: placed by ${mode}, not measured`)
+          const where = `x ${Math.round(box.x)} to ${Math.round(box.x + box.width)}, ` +
+            `y ${Math.round(box.y)} to ${Math.round(box.y + box.height)}`
+          seen.push(`${at}: ${where}`)
+          if (!inside) wrong.push(`${at}: outside the window, ${where}`)
+          if (!reachable) wrong.push(`${at}: × cannot be clicked`)
+          if (reachable) await close.click()
+          else await page.keyboard.press("Escape")
+          await surface.and(page.locator(":popover-open")).waitFor({ state: "detached" })
+        }
+      }
+      if (wrong.length > 0) throw new Error(wrong.join("; "))
+      return seen.join("; ")
+    },
+  }
+}
+
 export const specs: readonly Spec[] = [
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
@@ -538,6 +621,18 @@ export const specs: readonly Spec[] = [
   ...removalSpecs(),
   ...requiredFieldSpecs(),
   ...toastrSpecs(),
+  coachmarkInViewportSpec(1280, 900, [
+    { name: "top left", style: "top: 12px; left: 12px" },
+    { name: "top right", style: "top: 12px; right: 12px" },
+    { name: "bottom left", style: "bottom: 12px; left: 12px" },
+    { name: "bottom right", style: "bottom: 12px; right: 12px" },
+  ], true),
+  coachmarkInViewportSpec(
+    700,
+    900,
+    [{ name: "right edge", style: "top: 120px; right: 12px" }],
+    false,
+  ),
 ]
 
 /** The parts of the host page's `UnsavedGuard` Back and Forward demo a spec drives. */

@@ -16,10 +16,12 @@ import {
   Button,
   Cluster,
   Coachmark,
+  type CoachmarkPlacement,
   Input,
   Modal,
   OnboardingChecklist,
   type OnboardingStep,
+  Select,
   Stack,
   Tour,
   type TourStep,
@@ -261,8 +263,12 @@ function TourDemo() {
   )
 }
 
+/** The sides the `Coachmark` demo offers, in the order of its `Select`. */
+const COACHMARK_SIDES: readonly CoachmarkPlacement[] = ["right", "bottom", "left", "top"]
+
 function CoachmarkDemo() {
   const open = useSignal(false)
+  const placement = useSignal<CoachmarkPlacement>("right")
   const target = useRef<HTMLDivElement>(null)
 
   return (
@@ -279,12 +285,22 @@ function CoachmarkDemo() {
         >
           Exports this month: 12
         </div>
+        <Select
+          class="w-auto"
+          aria-label="Side of the target"
+          data-e2e="coachmark-placement"
+          value={placement.value}
+          options={COACHMARK_SIDES.map((side) => ({ value: side, label: side }))}
+          onChange={(event) => {
+            placement.value = event.currentTarget.value as CoachmarkPlacement
+          }}
+        />
       </Cluster>
       <Coachmark
         open={open.value}
         target={target}
         title="New: export to CSV"
-        placement="right"
+        placement={placement.value}
         onClose={() => {
           open.value = false
         }}
@@ -435,7 +451,8 @@ const index = useSignal(0)
         name: "placement",
         type: `"top" | "right" | "bottom" | "left"`,
         default: `"bottom"`,
-        description: "The side of the target; it flips when there is no room.",
+        description:
+          "The side of the target; it flips when there is no room and stays inside the window.",
       },
       {
         name: "onClose",
