@@ -7,8 +7,8 @@
  * `pages/checks/ui.ts`. The demo keeps its state in `createOnboardingState` from
  * `@spy4x/preact-signals`, so those checks also load a page that uses it.
  *
- * The `Tour` and `Coachmark` demos are driven there too: where each sits, the measured fallback and
- * the bottom sheet, focus on open, on Next, on Go to and on close, the target's own `anchor-name` and
+ * The `Tour` and `Coachmark` demos are driven there and by `pages/e2e/ui.spec.ts`: where each sits,
+ * the bottom sheet, focus on open, on Next, on Go to and on close, the target's own
  * `aria-describedby` coming back, and Escape inside the demo's `Modal` closing only the dialog.
  */
 
@@ -216,7 +216,7 @@ function TourDemo() {
       </Cluster>
       <Cluster>
         <div class="w-56">
-          {/* The app's own anchor name and description, which the tour must hand back. */}
+          {/* The app's own description, which the tour hands back, and anchor name, which it leaves. */}
           <Input
             data-e2e="tour-search"
             aria-label="Search"
