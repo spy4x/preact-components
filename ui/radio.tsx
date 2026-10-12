@@ -45,6 +45,12 @@ export interface RadioGroupProps
    * value is passed first because that is what every caller actually wants off it.
    */
   onChange?: (value: string, event: JSX.TargetedEvent<HTMLInputElement, Event>) => void
+  /**
+   * One of the choices must be picked before the form submits. Set on every radio, where the
+   * browser checks it and a screen reader reads it; a `<fieldset>` has no `required` of its own.
+   * `Field` sets it from its own `required`.
+   */
+  required?: boolean
   class?: string
 }
 
@@ -93,6 +99,7 @@ export function RadioGroup(
     options,
     value,
     onChange,
+    required,
     class: className,
     ...rest
   }: RadioGroupProps,
@@ -112,6 +119,7 @@ export function RadioGroup(
             value={String(option.value)}
             checked={current !== undefined && current === String(option.value)}
             disabled={option.disabled}
+            required={required}
             onChange={onChange === undefined
               ? undefined
               : (event) => onChange(event.currentTarget.value, event)}

@@ -34,9 +34,14 @@ export interface MoneyInputProps {
    * field posts nothing of its own to a plain form.
    */
   name?: string
-  /** Id of the visible control. Generated when left out; pass one to use this inside `Field`. */
+  /** Id of the visible control. Generated when left out; inside `Field`, the field's `id` is used. */
   id?: string
   disabled?: boolean
+  /**
+   * Refuses a form submit while the field is empty, through the visible input's native `required`.
+   * `Field` sets it from its own `required`.
+   */
+  required?: boolean
   placeholder?: string
   /** Shown, and announced, when the typed text cannot be parsed as an amount. */
   invalidMessage?: string
@@ -44,6 +49,11 @@ export interface MoneyInputProps {
   rangeMessage?: MoneyInputRangeMessage
   class?: string
   "aria-describedby"?: string
+  /**
+   * Marks the field invalid for a reason the caller knows; `Field` sets it while it carries an
+   * error. A message of this component's own marks it too, whatever this says.
+   */
+  "aria-invalid"?: boolean | string
 }
 
 /** A {@link MoneyInputProps.rangeMessage} function. */
@@ -78,6 +88,17 @@ export interface MoneyInputEdit {
   value?: number | null
   /** The message to show, or `undefined` to clear whatever was shown before. */
   message: string | undefined
+}
+
+/**
+ * The input's text, with text that is only spaces removed from the input itself. Blank text means
+ * "no amount", but the browser's `required` check reads the raw text and would take three spaces
+ * for a value, so Enter would submit a required field with no amount in it.
+ */
+function withoutBlankText(input: HTMLInputElement | null): string {
+  if (!input) return ""
+  if (input.value !== "" && input.value.trim() === "") input.value = ""
+  return input.value
 }
 
 /**
@@ -176,11 +197,13 @@ export function MoneyInput(
     name,
     id: callerId,
     disabled,
+    required,
     placeholder,
     invalidMessage = "Enter a valid amount",
     rangeMessage = defaultRangeMessage,
     class: className,
     "aria-describedby": callerDescribedBy,
+    "aria-invalid": callerInvalid,
   }: MoneyInputProps,
 ): JSX.Element {
   const generatedId = useId()
@@ -209,7 +232,7 @@ export function MoneyInput(
   // class doc. Reading it here and resolving it through the same path `handleInput` uses is what
   // makes that typed text (or its rejection) take effect exactly once, the moment it is safe to.
   useEffect(() => {
-    const text = inputRef.current?.value ?? ""
+    const text = withoutBlankText(inputRef.current)
     draft.value = text
     const edit = resolveMoneyInputEdit(
       text,
@@ -248,7 +271,7 @@ export function MoneyInput(
   }
 
   function handleInput(event: JSX.TargetedEvent<HTMLInputElement>) {
-    const text = event.currentTarget.value
+    const text = withoutBlankText(event.currentTarget)
     draft.value = text
 
     const edit = resolveMoneyInputEdit(
@@ -290,10 +313,13 @@ export function MoneyInput(
         autocomplete="off"
         value={draft.value}
         disabled={disabled}
+        required={required}
         placeholder={placeholder}
         class={cn("pc-input", className)}
         aria-describedby={describedBy}
-        aria-invalid={message.value ? true : undefined}
+        aria-invalid={message.value || callerInvalid === true || callerInvalid === "true"
+          ? true
+          : undefined}
         onInput={handleInput}
         onFocus={handleFocus}
         onBlur={handleBlur}

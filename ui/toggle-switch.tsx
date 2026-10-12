@@ -20,6 +20,11 @@ export interface ToggleSwitchProps {
   "aria-labelledby"?: string
   /** Ids of the elements that describe this switch, typically its error and its hint. */
   "aria-describedby"?: string
+  /**
+   * Marks the switch invalid; `Field` sets it while it carries an error. There is no `required`: a
+   * switch is on or off, never empty, so `Field`'s `required` does nothing here.
+   */
+  "aria-invalid"?: boolean | string
   class?: string
 }
 
@@ -55,6 +60,7 @@ export function ToggleSwitch(
     id,
     "aria-labelledby": ariaLabelledBy,
     "aria-describedby": ariaDescribedBy,
+    "aria-invalid": ariaInvalid,
     class: className,
   }: ToggleSwitchProps,
 ): JSX.Element {
@@ -72,6 +78,7 @@ export function ToggleSwitch(
       aria-label={label}
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid === true || ariaInvalid === "true" ? true : undefined}
       disabled={disabled}
       onClick={() => {
         if (disabled) return

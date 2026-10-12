@@ -21,7 +21,7 @@ interface ForwardedType {
 
 /**
  * Preact's `createElement` strips `ref` off a vnode's props into `vnode.ref`, for every vnode
- * type — the reason `Input`, `Button`, `Checkbox` and `Radio` need this file at all (see
+ * type — the reason every component that forwards a `ref` needs this file at all (see
  * {@link forwardRef}'s doc). The "before diff" options hook is what runs early enough to put
  * `ref` back onto `props` before the component's own function is called: it fires first inside
  * `diff()`, for every vnode, which is also why `preact/hooks` chains its own state through this
@@ -95,7 +95,7 @@ const previousDiff = (options as { __b?(vnode: VNode): void }).__b
  * imported; a second probe confirmed the event remapping separately, by dispatching a plain
  * `input` event at an `Input` with an `onChange` handler — zero calls without `preact/compat`
  * loaded, one call with it loaded and nothing else changed. That is too wide a blast radius for
- * four components' refs, in a library other apps embed, so this file borrows only the one
+ * a few components' refs, in a library other apps embed, so this file borrows only the one
  * `options` hook forwarding a ref actually needs — the "before diff" hook, the same one
  * `preact/hooks` already chains under for its own state — and nothing else `preact/compat`
  * carries.
@@ -118,12 +118,12 @@ export function forwardRef<Instance, Props>(
   marked[FORWARDS_REF] = true
   // `preact/debug` and Preact devtools name a component by `displayName`, falling back to the
   // function's own name only when `displayName` is unset (`preact/debug`'s `getDisplayName`,
-  // `debug/src/component-stack.js`) — without it, every one of the four callers here would print
+  // `debug/src/component-stack.js`) — without it, every caller here would print
   // "Forwarded", the wrapper's own name, since `render` is passed as an argument rather than
   // declared where the component is used.
   //
   // `name` is its own parameter rather than `render.name` on purpose, and the difference is not
-  // cosmetic: each of the four callers writes `forwardRef(fn)` where `fn` is a function expression
+  // cosmetic: every caller writes `forwardRef(fn)` where `fn` is a function expression
   // with the *same* name as the `const` it initializes (`const Button = forwardRef(function
   // Button(...) {...})`), which reads fine as source but is exactly the shape a bundler cannot
   // leave alone. `deno bundle --platform browser` of a page that imports `Button` renamed

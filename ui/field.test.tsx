@@ -1,10 +1,15 @@
+import { signal } from "@preact/signals"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Checkbox } from "./checkbox.tsx"
+import { Combobox } from "./combobox.tsx"
 import { Field, type FieldChild, labelTarget } from "./field.tsx"
 import { Input, Select, Textarea } from "./input.tsx"
+import { MoneyInput } from "./money-input.tsx"
 import { RadioGroup } from "./radio.tsx"
+import { TagInput } from "./tag-input.tsx"
+import { ToggleSwitch } from "./toggle-switch.tsx"
 
 describe("Field", () => {
   it("renders the label above the control by default", () => {
@@ -230,6 +235,79 @@ describe("Field", () => {
 
     expect(html).toContain('<input type="email" required id="email"/>')
   })
+
+  it("draws the star when the control is required by its own prop and the field is not", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <input type="email" required />
+      </Field>,
+    )
+
+    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+  })
+
+  it("draws the star for a required control that a function child returns", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        {(wiring) => <input id={wiring.id} type="email" required />}
+      </Field>,
+    )
+
+    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+  })
+
+  it("draws the star for a control whose own required is a signal holding true", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <Input type="email" required={signal(true)} />
+      </Field>,
+    )
+
+    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+  })
+
+  it("draws no star for a control whose own required is a signal holding false", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <Input type="email" required={signal(false)} />
+      </Field>,
+    )
+
+    expect(html).not.toContain(">*</span>")
+  })
+
+  it("draws no star for a control whose own required is false", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <input type="email" required={false} />
+      </Field>,
+    )
+
+    expect(html).not.toContain("*")
+  })
+
+  it("keeps a control's own aria-invalid when the field has no error", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <input type="email" aria-invalid="true" />
+      </Field>,
+    )
+
+    expect(html).toContain('<input type="email" aria-invalid="true" id="email"/>')
+  })
+
+  for (const hint of [true, false]) {
+    it(`renders no paragraph and no aria-describedby for a hint of ${hint}`, () => {
+      const html = render(
+        <Field id="email" label="Email" hint={hint}>
+          <input />
+        </Field>,
+      )
+
+      expect(html).not.toContain("<p")
+      expect(html).not.toContain("aria-describedby")
+    })
+  }
 
   it("renders no paragraph and no aria-describedby for an empty hint", () => {
     const html = render(
@@ -615,3 +693,83 @@ function labelable(html: string): string[] {
     return ["button", "meter", "output", "progress", "select", "textarea"].includes(tag ?? "")
   })
 }
+
+/** The opening tag of the first element with this id. */
+function tagWithId(html: string, id: string): string {
+  const tag = html.match(new RegExp(`<[^>]*\\sid="${id}"[^>]*>`))?.[0]
+  if (tag === undefined) throw new Error(`no element with id="${id}" in ${html}`)
+  return tag
+}
+
+describe("Field with required and an error, around a control of this library", () => {
+  it("marks a Combobox invalid, required and described by the error", () => {
+    const html = render(
+      <Field id="city" label="City" required error="Pick a city">
+        <Combobox items={["Lisbon"]} onChange={() => {}} ariaLabel="City" />
+      </Field>,
+    )
+
+    const input = tagWithId(html, "city")
+    expect(input).toContain('role="combobox"')
+    expect(input).toContain('aria-describedby="city-error"')
+    expect(input).toContain('aria-invalid="true"')
+    expect(input).toContain('aria-required="true"')
+    // The native attribute would accept a typed query that chose nothing.
+    expect(input).not.toMatch(/\srequired[\s/>=]/)
+  })
+
+  it("puts the native required and aria-invalid on a MoneyInput", () => {
+    const html = render(
+      <Field id="price" label="Price" required error="Enter a price">
+        <MoneyInput value={null} onChange={() => {}} currency="EUR" />
+      </Field>,
+    )
+
+    const input = tagWithId(html, "price")
+    expect(input).toMatch(/\srequired[\s/>]/)
+    expect(input).toContain('aria-invalid="true"')
+    expect(input).toContain('aria-describedby="price-error"')
+  })
+
+  it("marks a TagInput aria-required and not natively required, which chips would fail", () => {
+    const html = render(
+      <Field id="tags" label="Tags" required error="Add a tag">
+        <TagInput value={["work"]} onChange={() => {}} />
+      </Field>,
+    )
+
+    const input = tagWithId(html, "tags")
+    expect(input).toContain('aria-required="true"')
+    expect(input).toContain('aria-invalid="true"')
+    expect(input).toContain('aria-describedby="tags-error"')
+    expect(input).not.toMatch(/\srequired[\s/>=]/)
+  })
+
+  it("marks a ToggleSwitch invalid and described by the error", () => {
+    const html = render(
+      <Field id="terms" label="Terms" labelFor={false} error="Accept the terms">
+        <ToggleSwitch value={false} onToggle={() => {}} label="Terms" />
+      </Field>,
+    )
+
+    const button = tagWithId(html, "terms")
+    expect(button).toContain('aria-invalid="true"')
+    expect(button).toContain('aria-describedby="terms-error"')
+  })
+
+  it("requires every radio of a RadioGroup and leaves the fieldset without the attribute", () => {
+    const html = render(
+      <Field id="plan" label="Plan" labelFor={false} required>
+        <RadioGroup
+          legend="Plan"
+          name="plan"
+          options={[{ value: "a", label: "A" }, { value: "b", label: "B" }]}
+        />
+      </Field>,
+    )
+
+    expect(tagWithId(html, "plan")).not.toContain("required")
+    expect(tagWithId(html, "plan-0")).toMatch(/\srequired[\s/>]/)
+    expect(tagWithId(html, "plan-1")).toMatch(/\srequired[\s/>]/)
+  })
+})
