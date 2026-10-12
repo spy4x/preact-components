@@ -91,6 +91,17 @@ export interface MoneyInputEdit {
 }
 
 /**
+ * The input's text, with text that is only spaces removed from the input itself. Blank text means
+ * "no amount", but the browser's `required` check reads the raw text and would take three spaces
+ * for a value, so Enter would submit a required field with no amount in it.
+ */
+function withoutBlankText(input: HTMLInputElement | null): string {
+  if (!input) return ""
+  if (input.value !== "" && input.value.trim() === "") input.value = ""
+  return input.value
+}
+
+/**
  * The whole decision one edit of {@link MoneyInput}'s text makes, as a pure function with no
  * signal, ref or DOM in it — everything {@link MoneyInput} itself does with an edit is call this
  * and apply the result. Kept separate so every rule below is a plain, fast unit test instead of a
@@ -221,7 +232,7 @@ export function MoneyInput(
   // class doc. Reading it here and resolving it through the same path `handleInput` uses is what
   // makes that typed text (or its rejection) take effect exactly once, the moment it is safe to.
   useEffect(() => {
-    const text = inputRef.current?.value ?? ""
+    const text = withoutBlankText(inputRef.current)
     draft.value = text
     const edit = resolveMoneyInputEdit(
       text,
@@ -260,7 +271,7 @@ export function MoneyInput(
   }
 
   function handleInput(event: JSX.TargetedEvent<HTMLInputElement>) {
-    const text = event.currentTarget.value
+    const text = withoutBlankText(event.currentTarget)
     draft.value = text
 
     const edit = resolveMoneyInputEdit(
