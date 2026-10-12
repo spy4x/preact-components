@@ -1,6 +1,6 @@
 /**
- * Where a `Coachmark` sits when the browser has no CSS anchor positioning. Pure geometry, kept out
- * of the component so it is tested without a browser; not exported from the package.
+ * Where a `Coachmark` sits beside its target. Pure geometry, kept out of the component so it is
+ * tested without a browser; not exported from the package.
  */
 
 import { shiftIntoView } from "./hint-bubble.ts"
@@ -66,8 +66,7 @@ function fits(side: CoachmarkSide, top: number, left: number, width: number, hei
  * @param width The surface's width.
  * @param height The surface's height.
  * @param view The viewport's width and height, without scrollbars.
- * @returns The surface's top-left corner, the side it ended on, and whether it sits centred on the
- * target there with no shift, which is where CSS anchor positioning alone would put it.
+ * @returns The surface's top-left corner and the side it ended on.
  */
 export function placeCoachmark(
   side: CoachmarkSide,
@@ -75,7 +74,7 @@ export function placeCoachmark(
   width: number,
   height: number,
   view: { width: number; height: number },
-): { top: number; left: number; side: CoachmarkSide; centred: boolean } {
+): { top: number; left: number; side: CoachmarkSide } {
   let chosen = side
   let spot = besides(side, target, width, height)
   if (!fits(side, spot.top, spot.left, width, height, view)) {
@@ -91,6 +90,5 @@ export function placeCoachmark(
     top: Math.round(spot.top + down),
     left: Math.round(spot.left + across),
     side: chosen,
-    centred: down === 0 && across === 0,
   }
 }

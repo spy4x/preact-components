@@ -11,7 +11,6 @@ describe("placeCoachmark", () => {
       top: 340 + COACHMARK_GAP,
       left: 350,
       side: "bottom",
-      centred: true,
     })
   })
 
@@ -20,19 +19,16 @@ describe("placeCoachmark", () => {
       top: 300 - COACHMARK_GAP - 100,
       left: 350,
       side: "top",
-      centred: true,
     })
     expect(placeCoachmark("left", target, 200, 100, view)).toEqual({
       top: 270,
       left: 400 - COACHMARK_GAP - 200,
       side: "left",
-      centred: true,
     })
     expect(placeCoachmark("right", target, 200, 100, view)).toEqual({
       top: 270,
       left: 500 + COACHMARK_GAP,
       side: "right",
-      centred: true,
     })
   })
 
@@ -42,17 +38,28 @@ describe("placeCoachmark", () => {
       top: 720 - COACHMARK_GAP - 100,
       left: 350,
       side: "top",
-      centred: true,
     })
     const nearLeft = { ...target, left: 20 }
     expect(placeCoachmark("left", nearLeft, 200, 100, view).side).toBe("right")
   })
 
   it("flips when the asked side has less room than the surface and its 8 px gutter", () => {
-    // 104 px below the target: the surface and its gap fit, the gutter under it does not.
-    const lowish = { ...target, top: 648 }
-    expect(placeCoachmark("bottom", lowish, 200, 100, view).side).toBe("top")
-    expect(placeCoachmark("bottom", { ...target, top: 644 }, 200, 100, view).side).toBe("bottom")
+    const side = (
+      asked: "top" | "right" | "bottom" | "left",
+      at: { top?: number; left?: number },
+    ) => placeCoachmark(asked, { ...target, ...at }, 200, 100, view).side
+    // Below: the surface ends 8 px from the bottom edge, then 4 px from it.
+    expect(side("bottom", { top: 644 })).toBe("bottom")
+    expect(side("bottom", { top: 648 })).toBe("top")
+    // Above: it starts 8 px from the top edge, then 4 px from it.
+    expect(side("top", { top: 116 })).toBe("top")
+    expect(side("top", { top: 112 })).toBe("bottom")
+    // To the left: it starts 8 px from the left edge, then 4 px from it.
+    expect(side("left", { left: 216 })).toBe("left")
+    expect(side("left", { left: 212 })).toBe("right")
+    // To the right: it ends 8 px from the right edge, then 4 px from it.
+    expect(side("right", { left: 684 })).toBe("right")
+    expect(side("right", { left: 688 })).toBe("left")
   })
 
   it("stays on the asked side, moved over the target into the viewport, when neither side has room", () => {
@@ -61,14 +68,12 @@ describe("placeCoachmark", () => {
       top: 800 - 8 - 100,
       left: 350,
       side: "bottom",
-      centred: false,
     })
     const wide = { top: 300, left: 50, width: 900, height: 40 }
     expect(placeCoachmark("left", wide, 200, 100, view)).toEqual({
       top: 270,
       left: 8,
       side: "left",
-      centred: false,
     })
   })
 
@@ -91,23 +96,9 @@ describe("placeCoachmark", () => {
           const at = `${side} of ${left},${top}: ${spot.left},${spot.top}`
           expect(spot.left >= 8 && spot.left + 200 <= 992 ? "inside" : at).toBe("inside")
           expect(spot.top >= 8 && spot.top + 100 <= 792 ? "inside" : at).toBe("inside")
-          expect(spot.centred).toBe(false)
         }
       }
     }
-  })
-
-  it("says the surface is centred only when it was not shifted", () => {
-    expect(placeCoachmark("right", target, 200, 100, view).centred).toBe(true)
-    expect(placeCoachmark("right", { ...target, top: 30 }, 200, 100, view).centred).toBe(false)
-    // Flipped to the left, and centred there.
-    const nearRight = { ...target, left: 850 }
-    expect(placeCoachmark("right", nearRight, 200, 100, view)).toEqual({
-      top: 270,
-      left: 850 - COACHMARK_GAP - 200,
-      side: "left",
-      centred: true,
-    })
   })
 
   it("rounds to whole pixels", () => {
