@@ -1,3 +1,4 @@
+import { signal } from "@preact/signals"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
@@ -253,6 +254,26 @@ describe("Field", () => {
     )
 
     expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+  })
+
+  it("draws the star for a control whose own required is a signal holding true", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <Input type="email" required={signal(true)} />
+      </Field>,
+    )
+
+    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+  })
+
+  it("draws no star for a control whose own required is a signal holding false", () => {
+    const html = render(
+      <Field id="email" label="Email">
+        <Input type="email" required={signal(false)} />
+      </Field>,
+    )
+
+    expect(html).not.toContain(">*</span>")
   })
 
   it("draws no star for a control whose own required is false", () => {

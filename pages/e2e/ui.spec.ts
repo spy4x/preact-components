@@ -112,8 +112,92 @@ function requiredFieldSpecs(): Spec[] {
       await submits.getByText("submits: 1", { exact: true }).waitFor()
     },
   }))
+  /** The form of required fields, reset, with every control but `empty` filled. */
+  const formWithOneEmpty = async (page: Page, empty: string) => {
+    const form = page.locator(`[data-e2e="required-form"]`)
+    await form.locator(`[data-e2e="required-reset"]`).click()
+    for (const other of REQUIRED_CONTROLS) {
+      if (other.name !== empty) await other.fill(form)
+    }
+    const control = form.locator(
+      `#${REQUIRED_CONTROLS.find(({ name }) => name === empty)!.focusId}`,
+    )
+    /** The browser refused the submit at the control, and the count of submits is still `count`. */
+    const refusedAt = async (count: number) => {
+      await control.and(form.locator(":invalid:focus")).waitFor()
+      const text = (await form.locator(`[data-e2e="required-submits"]`).textContent())?.trim()
+      if (text !== `submits: ${count}`) throw new Error(`a refused submit left "${text}"`)
+    }
+    const submittedTimes = (count: number) =>
+      form.locator(`[data-e2e="required-submits"]`)
+        .getByText(`submits: ${count}`, { exact: true }).waitFor()
+    return {
+      form,
+      control,
+      refusedAt,
+      submittedTimes,
+      submit: form.locator(`[data-e2e="required-submit"]`),
+      // A submit that takes focus nowhere, so the text typed in the control is still there when
+      // the browser validates: a click on the button would blur the control first.
+      submitInPlace: () => form.evaluate((node) => (node as HTMLFormElement).requestSubmit()),
+    }
+  }
   return [
     ...blocked,
+    {
+      name:
+        "Field required around MoneyInput: Enter in a field that holds only spaces submits nothing",
+      pageId: "ui",
+      run: async (page) => {
+        const { control, refusedAt, submittedTimes } = await formWithOneEmpty(page, "MoneyInput")
+        await control.pressSequentially("   ")
+        await control.press("Enter")
+        await refusedAt(0)
+        // A second submit proves the first one counted nothing, even if it was slow to show.
+        await control.pressSequentially("12")
+        await control.press("Enter")
+        await submittedTimes(1)
+      },
+    },
+    {
+      name:
+        "Field required around TagInput: text typed but not made a tag is refused, and so is a submit after the last tag is removed",
+      pageId: "ui",
+      run: async (page) => {
+        const { form, control, refusedAt, submittedTimes, submit, submitInPlace } =
+          await formWithOneEmpty(page, "TagInput")
+        await control.pressSequentially("draft")
+        await submitInPlace()
+        await refusedAt(0)
+        await control.press(",")
+        const remove = form.getByRole("button", { name: "Remove tag draft", exact: true })
+        await remove.waitFor()
+        await submit.click()
+        await submittedTimes(1)
+        await remove.click()
+        await remove.waitFor({ state: "detached" })
+        await submit.click()
+        await refusedAt(1)
+      },
+    },
+    {
+      name:
+        "Field required around Combobox: a typed query that chose nothing is refused, and so is a submit after the selection is cleared",
+      pageId: "ui",
+      run: async (page) => {
+        const { form, control, refusedAt, submittedTimes, submit, submitInPlace } =
+          await formWithOneEmpty(page, "Combobox")
+        await control.pressSequentially("Lis")
+        await submitInPlace()
+        await refusedAt(0)
+        await form.getByRole("option", { name: "Lisbon", exact: true }).click()
+        await submit.click()
+        await submittedTimes(1)
+        await form.getByRole("button", { name: "Clear selection", exact: true }).click()
+        await submit.click()
+        await refusedAt(1)
+      },
+    },
     {
       name:
         "Field around Combobox: an error under it marks the input invalid and describes it, and axe passes the form of required fields",
