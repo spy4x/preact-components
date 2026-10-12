@@ -51,7 +51,7 @@ export {
   type PushSettingsProps,
   type PushSettingsStatus,
 } from "./push-settings.tsx"
-export { type RouteAnnouncerOptions, useRouteAnnouncer } from "./route-announcer.ts"
+export { pageHeading, type RouteAnnouncerOptions, useRouteAnnouncer } from "./route-announcer.ts"
 export {
   RailShell,
   type RailShellItem,

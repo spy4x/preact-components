@@ -93,4 +93,37 @@ export const specs: readonly Spec[] = [
       }
     },
   },
+  {
+    name: "pageHeading: focus goes to the first h1 inside main and not to an h1 outside it, a " +
+      "tabindex the heading has is kept, and without an h1 focus goes to main",
+    pageId: "system",
+    run: async (page) => {
+      const button = page.locator(`[data-e2e="route-demo-page-heading"]`)
+      const heading = page.locator("main h1").first()
+      const focused = page.locator(":focus")
+      await page.evaluate(() => {
+        const outside = document.createElement("h1")
+        outside.id = "outside-main"
+        document.body.prepend(outside)
+      })
+
+      await button.click()
+      await heading.and(focused).and(page.locator(`[tabindex="-1"]`)).waitFor()
+      await page.locator("#outside-main:not([tabindex])").waitFor({ state: "attached" })
+      const name = await heading.innerText()
+
+      await heading.evaluate((element) => element.setAttribute("tabindex", "0"))
+      await button.focus()
+      await button.click()
+      await heading.and(focused).and(page.locator(`[tabindex="0"]`)).waitFor()
+
+      await page.evaluate(() => {
+        document.querySelectorAll("main h1").forEach((element) => element.remove())
+        document.querySelector("main")?.removeAttribute("tabindex")
+      })
+      await button.click()
+      await page.locator("main").first().and(focused).and(page.locator(`[tabindex="-1"]`)).waitFor()
+      return `focused the heading "${name}", then main`
+    },
+  },
 ]

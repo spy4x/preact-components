@@ -214,6 +214,11 @@ would have.
   document's first `<main>` unless you pass a ref, and gives the target `tabindex="-1"` when it has
   no `tabindex`, so script can focus it and Tab still skips it. `Shell` and `RailShell` both render
   that `<main>`.
+- **`pageHeading(main?)` is that target without a route change.** It returns the same element,
+  made focusable the same way, or `null` when there is no `main`. Pass it as `returnFocus` to a
+  component that leaves the page while focus is inside it, such as `InstallPrompt`
+  (`returnFocus={pageHeading}`), so the reader lands on the page's heading instead of the page
+  body. It reads the document, so call it from a handler or an effect, not during a render.
 - **A focused heading shows the browser's focus ring.** That is intended: after a keyboard press
   the ring shows a sighted keyboard user where they landed. `Shell` and `RailShell` give their
   `<main>` `focus:outline-none`, so a page with no `<h1>` shows no ring when focus lands there.
@@ -1063,7 +1068,8 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   `@spy4x/preact-signals` supplies the mode and remembers a dismissal through a port. When the card
   leaves while focus is inside it, after "Not now" or an accepted install, focus moves to the
   element `returnFocus` returns, which must be focusable: a button, or an element with
-  `tabIndex={-1}`. Without one, focus falls to the page body. A rejected `onInstall` shows `labels.failed` in the card.
+  `tabIndex={-1}`; `pageHeading` from the `route-announcer` subpath is the page's heading, for a
+  card above the page. Without one, focus falls to the page body. A rejected `onInstall` shows `labels.failed` in the card.
   `DEFAULT_INSTALL_PROMPT_LABELS` holds its English words.
 - **`PushSettings`** is the block in an app's settings that says whether this device gets
   notifications and turns them on or off. It shows one state: `checking`, `unsupported`,
