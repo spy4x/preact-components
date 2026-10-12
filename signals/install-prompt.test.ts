@@ -2,6 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
   createInstallPrompt,
+  createStoredInstallPrompt,
+  INSTALL_DISMISSED_KEY,
   type InstallPromptEvent,
   type InstallPromptTarget,
   isIosDevice,
@@ -193,6 +195,124 @@ describe("createInstallPrompt", () => {
 
     expect(store.mode.value).toBe("unavailable")
     expect(listeners.beforeinstallprompt.size + listeners.appinstalled.size).toBe(0)
+  })
+})
+
+/** A storage held in memory, and one whose every call throws, as a blocked browser storage does. */
+function fakeStorage(initial: Record<string, string> = {}) {
+  const items = new Map(Object.entries(initial))
+  return {
+    items,
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => void items.set(key, value),
+    removeItem: (key: string) => void items.delete(key),
+  }
+}
+const blocked = (): never => {
+  throw new Error("SecurityError")
+}
+const IOS = { target: null, navigator: IPHONE, matchMedia: notStandalone }
+
+describe("createStoredInstallPrompt", () => {
+  it("keeps a dismissal as 1 under install-prompt-dismissed, so a reload stays hidden", () => {
+    const storage = fakeStorage()
+    const store = createStoredInstallPrompt({ ...IOS, storage })
+    expect(store.visible.value).toBe(true)
+
+    store.dismiss()
+
+    expect(store.visible.value).toBe(false)
+    expect(INSTALL_DISMISSED_KEY).toBe("install-prompt-dismissed")
+    expect([...storage.items]).toEqual([["install-prompt-dismissed", "1"]])
+    expect(createStoredInstallPrompt({ ...IOS, storage }).visible.value).toBe(false)
+  })
+
+  it("remembers a person who dismissed before this function existed", () => {
+    const storage = fakeStorage({ "install-prompt-dismissed": "1" })
+
+    expect(createStoredInstallPrompt({ ...IOS, storage }).dismissed.value).toBe(true)
+  })
+
+  it("does not take another stored text for a dismissal", () => {
+    for (const text of ["0", "true", "not json"]) {
+      const storage = fakeStorage({ "install-prompt-dismissed": text })
+
+      expect(createStoredInstallPrompt({ ...IOS, storage }).visible.value).toBe(true)
+    }
+  })
+
+  it("keeps the flag under the caller's key", () => {
+    const storage = fakeStorage({ "install-prompt-dismissed": "1" })
+    const store = createStoredInstallPrompt({ ...IOS, storage, key: "acme:install" })
+    expect(store.visible.value).toBe(true)
+
+    store.dismiss()
+
+    expect(storage.items.get("acme:install")).toBe("1")
+  })
+
+  it("shows the offer and hides it for this page when storage throws on read and write", () => {
+    const storage = { getItem: blocked, setItem: blocked, removeItem: blocked }
+    const store = createStoredInstallPrompt({ ...IOS, storage })
+    expect(store.visible.value).toBe(true)
+
+    expect(store.dismiss()).toBeUndefined()
+
+    expect(store.visible.value).toBe(false)
+  })
+
+  it("shows the offer and hides it for this page when reading localStorage itself throws", () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, get: blocked })
+    try {
+      const store = createStoredInstallPrompt(IOS)
+      expect(store.visible.value).toBe(true)
+
+      store.dismiss()
+
+      expect(store.visible.value).toBe(false)
+    } finally {
+      if (original) Object.defineProperty(globalThis, "localStorage", original)
+      else delete (globalThis as { localStorage?: unknown }).localStorage
+    }
+  })
+
+  it("uses localStorage when no storage is given", () => {
+    const storage = fakeStorage()
+    const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, get: () => storage })
+    try {
+      createStoredInstallPrompt(IOS).dismiss()
+
+      expect(storage.items.get("install-prompt-dismissed")).toBe("1")
+    } finally {
+      if (original) Object.defineProperty(globalThis, "localStorage", original)
+      else delete (globalThis as { localStorage?: unknown }).localStorage
+    }
+  })
+
+  it("keeps the flag in memory when storage is null", () => {
+    const store = createStoredInstallPrompt({ ...IOS, storage: null })
+
+    store.dismiss()
+
+    expect(store.visible.value).toBe(false)
+    expect(createStoredInstallPrompt({ ...IOS, storage: null }).visible.value).toBe(true)
+  })
+
+  it("passes the ports on, so the browser's dialog is still offered", () => {
+    const { target, fire } = fakeTarget()
+    const store = createStoredInstallPrompt({
+      target,
+      navigator: CHROME,
+      matchMedia: notStandalone,
+      storage: null,
+    })
+    store.watch()
+
+    fire("beforeinstallprompt", fakeEvent().event)
+
+    expect(store.mode.value).toBe("prompt")
   })
 })
 
