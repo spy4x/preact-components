@@ -71,6 +71,12 @@ export {
   type ShellUser,
   type ShellUserMenuItem,
 } from "./shell.tsx"
+export {
+  DEFAULT_SAVED_COPY_NOTICE_LABELS,
+  SavedCopyNotice,
+  type SavedCopyNoticeLabels,
+  type SavedCopyNoticeProps,
+} from "./saved-copy-notice.tsx"
 export { type HeadTag, type HeadTagName, SEOHead, seoHeadJsonLd, seoHeadTags } from "./seo-head.tsx"
 export {
   isCurrentLink,
