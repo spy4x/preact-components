@@ -7,6 +7,7 @@ import {
   CONTRAST_HELPERS,
   type Devtools,
   MISSED,
+  navigateAndLoad,
   openGuidePage,
   PAGE_UNTIL,
   pointerToCorner,
@@ -17926,8 +17927,9 @@ const SHELL_SIGN_OUT_EVERYWHERE = '#demo-Shell [data-e2e="signout-everywhere"]'
 async function restoreHydratedPage(devtools: Devtools, restoreUrl: string, label: string) {
   await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
   await devtools.send("Fetch.disable").catch(() => {})
-  await devtools.send("Page.navigate", { url: restoreUrl }).catch(() => {})
-  await waitForNavigation(devtools)
+  // Not a bare `Page.navigate`: `restoreUrl` carries a hash, so going to it from the same page loads
+  // nothing and fires no load event, and the wait for one ran its full 20 seconds (#696).
+  await navigateAndLoad(devtools, restoreUrl)
   const hydrated = () =>
     poll(
       () =>
