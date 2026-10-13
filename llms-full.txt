@@ -2763,7 +2763,9 @@ hydrated — no JavaScript, or an embedded render — keeps the natural tab orde
 A day that cannot be picked is still focusable and its accessible name is the reason it cannot be:
 `19 August 2026 — not available`. The reason is one of `past` (before `minDate`), `after` (after
 `maxDate`), `none-left` (`availableByDate` holds `0` for the day; the cell is also struck through)
-and `unavailable` (the day is not in `availableByDate`, or belongs to a neighbouring month). The
+and `unavailable` (the day is not in `availableByDate`). The cells before the 1st and after the
+last day of the month are blank: a month shows no date of a neighbouring month, which would read
+as a day of this month that cannot be picked. The
 same sentence is shown under the grid while it has focus, for the reader who has no screen reader
 to read the cell out and no mouse to hover a `title` with. The grid itself is a `grid` of `row`s
 and `gridcell`s named after the month it shows.
@@ -2771,7 +2773,7 @@ and `gridcell`s named after the month it shows.
 **What that evidence is, and is not.** Every accessibility claim in this file is a claim about
 markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.
 No screen reader has been run against any of it. The one place where the markup and what a reader
-would actually hear can plausibly come apart is the decision below to keep the peek days out of the
+would actually hear can plausibly come apart is the decision below to keep the blank cells out of the
 accessibility tree: a row then exposes fewer cells than `aria-colcount` promises, and `aria-colindex`
 is there to keep the columns numbered, unverified by ear.
 
@@ -6044,7 +6046,8 @@ that is what `onAdd` receives.
 
 A text field that collects several tags. Enter or a comma adds the typed text as a tag, trimmed;
 a tag the list already holds, in any case or Unicode encoding, is not added twice. Backspace in the empty field removes
-the last tag. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
+the last tag. A Backspace held down clears the typed text and stops there: the key's repeats remove
+no tag, and the next fresh press does. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
 
 The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys, with rows
 44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
@@ -6320,8 +6323,13 @@ calls `onDiscard` and then `go`, and "Stay" drops `go` and gives the focus back 
 had it when the dialog opened: the button that was pressed, or the field a shortcut was typed in.
 While `when` is `false`, or with no `UnsavedGuard` on the page, `go` runs at once. A second call
 while the dialog is open replaces the first `go`; there is never a second dialog, and "Leave" runs
-only the newest. If the changes are saved while the dialog is open, it closes and nothing
-navigates. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+only the newest. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+
+If the changes are saved while the dialog is open, so `when` turns `false` behind it, the dialog
+closes and the navigation it was asking about runs: the link that was clicked is followed, `go` is
+called, or the Back or Forward step is taken. `onDiscard` is not called, because nothing is
+discarded. With two forms that share a `LeaveGuard`, that happens when the last of them is saved.
+A guard that unmounts while `when` is still `true` drops the navigation instead.
 
 One page with two dirty forms that share a `LeaveGuard` still shows one dialog: the `UnsavedGuard`
 that became dirty first draws it, and "Leave" calls only that guard's `onDiscard`.

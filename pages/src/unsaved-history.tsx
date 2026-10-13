@@ -24,6 +24,9 @@ import { Router, useLocation, useSearch } from "wouter-preact"
 /** The query parameter that names the view. */
 const VIEW_PARAM = "unsaved-note"
 
+/** How long "Save in 3 seconds" takes to save, as a slow server would. */
+const SAVE_MS = 3000
+
 /** Classes of the links that move between the views. */
 const CONTROL = buttonClasses("outline", "sm")
 
@@ -50,7 +53,9 @@ export function UnsavedHistoryDemo() {
       <p class="measure mt-2 text-sm text-gray-600 dark:text-gray-300">
         Open the editor, type, then press the browser's Back button. <code>UnsavedGuard</code>{" "}
         keeps the editor and its address and asks first: "Stay" keeps what you typed, "Leave" goes
-        where Back was going. With nothing typed, Back leaves at once.
+        where Back was going. With nothing typed, Back leaves at once. A save that finishes while
+        the question is open closes it and goes where Back was going too: press "Save in 3 seconds",
+        then Back, and wait.
       </p>
       <Router ssrPath="/" ssrSearch="">
         <Views />
@@ -137,6 +142,14 @@ function Editor(
         data-e2e="unsaved-history-tags"
       />
       {previewLink}
+      <button
+        type="button"
+        class={CONTROL}
+        onClick={() => setTimeout(() => dirty.value = false, SAVE_MS)}
+        data-e2e="unsaved-history-save-late"
+      >
+        Save in 3 seconds
+      </button>
       <UnsavedGuard
         when={tagsDirty.value}
         owns={owns}

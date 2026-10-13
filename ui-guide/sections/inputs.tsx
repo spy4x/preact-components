@@ -817,6 +817,10 @@ function TagInputDemo() {
             />
           </Field>
           <Note e2e="controlled-value">tags: {tags.value.join(", ") || "(none)"}</Note>
+          <Note>
+            Backspace in the empty field removes the last tag. A Backspace held down clears the
+            typed text and stops there.
+          </Note>
         </Stack>
       </Variant>
       <Variant title="Disabled">

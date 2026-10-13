@@ -214,6 +214,30 @@ describe("createLeaveGuard", () => {
     expect(ran).toEqual([])
   })
 
+  it("runs a waiting navigation once when the last holder lets go with its changes saved", () => {
+    const { guard, asking, ran, go, leave } = setup()
+    const editor = {}
+    const release = asking.hold(editor)
+    guard.navigate(go("lists"))
+    release(true)
+    expect(ran).toEqual(["lists"])
+    expect(asking.asks(editor)).toBe(false)
+    leave()
+    expect(ran).toEqual(["lists"])
+  })
+
+  it("keeps asking after one holder saved while another still holds", () => {
+    const { guard, asking, ran, go } = setup()
+    const first = {}
+    const second = {}
+    const releaseFirst = asking.hold(first)
+    asking.hold(second)
+    guard.navigate(go("lists"))
+    releaseFirst(true)
+    expect(ran).toEqual([])
+    expect(asking.asks(second)).toBe(true)
+  })
+
   it("is led by the earliest holder, with or without a navigation waiting, then by the next", () => {
     const { asking } = setup()
     const first = {}

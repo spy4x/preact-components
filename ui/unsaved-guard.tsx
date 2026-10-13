@@ -137,6 +137,11 @@ export interface UnsavedGuardProps {
  * `false` it navigates at once. A second navigation while the dialog is open replaces the first;
  * there is never a second dialog.
  *
+ * When `when` turns `false` while the dialog is open, because a save finished behind it, the dialog
+ * closes and the navigation it was asking about runs, without `onDiscard`: nothing is unsaved any
+ * more. That holds for a link, a navigation from code and a Back or Forward step alike. A guard
+ * that unmounts while `when` is still `true` drops the navigation instead.
+ *
  * The guard listens in the capture phase on `document`, so it decides before the link's own click
  * handler, or any ancestor's, has run: the only earlier cancellation it sees is a capture listener
  * on `window`. A link it holds back never reaches its own handler. Mark an in-page action link
@@ -182,8 +187,8 @@ export function UnsavedGuard(
   // Stands for this component in the guard, which shows the question through one holder only.
   const holder = useRef({}).current
   // Read at click time, so a caller's inline function does not re-add the listeners every render.
-  const latest = useRef({ owns, navigate })
-  latest.current = { owns, navigate }
+  const latest = useRef({ owns, navigate, when })
+  latest.current = { owns, navigate, when }
 
   useEffect(() => {
     if (!when) return
@@ -214,10 +219,13 @@ export function UnsavedGuard(
     addEventListener("beforeunload", beforeUnload)
     document.addEventListener("click", onClick, true)
     return () => {
-      release()
       releaseHistory()
       removeEventListener("beforeunload", beforeUnload)
       document.removeEventListener("click", onClick, true)
+      // Last, so a navigation it runs is held by nothing above. `when` turned `false` in a render
+      // of this guard: the changes were saved, and a navigation the dialog was asking about runs.
+      // A guard that unmounts while `when` is still `true` drops it instead.
+      release(!latest.current.when)
     }
   }, [when, guard, asking])
 

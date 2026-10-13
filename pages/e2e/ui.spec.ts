@@ -987,6 +987,59 @@ export const specs: readonly Spec[] = [
       if (open !== 0) throw new Error(`${open} dialogs are open with nothing unsaved`)
     },
   },
+  {
+    name:
+      "UnsavedGuard: a save that finishes while the dialog is open closes it and follows the link that was clicked, and then the navigation a button started",
+    pageId: "ui",
+    run: async (page) => {
+      const { card, draft, dialog, lists, outcomeIs } = await unsavedGuardWithAChange(page)
+      const saveLate = card.locator(`[data-e2e="unsaved-save-late"]`)
+      const saved = card.getByRole("checkbox", { name: "Unsaved changes", checked: false })
+
+      await saveLate.click()
+      await card.locator(`[data-unsaved="owned"]`).click()
+      // The question is asked first: the save has not finished, so nothing has navigated.
+      await dialog.waitFor()
+      await outcomeIs("nothing yet")
+      await dialog.waitFor({ state: "detached" })
+      await saved.waitFor()
+      await card.locator(`[data-e2e="unsaved-outcome"]`)
+        .getByText(/^Outcome: navigate\("\/.*unsaved-demo\/notes\/2"\)$/).waitFor()
+
+      await draft.fill("Another unsaved change")
+      await card.getByRole("checkbox", { name: "Unsaved changes", checked: true }).waitFor()
+      await saveLate.click()
+      await lists.click()
+      await dialog.waitFor()
+      await dialog.waitFor({ state: "detached" })
+      await saved.waitFor()
+      await outcomeIs(`navigate("unsaved-demo/lists") from code`)
+    },
+  },
+  {
+    name:
+      "TagInput: a held Backspace clears the typed text and removes no tag, and the next fresh press removes the last tag",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-TagInput")
+      const input = card.locator("#guide-tag-input")
+      const tags = card.locator(`[data-e2e="controlled-value"]`)
+      await tags.getByText("tags: work", { exact: true }).waitFor()
+      await input.pressSequentially("ab")
+
+      // A second `down` of a key that is already down is the keyboard's repeat: two of the six
+      // clear the text, and the other four arrive in the empty field.
+      for (let press = 0; press < 6; press++) await page.keyboard.down("Backspace")
+      await page.keyboard.up("Backspace")
+      const text = await input.inputValue()
+      if (text !== "") throw new Error(`the field holds "${text}" after a held Backspace`)
+      const kept = await tags.innerText()
+      if (kept !== "tags: work") throw new Error(`a held Backspace left "${kept}"`)
+
+      await page.keyboard.press("Backspace")
+      await tags.getByText("tags: (none)", { exact: true }).waitFor()
+    },
+  },
   ...unsavedHistorySpecs(),
   ...quickAddSpecs(),
   ...confirmDialogNameSpecs(),
@@ -1246,6 +1299,24 @@ function unsavedHistorySpecs(): Spec[] {
         await stay.click()
         await editorIsKept()
         await page.goBack()
+        await viewIs("list")
+        await dialogsAre(0)
+      },
+    },
+    {
+      name:
+        "UnsavedGuard: a save that finishes while the dialog asks about Back closes it and arrives where Back was going",
+      pageId: "ui",
+      run: async (page) => {
+        const { dialog, open, type, viewIs, dialogsAre } = unsavedHistoryDemo(page)
+        await open("edit")
+        await type()
+        await page.locator(`[data-e2e="unsaved-history-save-late"]`).click()
+
+        await page.goBack()
+        // The question is asked first: the save has not finished, so the editor is still the view.
+        await dialog.waitFor()
+        await viewIs("edit")
         await viewIs("list")
         await dialogsAre(0)
       },
