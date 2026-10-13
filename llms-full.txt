@@ -6323,8 +6323,13 @@ calls `onDiscard` and then `go`, and "Stay" drops `go` and gives the focus back 
 had it when the dialog opened: the button that was pressed, or the field a shortcut was typed in.
 While `when` is `false`, or with no `UnsavedGuard` on the page, `go` runs at once. A second call
 while the dialog is open replaces the first `go`; there is never a second dialog, and "Leave" runs
-only the newest. If the changes are saved while the dialog is open, it closes and nothing
-navigates. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+only the newest. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+
+If the changes are saved while the dialog is open, so `when` turns `false` behind it, the dialog
+closes and the navigation it was asking about runs: the link that was clicked is followed, `go` is
+called, or the Back or Forward step is taken. `onDiscard` is not called, because nothing is
+discarded. With two forms that share a `LeaveGuard`, that happens when the last of them is saved.
+A guard that unmounts while `when` is still `true` drops the navigation instead.
 
 One page with two dirty forms that share a `LeaveGuard` still shows one dialog: the `UnsavedGuard`
 that became dirty first draws it, and "Leave" calls only that guard's `onDiscard`.
