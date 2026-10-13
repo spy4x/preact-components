@@ -382,9 +382,12 @@ interface ScrollTrace {
   wrong: string[]
 }
 
-/** The `Tour` card's parts, in a 1280x900 window, with the tour started by Enter on Start. */
-async function startedTour(page: Page) {
-  await page.setViewportSize({ width: 1280, height: 900 })
+/**
+ * The `Tour` card's parts, in a 1280x900 window unless told otherwise, with the tour started by
+ * Enter on Start.
+ */
+async function startedTour(page: Page, width = 1280, height = 900) {
+  await page.setViewportSize({ width, height })
   const card = page.locator("#demo-Tour")
   const step = card.locator("[data-coachmark-mode]")
   const start = card.locator(`[data-e2e="tour-start"]`)
@@ -395,6 +398,8 @@ async function startedTour(page: Page) {
     step,
     search: card.locator(`[data-e2e="tour-search"]`),
     newProject: card.locator(`[data-e2e="tour-new"]`),
+    help: card.locator(`[data-e2e="tour-help"]`),
+    helpCompact: card.locator(`[data-e2e="tour-help-compact"]`),
     next: step.getByRole("button", { name: "Next", exact: true }),
     skip: step.getByRole("button", { name: "Skip tour", exact: true }),
   }
@@ -636,8 +641,84 @@ function coachmarkSpecs(): Spec[] {
         return where
       },
     },
+    ...[390, 700].map((width): Spec => ({
+      name: `Tour: in a ${width} px wide window, a step whose selector matches a hidden and a ` +
+        "visible control outlines the visible one, describes it, and Go to focuses it",
+      pageId: "ui",
+      run: async (page) => {
+        const { step, help, helpCompact, next, skip } = await startedTour(page, width, 800)
+        for (const title of ["Start a project", "A step with no target", "Ask for help"]) {
+          await next.click()
+          await step.getByRole("heading", { name: title }).waitFor()
+        }
+        // The first match in the page is the wide screen's button, which is not drawn here.
+        await help.waitFor({ state: "hidden" })
+        const bodyId = await step.locator(`[id$="-body"]`).getAttribute("id")
+        const outlined = page.locator(`[style*="outline"][aria-describedby="${bodyId}"]`)
+        await helpCompact.and(outlined).waitFor().catch(async () => {
+          const found = await page.locator("#demo-Tour [data-tour]").evaluateAll((elements) =>
+            elements.map((element) =>
+              `${element.getAttribute("data-e2e")}: outline "${
+                (element as HTMLElement).style.outline
+              }", described by ${element.getAttribute("aria-describedby")}`
+            ).join("; ")
+          )
+          throw new Error(`the visible Help button is not the step's target: ${found}`)
+        })
+        // Below 640 px every step is a sheet; above it this one must sit beside its target.
+        const mode = await step.getAttribute("data-coachmark-mode")
+        if (width >= 640) {
+          await step.and(page.locator(`:not([data-coachmark-mode="sheet"])`)).waitFor()
+        }
+        await step.getByRole("button", { name: "Go to Help", exact: true }).click()
+        await helpCompact.and(page.locator(":focus")).waitFor()
+        await skip.click()
+        return `the step is drawn as ${mode}`
+      },
+    })),
+    {
+      name: "Tour: a step whose only shown match is under visibility: hidden outlines nothing, " +
+        "offers no Go to and is a sheet",
+      pageId: "ui",
+      run: async (page) => {
+        const { step, help, next, skip } = await startedTour(page)
+        await help.evaluate((element) => element.style.visibility = "hidden")
+        for (const title of ["Start a project", "A step with no target", "Ask for help"]) {
+          await next.click()
+          await step.getByRole("heading", { name: title }).waitFor()
+        }
+        await step.and(page.locator(`[data-coachmark-mode="sheet"]`)).waitFor()
+        const read = await help.evaluate((element) => ({
+          outline: element.style.outline,
+          describedBy: element.getAttribute("aria-describedby"),
+        }))
+        const goTo = await step.getByRole("button", { name: /^Go to/ }).count()
+        const found = `${JSON.stringify(read)}, Go to buttons ${goTo}`
+        if (read.outline !== "" || read.describedBy !== null || goTo !== 0) throw new Error(found)
+        await skip.click()
+        return found
+      },
+    },
   ]
 }
+
+/** `OnboardingChecklist`: what an app reaches through its ports. */
+const onboardingChecklistSpecs: readonly Spec[] = [
+  {
+    name: "OnboardingChecklist: headingRef points at the heading, so after Dismiss and Show " +
+      "again the demo puts focus on Get started",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-OnboardingChecklist")
+      await card.getByRole("button", { name: "Dismiss", exact: true }).press("Enter")
+      const showAgain = card.locator(`[data-e2e="onboarding-show-again"]`)
+      await showAgain.and(page.locator(":focus")).waitFor()
+      await showAgain.press("Enter")
+      await card.getByRole("heading", { name: "Get started", exact: true })
+        .and(page.locator(":focus")).waitFor()
+    },
+  },
+]
 
 export const specs: readonly Spec[] = [
   {
@@ -913,6 +994,7 @@ export const specs: readonly Spec[] = [
   ...requiredFieldSpecs(),
   ...toastrSpecs(),
   ...coachmarkSpecs(),
+  ...onboardingChecklistSpecs,
 ]
 
 /** The parts of the host page's `UnsavedGuard` Back and Forward demo a spec drives. */

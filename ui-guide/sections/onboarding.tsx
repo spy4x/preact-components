@@ -9,7 +9,9 @@
  *
  * The `Tour` and `Coachmark` demos are driven there and by `pages/e2e/ui.spec.ts`: where each sits,
  * the bottom sheet, focus on open, on Next, on Go to and on close, the target's own
- * `aria-describedby` coming back, and Escape inside the demo's `Modal` closing only the dialog.
+ * `aria-describedby` coming back, Escape inside the demo's `Modal` closing only the dialog, and the
+ * last step pointing at whichever Help button is shown. The specs also cover the checklist's
+ * `headingRef`: Show again puts focus on the heading.
  */
 
 import {
@@ -96,6 +98,9 @@ function OnboardingChecklistDemo() {
   const done = useSignal(startingDone())
   const dismissed = useSignal(0)
   const showAgain = useRef<HTMLButtonElement>(null)
+  const heading = useRef<HTMLHeadingElement>(null)
+  /** Whether Show again was pressed while it had focus, so focus is the demo's to move on. */
+  const returning = useRef(false)
   const markDone = (id: string) => done.value = new Set([...done.value, id])
 
   const steps = useComputed<OnboardingStep[]>(() =>
@@ -119,8 +124,12 @@ function OnboardingChecklistDemo() {
   const hidden = !onboarding.visible.value
 
   // The card is gone after Dismiss, so the app moves focus: here, to the button that brings it back.
+  // Back again, the button that had focus is gone: the app moves focus to the card's heading,
+  // through `headingRef`.
   useEffect(() => {
     if (hidden) showAgain.current?.focus()
+    else if (returning.current) heading.current?.focus()
+    returning.current = false
   }, [hidden])
 
   return (
@@ -132,6 +141,7 @@ function OnboardingChecklistDemo() {
             variant="secondary"
             data-e2e="onboarding-show-again"
             onClick={() => {
+              returning.current = document.activeElement === showAgain.current
               done.value = startingDone()
               onboarding.reset()
             }}
@@ -142,6 +152,7 @@ function OnboardingChecklistDemo() {
         : (
           <OnboardingChecklist
             steps={steps.value}
+            headingRef={heading}
             description="A few steps to a working team space."
             onDismiss={() => {
               dismissed.value++
@@ -165,7 +176,10 @@ function OnboardingChecklistDemo() {
   )
 }
 
-/** The tour's steps. The third names an element the page does not have, so it shows as a sheet. */
+/**
+ * The tour's steps. The third names an element the page does not have, so it shows as a sheet. The
+ * last one's selector matches both Help buttons, and the step points at the one that is shown.
+ */
 const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "search",
@@ -188,7 +202,7 @@ const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "help",
-    target: `[data-e2e="tour-help"]`,
+    target: `[data-tour="help"]`,
     title: "Ask for help",
     body: "The last step: Done ends the tour.",
     placement: "top",
@@ -228,7 +242,13 @@ function TourDemo() {
         <Button variant="secondary" data-e2e="tour-new" onClick={() => dialog.value = true}>
           New project
         </Button>
-        <Button variant="ghost" data-e2e="tour-help">Help</Button>
+        {/* One control drawn twice, as an app draws its navigation for a wide and a narrow screen. */}
+        <span class="hidden md:inline">
+          <Button variant="ghost" data-e2e="tour-help" data-tour="help">Help</Button>
+        </span>
+        <span class="md:hidden">
+          <Button variant="ghost" data-e2e="tour-help-compact" data-tour="help">Help</Button>
+        </span>
       </Cluster>
       <DemoNote>
         <span id="tour-search-hint">Search looks through every project.</span>
@@ -329,6 +349,11 @@ export const onboardingDemos = {
       },
       { name: "title", type: "string", default: `"Get started"`, description: "The heading." },
       {
+        name: "headingRef",
+        type: "RefObject<HTMLHeadingElement>",
+        description: "Points at the heading, so the app can move focus to the card.",
+      },
+      {
         name: "progressLabel",
         type: "(done: number, total: number) => string",
         default: "`${done} of ${total} done`",
@@ -370,7 +395,9 @@ export const onboardingDemos = {
       {
         name: "steps",
         type: "{ id, target, title, body?, placement? }[]",
-        description: "The stops in order; `target` is a CSS selector or a ref.",
+        description:
+          "The stops in order; `target` is a ref, or a CSS selector, which names its first " +
+          "visible match.",
       },
       { name: "open", type: "boolean", description: "Whether the tour is shown. The app owns it." },
       {
@@ -439,7 +466,8 @@ const index = useSignal(0)
       {
         name: "target",
         type: "string | RefObject<HTMLElement>",
-        description: "The control it points at: a CSS selector or a ref.",
+        description:
+          "The control it points at: a ref, or a CSS selector, which names its first visible match.",
       },
       { name: "title", type: "string", description: "The heading, which also names it." },
       {
