@@ -50,49 +50,47 @@ function columnHeaders(html: string): string[] {
 }
 
 /**
- * Day numbers of the peek cells, in document order.
+ * Where each cell of a neighbouring month starts in the markup, in document order.
  *
  * Matched through the cell's own wrapper rather than on `aria-hidden` alone: the low-availability
- * dot carries that attribute too, and counting those instead is how this reads 39 cells in a
- * thirty-one-day month.
+ * dot carries that attribute too. Only an empty cell matches, so one that showed a date would not
+ * be counted.
  */
-function peekDays(html: string): string[] {
-  return [...html.matchAll(/aria-hidden="true"[^>]*><div[^>]*>(\d\d)</g)].map((match) => match[1])
+function blankCells(html: string): number[] {
+  return [...html.matchAll(/<div role="gridcell"[^>]*aria-hidden="true"[^>]*><\/div>/g)]
+    .map((match) => match.index ?? 0)
 }
 
 /**
- * Day numbers of the peek cells that lead the grid, before the 1st of the month.
+ * How many blank cells lead the grid, before the 1st of the month.
  *
- * How many there are is the whole of the column alignment: it is the weekday the month opens on,
- * counted from the week's own first day, and a six-week grid always holds eleven peek cells for a
+ * That number is the whole of the column alignment: it is the weekday the month opens on, counted
+ * from the week's own first day, and a six-week grid always holds eleven blank cells for a
  * thirty-one-day month however they are split between the two ends.
  */
-function leadingPeekDays(html: string): string[] {
+function leadingBlankCells(html: string): number {
   const firstOfMonth = html.indexOf("data-calendar-date=")
-  return [...html.matchAll(/aria-hidden="true"[^>]*><div[^>]*>(\d\d)</g)]
-    .filter((match) => (match.index ?? 0) < firstOfMonth)
-    .map((match) => match[1])
+  return blankCells(html).filter((index) => index < firstOfMonth).length
 }
 
 describe("Calendar", () => {
   it("renders a six-week grid with a Monday-first header", () => {
     const html = render(<Calendar {...base} />)
 
-    expect(html.match(/>\d\d</g)).toHaveLength(42) // six weeks of day cells
+    expect(html.match(/role="gridcell"/g)).toHaveLength(42) // six weeks of cells
     expect(html).toContain("August 2026")
     expect(columnHeaders(html)[0]).toBe("Mon")
     expect(columnHeaders(html)[6]).toBe("Sun")
   })
 
-  it("peeks into the previous month with hidden leading cells", () => {
+  it("leaves the cells of the neighbouring months blank and hidden", () => {
     const html = render(<Calendar {...base} />)
 
-    // 2026-08-01 is a Saturday: five July days lead the grid, six September days close it, and
-    // none of the eleven are in the accessibility tree.
-    const hidden = peekDays(html)
-    expect(hidden).toHaveLength(11)
-    expect(hidden.slice(0, 5).join(" ")).toBe("27 28 29 30 31")
-    expect(hidden.slice(5).join(" ")).toBe("01 02 03 04 05 06")
+    // 2026-08-01 is a Saturday: five cells lead the grid where July would be and six close it
+    // where September would be. All eleven are empty and out of the accessibility tree.
+    expect(blankCells(html)).toHaveLength(11)
+    expect(leadingBlankCells(html)).toBe(5)
+    expect(html.match(/>\d\d</g)).toHaveLength(31)
   })
 
   it("puts the horizon boundary in the grid as the first selectable day", () => {
@@ -165,7 +163,7 @@ describe("Calendar", () => {
   it("lays out always six weeks, whatever the month's length", () => {
     for (const anchor of ["2026-02-01", "2026-08-01", "2028-02-01"]) {
       const html = render(<Calendar {...base} monthAnchor={anchor} />)
-      const inGrid = html.match(/>\d\d</g) ?? []
+      const inGrid = html.match(/role="gridcell"/g) ?? []
       expect(inGrid.length).toBe(42)
     }
   })
@@ -333,10 +331,10 @@ describe("Calendar, as the locale shapes it", () => {
     // 2026-08-01 is a Saturday: five leading cells in a Monday-first week, six in a Sunday-first
     // one, none at all in a Saturday-first one.
     const leading = (locale: string) =>
-      leadingPeekDays(render(<Calendar {...base} locale={locale} />))
-    expect(leading("en-GB")).toEqual(["27", "28", "29", "30", "31"])
-    expect(leading("en-US")).toEqual(["26", "27", "28", "29", "30", "31"])
-    expect(leading("ar-EG")).toEqual([])
+      leadingBlankCells(render(<Calendar {...base} locale={locale} />))
+    expect(leading("en-GB")).toBe(5)
+    expect(leading("en-US")).toBe(6)
+    expect(leading("ar-EG")).toBe(0)
   })
 
   it("writes out weekday names rather than cutting them to two characters", () => {
