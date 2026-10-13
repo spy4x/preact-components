@@ -1,6 +1,6 @@
 /** Playwright specs for `system/` components, on the guide's system page. */
 import { AxeBuilder } from "@axe-core/playwright"
-import type { Locator } from "playwright-core"
+import type { Locator, Page } from "playwright-core"
 import type { Spec } from "./runner.ts"
 import { scrollRegionSpec } from "./scroll-region.ts"
 
@@ -32,7 +32,114 @@ function textChanges(region: Locator): Promise<number> {
   })
 }
 
+/** The `useRouteAnnouncer` demo's page region, its heading, and the tab title it sets. */
+const ROUTE_PAGE = `[data-e2e="route-demo-page"]`
+const ROUTE_HEADING = `${ROUTE_PAGE} h1`
+
+/** Press one of the route demo's controls. */
+const routeControl = (page: Page, name: string) => page.locator(`[data-e2e="route-demo-${name}"]`)
+
+/** Start a list of every element that takes focus from now on: `heading`, `page`, or its hook. */
+function recordFocus(page: Page): Promise<void> {
+  return page.evaluate((region) => {
+    const scope = globalThis as { focusLog?: string[] }
+    const log: string[] = scope.focusLog = []
+    document.addEventListener("focusin", (event) => {
+      const target = event.target as HTMLElement
+      log.push(
+        target.matches(`${region} h1`)
+          ? "heading"
+          : target.matches(region)
+          ? "page"
+          : target.getAttribute("data-e2e") ?? target.tagName,
+      )
+    })
+  }, ROUTE_PAGE)
+}
+
+/** Wait for the tab title, which the hook writes just before it decides on focus. */
+async function routeShown(page: Page, title: string): Promise<string[]> {
+  await page.waitForFunction((wanted) => document.title === wanted, title)
+  return page.evaluate(() => (globalThis as { focusLog?: string[] }).focusLog ?? [])
+}
+
 export const specs: readonly Spec[] = [
+  {
+    name: "useRouteAnnouncer with keepPageFocus: a page that focuses its own field as it opens " +
+      "keeps focus there, the heading never takes focus, and the tab title is still set",
+    pageId: "system",
+    run: async (page) => {
+      await routeControl(page, "keep-page-focus").check()
+      await recordFocus(page)
+      await routeControl(page, "go-search").click()
+      const log = await routeShown(page, "Search — route demo")
+      await routeControl(page, "search").and(page.locator(":focus")).waitFor()
+      if (!log.includes("route-demo-search")) throw new Error(`the field never took focus: ${log}`)
+      if (log.includes("heading") || log.includes("page")) {
+        throw new Error(`focus went through the heading: ${log}`)
+      }
+      await page.locator(`${ROUTE_HEADING}:not([tabindex])`).waitFor()
+      return `focus went to ${log.join(", ")}`
+    },
+  },
+  {
+    name: "useRouteAnnouncer without keepPageFocus: a page that focuses its own field as it " +
+      "opens loses focus to the heading, and the tab title is set",
+    pageId: "system",
+    run: async (page) => {
+      await recordFocus(page)
+      await routeControl(page, "go-search").click()
+      const log = await routeShown(page, "Search — route demo")
+      await page.locator(ROUTE_HEADING).and(page.locator(":focus")).waitFor()
+      if (log.join() !== "route-demo-go-search,route-demo-search,heading") {
+        throw new Error(`focus went to ${log}`)
+      }
+      return `focus went to ${log.join(", ")}`
+    },
+  },
+  {
+    name: "useRouteAnnouncer with keepPageFocus: focus that stayed on a control inside the page " +
+      "through the route change goes to the new page's heading",
+    pageId: "system",
+    run: async (page) => {
+      await routeControl(page, "keep-page-focus").check()
+      await routeControl(page, "go-settings").click()
+      await page.locator(ROUTE_PAGE).and(page.locator(":focus")).waitFor()
+      await recordFocus(page)
+      await routeControl(page, "in-page").click()
+      const log = await routeShown(page, "Inbox — route demo")
+      await page.locator(ROUTE_HEADING).and(page.locator(":focus")).waitFor()
+      if (log.join() !== "route-demo-in-page,heading") throw new Error(`focus went to ${log}`)
+      return `focus went to ${log.join(", ")}`
+    },
+  },
+  {
+    name: "useRouteAnnouncer with keepPageFocus: focus put on the page region itself during the " +
+      "route change goes to the new page's heading",
+    pageId: "system",
+    run: async (page) => {
+      await routeControl(page, "keep-page-focus").check()
+      await routeControl(page, "go-settings").click()
+      await page.locator(ROUTE_PAGE).and(page.locator(":focus")).waitFor()
+      // The page shows its new path before the hook's effect runs, so this stands in for a page
+      // that focuses its own region as it opens.
+      await page.locator(ROUTE_PAGE).evaluate((region) => {
+        new MutationObserver(() => (region as HTMLElement).focus()).observe(region, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        })
+      })
+      await recordFocus(page)
+      await routeControl(page, "go-inbox").click()
+      const log = await routeShown(page, "Inbox — route demo")
+      await page.locator(ROUTE_HEADING).and(page.locator(":focus")).waitFor()
+      if (log.join() !== "route-demo-go-inbox,page,heading") {
+        throw new Error(`focus went to ${log}`)
+      }
+      return `focus went to ${log.join(", ")}`
+    },
+  },
   scrollRegionSpec({
     what: "the SEOHead card's list of tags",
     pageId: "system",
