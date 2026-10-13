@@ -643,7 +643,7 @@ function coachmarkSpecs(): Spec[] {
     },
     ...[390, 700].map((width): Spec => ({
       name: `Tour: in a ${width} px wide window, a step whose selector matches a hidden and a ` +
-        "visible control outlines the visible one, describes it, and Go to focuses it",
+        "visible control outlines the visible one and describes it",
       pageId: "ui",
       run: async (page) => {
         const { step, help, helpCompact, next, skip } = await startedTour(page, width, 800)
