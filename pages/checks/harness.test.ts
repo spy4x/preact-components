@@ -25,6 +25,7 @@ import {
   DevtoolsClosedError,
   filteredRunLine,
   linearChannel,
+  navigateAndLoad,
   PAGE_UNTIL,
   type PageReader,
   PhaseVerdict,
@@ -816,6 +817,59 @@ describe("Devtools", () => {
 
       expect(answered).toBe(true)
       expect(await reloading).toBe(true)
+    })
+  })
+
+  /** The first message the fake socket was sent with this method, once one has been. */
+  async function sentCommand(
+    socket: FakeSocket,
+    method: string,
+  ): Promise<{ id: number; method: string } | undefined> {
+    const find = () => socket.sent.map((data) => JSON.parse(data)).find((m) => m.method === method)
+    await poll(() => Promise.resolve(find() !== undefined), 200)
+    return find()
+  }
+
+  it("navigateAndLoad reloads when the navigation stays in the same document", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+      devtools.callTimeoutMs = 200
+
+      const loading = navigateAndLoad(devtools, "http://localhost/#/ui", 300)
+      const navigate = JSON.parse(socket.sent[0])
+      expect(navigate.method).toBe("Page.navigate")
+      // A same-document navigation: the answer names the frame and no loader.
+      socket.onmessage?.({ data: JSON.stringify({ id: navigate.id, result: { frameId: "F" } }) })
+
+      const reload = await sentCommand(socket, "Page.reload")
+      expect(reload).toBeDefined()
+      socket.onmessage?.({ data: JSON.stringify({ id: reload?.id, result: {} }) })
+      socket.onmessage?.({ data: JSON.stringify({ method: "Page.loadEventFired", params: {} }) })
+
+      expect(await loading).toBe(true)
+    })
+  })
+
+  it("navigateAndLoad does not reload a new document, and sees a load event that comes before the answer", async () => {
+    const socket = new FakeSocket()
+    await withFakeSocket(socket, async () => {
+      const connecting = Devtools.connect("ws://fake")
+      socket.onopen?.()
+      const devtools = await connecting
+      devtools.callTimeoutMs = 200
+
+      const loading = navigateAndLoad(devtools, "http://localhost/form-demo/", 300)
+      const navigate = JSON.parse(socket.sent[0])
+      socket.onmessage?.({ data: JSON.stringify({ method: "Page.loadEventFired", params: {} }) })
+      socket.onmessage?.({
+        data: JSON.stringify({ id: navigate.id, result: { frameId: "F", loaderId: "L" } }),
+      })
+
+      expect(await loading).toBe(true)
+      expect(socket.sent.map((data) => JSON.parse(data).method)).toEqual(["Page.navigate"])
     })
   })
 

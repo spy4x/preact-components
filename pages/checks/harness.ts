@@ -1351,6 +1351,35 @@ export async function reloadAndHydrate(
   )
 }
 
+/**
+ * Go to `url` and wait for the load event of a document loaded from scratch.
+ *
+ * A navigation to an address that differs from the current one by its hash alone, or to the same
+ * address when it carries a hash, stays in the document the browser has: nothing loads, no load
+ * event follows, and a page that was loaded with scripts off stays unhydrated. The browser's answer
+ * carries no `loaderId` then, and the page is reloaded instead, so a caller never waits out
+ * `timeoutMs` for an event that cannot come (#696).
+ *
+ * The load event is waited for from before the navigation is sent, as in {@link reloadAndHydrate}.
+ * Nothing here throws: a command the browser refuses or never answers ends as `false`.
+ *
+ * @param devtools The connected session.
+ * @param url The address to load.
+ * @param timeoutMs How long the load event may take.
+ * @returns Whether the load event arrived within `timeoutMs`.
+ */
+export async function navigateAndLoad(
+  devtools: Devtools,
+  url: string,
+  timeoutMs = 20_000,
+): Promise<boolean> {
+  const loaded = devtools.next("Page.loadEventFired", timeoutMs).then(() => true, () => false)
+  const answer = await devtools.send<{ loaderId?: string }>("Page.navigate", { url })
+    .catch(() => undefined)
+  if (!answer?.loaderId) await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+  return await loaded
+}
+
 /** What {@link readFrameScripts} reports about the scripts a frame's document fetched. */
 export interface ScriptReport {
   /** Path of every `.js` file the frame's document fetched, in the order it fetched them. */

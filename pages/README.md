@@ -109,23 +109,41 @@ CI runs the three as three jobs. On a workstation, use the parts when other brow
 machine: run them one after another, or side by side in three terminals. One command is still fine
 on a quiet machine.
 
-Why the split (#696), measured on 2026-10-11 and 2026-10-12 with about 1,210 checks:
+Why the split (#696): as one command the run took 779s of the 900s ceiling in CI on 2026-10-11, and
+on a busy workstation it was stopped at 900s with `e2e` not done. In parts, measured from 2026-10-12
+to 2026-10-14 with 1,321 checks (662 in `ui`, 171 in `e2e`, 488 in the other nine blocks, the
+startup checks counted in each):
 
-| Where                                          | As one run                      | `ui` | `e2e` | The other nine blocks |
-| ---------------------------------------------- | ------------------------------- | ---- | ----- | --------------------- |
-| CI, browser phase                              | 779s of the 900s ceiling        | 354s | 195s  | 227s                  |
-| 16 cores, load average 17 to 31, whole command | stopped at 900s, `e2e` not done | 502s | 517s  | 276s, one check red   |
+| Where                                                        | `ui`                | `e2e`            | The other nine blocks    |
+| ------------------------------------------------------------ | ------------------- | ---------------- | ------------------------ |
+| CI, the `verify` step, before                                | 385s                | 390s             | 235s                     |
+| CI, the `verify` step, after                                 | 324s                | 378s             | 246s                     |
+| 16 cores, load average 76 to 106, side by side, before       | 787s, one check red | not done at 900s | 430s, stopped in `theme` |
+| 16 cores, load average 28 to 99, one or two at a time, after | 728s, 612s          | not done at 900s | 586s, 428s, 442s         |
 
-In the one CI run the `ui` block took 353s, the 86 specs of `e2e` 205s, `system` 85s, `ui-guide`
-52s, `theme` 41s and startup 11s. The run is long because it is many checks one after another, not
-because a few are slow: the two longest steps took 31s and 20s. The workstation's three parts ran
-side by side. `e2e` is the part that grows, since every new check is a spec.
+"Before" and "after" are two fixes:
 
-On that workstation the third part ended red, 439 of 440 checks: the `theme` block stopped at its
-accent sweep with `Runtime.evaluate did not answer within 15000ms`, and 276s is the time of that
-red run. Unchanged `main` stopped at the same step there, in every run under that load, and the
-step passes in CI, where it takes 4s. A lane that sees only that one failure on a busy machine has
-not broken anything; CI is the evidence for the `theme` block.
+- The `theme` block stopped at its accent sweep with
+  `Runtime.evaluate did not answer within 15000ms`, in every run on the busy workstation. The sweep
+  set 56 accents on `:root` inside one DevTools call, and each one restyles the whole catalogue,
+  about 7,400 elements: 21 seconds at a load average near 100, and 33 with the frame it awaited
+  after each accent, against 4 in CI. It is one call per hue now, with no frame, which by that
+  measurement is about 3 seconds a call under the same load.
+- The `ui` block waited 20 seconds twice for a load event that could not come. After a no-script
+  check it went back to the catalogue with `Page.navigate`, but the address differed from the
+  current one by its hash at most, so the browser stayed in the same document and loaded nothing.
+  One of the two then polled 10 seconds for hydration before the reload that did the work. These
+  were the 31s and 20s steps, the two longest of the run; `navigateAndLoad` in
+  `pages/checks/harness.ts` reloads when the browser's answer names no new document.
+
+Load slows the parts unequally. `ui` and the nine blocks spend most of their time in real timers
+and waits, so a load average near 90 about doubles them. `e2e` loads and hydrates a fresh page for
+each spec, which is processor work, and load slows it far more: of its 171 checks, 100 had passed
+at 900s at a load average of 83 to 99, 126 at 36 to 50, and 157 at 28 to 31, against all 171 in
+378s in CI. A few specs also ran past the runner's own limits there (10s for an action, 60s for a
+spec). So on a machine that busy the first and third parts run green and CI is the evidence for
+`e2e`. One more run of the nine blocks, 493s, ended with one check red in `system`: a read met
+`Inspected target navigated or closed`.
 
 ### Running under load
 
@@ -174,7 +192,7 @@ last check that finished:
 - **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
   never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
   busy workstation (#696), which is why a full run can be split: each part has its own 15 minutes
-  and the longest takes six in CI (see "Running a full run in parts").
+  and the longest takes six and a half in CI (see "Running a full run in parts").
 
 Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call,
 or a wait for one DevTools event such as a page load, gets when its caller names none. Each launch
@@ -190,13 +208,18 @@ running `verify` alongside, the load average noted at the start and end of each 
 | `--cpu-throttle=4`, before this change | 14.5 → 12.9  | 485s; `theme` stopped when one call ran past 15s         | 15s                            |
 | `--cpu-throttle=4`                     | 11.3 → 15.4  | 542s, 715/715                                            | 24s                            |
 
-The longest single step, a theme contrast sweep, took 24 seconds at a throttle of 4; 90 seconds
-is about fourteen times the longest unthrottled gap and also covers the slowest browser start (two
-30-second launch attempts, then hydration). The ceiling was about three times the unthrottled phase
-under load. The `ui` block was the largest (318 checks, 134s unthrottled, 204s at a throttle of 4),
-but no one check in it is slow: the KanbanBoard checks took 7s together, and the time is spread
-over real timers and smooth scrolls. The old single five-minute limit was simply smaller than a
-full run under load.
+The longest single step then, a theme contrast sweep, took 24 seconds at a throttle of 4 (it is
+seven shorter calls now, #696); 90 seconds was about fourteen times the longest unthrottled gap and
+also covers the slowest browser start (two 30-second launch attempts, then hydration). The ceiling
+was about three times the unthrottled phase under load. The `ui` block was the largest (318 checks,
+134s unthrottled, 204s at a throttle of 4), but no one check in it is slow: the KanbanBoard checks
+took 7s together, and the time is spread over real timers and smooth scrolls. The old single
+five-minute limit was simply smaller than a full run under load.
+
+Where they stand on 2026-10-14, with 1,321 checks run in three parts that each get the whole
+ceiling: in CI the longest part takes 378s, well under half of it. At a load average of 80 to 90
+the `ui` part took 728s, four fifths of the ceiling, and `e2e` did not fit in it even at 28 to 31.
+The table in "Running a full run in parts" has every time.
 
 When a run stops on either limit, read the named last check before raising a number: a stall
 after a check that usually takes a second is a hang to fix, not a limit to widen.
