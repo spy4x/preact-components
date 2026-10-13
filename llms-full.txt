@@ -2226,6 +2226,17 @@ function NotificationSettings({ publicKey }: { publicKey: string | null | undefi
   change rather than one per field. Preact's signals adapter batches writes inside an event handler
   anyway, so a clear driven by a button looks the same either way; the batch is what covers an
   application clearing from a timer or after a request.
+- **A typed word is one history entry, not one per letter.** The first letter adds an entry and
+  each letter after it replaces that entry while the person keeps typing, so one press of Back
+  returns to the filter that was there before the word. Before, every letter added an entry and
+  Back took the word apart one letter at a time. A change counts as typing when the focus is in a
+  text field (a text `<input>`, a `<textarea>` or an editable element), the hook's last write was
+  made with the focus in that same field less than a second ago, and the address is still the one
+  that write left. Anything else adds an entry: a filter chosen with a button, a link or a
+  checkbox, however quickly it follows the last one; the first letter after a pause of a second;
+  the first letter in another field; and the first letter after Back, Forward or a link moved the
+  address, so the entry the reader returned to is never overwritten. `pages/e2e/signals.spec.ts`
+  holds each of these in a browser.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
   a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch`,
   `readAddress`, `restoredAddress` and `clearFilterFields` — which between them hold the rules for

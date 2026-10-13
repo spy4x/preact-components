@@ -21,6 +21,39 @@ import { useSearchParams } from "wouter-preact"
  * one.
  */
 
+/**
+ * How long after one typed change the next one still belongs to the same stretch of typing, in
+ * milliseconds. A longer gap means the person stopped, and the next letter starts a new history
+ * entry.
+ */
+const TYPING_PAUSE_MS = 1000
+
+/** The `type` of every `<input>` a person types text into. */
+const TYPED_INPUT_TYPES = new Set(["text", "search", "url", "tel", "email", "password", "number"])
+
+/** The last write made while the person was typing: where, what it wrote, and when. */
+interface TypedWrite {
+  /** The field that had the focus. */
+  into: Element
+  /** The query string the write left behind, with no leading `?`. */
+  search: string
+  /** `performance.now()` at the write. */
+  at: number
+}
+
+/**
+ * The focused element, when it is one a person types text into: a text `<input>`, a `<textarea>` or
+ * an editable element. Anything else, a button or a checkbox included, answers `null`.
+ */
+function typedInto(): Element | null {
+  const element = globalThis.document?.activeElement ?? null
+  if (element instanceof HTMLTextAreaElement) return element
+  if (element instanceof HTMLInputElement) {
+    return TYPED_INPUT_TYPES.has(element.type) ? element : null
+  }
+  return element instanceof HTMLElement && element.isContentEditable ? element : null
+}
+
 /** One filter, bound to one URL parameter. */
 export interface FilterField<T = string | number | null> {
   /** The signal the UI reads and writes. */
@@ -301,6 +334,16 @@ export function readAddress<T extends Record<string, FilterField>>(
  * **One address change costs one history entry**, whichever direction it came from, so one press of
  * Back moves the reader once. `clearFilters` is one change, not one per field.
  *
+ * **A typed word is one entry, not one per letter.** The first letter adds an entry, and each
+ * letter after it replaces that entry for as long as the person keeps typing, so one press of Back
+ * returns to the filter that was there before the word. A change counts as typing when the focus
+ * is in a text field (a text `<input>`, a `<textarea>` or an editable element), the hook's last
+ * write was made with the focus in that same field less than a second ago, and the address is
+ * still the one that write left. Anything else adds an entry: a filter chosen with a button, a
+ * link or a checkbox, however quickly it follows the last one; the first letter after a pause of a
+ * second; the first letter in another field; and the first letter after Back, Forward or a link
+ * moved the address, so the entry the reader returned to is never overwritten.
+ *
  * **A filter the reader has just changed keeps its value over an older address.** The address is
  * read in an effect, a frame after the render that reported it, and a changed filter is written a
  * frame after the change, so a read can meet a filter the address has not caught up with: a field
@@ -361,6 +404,9 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   }
   if (held.current === undefined) hold()
 
+  // The last write made while the person was typing, or nothing when the last write was not.
+  const typed = useRef<TypedWrite | undefined>(undefined)
+
   useEffect(() => {
     // A write can land between the render that reported `search` and this effect: the next key
     // press in a search field does. `search` is then older than the address, and reading it would
@@ -394,16 +440,27 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     hold()
     if (unchanged) return
 
+    // A letter that follows another typed into the same field replaces the entry the first one
+    // added, so a word costs one entry. The address has to be the one the last letter left: after
+    // Back, Forward or a link it is not, and replacing would destroy the entry the reader is on.
+    const into = typedInto()
+    const now = performance.now()
+    const last = typed.current
+    const typing = into !== null && last !== undefined && last.into === into &&
+      last.search === latestSearch.current && now - last.at < TYPING_PAUSE_MS
+
     const next = filterSearch(latestSearch.current, pending)
     latestSearch.current = next
     agreed.current = next
+    typed.current = into === null ? undefined : { into, search: next, at: now }
 
     // Read the fragment here, at the moment of the write, rather than once when the hook mounted.
     // A page that keeps its route in the fragment moves it while this hook stays mounted, and the
     // one that has to survive is the one the address is carrying now.
     const fragment = globalThis.location.hash
-    setSearchParams(new URLSearchParams(next))
-    // The router's write is `history.pushState(state, "", pathname + "?" + search)`, which is a
+    setSearchParams(new URLSearchParams(next), { replace: typing })
+    // The router's write is `history.pushState(state, "", pathname + "?" + search)`, or the same
+    // call to `replaceState` while the person types, which is a
     // target with no `#` — therefore an address with no fragment — and one ending in a bare `?`
     // when the query string came out empty. Tidying both through `replaceState` rather than
     // through a second `navigate` is what keeps the cost at one history entry per filter change,
