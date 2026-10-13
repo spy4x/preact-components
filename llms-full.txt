@@ -6046,7 +6046,8 @@ that is what `onAdd` receives.
 
 A text field that collects several tags. Enter or a comma adds the typed text as a tag, trimmed;
 a tag the list already holds, in any case or Unicode encoding, is not added twice. Backspace in the empty field removes
-the last tag. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
+the last tag. A Backspace held down clears the typed text and stops there: the key's repeats remove
+no tag, and the next fresh press does. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
 
 The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys, with rows
 44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
