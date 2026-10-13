@@ -872,4 +872,3 @@ uiGuideRoute	helper	@spy4x/preact-ui-guide	Route descriptor for the catalogue.
 useLocationHash	hook	@spy4x/preact-ui-guide	`location.hash`, re-read on every `hashchange`.
 DemoProp	type	@spy4x/preact-ui-guide/registry	One row of a card's props summary: a prop, its type, its default and what it does.
 packagePages	helper	@spy4x/preact-ui-guide/registry	The pages that document one package each: every page but the overview.
-# export surface: sha256 4285096b65c8bf31449d5f1e79cf85e39edb6072790edb9f1a872ca87a239187

@@ -17,8 +17,9 @@
  * **Shape.** `llms.txt` has the line format of `spy4x/ts-libs`' `llms.txt`
  * (https://github.com/spy4x/ts-libs/pull/628), so one search works on both files:
  *
- * - Every line that is not an export starts with `#`: the lines of {@linkcode HEADER} first, and
- *   one last line that carries a hash of the export lines ({@linkcode FINGERPRINT_PREFIX}).
+ * - Every line that is not an export starts with `#`: the lines of {@linkcode HEADER}. There is
+ *   no last line with a hash, which ts-libs' file has: the test regenerates this file and compares
+ *   it whole, and such a line would make any two changes to the exports conflict.
  * - Every other line is one export ({@linkcode exportLine}): name, kind, import specifier and
  *   one-sentence summary, separated by one tab each. Packages follow each other with no heading and
  *   no blank line, in the order of the package list; within a package the entry points keep their
@@ -74,9 +75,6 @@ export const HEADER = [
   }. Its signature: https://jsr.io/<package>/doc`,
   `# Full READMEs: ${SITE}/llms-full.txt`,
 ]
-
-/** Prefix of the last line of `llms.txt`, which carries the SHA-256 of the export lines above it. */
-export const FINGERPRINT_PREFIX = `# export surface: sha256 `
 
 /** The text `llms-full.txt` starts with. */
 export const FULL_HEADER = `# preact-components
@@ -410,15 +408,6 @@ export function exportLines(entries: Entry[]): { lines: string[]; dropped: strin
   return { lines, dropped }
 }
 
-/**
- * The SHA-256 of the export lines, as 64 hexadecimal digits: the value of the last line of
- * `llms.txt`. A file whose lines were edited or merged by hand no longer matches it.
- */
-export async function linesFingerprint(lines: string[]): Promise<string> {
-  const digest = await crypto.subtle.digest(`SHA-256`, new TextEncoder().encode(lines.join(`\n`)))
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, `0`)).join(``)
-}
-
 /** Both generated files, and the entries that have no summary. */
 export interface Generated {
   llms: string
@@ -477,8 +466,7 @@ export async function generate(): Promise<Generated> {
   }
 
   return {
-    llms: [...HEADER, ...lines, `${FINGERPRINT_PREFIX}${await linesFingerprint(lines)}`, ``]
-      .join("\n"),
+    llms: [...HEADER, ...lines, ``].join("\n"),
     full: `${FULL_HEADER}\n${readmes.join("\n\n---\n\n")}\n`,
     missingSummaries,
     dropped,

@@ -9,12 +9,10 @@ import {
   type Entry,
   exportLine,
   exportLines,
-  FINGERPRINT_PREFIX,
   firstSentence,
   generate,
   HEADER,
   kindOf,
-  linesFingerprint,
   readmeSummary,
 } from "./llms-txt.ts"
 
@@ -44,15 +42,6 @@ describe("llms.txt and llms-full.txt", () => {
     const exports = lines.slice(0, -1).filter((line) => !line.startsWith("#"))
     expect(exports.length).toBeGreaterThan(0)
     expect(exports.filter((line) => line.split("\t").length !== 4)).toEqual([])
-  })
-
-  it("end llms.txt with the hash of its export lines", async () => {
-    const { llms } = await generate()
-    const lines = llms.split("\n")
-    const exports = lines.filter((line) => line !== "" && !line.startsWith("#"))
-    expect(lines.at(-1)).toBe("")
-    expect(lines.at(-2)).toBe(`${FINGERPRINT_PREFIX}${await linesFingerprint(exports)}`)
-    expect(lines.at(-2)).toMatch(/^# export surface: sha256 [0-9a-f]{64}$/)
   })
 
   it("leave out the props of a listed component and keep the component", async () => {
