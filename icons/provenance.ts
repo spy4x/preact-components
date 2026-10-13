@@ -83,7 +83,6 @@
 
 import { fileURLToPath } from "node:url"
 import { basename, dirname, join } from "node:path"
-import { parseIconBlocks } from "./check-readme.ts"
 
 // Deliberately not a static `import … from "npm:heroicons@1.0.6/package.json" with { type: "json" }`
 // at module scope: this file's pure normalisation and comparison functions are also imported by
@@ -374,12 +373,16 @@ export interface RepoGlyph {
   elements: NormalizedElement[]
 }
 
-/** Parse every exported glyph out of `+index.tsx`'s source, reusing `check-readme.ts`'s block parser. */
+/** One exported glyph in `+index.tsx`: its JSDoc, its `Icon…` name and its function body. */
+const ICON_BLOCK_PATTERN =
+  /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function (Icon\w+)\(props: Icon\w*Props\): JSX\.Element \{([\s\S]*?)\n\}\n/g
+
+/** Parse every exported glyph, with its JSDoc and its drawing, out of `+index.tsx`'s source. */
 export function repoGlyphs(source: string): RepoGlyph[] {
-  return parseIconBlocks(source).map((block) => ({
-    name: block.name,
-    doc: block.doc.replace(/\s+/g, " ").trim(),
-    elements: extractElements(block.body),
+  return [...source.matchAll(ICON_BLOCK_PATTERN)].map(([, doc, name, body]) => ({
+    name,
+    doc: doc.replace(/\s+/g, " ").trim(),
+    elements: extractElements(body),
   }))
 }
 
