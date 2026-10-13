@@ -27,12 +27,14 @@ export interface LeaveGuard {
 export interface LeaveGuardInternals {
   /**
    * Marks unsaved changes on behalf of `holder`, until the returned function is called. When the
-   * last holder lets go, a navigation still waiting is dropped.
+   * last holder lets go, a navigation still waiting is no longer asked about: it runs when the
+   * holder lets go with `saved`, because nothing is unsaved any more, and is dropped otherwise.
    *
    * @param holder Any object that stands for the caller, compared by identity.
-   * @returns The function that lets go. Calling it twice does nothing more.
+   * @returns The function that lets go; pass `true` when the changes were saved. Calling it twice
+   *   does nothing more.
    */
-  hold(holder: object): () => void
+  hold(holder: object): (saved?: boolean) => void
   /**
    * Whether `holder` is the earliest one still holding: the one guard that asks, and the one that
    * holds a history step back, however many guards share this `LeaveGuard`.
@@ -79,10 +81,13 @@ export function createLeaveGuard(): LeaveGuard {
       // Its own entry, so a release called twice cannot let go of a later hold by the same holder.
       const entry = { holder }
       holders.value = [...holders.value, entry]
-      return () => {
+      return (saved = false) => {
         if (!holders.value.includes(entry)) return
         holders.value = holders.value.filter((other) => other !== entry)
-        if (holders.value.length === 0) waiting.value = null
+        if (holders.value.length > 0) return
+        const go = waiting.value
+        waiting.value = null
+        if (saved) go?.()
       }
     },
     leads: (holder) => holders.value[0]?.holder === holder,

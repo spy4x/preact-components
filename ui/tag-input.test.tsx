@@ -108,6 +108,10 @@ describe("tagInputKeyAction", () => {
     expect(action).toMatchObject({ removeLast: true, preventDefault: true })
   })
 
+  it("removes no tag on a Backspace the held key repeats in an empty field", () => {
+    expect(tagInputKeyAction({ ...key("Backspace"), repeat: true }, closed, 0, "")).toBeUndefined()
+  })
+
   it("leaves Backspace to the field while it holds text", () => {
     expect(tagInputKeyAction(key("Backspace"), closed, 0, "w")).toBeUndefined()
   })

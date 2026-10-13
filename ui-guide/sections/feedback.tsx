@@ -609,6 +609,9 @@ function ConfirmDialogDemo() {
 const ownsUnsavedDemo = (url: URL) =>
   url.pathname.includes("/unsaved-demo/") || url.pathname === globalThis.location?.pathname
 
+/** How long the demo's "Save in 3 seconds" button takes to save, as a slow server would. */
+const UNSAVED_DEMO_SAVE_MS = 3000
+
 /** Where the demo's buttons and key presses go, by the letter pressed with Alt. */
 const unsavedDemoPlaces: Record<string, string> = { KeyL: "lists", KeyU: "upcoming" }
 
@@ -697,10 +700,22 @@ function UnsavedGuardDemo() {
         >
           Go to Upcoming
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setTimeout(() => dirty.value = false, UNSAVED_DEMO_SAVE_MS)}
+          data-e2e="unsaved-save-late"
+        >
+          Save in 3 seconds
+        </Button>
       </Cluster>
       <DemoNote>
         The buttons navigate from code, as a sidebar does. With the focus in this card, Alt+L and
         Alt+U do the same, as a keyboard shortcut does.
+      </DemoNote>
+      <DemoNote>
+        A save that finishes while the dialog is open closes it and goes where the person was going:
+        type a change, press "Save in 3 seconds", then "Go to Lists", and wait.
       </DemoNote>
       <DemoNote>
         Back and Forward are held too. A card never changes the address, so that is shown at the end
@@ -1335,7 +1350,12 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
       "Asks before leaving a page with unsaved changes: the browser's question on close or reload, and a dialog on an in-app link, on a navigation the app starts from code, and on the browser's Back and Forward buttons.",
     wide: true,
     props: [
-      { name: "when", type: "boolean", description: "Whether there are unsaved changes." },
+      {
+        name: "when",
+        type: "boolean",
+        description:
+          "Whether there are unsaved changes. When it turns `false` while the dialog is open, because a save finished, the dialog closes and the navigation runs.",
+      },
       {
         name: "navigate",
         type: "(href: string) => void",

@@ -201,6 +201,33 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "Calendar: a month shows its own days and no date of a neighbouring month; the cells " +
+      "before the 1st and after the last day are blank",
+    pageId: "system",
+    run: async (page) => {
+      // The guide pins this calendar to March 2026: 31 days in a grid of 42 cells.
+      const grid = page.locator(`#demo-Calendar [data-e2e="calendar-interactive"] [role="grid"]`)
+      await grid.locator(`[data-calendar-date="2026-03-01"]`).waitFor()
+      const cells = await grid.locator(`[role="gridcell"]`).evaluateAll((all) =>
+        all.map((cell) => ({
+          text: (cell as HTMLElement).innerText.trim(),
+          date: cell.querySelector("[data-calendar-date]")?.getAttribute("data-calendar-date"),
+        }))
+      )
+      const shown = cells.filter((cell) => cell.text !== "")
+      const strays = shown.filter((cell) => !cell.date?.startsWith("2026-03-"))
+      if (strays.length > 0) {
+        throw new Error(`cells outside March show ${strays.map((cell) => cell.text).join(", ")}`)
+      }
+      const numbers = shown.map((cell) => Number(cell.text.slice(0, 2))).join(" ")
+      const march = Array.from({ length: 31 }, (_, day) => day + 1).join(" ")
+      if (cells.length !== 42 || numbers !== march) {
+        throw new Error(`${cells.length} cells, showing ${numbers}`)
+      }
+      return `${shown.length} days shown, ${cells.length - shown.length} cells blank`
+    },
+  },
+  {
     name: "pageHeading: focus goes to the first h1 inside main and not to an h1 outside it, a " +
       "tabindex the heading has is kept, and without an h1 focus goes to main",
     pageId: "system",

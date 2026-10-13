@@ -636,6 +636,10 @@ function CalendarInteractiveDemo() {
         <span data-e2e="calendar-month">{month.value}</span>
       </p>
       <p class={NOTE}>
+        The cells before the 1st and after the last day are blank: a month shows no date of a
+        neighbouring month.
+      </p>
+      <p class={NOTE}>
         Tab once to reach the grid; the arrow keys, Home, End, Page Up and Page Down move inside it.
       </p>
       <Cluster>

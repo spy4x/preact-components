@@ -15,8 +15,9 @@ const KEY_DELAY_MS = 25
 const RUNS = 50
 /**
  * Chromium ignores `pushState` and `replaceState` calls past 200 in 10 seconds on one page, and
- * the address then stops following the field. One run costs 12 of them on this page (a push and a
- * fragment-restoring replace for each of five letters and for the clear), so 50 runs on one page
+ * the address then stops following the field. One run costs 12 of them on this page (a push or a
+ * replace, then a fragment-restoring replace, for each of five letters and for the clear), so 50
+ * runs on one page
  * were stopped by the browser at run 17, on any code. Ten runs stay well under the limit.
  */
 const RUNS_PER_PAGE = 10
@@ -24,6 +25,17 @@ const RUNS_PER_PAGE = 10
 /** A longer word typed faster, so that a key lands in every part of a frame. */
 const FAST_WORD = "abcdefghijklmnopqrstuvwxyz"
 const FAST_KEY_DELAY_MS = 5
+
+/** The demo's buttons that set a filter, and the page number the second one moves. */
+const SET_CLOSED = `[data-e2e="url-filters-set-closed"]`
+const NEXT_PAGE = `[data-e2e="url-filters-next-page"]`
+const PAGE_NUMBER = `[data-e2e="url-filters-page"]`
+
+/**
+ * The pause after which the hook takes the next letter as a new stretch of typing
+ * (`TYPING_PAUSE_MS` in `signals/use-url-filters.ts`).
+ */
+const TYPING_PAUSE_MS = 1000
 
 /** The attribute {@link watchOverwrites} leaves on the field when the page sets it back. */
 const OVERWRITTEN = "data-overwritten"
@@ -90,6 +102,23 @@ async function queryBecomes(page: Page, expected: string): Promise<void> {
     return document.querySelector<HTMLInputElement>(selector)?.value === value &&
       inAddress === value
   }, { selector: QUERY, value: expected })
+}
+
+/**
+ * Stop the clock the hook times typing by, at `ms`.
+ *
+ * The hook takes a letter as part of the word before it when less than `TYPING_PAUSE_MS` passed
+ * between the two on `performance.now()`. A busy machine can take longer than that over one key
+ * press, so a check about history entries holds the clock still while it types, and moves it by
+ * hand to make a pause.
+ *
+ * @param page The page, with the demo mounted.
+ * @param ms What `performance.now()` answers from here on.
+ */
+async function stopClockAt(page: Page, ms: number): Promise<void> {
+  await page.evaluate((now) => {
+    performance.now = () => now
+  }, ms)
 }
 
 /**
@@ -189,21 +218,90 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "useUrlFilters: Back and Forward move a typed field with the address",
+    name: "useUrlFilters: a typed word adds one history entry, so one press of Back returns to " +
+      "the filter before it and Forward brings the word back",
     pageId: "ui",
     run: async (page) => {
       const field = page.locator(QUERY)
+      await stopClockAt(page, 0)
+      await page.locator(SET_CLOSED).click()
+      await page.waitForFunction(() => location.search === "?status=closed")
+      const entries = await page.evaluate(() => history.length)
+
       await field.pressSequentially(WORD, { delay: KEY_DELAY_MS })
       await queryBecomes(page, WORD)
-      // One history entry per letter, so each press of Back takes one letter off.
+      const typed = await page.evaluate(() => history.length)
+      if (typed !== entries + 1) {
+        throw new Error(`typing "${WORD}" added ${typed - entries} history entries, expected 1`)
+      }
+
       await page.goBack()
-      await queryBecomes(page, WORD.slice(0, -1))
-      await page.goBack()
-      await queryBecomes(page, WORD.slice(0, -2))
-      await page.goForward()
-      await queryBecomes(page, WORD.slice(0, -1))
+      await queryBecomes(page, "")
+      await page.waitForFunction(() => location.search === "?status=closed")
       await page.goForward()
       await queryBecomes(page, WORD)
+    },
+  },
+  {
+    name: "useUrlFilters: a letter typed after a pause of a second adds a history entry of its " +
+      "own, so Back returns to the word as it was at the pause",
+    pageId: "ui",
+    run: async (page) => {
+      const field = page.locator(QUERY)
+      await stopClockAt(page, 0)
+      await field.pressSequentially(WORD, { delay: KEY_DELAY_MS })
+      await queryBecomes(page, WORD)
+      await stopClockAt(page, TYPING_PAUSE_MS)
+      await field.pressSequentially("!", { delay: KEY_DELAY_MS })
+      await queryBecomes(page, `${WORD}!`)
+
+      await page.goBack()
+      await queryBecomes(page, WORD)
+      await page.goBack()
+      await queryBecomes(page, "")
+    },
+  },
+  {
+    name: "useUrlFilters: a filter chosen with a click adds one history entry each time, " +
+      "however quickly the clicks follow each other",
+    pageId: "ui",
+    run: async (page) => {
+      await stopClockAt(page, 0)
+      const entries = await page.evaluate(() => history.length)
+      const number = page.locator(PAGE_NUMBER)
+      await page.locator(NEXT_PAGE).click()
+      await page.locator(NEXT_PAGE).click()
+      await number.filter({ hasText: "3" }).waitFor()
+      await page.waitForFunction(() => location.search === "?page=3")
+      const clicked = await page.evaluate(() => history.length)
+      if (clicked !== entries + 2) {
+        throw new Error(`two clicks added ${clicked - entries} history entries, expected 2`)
+      }
+
+      await page.goBack()
+      await number.filter({ hasText: "2" }).waitFor()
+      await page.waitForFunction(() => location.search === "?page=2")
+    },
+  },
+  {
+    name: "useUrlFilters: a letter typed straight after Back adds a history entry and leaves " +
+      "the one Back returned to as it was",
+    pageId: "ui",
+    run: async (page) => {
+      const field = page.locator(QUERY)
+      await stopClockAt(page, 0)
+      await page.locator(SET_CLOSED).click()
+      await page.waitForFunction(() => location.search === "?status=closed")
+      await field.pressSequentially("ab", { delay: KEY_DELAY_MS })
+      await queryBecomes(page, "ab")
+      await page.goBack()
+      await queryBecomes(page, "")
+
+      await field.pressSequentially("c", { delay: KEY_DELAY_MS })
+      await queryBecomes(page, "c")
+      await page.goBack()
+      await queryBecomes(page, "")
+      await page.waitForFunction(() => location.search === "?status=closed")
     },
   },
 ]

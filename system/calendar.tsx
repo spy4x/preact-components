@@ -6,8 +6,9 @@
  * the no-JS/embedded fallback, and the URL stays the source of truth in both. Month arrows follow
  * the same rule.
  *
- * The grid is always six weeks (42 cells) so the container does not resize between months, and
- * leading/trailing days bleed in from the neighbouring months as a "peek".
+ * The grid is always six weeks (42 cells) so the container does not resize between months. The
+ * cells before the 1st and after the last day are left blank: a month shows no date of a
+ * neighbouring month.
  *
  * **The keyboard.** Once hydrated the whole grid is one Tab stop, with the focus roving inside it:
  * the arrow keys step a day and a week, Home and End go to the ends of the week, and Page Up and
@@ -38,7 +39,7 @@ export type CalendarDayReason = "past" | "after" | "none-left" | "unavailable"
 
 /** One cell of the grid, resolved. Passed to `labels.day` and exported so callers can wrap it. */
 export interface CalendarDay {
-  /** `YYYY-MM-DD` of the cell, including the leading/trailing peek days. */
+  /** `YYYY-MM-DD` of the cell, including the blank cells that lead and trail the month. */
   date: string
   /** The same day as the locale writes it, e.g. `9 February 2026`. */
   label: string
@@ -633,12 +634,14 @@ export function Calendar(
     return <a href={monthHref(target)} aria-label={accessibleLabel} class={classes}>{glyph}</a>
   }
 
-  /** One day cell's focusable element: a button, a link, or an inert span for a day that is out. */
+  /**
+   * One day cell's focusable element: a button, a link, or an inert span for a day that is out.
+   * A cell of a neighbouring month gets nothing: its number would read as a day of this month that
+   * cannot be picked.
+   */
   const renderDay = (day: CalendarDay) => {
+    if (!day.inMonth) return null
     const dayNumber = day.date.slice(8, 10)
-    if (!day.inMonth) {
-      return <div class={cn(cellBase, outOfMonthClass)}>{dayNumber}</div>
-    }
 
     const shared = {
       "data-calendar-date": day.date,
@@ -771,8 +774,7 @@ export function Calendar(
                   key={day.date}
                   role="gridcell"
                   aria-colindex={column + 1}
-                  // A peek day repeats the neighbouring month's own grid, so it is decoration here;
-                  // announcing it would read a year's dates twice over as the reader pages through.
+                  // A cell of a neighbouring month is blank, so there is nothing to announce.
                   aria-hidden={day.inMonth ? undefined : "true"}
                   class="aspect-square"
                 >
@@ -800,7 +802,6 @@ export function Calendar(
   )
 }
 
-const outOfMonthClass = "text-placeholder"
 const disabledClass = "text-placeholder cursor-not-allowed"
 const noneLeftClass = "line-through decoration-control"
 const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-selected-hover"

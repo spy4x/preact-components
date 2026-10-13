@@ -60,7 +60,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                                                                          |
 | `CardHeader`          | `card`                 | `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`                                                                                                                                               |
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                                              |
-| `Coachmark`           | `coachmark`            | `open`, `target` (a CSS selector or a ref), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                   |
+| `Coachmark`           | `coachmark`            | `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                             |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                |
@@ -94,7 +94,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                        |
 | `MoreMenu`            | `page-header`          | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                                                                                                   |
 | `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`; `status` without it), `data-*`; renders nothing when empty                                                                                  |
-| `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                               |
+| `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                |
 | `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`                                                                                                                                                                           |
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                          |
 | `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                    |
@@ -1491,7 +1491,8 @@ that is what `onAdd` receives.
 
 A text field that collects several tags. Enter or a comma adds the typed text as a tag, trimmed;
 a tag the list already holds, in any case or Unicode encoding, is not added twice. Backspace in the empty field removes
-the last tag. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
+the last tag. A Backspace held down clears the typed text and stops there: the key's repeats remove
+no tag, and the next fresh press does. Pasting `"a, b, c"` adds `a` and `b` and leaves `c` in the field.
 
 The suggestion list is `Combobox`'s: the same roles, states, option rows and arrow keys, with rows
 44 px tall. Chosen tags are left out of it. Typing does not highlight a suggestion, so Enter adds what was typed unless an
@@ -1767,8 +1768,13 @@ calls `onDiscard` and then `go`, and "Stay" drops `go` and gives the focus back 
 had it when the dialog opened: the button that was pressed, or the field a shortcut was typed in.
 While `when` is `false`, or with no `UnsavedGuard` on the page, `go` runs at once. A second call
 while the dialog is open replaces the first `go`; there is never a second dialog, and "Leave" runs
-only the newest. If the changes are saved while the dialog is open, it closes and nothing
-navigates. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+only the newest. The guard knows no router: `go` is the app's own navigation, whatever it takes.
+
+If the changes are saved while the dialog is open, so `when` turns `false` behind it, the dialog
+closes and the navigation it was asking about runs: the link that was clicked is followed, `go` is
+called, or the Back or Forward step is taken. `onDiscard` is not called, because nothing is
+discarded. With two forms that share a `LeaveGuard`, that happens when the last of them is saved.
+A guard that unmounts while `when` is still `true` drops the navigation instead.
 
 One page with two dirty forms that share a `LeaveGuard` still shows one dialog: the `UnsavedGuard`
 that became dirty first draws it, and "Leave" calls only that guard's `onDiscard`.
@@ -1813,6 +1819,10 @@ Finish, which calls `onDismiss`, and a status region announces `completeMessage`
 the app stops rendering the card and moves focus somewhere sensible, since the control that had it
 is gone.
 
+To move focus to the card itself, such as when a tour ends or the card comes back, pass a
+`headingRef` and call `headingRef.current?.focus()`: the checklist points the ref at its heading,
+which can take focus.
+
 ## Tour and Coachmark
 
 `Coachmark` is one hint beside one control; `Tour` walks a list of them with the step count, Skip,
@@ -1835,13 +1845,16 @@ tour on when the user does what a step asks, and it decides whether a finished t
 The surface is a `popover="manual"` element in the top layer. It sits beside its target, centred on
 it, and flips to the opposite side when the asked one has no room; only that one other side is
 tried. The whole of it stays inside the window with an 8 px gutter: beside a target near an edge or
-a corner it shifts along the target instead of running past the edge, and when neither side has
-room it moves over the target. Its place is measured in script on every animation frame while it is
+a corner it shifts along the target instead of running past the edge, and when neither side has room
+it moves over the target. Its place is measured in script on every animation frame while it is
 shown, the same way in every browser, so it follows a scroll, a resize, a target that moves and a
 step whose text grows; on a fast scroll it can trail its target by a frame. Below 640 px wide, and
 when the target is missing or cannot be shown, the step is a sheet along the bottom edge, and a
-missing target logs a warning. While a step is shown its target has an outline and
-`aria-describedby` pointing at the step's text; each goes back to what it was afterwards.
+missing target logs a warning. A selector that matches several elements names the first visible one,
+so a control the page draws twice, in a rail on a wide screen and a tab bar on a narrow one, is
+found where it shows; an element with no box or under `visibility: hidden` is not visible. While a
+step is shown its target has an outline and `aria-describedby` pointing at the step's text; each
+goes back to what it was afterwards.
 
 It is not modal: Tab is not trapped and the page stays usable. Opening focuses the heading, and so
 does every new step. The last control, Go to, focuses the target and leaves the step open. Escape

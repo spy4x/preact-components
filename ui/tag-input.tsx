@@ -134,6 +134,9 @@ export interface TagInputKeyAction {
  * | `,`         | adds the typed text; the comma itself is never typed                      |
  * | `Backspace` | in an empty field, removes the last tag; otherwise left to the field      |
  *
+ * A `Backspace` the keyboard repeats while the key is held down removes no tag: holding the key
+ * clears the text and stops there. The next fresh press removes the last tag.
+ *
  * `Enter` is consumed even with nothing to add, as in `Combobox`, so a surrounding form is not
  * submitted by a press that meant to add a tag. A key held with `Ctrl` or `Meta` is never ours:
  * `Ctrl`+`Enter` still reaches the form.
@@ -145,7 +148,7 @@ export interface TagInputKeyAction {
  * @returns The action, or `undefined` for a key the field leaves to the browser.
  */
 export function tagInputKeyAction(
-  event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey">,
+  event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey"> & { repeat?: boolean },
   state: ComboboxState,
   count: number,
   text: string,
@@ -157,7 +160,7 @@ export function tagInputKeyAction(
     return { ...none, state: closed, preventDefault: true, commit: true }
   }
   if (event.key === "Backspace" && !event.altKey) {
-    if (text !== "") return undefined
+    if (text !== "" || event.repeat) return undefined
     return { ...none, state, preventDefault: true, removeLast: true }
   }
   const key = comboboxKey(event)
