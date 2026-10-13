@@ -1,6 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconCheckCircle } from "@spy4x/preact-icons"
-import type { ComponentChildren, JSX } from "preact"
+import type { ComponentChildren, JSX, RefObject } from "preact"
 import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { Card, CardBody, CardFooter, CardHeader } from "./card.tsx"
@@ -52,6 +52,11 @@ export interface OnboardingChecklistProps {
   title?: string
   /** Level of the heading. Defaults to `2`. */
   headingLevel?: 2 | 3 | 4 | 5 | 6
+  /**
+   * A ref the checklist points at its heading, which can take focus: the app calls
+   * `headingRef.current?.focus()` to move focus to the card, such as after a tour ends.
+   */
+  headingRef?: RefObject<HTMLHeadingElement>
   /** One line under the heading. */
   description?: ComponentChildren
   /**
@@ -107,6 +112,7 @@ export function OnboardingChecklist(
     steps,
     title = "Get started",
     headingLevel = 2,
+    headingRef: headingRefProp,
     description,
     onDismiss,
     dismissLabel = "Dismiss",
@@ -125,7 +131,8 @@ export function OnboardingChecklist(
   const allDone = next === undefined
   const Heading = `h${headingLevel}` as "h2"
   const action = next?.action
-  const headingRef = useRef<HTMLHeadingElement>(null)
+  const ownHeadingRef = useRef<HTMLHeadingElement>(null)
+  const headingRef = headingRefProp ?? ownHeadingRef
   /** The footer's control as of the last render, or `null` when there was no footer. */
   const lastControl = useRef<Element | null>(null)
   /** Whether focus was last inside the footer. */

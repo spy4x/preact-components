@@ -12,7 +12,10 @@ export type CoachmarkPlacement = CoachmarkSide
 /** Why a coachmark asked to close: Escape anywhere on the page, or its own × button. */
 export type CoachmarkCloseReason = "escape" | "close"
 
-/** The element a coachmark points at: a CSS selector, or a ref the app holds. */
+/**
+ * The element a coachmark points at: a CSS selector, which names its first visible match, or a ref
+ * the app holds.
+ */
 export type CoachmarkTarget = string | RefObject<HTMLElement>
 
 export interface CoachmarkProps {
@@ -68,14 +71,29 @@ const TARGET_RING =
 
 const defaultGoToLabel = (name: string) => name ? `Go to ${name}` : "Go to the highlighted control"
 
-/** The element `target` names, or `null` when it names nothing, or names an invalid selector. */
+/** Whether an element can be pointed at: it has a box, and `visibility` does not hide it. */
+function isVisible(element: HTMLElement): boolean {
+  const box = element.getBoundingClientRect()
+  return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== "hidden"
+}
+
+/**
+ * The visible element `target` names: for a selector, the first match that is visible, so a control
+ * the page draws twice (a rail on a wide screen, a tab bar on a narrow one) is found where it shows.
+ * `null` when nothing visible matches, or the selector is invalid.
+ */
 function resolveTarget(target: CoachmarkTarget): HTMLElement | null {
-  if (typeof target !== "string") return target.current
-  try {
-    return document.querySelector<HTMLElement>(target)
-  } catch {
-    return null
+  if (typeof target !== "string") {
+    return target.current !== null && isVisible(target.current) ? target.current : null
   }
+  try {
+    for (const element of document.querySelectorAll<HTMLElement>(target)) {
+      if (isVisible(element)) return element
+    }
+  } catch {
+    // An invalid selector names nothing.
+  }
+  return null
 }
 
 /** Whether a box overlaps the viewport. */
@@ -110,8 +128,10 @@ interface Saved {
  * neither side has room it moves over the target. The place is measured with
  * `getBoundingClientRect()` on every animation frame while the coachmark is shown, so it follows a
  * scroll, a resize, a target that moves and a surface that grows; on a fast scroll it can trail the
- * target by a frame. Below 640 px wide, and when the target is missing, has no box or cannot be
- * scrolled into view, the coachmark is a sheet along the bottom edge instead. The target gets an
+ * target by a frame. Below 640 px wide, and when the target is missing, hidden or cannot be
+ * scrolled into view, the coachmark is a sheet along the bottom edge instead. A selector that
+ * matches several elements names the first visible one, found when the coachmark opens or its
+ * target changes. The target gets an
  * outline and `aria-describedby` while the coachmark is shown, and each goes back to what it was
  * afterwards.
  *
@@ -187,11 +207,7 @@ export function Coachmark(
     } catch {
       // No Popover API: the element is laid out in place, which is still readable.
     }
-    const candidate = resolveTarget(target)
-    const box = candidate?.getBoundingClientRect()
-    const element = candidate !== null && box !== undefined && box.width > 0 && box.height > 0
-      ? candidate
-      : null
+    const element = resolveTarget(target)
     targetRef.current = element
     goToName.value = element === null ? null : nameOf(element)
     if (element === null) {

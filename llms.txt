@@ -639,7 +639,7 @@ Install: `deno add jsr:@spy4x/preact-ui`
 - `CoachmarkCloseReason` (type): Why a coachmark asked to close: Escape anywhere on the page, or its own × button. Import: `@spy4x/preact-ui`
 - `CoachmarkPlacement` (type): Side of the target a coachmark sits on. Import: `@spy4x/preact-ui`
 - `CoachmarkProps` (type): Props of `Coachmark`. Import: `@spy4x/preact-ui`
-- `CoachmarkTarget` (type): The element a coachmark points at: a CSS selector, or a ref the app holds. Import: `@spy4x/preact-ui`
+- `CoachmarkTarget` (type): The element a coachmark points at: a CSS selector, which names its first visible match, or a ref the app holds. Import: `@spy4x/preact-ui`
 - `Card` (component): Card surface. Import: `@spy4x/preact-ui`
 - `CardBody` (component): Card body: the content region of a `Card`. Import: `@spy4x/preact-ui`
 - `CardBodyProps` (type): Props of `CardBody`. Import: `@spy4x/preact-ui`
