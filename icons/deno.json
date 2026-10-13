@@ -15,15 +15,12 @@
     "provenance": "deno run --lock=provenance.lock --allow-read --allow-net provenance.ts"
   },
   "publish": {
-    // Nothing here is part of the public API. The two `check-readme` files audit README.md's
-    // bookkeeping against a read-only sibling checkout outside this repository, which a published
-    // consumer has no access to and no use for. `provenance.ts`/`provenance.test.ts` are the same
-    // shape of thing for the icon packs: a dev-time audit script and its offline-safe tests,
-    // neither reachable from `exports`.
+    // Nothing here is part of the public API. `provenance.ts` and `provenance.test.ts` are a
+    // dev-time audit script for the icon packs and its offline-safe tests, neither reachable from
+    // `exports`.
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "check-readme.ts",
       "provenance.ts",
       "provenance.lock"
     ]
