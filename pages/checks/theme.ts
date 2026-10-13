@@ -2303,23 +2303,24 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
       `hover ${light.darkHoverContrast.toFixed(2)}:1`,
   )
 
-  const sweep = await devtools.evaluate<{
-    tried: number
-    failures: string[]
-    dark: number
-  }>(`(async () => {
-    ${ACCENT_HELPERS}
-    ${CONTRAST_HELPERS}
-    const style = document.createElement("style")
-    document.head.append(style)
-    const failures = []
-    let tried = 0
-    let dark = 0
-    for (const hue of ${JSON.stringify(SWEEP_HUES)}) {
+  // One call per hue, and no frame between accents. Each accent set on :root restyles the whole
+  // catalogue, about 7,400 elements, and that is where the time goes: at a load average near 100
+  // the 56 accents took 21 seconds in one call, and 33 with a frame after each, past the 15 seconds
+  // one call gets (#696). `resolve` reads a computed style, which the browser brings up to date
+  // before it answers, so a read never needed the frame.
+  const sweep = { tried: 0, failures: [] as string[], dark: 0 }
+  for (const hue of SWEEP_HUES) {
+    const part = await devtools.evaluate<typeof sweep>(`(() => {
+      ${ACCENT_HELPERS}
+      ${CONTRAST_HELPERS}
+      const style = document.createElement("style")
+      document.head.append(style)
+      const failures = []
+      let tried = 0
+      let dark = 0
       for (const lightness of ${JSON.stringify(SWEEP_LIGHTNESSES)}) {
-        const accent = "oklch(" + lightness + " 0.3 " + hue + ")"
+        const accent = "oklch(" + lightness + " 0.3 ${hue})"
         style.textContent = ":root { --color-accent: " + accent + "; }"
-        await frame()
         const label = resolve("var(--color-accent-foreground)")
         if (!same(label, resolve("oklch(1 0 0)"))) dark++
         tried++
@@ -2329,10 +2330,13 @@ async function lightAccentChecks(devtools: Devtools): Promise<void> {
           if (ratio < 4.5) failures.push(accent + " step " + step + " " + ratio.toFixed(2) + ":1")
         }
       }
-    }
-    style.remove()
-    return { tried, failures, dark }
-  })()`)
+      style.remove()
+      return { tried, failures, dark }
+    })()`)
+    sweep.tried += part.tried
+    sweep.dark += part.dark
+    sweep.failures.push(...part.failures)
+  }
   check(
     "for accents of seven hues and eight lightnesses at high chroma, the label reads at 4.5:1 on steps 900, 800, 700 and 600",
     sweep.tried === SWEEP_HUES.length * SWEEP_LIGHTNESSES.length && sweep.failures.length === 0 &&
