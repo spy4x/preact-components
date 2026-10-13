@@ -96,7 +96,7 @@ export function pageHeading(main?: HTMLElement | null): HTMLElement | null {
  * @param options See {@link RouteAnnouncerOptions}.
  */
 export function useRouteAnnouncer(
-  { path, title, main, keepPageFocus = false }: RouteAnnouncerOptions,
+  { path, title, main, keepPageFocus }: RouteAnnouncerOptions,
 ): void {
   const current = pathname(path)
   const shown = useRef(current)
