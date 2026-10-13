@@ -183,7 +183,7 @@ store.setHead({ pageName: "Widgets" })
 
 ## Route changes move focus and set the title
 
-`useRouteAnnouncer({ path, title?, main? })`, from the `route-announcer` subpath, does for a
+`useRouteAnnouncer({ path, title?, main?, keepPageFocus? })`, from the `route-announcer` subpath, does for a
 client-side route change what a page load does by itself. Without it, focus stays on the link that
 was pressed, the tab keeps the previous page's title, and a screen reader announces nothing.
 
@@ -224,6 +224,12 @@ would have.
   `<main>` `focus:outline-none`, so a page with no `<h1>` shows no ring when focus lands there.
 - **The first render moves nothing.** On a page load the reader starts at the top of the document,
   where the skip link is; only a later path change moves focus.
+- **`keepPageFocus` leaves focus where the new page put it.** A page may focus one of its own
+  controls as it opens, such as a search field reached by a keyboard shortcut. With
+  `keepPageFocus: true`, a route change during which focus moved to an element inside `main` sets
+  the title and moves no focus, so the reader hears that control once and not the heading before
+  it. Focus that stayed on the link that was pressed still goes to the heading. It is off by
+  default.
 - **The title comes from the head store.** Pass the same `title` that `SEOHead` publishes, so there
   is one source for it. It is written on mount and whenever it changes; leave it out when something
   else already writes `document.title`.
