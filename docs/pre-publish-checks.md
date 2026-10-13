@@ -2,8 +2,10 @@
 
 A JSR version cannot be changed or deleted once it is published — a name that should not have gone
 out stays out there forever. [Issue #237](https://github.com/spy4x/preact-components/issues/237)
-removed every private application name, path and file list from the files each package publishes,
-and this page is its second box: a check re-run before every release tag is pushed, rather than
+removed every private application name, path and file list from the files each package publishes
+(the icon package's README kept one file list until
+[issue #112](https://github.com/spy4x/preact-components/issues/112) removed it), and this page is
+#237's second box: a check re-run before every release tag is pushed, rather than
 a one-time cleanup that could silently regress. It is step 3 of the release steps in
 [`publishing.md`](./publishing.md).
 

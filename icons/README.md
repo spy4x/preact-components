@@ -188,172 +188,10 @@ with a single licensed pack; #233 settled its licensing question glyph by glyph 
 
 ## How this set was merged
 
-Sources (read-only snapshots at merge time):
-
-| Source                     | Exports | Kept |
-| -------------------------- | ------- | ---- |
-| `spy4x/template`           | 51      | 49   |
-| a source application       | 46      | 0    |
-| a source application       | 36      | 27   |
-| a source application       | 52      | 20   |
-| a source application       | 14      | 5    |
-| the ported set (see below) | 52      | 18   |
-
-`spy4x/template` and `spy4x/ts-libs` are the library's own public repositories and are named here;
-the other four rows are earlier, private applications this set was extracted from, kept unnamed —
-see the repository's public-repository rule in `AGENTS.md`. The last row, the ported set, is called
-out separately below because it carries its own audit tooling (`check-readme.ts`) that compares its
-18 glyphs' geometry against the source byte for byte.
-
-The ported set was missed by the #2 brief and merged separately in
-[issue #15](https://github.com/spy4x/preact-components/issues/15). Every one of its 52 files lands on
-exactly one side of the ledger below and the two tables carry them all: a file either becomes an
-export, folds onto an export that already exists, or is excluded by rule 4.
-
-The barrel is the ported set's own `index.ts`. It re-exports **49** of the 52 files; `facebook.svelte`,
-`paper.svelte` and `plus copy.svelte` are the three absent from it. `dot.svelte` _is_ exported, even
-though it carries no SVG — it is a styled `<span>`, so there is no geometry to port. `upload.svelte`
-is exported too; its name was dropped here for a concept collision, not because the file was unused.
-
-Source file → export name, in the order the exports appear in `+index.tsx`:
-
-| Export                  | Ported source file  | Naming                                                   |
-| ----------------------- | ------------------- | -------------------------------------------------------- |
-| `IconArrowsPointingOut` | `fullscreen-expand` | renamed onto the Heroicons name for the drawing          |
-| `IconCloudArrowUp`      | `cloudUpload`       | renamed onto the Heroicons name, noun order flipped      |
-| `IconDocumentDuplicate` | `paper`             | renamed onto Heroicons v1's name for the drawing         |
-| `IconDocumentText`      | `doc`               | renamed onto Heroicons v1's name for the drawing         |
-| `IconDownload`          | `download`          | as named                                                 |
-| `IconExternalLink`      | `externalLink`      | as named                                                 |
-| `IconFilm`              | `film`              | as named                                                 |
-| `IconLockClosed`        | `lock`              | `Closed` added so it pairs with `IconLockOpen`           |
-| `IconLockClosedFilled`  | `lockFilled`        | same pair, solid variant                                 |
-| `IconLockOpen`          | `unlock`            | renamed so it pairs with `IconLockClosed`                |
-| `IconMicrophone`        | `microphone`        | as named                                                 |
-| `IconPlayCircle`        | `play`              | renamed onto the Heroicons name for the drawing          |
-| `IconPlaySolid`         | `play-filled`       | renamed onto the Heroicons v2 name for the solid variant |
-| `IconRefresh`           | `refresh`           | as named                                                 |
-| `IconSmile`             | `smile`             | as named                                                 |
-| `IconStopCircle`        | `stop`              | renamed onto the Heroicons name for the drawing          |
-| `IconSuccess`           | `success`           | as named — also absorbs `checkCircle.svelte`, see below  |
-| `IconVideoCamera`       | `record`            | renamed onto Heroicons v1's name for the drawing         |
-
-A source file whose own noun already reads as a name (`download`, `film`, `refresh`, `smile`) keeps
-it; the rest are renamed onto this repo's `Icon<PascalCase>` convention, most of them onto the
-Heroicons name the drawing already carries. `checkCircle.svelte` shares the `IconSuccess` row
-because its `d` is byte-identical to `success.svelte`'s — the two source files differ only in their
-`class` attribute, so they are one drawing.
-
-`dash`, `forward` and `next` were not ported: each has its own drawing but no concept of its own
-(`dash` is a thin minus, `forward` a chevron-in-circle, `next` an arrow-right), so they are folds,
-not new names.
-
-Rules, in order:
-
-1. **Dedupe by SVG body, not by name.** Identical geometry collapses to one export. This removed
-   one source application entirely (a fork of `template`, 45 byte-identical bodies), `template`'s
-   internal `IconLightBulb`/`IconBulb` and `IconExclamationTriangle`/`IconAlertTriangle` pairs, and
-   that same source application's `IconMagnifyingGlass` (byte-identical to `IconSearch`, so it was
-   renamed, not aliased).
-2. **One canonical name per concept.** Names are `Icon<PascalCase>`; a rename table folds each
-   source's wording onto the incumbent `template` name — `Person`→`User`, `Pen`/`Edit`→
-   `PencilSquare`, `Close`→`XMark`, `Menu`→`Bars3`, `Info`/`InfoCircle`→`InformationCircle`,
-   `Alert`→`AlertTriangle`, `Cog`→`Cog6Tooth`, `Trash`→`TrashBin`, `Lightbulb`→`LightBulb`,
-   `Copy`→`ClipboardCopy`, `Shield`→`ShieldCheck`, `Trending`→`TrendingUp`, `Filter`→`Funnel`,
-   `Message`→`ChatBubble`, `Bullseye`→`Target`, `Lightning`→`Zap`. Where no `template` glyph
-   exists, the clearest name won. Same-name-different-body conflicts resolve by source precedence,
-   `template` first and the ported set last, with the other four source applications ranked in
-   between by how much of their icon set survived the merge (see the Sources table above).
-3. **Props normalised** to `{ class?: string }` everywhere (`aria-label` and `title` were added
-   later, see "Contract"). `width`/`height`, `role`, `aria-hidden` and per-source `className`
-   props were dropped; one source application's
-   `strokeWidth` prop and another's `filled` prop were resolved to their declared defaults; the
-   ported set's `$$props.size` interpolation became the same `shrink-0 ${props.class || "…"}` idiom
-   as every other glyph, and `IconPlaySolid`'s hard-coded `red` became `currentColor`.
-4. **Excluded** — every deliberate omission, so a missing glyph is a decision rather than a gap:
-
-   | Excluded                                                                                                                                                                                                                                                                                                              | Source               | Why                                                                               |
-   | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------- |
-   | `LogoMark`                                                                                                                                                                                                                                                                                                            | a source application | that app's own wordmark                                                           |
-   | `UpworkBadgeIcon`                                                                                                                                                                                                                                                                                                     | a source application | fixed brand colours, cannot inherit `currentColor`; `IconUpwork` covers the brand |
-   | Feather `GitHubIcon`                                                                                                                                                                                                                                                                                                  | a source application | name collision with `IconGitHub`, which won on source precedence                  |
-   | `EmailIcon`                                                                                                                                                                                                                                                                                                           | a source application | folded to `IconAtSign` — one name per concept, and it is the same drawing         |
-   | `facebook`, `google`, `instagram`                                                                                                                                                                                                                                                                                     | `ported`             | trademark-constrained brand marks, see below                                      |
-   | `dot`                                                                                                                                                                                                                                                                                                                 | `ported`             | no `<svg>` at all — a styled `<span>`, so there is no geometry to port            |
-   | `check`, `checkCircle`, `chevron`, `circleCross`, `cross`, `dots-horizontal`, `email`, `error`, `info`, `next`, `out`, `pencil`, `pencil-alt`, `plus`, `plus copy`, `share`, `star`, `user`, `warning`, `back`, `burger`, `dash`, `down`, `flashLight`, `forward`, `trash`, `up`, `upload`, `arrowLeft`, `arrowRight` | `ported`             | the concept already has an export — target per fold is listed below               |
-
-   Folds applied for the ported set's files, source first. "Body-identical" is used only where the
-   geometry compares equal to the incumbent's once attribute order and the `class` attribute are
-   ignored — the same check `+index.test.ts` runs. A file whose drawing differs from the incumbent's
-   but whose concept the incumbent already owns is a concept fold.
-
-   | Ported file       | Folds onto              | Kind           |
-   | ----------------- | ----------------------- | -------------- |
-   | `arrowLeft`       | `IconArrowLeft`         | body-identical |
-   | `arrowRight`      | `IconArrowRight`        | body-identical |
-   | `back`            | `IconArrowLeft`         | body-identical |
-   | `burger`          | `IconBars3`             | concept        |
-   | `check`           | `IconCheck`             | concept        |
-   | `checkCircle`     | `IconSuccess`           | body-identical |
-   | `chevron`         | `IconChevronDown`       | concept        |
-   | `circleCross`     | `IconXMark`             | concept        |
-   | `cross`           | `IconXMark`             | concept        |
-   | `dash`            | `IconMinus`             | concept        |
-   | `dots-horizontal` | `IconEllipsisVertical`  | concept        |
-   | `down`            | `IconArrowDown`         | body-identical |
-   | `email`           | `IconAtSign`            | concept        |
-   | `error`           | `IconXMark`             | concept        |
-   | `flashLight`      | `IconZap`               | concept        |
-   | `forward`         | `IconPlayCircle`        | concept        |
-   | `info`            | `IconInformationCircle` | concept        |
-   | `next`            | `IconArrowRight`        | concept        |
-   | `out`             | `IconExternal`          | concept        |
-   | `pencil`          | `IconPencilSquare`      | concept        |
-   | `pencil-alt`      | `IconPencilSquare`      | concept        |
-   | `plus`            | `IconPlus`              | concept        |
-   | `plus copy`       | `IconPlus`              | concept        |
-   | `share`           | `IconShare`             | concept        |
-   | `star`            | `IconStar`              | concept        |
-   | `trash`           | `IconTrashBin`          | body-identical |
-   | `up`              | `IconArrowUp`           | body-identical |
-   | `user`            | `IconUser`              | concept        |
-   | `warning`         | `IconAlertTriangle`     | concept        |
-
-   The `Kind` column is the only reason a file is called body-identical: the geometry compares equal
-   to the incumbent's once attribute order and `class` are ignored, which is what `+index.test.ts`
-   checks. Everything else is a concept fold — the drawing differs, the concept does not.
-
-   Several targets take more than one file: `arrowLeft` and `back` both fold onto `IconArrowLeft`,
-   `plus` and `plus copy` both onto `IconPlus`. `checkCircle.svelte` folds onto the same
-   `IconSuccess` that the port table credits to `success.svelte`: the two source files differ only
-   in their `class` attribute (`h-5 w-5` vs `inline-block h-6 w-6`), so they are one drawing.
-
-   **The lock pair is not a fold.** `lock.svelte` and `lockFilled.svelte` look like the same concept
-   twice, and `unlock.svelte` looks like a third: they are three distinct exports, `IconLockClosed`,
-   `IconLockClosedFilled` and `IconLockOpen`. The set has no `IconLock` today, so all three names
-   were free, and the solid variant has its own `viewBox` (`0 0 20 20`) rather than being a weight
-   of the outline one.
-
-   **Two v1 names that already exist here.** `download.svelte` is Heroicons v1's
-   `arrow-down-tray` and `paper.svelte` is v1's `document-duplicate`; both concepts are already
-   shipped under `IconArrowDownTray` and `IconDocument` from the v2 family. They are kept as
-   `IconDownload` and `IconDocumentDuplicate` — the incumbent names are unchanged, and the two new
-   exports are the v1 drawings, which is the same pattern as `IconArrowDownTray` sitting next to
-   `IconArrowDown`. Neither is a fold, because a fold would have to change a published body.
-
-   **Brand marks.** `facebook`, `google` and `instagram` are deliberately absent. They are
-   third-party trademarked logos, and this package is MIT-licensed and redistributed to any app
-   that consumes it, so shipping them would put a trademark obligation on every consumer without
-   them asking for it. Substituting a brand mark is the consumer's call. The brand marks already
-   shipped from earlier source applications were later replaced with Simple Icons' and Feather's
-   own drawings in [issue #233](https://github.com/spy4x/preact-components/issues/233) — see
-   "Provenance" → "Brand marks"; this merge adds none.
-
-   **Near-misses kept as one export.** `cross.svelte`'s geometry is the same X as `IconXMark`'s,
-   only at `stroke-2` rather than the v2 incumbent's `stroke-1.5`, and both default to `size-6`, so
-   there is nothing extra to ship.
-
-No codegen: the merged file is ordinary source now. Regenerating it is not part of the build.
+The set was merged by hand from six source applications' icon modules, and glyphs with the same
+drawing or the same concept were folded into one export. The 18 glyphs that came from the last of
+them ([issue #15](https://github.com/spy4x/preact-components/issues/15)) are what this page calls
+the ported set.
 
 ## Tests
 
@@ -372,28 +210,10 @@ exports instead of only reporting a count:
 AssertionError: duplicate glyph bodies: [["IconArrowPath","IconRefresh"]]
 ```
 
-`check-readme.test.ts` guards the numbers on this page. The merge ledger kept drifting because its
-counts were computed from this file — the file being described. `check-readme.ts` therefore takes
-every expected value from outside: a pinned literal of the ported set's 52 filenames, its own
-`index.ts` for barrel membership and for the path data each port must carry byte for byte, and
-`+index.tsx` for
-everything this package ships. It checks that each file in that inventory lands on exactly one side
-of the ledger, that the port and fold tables agree with the module, and that the counts on this page
-match — naming the file or the count in every failure:
-
-```
-FAIL download: IconDownload's path data matches neither source
-FAIL README.md contract prose: claims 79 size-5 + 38 size-6, module has 80 + 38
-FAIL checkCircle: README.md lists checkCircle as fold, but it is not in the recorded inventory
-```
-
-The barrel and geometry comparisons need the ported set's own icon folder, from a private
-checkout that CI does not have. Pass its path to run them; without it they report as `-- not run`
-rather than failing, which is what `deno task test` sees. The pinned inventory carries the ledger
-checks everywhere.
+No test pins a glyph's path data or which default size it has: changing either leaves
+`deno task test` green. The drawings are compared with the packs by `provenance.ts`, run by hand
+(see "Provenance").
 
 ```bash
 deno task test
-deno run --allow-read icons/check-readme.ts                      # the full report
-deno run --allow-read icons/check-readme.ts /path/to/icons/      # with the source comparisons
 ```
