@@ -226,8 +226,8 @@ export async function pagesChecks(devtools: Devtools): Promise<void> {
  * build copies both from the repository root, and a static host serves a file it holds. Each is
  * fetched by its address relative to the page, so the check follows whatever base the site is
  * built for. The catalogue's `index.html` also answers a wrong path with a 200 on some hosts, so
- * the body is checked too: the header's first line, and a package section (`llms.txt`) or the
- * package README (`llms-full.txt`).
+ * the body is checked too: the header's first line, and one export's tab-separated line
+ * (`llms.txt`) or the package README (`llms-full.txt`).
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -252,8 +252,8 @@ async function llmsTxtChecks(devtools: Devtools): Promise<void> {
   check(
     "the site serves llms.txt at its root, as plain text listing the packages' exports",
     llms.status === 200 && llms.type.startsWith("text/plain") &&
-      llms.text.startsWith("# preact-components") &&
-      llms.text.includes("## @spy4x/preact-ui") && llms.text.includes("`Badge` (component)"),
+      llms.text.startsWith("# preact-components: the exports of the @spy4x/preact-* packages") &&
+      llms.text.includes("\nBadge\tcomponent\t@spy4x/preact-ui\t"),
     `${llms.status} ${llms.type}, ${llms.text.length} characters`,
   )
   check(
