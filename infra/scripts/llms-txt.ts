@@ -14,16 +14,20 @@
  * names that command, when either differs from what this script writes. The build of the demo site
  * copies them to the site root, so they are served at `<site>/llms.txt` and `<site>/llms-full.txt`.
  *
- * **Shape** (another repository can copy it; nothing here is specific to this one but the
- * constants in {@linkcode HEADER}):
+ * **Shape.** `llms.txt` has the line format of `spy4x/ts-libs`' `llms.txt`
+ * (https://github.com/spy4x/ts-libs/pull/628), so one search works on both files:
  *
- * - `llms.txt` starts with a header — what the library is, when to use it, how to install a
- *   package and where exact signatures come from (`deno doc jsr:@spy4x/preact-<pkg>`) — then has
- *   one section per published package. A section has the package's one-paragraph description, the
- *   install line, and one line per export:
- *   `` - `Name` (kind): one-sentence summary. Import: `@spy4x/preact-pkg/subpath` ``.
- * - `llms-full.txt` is the same header followed by every published package's `README.md`, in the
- *   same order.
+ * - Every line that is not an export starts with `#`: the lines of {@linkcode HEADER}. There is
+ *   no last line with a hash, which ts-libs' file has: the test regenerates this file and compares
+ *   it whole, and such a line would make any two changes to the exports conflict.
+ * - Every other line is one export ({@linkcode exportLine}): name, kind, import specifier and
+ *   one-sentence summary, separated by one tab each. Packages follow each other with no heading and
+ *   no blank line, in the order of the package list; within a package the entry points keep their
+ *   order and the names of one entry point are sorted by code unit.
+ * - A type named after a function or class whose parameters it describes, such as `BadgeProps`
+ *   next to the component `Badge`, has no line ({@linkcode describesParameters}).
+ * - `llms-full.txt` is {@linkcode FULL_HEADER} followed by every published package's `README.md`,
+ *   in the same order.
  *
  * **Where each fact comes from.**
  *
@@ -34,12 +38,14 @@
  * - The kind is the declaration's own kind plus the name: an `interface`, type alias or `enum` is a
  *   `type`; a name starting `use` and a capital is a `hook`; an initial capital followed by a
  *   lower-case letter is a `component` (an `Error` class is a `helper`); an `UPPER_SNAKE` name or a
- *   non-function variable is a `constant`; anything else is a `helper`.
+ *   non-function variable is a `constant`; anything else is a `helper`. Those five words are the
+ *   second field of a line.
  * - The summary is the first sentence of the declaration's JSDoc. With none, the sentence in the
  *   package README's table row for that name, but only in a column headed like a description
  *   ("What it is", "Summary"): a props or migration table would give a wrong one. A `FooProps` type
  *   with neither is described as "Props of `Foo`." With none of these the entry has no summary, and
- *   `deno task llms` prints its name so the gap is visible.
+ *   `deno task llms` prints its name so the gap is visible. An export whose own JSDoc has
+ *   `@deprecated` gets `Deprecated: …` in front ({@linkcode deprecatedSummary}).
  * - The import specifier is the package root when the barrel exports the name, else the first
  *   subpath that does.
  *
@@ -55,8 +61,23 @@ const ROOT = new URL("../../", import.meta.url)
 /** Public address of the demo site, which serves both files at its root. */
 export const SITE = `https://spy4x.github.io/preact-components`
 
-/** The text both files start with. */
-export const HEADER = `# preact-components
+/** The endings of a type that describes the parameters of the function or class it is named after. */
+export const PARAMETER_SUFFIXES = [`Props`, `Labels`, `Options`, `Config`, `Deps`, `Input`]
+
+/** The first lines of `llms.txt`. Each starts with `#`, as every line that is not an export does. */
+export const HEADER = [
+  `# preact-components: the exports of the @spy4x/preact-* packages on JSR, one per line.`,
+  `# Columns, separated by one tab: name, kind, import specifier, summary.`,
+  `# Search: git grep -n -i '<word>' origin/main -- llms.txt`,
+  `# Use: deno add jsr:<package>, then import { <name> } from "<import specifier>".`,
+  `# Left out: a type or interface that describes the parameters of a listed function or class Foo, foo or createFoo and is named Foo plus ${
+    PARAMETER_SUFFIXES.join(`, `)
+  }. Its signature: https://jsr.io/<package>/doc`,
+  `# Full READMEs: ${SITE}/llms-full.txt`,
+]
+
+/** The text `llms-full.txt` starts with. */
+export const FULL_HEADER = `# preact-components
 
 > Preact + Tailwind components built on web standards: accessible components, design tokens, icons,
 > charts, CRUD scaffolding and signals helpers for Deno apps. Components render on the server and
@@ -89,6 +110,19 @@ export interface Entry {
   summary: string
   /** Import specifier, for example `@spy4x/preact-ui/badge`. */
   specifier: string
+  /**
+   * The declaration's own keyword: `interface`, `typeAlias`, `enum`, `function`, `class` or
+   * `variable`. {@linkcode describesParameters} reads it, because `kind` does not tell an enum
+   * from an interface or a helper function from a lower-case constant.
+   */
+  keyword: string
+}
+
+/** A JSDoc tag in `deno doc --json` output. */
+export interface DocTag {
+  /** `deprecated`, `param`, `returns` and so on. */
+  kind: string
+  doc?: string
 }
 
 /** The part of `deno doc --json` output this script reads: one symbol of one entry point. */
@@ -99,7 +133,7 @@ export interface DocSymbol {
     kind: string
     /** `export` for a public name; `private` for a type an exported one extends. */
     declarationKind?: string
-    jsDoc?: { doc?: string }
+    jsDoc?: { doc?: string; tags?: DocTag[] }
     /** Where a real declaration is. */
     location?: { filename: string }
     /** For a `reference`: the declaration it re-exports. */
@@ -207,16 +241,6 @@ export function kindOf(name: string, keyword: string): Entry["kind"] {
   return "helper"
 }
 
-/** A package's description: the first paragraph after its README's title. */
-export function packageDescription(readme: string): string {
-  const paragraphs = readme.split(/\n\s*\n/).map((p) => p.trim())
-  const paragraph = paragraphs.find((p) =>
-    p && !p.startsWith("#") && !p.startsWith("```") &&
-    !p.startsWith("<") && !p.startsWith("|") && !p.startsWith("[![")
-  )
-  return (paragraph ?? "").replace(/\s+/g, " ")
-}
-
 /** A declaration in `deno doc` output. */
 export type DocDeclaration = DocSymbol["declarations"][number]
 
@@ -286,7 +310,13 @@ export function buildEntries(
       if (!summary && /^[A-Z]\w*Props$/.test(name) && declaration.kind !== `function`) {
         summary = `Props of \`${name.slice(0, -5)}\`.`
       }
-      entries.set(name, { name, kind: kindOf(name, declaration.kind), summary, specifier })
+      entries.set(name, {
+        name,
+        kind: kindOf(name, declaration.kind),
+        summary: deprecatedSummary(summary, declaration.jsDoc?.tags),
+        specifier,
+        keyword: declaration.kind,
+      })
     }
   }
 
@@ -298,18 +328,94 @@ export function buildEntries(
   return [...entries.values()]
 }
 
-/** One line of `llms.txt`. */
-function entryLine(entry: Entry): string {
-  const summary = entry.summary ? ` ${entry.summary}` : ""
-  return `- \`${entry.name}\` (${entry.kind}):${summary} Import: \`${entry.specifier}\``
+/**
+ * The summary of an export whose JSDoc carries `@deprecated`: the word, the first sentence of the
+ * tag's text (which names the replacement), then the summary. Without the tag the summary comes
+ * back unchanged.
+ */
+export function deprecatedSummary(summary: string, tags: DocTag[] | undefined): string {
+  const tag = tags?.find((item) => item.kind === `deprecated`)
+  if (tag === undefined) return summary
+  const reason = firstSentence(tag.doc ?? ``)
+  const stop = /[.!?]$/.test(reason) ? `` : `.`
+  return `${reason === `` ? `Deprecated.` : `Deprecated: ${reason}${stop}`} ${summary}`.trim()
+}
+
+/**
+ * The exports of one entry point that `llms.txt` leaves out: an interface or a type alias named
+ * after a function or class of the same entry point plus one of {@linkcode PARAMETER_SUFFIXES}.
+ * For `FooProps` that owner is `Foo`, `foo` or `createFoo`. A component counts as a function
+ * however it is declared: `Button` is a constant holding a `forwardRef` component, and
+ * `ButtonProps` is still its parameters. An interface, a type, an enum or any other constant is
+ * never an owner: a type named after one is a shape of its own, not a parameter. An enum is never
+ * left out.
+ *
+ * @param entries The entries of one import specifier.
+ * @returns The names that get no line.
+ */
+export function describesParameters(entries: Entry[]): Set<string> {
+  const byName = new Map(entries.map((entry) => [entry.name, entry]))
+  const takesParameters = (name: string) => {
+    const owner = byName.get(name)
+    return owner?.keyword === `function` || owner?.keyword === `class` ||
+      owner?.kind === `component`
+  }
+  const dropped = new Set<string>()
+  for (const { name, keyword } of entries) {
+    if (keyword !== `typeAlias` && keyword !== `interface`) continue
+    const suffix = PARAMETER_SUFFIXES.find((item) => name.endsWith(item) && name !== item)
+    if (suffix === undefined) continue
+    const base = name.slice(0, -suffix.length)
+    const owners = [base, base[0].toLowerCase() + base.slice(1), `create${base}`]
+    if (owners.some(takesParameters)) dropped.add(name)
+  }
+  return dropped
+}
+
+/**
+ * One line of `llms.txt`: name, kind, import specifier and summary, separated by one tab each.
+ * Any run of whitespace inside a field becomes one space, so a line always has exactly three
+ * tabs; an empty summary leaves the fourth field empty.
+ */
+export function exportLine(entry: Entry): string {
+  return [entry.name, entry.kind, entry.specifier, entry.summary]
+    .map((field) => field.replace(/\s+/g, ` `).trim()).join(`\t`)
+}
+
+/**
+ * The export lines of one package: its entry points in the order they first appear, the names of
+ * one entry point sorted by code unit, without the names {@linkcode describesParameters} leaves
+ * out.
+ *
+ * @param entries One package's entries, from {@linkcode buildEntries}.
+ * @returns The lines and the names left out.
+ */
+export function exportLines(entries: Entry[]): { lines: string[]; dropped: string[] } {
+  const bySpecifier = new Map<string, Entry[]>()
+  for (const entry of entries) {
+    bySpecifier.set(entry.specifier, [...(bySpecifier.get(entry.specifier) ?? []), entry])
+  }
+  const lines: string[] = []
+  const dropped: string[] = []
+  for (const group of bySpecifier.values()) {
+    const left = describesParameters(group)
+    group.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    for (const entry of group) {
+      if (left.has(entry.name)) dropped.push(`${entry.specifier}: ${entry.name}`)
+      else lines.push(exportLine(entry))
+    }
+  }
+  return { lines, dropped }
 }
 
 /** Both generated files, and the entries that have no summary. */
 export interface Generated {
   llms: string
   full: string
-  /** `package: Name` for every export with neither JSDoc nor README summary. */
+  /** `package: Name` for every listed export with neither JSDoc nor README summary. */
   missingSummaries: string[]
+  /** `specifier: Name` for every export `llms.txt` leaves out. */
+  dropped: string[]
 }
 
 /**
@@ -319,7 +425,8 @@ export interface Generated {
  */
 export async function generate(): Promise<Generated> {
   const packages = await readPackages()
-  const sections: string[] = []
+  const lines: string[] = []
+  const dropped: string[] = []
   const readmes: string[] = []
   const missingSummaries: string[] = []
 
@@ -346,35 +453,33 @@ export async function generate(): Promise<Generated> {
       })
     }
     const entries = buildEntries(entryPoints, surface.names, readme, config.name, index)
+    const listed = exportLines(entries)
+    lines.push(...listed.lines)
+    dropped.push(...listed.dropped)
+    const left = new Set(listed.dropped)
     for (const entry of entries) {
-      if (!entry.summary) missingSummaries.push(`${config.name}: ${entry.name}`)
+      if (!entry.summary && !left.has(`${entry.specifier}: ${entry.name}`)) {
+        missingSummaries.push(`${config.name}: ${entry.name}`)
+      }
     }
-    sections.push(
-      [
-        `## ${config.name}`,
-        "",
-        packageDescription(readme),
-        "",
-        `Install: \`deno add jsr:${config.name}\``,
-        "",
-        ...entries.map(entryLine),
-      ].join("\n"),
-    )
     readmes.push(`<!-- ${config.name} — ${id}/README.md -->\n\n${readme.trim()}`)
   }
 
   return {
-    llms: `${HEADER}\n${sections.join("\n\n")}\n`,
-    full: `${HEADER}\n${readmes.join("\n\n---\n\n")}\n`,
+    llms: [...HEADER, ...lines, ``].join("\n"),
+    full: `${FULL_HEADER}\n${readmes.join("\n\n---\n\n")}\n`,
     missingSummaries,
+    dropped,
   }
 }
 
 if (import.meta.main) {
-  const { llms, full, missingSummaries } = await generate()
+  const { llms, full, missingSummaries, dropped } = await generate()
   await Deno.writeTextFile(new URL("llms.txt", ROOT), llms)
   await Deno.writeTextFile(new URL("llms-full.txt", ROOT), full)
   console.log(`wrote llms.txt (${llms.length} bytes) and llms-full.txt (${full.length} bytes)`)
+  console.log(`${dropped.length} type(s) named after a function or class left out`)
+  if (Deno.args.includes(`--dropped`)) { for (const name of dropped) console.log(`  ${name}`) }
   if (missingSummaries.length) {
     console.log(`${missingSummaries.length} export(s) without a summary:`)
     for (const name of missingSummaries) console.log(`  ${name}`)

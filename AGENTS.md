@@ -108,7 +108,9 @@ runs `lint --fix` then `fmt`. The manifest defines the rest (`publish:dry`, `pri
 
 - `llms.txt` and `llms-full.txt` are generated from exports, first JSDoc sentences and package
   READMEs; never hand-edit them. Run `deno task llms` after changing any of those (a test fails
-  when they are stale), and give every export a JSDoc summary sentence.
+  when they are stale), and give every export a JSDoc summary sentence. `llms.txt` has one line per
+  export, four fields separated by tabs (name, kind, import specifier, summary), in the format of
+  `spy4x/ts-libs`' `llms.txt`; `infra/scripts/llms-txt.ts` describes it.
 - `publish:dry` refuses a dirty tree, so it is not in `check`; each CI runs it after `check`.
   `private-names` runs before every release tag, not in CI
   ([`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md)).
