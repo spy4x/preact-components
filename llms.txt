@@ -422,7 +422,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (935 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (966 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
@@ -551,6 +551,8 @@ EnhancedFormStatus	type	@spy4x/preact-ui	Where one `EnhancedForm` is in its subm
 ErrorBoundary	component	@spy4x/preact-ui	Catches an error thrown while its children render and shows a reload screen in their place, so the person sees a way out instead of a blank page.
 ErrorState	component	@spy4x/preact-ui	Message for an expected failure, shown where the result that failed would have been, such as a list whose request failed.
 ExactDateTimeRange	type	@spy4x/preact-ui	A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant.
+FaqItem	type	@spy4x/preact-ui	One question of a `FaqList`.
+FaqList	component	@spy4x/preact-ui	Questions and answers as native `<details>` disclosures: they open and close with no JavaScript, so the list works on a server-rendered page with scripts off.
 Field	component	@spy4x/preact-ui	Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls.
 FieldChild	type	@spy4x/preact-ui	The control of one `Field`: exactly one element, or a function that returns one.
 FieldControlWiring	type	@spy4x/preact-ui	The DOM attributes of one `Field`, handed to the control.
@@ -647,6 +649,8 @@ SpinnerSize	type	@spy4x/preact-ui	Rendered size of a `LoadingSpinner`.
 Stack	component	@spy4x/preact-ui	Children in a column, a named `gap` apart.
 StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`.
 StatusMarkStatus	type	@spy4x/preact-ui	A project or feature's lifecycle state.
+StepItem	type	@spy4x/preact-ui	One step of a `Steps` list.
+Steps	component	@spy4x/preact-ui	A numbered "how it works" list: each step a heading and a line of text, joined by a thin line.
 SubscriptionStatus	type	@spy4x/preact-ui	Where a subscription stands.
 TOUCH_TARGET	constant	@spy4x/preact-ui	A touch target of 44 px on a phone and the library's own 36 px from `sm` up, for a small button a thumb has to hit.
 TabItem	type	@spy4x/preact-ui	One tab and the panel it controls.
@@ -680,6 +684,8 @@ UnsavedGuard	component	@spy4x/preact-ui	Asks before a person leaves a page with 
 UnsavedLink	type	@spy4x/preact-ui	The parts of a link that decide where it goes.
 UpgradePrompt	component	@spy4x/preact-ui	A short message and an upgrade link, shown in place of a feature the current plan does not include.
 WallClockOccurrence	type	@spy4x/preact-ui	Which of the two instants a repeated wall-clock time names: before or after the clocks go back.
+WindowFrame	component	@spy4x/preact-ui	Draws a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
+WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` draws around its content.
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.

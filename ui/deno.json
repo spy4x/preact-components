@@ -24,6 +24,7 @@
     "./enhanced-form": "./enhanced-form.tsx",
     "./error-boundary": "./error-boundary.tsx",
     "./error-state": "./error-state.tsx",
+    "./faq-list": "./faq-list.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
     "./honeypot": "./honeypot.tsx",
@@ -69,7 +70,9 @@
     "./kanban-board": "./kanban-board.tsx",
     "./sortable-list": "./sortable-list.tsx",
     "./theme-toggle": "./theme-toggle.tsx",
-    "./unsaved-guard": "./unsaved-guard.tsx"
+    "./unsaved-guard": "./unsaved-guard.tsx",
+    "./steps": "./steps.tsx",
+    "./window-frame": "./window-frame.tsx"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a

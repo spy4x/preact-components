@@ -720,6 +720,82 @@ const onboardingChecklistSpecs: readonly Spec[] = [
   },
 ]
 
+/** Throws with each violation's rule and targets when axe finds any in the given areas. */
+async function axePasses(page: Page, selectors: readonly string[]): Promise<string> {
+  let builder = new AxeBuilder({ page })
+  for (const selector of selectors) builder = builder.include(selector)
+  const { violations, passes } = await builder.analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+      ).join(" | "),
+    )
+  }
+  return `${passes.length} rules pass`
+}
+
+/** `FaqList`, `Steps` and `WindowFrame`: the blocks of a public page, which need no JavaScript. */
+function marketingBlockSpecs(): Spec[] {
+  const cards = ["#demo-FaqList", "#demo-Steps", "#demo-WindowFrame"] as const
+  return [
+    {
+      name:
+        "FaqList: a click on a question opens it, and opening another closes it, as one named group",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-FaqList")
+        const first = card.locator("details").nth(0)
+        const second = card.locator("details").nth(1)
+        await first.locator("summary").click()
+        await first.and(page.locator("details[open]")).waitFor()
+        await second.locator("summary").click()
+        await second.and(page.locator("details[open]")).waitFor()
+        await first.and(page.locator("details:not([open])")).waitFor()
+      },
+    },
+    {
+      name: "WindowFrame: the terminal is dark on a light page",
+      pageId: "ui",
+      colorScheme: "light",
+      run: async (page) => {
+        const terminal = page.locator(`#demo-WindowFrame figure:has([role="group"]) > div`).first()
+        await terminal.waitFor()
+        const luminance = await terminal.evaluate((node) => {
+          const canvas = document.createElement("canvas")
+          canvas.width = canvas.height = 1
+          const context = canvas.getContext("2d")!
+          context.fillStyle = getComputedStyle(node).backgroundColor
+          context.fillRect(0, 0, 1, 1)
+          const [r, g, b] = context.getImageData(0, 0, 1, 1).data
+          const channel = (value: number) => {
+            const c = value / 255
+            return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+          }
+          return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+        })
+        if (luminance > 0.05) throw new Error(`terminal background luminance ${luminance}`)
+      },
+    },
+    scrollRegionSpec({
+      what: "WindowFrame terminal",
+      pageId: "ui",
+      selector: `#demo-WindowFrame div[role="group"][tabindex="0"]`,
+      name: "Install",
+      key: "ArrowRight",
+    }),
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `FaqList, Steps and WindowFrame: axe finds no violation, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        await page.locator(cards[0]).waitFor()
+        return await axePasses(page, cards)
+      },
+    })),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
@@ -1048,6 +1124,7 @@ export const specs: readonly Spec[] = [
   ...toastrSpecs(),
   ...coachmarkSpecs(),
   ...onboardingChecklistSpecs,
+  ...marketingBlockSpecs(),
 ]
 
 /** The parts of the host page's `UnsavedGuard` Back and Forward demo a spec drives. */

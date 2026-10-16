@@ -38,6 +38,7 @@ export const documentedClasses: Record<string, string[]> = {
     "text-success",
   ],
   Tokens: [
+    "dark",
     "bg-selected",
     "text-selected-foreground",
     "bg-selected-soft",
@@ -201,8 +202,6 @@ const MAP_CLASSES_REASON =
 export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
   "theme-base":
     "Document-level rules for `<body>`. The catalogue renders inside a host page that applies it (`pages/src/document.tsx`), so a demo of it would repaint the page around the demo.",
-  "dark":
-    "A variant marker on `<html>`, not a class an element wears. The host page's colour-scheme toggle owns it and `pages/checks/theme.ts` drives it.",
   "btn-primary-outline": BUTTON_CLASSES_REASON,
   "btn-danger": BUTTON_CLASSES_REASON,
   "btn-danger-outline": BUTTON_CLASSES_REASON,
@@ -291,6 +290,12 @@ export function CatalogInstructions() {
               {" "}
               <ClassChip name="page-layout" />{" "}
               still gives the standard page width, and is deprecated in their favour.
+            </p>
+            <p>
+              Put <ClassChip name="dark" /> on <InlineMarkdown text="`<html>`" />{" "}
+              for the dark palette. On an element it repaints the tokens for that subtree only, so
+              the subtree stays dark in both themes, as{" "}
+              <InlineMarkdown text="`WindowFrame`" />'s terminal does.
             </p>
             <p>
               The <InlineMarkdown text="`ui/`" />{" "}

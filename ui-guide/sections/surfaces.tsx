@@ -50,11 +50,10 @@ const INK_SWATCH_LABELS: Record<string, string> = {
  * Swatches for the ink theme's tokens: the surface scale, the hairline, the two text
  * tones, the one accent, and the nav-active/focus tokens split off it.
  *
- * `ink.css` only paints once `.dark` and `data-theme="ink"` sit together, and the convention this
- * catalogue holds everywhere else is that `.dark` is a variant marker on `<html>`, owned by the
- * host page's colour-scheme toggle — not a class an inner element wears (see
- * `UNDEMONSTRATED_CLASSES["dark"]` in `instructions.tsx`). So this card does not fake a scoped
- * `.dark[data-theme="ink"]` locally: the swatches below read the palette's own values straight out
+ * `ink.css` only paints once `.dark` and `data-theme="ink"` sit together on `<html>`, owned by the
+ * host page's colour-scheme toggle. An inner element can wear `.dark` (the terminal `WindowFrame`
+ * does, to repaint the default dark palette), but ink's selector never matches below `<html>`. So
+ * this card does not fake a scoped `.dark[data-theme="ink"]` locally: the swatches below read the palette's own values straight out
  * of `INK_CSS` (see {@link parseInkDeclarations}), and the real cascade — `<html class="dark"
  * data-theme="ink">` repainting a page through the same tokens `preset.css` already reads — is
  * proven in the browser by `pages/checks/theme.ts` instead, which is the only place in this
