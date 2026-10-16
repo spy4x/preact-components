@@ -114,6 +114,8 @@ export interface TagInputKeyAction {
   state: ComboboxState
   /** Call `preventDefault()`. */
   preventDefault: boolean
+  /** Call `stopPropagation()`: `Escape` closing the list, so a dialog around the field stays open. */
+  stopPropagation: boolean
   /** Index of the suggestion to add, `-1` for none. */
   pick: number
   /** Add the typed text as a tag. */
@@ -155,7 +157,7 @@ export function tagInputKeyAction(
 ): TagInputKeyAction | undefined {
   if (event.ctrlKey || event.metaKey) return undefined
   const closed: ComboboxState = { activeIndex: -1, isOpen: false }
-  const none = { pick: -1, commit: false, removeLast: false }
+  const none = { pick: -1, commit: false, removeLast: false, stopPropagation: false }
   if (event.key === "," && !event.altKey) {
     return { ...none, state: closed, preventDefault: true, commit: true }
   }
@@ -175,7 +177,12 @@ export function tagInputKeyAction(
       commit: action.select < 0,
     }
   }
-  return { ...none, state: action.state, preventDefault: action.preventDefault }
+  return {
+    ...none,
+    state: action.state,
+    preventDefault: action.preventDefault,
+    stopPropagation: action.stopPropagation,
+  }
 }
 
 export interface TagInputProps {
@@ -404,6 +411,7 @@ export function TagInput({
     )
     if (action === undefined) return
     if (action.preventDefault) event.preventDefault()
+    if (action.stopPropagation) event.stopPropagation()
     if (action.pick >= 0) {
       const picked = visible[action.pick]
       if (picked !== undefined) add([picked])
