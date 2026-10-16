@@ -62,8 +62,8 @@ line on what it does.
 
 ## Branches, commits, PRs
 
-Never commit a secret, token, credential, `.env` value or raw production URL. Branch types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`,
-`perf/`, `ci/`.
+Never commit a secret, token, credential, `.env` value or raw production URL. Branch types:
+`feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`, `perf/`, `ci/`.
 
 Commits are Angular, `<type>(<scope>): <summary>`, e.g. `fix(charts): correct tick rounding`. Types
 as above; scope is the package directory or `deps`, omitted when repo-wide; summary imperative,
@@ -136,8 +136,8 @@ hide a version not installable yet. A consumer's CI resolves a young version onc
 
 ## Code style
 
-The global TS style applies, with one override: double quotes, backticks only for interpolated or
-multi-line strings. `deno fmt` decides layout. A new dependency needs a reason in the PR.
+The global TS style applies, with two overrides: double quotes, backticks only for interpolated
+or multi-line strings; and an explicit `throw` on any missing required value, not only env. `deno fmt` decides layout. A new dependency needs a reason in the PR.
 
 ## Component rules
 
