@@ -1382,11 +1382,12 @@ const railShellItems: RailShellItem[] = [
 ]
 
 /**
- * `AccountMenu` at the foot of a sidebar-width column, opening upward, with the chosen theme printed
- * under it so a choice shows.
+ * `AccountMenu` at the foot of a sidebar-width column, opening upward, with the chosen theme and the
+ * last address `navigate` took printed under it, so a choice and a routed "Profile" click show.
  */
 function AccountMenuDemo() {
   const theme = useSignal<AccountMenuTheme>("system")
+  const route = useSignal("none")
   return (
     <div
       class="flex min-h-96 w-60 max-w-full flex-col justify-end gap-4"
@@ -1395,12 +1396,16 @@ function AccountMenuDemo() {
       <AccountMenu
         user={railShellUser}
         items={[{ label: "Profile", href: "#account-profile" }]}
+        navigate={(href) => route.value = href}
         theme={theme.value}
         onThemeChange={(value) => theme.value = value}
         signOut={{ label: "Sign out", action: "#account-sign-out", onClick: () => undefined }}
       />
       <p class="text-sm text-muted">
         Theme: <strong data-e2e="account-menu-demo-theme">{theme.value}</strong>
+      </p>
+      <p class="text-sm text-muted">
+        Routed to: <strong data-e2e="account-menu-demo-route">{route.value}</strong>
       </p>
     </div>
   )
@@ -2250,6 +2255,12 @@ useEffect(() => {
         description: "The last entry, after a divider; a form post, so it is never a link.",
       },
       {
+        name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "The app's router: a plain click on a link item calls it instead of loading the page; a Ctrl-click stays the browser's.",
+      },
+      {
         name: "display",
         type: `"full" | "avatar"`,
         description:
@@ -2264,6 +2275,7 @@ useEffect(() => {
     snippet: `<AccountMenu
   user={{ name: "Uma Lee", email: "uma@example.com" }}
   items={[{ label: "Profile", href: "/profile" }]}
+  navigate={(href) => router.navigate(href)}
   theme={theme}
   onThemeChange={setTheme}
   signOut={{ label: "Sign out", action: "/sign-out" }}

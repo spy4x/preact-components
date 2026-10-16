@@ -2317,7 +2317,7 @@ Extracted from earlier source applications.
 
 | Component         | Subpath             | Ports / key props                                                                                                                                                                           |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`     | `account-menu`      | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `dataE2E?`, `labels?`                                                                     |
+| `AccountMenu`     | `account-menu`      | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `navigate?`, `dataE2E?`, `labels?`                                                        |
 | `AuthForm`        | `auth-form`         | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
 | `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
@@ -3106,10 +3106,10 @@ links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`
 asking to close, so it must not fight wherever the click actually sends focus next.
 
 **`navigate` is the client-router port, shaped like `RailShell`'s `navigateLink`.** Without it, every link is an
-ordinary link. With it, a plain left click on a nav link, or on an action that has an `href`, calls
-`navigate(href)` and cancels the browser's own navigation. A click with Ctrl, Meta, Shift or Alt
-held, or with another button, is left to the browser, so "open in a new tab" still works, and such a
-click leaves the drawer open. A link to another origin is always the browser's, since a router
+ordinary link. With it, a plain left click on a nav link, on an action that has an `href`, or on a
+link item of the user menu (passed on to `AccountMenu`), calls `navigate(href)` and cancels the
+browser's own navigation. A click with Ctrl, Meta, Shift or Alt held, or with another button, is
+left to the browser, so "open in a new tab" still works, and such a click leaves the drawer open. A link to another origin is always the browser's, since a router
 cannot open another site. A click something earlier already cancelled (a capture listener of
 the app's own router, say) does not call the port twice; in the drawer it still closes the drawer.
 Enter on a focused link fires the same plain click, so the keyboard takes the same path.
@@ -3174,6 +3174,12 @@ carries the same one at its foot. It is `ui/`'s `Dropdown`, so the keyboard, the
 fallback and the focus moves are that component's. The menu holds, in order: the caller's `items`
 (a link, a button, or a form post through `action`), the theme choice when `onThemeChange` is
 given, and `signOut` after a divider.
+
+**`navigate` is the client-router port, as on `DropdownItem`.** Without it, a link item is an
+ordinary link and choosing it loads the page. With it, a plain left click on a link item (an `href`
+and no `action`) calls `navigate(href)` and cancels the browser's own navigation, so "Profile" does
+not reload the app. A click with Ctrl, Meta, Shift or Alt held, a click with another button, and a
+link to another origin are left to the browser. Form posts and buttons never call it.
 
 **Two triggers.** `display="full"`, the default, is one wide button with the avatar, the name and
 the e-mail, named by that text (the avatar is `alt=""`, since the name is printed beside it); its

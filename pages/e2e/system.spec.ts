@@ -61,6 +61,28 @@ async function expectAxeClean(page: Page, selector: string): Promise<string> {
 const ROUTE_PAGE = `[data-e2e="route-demo-page"]`
 const ROUTE_HEADING = `${ROUTE_PAGE} h1`
 
+/**
+ * Click `item` (with `modifiers`, if any) and report whether the page had cancelled the browser's
+ * own navigation by the time the click reached the item's last listener. The listener added here
+ * runs after the component's own, records `defaultPrevented`, then cancels the click itself, so a
+ * modifier click opens no tab and a link left to the browser does not move the guide page.
+ */
+async function clickCancelled(item: Locator, modifiers: ("Control" | "Meta")[] = []) {
+  // Kept on `window`, since choosing an item closes the menu and hides the item before it is read.
+  type Watched = typeof globalThis & { e2eClickCancelled?: boolean }
+  await item.evaluate((element) => {
+    delete (globalThis as Watched).e2eClickCancelled
+    element.addEventListener("click", (event) => {
+      ;(globalThis as Watched).e2eClickCancelled = event.defaultPrevented
+      event.preventDefault()
+    }, { once: true })
+  })
+  await item.click({ modifiers })
+  const cancelled = await item.page().evaluate(() => (globalThis as Watched).e2eClickCancelled)
+  if (cancelled === undefined) throw new Error("the click never reached the item")
+  return cancelled
+}
+
 /** Press one of the route demo's controls. */
 const routeControl = (page: Page, name: string) => page.locator(`[data-e2e="route-demo-${name}"]`)
 
@@ -540,6 +562,51 @@ export const specs: readonly Spec[] = [
         throw new Error("Dark is not checked after it was chosen")
       }
       return "opened upward; Dark chosen and checked"
+    },
+  },
+  {
+    name:
+      "AccountMenu: a plain click on a link item calls navigate instead of following the link, " +
+      "and a Ctrl-click leaves the link to the browser",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`[data-e2e="account-menu-demo"]`)
+      const trigger = card.locator(`[data-e2e="account-menu-button"]`)
+      const route = card.locator(`[data-e2e="account-menu-demo-route"]`)
+      const profile = card.getByRole("menuitem", { name: "Profile", exact: true })
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      if (await clickCancelled(profile, ["Control"])) {
+        throw new Error("a Ctrl-click on Profile cancelled the browser's own navigation")
+      }
+      if (await route.textContent() !== "none") {
+        throw new Error(`a Ctrl-click on Profile called navigate: ${await route.textContent()}`)
+      }
+      if (!await profile.isVisible()) await trigger.click()
+      const before = page.url()
+      if (!await clickCancelled(profile)) {
+        throw new Error("a plain click on Profile left the browser to follow the link")
+      }
+      await route.filter({ hasText: "#account-profile" }).waitFor()
+      if (page.url() !== before) throw new Error(`the page moved to ${page.url()}`)
+      return "Ctrl-click left to the browser; plain click routed to #account-profile"
+    },
+  },
+  {
+    name: "Shell: a plain click on a user-menu link goes through navigate",
+    pageId: "system",
+    run: async (page) => {
+      const shell = page.locator(`[data-e2e="shell-demo"]`)
+      const trigger = shell.locator(`[data-e2e="shell-user-menu-button"]`)
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      const profile = shell.getByRole("menuitem", { name: "Your profile", exact: true })
+      if (!await clickCancelled(profile)) {
+        throw new Error("a plain click on Your profile left the browser to follow the link")
+      }
+      await shell.locator(`[data-e2e="shell-demo-path"]`).filter({ hasText: /^\/profile$/ })
+        .waitFor()
+      return "Your profile routed to /profile"
     },
   },
 ]

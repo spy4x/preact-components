@@ -97,6 +97,15 @@ export interface AccountMenuProps {
   vertical?: "auto" | "up" | "down"
   /** Which edge of the trigger the menu lines up with. Defaults to `"left"`. */
   horizontal?: "left" | "right"
+  /**
+   * Port to the app's client router. Given, a plain left click on a link item (one with an
+   * {@link AccountMenuItem.href} and no {@link AccountMenuItem.action}) calls it with the item's
+   * `href` instead of the browser following the link, so choosing "Profile" does not reload the
+   * app. A click with a modifier held, a middle click and a link to another origin stay the
+   * browser's, as on `DropdownItem`. Ignored on items without `href` and on form posts. Without it,
+   * every link is an ordinary link.
+   */
+  navigate?: (href: string) => void
   /** `data-e2e` on the trigger. Defaults to `"account-menu-button"`. */
   dataE2E?: string
   labels?: AccountMenuLabels
@@ -111,10 +120,16 @@ export interface AccountMenuProps {
  * item: a plain submit button in the tab order before hydration, a `role="menuitem"` out of the tab
  * order after, which `Dropdown` finds for the arrow keys and closes on its click (#535, #537).
  */
-function AccountMenuEntry({ item }: { item: AccountMenuItem }): JSX.Element {
+function AccountMenuEntry(
+  { item, navigate }: { item: AccountMenuItem; navigate?: (href: string) => void },
+): JSX.Element {
   const { label, href, action, method = "post", onClick, dataE2E } = item
   if (action === undefined) {
-    return <DropdownItem href={href} onClick={onClick} dataE2E={dataE2E}>{label}</DropdownItem>
+    return (
+      <DropdownItem href={href} navigate={navigate} onClick={onClick} dataE2E={dataE2E}>
+        {label}
+      </DropdownItem>
+    )
   }
   return (
     <form
@@ -162,6 +177,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     display = "full",
     vertical = "up",
     horizontal = "left",
+    navigate,
     dataE2E = "account-menu-button",
     labels,
   } = props
@@ -205,7 +221,9 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
       horizontal={horizontal}
       panelClasses={cn("z-30", full && "min-w-full")}
     >
-      {items.map((item, index) => <AccountMenuEntry key={`${index}-${item.label}`} item={item} />)}
+      {items.map((item, index) => (
+        <AccountMenuEntry key={`${index}-${item.label}`} item={item} navigate={navigate} />
+      ))}
       {onThemeChange && (
         <div role="group" aria-label={themeHeading} data-e2e="account-menu-theme">
           <div aria-hidden="true" class="px-4 pt-2 pb-1 text-xs font-medium text-muted">
@@ -226,7 +244,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
       {signOut && (
         <>
           <div role="separator" class="my-1 border-t border-subtle" />
-          <AccountMenuEntry item={signOut} />
+          <AccountMenuEntry item={signOut} navigate={navigate} />
         </>
       )}
     </Dropdown>
