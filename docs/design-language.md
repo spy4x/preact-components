@@ -153,13 +153,13 @@ Tailwind's `duration-150` and `ease-out` express all of this; there are no motio
 
 Pick the shell by the kind of app; all of them are library components.
 
-| Kind of app                       | Shell                                                                                                                                                                                                                        |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Product (SPA)                     | `RailShell`: a rail of at most five destinations from `md`, the same five as a bottom tab bar on a phone. A slim top bar (`h-14`, `bg-surface`, bottom hairline) holds the brand mark, a workspace picker and the user menu. |
-| Admin panel                       | The same shell as its product, so an operator recognises it, with an "Admin" badge beside the brand mark so nobody mistakes it for the product.                                                                              |
-| Marketing site                    | `SiteHeader` (sticky through its `class` prop, one call to action on the right, a disclosure menu on phones) and `SiteFooter`.                                                                                               |
-| Personal site                     | `SiteHeader` for a few pages, or `RailShell` with a bottom tab bar when the site has five or more sections.                                                                                                                  |
-| Single-page tool (a status board) | A top bar with the brand mark and the page's one control (a search box), then the content column. No rail.                                                                                                                   |
+| Kind of app                       | Shell                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product (SPA)                     | `RailShell` with no top bar; the sidebar is the only chrome: the workspace switcher on top (`sidebarTop`), the navigation, then notifications and the account menu (`AccountMenu`) at the bottom (`sidebarBottom`). Labelled at about 240 px from `lg`, a 72 px icon rail with tooltips from `md`, a bottom tab bar on a phone whose last slot (the avatar) opens the rest. |
+| Admin panel                       | The same shell as its product, so an operator recognises it: no top bar; sidebar: workspace switcher on top, nav, then notifications and account at the bottom. An "Admin" badge in the sidebar's top slot keeps anybody from mistaking it for the product.                                                                                                                 |
+| Marketing site                    | `SiteHeader` (sticky through its `class` prop, one call to action on the right, a disclosure menu on phones) and `SiteFooter`.                                                                                                                                                                                                                                              |
+| Personal site                     | `SiteHeader` for a few pages, or `RailShell` with a bottom tab bar when the site has five or more sections.                                                                                                                                                                                                                                                                 |
+| Single-page tool (a status board) | A top bar with the brand mark and the page's one control (a search box), then the content column. No rail.                                                                                                                                                                                                                                                                  |
 
 **Every signed-in page starts with `PageHeader`:** the title on the left; the one primary action
 and, if needed, one "More actions" menu on the right. On a phone the title stays on one line and
@@ -184,6 +184,7 @@ product.
 | Confirmation of success | The change itself is the confirmation. A toast (`Toastr`) only for something that happened out of view, or that can be undone.                                                |
 | Destructive action      | `ConfirmDialog` naming the thing and the consequence; the danger button says the verb ("Delete note"). A password re-check uses a `Modal` with a danger submit.               |
 | Settings                | `SettingList` and `SettingRow`, grouped by `SettingGroup`; a toggle applies at once, a text value through `InlineEdit`.                                                       |
+| Create or edit a record | Its editor page at `/<entity>/new` and `/<entity>/:id`, one component for both.                                                                                               |
 | Status                  | `Badge` with a word, or `StatusMark` with icon and word. Never a coloured dot alone.                                                                                          |
 
 ### Words
@@ -280,8 +281,10 @@ in the text colour, never in orange.
 
 Every app's mark has the same construction: a rounded square at `--radius-card`, filled with the
 brand hue, holding one simple white glyph, followed by the app's name in Geist 500. The same
-square, without the name, is the favicon (an SVG) and the PWA icon. The `<title>` and manifest
-name say the product's name, never "template".
+square, without the name, is the favicon (an SVG) and the PWA icon. The mark belongs to the
+favicon, the PWA icon and the public site; a signed-in app's chrome draws none, because its
+sidebar starts with the workspace switcher. The `<title>` and manifest name say the product's
+name, never "template".
 
 ## Taste
 

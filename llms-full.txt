@@ -2274,6 +2274,7 @@ Extracted from earlier source applications.
 
 | Component         | Subpath             | Ports / key props                                                                                                                                                                           |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccountMenu`     | `account-menu`      | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `dataE2E?`, `labels?`                                                                     |
 | `AuthForm`        | `auth-form`         | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
 | `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
@@ -2282,7 +2283,7 @@ Extracted from earlier source applications.
 | `SiteFooter`      | `site-footer`       | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
 | `Shell`           | `shell`             | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`       | `state-init`        | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`       | `rail-shell`        | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `header?`, `children`, `labels?`, `class?`                                                                |
+| `RailShell`       | `rail-shell`        | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `header?`, `children`, `labels?`, `class?`                   |
 | `SyncStatus`      | `sync-status`       | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
 | `SavedCopyNotice` | `saved-copy-notice` | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
 | `ConflictChooser` | `conflict-chooser`  | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
@@ -3001,7 +3002,8 @@ other's copy, but `brand` and `status` are the caller's own elements and can onl
 one place — both live in the header alone. A nav item with no `href` renders as a plain heading, and
 its `children` are drawn nested beneath it, always visible; there is no collapse/expand per group.
 
-**The user menu is `ui/`'s `Dropdown`, not a second implementation.** `user: null` renders no menu at
+**The user menu is `AccountMenu`, drawn as its avatar alone (#756).** `AccountMenu` is `ui/`'s
+`Dropdown`, not a second implementation; see "The `AccountMenu` contract". `user: null` renders no menu at
 all — a signed-out visitor draws no trigger for an account that has not signed in. Given a user, the
 trigger is an `Avatar` named from `user.name`, and `Dropdown`'s `triggerNamedByContent` is what turns
 that computed name into the trigger button's own accessible name, the same mechanism
@@ -3121,6 +3123,28 @@ gap with `ring-offset-surface` directly.
 `useMobilePanel`'s own section above for what all three of those buy a visitor. Reusing the hook
 unchanged, rather than writing a second one shaped like it, is what keeps the SiteHeader-vs-Modal
 Escape-scoping proof and the Shell-vs-Dropdown one testing the same code path.
+
+## The `AccountMenu` contract
+
+`AccountMenu` (#756) is the signed-in person's menu, taken out of `Shell` so a `RailShell` sidebar
+carries the same one at its foot. It is `ui/`'s `Dropdown`, so the keyboard, the no-JavaScript
+fallback and the focus moves are that component's. The menu holds, in order: the caller's `items`
+(a link, a button, or a form post through `action`), the theme choice when `onThemeChange` is
+given, and `signOut` after a divider.
+
+**Two triggers.** `display="full"`, the default, is one wide button with the avatar, the name and
+the e-mail, named by that text (the avatar is `alt=""`, since the name is printed beside it); its
+menu opens upward and spans the button's width. `display="avatar"` is the avatar alone, named by
+`Avatar`'s label, the person's name: `Shell`'s header and the 72 px rail use it. `labels.trigger`
+replaces either name.
+
+**The theme choice is three radio items** (System, Light, Dark), each a `menuitemradio` with
+`aria-checked`, in a `role="group"` named by the visible "Theme" heading. Choosing one calls
+`onThemeChange` and closes the menu; the component stores nothing.
+
+**The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `RailShell`'s tab bar (`z-10`).
+Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that
+puts `AccountMenu` in a scrolling overlay leaves room below or above it.
 
 ## The `StateInit` contract
 
@@ -3534,9 +3558,11 @@ unreachable from a string render.
 ## The `RailShell` contract
 
 `RailShell` (#257) is a third frame beside `Shell` and `SiteHeader`, for a site whose navigation is
-a short list of destinations with one primary action. From `md` up it draws a vertical rail: each
-item an icon above a short label, and the primary action pinned at the top in the primary colour.
-Below `md` the rail gives way to a bottom tab bar of at most five slots. `Shell` is different in
+a short list of destinations with one primary action. From `lg` up it draws a labelled sidebar of
+240 px: each item an icon beside its label, and the primary action pinned at the top in the primary
+colour. From `md` to `lg` the same column is a 72 px icon rail, each entry named by its label for
+assistive technology and showing it as a tooltip on hover and focus (#756). Below `md` the column
+gives way to a bottom tab bar of at most five slots. `Shell` is different in
 kind — a header, a sidebar, a user menu and a `<details>` drawer for a signed-in app — and so is
 `SiteHeader`, a public site's top bar that collapses into the same kind of `<details>` panel.
 Neither has a rail or a tab bar, which is why this is a new component rather than a mode of either.
@@ -3559,6 +3585,37 @@ for engines that do not. With no JavaScript every entry that has an `href` is a 
 commands still opens and closes the overlay — `pages/checks/system.ts` proves that in Chromium with
 script execution disabled.
 
+**The sidebar is the app's only chrome (#756).** `sidebarTop` and `sidebarBottom` are render props:
+the column calls them with the place it draws them in — `"sidebar"` from `lg`, `"rail"` from `md`
+to `lg`, `"overlay"` on a phone — so a slot can draw a compact form in the 72 px rail, such as a
+workspace switcher reduced to its mark or `AccountMenu` with `display="avatar"`. The column is
+sticky at the window's full height (`--rail-shell-height`, `100dvh` by default, which a bounded
+container sets to its own height), with the top slot above the items, the bottom slot at its foot,
+and the item list scrolling on its own between them when the window is too short for it, as on a
+phone held sideways. Both slots are drawn twice in the column, once per width, and
+CSS shows one; a slot's controls therefore need no ids of their own, or ids that differ by place.
+
+**Tooltips in the icon rail** are `aria-hidden` copies of the label, drawn on hover and on keyboard
+focus. Each is `position: fixed`, so the scrolling list does not clip it; the entry's own box,
+read on hover and focus, places it at the entry's right edge, so it needs JavaScript and shows
+only after hydration. Scrolling the list hides it until the next hover or focus. An ancestor with a
+`transform` or `filter` becomes a fixed element's containing block and would misplace it. Escape hides them while the pointer or focus stays in the column, as a tooltip must be
+dismissable without moving; the next focus move or pointer move brings them back.
+
+**Counters.** `RailShellItem.counter` draws a badge on the entry in every place: beside the label in
+the sidebar, on the icon's corner in the rail and the tab bar, and beside the label in the overlay.
+The badge is `aria-hidden`; the entry is named by an `aria-label` of its label and
+`labels.counter(count)`, "Notes, 3" by default (hidden text after the label would reach Chromium's
+name as "Notes , 3"), so a screen reader hears "Notes, 3 unread" with `counter: (n) => \`${n} unread\``.
+Past 99 the badge shows "99+" and the name keeps the exact count. A counter of 0 draws nothing.
+
+**The phone bar's last slot.** With either slot given, the bar keeps its fifth place for the
+overlay, even when every item would fit, because the slots have nowhere else to go on a phone. The
+overlay then holds `sidebarTop("overlay")`, the overflow entries (if any) and
+`sidebarBottom("overlay")`. `moreTab` sets the slot's `icon` (any node, such as an `Avatar` with
+`alt=""`) and its `counter`; its label stays `labels.more`, so an app that puts the account there
+names it "Account". Without slots and `moreTab` the slot is "More" with three dots, as before.
+
 **Nothing covers the page.** The rail is a column in the layout, and its contents stick to the top
 while the page scrolls. The tab bar sticks to the bottom but keeps its place in the flow, so the
 page's last line always ends above it; it pads itself by the bottom safe-area inset. Inside a
@@ -3577,7 +3634,8 @@ another site. In the "More" overlay the entry closes the overlay either way. `na
 port for an entry with no `href`, which is a button. Pair it with `useRouteAnnouncer` (see "Route
 changes move focus and set the title") so a routed click moves focus and sets the title.
 
-**`header` is the app's banner.** The brand, a picker or the user menu go in `header`, not in
+**`header` is an older layout's banner.** The house layout has no top bar (see
+`docs/design-language.md`), so a new app leaves `header` out. Where one is drawn, the brand, a picker or the user menu go in `header`, not in
 `children`: `header` renders in a `<header>` beside `<main>`, never inside it, so at page level it is
 the document's banner landmark, and the skip link — first in tab order, aimed at `<main>` — moves
 focus past the rail and the header's controls in one press. Left out, there is no `<header>`.
@@ -3592,7 +3650,10 @@ The "More" glyph is three dots drawn inline, so the package gains no icon.
 
 `rail-shell.test.tsx` proves what a string render can: the split at five, the primary action's
 place in it, `aria-current` from either `currentKey` or `currentPath`, the "More" button pointing at
-the dialog, and every label's English default and override. The breakpoint switch, the layout, the
+the dialog, every label's English default and override, each slot called with its places, the
+counter's badge and name, and the last slot's icon and counter. The sidebar's width, the slots'
+places at each width, the tooltip and its Escape, and the overlay's slots and focus return are
+proven in `pages/e2e/system.spec.ts`. The breakpoint switch, the layout, the
 dialog's keyboard and pointer behaviour, the focus moves, the header's banner role, the skip
 link's jump past the header and which link clicks `navigateLink` takes are proven in
 `pages/checks/system.ts`.
