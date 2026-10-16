@@ -35,8 +35,8 @@ export interface CommandPaletteLabels {
   /** What the list says when nothing matches. */
   empty: string
   /**
-   * What the list says while a `search` call runs, once the reader has waited for it
-   * {@link SLOW_SEARCH_MS} milliseconds.
+   * What the palette says while a `search` call runs, once the reader has waited 300 ms for it:
+   * beside the field while earlier results are listed, in the list when it is empty.
    */
   loading: string
   /** What the list says when a `search` call failed. */
@@ -116,7 +116,7 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * pause in typing. `signal` aborts when a newer query or a close makes the answer stale; a stale
    * answer is ignored even when the function does not listen to `signal`. A rejection shows the
    * error label. While the next answer loads, the previous results stay listed as they are; past
-   * {@link SLOW_SEARCH_MS} the loading label shows beside the field and is announced. Enter pressed
+   * 300 ms the loading label shows beside the field and is announced. Enter pressed
    * while it loads waits for the answer and picks its first result.
    */
   search: (query: string, signal: AbortSignal) => Promise<readonly T[]>
@@ -383,15 +383,17 @@ export function CommandPalette<T extends CommandPaletteOption>(
   }
 
   const listbox = `${id}-results`
-  const optionId = (index: number) => `${id}-result-${index}`
+  // Keyed by the option's own id, not its row: when an answer puts another option in the
+  // highlighted row, the active descendant changes and a screen reader announces the new one.
+  const optionId = (option: T) => `${id}-result-${encodeURIComponent(option.id)}`
   const active = flat.length === 0 ? -1 : Math.min(activeIndex, flat.length - 1)
 
   // Keep the highlighted result on screen, as `Combobox` does: the list scrolls by just the row
   // that went past its edge, and a row already in view does not move it.
   useEffect(() => {
     if (active < 0 || !dialog.current?.open) return
-    document.getElementById(optionId(active))?.scrollIntoView({ block: "nearest" })
-  }, [active, flat.length])
+    document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
+  }, [active, flat.length, flat[active]?.id])
   const status = !remoteMode || remote.status === Status.IDLE
     ? flat.length === 0 ? labels.empty : ""
     : remote.status === Status.SLOW
@@ -407,7 +409,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const row = (option: T, index: number) => (
     <li
       key={option.id}
-      id={optionId(index)}
+      id={optionId(option)}
       role="option"
       aria-selected={index === active}
       onClick={() => choose(option)}
@@ -495,7 +497,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-expanded="true"
             aria-controls={listbox}
             aria-autocomplete="list"
-            aria-activedescendant={active >= 0 ? optionId(active) : undefined}
+            aria-activedescendant={active >= 0 ? optionId(flat[active]) : undefined}
             aria-label={labels.search}
             placeholder={labels.placeholder}
             autocomplete="off"

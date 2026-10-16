@@ -114,6 +114,17 @@ describe("CommandPalette", () => {
     expect(html.indexOf(">Home<")).toBeLessThan(html.indexOf(">Badge<"))
   })
 
+  it("names each result after its option's id, so another option in a row gets another id", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Home", { id: "home page" }), option("Badge")]}
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toMatch(/<li id="[^"]+-result-home%20page" role="option"/)
+    expect(html).toMatch(/<li id="[^"]+-result-Badge" role="option"/)
+  })
+
   it("takes every word from labels", () => {
     const html = render(
       <CommandPalette

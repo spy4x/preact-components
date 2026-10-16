@@ -2321,6 +2321,19 @@ async function openRemotePalette(page: Page, width = 1280) {
           .join("|") === wanted,
       labels.join("|"),
     )
+  /** Waits until the group headings are exactly these, each as "heading:number of rows". */
+  const headingsAre = (headings: readonly string[]) =>
+    page.waitForFunction(
+      (wanted) =>
+        [...document.querySelectorAll(`[data-e2e="palette-remote"] [role="group"]`)]
+          .map((group) =>
+            `${document.getElementById(group.getAttribute("aria-labelledby") ?? "")?.textContent}:${
+              group.querySelectorAll(`[role="option"]`).length
+            }`
+          )
+          .join("|") === wanted,
+      headings.join("|"),
+    )
   await card.locator(`[data-e2e="palette-remote-open"]`).click()
   await field.and(page.locator(":focus")).waitFor()
   await resultsAre(["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"])
@@ -2331,6 +2344,7 @@ async function openRemotePalette(page: Page, width = 1280) {
     status,
     idle,
     resultsAre,
+    headingsAre,
     /** Waits until the card's counter `name` ("searches", "answered") reads exactly `value`. */
     counterIs: (name: string, value: string) =>
       counter(name).filter({ hasText: new RegExp(`^${value}$`) }).waitFor(),
@@ -2361,6 +2375,7 @@ function remotePaletteSpecs(): Spec[] {
         // Every search has answered, the slow, stale one for "a" included.
         await palette.counterIs("answered", String(started + 2))
         await palette.resultsAre(["Apple", "Apricot", "Grape", "Papaya"])
+        await palette.headingsAre(["Fruit with A:2", "Fruit with G:1", "Fruit with P:1"])
         await palette.idle.waitFor({ state: "attached" })
       },
     },
@@ -2485,6 +2500,52 @@ function remotePaletteSpecs(): Spec[] {
         }
         await picked.filter({ hasText: /^Banana$/ }).waitFor()
         await palette.dialog.waitFor({ state: "hidden" })
+      },
+    },
+    {
+      name: "CommandPalette remote: typing again after an Enter that waits for a search drops " +
+        "that Enter, so the new answer is listed, not picked",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const picked = page.locator(`[data-e2e="palette-remote-picked"]`)
+        await page.keyboard.type("b")
+        await page.keyboard.press("Enter")
+        await page.keyboard.type("l")
+        await palette.resultsAre(["Blackberry"])
+        await palette.idle.waitFor({ state: "attached" })
+        await palette.field.and(page.locator(":focus")).waitFor()
+        const now = await picked.textContent()
+        if (now !== "nothing yet") throw new Error(`the answer for "bl" picked "${now}"`)
+      },
+    },
+    {
+      name: "CommandPalette remote: closing the palette drops an Enter that waits for a search, " +
+        "so opening it again picks nothing",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const picked = page.locator(`[data-e2e="palette-remote-picked"]`)
+        await page.keyboard.type("b")
+        await page.keyboard.press("Enter")
+        await page.keyboard.press("Escape")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await page.locator(`[data-e2e="palette-remote-open"]`).click()
+        await palette.resultsAre([
+          "Apple",
+          "Apricot",
+          "Banana",
+          "Blackberry",
+          "Cherry",
+          "Grape",
+          "Papaya",
+        ])
+        await palette.idle.waitFor({ state: "attached" })
+        const open = await palette.dialog.isVisible()
+        const now = await picked.textContent()
+        if (!open || now !== "nothing yet") {
+          throw new Error(`after reopening: open ${open}, picked "${now}"`)
+        }
       },
     },
     {
