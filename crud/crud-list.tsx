@@ -7,7 +7,7 @@ import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
 import { Pagination, type PaginationProps } from "@spy4x/preact-ui/pagination"
 import { Stack } from "@spy4x/preact-ui/layout"
 import { Table } from "@spy4x/preact-ui/table"
-import { batch, type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
+import { batch, effect, type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
 import { filterRows } from "@spy4x/platform/universal/text"
@@ -379,10 +379,15 @@ function SearchBox(
     return () => clearTimeout(timer)
   }, [draft.value])
 
-  const settled = value.value
-  useEffect(() => {
-    if (settled !== draft.peek().trim()) draft.value = settled
-  }, [settled])
+  // A signal effect, so the draft follows in the same task as the write. A render effect waits for
+  // the next paint, and what happened in between was lost: the late effect put the old term back
+  // into a field the person had just typed in, or the typing pause committed the old draft over a
+  // term set from outside. Keyed on the signal, so a caller that hands over another one is followed.
+  useEffect(() =>
+    effect(() => {
+      const settled = value.value
+      if (settled !== draft.peek().trim()) draft.value = settled
+    }), [value])
 
   return (
     <form
