@@ -52,6 +52,7 @@
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",
     "./tag-input": "./tag-input.tsx",
+    "./timeline": "./timeline.tsx",
     "./toastr": "./toastr.tsx",
     "./toggle-field": "./toggle-field.tsx",
     "./toggle-switch": "./toggle-switch.tsx",
