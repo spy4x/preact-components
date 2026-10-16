@@ -74,7 +74,15 @@ export {
 } from "./onboarding.ts"
 export { patchSignal } from "./patch-signal.ts"
 export {
+  createSettingsStore,
+  type SettingsSaveOutcome,
+  type SettingsSaveRequest,
+  type SettingsSignals,
+  type SettingsTransport,
+} from "./settings.ts"
+export {
   createThemeStore,
+  syncThemeWithSettings,
   type Theme,
   type ThemeBootstrapOptions,
   themeBootstrapScript,

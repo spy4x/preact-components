@@ -12,6 +12,7 @@
     "./online": "./online.ts",
     "./patch-signal": "./patch-signal.ts",
     "./push-subscription": "./push-subscription.ts",
+    "./settings": "./settings.ts",
     "./theme": "./theme.ts",
     "./toast": "./toast.ts",
     "./types": "./types.ts",
