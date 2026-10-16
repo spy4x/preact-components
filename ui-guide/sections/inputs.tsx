@@ -168,7 +168,9 @@ function DropdownItemDemo() {
           A link to another site, which navigate never sees
         </DropdownItem>
         <DropdownItem onClick={() => {}}>A button, because it has none</DropdownItem>
-        <DropdownItem danger onClick={() => {}}>Destructive, through danger</DropdownItem>
+        <DropdownItem danger onClick={() => {}} dataE2E="dropdown-item-danger">
+          Destructive, through danger
+        </DropdownItem>
         <DropdownItem disabled onClick={() => {}} dataE2E="dropdown-item-disabled">
           Disabled
         </DropdownItem>
