@@ -84,24 +84,23 @@ describe("the ink theme", () => {
     }
   })
 
-  it("repaints .btn-primary's fill by redeclaring --color-primary under .dark[data-theme=ink]", async () => {
-    const css = await compileInk(["btn", "btn-primary"])
-    const inkRule = css.slice(
-      css.indexOf('.dark[data-theme="ink"]'),
-      css.indexOf("}", css.indexOf('.dark[data-theme="ink"]')) + 1,
+  it("paints no primary or accent of its own, so the app's brand colour shows through", () => {
+    for (const token of ["--color-primary", "--color-primary-foreground", "--color-accent"]) {
+      expect(INK_CSS, `ink declares ${token}`).not.toMatch(new RegExp(`${token}:`))
+    }
+  })
+
+  it("draws links and headings in the app's accent, below an app's own :root value", async () => {
+    const css = await compileInk(["btn-primary"])
+    expect(css).toMatch(
+      /@layer theme\.preact-tokens \{\s*\.dark\[data-theme="ink"\] \{\s*--color-primary-muted: var\(--color-accent-400\);/,
     )
-    // `.btn-primary` itself only ever reads `var(--color-primary, <default>)`, unchanged by ink —
-    // proving that alone would still pass if ink's own --color-primary declaration were deleted,
-    // since the rule would just fall through to the default. The actual repaint happens in ink's
-    // own block, so assert its declared value directly.
-    expect(inkRule).toContain("--color-primary: oklch(0.72 0.15 200)")
   })
 
   it("keeps the focus ring and the nav indicator off the accent", () => {
     const token = (name: string) => INK_CSS.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]
-    expect(token("--color-focus-ring")).not.toBe(token("--color-primary"))
-    expect(token("--color-focus-ring")).not.toBe(token("--color-primary-muted"))
-    expect(token("--color-nav-active")).not.toBe(token("--color-primary"))
+    expect(token("--color-focus-ring")).toBe("oklch(0.86 0.02 260)")
+    expect(token("--color-nav-active")).toBe("oklch(0.86 0.02 260)")
   })
 
   it("points .btn's focus-visible outline at --color-focus-ring under any .dark", async () => {

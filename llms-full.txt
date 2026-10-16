@@ -4324,8 +4324,15 @@ Ink applies to an element carrying **both** `.dark` and `data-theme="ink"` — t
 <html class="dark" data-theme="ink">
 ```
 
-Beyond repainting `--color-primary`, `--color-surface`, `--color-canvas` and the rest of the
-tokens above, ink adds a handful its own: a four-step surface scale for a navigation rail
+Ink paints no brand colour of its own: it leaves `--color-primary`, `--color-primary-foreground` and
+`--color-accent` to the app's `:root` (or, when the app sets none, to the default dark palette), so
+an app on ink keeps its brand hue in dark mode. The one accent token it sets is
+`--color-primary-muted`, the link and heading tone, to `var(--color-accent-400)`: the app's accent at
+step 400, as the default dark palette draws its rings and selected text. That declaration sits in
+the tokens' cascade layer, so an app that sets `--color-primary-muted` on `:root` still wins.
+
+Beyond repainting `--color-surface`, `--color-canvas` and the rest of the neutral tokens above, ink
+adds a handful its own: a four-step surface scale for a navigation rail
 (`--color-surface-page`, `--color-surface-rail`, `--color-surface-card`, `--color-surface-active`),
 a hairline rule colour (`--color-hairline`), two named text tones (`--color-text`,
 `--color-text-muted`), and — the reason ink exists as a second selector rather than a copy of the

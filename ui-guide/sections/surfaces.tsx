@@ -15,16 +15,15 @@ import { Button, Cluster, Grid, Stack } from "@spy4x/preact-ui"
 import type { ClassDemoFragment } from "../registry.ts"
 
 /**
- * Every custom property `.dark[data-theme="ink"]` declares, as a `property → value` map parsed
+ * Every custom property the `.dark[data-theme="ink"]` blocks declare, as a `property → value` map parsed
  * straight out of `INK_CSS` — the same generated constant a consuming app splices into its own
  * build. Reading the values here rather than copying them by hand is what {@link InkPaletteDemo}'s
  * swatches need: a literal copy drifts silently the moment `ink.css` changes, and nothing catches
  * that until someone notices the catalogue disagrees with the theme it is showing.
  */
 function parseInkDeclarations(): Record<string, string> {
-  const start = INK_CSS.indexOf('.dark[data-theme="ink"] {')
-  const end = INK_CSS.indexOf("\n}", start)
-  const block = INK_CSS.slice(start, end)
+  // Every block after the header comment: the unlayered palette and the layered link tone.
+  const block = INK_CSS.slice(INK_CSS.indexOf('.dark[data-theme="ink"] {'))
   const declarations: Record<string, string> = {}
   for (const match of block.matchAll(/(--[a-z-]+):\s*([^;]+);/g)) {
     declarations[match[1]] = match[2].trim()
@@ -41,14 +40,14 @@ const INK_SWATCH_LABELS: Record<string, string> = {
   "--color-hairline": "hairline",
   "--color-text": "text",
   "--color-text-muted": "text-muted",
-  "--color-primary": "primary action",
+  "--color-primary-muted": "links (accent)",
   "--color-nav-active": "nav-active",
   "--color-focus-ring": "focus-ring",
 }
 
 /**
  * Swatches for the ink theme's tokens: the surface scale, the hairline, the two text
- * tones, the one accent, and the nav-active/focus tokens split off it.
+ * tones, the link tone taken from the app's accent, and the nav-active/focus tokens split off it.
  *
  * `ink.css` only paints once `.dark` and `data-theme="ink"` sit together on `<html>`, owned by the
  * host page's colour-scheme toggle. An inner element can wear `.dark` (the terminal `WindowFrame`
