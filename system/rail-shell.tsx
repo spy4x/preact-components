@@ -259,7 +259,7 @@ function MoreDots(): JSX.Element {
  * contents stick to the top while the page scrolls. The tab bar sticks to the bottom but keeps its
  * place in the flow, so the page's last line always ends above it, and it pads itself by the
  * device's bottom safe-area inset. Below `md` the shell also gives the root element a bottom scroll
- * padding of the bar's height (the preset's `scroll-pb-tab-bar`), so a control a person tabs to
+ * padding of the bar's height (the preset's `pc-scroll-pb-tab-bar`), so a control a person tabs to
  * near the bottom of the window scrolls into view above the bar instead of behind it. That holds
  * when the window scrolls the page, which is how a page frame is used; a caller that scrolls the
  * shell inside a box of its own sets the same utility on that box.
@@ -309,7 +309,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
   return (
     <div
       class={cn(
-        "flex min-h-dvh flex-col md:flex-row max-md:[:root:has(&)]:scroll-pb-tab-bar",
+        "flex min-h-dvh flex-col md:flex-row max-md:[:root:has(&)]:pc-scroll-pb-tab-bar",
         className,
       )}
     >
