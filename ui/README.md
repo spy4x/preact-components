@@ -2078,11 +2078,6 @@ components and tests means exactly that: nothing outside this package should bui
   value of a `Field`'s label, and it throws on a `labelFor` that is neither a boolean nor a
   non-empty id.
 
-### FaqList (`./faq-list`)
-
-- `faqPageJsonLd(items)` returns the schema.org `FAQPage` node for `{ question, answerText }`
-  items, with no `@context`, so it goes straight into `SEOHead`'s `jsonLd` beside a `FaqList`.
-
 ### FileInput (`./file-input`)
 
 - `matchesAccept(file, accept)` answers whether a file matches an `accept` list of extensions

@@ -26,26 +26,6 @@ export interface FaqListProps {
   class?: string
 }
 
-/** One question and answer of a schema.org `FAQPage`, as plain text. */
-export interface FaqJsonLdItem {
-  question: string
-  /** The answer as plain text: search engines read no markup here. */
-  answerText: string
-}
-
-/** A schema.org `Question` with its accepted answer. */
-export interface FaqQuestionJsonLd {
-  "@type": "Question"
-  name: string
-  acceptedAnswer: { "@type": "Answer"; text: string }
-}
-
-/** A schema.org `FAQPage` node, without `@context`, ready for `SEOHead`'s `jsonLd` graph. */
-export interface FaqPageJsonLd {
-  "@type": "FAQPage"
-  mainEntity: FaqQuestionJsonLd[]
-}
-
 const item = "group/faq scroll-mt-16 target:bg-selected-soft"
 
 const summary =
@@ -89,23 +69,4 @@ export function FaqList(
       ))}
     </div>
   )
-}
-
-/**
- * The schema.org `FAQPage` node for a list of questions, for `SEOHead`'s `jsonLd`.
- *
- * It carries no `@context`: `SEOHead` wraps every entity in one `@graph` that sets it.
- *
- * @param items Each question with its answer as plain text.
- * @returns The `FAQPage` node.
- */
-export function faqPageJsonLd(items: readonly FaqJsonLdItem[]): FaqPageJsonLd {
-  return {
-    "@type": "FAQPage",
-    mainEntity: items.map(({ question, answerText }) => ({
-      "@type": "Question",
-      name: question,
-      acceptedAnswer: { "@type": "Answer", text: answerText },
-    })),
-  }
 }

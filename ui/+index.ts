@@ -466,14 +466,6 @@ export {
   type UnsavedGuardProps,
   type UnsavedLink,
 } from "./unsaved-guard.tsx"
-export {
-  type FaqItem,
-  type FaqJsonLdItem,
-  FaqList,
-  type FaqListProps,
-  type FaqPageJsonLd,
-  faqPageJsonLd,
-  type FaqQuestionJsonLd,
-} from "./faq-list.tsx"
+export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { type StepItem, Steps, type StepsProps } from "./steps.tsx"
 export { WindowFrame, type WindowFrameProps, type WindowFrameVariant } from "./window-frame.tsx"

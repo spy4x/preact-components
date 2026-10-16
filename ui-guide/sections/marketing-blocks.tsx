@@ -30,8 +30,7 @@ const STEPS = [
 
 export const marketingBlockDemos: DemoFragment = {
   FaqList: {
-    summary:
-      "Questions and answers as native disclosures that open with no JavaScript, with a helper for the matching `FAQPage` JSON-LD.",
+    summary: "Questions and answers as native disclosures that open with no JavaScript.",
     wide: true,
     props: [
       {
@@ -57,10 +56,7 @@ export const marketingBlockDemos: DemoFragment = {
     { question: "Can I export my data?", answer: "Yes, as CSV.", id: "faq-export" },
     { question: "Is there a free plan?", answer: "Yes, for one person." },
   ]}
-/>
-
-// In the page head, beside it:
-jsonLd={[faqPageJsonLd([{ question: "Can I export my data?", answerText: "Yes, as CSV." }])]}`,
+/>`,
     render: () => <FaqList items={FAQ} name="guide-faq" />,
   },
   Steps: {

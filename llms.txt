@@ -549,10 +549,7 @@ ErrorBoundary	component	@spy4x/preact-ui	Catches an error thrown while its child
 ErrorState	component	@spy4x/preact-ui	Message for an expected failure, shown where the result that failed would have been, such as a list whose request failed.
 ExactDateTimeRange	type	@spy4x/preact-ui	A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant.
 FaqItem	type	@spy4x/preact-ui	One question of a `FaqList`.
-FaqJsonLdItem	type	@spy4x/preact-ui	One question and answer of a schema.org `FAQPage`, as plain text.
 FaqList	component	@spy4x/preact-ui	Questions and answers as native `<details>` disclosures: they open and close with no JavaScript, so the list works on a server-rendered page with scripts off.
-FaqPageJsonLd	type	@spy4x/preact-ui	A schema.org `FAQPage` node, without `@context`, ready for `SEOHead`'s `jsonLd` graph.
-FaqQuestionJsonLd	type	@spy4x/preact-ui	A schema.org `Question` with its accepted answer.
 Field	component	@spy4x/preact-ui	Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls.
 FieldChild	type	@spy4x/preact-ui	The control of one `Field`: exactly one element, or a function that returns one.
 FieldControlWiring	type	@spy4x/preact-ui	The DOM attributes of one `Field`, handed to the control.
@@ -725,7 +722,6 @@ dialogHeldFocus	helper	@spy4x/preact-ui	Whether the dialog still holds the focus
 dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
-faqPageJsonLd	helper	@spy4x/preact-ui	The schema.org `FAQPage` node for a list of questions, for `SEOHead`'s `jsonLd`.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.
 fold	helper	@spy4x/preact-ui	Fold text for matching: accents removed and lower-cased.

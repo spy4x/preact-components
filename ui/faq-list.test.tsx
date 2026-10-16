@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { FaqList, faqPageJsonLd } from "./faq-list.tsx"
+import { FaqList } from "./faq-list.tsx"
 
 const ITEMS = [
   { question: "Can I export my data?", answer: <p>Yes, as CSV.</p>, id: "export" },
@@ -49,30 +49,5 @@ describe("FaqList", () => {
   it("merges the caller's class into the wrapper", () => {
     const html = render(<FaqList items={ITEMS} class="max-w-2xl" />)
     expect(html).toMatch(/^<div class="[^"]*max-w-2xl"/)
-  })
-})
-
-describe("faqPageJsonLd", () => {
-  it("returns a FAQPage node with one Question and accepted Answer per item and no @context", () => {
-    const node = faqPageJsonLd([
-      { question: "Can I export my data?", answerText: "Yes, as CSV." },
-      { question: "Is there a free plan?", answerText: "Yes, for one person." },
-    ])
-    expect(node).toEqual({
-      "@type": "FAQPage",
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "Can I export my data?",
-          acceptedAnswer: { "@type": "Answer", text: "Yes, as CSV." },
-        },
-        {
-          "@type": "Question",
-          name: "Is there a free plan?",
-          acceptedAnswer: { "@type": "Answer", text: "Yes, for one person." },
-        },
-      ],
-    })
-    expect("@context" in node).toBe(false)
   })
 })
