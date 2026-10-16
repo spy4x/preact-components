@@ -53,6 +53,13 @@ describe("tabBarSlots", () => {
     expect(split.more).toEqual([])
   })
 
+  it("keeps the last slot for the overlay when told to, even when every item would fit", () => {
+    const split = tabBarSlots(itemsOf(5), undefined, true)
+    expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "i3", "i4"])
+    expect(split.more.map((item) => item.key)).toEqual(["i5"])
+    expect(tabBarSlots(itemsOf(3), undefined, true).more).toEqual([])
+  })
+
   it("puts the primary action first behind More when five items fill the bar", () => {
     const split = tabBarSlots(itemsOf(5), primary)
     expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "i3", "i4"])
@@ -187,5 +194,118 @@ describe("RailShell", () => {
   it("renders no header element when the header slot is left out", () => {
     const html = render(<RailShell items={itemsOf(3)}>page</RailShell>)
     expect(html).not.toContain("<header")
+  })
+
+  it("calls each sidebar slot once per place: sidebar and rail in the column, overlay in the dialog", () => {
+    const calls: string[] = []
+    const html = render(
+      <RailShell
+        items={itemsOf(3)}
+        sidebarTop={(place) => {
+          calls.push(`top:${place}`)
+          return <span>{`top-${place}`}</span>
+        }}
+        sidebarBottom={(place) => {
+          calls.push(`bottom:${place}`)
+          return <span>{`bottom-${place}`}</span>
+        }}
+      >
+        page
+      </RailShell>,
+    )
+    expect(calls.sort()).toEqual([
+      "bottom:overlay",
+      "bottom:rail",
+      "bottom:sidebar",
+      "top:overlay",
+      "top:rail",
+      "top:sidebar",
+    ])
+    const top = html.indexOf('data-e2e="rail-shell-top"')
+    const nav = html.indexOf('data-e2e="rail-shell-rail"')
+    const bottom = html.indexOf('data-e2e="rail-shell-bottom"')
+    expect(top).toBeGreaterThan(-1)
+    expect(top).toBeLessThan(nav)
+    expect(bottom).toBeGreaterThan(nav)
+    expect(html.slice(top, nav)).toContain("top-rail")
+    expect(html.slice(top, nav)).toContain("top-sidebar")
+    expect(html.slice(bottom, html.indexOf("<main"))).toContain("bottom-rail")
+    expect(html.slice(bottom, html.indexOf("<main"))).toContain("bottom-sidebar")
+    expect(region(html, "rail-shell-overlay-top", "div")).toContain("top-overlay")
+    expect(region(html, "rail-shell-overlay-bottom", "div")).toContain("bottom-overlay")
+  })
+
+  it("draws no slot wrappers when the slots are left out", () => {
+    // Six items, so the overlay exists and its slot wrappers could appear.
+    const html = render(<RailShell items={itemsOf(6)}>page</RailShell>)
+    expect(html).toContain("<dialog")
+    const wrappers = [
+      "rail-shell-top",
+      "rail-shell-bottom",
+      "rail-shell-overlay-top",
+      "rail-shell-overlay-bottom",
+    ]
+    for (const e2e of wrappers) {
+      expect(html).not.toContain(`data-e2e="${e2e}"`)
+    }
+  })
+
+  it("gives the phone bar a last slot opening the overlay when slots exist and every item fits", () => {
+    const html = render(
+      <RailShell items={itemsOf(3)} sidebarBottom={() => <span>account</span>}>page</RailShell>,
+    )
+    expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "Item 3", "More"])
+    expect(html).toContain('data-e2e="rail-shell-more"')
+    expect(region(html, "rail-shell-dialog", "dialog")).not.toContain("href=")
+  })
+
+  it("draws an item's counter as a hidden badge and speaks it in the entry's name", () => {
+    const items: RailShellItem[] = [
+      { key: "inbox", label: "Inbox", href: "/inbox", Icon: IconHome, counter: 3 },
+      { key: "done", label: "Done", href: "/done", Icon: IconHome, counter: 0 },
+    ]
+    const html = render(
+      <RailShell items={items} labels={{ counter: (count) => `${count} unread` }}>page</RailShell>,
+    )
+    const rail = region(html, "rail-shell-rail", "nav")
+    expect(rail).toContain('aria-label="Inbox, 3 unread"')
+    expect(rail).toMatch(/aria-hidden="true" data-e2e="rail-shell-counter">3</)
+    const tabbar = region(html, "rail-shell-tabbar", "nav")
+    expect(tabbar).toContain('aria-label="Inbox, 3 unread"')
+    expect(html).not.toContain('aria-label="Done')
+    expect(html.match(/data-e2e="rail-shell-counter"/g)).toHaveLength(2)
+  })
+
+  it("speaks a bare count by default and caps the badge at 99+", () => {
+    const html = render(
+      <RailShell items={[{ key: "a", label: "Alerts", href: "/a", Icon: IconHome, counter: 120 }]}>
+        page
+      </RailShell>,
+    )
+    expect(html).toContain('aria-label="Alerts, 120"')
+    expect(html).toMatch(/data-e2e="rail-shell-counter">99\+</)
+    expect(html).not.toMatch(/data-e2e="rail-shell-counter">120</)
+  })
+
+  it("draws the last slot's icon and counter from moreTab, under labels.more", () => {
+    const html = render(
+      <RailShell
+        items={itemsOf(6)}
+        labels={{ more: "Account" }}
+        moreTab={{ icon: <b data-e2e="avatar-icon">U</b>, counter: 4 }}
+      >
+        page
+      </RailShell>,
+    )
+    const moreTag = html.match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
+    const more = html.slice(
+      html.indexOf('data-e2e="rail-shell-more"'),
+      html.indexOf("</button>", html.indexOf('data-e2e="rail-shell-more"')),
+    )
+    expect(more).toContain('data-e2e="avatar-icon"')
+    expect(more).not.toContain("<svg")
+    expect(more).toContain(">Account<")
+    expect(moreTag).toContain('aria-label="Account, 4"')
+    expect(more).toMatch(/data-e2e="rail-shell-counter">4</)
   })
 })

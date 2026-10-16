@@ -1872,9 +1872,18 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-Dropdown": 4,
   "demo-CrudList": 3,
   "demo-Shell": 1,
+  // The workspace switcher and AccountMenu, each drawn for the sidebar, the rail and the overlay.
+  "demo-RailShell": 6,
+  "demo-AccountMenu": 1,
   "demo-PageHeader": 2,
   "demo-MoreMenu": 1,
   "demo-DropdownItem": 2,
+}
+
+/** The part of a Chromium accessibility node the trigger check reads. */
+interface AxNode {
+  name?: { value?: string }
+  ignoredReasons?: Array<{ name: string }>
 }
 
 /**
@@ -1906,6 +1915,7 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
   const cards: string[] = []
   const unnamed: string[] = []
   const named: string[] = []
+  const hidden: string[] = []
   let triggers = 0
   for (const page of guidePages) {
     await openGuidePage(devtools, page.id)
@@ -1924,13 +1934,18 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
     triggers += nodeIds.length
 
     for (const [index, nodeId] of nodeIds.entries()) {
-      const { nodes } = await devtools.send<{ nodes: Array<{ name?: { value?: string } }> }>(
+      const { nodes } = await devtools.send<{ nodes: AxNode[] }>(
         "Accessibility.getPartialAXTree",
         { nodeId, fetchRelatives: false },
       )
       const name = (nodes[0]?.name?.value ?? "").trim()
       const where = onPage[index] ?? `${page.id} trigger ${index + 1}`
-      if (name === "") unnamed.push(where)
+      // A trigger the page does not render at this width (RailShell draws each slot once per
+      // place, and hides two of the three) is not announced at all, so it has no name to check.
+      // It still counts toward the tally above.
+      if (nodes[0]?.ignoredReasons?.some((reason) => reason.name === "notRendered")) {
+        hidden.push(where)
+      } else if (name === "") unnamed.push(where)
       else named.push(`${where}: "${name}"`)
     }
   }
@@ -1956,7 +1971,8 @@ async function triggerNameCheck(devtools: Devtools): Promise<void> {
         `should — ${miscounted.join("; ")}`
       : unnamed.length > 0
       ? `${unnamed.length} of ${triggers} announce as an unnamed button: ${unnamed.join(", ")}`
-      : `all ${triggers} expected triggers named by Chromium — ${named.join(", ")}`,
+      : `all ${triggers - hidden.length} rendered triggers named by Chromium — ` +
+        `${named.join(", ")}; ${hidden.length} not rendered at this width`,
   )
 }
 

@@ -43,7 +43,12 @@ import {
 import { Calendar } from "@spy4x/preact-system/calendar"
 import type { PageHead } from "@spy4x/preact-system/head"
 import { seoHeadTags } from "@spy4x/preact-system/seo-head"
-import { RailShell, type RailShellItem } from "@spy4x/preact-system/rail-shell"
+import { AccountMenu, type AccountMenuTheme } from "@spy4x/preact-system/account-menu"
+import {
+  RailShell,
+  type RailShellItem,
+  type RailShellSidebarPlace,
+} from "@spy4x/preact-system/rail-shell"
 import { Shell } from "@spy4x/preact-system/shell"
 import { SiteFooter } from "@spy4x/preact-system/site-footer"
 import { SiteHeader } from "@spy4x/preact-system/site-header"
@@ -60,7 +65,18 @@ import { InstallPrompt } from "@spy4x/preact-system/install-prompt"
 import { SyncStatus } from "@spy4x/preact-system/sync-status"
 import { SavedCopyNotice } from "@spy4x/preact-system/saved-copy-notice"
 import { createInstallPrompt, type InstallPromptEvent } from "@spy4x/preact-signals/install-prompt"
-import { Button, Cluster, Field, Grid, Modal, Select, Stack } from "@spy4x/preact-ui"
+import {
+  Avatar,
+  Button,
+  Cluster,
+  Dropdown,
+  DropdownItem,
+  Field,
+  Grid,
+  Modal,
+  Select,
+  Stack,
+} from "@spy4x/preact-ui"
 import { makeStorage } from "@spy4x/platform/browser/storage"
 import { useSignal } from "@preact/signals"
 import { type } from "arktype"
@@ -1358,7 +1374,7 @@ function StateInitDemo() {
 const railShellItems: RailShellItem[] = [
   { key: "home", label: "Home", href: "#rail-home", Icon: IconHome },
   { key: "projects", label: "Projects", href: "#rail-projects", Icon: IconFolder },
-  { key: "notes", label: "Notes", href: "#rail-notes", Icon: IconBookOpen },
+  { key: "notes", label: "Notes", href: "#rail-notes", Icon: IconBookOpen, counter: 3 },
   { key: "stats", label: "Stats", href: "#rail-stats", Icon: IconChartPie },
   { key: "search", label: "Search", href: "#rail-search", Icon: IconSearch },
   { key: "alerts", label: "Alerts", href: "#rail-alerts", Icon: IconBell },
@@ -1366,30 +1382,183 @@ const railShellItems: RailShellItem[] = [
 ]
 
 /**
+ * `AccountMenu` at the foot of a sidebar-width column, opening upward, with the chosen theme printed
+ * under it so a choice shows.
+ */
+function AccountMenuDemo() {
+  const theme = useSignal<AccountMenuTheme>("system")
+  return (
+    <div
+      class="flex min-h-96 w-60 max-w-full flex-col justify-end gap-4"
+      data-e2e="account-menu-demo"
+    >
+      <AccountMenu
+        user={railShellUser}
+        items={[{ label: "Profile", href: "#account-profile" }]}
+        theme={theme.value}
+        onThemeChange={(value) => theme.value = value}
+        signOut={{ label: "Sign out", action: "#account-sign-out", onClick: () => undefined }}
+      />
+      <p class="text-sm text-muted">
+        Theme: <strong data-e2e="account-menu-demo-theme">{theme.value}</strong>
+      </p>
+    </div>
+  )
+}
+
+/** The rail shell demo's workspaces, for the switcher in `sidebarTop`. */
+const railShellWorkspaces = [
+  { key: "acme", name: "Acme Studio", role: "Owner" },
+  { key: "personal", name: "Personal", role: "Owner" },
+]
+
+/** The rail shell demo's signed-in person, for `AccountMenu` and the phone bar's last slot. */
+const railShellUser = { name: "Uma Lee", email: "uma@example.com" }
+
+/**
+ * The workspace switcher in the demo's `sidebarTop`: the workspace's mark and name, a mark alone in
+ * the 72 px rail, and a menu of workspaces.
+ */
+function RailShellDemoSwitcher(
+  { place, current, onChoose }: {
+    place: RailShellSidebarPlace
+    current: string
+    onChoose: (key: string) => void
+  },
+) {
+  const workspace = railShellWorkspaces.find((item) => item.key === current) ??
+    railShellWorkspaces[0]
+  const mark = (
+    <span
+      class="flex size-8 shrink-0 items-center justify-center rounded-card bg-primary text-sm font-semibold text-primary-foreground"
+      aria-hidden="true"
+    >
+      {workspace.name[0]}
+    </span>
+  )
+  const compact = place === "rail"
+  return (
+    <Dropdown
+      trigger={compact ? mark : (
+        <>
+          {mark}
+          <span class="flex min-w-0 flex-1 flex-col text-left">
+            <span class="truncate text-sm font-medium text-foreground">{workspace.name}</span>
+            <span class="truncate text-xs text-muted">{workspace.role}</span>
+          </span>
+        </>
+      )}
+      triggerLabel={`Workspace: ${workspace.name}`}
+      triggerClasses={compact
+        ? "flex w-full cursor-pointer justify-center rounded-md py-2 hover:bg-hover"
+        : "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-hover"}
+      containerClasses="flex w-full"
+      triggerDataE2E={`rail-shell-demo-switcher-${place}`}
+      menuLabel="Switch workspace"
+      vertical="down"
+      horizontal="left"
+      panelClasses="z-30 min-w-full"
+    >
+      {railShellWorkspaces.map((item) => (
+        <DropdownItem
+          key={item.key}
+          checked={item.key === workspace.key}
+          onClick={() => onChoose(item.key)}
+        >
+          {item.name}
+        </DropdownItem>
+      ))}
+    </Dropdown>
+  )
+}
+
+/**
+ * The demo's `sidebarBottom`: a notifications link with its unread count, and `AccountMenu`, drawn
+ * as the avatar alone in the 72 px rail.
+ */
+function RailShellDemoAccount(
+  { place, unread, theme, onTheme }: {
+    place: RailShellSidebarPlace
+    unread: number
+    theme: AccountMenuTheme
+    onTheme: (theme: AccountMenuTheme) => void
+  },
+) {
+  const compact = place === "rail"
+  return (
+    <div class="flex flex-col gap-1">
+      <a
+        href="#rail-notifications"
+        class={compact
+          ? "relative flex justify-center rounded-md py-3 text-muted hover:bg-hover"
+          : "flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted hover:bg-hover"}
+        aria-label={`Notifications, ${unread} unread`}
+        data-e2e={`rail-shell-demo-notifications-${place}`}
+      >
+        <IconBell class="size-6 shrink-0" aria-hidden="true" />
+        <span class={compact ? "sr-only" : "min-w-0 flex-1 truncate"}>Notifications</span>
+        <span
+          class={compact
+            ? "absolute top-1 left-1/2 ml-2 h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"
+            : "h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"}
+          aria-hidden="true"
+        >
+          {unread}
+        </span>
+      </a>
+      <AccountMenu
+        user={railShellUser}
+        display={compact ? "avatar" : "full"}
+        items={[{ label: "Profile", href: "#rail-profile" }]}
+        theme={theme}
+        onThemeChange={onTheme}
+        signOut={{ label: "Sign out", action: "#rail-sign-out", onClick: () => undefined }}
+        labels={{ trigger: `Account: ${railShellUser.name}` }}
+        dataE2E={`rail-shell-demo-account-menu-${place}`}
+      />
+    </div>
+  )
+}
+
+/**
  * `RailShell` inside a bounded, scrolling frame, so the card does not take over the guide's page.
  *
- * `min-h-full` replaces the component's own `min-h-dvh`, so the frame is the scroll container the
- * rail's contents and the tab bar stick to. Which of the two shows follows the viewport, not this
- * frame: the guide at desktop width shows the rail, and a phone-width window shows the tab bar with
- * "More". Every item is a link followed through the `navigateLink` port, so a plain click moves the
+ * `min-h-full` replaces the component's own `min-h-dvh`, and `--rail-shell-height` the window's
+ * height the desktop column fills, so the frame is the scroll container the column and the tab
+ * bar stick to. Which of them shows follows the viewport, not this frame: the guide at desktop
+ * width shows the labelled sidebar, between `md` and `lg` the icon rail, and a phone-width window
+ * the tab bar, whose last slot is "Account" with the avatar and an unread count. `sidebarTop`
+ * holds a workspace switcher; `sidebarBottom` holds a notifications link and `AccountMenu`.
+ *
+ * Every item is a link followed through the `navigateLink` port, so a plain click moves the
  * current marker and prints the key and `href` it was handed instead of following the link; the
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
- * `href`, so it is a button through `navigate`. The `header` holds a brand and one button, so the
- * skip link has a control to jump past. The frame scrolls the shell, so it takes the tab bar's
- * scroll padding itself and takes it off the root, as the component's doc asks of such a caller.
+ * `href`, so it is a button through `navigate`. The second checkbox, off at first, draws the older
+ * layout's `header`, a brand and one button, which the skip link jumps past; the house layout has
+ * no top bar. The frame scrolls the shell, so it takes the tab bar's scroll padding itself and takes it
+ * off the root, as the component's doc asks of such a caller.
  */
 function RailShellDemo() {
   const current = useSignal("home")
   const via = useSignal("start")
   const routeLinks = useSignal(true)
+  const withHeader = useSignal(false)
+  const workspace = useSignal("acme")
+  const theme = useSignal<AccountMenuTheme>("system")
+  const unread = 3
   return (
     <div
-      class="h-[420px] overflow-y-auto max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+      class="h-[600px] overflow-y-auto [--rail-shell-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
       data-e2e="rail-shell-demo"
     >
       <RailShell
         class="min-h-full"
-        labels={{ nav: "RailShell demo navigation" }}
+        labels={{
+          nav: "RailShell demo navigation",
+          more: "Account",
+          moreDialog: "Account",
+          counter: (count) => `${count} unread`,
+        }}
         items={railShellItems}
         currentKey={current.value}
         primary={{ key: "compose", label: "Write", Icon: IconPencilSquare }}
@@ -1403,20 +1572,49 @@ function RailShellDemo() {
             via.value = `navigateLink ${href}`
           }
           : undefined}
-        header={
-          <div class="flex items-center justify-between gap-4 border-b border-subtle px-4 py-3">
-            <strong class="text-sm">Brand</strong>
-            <Button size="sm" variant="outline" data-e2e="rail-shell-demo-account">
-              Account
-            </Button>
-          </div>
-        }
+        sidebarTop={(place) => (
+          <RailShellDemoSwitcher
+            place={place}
+            current={workspace.value}
+            onChoose={(key) => workspace.value = key}
+          />
+        )}
+        sidebarBottom={(place) => (
+          <RailShellDemoAccount
+            place={place}
+            unread={unread}
+            theme={theme.value}
+            onTheme={(value) => theme.value = value}
+          />
+        )}
+        moreTab={{ icon: <Avatar name={railShellUser.name} size="sm" alt="" />, counter: unread }}
+        header={withHeader.value
+          ? (
+            <div class="flex items-center justify-between gap-4 border-b border-subtle px-4 py-3">
+              <strong class="text-sm">Brand</strong>
+              <Button size="sm" variant="outline" data-e2e="rail-shell-demo-account">
+                Account
+              </Button>
+            </div>
+          )
+          : undefined}
       >
         <div class="flex flex-col gap-4 p-4 text-sm">
           <p>
             Navigated to: <strong data-e2e="rail-shell-demo-current">{current.value}</strong>{" "}
             through <code data-e2e="rail-shell-demo-via">{via}</code>
           </p>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={withHeader.value}
+              onChange={(event) => {
+                withHeader.value = event.currentTarget.checked
+              }}
+              data-e2e="rail-shell-demo-with-header"
+            />
+            Draw a top bar in <code>header</code> (the older layout)
+          </label>
           <label class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -1428,12 +1626,16 @@ function RailShellDemo() {
             />
             Route link clicks through <code>navigateLink</code>
           </label>
+          <p>
+            Workspace: <strong>{workspace.value}</strong>, theme:{" "}
+            <strong data-e2e="rail-shell-demo-theme">{theme.value}</strong>
+          </p>
           {Array.from(
             { length: 12 },
             (_, index) => (
               <p key={index} class="text-muted">
                 Paragraph {index + 1}{" "}
-                of the page. It is here so the frame scrolls and the rail and the tab bar can be
+                of the page. It is here so the frame scrolls and the sidebar and the tab bar can be
                 seen staying in place while it does.
               </p>
             ),
@@ -1937,13 +2139,14 @@ useEffect(() => {
   },
   RailShell: {
     summary:
-      "An app frame with a rail of icon buttons from `md` up and a bottom tab bar on a phone, whose **More** slot holds the rest.",
+      "An app frame whose sidebar is its only chrome: labelled at `lg`, an icon rail with tooltips from `md`, and a bottom tab bar on a phone whose last slot holds the rest.",
     wide: true,
     props: [
       {
         name: "items",
         type: "RailShellItem[]",
-        description: "The destinations; past five, the phone bar grows a **More** slot.",
+        description:
+          "The destinations; past five, the phone bar grows a **More** slot. An item's `counter` draws a badge and joins its name.",
       },
       {
         name: "primary",
@@ -1967,10 +2170,28 @@ useEffect(() => {
           "Called on a plain left click on an item's same-origin link, instead of following it; a modified or middle click stays the browser's.",
       },
       {
+        name: "sidebarTop",
+        type: "(place: RailShellSidebarPlace) => ComponentChildren",
+        description:
+          'Drawn above the items, such as a workspace switcher; called with `"sidebar"`, `"rail"` or `"overlay"`, so it can draw a compact form in the 72 px rail.',
+      },
+      {
+        name: "sidebarBottom",
+        type: "(place: RailShellSidebarPlace) => ComponentChildren",
+        description:
+          "Drawn at the column's foot, such as notifications and `AccountMenu`; on a phone both slots move into the last tab's overlay.",
+      },
+      {
+        name: "moreTab",
+        type: "RailShellMoreTab",
+        description:
+          "The phone bar's last slot: an `icon` node, such as an avatar, and a `counter`. Its label is `labels.more`.",
+      },
+      {
         name: "header",
         type: "ComponentChildren",
         description:
-          "The app's top bar, drawn above the page as its banner; the skip link jumps past it.",
+          "An older layout's top bar, drawn above the page as its banner; the house layout has none.",
       },
     ],
     snippet: `<RailShell
@@ -1982,11 +2203,72 @@ useEffect(() => {
   currentPath={location.pathname}
   primary={{ key: "compose", label: "Write", href: "/new", Icon: IconPencilSquare }}
   navigateLink={(key, href) => navigate(href)}
-  header={<AppHeader />}
+  sidebarTop={(place) => <WorkspaceSwitcher compact={place === "rail"} />}
+  sidebarBottom={(place) => (
+    <>
+      <NotificationsLink compact={place === "rail"} />
+      <AccountMenu
+        user={{ name: session.name, email: session.email }}
+        display={place === "rail" ? "avatar" : "full"}
+        theme={theme}
+        onThemeChange={setTheme}
+        signOut={{ label: "Sign out", action: "/sign-out" }}
+      />
+    </>
+  )}
+  labels={{ more: "Account", moreDialog: "Account", counter: (n) => \`\${n} unread\` }}
+  moreTab={{ icon: <Avatar name={session.name} size="sm" alt="" />, counter: unread }}
 >
   <Page />
 </RailShell>`,
     render: () => <RailShellDemo />,
+  },
+  AccountMenu: {
+    summary:
+      "The signed-in person's menu: who is signed in on the trigger, then the caller's items, a theme choice and **Sign out**.",
+    wide: true,
+    props: [
+      {
+        name: "user",
+        type: "AccountMenuUser",
+        description: "The person: `name`, `email` and `avatarUrl`.",
+      },
+      {
+        name: "items",
+        type: "AccountMenuItem[]",
+        description: "The caller's entries first: a link, a form post (`action`) or a button.",
+      },
+      {
+        name: "theme / onThemeChange",
+        type: "AccountMenuTheme / (theme) => void",
+        description:
+          "With `onThemeChange`, the menu draws System, Light and Dark as radio items and marks `theme`.",
+      },
+      {
+        name: "signOut",
+        type: "AccountMenuItem",
+        description: "The last entry, after a divider; a form post, so it is never a link.",
+      },
+      {
+        name: "display",
+        type: `"full" | "avatar"`,
+        description:
+          "`full` is the avatar, name and e-mail on a wide button for a sidebar; `avatar` is the avatar alone.",
+      },
+      {
+        name: "vertical",
+        type: `"up" | "down" | "auto"`,
+        description: "Which way the menu opens; `up` by default, for the foot of a sidebar.",
+      },
+    ],
+    snippet: `<AccountMenu
+  user={{ name: "Uma Lee", email: "uma@example.com" }}
+  items={[{ label: "Profile", href: "/profile" }]}
+  theme={theme}
+  onThemeChange={setTheme}
+  signOut={{ label: "Sign out", action: "/sign-out" }}
+/>`,
+    render: () => <AccountMenuDemo />,
   },
   SiteHeader: {
     summary:

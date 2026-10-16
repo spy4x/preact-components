@@ -24,13 +24,12 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { IconBars3, IconPlus, type IconProps, IconXMark } from "@spy4x/preact-icons"
-import { Avatar } from "@spy4x/preact-ui/avatar"
-import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import { followLinkClick, isPlainClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
+import { AccountMenu, type AccountMenuItem, type AccountMenuUser } from "./account-menu.tsx"
 
 /** One entry of {@link ShellProps.navItems}, or of one entry's own `children`. */
 export interface ShellNavItem {
@@ -71,39 +70,17 @@ export interface ShellNavItemAction {
 /** Where a sidebar slot is being drawn: the desktop sidebar, or the mobile drawer's copy of it. */
 export type ShellSidebarPlace = "sidebar" | "drawer"
 
-/** {@link ShellProps.user}, or `null` for a signed-out visitor — the user menu renders only then. */
-export interface ShellUser {
-  /** The user menu trigger's accessible name comes from here, via `Avatar`. */
-  name: string
-  email?: string
-  avatarUrl?: string
-}
+/**
+ * {@link ShellProps.user}, or `null` for a signed-out visitor — the user menu renders only then.
+ * The same shape as `AccountMenu`'s person, which draws the menu.
+ */
+export type { AccountMenuUser as ShellUser } from "./account-menu.tsx"
 
 /**
  * One entry of {@link ShellProps.userMenuItems}: a link (`href`), a form post (`action`), or a
- * button (neither).
+ * button (neither). The same shape as `AccountMenu`'s items.
  */
-export interface ShellUserMenuItem {
-  label: string
-  /** Rendered as a link when given and {@link action} is not; a button when neither is given. */
-  href?: string
-  /**
-   * Rendered as a `<form method="post">` to this address, with the item as its submit button: a
-   * real form post that needs no client code to reach the server once the menu is open — a
-   * sign-out, for instance, which must not be a link. The menu itself still needs JavaScript to
-   * open. Takes precedence over {@link href}.
-   */
-  action?: string
-  /** The form's method when {@link action} is given. Only `"post"`, which is also the default. */
-  method?: "post"
-  /**
-   * Called on activation. On an {@link action} item it runs on submit, once hydrated, and cancels
-   * the browser's own post, so the app can sign out through its own client instead.
-   */
-  onClick?: () => void
-  /** `data-e2e` on the rendered menu item, for an app's end-to-end tests. */
-  dataE2E?: string
-}
+export type { AccountMenuItem as ShellUserMenuItem } from "./account-menu.tsx"
 
 /** Every user-visible or accessible string `Shell` prints that is not data the caller supplied. */
 export interface ShellLabels {
@@ -127,9 +104,9 @@ export interface ShellProps {
   /** The logo/name slot. Rendered once, in the header, exactly as given. */
   brand: ComponentChildren
   /** The signed-in user, or `null` to render no user menu at all. */
-  user: ShellUser | null
+  user: AccountMenuUser | null
   /** The user menu's own items. Ignored when {@link user} is `null`. */
-  userMenuItems?: readonly ShellUserMenuItem[]
+  userMenuItems?: readonly AccountMenuItem[]
   /** A trailing header slot, e.g. a connection indicator. Rendered once, in the header. */
   status?: ComponentChildren
   /** The page. Lands inside the skip link's target, a `<main>` this component owns. */
@@ -332,37 +309,6 @@ function ShellNavList(
 }
 
 /**
- * One user menu item: a form post when it has an `action`, `DropdownItem`'s link or button
- * otherwise.
- *
- * The form carries `role="none"`, so the accessibility tree keeps the submit button as the menu's
- * own item, the way `Dropdown` expects its items to sit in a wrapper with no role of its own. The
- * button is a `DropdownItem` with `type="submit"`, so it follows its `Dropdown` like every other
- * item: a plain submit button in the tab order before hydration, a `role="menuitem"` out of the tab
- * order after, which `Dropdown` finds for the arrow keys and closes on its click (#535, #537).
- */
-function ShellUserMenuEntry({ item }: { item: ShellUserMenuItem }): JSX.Element {
-  const { label, href, action, method = "post", onClick, dataE2E } = item
-  if (action === undefined) {
-    return <DropdownItem href={href} onClick={onClick} dataE2E={dataE2E}>{label}</DropdownItem>
-  }
-  return (
-    <form
-      method={method}
-      action={action}
-      role="none"
-      onSubmit={(event) => {
-        if (!onClick) return
-        event.preventDefault()
-        onClick()
-      }}
-    >
-      <DropdownItem type="submit" dataE2E={dataE2E}>{label}</DropdownItem>
-    </form>
-  )
-}
-
-/**
  * The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in
  * view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below
  * `lg` — see `mobile-panel.ts`.
@@ -378,9 +324,9 @@ function ShellUserMenuEntry({ item }: { item: ShellUserMenuItem }): JSX.Element 
  * scoped to whichever one a visitor actually has open, proven in `pages/checks/system.ts` by opening
  * both at once and pressing Escape.
  *
- * **The user menu names itself from `Avatar`.** `Dropdown`'s `triggerNamedByContent` is what lets an
- * accessible name computed from `Avatar`'s own `alt`/`aria-label` — the user's name — become the
- * trigger button's name, the same way `DateRangePicker` names its own trigger.
+ * **The user menu is `AccountMenu`, showing the avatar alone.** It names itself from `Avatar`:
+ * `Dropdown`'s `triggerNamedByContent` lets an accessible name computed from `Avatar`'s own
+ * `alt`/`aria-label` — the user's name — become the trigger button's name.
  *
  * **Collapsing hides the desktop sidebar rather than shrinking it to icons.** The sidebar slots hold
  * content with no icon form (filters, a switcher), and an item may have no icon; `RailShell` is the
@@ -491,20 +437,15 @@ export function Shell(props: ShellProps): JSX.Element {
         <div class="flex flex-1 items-center justify-end gap-4">
           {status}
           {user && (
-            <Dropdown
-              trigger={<Avatar name={user.name} src={user.avatarUrl} size="sm" />}
-              triggerNamedByContent
-              triggerDataE2E="shell-user-menu-button"
-              menuLabel={userMenuLabel}
-              // The drawer's own panel sits at z-20 inside this header's sticky z-30 stacking
-              // context; left at Dropdown's default z-10, the drawer painted over the open menu at
-              // phone width and swallowed every click meant for it. z-30 keeps the menu above both.
-              panelClasses="z-30"
-            >
-              {userMenuItems.map((item, index) => (
-                <ShellUserMenuEntry key={`${index}-${item.label}`} item={item} />
-              ))}
-            </Dropdown>
+            <AccountMenu
+              user={user}
+              items={userMenuItems}
+              display="avatar"
+              vertical="auto"
+              horizontal="right"
+              dataE2E="shell-user-menu-button"
+              labels={{ menu: userMenuLabel }}
+            />
           )}
         </div>
       </header>
