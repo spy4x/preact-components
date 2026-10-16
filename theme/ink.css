@@ -15,6 +15,14 @@
  * a bottom tab bar), not for anything in this package, which is why they have no light-mode or
  * default-dark counterpart: nothing here has a use for them outside `ink`.
  *
+ * Ink paints no brand colour of its own. `--color-primary`, `--color-primary-foreground` and
+ * `--color-accent` are the app's (from its `:root`) or the default dark palette's, so an app on ink
+ * shows one accent, its own (spy4x/template#444). The one accent token ink sets is
+ * `--color-primary-muted`, the link and heading tone: step 400 of the app's accent, as the default
+ * dark palette draws its own rings and selected text, so a non-purple app does not get purple links.
+ * It sits in the tokens' own cascade layer, below an app's unlayered rules, so an app that sets
+ * `--color-primary-muted` on `:root` still wins; the rest of ink is unlayered and outranks `:root`.
+ *
  * Ink takes the accent off focus states and the rail's current-item indicator. The default
  * palette's `--color-primary` is documented in `tokens.css` for "buttons, links, focus rings,
  * active nav" all at once; under ink, `--color-nav-active` carries a rail's current-item indicator
@@ -48,13 +56,6 @@
   --color-muted-foreground: oklch(0.68 0.014 260); /* secondary text tone */
   --color-placeholder: oklch(0.68 0.014 260);
 
-  /* The primary action's own background — see this file's own header for what still reads the
-     accent elsewhere, unchanged. */
-  --color-primary: oklch(0.72 0.15 200);
-  --color-primary-foreground: oklch(0.14 0.02 260);
-  /* 0.66 so a link clears 4.5:1 on --color-surface-active (0.62 read 4.09:1). */
-  --color-primary-muted: oklch(0.66 0.13 200);
-
   /* Dark surface scale: page, rail, card, active — a finer set of steps than the default
      two-token canvas/surface pair, for a navigation rail and its active row. */
   --color-surface-page: var(--color-canvas);
@@ -76,4 +77,12 @@
      surface above, not the accent. */
   --color-nav-active: oklch(0.86 0.02 260);
   --color-focus-ring: oklch(0.86 0.02 260);
+}
+
+/* The link and heading tone, from the app's accent. In the tokens' layer, so an app's own
+   `:root { --color-primary-muted }` outranks it; see this file's own header. */
+@layer theme.preact-tokens {
+  .dark[data-theme="ink"] {
+    --color-primary-muted: var(--color-accent-400);
+  }
 }

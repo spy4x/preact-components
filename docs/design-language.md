@@ -359,27 +359,21 @@ copied from.
 
 Smallest change first, and whether it is needed now.
 
-1. **`ink.css` paints its own cyan primary.** It sets `--color-primary` and
-   `--color-primary-muted` to cyan, while the components draw from `--color-accent`, so a site on
-   ink shows two accents in dark mode (links cyan, buttons purple). The fix is to drop those two
-   declarations from `ink.css` and let ink follow the app's accent, with the muted step derived
-   from it as in the default dark palette. **Needed now:** the Seed site shows it today, and every
-   product that adopts ink as the house dark would inherit it.
-2. **Icons mix stroke widths.** 65 glyphs draw at 2, 41 at 1.5 and 10 at other widths, so two
+1. **Icons mix stroke widths.** 65 glyphs draw at 2, 41 at 1.5 and 10 at other widths, so two
    icons side by side can look like two sets. The fix is to redraw the 1.5 and odd ones at one
    width (2, the majority). **Needed with the first app that aligns,** because that is when the
    mix shows up on one screen.
-3. **The filled `Badge` is a saturated block.** A quiet tint (a light fill in the tone's colour
+2. **The filled `Badge` is a saturated block.** A quiet tint (a light fill in the tone's colour
    with the tone's text colour) is what the taste table asks for. The smallest change is to make
    the existing filled style that tint, using the `*-soft` tokens the theme already has. **Needed
    with the first app that aligns its status badges;** it changes how every app's badges look, so
    it ships as its own release.
-4. **No shared font files.** Every app self-hosts its own copy of Geist. A package that ships the
+3. **No shared font files.** Every app self-hosts its own copy of Geist. A package that ships the
    files would need JSR to serve fonts, which it does not as an export. **Not needed now:** each app
    copies the variable woff2 from the pinned `geist` npm package, with the licence beside it.
-5. **No warm neutral palette.** The personal sites set their warm values themselves through the
+4. **No warm neutral palette.** The personal sites set their warm values themselves through the
    tokens, which works. **Not needed now;** revisit if a third site wants it.
-6. **Headings draw heavier than the type scale.** `PageHeader` draws its title at weight 600 and
+5. **Headings draw heavier than the type scale.** `PageHeader` draws its title at weight 600 and
    switches size at `sm`; the `Section` title is `text-xl` to `text-2xl`; the `Card` title is
    `text-lg` at 600. The table above asks for weight 500 and smaller section titles. The fix is to
    move those three to the table's values. **Needed with the first app that aligns,** in one
