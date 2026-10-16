@@ -465,7 +465,12 @@ function TableDemo() {
       bodySlots={tableRows.map((row) => (
         <>
           <td class="whitespace-nowrap tabular-nums">{row.date}</td>
-          <td class="whitespace-nowrap font-medium">{row.merchant}</td>
+          <td class="whitespace-nowrap font-medium">
+            <span class="inline-flex items-center gap-2">
+              <Avatar name={row.merchant} alt="" size="xs" />
+              {row.merchant}
+            </span>
+          </td>
           <td class="whitespace-nowrap text-center">
             <Badge
               text={row.status ? "cleared" : "pending"}

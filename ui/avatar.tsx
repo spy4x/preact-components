@@ -116,8 +116,10 @@ export function groupLabel(label: string | null | undefined, total: number): str
   return `${description} (${total})`
 }
 
+// `bg-track`, not `bg-hover`: a hovered table row or menu item paints `bg-hover`, and the circle
+// would vanish into it.
 const base =
-  "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-hover font-medium text-foreground"
+  "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-track font-medium text-foreground"
 
 const boxClasses: Record<AvatarSize, string> = {
   xs: "size-6",
