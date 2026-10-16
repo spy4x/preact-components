@@ -687,6 +687,17 @@
   border-color: var(--color-border-control, oklch(0.872 0.01 258.338));
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
 
+  /* The same ring as `.pc-checkbox`, for a keyboard user only, instead of the browser's own outline
+     or `@tailwindcss/forms`' shadow on every focus. */
+  &:focus {
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-ring, var(--color-accent-900, oklch(0.381 0.176 304.987)));
+    outline-offset: 2px;
+  }
+
   :where(.dark) & {
     color-scheme: dark;
   }
