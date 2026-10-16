@@ -794,8 +794,8 @@ function marketingBlockSpecs(): Spec[] {
       key: "ArrowRight",
     }),
     ...(["light", "dark", "ink"] as const).map((palette): Spec => ({
-      name:
-        `BrandMark, PageHero, FaqList, Steps and WindowFrame: axe finds no violation, ${palette}`,
+      name: `BrandMark, PageHero, FaqList, Steps and WindowFrame: axe finds no violation, their ` +
+        `text's contrast included, ${palette}`,
       pageId: "ui",
       colorScheme: palette === "light" ? "light" : "dark",
       run: async (page) => {
@@ -804,6 +804,14 @@ function marketingBlockSpecs(): Spec[] {
           // The guide bundles ink.css; it paints once `data-theme="ink"` joins `.dark` on <html>.
           await page.evaluate(() => document.documentElement.setAttribute("data-theme", "ink"))
           await page.locator(`html.dark[data-theme="ink"]`).waitFor({ state: "attached" })
+        }
+        // The guide's dotted stage is a gradient, over which axe leaves every text's contrast
+        // unmeasured. Flat, it measures the blocks' own text against the surface under them.
+        await page.addStyleTag({ content: `[data-card-part="demo"] { background-image: none; }` })
+        const mark = await new AxeBuilder({ page }).include(`[data-e2e="brand-mark"]`)
+          .withRules(["color-contrast"]).analyze()
+        if (mark.passes.length === 0 && mark.violations.length === 0) {
+          throw new Error("axe did not measure the BrandMark's contrast")
         }
         return await axePasses(page, cards)
       },
