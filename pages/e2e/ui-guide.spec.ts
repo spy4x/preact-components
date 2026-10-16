@@ -20,7 +20,12 @@ type KnownCount = readonly [light: number, dark: number]
  */
 const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>> = {
   overview: {},
-  ui: {},
+  ui: {
+    // `PageHero` draws the page's `<h1>`, which is right on a page of its own. Its card mounts it
+    // inside the guide, so the next card's `<h3>` title follows an `<h1>` and skips a level. The
+    // component is right and the card shows what an app renders, so this stays.
+    "heading-order": [1, 1],
+  },
   icons: {},
   theme: {},
   charts: {},
