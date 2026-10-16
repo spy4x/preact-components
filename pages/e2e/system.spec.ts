@@ -32,6 +32,31 @@ function textChanges(region: Locator): Promise<number> {
   })
 }
 
+/** The `RailShell` card, and one element in it by its `data-e2e`. */
+const RAIL = "#demo-RailShell"
+const rail = (page: Page, e2e: string) => page.locator(`${RAIL} [data-e2e="${e2e}"]`)
+
+/** Throw unless `locator` is drawn, or unless it is not, naming it by `what`. */
+async function expectVisible(locator: Locator, visible: boolean, what: string): Promise<void> {
+  if (await locator.isVisible() !== visible) {
+    throw new Error(`${what} is ${visible ? "not drawn" : "drawn"}`)
+  }
+}
+
+/** Run axe over `selector`, colour contrast included, and throw on any violation. */
+async function expectAxeClean(page: Page, selector: string): Promise<string> {
+  const { violations, passes } = await new AxeBuilder({ page }).include(selector).analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map((rule) => `${rule.id}: ${rule.help} (${rule.nodes.length})`).join("; "),
+    )
+  }
+  if (!passes.some((rule) => rule.id === "color-contrast")) {
+    throw new Error(`axe did not measure colour contrast in ${selector}`)
+  }
+  return `${passes.length} axe rules passed`
+}
+
 /** The `useRouteAnnouncer` demo's page region, its heading, and the tab title it sets. */
 const ROUTE_PAGE = `[data-e2e="route-demo-page"]`
 const ROUTE_HEADING = `${ROUTE_PAGE} h1`
@@ -311,6 +336,194 @@ export const specs: readonly Spec[] = [
       )
       if (wide !== "auto") throw new Error(`from md up the root keeps scroll padding ${wide}`)
       return `focused control ends at y ${box.y + box.height}, bar starts at y ${barBox.y}`
+    },
+  },
+  {
+    name: "RailShell from lg: a labelled sidebar of 240 px with sidebarTop above the items, " +
+      "sidebarBottom at its foot, and an item's counter spoken in its name",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = rail(page, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const box = await column.boundingBox()
+      if (!box || Math.abs(box.width - 240) > 1) throw new Error(`the column is ${box?.width} wide`)
+      await expectVisible(rail(page, "rail-shell-demo-switcher-sidebar"), true, "the wide switcher")
+      await expectVisible(rail(page, "rail-shell-demo-switcher-rail"), false, "the rail switcher")
+      await expectVisible(
+        // The first match is the label; the second, the rail's tooltip, is not drawn from lg.
+        rail(page, "rail-shell-rail").getByText("Notes", { exact: true }).first(),
+        true,
+        "the Notes label",
+      )
+      const [top, nav, bottom, frame] = await Promise.all([
+        rail(page, "rail-shell-demo-switcher-sidebar").boundingBox(),
+        rail(page, "rail-shell-rail").boundingBox(),
+        rail(page, "rail-shell-demo-account-menu-sidebar").boundingBox(),
+        rail(page, "rail-shell-demo").boundingBox(),
+      ])
+      if (!top || !nav || !bottom || !frame) throw new Error("a slot or the list is not drawn")
+      if (top.y + top.height > nav.y) throw new Error("the top slot is not above the items")
+      if (bottom.y < nav.y + nav.height) throw new Error("the bottom slot is not below the items")
+      if (frame.y + frame.height - (bottom.y + bottom.height) > 16) {
+        throw new Error(
+          `the bottom slot ends ${frame.y + frame.height - (bottom.y + bottom.height)} px above ` +
+            `the column's foot`,
+        )
+      }
+      // The tab bar and the closed overlay are not drawn at this width, so the rail's is the one.
+      const notes = rail(page, "rail-shell-rail").getByRole("link", { name: "Notes, 3 unread" })
+      await notes.waitFor({ state: "visible" })
+      return `column ${box.width} px; slots at y ${top.y} and ${bottom.y}`
+    },
+  },
+  {
+    name: "RailShell from md to lg: a 72 px icon rail whose label shows as a tooltip on focus " +
+      "and hides on Escape, each slot in its rail form, and the list scrolling above the bottom slot",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 900, height: 900 })
+      const column = rail(page, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const box = await column.boundingBox()
+      if (!box || Math.abs(box.width - 72) > 1) throw new Error(`the rail is ${box?.width} wide`)
+      await expectVisible(rail(page, "rail-shell-demo-switcher-rail"), true, "the rail switcher")
+      await expectVisible(rail(page, "rail-shell-demo-switcher-sidebar"), false, "the wide one")
+      await expectVisible(
+        rail(page, "rail-shell-demo-account-menu-rail"),
+        true,
+        "the avatar account menu",
+      )
+      // The 420 px frame is shorter than the rail's entries: the list scrolls between the slots
+      // instead of running under the bottom one.
+      const [list, foot] = await Promise.all([
+        rail(page, "rail-shell-rail").boundingBox(),
+        rail(page, "rail-shell-bottom").boundingBox(),
+      ])
+      if (!list || !foot || list.y + list.height > foot.y + 1) {
+        throw new Error(`the list ends at y ${list && list.y + list.height}, below ${foot?.y}`)
+      }
+      const notes = page.locator(`${RAIL} [data-e2e="rail-shell-rail"]`).getByRole("link", {
+        name: "Notes, 3 unread",
+        exact: true,
+      })
+      const tip = notes.locator(`[data-e2e="rail-shell-tooltip"]`)
+      await expectVisible(tip, false, "the tooltip before focus")
+      await notes.focus()
+      await page.keyboard.press("Shift+Tab")
+      await page.keyboard.press("Tab")
+      await tip.waitFor({ state: "visible" })
+      const [tipBox, entryBox] = await Promise.all([tip.boundingBox(), notes.boundingBox()])
+      if (!tipBox || !entryBox) throw new Error("the tooltip or its entry is not drawn")
+      const tipMiddle = tipBox.y + tipBox.height / 2
+      const entryMiddle = entryBox.y + entryBox.height / 2
+      if (
+        Math.abs(tipBox.x - (entryBox.x + entryBox.width)) > 1 ||
+        Math.abs(tipMiddle - entryMiddle) > 1
+      ) {
+        throw new Error(
+          `the tooltip is at ${tipBox.x},${tipMiddle}, not beside the entry's right edge ` +
+            `${entryBox.x + entryBox.width},${entryMiddle}`,
+        )
+      }
+      await page.keyboard.press("Escape")
+      await tip.waitFor({ state: "hidden" })
+      await page.keyboard.press("Tab")
+      const next = page.locator(`${RAIL} [data-e2e="rail-shell-rail"] :focus`)
+      await next.locator(`[data-e2e="rail-shell-tooltip"]`).waitFor({ state: "visible" })
+      return `rail ${box.width} px; tooltip at x ${tipBox.x}`
+    },
+  },
+  {
+    name: "RailShell below md: the last tab, an avatar named with its count, opens an overlay " +
+      "holding both slots, and closing it returns focus to the tab",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const more = page.locator(RAIL).getByRole("button", { name: "Account, 3 unread" })
+      await more.scrollIntoViewIfNeeded()
+      await more.click()
+      const dialog = rail(page, "rail-shell-dialog")
+      await dialog.waitFor({ state: "visible" })
+      await expectVisible(
+        rail(page, "rail-shell-demo-switcher-overlay"),
+        true,
+        "the switcher in the overlay",
+      )
+      await expectVisible(
+        rail(page, "rail-shell-demo-account-menu-overlay"),
+        true,
+        "the account menu in the overlay",
+      )
+      await expectVisible(
+        rail(page, "rail-shell-demo-notifications-overlay"),
+        true,
+        "notifications in the overlay",
+      )
+      const [top, list, bottom] = await Promise.all([
+        rail(page, "rail-shell-overlay-top").boundingBox(),
+        dialog.getByRole("link", { name: "Settings" }).boundingBox(),
+        rail(page, "rail-shell-overlay-bottom").boundingBox(),
+      ])
+      if (!top || !list || !bottom || !(top.y < list.y && list.y < bottom.y)) {
+        throw new Error("the overlay is not top slot, overflow items, bottom slot in that order")
+      }
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "hidden" })
+      await more.and(page.locator(":focus")).waitFor()
+      return "slots shown in the overlay; focus back on the last tab"
+    },
+  },
+  {
+    name: "RailShell: the sidebar with its slots passes axe at lg, colour contrast included",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      return await expectAxeClean(page, `${RAIL} [data-e2e="rail-shell-column"]`)
+    },
+  },
+  {
+    name:
+      "RailShell: the icon rail with its slots passes axe in dark mode, colour contrast included",
+    pageId: "system",
+    colorScheme: "dark",
+    run: async (page) => {
+      await page.setViewportSize({ width: 900, height: 900 })
+      return await expectAxeClean(page, `${RAIL} [data-e2e="rail-shell-column"]`)
+    },
+  },
+  {
+    name: "AccountMenu: the menu opens upward, marks the current theme as a checked radio item, " +
+      "and choosing another reports it",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`[data-e2e="account-menu-demo"]`)
+      const trigger = card.locator(`[data-e2e="account-menu-button"]`)
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      const menu = card.getByRole("menu")
+      await menu.waitFor({ state: "visible" })
+      const [menuBox, triggerBox] = await Promise.all([menu.boundingBox(), trigger.boundingBox()])
+      if (!menuBox || !triggerBox || menuBox.y + menuBox.height > triggerBox.y + 1) {
+        throw new Error("the menu does not open above its trigger")
+      }
+      const radio = (name: string) => menu.getByRole("menuitemradio", { name, exact: true })
+      if (await radio("System").getAttribute("aria-checked") !== "true") {
+        throw new Error("System is not the checked theme")
+      }
+      if (await radio("Dark").getAttribute("aria-checked") !== "false") {
+        throw new Error("Dark is checked before it was chosen")
+      }
+      await expectAxeClean(page, `[data-e2e="account-menu-demo"]`)
+      await radio("Dark").click()
+      await menu.waitFor({ state: "hidden" })
+      await card.locator(`[data-e2e="account-menu-demo-theme"]`).filter({ hasText: "dark" })
+        .waitFor()
+      await trigger.click()
+      if (await radio("Dark").getAttribute("aria-checked") !== "true") {
+        throw new Error("Dark is not checked after it was chosen")
+      }
+      return "opened upward; Dark chosen and checked"
     },
   },
 ]
