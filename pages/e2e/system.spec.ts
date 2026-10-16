@@ -276,8 +276,9 @@ export const specs: readonly Spec[] = [
       await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
         if (!frame) throw new Error("the RailShell demo frame is missing")
-        frame.style.height = "auto"
-        frame.style.overflow = "visible"
+        // Its classes also move the tab bar's scroll padding from the root to the frame; dropping
+        // them gives the root back the padding an app's shell gets.
+        frame.className = ""
         // The guide scrolls smoothly; an instant scroll lets the box be read right after focus.
         document.documentElement.style.scrollBehavior = "auto"
         const button = document.createElement("button")

@@ -216,7 +216,7 @@ export const UNDEMONSTRATED_CLASSES: Record<string, string> = {
   "status-off": MAP_CLASSES_REASON,
   "status-unknown": MAP_CLASSES_REASON,
   "pc-scroll-pb-tab-bar":
-    "`RailShell` applies it to the root element below `md`, through the `max-md:[:root:has(&)]:` variant on its own root, so the catalogue never carries it as a bare class; a bare demo would set scroll padding on the element that carries it, which is not where it works.",
+    "`RailShell` applies it to the root element below `md`, through the `max-md:[:root:has(&)]:` variant on its own root, and the RailShell demo's scrolling frame carries it only behind `max-md:`, so the catalogue never carries it as a bare class; a bare demo would set scroll padding on the element that carries it, which is not where it works.",
 }
 
 /**
