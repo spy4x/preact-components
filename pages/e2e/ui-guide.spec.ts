@@ -1,4 +1,7 @@
-/** Playwright specs for the guide as a whole: axe-core on every page, in both palettes. */
+/**
+ * Playwright specs for the guide as a whole: axe-core on every page, in both palettes, with the
+ * contrast rule in a spec of its own.
+ */
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Page } from "playwright-core"
 import { type GuidePageId, guidePageIds } from "@spy4x/preact-ui-guide/registry"
@@ -55,8 +58,8 @@ const READY: Partial<Record<GuidePageId, (page: Page) => Promise<unknown>>> = {
 }
 
 /**
- * An element whose contrast another spec measures, so the page's scan runs every rule on it except
- * that one. A page with no entry is scanned whole.
+ * An element whose contrast another spec measures, so the page's contrast scan leaves it out. A
+ * page with no entry is scanned whole.
  */
 const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
   // The Map's credit line is opaque and lies over tiles Leaflet blends with `plus-lighter`. axe
@@ -65,16 +68,27 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
   map: '#demo-Map [data-e2e="map-attribution"]',
 }
 
+/** The rule a page's scan is split on: it takes about half the time of the whole scan. */
+const CONTRAST = "color-contrast"
+
 /**
- * One page in one palette: each axe rule fails on exactly as many elements as is known, and on
- * none when the rule is not listed.
+ * Which half of a page's rules one spec runs. The ui page's scan took 46 to 53 seconds at a load
+ * average near 40, too close to a spec's 60-second limit once specs run side by side, and the
+ * contrast rule was about half of it (#696). Two halves run in parallel and each has room.
+ */
+type Half = "contrast" | "rest"
+
+/**
+ * One page in one palette, for one half of axe's rules: each rule fails on exactly as many
+ * elements as is known, and on none when the rule is not listed.
  *
  * axe reports what it cannot decide (text over an image, for one) as "incomplete", not as a
  * violation, so this proves nothing about those elements.
  */
-function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark"): Spec {
+function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half): Spec {
+  const which = half === "contrast" ? "colour-contrast violation" : "violation of another rule"
   return {
-    name: `axe: the ${pageId} page has no new and no fixed violation in the ${colorScheme} palette`,
+    name: `axe: the ${pageId} page has no new and no fixed ${which} in the ${colorScheme} palette`,
     pageId,
     colorScheme,
     run: async (page) => {
@@ -86,21 +100,17 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark"): Spec {
       await READY[pageId]?.(page)
 
       const apart = CONTRAST_ELSEWHERE[pageId]
-      const whole = new AxeBuilder({ page })
-      const scans = [await (apart ? whole.exclude(apart) : whole).analyze()]
-      if (apart) {
-        scans.push(
-          await new AxeBuilder({ page }).include(apart).disableRules(["color-contrast"]).analyze(),
-        )
-      }
-      const passes = scans[0].passes
-      const incomplete = scans.flatMap((scan) => scan.incomplete)
-      const known = KNOWN_VIOLATIONS[pageId]
+      const builder = new AxeBuilder({ page })
+      const { passes, incomplete, violations } =
+        await (half === "contrast"
+          ? (apart ? builder.exclude(apart) : builder).withRules([CONTRAST])
+          : builder.disableRules([CONTRAST])).analyze()
+      const known = Object.fromEntries(
+        Object.entries(KNOWN_VIOLATIONS[pageId])
+          .filter(([rule]) => (rule === CONTRAST) === (half === "contrast")),
+      )
       const expected = (rule: string) => known[rule]?.[colorScheme === "light" ? 0 : 1] ?? 0
-      const found = new Map<string, typeof passes[number]["nodes"]>()
-      for (const { id, nodes } of scans.flatMap((scan) => scan.violations)) {
-        found.set(id, [...found.get(id) ?? [], ...nodes])
-      }
+      const found = new Map(violations.map(({ id, nodes }) => [id, nodes]))
 
       const problems: string[] = []
       for (const [rule, nodes] of found) {
@@ -134,15 +144,19 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark"): Spec {
       }
       if (problems.length > 0) throw new Error(problems.join(" | "))
 
-      const measured = passes.find(({ id }) => id === "color-contrast")?.nodes.length ?? 0
+      const measured = passes.find(({ id }) => id === CONTRAST)?.nodes.length ?? 0
       const listed = Object.keys(known).filter((rule) => expected(rule) > 0)
         .map((rule) => `${rule} ×${expected(rule)}`)
-      return `${passes.length} rules pass, contrast on ${measured} elements` +
+      return (half === "contrast"
+        ? `contrast passes on ${measured} elements`
+        : `${passes.length} rules pass`) +
         (listed.length > 0 ? `; known and not held: ${listed.join(", ")}` : "")
     },
   }
 }
 
 export const specs: readonly Spec[] = (["light", "dark"] as const).flatMap((colorScheme) =>
-  guidePageIds.map((pageId) => axeSpec(pageId, colorScheme))
+  guidePageIds.flatMap((pageId) =>
+    (["rest", "contrast"] as const).map((half) => axeSpec(pageId, colorScheme, half))
+  )
 )

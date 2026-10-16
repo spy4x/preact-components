@@ -141,9 +141,28 @@ and waits, so a load average near 90 about doubles them. `e2e` loads and hydrate
 each spec, which is processor work, and load slows it far more: of its 171 checks, 100 had passed
 at 900s at a load average of 83 to 99, 126 at 36 to 50, and 157 at 28 to 31, against all 171 in
 378s in CI. A few specs also ran past the runner's own limits there (10s for an action, 60s for a
-spec). So on a machine that busy the first and third parts run green and CI is the evidence for
-`e2e`. One more run of the nine blocks, 493s, ended with one check red in `system`: a read met
+spec). One more run of the nine blocks, 493s, ended with one check red in `system`: a read met
 `Inspected target navigated or closed`.
+
+So `e2e` runs four specs at a time now, each still in a context of its own (#696). Measured on
+2026-10-16 in CI and 2026-10-17 on the same 16 cores. The part had 158 specs before and has 180
+now, because each page's axe scan became two specs (see "A Playwright spec"); the check counts
+below include the startup checks every part runs.
+
+| Where                                                      | `e2e`                                  | The run beside it     |
+| ---------------------------------------------------------- | -------------------------------------- | --------------------- |
+| CI, the `verify` step, one spec at a time (`main`, 10-16)  | 462s                                   | —                     |
+| CI, the `verify` step, four at a time                      | 302s, 287s                             | —                     |
+| load average 20 to 31, alone, one spec at a time           | not done at 900s, 173 of 177 checks ok | —                     |
+| load average 32 to 54, alone, four at a time, one axe scan | 483s, both `ui` page scans past 60s    | —                     |
+| load average 30 to 37, four at a time                      | 398s, 215/215                          | the nine blocks, 364s |
+| load average 17 to 22, four at a time                      | 318s, 215/215                          | `ui`, 434s, 661/661   |
+
+One spec at a time, a spec spent about 3.4 of its 6.6 seconds opening its context and loading and
+hydrating its page, at a load average of 20 to 31; four at a time overlap that wait. The `ui`
+page's axe scan took 46 to 53 seconds alone at a load average near 40, too close to the 60-second
+limit once specs share the processor, and the contrast rule was about half of it; split in two,
+the longest spec took 32 seconds at a load average of 30 to 37.
 
 ### Running under load
 
@@ -192,7 +211,7 @@ last check that finished:
 - **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
   never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
   busy workstation (#696), which is why a full run can be split: each part has its own 15 minutes
-  and the longest takes six and a half in CI (see "Running a full run in parts").
+  and the longest takes about five and a half in CI (see "Running a full run in parts").
 
 Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call,
 or a wait for one DevTools event such as a page load, gets when its caller names none. Each launch
@@ -216,10 +235,11 @@ was about three times the unthrottled phase under load. The `ui` block was the l
 took 7s together, and the time is spread over real timers and smooth scrolls. The old single
 five-minute limit was simply smaller than a full run under load.
 
-Where they stand on 2026-10-14, with 1,321 checks run in three parts that each get the whole
-ceiling: in CI the longest part takes 378s, well under half of it. At a load average of 80 to 90
-the `ui` part took 728s, four fifths of the ceiling, and `e2e` did not fit in it even at 28 to 31.
-The table in "Running a full run in parts" has every time.
+Where they stand on 2026-10-17, with three parts that each get the whole ceiling: in CI the
+longest part, `ui`, takes about 330s, well under half of it. At a load average of 80 to 90 the
+`ui` part took 728s, four fifths of the ceiling (2026-10-14). `e2e`, which did not fit in it at a
+load average of 20 to 31 when it ran one spec at a time, took 398s at 30 to 37 beside another part
+once it ran four at a time. The tables in "Running a full run in parts" have every time.
 
 When a run stops on either limit, read the named last check before raising a number: a stall
 after a check that usually takes a second is a hang to fix, not a limit to widen.
@@ -251,12 +271,18 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
   hold. The runner opens that page in a fresh browser context, waits for hydration, and records
   one check per spec. A spec that throws, or takes over 60 seconds, is one failed check, and the
   specs after it still run.
+- **Side by side.** Four specs run at once, each in its own context, so nothing a spec leaves
+  behind (storage, cookies, a service worker, a viewport, emulated media) reaches another; the
+  checks are recorded in spec order all the same (`e2e/ordered-pool.ts`). A spec shares the
+  processor with up to three others.
 - **Waiting.** Use locators and let them wait: `locator.click()`, `locator.waitFor()`,
   `locator.filter({ hasText })`. No sleeps and no polling loops. The dependency is
   `playwright-core`, which has no `expect`; a state is asserted by waiting for a locator that
   matches only in that state, such as `toggle.and(page.locator('[aria-checked="true"]'))`.
 - **Accessibility.** `e2e/ui-guide.spec.ts` runs axe's default rule set on every guide page, in
-  the light and the dark palette, once the page's late content is drawn (the Map's tiles).
+  the light and the dark palette, once the page's late content is drawn (the Map's tiles). Each
+  page and palette is two specs, the contrast rule and every other rule, because the whole scan of
+  the `ui` page came too close to a spec's 60 seconds under load (#696).
   `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
   axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
   the number with it and the list only shrinks. axe reports what it cannot decide as
