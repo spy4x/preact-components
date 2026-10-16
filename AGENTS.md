@@ -137,7 +137,8 @@ hide a version not installable yet. A consumer's CI resolves a young version onc
 ## Code style
 
 The global TS style applies, with two overrides: double quotes, backticks only for interpolated
-or multi-line strings; and an explicit `throw` on any missing required value, not only env. `deno fmt` decides layout. A new dependency needs a reason in the PR.
+or multi-line strings; and an explicit `throw` on any missing required value, not only env.
+`deno fmt` decides layout. A new dependency needs a reason in the PR.
 
 ## Component rules
 
