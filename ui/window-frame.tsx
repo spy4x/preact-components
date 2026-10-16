@@ -59,7 +59,7 @@ export function WindowFrame(
   { variant, title, children, caption, class: className }: WindowFrameProps,
 ): JSX.Element {
   return (
-    <figure class={cn("flex flex-col gap-3", className)}>
+    <figure class={cn("flex min-w-0 flex-col gap-3", className)}>
       {variant === "browser" && (
         <div class={browserFrame}>
           <div
