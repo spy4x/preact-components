@@ -156,7 +156,7 @@ Pick the shell by the kind of app; all of them are library components.
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product (SPA)                     | `RailShell`: a rail of at most five destinations from `md`, the same five as a bottom tab bar on a phone. A slim top bar (`h-14`, `bg-surface`, bottom hairline) holds the brand mark, a workspace picker and the user menu. |
 | Admin panel                       | The same shell as its product, so an operator recognises it, with an "Admin" badge beside the brand mark so nobody mistakes it for the product.                                                                              |
-| Marketing site                    | `SiteHeader` (sticky, one call to action on the right, a disclosure menu on phones) and `SiteFooter`.                                                                                                                        |
+| Marketing site                    | `SiteHeader` (sticky through its `class` prop, one call to action on the right, a disclosure menu on phones) and `SiteFooter`.                                                                                               |
 | Personal site                     | `SiteHeader` for a few pages, or `RailShell` with a bottom tab bar when the site has five or more sections.                                                                                                                  |
 | Single-page tool (a status board) | A top bar with the brand mark and the page's one control (a search box), then the content column. No rail.                                                                                                                   |
 
@@ -231,16 +231,16 @@ else:
 
 Rules for picking it:
 
-- **Lightness 0.38 to 0.55**, so a white label reads at 4.5:1 or better on the fill and the colour
-  works as text on the canvas. Chroma as high as sRGB allows at that lightness and hue, so the
-  hex value and the OKLCH value name the same colour.
+- **Lightness 0.38 to 0.5**, so a white label reads at 4.5:1 or better on the fill and the colour
+  works as text on the canvas, at any hue. Keep the chroma inside sRGB at that lightness and hue,
+  so the hex value and the OKLCH value name the same colour.
 - **At least 30° of hue from every other app's hue**, so two apps never look alike in a tab bar.
 - **Clear of the status hues**: red (about 25°), orange and amber (about 50 to 75°) and green (about
   140 to 155°). A brand that reads as "error" or "done" weakens both.
 - **Everything with a colour uses it:** the primary button, the brand mark, the favicon, the PWA
   icon, the selected state. No second accent hides in a dashboard or a logo.
 
-Hues already taken:
+Hues assigned (most apps have not moved to theirs yet):
 
 | App                            | Hue                     | Light accent                       |
 | ------------------------------ | ----------------------- | ---------------------------------- |
@@ -252,7 +252,7 @@ Hues already taken:
 | The owner's personal sites     | orange, 47° (see below) | `#f97316` with a dark label        |
 
 The wheel is nearly full. The one gap left that keeps 30° from every hue above and from the status
-hues is about 105° (chartreuse, light enough that it needs the dark label). An app after that
+hues is about 105° (chartreuse, at a lightness of 0.5 or less so the white label still works). An app after that
 shares a neighbour's hue at a clearly different lightness, which is the owner's call. Add a row
 here in the same change that gives an app its hue.
 
@@ -378,6 +378,10 @@ Smallest change first, and whether it is needed now.
    copies the variable woff2 from the pinned `geist` npm package, with the licence beside it.
 5. **No warm neutral palette.** The personal sites set their warm values themselves through the
    tokens, which works. **Not needed now;** revisit if a third site wants it.
+6. **Headings draw heavier than the type scale.** `PageHeader` draws its title at weight 600 and
+   switches size at `sm`; the `Section` title is `text-xl` to `text-2xl`; the `Card` title is
+   `text-lg` at 600. The table above asks for weight 500 and smaller section titles. The fix is to
+   move those three to the table's values. **Needed with the first app that aligns,** in one
+   release, because it changes every app's headings.
 
-No motion tokens, radius options or per-app font options are needed: the shared values above are
-expressed with the tokens and Tailwind classes the library already has.
+No motion tokens, radius options or per-app font options are needed.
