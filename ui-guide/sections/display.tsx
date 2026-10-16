@@ -2001,7 +2001,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "search",
         type: "(query, signal) => Promise<options>",
         description:
-          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored.",
+          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
       { name: "onSelect", type: "(option) => void", description: "The picked option." },
       {
@@ -2182,8 +2182,20 @@ const paletteOptions: readonly CommandPaletteOption[] = [
 const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
 
 /**
+ * A fruit with a long name and a long second line, which the pretend server lists only for a typed
+ * query, never for the empty one: the label stops at two lines and the detail at one.
+ */
+const paletteLongFruit = {
+  name:
+    "Dragon fruit, also called pitaya or pitahaya, the sweet pink fruit of a cactus that grows in the tropics and is sold in markets all over Southeast Asia and Central America",
+  detail:
+    "Grown in Vietnam, Thailand, Mexico and Central America; the flesh is white or red with small black seeds, eaten raw, in juice or in sorbet",
+}
+
+/**
  * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
- * quickly, so a stale answer arrives after the fresh one, and `boom` fails. It answers even after
+ * quickly, so a stale answer arrives after the fresh one; `slow` takes twenty seconds, long enough to
+ * look at the loading state; and `boom` fails. It answers even after
  * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
  * query through `onAbort`.
  */
@@ -2193,7 +2205,7 @@ function paletteFruitSearch(
   onAbort: (query: string) => void,
 ): Promise<CommandPaletteOption[]> {
   const needle = query.trim().toLowerCase()
-  const delay = needle.length === 1 ? 900 : 100
+  const delay = needle === "slow" ? 20_000 : needle.length === 1 ? 900 : 100
   // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
   // records which queries were aborted.
   signal.addEventListener("abort", () => onAbort(query), { once: true })
@@ -2201,9 +2213,14 @@ function paletteFruitSearch(
     setTimeout(() => {
       if (needle === "boom") return reject(new Error("The pretend server failed"))
       resolve(
-        paletteFruits
+        (needle === "" ? paletteFruits : [...paletteFruits, paletteLongFruit.name])
           .filter((fruit) => fruit.toLowerCase().includes(needle))
-          .map((fruit) => ({ id: fruit, label: fruit, group: `Fruit with ${fruit[0]}` })),
+          .map((fruit) => ({
+            id: fruit,
+            label: fruit,
+            detail: fruit === paletteLongFruit.name ? paletteLongFruit.detail : undefined,
+            group: `Fruit with ${fruit[0]}`,
+          })),
       )
     }, delay)
   )
@@ -2212,12 +2229,14 @@ function paletteFruitSearch(
 /**
  * `CommandPalette` both ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
- * has no hotkey. `pages/checks/ui.ts` reads what each picked and how many searches started.
+ * has no hotkey. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
+ * searches started and answered.
  */
 function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
   const pickedRemote = useSignal("nothing yet")
   const searches = useSignal(0)
+  const answered = useSignal(0)
   const aborted = useSignal<string[]>([])
   return (
     <Stack>
@@ -2232,9 +2251,13 @@ function CommandPaletteDemo() {
         <CommandPalette
           search={(query, signal) => {
             searches.value++
-            return paletteFruitSearch(query, signal, (stale) => {
+            const answer = paletteFruitSearch(query, signal, (stale) => {
               aborted.value = [...aborted.value, stale]
             })
+            // Counts every answer, a stale one too, so a check knows when the last has landed.
+            const count = () => answered.value++
+            answer.then(count, count)
+            return answer
           }}
           hotkeys={[]}
           dataE2E="palette-remote"
@@ -2245,10 +2268,12 @@ function CommandPaletteDemo() {
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
-        <span data-e2e="palette-remote-searches">{searches.value}</span>; aborted{" "}
+        <span data-e2e="palette-remote-searches">{searches.value}</span>; answered{" "}
+        <span data-e2e="palette-remote-answered">{answered.value}</span>; aborted{" "}
         <span data-e2e="palette-remote-aborted">
           {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
-        </span>. One letter answers slowly, longer queries quickly, and “boom” fails.
+        </span>. One letter answers slowly, longer queries quickly, “slow” takes twenty seconds,
+        “dragon” finds a long name, and “boom” fails.
       </DemoNote>
     </Stack>
   )

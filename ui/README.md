@@ -1433,7 +1433,8 @@ field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leav
 Mac, where it deletes to the end of the line; a caller who lists `ctrl+k` takes it from every
 field. The page behind does not scroll while the palette is open (a page already locked, by an open
 `Modal` or by an app's own CSS class, stays as it is), and the highlighted result is scrolled
-into view as it moves. On a phone the button is an icon and the dialog fills the screen.
+into view as it moves. On a phone the button is an icon, the dialog fills the screen and every
+result row is at least 44 px tall. A long label stops at two lines and a long `detail` at one.
 
 While an input method is still composing a word, the results stay those of the text from before
 and no `search` is asked; they follow once the word is finished. Enter and Escape pressed to
@@ -1448,7 +1449,10 @@ It takes its results one of two ways, never both:
 - `search(query, signal)`: the palette calls it with the empty query when it opens and then after
   each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
   and the stale answer is ignored even when the function does not listen to it. While a call runs
-  the list is empty and says "Searching…", so nothing from the previous query can be picked; a
+  the previous results stay listed, so the list does not blink on every keystroke; once the reader
+  has waited 300 ms, "Searching…" shows beside the field (or in the list, when it is empty) and
+  is announced; the rows neither move nor fade. Enter pressed while a call runs
+  waits for its answer and picks the answer's first result, never a row of the previous query. A
   rejection says the search failed.
 
 An option is `{ id, label, detail?, hint?, group? }`, and `onSelect` receives the same object, so
