@@ -1214,6 +1214,7 @@ export const specs: readonly Spec[] = [
   ...marketingBlockSpecs(),
   avatarOnHoveredRowSpec("light"),
   avatarOnHoveredRowSpec("dark"),
+  ...remotePaletteSpecs(),
 ]
 
 /**
@@ -2288,6 +2289,217 @@ function toastrSpecs(): Spec[] {
           if (x !== 0) throw new Error(`${corner}: the toast starts at translate x ${x}px`)
           await clear()
         }
+      },
+    },
+  ]
+}
+
+/**
+ * The remote `CommandPalette` on its card, opened, once its answer for the empty query is listed.
+ * Its pretend server answers a one-letter query in 900 ms, a longer one in 100 ms, and fails
+ * "boom"; the card counts the searches started and answered, and shows what was picked.
+ *
+ * @param page The guide's UI page.
+ * @param width The window's width.
+ */
+async function openRemotePalette(page: Page, width = 1280) {
+  await page.setViewportSize({ width, height: 800 })
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`[data-e2e="palette-remote"]`)
+  const field = dialog.getByRole("combobox")
+  const list = dialog.getByRole("listbox")
+  const status = dialog.locator(`[data-e2e="palette-remote-status"]`)
+  const counter = (name: string) => card.locator(`[data-e2e="palette-remote-${name}"]`)
+  // Attached, not visible: an empty list has no height.
+  const idle = list.and(page.locator(":not([aria-busy])"))
+  /** Waits until the listed results are exactly these labels, in this order. */
+  const resultsAre = (labels: readonly string[]) =>
+    page.waitForFunction(
+      (wanted) =>
+        [...document.querySelectorAll(`[data-e2e="palette-remote"] [role="option"]`)]
+          .map((option) => option.querySelector("span span")?.textContent ?? "")
+          .join("|") === wanted,
+      labels.join("|"),
+    )
+  await card.locator(`[data-e2e="palette-remote-open"]`).click()
+  await field.and(page.locator(":focus")).waitFor()
+  await resultsAre(["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"])
+  await idle.waitFor({ state: "attached" })
+  return {
+    dialog,
+    field,
+    status,
+    idle,
+    resultsAre,
+    /** Waits until the card's counter `name` ("searches", "answered") reads exactly `value`. */
+    counterIs: (name: string, value: string) =>
+      counter(name).filter({ hasText: new RegExp(`^${value}$`) }).waitFor(),
+    /** Reads the card's counter `name`. */
+    counter: async (name: string) => await counter(name).textContent() ?? "",
+    /** Waits until the status line says `text` where a sighted reader sees it. */
+    shows: (text: string) =>
+      status.and(page.locator(":not(.sr-only)")).filter({ hasText: text }).waitFor(),
+  }
+}
+
+/** Specs for the remote data mode of `CommandPalette`, and its rows on a phone. */
+function remotePaletteSpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette remote: a newer query aborts the stale search's signal, and the " +
+        "stale answer changes nothing when it lands after the fresh one",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const started = Number(await palette.counter("searches"))
+        await page.keyboard.type("a")
+        // "a" must really start before "p" makes it stale; a debounced query never starts.
+        await palette.counterIs("searches", String(started + 1))
+        await page.keyboard.type("p")
+        await palette.resultsAre(["Apple", "Apricot", "Grape", "Papaya"])
+        await palette.counterIs("aborted", "“a”")
+        // Every search has answered, the slow, stale one for "a" included.
+        await palette.counterIs("answered", String(started + 2))
+        await palette.resultsAre(["Apple", "Apricot", "Grape", "Papaya"])
+        await palette.idle.waitFor({ state: "attached" })
+      },
+    },
+    {
+      name: "CommandPalette remote: while the next search runs the last results stay listed, " +
+        "and only after 300 ms are they dimmed and the list says Searching…",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        // Every change to the dialog, timed, from the keystroke to the answer.
+        const log = await palette.dialog.evaluateHandle((dialog) => {
+          const entries: {
+            at: number
+            busy: boolean
+            dimmed: boolean
+            rows: number
+            status: string
+          }[] = []
+          new MutationObserver(() => {
+            const list = dialog.querySelector(`[role="listbox"]`)
+            entries.push({
+              at: performance.now(),
+              busy: list?.getAttribute("aria-busy") === "true",
+              dimmed: list?.classList.contains("opacity-60") ?? false,
+              rows: dialog.querySelectorAll(`[role="option"]`).length,
+              status: dialog.querySelector(`[role="status"]`)?.textContent ?? "",
+            })
+          }).observe(dialog, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          })
+          return entries
+        })
+        await page.keyboard.type("a")
+        await palette.status.filter({ hasText: "Searching…" }).waitFor({ state: "attached" })
+        await palette.idle.waitFor({ state: "attached" })
+        const entries = await log.jsonValue()
+        const busy = entries.findIndex((entry) => entry.busy)
+        const slow = entries.findIndex((entry) => entry.status === "Searching…")
+        const answered = entries.findIndex((entry, index) => index > busy && !entry.busy)
+        if (busy < 0 || slow < 0 || answered < 0) {
+          throw new Error(`busy at ${busy}, Searching… at ${slow}, answered at ${answered}`)
+        }
+        const first = entries[busy]
+        if (first.rows !== 7 || first.status !== "" || first.dimmed) {
+          throw new Error(
+            `as the search starts: ${first.rows} rows, status "${first.status}", dimmed ` +
+              `${first.dimmed}`,
+          )
+        }
+        const waited = entries[slow].at - first.at
+        // A timer never fires early; the 10 ms are rendering's slack between the two records.
+        if (waited < 290) throw new Error(`Searching… came ${Math.round(waited)} ms in`)
+        if (entries[slow].rows !== 7 || !entries[slow].dimmed) {
+          throw new Error(
+            `with Searching…: ${entries[slow].rows} rows, dimmed ${entries[slow].dimmed}`,
+          )
+        }
+        const blank = entries.slice(busy, answered).find((entry) => entry.rows !== 7)
+        if (blank) throw new Error(`the list fell to ${blank.rows} rows while "a" loaded`)
+        return `Searching… after ${Math.round(waited)} ms, with the 7 rows kept and dimmed`
+      },
+    },
+    {
+      name: "CommandPalette remote: Enter while a search runs waits for its answer and picks its " +
+        "first result, not the highlighted row of the previous query",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const picked = page.locator(`[data-e2e="palette-remote-picked"]`)
+        await page.keyboard.type("b")
+        await page.keyboard.press("Enter")
+        // "b" answers 1.1 s after the keystroke: the palette is still open and nothing is picked.
+        const midLoad = await page.evaluate(() => ({
+          open: document.querySelector<HTMLDialogElement>(`[data-e2e="palette-remote"]`)?.open,
+          picked: document.querySelector(`[data-e2e="palette-remote-picked"]`)?.textContent,
+        }))
+        if (!midLoad.open || midLoad.picked !== "nothing yet") {
+          throw new Error(`right after Enter: open ${midLoad.open}, picked "${midLoad.picked}"`)
+        }
+        await picked.filter({ hasText: /^Banana$/ }).waitFor()
+        await palette.dialog.waitFor({ state: "hidden" })
+      },
+    },
+    {
+      name: "CommandPalette remote: a rejected search shows the error, and a query nothing " +
+        "matches says so",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        await palette.field.fill("boom")
+        await palette.shows("The search failed. Try again.")
+        await palette.resultsAre([])
+        await palette.field.fill("zz")
+        await palette.shows("Nothing matches.")
+        await palette.idle.waitFor({ state: "attached" })
+      },
+    },
+    {
+      name: "CommandPalette at 390 px: every result row is at least 44 px tall, a long label " +
+        "stops at two lines and a long detail at one",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page, 390)
+        // Short names with no detail, and the long one with its long detail.
+        await palette.field.fill("e")
+        await palette.dialog.getByRole("option").filter({ hasText: "Dragon fruit" }).waitFor()
+        await palette.idle.waitFor({ state: "attached" })
+        const read = await palette.dialog.evaluate((dialog) => {
+          const lines = (element: Element | null) => {
+            if (!(element instanceof HTMLElement)) return { lines: 0, clipped: false }
+            const height = element.getBoundingClientRect().height
+            return {
+              lines: Math.round(height / parseFloat(getComputedStyle(element).lineHeight)),
+              clipped: element.scrollHeight > element.clientHeight + 1,
+            }
+          }
+          const rows = [...dialog.querySelectorAll(`[role="option"]`)]
+          const long = rows.find((row) => row.textContent?.startsWith("Dragon fruit"))
+          const texts = long?.querySelectorAll("span span")
+          return {
+            heights: rows.map((row) => row.getBoundingClientRect().height),
+            label: lines(texts?.[0] ?? null),
+            detail: lines(texts?.[1] ?? null),
+          }
+        })
+        const short = read.heights.filter((height) => height < 44)
+        if (read.heights.length < 2 || short.length > 0) {
+          throw new Error(`row heights ${read.heights.join(", ")}`)
+        }
+        if (read.label.lines !== 2 || !read.label.clipped) {
+          throw new Error(`label: ${read.label.lines} lines, clipped ${read.label.clipped}`)
+        }
+        if (read.detail.lines !== 1 || !read.detail.clipped) {
+          throw new Error(`detail: ${read.detail.lines} lines, clipped ${read.detail.clipped}`)
+        }
+        return `row heights ${read.heights.map(Math.round).join(", ")} px`
       },
     },
   ]
