@@ -72,7 +72,7 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
 const CONTRAST = "color-contrast"
 
 /**
- * Which half of a page's rules one spec runs. The ui page's scan took 46 to 52 seconds at a load
+ * Which half of a page's rules one spec runs. The ui page's scan took 46 to 53 seconds at a load
  * average near 40, too close to a spec's 60-second limit once specs run side by side, and the
  * contrast rule was about half of it (#696). Two halves run in parallel and each has room.
  */
