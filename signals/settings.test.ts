@@ -41,9 +41,13 @@ function fakeServer<T>(definition: SettingsDefinition<T>) {
   const saves: Array<{ request: SettingsSaveRequest } & Held<SettingsSaveResult<unknown>>> = []
   const loads: Array<Held<StoredSettings | null>> = []
   const sent: SettingsSaveRequest[] = []
+  let loadsAsked = 0
 
   const transport: SettingsTransport = {
-    load: () => new Promise((resolve, reject) => loads.push({ resolve, reject })),
+    load: () => {
+      loadsAsked++
+      return new Promise((resolve, reject) => loads.push({ resolve, reject }))
+    },
     save: (request) =>
       new Promise((resolve, reject) => {
         sent.push(structuredClone(request))
@@ -58,6 +62,10 @@ function fakeServer<T>(definition: SettingsDefinition<T>) {
       return stored
     },
     /** How many saves are waiting for an answer. */
+    /** How many loads were asked for. */
+    get loadsAsked(): number {
+      return loadsAsked
+    },
     get waiting(): number {
       return saves.length
     },
@@ -123,6 +131,7 @@ describe("createSettingsStore load", () => {
     const store = createSettingsStore(preferences, server.transport)
     expect(store.record.value).toEqual({ version: 0, value: { theme: "system", clock: "auto" } })
     expect(store.loaded.value).toBe(false)
+    expect(server.loadsAsked).toBe(0)
     expect(server.sent).toEqual([])
   })
 
@@ -426,7 +435,10 @@ describe("syncThemeWithSettings", () => {
     await reconnect
     await settle()
     expect(theme.preference.value).toBe(ThemeValue.DARK)
-    expect(server.sent.at(-1)).toEqual({ version: 1, value: { theme: "dark", clock: "auto" } })
+    expect(server.sent).toEqual([
+      { version: 1, value: { theme: "dark", clock: "auto" } },
+      { version: 1, value: { theme: "dark", clock: "auto" } },
+    ])
   })
 
   it("stops following after sign-out and after the disposer", async () => {
