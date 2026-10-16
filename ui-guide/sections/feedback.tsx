@@ -9,6 +9,8 @@
 
 import {
   Button,
+  Card,
+  CardHeader,
   Checkbox,
   Cluster,
   ConfirmDialog,
@@ -368,8 +370,8 @@ function ToastrDemo() {
 
 /**
  * A full empty state, one with a title alone, one whose title is an `<h4>` under the card's own
- * `<h3>` (an `<h1>` here would give the catalogue page a second one), and one with nothing, which
- * renders nothing.
+ * `<h3>` (an `<h1>` here would give the catalogue page a second one), an inset one taking a card
+ * body's place, and one with nothing, which renders nothing.
  */
 function EmptyStateDemo() {
   return (
@@ -390,6 +392,15 @@ function EmptyStateDemo() {
         title="No matches"
         description="This title is an h4, under the card's h3; a whole-page empty state passes 1."
       />
+      <Card data-e2e="empty-state-inset-demo">
+        <CardHeader title="Devices" />
+        <EmptyState
+          inset
+          headingLevel={4}
+          title="No devices yet"
+          description="Inset: no dashed box inside the card, and a card body's padding."
+        />
+      </Card>
       <EmptyState />
     </Stack>
   )
@@ -1048,6 +1059,12 @@ export const feedbackDemos = {
       { name: "description", type: "string", description: "Why, or what to do next." },
       { name: "icon", type: "ComponentChildren", description: "A glyph above the title." },
       { name: "action", type: "ComponentChildren", description: "A button that fills the list." },
+      {
+        name: "inset",
+        type: "boolean",
+        default: `false`,
+        description: "No box, a card body's padding: for an empty section inside a Card.",
+      },
     ],
     snippet: `<EmptyState
   icon={<IconFolder class="size-5" />}
@@ -1057,7 +1074,13 @@ export const feedbackDemos = {
 />
 
 // A 404 page whose whole content is the empty state:
-<EmptyState headingLevel={1} title="Page not found" />`,
+<EmptyState headingLevel={1} title="Page not found" />
+
+// An empty section inside a card, in place of its CardBody:
+<Card>
+  <CardHeader title="Devices" />
+  <EmptyState inset title="No devices yet" />
+</Card>`,
     render: () => <EmptyStateDemo />,
   },
   ErrorBoundary: {

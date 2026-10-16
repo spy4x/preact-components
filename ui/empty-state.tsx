@@ -16,6 +16,12 @@ export interface EmptyStateProps {
   description?: string
   /** Caller-owned control (`Button`, link, …). Rendered under the copy. */
   action?: ComponentChildren
+  /**
+   * Draws no box, for an empty section inside a `Card`, where a dashed box would be a box inside a
+   * box: no border, no background, no maximum width, and the padding of a `CardBody`, whose place
+   * it takes. Defaults to `false`, the dashed box for an empty state that stands on the page.
+   */
+  inset?: boolean
   class?: string
 }
 
@@ -27,6 +33,12 @@ export interface EmptyStateProps {
  */
 const box =
   "mx-auto max-w-[650px] rounded-lg border border-dashed border-subtle bg-surface pc-focus-offset-surface p-4 text-center"
+
+/*
+ * The `inset` container: the copy and the action centred in `CardBody`'s padding (`pc-card-body`
+ * in the preset), so the empty section lines up with the card's header and footer.
+ */
+const insetBox = "px-4 py-6 text-center sm:p-8"
 
 /* The same icon box `LoadingSkeleton` uses for its placeholder glyph. */
 const iconBox =
@@ -47,14 +59,15 @@ const iconBox =
  * @returns The placeholder, or `null` when every slot is absent.
  */
 export function EmptyState(
-  { icon, title, headingLevel = 3, description, action, class: className }: EmptyStateProps,
+  { icon, title, headingLevel = 3, description, action, inset = false, class: className }:
+    EmptyStateProps,
 ): JSX.Element | null {
   const hasContent = Boolean(icon) || Boolean(title) || Boolean(description) || Boolean(action)
   if (!hasContent) return null
   const Heading = `h${headingLevel}` as "h3"
 
   return (
-    <div role="status" class={cn(box, className)}>
+    <div role="status" class={cn(inset ? insetBox : box, className)}>
       {icon && (
         <span aria-hidden="true" class={iconBox}>
           {icon}

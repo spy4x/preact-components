@@ -155,8 +155,13 @@ const itemClasses =
 /**
  * Text colour of a {@link DropdownItemProps.danger} item, in both themes. A disabled item leaves it
  * out, so a disabled destructive action looks like any other disabled item rather than a live one.
+ *
+ * The theme's `--color-danger` reads at 4.5:1 or better on the menu's surface and, in the light
+ * palette, on the highlighted row's grey too (red-700 on gray-100, 5.8:1). The dark palette's
+ * danger, red-400, falls to 3.6:1 on the highlighted row's gray-700, so a highlighted row there
+ * takes red-300 (5.4:1).
  */
-const dangerClasses = "text-red-600 dark:text-red-400"
+const dangerClasses = "text-danger dark:hover:text-red-300 dark:focus:text-red-300"
 
 export interface DropdownItemProps extends HotkeyProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */

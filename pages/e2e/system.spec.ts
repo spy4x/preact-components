@@ -260,4 +260,57 @@ export const specs: readonly Spec[] = [
       return `focused the heading "${name}", then main`
     },
   },
+  {
+    name:
+      "RailShell below md: a control tabbed to near the bottom of the window scrolls into view " +
+      "above the sticky tab bar instead of staying hidden behind it",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const bar = page.locator(`#demo-RailShell [data-e2e="rail-shell-tabbar"]`)
+      const target = page.locator(`[data-e2e="rail-shell-demo-focus-target"]`)
+      const checkbox = page.locator(`[data-e2e="rail-shell-demo-route-links"]`)
+      // The demo scrolls inside a 420 px box; an app's shell scrolls the window. Lift the box's
+      // bounds so the window scrolls the shell, and add the last control of the page after its
+      // last line, as a form's last button or a "Danger zone" would sit.
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
+        if (!frame) throw new Error("the RailShell demo frame is missing")
+        // Its classes also move the tab bar's scroll padding from the root to the frame; dropping
+        // them gives the root back the padding an app's shell gets.
+        frame.className = ""
+        // The guide scrolls smoothly; an instant scroll lets the box be read right after focus.
+        document.documentElement.style.scrollBehavior = "auto"
+        const button = document.createElement("button")
+        button.type = "button"
+        button.textContent = "Last control"
+        button.setAttribute("data-e2e", "rail-shell-demo-focus-target")
+        document.querySelector(`[data-e2e="rail-shell-demo-last-line"]`)?.after(button)
+      })
+      await checkbox.focus()
+      // Scroll the window so the control's bottom edge sits 10 px above the window's, which is
+      // behind the 65 px bar, then reach it from the checkbox with Tab as a keyboard user would.
+      await target.evaluate((element) => {
+        const { bottom } = element.getBoundingClientRect()
+        globalThis.scrollBy({ top: bottom - (globalThis.innerHeight - 10), behavior: "instant" })
+      })
+      await page.keyboard.press("Tab")
+      await target.and(page.locator(":focus")).waitFor()
+      const [box, barBox] = await Promise.all([target.boundingBox(), bar.boundingBox()])
+      if (!box || !barBox) throw new Error("the control or the tab bar is not drawn")
+      if (box.y + box.height > barBox.y) {
+        throw new Error(
+          `the focused control ends at y ${
+            box.y + box.height
+          }, under the tab bar from y ${barBox.y}`,
+        )
+      }
+      await page.setViewportSize({ width: 1280, height: 844 })
+      const wide = await page.evaluate(() =>
+        getComputedStyle(document.documentElement).scrollPaddingBottom
+      )
+      if (wide !== "auto") throw new Error(`from md up the root keeps scroll padding ${wide}`)
+      return `focused control ends at y ${box.y + box.height}, bar starts at y ${barBox.y}`
+    },
+  },
 ]

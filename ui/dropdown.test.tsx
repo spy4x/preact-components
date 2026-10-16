@@ -203,12 +203,19 @@ describe("DropdownItem", () => {
       .toContain("disabled")
   })
 
-  it("colours a danger item red instead of the default grey", () => {
+  it("colours a danger item with the theme's danger token instead of the default grey", () => {
     const html = render(<DropdownItem danger onClick={() => {}}>Archive</DropdownItem>)
 
-    expect(html).toContain("text-red-600")
-    expect(html).toContain("dark:text-red-400")
+    expect(html).toContain("text-danger")
+    expect(html).not.toContain("text-red-600")
     expect(html).not.toContain("text-foreground")
+  })
+
+  it("lightens a highlighted danger item in the dark palette, where red-400 fails on the hover grey", () => {
+    const html = render(<DropdownItem danger onClick={() => {}}>Archive</DropdownItem>)
+
+    expect(html).toContain("dark:hover:text-red-300")
+    expect(html).toContain("dark:focus:text-red-300")
   })
 
   it("dims a disabled item and only a disabled one, as a disabled Button is dimmed", () => {
@@ -228,20 +235,21 @@ describe("DropdownItem", () => {
     const html = render(<DropdownItem danger disabled onClick={() => {}}>Delete</DropdownItem>)
 
     expect(html).toBe(render(<DropdownItem disabled onClick={() => {}}>Delete</DropdownItem>))
+    expect(html).not.toContain("text-danger")
     expect(html).not.toContain("text-red-")
   })
 
   it("keeps a danger link red, because disabled disables only the button form", () => {
     const html = render(<DropdownItem href="/delete" danger disabled>Delete</DropdownItem>)
 
-    expect(html).toContain("text-red-600")
+    expect(html).toContain("text-danger")
   })
 
   it("leaves an item without danger in the default grey", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
 
     expect(html).toContain("text-foreground")
-    expect(html).not.toContain("text-red-600")
+    expect(html).not.toContain("text-danger")
   })
 
   it("merges the caller's classes over its own", () => {

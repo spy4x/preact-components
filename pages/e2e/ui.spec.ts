@@ -796,7 +796,40 @@ function marketingBlockSpecs(): Spec[] {
   ]
 }
 
+/**
+ * A highlighted danger `DropdownItem` keeps its text at 4.5:1, in each palette: the row under the
+ * pointer, then the row with keyboard focus, each checked by axe's colour-contrast rule.
+ */
+function dangerItemContrastSpecs(): Spec[] {
+  return (["light", "dark"] as const).map((colorScheme) => ({
+    name: `DropdownItem danger in the ${colorScheme} palette: its text passes axe's contrast ` +
+      "check while the row is hovered and while it has focus",
+    pageId: "ui",
+    colorScheme,
+    run: async (page: Page) => {
+      const item = page.locator(`[data-e2e="dropdown-item-danger"]`)
+      const contrast = async (state: string) => {
+        const { violations } = await new AxeBuilder({ page })
+          .include(`[data-e2e="dropdown-item-danger"]`)
+          .withRules(["color-contrast"])
+          .analyze()
+        if (violations.length > 0) {
+          const nodes = violations.flatMap(({ nodes }) => nodes.map((node) => node.failureSummary))
+          throw new Error(`${state}: ${nodes.join("; ")}`)
+        }
+      }
+      await item.hover()
+      await contrast("hovered")
+      await page.mouse.move(0, 0)
+      await item.focus()
+      await item.and(page.locator(":focus")).waitFor()
+      await contrast("focused")
+    },
+  }))
+}
+
 export const specs: readonly Spec[] = [
+  ...dangerItemContrastSpecs(),
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
     pageId: "ui",

@@ -461,6 +461,17 @@
   padding-bottom: calc(--spacing(3) + env(safe-area-inset-bottom, 0px));
 }
 
+/*
+ * Scroll padding that keeps a focused control clear of `RailShell`'s phone tab bar, which sticks to
+ * the bottom of the window: the bar's 64 px row and its 1 px top rule, the device's bottom inset the
+ * bar pads itself by, and step 2 (8 px) more so the focus ring clears the bar too. `RailShell` sets
+ * it on the root element below `md`, while the bar is on the page.
+ */
+@utility pc-scroll-pb-tab-bar {
+  scroll-padding-bottom: calc(--spacing(16) + --spacing(2) + 1px + env(safe-area-inset-bottom,
+    0px));
+}
+
 /* #endregion Spacing */
 
 /* #region Buttons */

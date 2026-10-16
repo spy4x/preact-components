@@ -1375,7 +1375,8 @@ const railShellItems: RailShellItem[] = [
  * current marker and prints the key and `href` it was handed instead of following the link; the
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
  * `href`, so it is a button through `navigate`. The `header` holds a brand and one button, so the
- * skip link has a control to jump past.
+ * skip link has a control to jump past. The frame scrolls the shell, so it takes the tab bar's
+ * scroll padding itself and takes it off the root, as the component's doc asks of such a caller.
  */
 function RailShellDemo() {
   const current = useSignal("home")
@@ -1383,7 +1384,7 @@ function RailShellDemo() {
   const routeLinks = useSignal(true)
   return (
     <div
-      class="h-[420px] overflow-y-auto"
+      class="h-[420px] overflow-y-auto max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
       data-e2e="rail-shell-demo"
     >
       <RailShell
