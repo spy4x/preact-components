@@ -4195,9 +4195,9 @@ won over an app's own `@theme --font-sans` (#470). An app that wants that font s
 - **Weights.** `font-medium` and `font-bold` read Tailwind's own `--font-weight-medium` and
   `--font-weight-bold` (500 and 700). An app whose fonts ship only 400 and 600 sets both to `600`
   in `:root`, after the preset, so no weight is faked. No token of this package is needed.
-- **Radius.** `--radius-primary` (`rounded-primary`, 0.5rem) is the shape of a button, a card body
-  and most controls; `--radius-control` (`rounded-control`, 0.375rem) is a small field or chip and
-  `--radius-card` (`rounded-card`, 0.75rem) a card. An app whose controls use `rounded-lg` sets
+- **Radius.** `--radius-primary` (`rounded-primary`, 0.5rem) is the shape of a button and most
+  controls; `--radius-control` (`rounded-control`, 0.375rem) is a small field or chip and
+  `--radius-card` (`rounded-card`, 0.75rem) a card, `Card` and `.pc-card` included. An app whose controls use `rounded-lg` sets
   `--radius-control: 0.5rem`. Pills stay `rounded-full`.
 - **Shadows.** `--shadow-raised` (`shadow-raised`) is a card's and `--shadow-popover`
   (`shadow-popover`) a menu's, dialog's or tooltip's. `none` gives flat chrome with hairline
