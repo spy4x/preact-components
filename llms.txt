@@ -279,6 +279,10 @@ PushSubscriptionLike	type	@spy4x/preact-signals	The slice of `PushSubscription` 
 PushSubscriptionStore	type	@spy4x/preact-signals	The push state of this device, and the actions that change it.
 PushVisibility	type	@spy4x/preact-signals	Page-visibility port.
 RemoteEvent	type	@spy4x/preact-signals	Event kinds a remote (websocket) feed can announce.
+SettingsSaveOutcome	type	@spy4x/preact-signals	Outcome of `SettingsSignals.save`.
+SettingsSaveRequest	type	@spy4x/preact-signals	A save request as the server's `saveSettings` reads it: the version it is based on, the value.
+SettingsSignals	type	@spy4x/preact-signals	A synced settings store.
+SettingsTransport	type	@spy4x/preact-signals	How the store talks to the server.
 StoreStateOf	type	@spy4x/preact-signals	State of a store built for a given row schema.
 Theme	type	@spy4x/preact-signals	A resolved theme: what is actually painted.
 ThemeBootstrapOptions	type	@spy4x/preact-signals	Options for `themeBootstrapScript`.
@@ -305,6 +309,7 @@ createNow	helper	@spy4x/preact-signals	Create a store holding the current time.
 createOnboardingState	helper	@spy4x/preact-signals	Create an onboarding store over the app's step facts and a port for the dismissed flag.
 createOnlineStatus	helper	@spy4x/preact-signals	Create an online status store.
 createPushSubscription	helper	@spy4x/preact-signals	Create the push store of this device.
+createSettingsStore	helper	@spy4x/preact-signals	Create a synced settings store for one app's settings definition.
 createStoredInstallPrompt	helper	@spy4x/preact-signals	Create an install prompt store that remembers "not now" in the browser's storage.
 createThemeStore	helper	@spy4x/preact-signals	Create a theme store.
 createToastStore	helper	@spy4x/preact-signals	Create a toast store.
@@ -315,6 +320,7 @@ patchSignal	helper	@spy4x/preact-signals	Merge `patch` into `signal`'s current v
 resolveFilterValue	helper	@spy4x/preact-signals	Value a URL parameter implies for one field.
 setMapEntry	helper	@spy4x/preact-signals	Return a copy of `map` with `key` set to `value`.
 shouldPersistFilter	helper	@spy4x/preact-signals	Whether a value belongs in the URL: not the default, not `null`, not the empty string.
+syncThemeWithSettings	helper	@spy4x/preact-signals	Connect a theme store to a synced settings store, so the theme follows the person across devices.
 themeBootstrapScript	helper	@spy4x/preact-signals	The source of an inline `<head>` script that paints the stored theme before the first paint.
 useNow	hook	@spy4x/preact-signals	The current time, on a signal that changes at each midnight in `zone` and whenever the page becomes visible again.
 usePushSubscription	hook	@spy4x/preact-signals	The push state of this device for one component, ready to spread into `PushSettings` from `@spy4x/preact-system`.

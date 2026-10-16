@@ -1,5 +1,13 @@
-import { computed, effect, type ReadonlySignal, type Signal, signal } from "@preact/signals"
+import {
+  computed,
+  effect,
+  type ReadonlySignal,
+  type Signal,
+  signal,
+  untracked,
+} from "@preact/signals"
 import { jsonLdText } from "@spy4x/platform/universal/seo"
+import type { SettingsSignals } from "./settings.ts"
 
 /**
  * `@spy4x/preact-signals/theme` — light/dark/system preference on signals.
@@ -272,6 +280,89 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
   }
 
   return { preference, system, actual, set, toggle, cycle, attach, dispose }
+}
+
+/**
+ * Connect a theme store to a synced settings store, so the theme follows the person across devices.
+ *
+ * The theme store keeps its own copy in storage, so the theme paints before sign-in and works
+ * offline. Once `settings` has loaded:
+ *
+ * - A record the server has saved before (version above `0`) wins over this device's copy, and so
+ *   does every newer record after it: one from another device ({@link SettingsSignals.apply}), a
+ *   later load, or the record that won a conflict. The theme store's `set` stores it locally too.
+ * - A record never saved (version `0`) takes this device's copy, so a new account keeps the theme
+ *   the person picked before signing up.
+ * - A preference set here (the account menu, `toggle`, `cycle`) is saved to `settings`.
+ * - A save that fails for want of a network keeps the theme here, and is sent again on the next
+ *   record `settings` takes, such as the reload an app runs when its socket reconnects. A newer
+ *   record from another device that arrives first is overwritten by it: the last choice made wins.
+ *   The retry is held in memory only, so a page reloaded while offline loses it.
+ *
+ * Before `settings` loads, and after its `reset` (sign-out), nothing is sent and nothing followed:
+ * the theme is this device's own again.
+ *
+ * @param key The key of the settings value that holds the theme preference.
+ * @returns A disposer that disconnects the two stores.
+ *
+ * @example
+ * ```ts
+ * const stop = syncThemeWithSettings(theme, settings, `theme`)
+ * ```
+ */
+export function syncThemeWithSettings<K extends string, T extends Record<K, `${ThemePreference}`>>(
+  theme: ThemeStore,
+  settings: SettingsSignals<T>,
+  key: K,
+): () => void {
+  // The record version the theme last followed or offered; `-1` before the first loaded record.
+  let seen = -1
+  // A preference this device set whose save could not reach the server.
+  let unsynced = false
+
+  const push = (preference: ThemePreference): void => {
+    const patch = { [key]: preference } as unknown as Partial<T>
+    settings.save(patch).then((outcome) => {
+      // A conflict needs nothing here: the record that won reaches the effect below.
+      unsynced = !outcome.ok && outcome.reason === `failed`
+    })
+  }
+
+  const stopRecord = effect(() => {
+    const isLoaded = settings.loaded.value
+    const record = settings.record.value
+    untracked(() => {
+      if (!isLoaded) {
+        seen = -1
+        unsynced = false
+        return
+      }
+      const local = theme.preference.peek()
+      const remote: unknown = record.value[key]
+      if (unsynced || (seen === -1 && record.version === 0)) {
+        unsynced = false
+        seen = record.version
+        if (remote !== local) push(local)
+        return
+      }
+      if (record.version === seen) return
+      seen = record.version
+      if (isThemePreference(remote) && remote !== local) theme.set(remote)
+    })
+  })
+
+  const stopLocal = effect(() => {
+    const preference = theme.preference.value
+    untracked(() => {
+      if (!settings.loaded.peek() || seen === -1) return
+      if (preference !== settings.value.peek()[key]) push(preference)
+    })
+  })
+
+  return () => {
+    stopRecord()
+    stopLocal()
+  }
 }
 
 /** Options for {@link themeBootstrapScript}. Each default matches {@link createThemeStore}'s. */
