@@ -152,7 +152,7 @@ below include the startup checks every part runs.
 | Where                                                      | `e2e`                                  | The run beside it     |
 | ---------------------------------------------------------- | -------------------------------------- | --------------------- |
 | CI, the `verify` step, one spec at a time (`main`, 10-16)  | 462s                                   | —                     |
-| CI, the `verify` step, four at a time                      | 302s                                   | —                     |
+| CI, the `verify` step, four at a time                      | 302s, 287s                             | —                     |
 | load average 20 to 31, alone, one spec at a time           | not done at 900s, 173 of 177 checks ok | —                     |
 | load average 32 to 54, alone, four at a time, one axe scan | 483s, both `ui` page scans past 60s    | —                     |
 | load average 30 to 37, four at a time                      | 398s, 215/215                          | the nine blocks, 364s |
