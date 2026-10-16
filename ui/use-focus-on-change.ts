@@ -8,7 +8,7 @@ import { useEffect, useRef } from "preact/hooks"
  * Use it to put focus on the next step's first control or heading after a step change.
  *
  * Focus moves after every render in which `value` changes to something other than the mounted
- * value, compared by `Object.is`. Mounting moves nothing, so a page that opens on a later step
+ * value, compared with `!==`, as Preact compares an effect's dependencies. Mounting moves nothing, so a page that opens on a later step
  * keeps focus where the browser put it, and neither does a change back to the mounted value. An
  * element that is not rendered takes nothing; give a heading or a message `tabIndex={-1}` so it
  * can take focus.
@@ -20,7 +20,7 @@ export function useFocusOnChange<T extends HTMLElement>(value: unknown): RefObje
   const mounted = useRef(value)
   const element = useRef<T>(null)
   useEffect(() => {
-    if (!Object.is(value, mounted.current)) element.current?.focus()
+    if (value !== mounted.current) element.current?.focus()
   }, [value])
   return element
 }

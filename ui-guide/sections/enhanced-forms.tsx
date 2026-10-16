@@ -365,15 +365,16 @@ function addressError(email: string): string | null {
  * `useFocusOnError` and `useFocusOnChange` on a two-step form. A refused address puts its error
  * under the field and focus on the field; an accepted one moves the flow to its second step, whose
  * line takes focus. "Start over" goes back to the first step, the value the demo mounted with, and
- * focus stays on the button. The last line is written from an effect declared after both hooks, so
- * once it shows, the hooks have done all they do for that state.
+ * focus stays on the button. The last line's `data-settled` is written from an effect declared
+ * after both hooks, so once it reads the state, the hooks have done all they do for that state. It
+ * is an attribute, not text, so the served document and the hydrated card read the same.
  */
 function FocusDemo() {
   const email = useSignal("")
   const error = useSignal<string | null>(null)
   const submits = useSignal(0)
   const step = useSignal<"ask" | "sent">("ask")
-  const field = useFocusOnError<HTMLInputElement>(error.value)
+  const field = useFocusOnError(error.value)
   const line = useFocusOnChange<HTMLParagraphElement>(step.value)
   const state = `step ${step.value} · submits ${submits.value}`
   const [settled, setSettled] = useState("")
@@ -412,7 +413,9 @@ function FocusDemo() {
         </EnhancedForm>
       )}
       <Cluster justify="between">
-        <DemoNote e2e="focus-demo-settled">{settled}</DemoNote>
+        <p class="text-xs text-muted" data-e2e="focus-demo-settled" data-settled={settled}>
+          {state}
+        </p>
         <StartOver
           e2e="focus-demo-start-over"
           onPress={() => {

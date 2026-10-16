@@ -1573,11 +1573,11 @@ function focusDemo(page: Page) {
     startOver: demo.locator(`[data-e2e="focus-demo-start-over"]`),
     line,
     /**
-     * Waits for the demo's last line to read this. The demo writes it from an effect declared after
-     * both hooks, so once it shows, the hooks have done all they do for that state.
+     * Waits for the demo's last line to carry this state in `data-settled`. The demo writes it from
+     * an effect declared after both hooks, so once it shows, the hooks have done all they do for it.
      */
     settledIs: (text: string) =>
-      demo.locator(`[data-e2e="focus-demo-settled"]`).getByText(text, { exact: true }).waitFor(),
+      demo.locator(`[data-e2e="focus-demo-settled"][data-settled="${text}"]`).waitFor(),
     /** Waits for the focus to be on one element. */
     focusIsOn: (target: Locator) => target.and(page.locator(":focus")).waitFor(),
     /** Throws when the step's line holds the focus. */
