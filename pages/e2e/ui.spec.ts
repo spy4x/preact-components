@@ -2472,7 +2472,7 @@ function remotePaletteSpecs(): Spec[] {
             throw new Error(`the page is drawn ${dark ? "dark" : "light"}, not ${colorScheme}`)
           }
           const palette = await openRemotePalette(page, width)
-          // "slow" answers in five seconds: the kept rows and Searching… stay for the whole scan.
+          // "slow" answers in twenty seconds: the kept rows and Searching… stay for the whole scan.
           await palette.field.fill("slow")
           await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
           // Two rules are left out, both about markup older than this spec that axe flags with or

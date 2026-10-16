@@ -2194,7 +2194,7 @@ const paletteLongFruit = {
 
 /**
  * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
- * quickly, so a stale answer arrives after the fresh one; `slow` takes five seconds, long enough to
+ * quickly, so a stale answer arrives after the fresh one; `slow` takes twenty seconds, long enough to
  * look at the loading state; and `boom` fails. It answers even after
  * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
  * query through `onAbort`.
@@ -2205,7 +2205,7 @@ function paletteFruitSearch(
   onAbort: (query: string) => void,
 ): Promise<CommandPaletteOption[]> {
   const needle = query.trim().toLowerCase()
-  const delay = needle === "slow" ? 5_000 : needle.length === 1 ? 900 : 100
+  const delay = needle === "slow" ? 20_000 : needle.length === 1 ? 900 : 100
   // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
   // records which queries were aborted.
   signal.addEventListener("abort", () => onAbort(query), { once: true })
@@ -2272,7 +2272,7 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-remote-answered">{answered.value}</span>; aborted{" "}
         <span data-e2e="palette-remote-aborted">
           {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
-        </span>. One letter answers slowly, longer queries quickly, “slow” takes five seconds,
+        </span>. One letter answers slowly, longer queries quickly, “slow” takes twenty seconds,
         “dragon” finds a long name, and “boom” fails.
       </DemoNote>
     </Stack>
