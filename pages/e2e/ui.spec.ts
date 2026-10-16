@@ -759,7 +759,7 @@ function marketingBlockSpecs(): Spec[] {
       pageId: "ui",
       colorScheme: "light",
       run: async (page) => {
-        const terminal = page.locator("#demo-WindowFrame figure > div.dark").first()
+        const terminal = page.locator(`#demo-WindowFrame figure:has([role="group"]) > div`).first()
         await terminal.waitFor()
         const luminance = await terminal.evaluate((node) => {
           const canvas = document.createElement("canvas")
