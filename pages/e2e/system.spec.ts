@@ -407,6 +407,19 @@ export const specs: readonly Spec[] = [
       if (!list || !foot || list.y + list.height > foot.y + 1) {
         throw new Error(`the list ends at y ${list && list.y + list.height}, below ${foot?.y}`)
       }
+      // The last entry, scrolled to, ends above the bottom slot instead of under it.
+      const last = rail(page, "rail-shell-rail").locator(`[data-e2e="rail-shell-entry"]`).last()
+      await last.scrollIntoViewIfNeeded()
+      const [lastBox, footNow] = await Promise.all([
+        last.boundingBox(),
+        rail(page, "rail-shell-bottom").boundingBox(),
+      ])
+      if (!lastBox || !footNow || lastBox.y + lastBox.height > footNow.y + 1) {
+        throw new Error(
+          `the last entry ends at y ${lastBox && lastBox.y + lastBox.height}, under the bottom ` +
+            `slot at ${footNow?.y}`,
+        )
+      }
       const notes = page.locator(`${RAIL} [data-e2e="rail-shell-rail"]`).getByRole("link", {
         name: "Notes, 3 unread",
         exact: true,
@@ -487,8 +500,7 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name:
-      "RailShell: the icon rail with its slots passes axe in dark mode, colour contrast included",
+    name: "RailShell: the icon rail with its slots passes axe in dark mode",
     pageId: "system",
     colorScheme: "dark",
     run: async (page) => {
