@@ -43,6 +43,8 @@ import {
   type TabItem,
   Table,
   Tabs,
+  Timeline,
+  type TimelineItem,
   Tooltip,
   type TooltipPlacement,
   useHotkeys,
@@ -1163,6 +1165,20 @@ function ShortcutsDialogDemo() {
   )
 }
 
+/** A person's recent activity, newest first, one entry per tone the demo needs. */
+const TIMELINE_ITEMS: TimelineItem[] = [
+  {
+    id: 4,
+    title: "Blocked by an operator",
+    at: "2026-03-04T10:15:00Z",
+    tone: "danger",
+    description: "Sam Rivera, from 203.0.113.7",
+  },
+  { id: 3, title: "Password changed", at: "2026-03-03T18:40:00Z", tone: "accent" },
+  { id: 2, title: "Email confirmed", at: "2026-03-03T08:05:00Z", tone: "success" },
+  { id: 1, title: "Signed up", at: "2026-03-03T08:00:00Z" },
+]
+
 export const displayDemos = {
   PageTitle: {
     summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
@@ -1773,6 +1789,46 @@ export const displayDemos = {
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <ZoomableImagesDemo />,
+  },
+  Timeline: {
+    summary:
+      "Events in order, as a dot per entry on a line that joins them, each with its title, time and an optional description.",
+    wide: false,
+    props: [
+      {
+        name: "items",
+        type: "TimelineItem[]",
+        description:
+          "Each entry's `id`, `title` and `at` (an ISO instant), with an optional `when` to print instead of the date, `description`, `tone` and `dataE2E`.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: '"Timeline"',
+        description: "The list's accessible name.",
+      },
+      {
+        name: "empty",
+        type: "ComponentChildren",
+        default: '"Nothing yet."',
+        description: "What shows when there are no entries.",
+      },
+      {
+        name: "timeZone",
+        type: "string",
+        default: '"UTC"',
+        description: "The zone a default time is printed in.",
+      },
+    ],
+    snippet: `<Timeline
+  label="Activity"
+  items={[
+    { id: 3, title: "Blocked", at: "2026-03-04T10:15:00Z", tone: "danger", description: "By Sam" },
+    { id: 2, title: "Password changed", at: "2026-03-03T18:40:00Z", tone: "accent" },
+    { id: 1, title: "Signed in", at: "2026-03-03T08:00:00Z", when: "yesterday" },
+  ]}
+/>`,
+    render: () => <Timeline label="Activity" items={TIMELINE_ITEMS} />,
   },
   Kbd: {
     summary:
