@@ -45,6 +45,7 @@ import type { PageHead } from "@spy4x/preact-system/head"
 import { seoHeadTags } from "@spy4x/preact-system/seo-head"
 import { RailShell, type RailShellItem } from "@spy4x/preact-system/rail-shell"
 import { Shell } from "@spy4x/preact-system/shell"
+import { SiteFooter } from "@spy4x/preact-system/site-footer"
 import { SiteHeader } from "@spy4x/preact-system/site-header"
 import { readStateInit, StateInit } from "@spy4x/preact-system/state-init"
 import {
@@ -92,6 +93,7 @@ const pageHead: PageHead = {
   description: "Specifications, prices and reviews for the blue widget.",
   canonical: "https://example.com/products/widgets/12#reviews",
   ogImage: "https://example.com/og/widgets.png",
+  imageAlt: "A blue widget on a desk",
   imageWidth: 1200,
   imageHeight: 630,
   ogType: "article",
@@ -1129,6 +1131,47 @@ function SiteHeaderDemo() {
   )
 }
 
+/**
+ * `SiteFooter` with every slot filled: a brand, three link groups (one link external), a newsletter
+ * blurb in `aside` and a copyright line in `bottom`. Below `lg` the groups wrap two to a row and the
+ * blurb moves under them; resize the browser window to see it.
+ */
+function SiteFooterDemo() {
+  return (
+    <div data-e2e="site-footer-demo">
+      <SiteFooter
+        brand={<span class="text-lg font-semibold text-foreground">Acme</span>}
+        groups={[
+          {
+            title: "Product",
+            links: [
+              { label: "Features", href: "#features" },
+              { label: "Pricing", href: "#pricing" },
+            ],
+          },
+          {
+            title: "Company",
+            links: [
+              { label: "About", href: "#about" },
+              { label: "Contact", href: "#contact" },
+            ],
+          },
+          {
+            title: "Community",
+            links: [{ label: "Source code", href: "https://github.com/", external: true }],
+          },
+        ]}
+        aside={
+          <p class="text-sm text-muted">
+            One email a month with what changed. No tracking, unsubscribe in one click.
+          </p>
+        }
+        bottom="© 2026 Acme"
+      />
+    </div>
+  )
+}
+
 /** Where the Shell card keeps its collapsed sidebar, the way an app would: one key, validated. */
 const SHELL_DEMO_COLLAPSED_KEY = "preact-components:shell-demo-collapsed"
 
@@ -1978,6 +2021,43 @@ useEffect(() => {
 />`,
     render: () => <SiteHeaderDemo />,
   },
+  SiteFooter: {
+    summary:
+      "The footer of a public site: groups of links, each a named navigation, with optional brand, side and bottom slots. No JavaScript.",
+    wide: true,
+    props: [
+      {
+        name: "groups",
+        type: "SiteFooterGroup[]",
+        description:
+          "The link columns, each a title and links of a label, an `href` and an optional `external` mark.",
+      },
+      { name: "brand", type: "ComponentChildren", description: "Shown above the groups." },
+      {
+        name: "aside",
+        type: "ComponentChildren",
+        description: "Below the groups on a phone, their last third from `lg` up.",
+      },
+      {
+        name: "bottom",
+        type: "ComponentChildren",
+        description: "The bottom line, such as the copyright, under a border.",
+      },
+    ],
+    snippet: `<SiteFooter
+  brand={<Logo />}
+  groups={[
+    { title: "Product", links: [{ label: "Pricing", href: "/pricing" }] },
+    {
+      title: "Community",
+      links: [{ label: "Source code", href: "https://github.com/acme", external: true }],
+    },
+  ]}
+  aside={<NewsletterForm />}
+  bottom="© 2026 Acme"
+/>`,
+    render: () => <SiteFooterDemo />,
+  },
   AuthForm: {
     summary:
       "Sign-in, sign-up and one-time-code forms that hand what was typed to your callbacks and post natively before the page's script has loaded.",
@@ -2174,6 +2254,11 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
       },
       { name: "jsonLd", type: "unknown[]", description: "More structured data for the graph." },
       {
+        name: "imageAlt",
+        type: "string",
+        description: "The preview image described in words; published only with an `ogImage`.",
+      },
+      {
         name: "imageWidth",
         type: "number",
         description: "The preview image's width in pixels; published only with an `ogImage`.",
@@ -2194,6 +2279,7 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
   description="Specifications, prices and reviews for the blue widget."
   canonical="https://example.com/products/widgets/12"
   ogImage="https://example.com/og/widgets.png"
+  imageAlt="A blue widget on a desk"
   imageWidth={1200}
   imageHeight={630}
   siteName="Acme"

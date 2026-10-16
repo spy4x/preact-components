@@ -79,6 +79,12 @@ export {
 } from "./saved-copy-notice.tsx"
 export { type HeadTag, type HeadTagName, SEOHead, seoHeadJsonLd, seoHeadTags } from "./seo-head.tsx"
 export {
+  SiteFooter,
+  type SiteFooterGroup,
+  type SiteFooterLink,
+  type SiteFooterProps,
+} from "./site-footer.tsx"
+export {
   isCurrentLink,
   SiteHeader,
   type SiteHeaderLabels,

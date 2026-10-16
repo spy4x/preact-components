@@ -48,7 +48,8 @@ export function seoHeadJsonLd(head: PageHead): unknown[] {
  * The full `<head>` tag set for a page, in document order.
  *
  * Primary meta, then the Twitter card, then Open Graph, then JSON-LD. Optional tags are omitted
- * rather than emitted empty — no `og:image=""`, no `og:site_name` a caller did not supply.
+ * rather than emitted empty — no `og:image=""`, no `og:site_name` a caller did not supply. The
+ * image's alt text and size are emitted only with the image they describe.
  *
  * `<link rel="canonical">` and `og:url` carry the *normalised* address rather than the string the
  * caller handed in, and the whole set is refused before a tag exists when that address is not an
@@ -90,6 +91,9 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   )
   if (head.ogImage) {
     tags.push({ tag: "meta", attrs: { name: "twitter:image", content: head.ogImage } })
+    if (head.imageAlt) {
+      tags.push({ tag: "meta", attrs: { name: "twitter:image:alt", content: head.imageAlt } })
+    }
   }
 
   tags.push(
@@ -100,7 +104,8 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   )
   if (head.ogImage) {
     tags.push({ tag: "meta", attrs: { property: "og:image", content: head.ogImage } })
-    // The size follows its image, as the Open Graph protocol lists structured properties.
+    // The size and the alt text follow their image, as the Open Graph protocol lists structured
+    // properties.
     if (head.imageWidth !== undefined) {
       tags.push({
         tag: "meta",
@@ -112,6 +117,9 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
         tag: "meta",
         attrs: { property: "og:image:height", content: String(head.imageHeight) },
       })
+    }
+    if (head.imageAlt) {
+      tags.push({ tag: "meta", attrs: { property: "og:image:alt", content: head.imageAlt } })
     }
   }
   if (head.siteName) {

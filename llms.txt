@@ -370,6 +370,9 @@ ShellNavItemAction	type	@spy4x/preact-system	`ShellNavItem.action`: a control of
 ShellSidebarPlace	type	@spy4x/preact-system	Where a sidebar slot is being drawn: the desktop sidebar, or the mobile drawer's copy of it.
 ShellUser	type	@spy4x/preact-system	`ShellProps.user`, or `null` for a signed-out visitor — the user menu renders only then.
 ShellUserMenuItem	type	@spy4x/preact-system	One entry of `ShellProps.userMenuItems`: a link (`href`), a form post (`action`), or a button (neither).
+SiteFooter	component	@spy4x/preact-system	A footer for a public site: `brand` on top, then `groups` as named `<nav>` columns with `aside` beside them, then `bottom` under a border.
+SiteFooterGroup	type	@spy4x/preact-system	One column of the footer: a titled list of links.
+SiteFooterLink	type	@spy4x/preact-system	One link of a `SiteFooterGroup`.
 SiteHeader	component	@spy4x/preact-system	A top bar for a public site: `brand` on the left; `links` on the right from `lg` up, and in a `<details>`-built disclosure below it; `actions` and the menu button always in view, beside whichever form `links` is currently taking.
 SiteHeaderLink	type	@spy4x/preact-system	One entry of `SiteHeaderProps.links`.
 StateInit	component	@spy4x/preact-system	Write `data` into the page as JSON, for `readStateInit` to read back on the client.
@@ -419,7 +422,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (961 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (966 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
