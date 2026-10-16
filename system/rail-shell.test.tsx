@@ -236,8 +236,16 @@ describe("RailShell", () => {
   })
 
   it("draws no slot wrappers when the slots are left out", () => {
-    const html = render(<RailShell items={itemsOf(3)}>page</RailShell>)
-    for (const e2e of ["rail-shell-top", "rail-shell-bottom", "rail-shell-overlay-top"]) {
+    // Six items, so the overlay exists and its slot wrappers could appear.
+    const html = render(<RailShell items={itemsOf(6)}>page</RailShell>)
+    expect(html).toContain("<dialog")
+    const wrappers = [
+      "rail-shell-top",
+      "rail-shell-bottom",
+      "rail-shell-overlay-top",
+      "rail-shell-overlay-bottom",
+    ]
+    for (const e2e of wrappers) {
       expect(html).not.toContain(`data-e2e="${e2e}"`)
     }
   })
