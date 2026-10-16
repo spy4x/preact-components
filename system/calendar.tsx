@@ -656,10 +656,13 @@ export function Calendar(
     }
 
     // A day that cannot be picked is still focusable, and its label is still the reason it cannot:
-    // the reason used to live in a `title`, which a keyboard never reaches.
+    // the reason used to live in a `title`, which a keyboard never reaches. It takes the role of the
+    // control it stands in for, as a dead month arrow does: a `span` with no role may carry neither
+    // `aria-label` nor `aria-disabled`, so a screen reader could drop the reason with both.
     if (day.disabled) {
       return (
         <span
+          role={onSelectDate ? "button" : "link"}
           {...shared}
           aria-disabled="true"
           class={cn(

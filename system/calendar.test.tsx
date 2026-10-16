@@ -315,6 +315,22 @@ describe("Calendar, as a screen reader is told about it", () => {
     expect(html).toContain('aria-disabled="true"')
     expect(html).not.toContain("title=")
   })
+
+  it("names a day that cannot be picked on an element in the link role, in link mode", () => {
+    const html = render(<Calendar {...base} />)
+
+    expect(html).toMatch(
+      /<span role="link" data-calendar-date="2026-08-19" aria-label="19 August 2026 — not available"[^>]* aria-disabled="true"/,
+    )
+  })
+
+  it("names a day that cannot be picked on an element in the button role, in button mode", () => {
+    const html = render(<Calendar {...base} onSelectDate={() => {}} />)
+
+    expect(html).toMatch(
+      /<span role="button" data-calendar-date="2026-08-19" aria-label="19 August 2026 — not available"[^>]* aria-disabled="true"/,
+    )
+  })
 })
 
 describe("Calendar, as the locale shapes it", () => {
