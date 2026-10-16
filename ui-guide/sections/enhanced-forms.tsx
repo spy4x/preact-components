@@ -21,10 +21,13 @@ import {
   Input,
   Stack,
   Textarea,
+  useFocusOnChange,
+  useFocusOnError,
 } from "@spy4x/preact-ui"
 import { HONEYPOT_FIELD_NAME, honeypotFilled } from "@spy4x/platform/universal/honeypot"
 import type { ComponentChildren } from "preact"
 import { useSignal } from "@preact/signals"
+import { useEffect, useState } from "preact/hooks"
 import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
 
@@ -351,6 +354,82 @@ function ControlledDemo() {
   )
 }
 
+/** What the focus demo's address field says is wrong, or `null` when it takes the address. */
+function addressError(email: string): string | null {
+  if (!email.trim()) return "Enter your address."
+  if (!email.includes("@")) return "That address has no @ in it."
+  return null
+}
+
+/**
+ * `useFocusOnError` and `useFocusOnChange` on a two-step form. A refused address puts its error
+ * under the field and focus on the field; an accepted one moves the flow to its second step, whose
+ * line takes focus. "Start over" goes back to the first step, the value the demo mounted with, and
+ * focus stays on the button. The last line's `data-settled` is written from an effect declared
+ * after both hooks, so once it reads the state, the hooks have done all they do for that state. It
+ * is an attribute, not text, so the served document and the hydrated card read the same.
+ */
+function FocusDemo() {
+  const email = useSignal("")
+  const error = useSignal<string | null>(null)
+  const submits = useSignal(0)
+  const step = useSignal<"ask" | "sent">("ask")
+  const field = useFocusOnError(error.value)
+  const line = useFocusOnChange<HTMLParagraphElement>(step.value)
+  const state = `step ${step.value} · submits ${submits.value}`
+  const [settled, setSettled] = useState("")
+  useEffect(() => setSettled(state), [state])
+
+  return (
+    <Stack gap="md" class="max-w-md" data-e2e="focus-demo">
+      <p ref={line} tabIndex={-1} class="text-sm" data-e2e="focus-demo-line">
+        {step.value === "ask"
+          ? "Step 1 of 2: where should the link go?"
+          : `Step 2 of 2: a link is on its way to ${email.value}.`}
+      </p>
+      {step.value === "ask" && (
+        <EnhancedForm
+          action={FORM_DEMO_ACTION}
+          status="idle"
+          labels={silentLabels}
+          onSubmit={() => {
+            submits.value++
+            error.value = addressError(email.value)
+            if (!error.value) step.value = "sent"
+          }}
+        >
+          <Field id="guide-focus-demo-email" label="Email" error={error.value}>
+            <Input
+              ref={field}
+              name="email"
+              value={email.value}
+              onInput={(event) => email.value = event.currentTarget.value}
+              data-e2e="focus-demo-email"
+            />
+          </Field>
+          <Cluster>
+            <Button type="submit" data-e2e="focus-demo-submit">Send the link</Button>
+          </Cluster>
+        </EnhancedForm>
+      )}
+      <Cluster justify="between">
+        <p class="text-xs text-muted" data-e2e="focus-demo-settled" data-settled={settled}>
+          {state}
+        </p>
+        <StartOver
+          e2e="focus-demo-start-over"
+          onPress={() => {
+            email.value = ""
+            error.value = null
+            submits.value = 0
+            step.value = "ask"
+          }}
+        />
+      </Cluster>
+    </Stack>
+  )
+}
+
 /**
  * The card: the raw building block first, then the two forms an app most often builds from it — a
  * sign-up and a contact form — written here from `Field`, `Input` and `Button` rather than shipped
@@ -365,6 +444,13 @@ function EnhancedFormCard() {
           With status passed in, the caller drives the form, and empty labels make it say nothing.
         </DemoNote>
         <ControlledDemo />
+      </Stack>
+      <Stack gap="md">
+        <DemoNote>
+          Focus on error and on a step change: a refused address puts focus on the field, an
+          accepted one on the next step's line.
+        </DemoNote>
+        <FocusDemo />
       </Stack>
       <Grid minColumnWidth="md" gap="xl">
         <Stack gap="md">

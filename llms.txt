@@ -788,6 +788,8 @@ toggleChipSelection	helper	@spy4x/preact-ui	The selection after one chip is pres
 typingState	helper	@spy4x/preact-ui	The state a keystroke leaves behind after the caller has re-filtered for the new query.
 useApplePlatform	hook	@spy4x/preact-ui	Whether this browser is an Apple platform, for drawing or announcing `mod` as Command.
 useFocusAfterRemoval	hook	@spy4x/preact-ui	Keeps focus on the page when a row leaves a list because its own removal went through.
+useFocusOnChange	hook	@spy4x/preact-ui	Moves focus to an element when a value, such as the step of a flow, differs from the one the component mounted with.
+useFocusOnError	hook	@spy4x/preact-ui	Moves focus to an element each time a new error arrives, so a failed submit lands on it.
 useFreshError	hook	@spy4x/preact-ui	Hides an error left from an earlier attempt, so a dialog opened again does not start on the last refusal.
 useHotkeyClick	hook	@spy4x/preact-ui	Bind a key to one element: pressing it clicks the element through `clickByHotkey`.
 useHotkeys	hook	@spy4x/preact-ui	Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches.

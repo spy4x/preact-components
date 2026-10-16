@@ -381,6 +381,8 @@ export {
 } from "./hotkeys.ts"
 export { useSucceeded } from "./use-succeeded.ts"
 export { useFreshError } from "./use-fresh-error.ts"
+export { useFocusOnError } from "./use-focus-on-error.ts"
+export { useFocusOnChange } from "./use-focus-on-change.ts"
 export {
   type FocusAfterRemovalOptions,
   type RowId,

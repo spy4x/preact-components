@@ -6712,6 +6712,32 @@ useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
 })
 ```
 
+### useFocusOnError (`./use-focus-on-error`)
+
+- `useFocusOnError<T>(error)` returns a ref, and moves focus to its element each time a new truthy
+  `error` arrives, so a failed submit lands on the field the error is about, or on the message
+  (give it `tabIndex={-1}`). Mounting with an error focuses too. An error equal to the last one
+  (`!==`, so a message with the same text) moves nothing: clear it while the next attempt runs if a
+  repeat must take focus again. `T` defaults to `HTMLInputElement`, so the ref goes straight onto
+  an `<input>`.
+
+### useFocusOnChange (`./use-focus-on-change`)
+
+- `useFocusOnChange<T>(value)` returns a ref, and moves focus to its element whenever `value`
+  differs (`!==`) from the value the component mounted with, such as the step of a flow, so
+  focus goes on to the next step's first control or heading. Mounting moves nothing, so a page that
+  opens on a later step keeps focus where the browser put it, and a change back to the mounted
+  value moves nothing either.
+
+The `EnhancedForm` card's "Focus on error and on a step change" demo uses both. For example, in
+a two-step form:
+
+```tsx
+const step = sent ? "sent" : "ask"
+const field = useFocusOnError(error)
+const outcome = useFocusOnChange<HTMLParagraphElement>(step)
+```
+
 ## Tests
 
 `deno task test` from the repo root. Tests render each component with
