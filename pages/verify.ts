@@ -407,8 +407,10 @@ async function staticPhase(): Promise<void> {
     html.includes(`data-guide-page="all"`),
     `data-guide-page="all"`,
   )
-  // The guide draws its own footer (#400), so the served document carries exactly that one.
-  const footers = html.match(/<footer[\s>]/g)?.length ?? 0
+  // The guide draws its own footer (#400), so the served document carries exactly that one outside
+  // the demo cards; `SiteFooter`'s card draws a footer of its own inside its card.
+  const outsideDemos = html.replace(/<article id="demo-[^"]+"[\s\S]*?<\/article>/g, "")
+  const footers = outsideDemos.match(/<footer[\s>]/g)?.length ?? 0
   check(
     "index.html links no Everything page and carries the guide's footer alone",
     !html.includes(`href="#/all"`) && !html.includes(`data-guide-page-link="all"`) &&
