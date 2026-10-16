@@ -22296,10 +22296,9 @@ async function clickSelector(devtools: Devtools, selector: string): Promise<bool
  * group headings, typing filters them with accents folded, its own hotkey (mod+P) opens it from a
  * text field, Escape then closes it onto its trigger rather than the field, and the arrows, Home,
  * End and Enter move and pick.
- * The remote palette: a stale call is aborted and its late answer ignored, Enter while a search
- * runs picks nothing, a rejected search shows the error, and a query nothing matches says so. The
- * guide's own search, the same component, keeps the highlight in view, locks the page's scroll, and
- * fills the screen at a phone's width.
+ * The remote palette's specs are in `pages/e2e/ui.spec.ts`. The guide's own search, the same
+ * component, keeps the highlight in view, locks the page's scroll, and fills the screen at a phone's
+ * width.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -22320,13 +22319,6 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
     devtools.evaluate<string>(
       `document.querySelector(${JSON.stringify(selector)})?.textContent ?? "?"`,
     )
-  const clear = (name: string) =>
-    devtools.evaluate<null>(`(() => {
-      const field = document.querySelector('[data-e2e="${name}"] [role="combobox"]')
-      field.value = ""
-      field.dispatchEvent(new Event("input", { bubbles: true }))
-      return null
-    })()`)
   const closeIfOpen = (name: string) =>
     devtools.evaluate<null>(
       `(document.querySelector('[data-e2e="${name}"]')?.open && ` +
@@ -22412,90 +22404,6 @@ async function commandPaletteChecks(devtools: Devtools): Promise<void> {
       picked && pickedText === "Settings",
     `reopened ${reopened}; highlight ${moves.join(" → ")}; Enter closed it ${picked}, ` +
       `onSelect got "${pickedText}"`,
-  )
-
-  // The remote palette: a one-letter query answers in 900ms, a longer one in 100ms.
-  const searches = () =>
-    devtools.evaluate<number>(
-      `Number(document.querySelector('[data-e2e="palette-remote-searches"]')?.textContent ?? -1)`,
-    )
-  await centreInView(devtools, `document.querySelector('${trigger(REMOTE)}')`)
-  const remoteClicked = await clickSelector(devtools, trigger(REMOTE))
-  const loaded = await until(
-    REMOTE,
-    "state.focusInField && state.results.length === 7 && !state.busy",
-  )
-  const started = await searches()
-  const localOpen = (await read(LOCAL)).open
-  const remoteOpen = (await read(REMOTE)).open
-  await devtools.send("Input.insertText", { text: "a" })
-  const slowStarted = await poll(async () => (await searches()) === started + 1, 3_000)
-  const loading = await read(REMOTE)
-  const aborted = () => text(`[data-e2e="palette-remote-aborted"]`)
-  const abortedBefore = await aborted()
-  await devtools.send("Input.insertText", { text: "p" })
-  const fast = await until(
-    REMOTE,
-    `state.results.join() === "Apple,Apricot,Grape,Papaya" && !state.busy`,
-  )
-  // A fixed wait on purpose: the check proves the slow answer for "a" changes NOTHING when it
-  // lands, 900ms after it started, and an absence has no state to poll for.
-  await new Promise((done) => setTimeout(done, 1_200))
-  const after = await read(REMOTE)
-  const abortedAfter = await aborted()
-  check(
-    "the CommandPalette shows Searching… with no results while a search runs, and ignores a stale answer that arrives after a fresh one",
-    remoteClicked && loaded && slowStarted && loading.status === "Searching…" && loading.busy &&
-      loading.statusShown && loading.results.length === 0 &&
-      fast && after.results.join() === "Apple,Apricot,Grape,Papaya" &&
-      after.groups.join() === "Fruit with A:2,Fruit with G:1,Fruit with P:1" &&
-      after.query === "ap",
-    `opened ${remoteClicked}, first answer ${loaded} (local open ${localOpen}, remote open ` +
-      `${remoteOpen}); "a" started ${slowStarted}, status "${loading.status}" shown ` +
-      `${loading.statusShown}, busy ${loading.busy}, ${loading.results.length} results; "ap" ` +
-      `answered ${fast}; 1.2s later ${after.results.join(", ")} under ${after.groups.join(", ")}`,
-  )
-  check(
-    "the CommandPalette aborts the signal of a search a newer query made stale",
-    abortedBefore === "none" && abortedAfter === "“a”",
-    `aborted while "a" ran: ${abortedBefore}; after "ap": ${abortedAfter}`,
-  )
-
-  // Enter at once after a slow query: the previous query's results are gone, so nothing is picked.
-  const pickedBefore = await text(`[data-e2e="palette-remote-picked"]`)
-  await clear(REMOTE)
-  await devtools.send("Input.insertText", { text: "b" })
-  await pressKey(devtools, "Enter")
-  const midLoad = await read(REMOTE)
-  const pickedMidLoad = await text(`[data-e2e="palette-remote-picked"]`)
-  const answeredB = await until(REMOTE, `state.results.join() === "Banana,Blackberry"`)
-  check(
-    "Enter while a CommandPalette search runs picks nothing from the previous query's results",
-    midLoad.open && pickedMidLoad === pickedBefore && answeredB,
-    `after Enter: open ${midLoad.open}, results ${midLoad.results.join(", ") || "none"}, ` +
-      `onSelect got "${pickedMidLoad}" (before "${pickedBefore}"); "b" answered ${answeredB}`,
-  )
-
-  await clear(REMOTE)
-  await devtools.send("Input.insertText", { text: "boom" })
-  const failed = await until(
-    REMOTE,
-    `state.status === "The search failed. Try again." && state.statusShown && state.results.length === 0`,
-  )
-  await clear(REMOTE)
-  await devtools.send("Input.insertText", { text: "zz" })
-  const empty = await until(
-    REMOTE,
-    `state.status === "Nothing matches." && state.statusShown && !state.busy`,
-  )
-  const last = await read(REMOTE)
-  await pressKey(devtools, "Escape")
-  await until(REMOTE, "!state.open")
-  await closeIfOpen(REMOTE)
-  check(
-    "a rejected search shows the CommandPalette's error, and a query nothing matches says so",
-    failed && empty,
-    `"boom" → error shown ${failed}; "zz" → "${last.status}" shown ${last.statusShown}`,
   )
 
   // The guide's header search, the same component with 12 results for "e": more than its list

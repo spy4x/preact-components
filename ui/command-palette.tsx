@@ -34,7 +34,10 @@ export interface CommandPaletteLabels {
   close: string
   /** What the list says when nothing matches. */
   empty: string
-  /** What the list says while a `search` call runs. */
+  /**
+   * What the palette says while a `search` call runs, once the reader has waited 300 ms for it:
+   * beside the field while earlier results are listed, in the list when it is empty.
+   */
   loading: string
   /** What the list says when a `search` call failed. */
   error: string
@@ -56,6 +59,12 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
  * end of the line in a text field.
  */
 const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
+
+/**
+ * How long, in milliseconds after a keystroke, the remote mode waits for its answer before it says
+ * it is searching. A quicker answer changes the list without a flash of the loading label in between.
+ */
+const SLOW_SEARCH_MS = 300
 
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
@@ -106,7 +115,9 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * The options for a query. Called with the empty query when the palette opens, then once per
    * pause in typing. `signal` aborts when a newer query or a close makes the answer stale; a stale
    * answer is ignored even when the function does not listen to `signal`. A rejection shows the
-   * error label.
+   * error label. While the next answer loads, the previous results stay listed as they are; past
+   * 300 ms the loading label shows beside the field and is announced. Enter pressed
+   * while it loads waits for the answer and picks its first result.
    */
   search: (query: string, signal: AbortSignal) => Promise<readonly T[]>
   /** Milliseconds of quiet typing before `search` is called. Defaults to `200`. */
@@ -185,8 +196,11 @@ export function groupOptions<T extends CommandPaletteOption>(
 /** Where a `search` call stands. */
 enum Status {
   IDLE = 1,
+  /** Loading for less than {@link SLOW_SEARCH_MS}: the previous results show as they were. */
   LOADING = 2,
   ERROR = 3,
+  /** Loading for {@link SLOW_SEARCH_MS} or longer: the loading label shows. */
+  SLOW = 4,
 }
 
 /** The remote mode's last answer and where the current call stands. */
@@ -211,7 +225,7 @@ interface Remote<T> {
 export function CommandPalette<T extends CommandPaletteOption>(
   props: CommandPaletteProps<T>,
 ): JSX.Element {
-  const { onSelect, hotkeys = DEFAULT_HOTKEYS, kbdLabels, dataE2E, class: className } = props
+  const { hotkeys = DEFAULT_HOTKEYS, kbdLabels, dataE2E, class: className } = props
   const labels = { ...defaultCommandPaletteLabels, ...props.labels }
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -221,12 +235,16 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const [activeIndex, setActiveIndex] = useState(0)
   const [remote, setRemote] = useState<Remote<T>>({ status: Status.IDLE, options: [] })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // Enter was pressed while a search ran: pick the answer's first result when it lands.
+  const pickWhenAnswered = useRef(false)
   const call = useRef<AbortController | null>(null)
   const lock = useRef<ScrollLock | null>(null)
   const latest = useRef(props)
   latest.current = props
 
   const remoteMode = props.search !== undefined
+  const busy = remoteMode && (remote.status === Status.LOADING || remote.status === Status.SLOW)
   // While an input method composes, the results stay those of the text from before it began.
   const composedQuery = useComposedQuery(input, query, (text) => onTyped(text))
   const results = props.search !== undefined
@@ -235,10 +253,16 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const groups = groupOptions(results)
   const flat = groups.flatMap((group) => group.options)
 
-  /** Drops a waiting or running `search` call; its answer, if it still comes, is ignored. */
+  /**
+   * Drops a waiting or running `search` call, and an Enter waiting for it; its answer, if it still
+   * comes, is ignored.
+   */
   const cancel = () => {
     clearTimeout(timer.current)
     timer.current = undefined
+    clearTimeout(slowTimer.current)
+    slowTimer.current = undefined
+    pickWhenAnswered.current = false
     call.current?.abort()
     call.current = null
   }
@@ -248,9 +272,15 @@ export function CommandPalette<T extends CommandPaletteOption>(
     cancel()
     const search = latest.current.search
     if (search === undefined) return
-    // The previous query's answer goes at once, so Enter or a click cannot pick from it while the
-    // new one loads.
-    setRemote({ status: Status.LOADING, options: [] })
+    // The previous query's answer stays listed, so the list does not blink on every keystroke. Enter
+    // waits for the new answer instead of picking from it (see `onKeyDown`).
+    setRemote((current) => ({ status: Status.LOADING, options: current.options }))
+    slowTimer.current = setTimeout(() => {
+      slowTimer.current = undefined
+      setRemote((current) =>
+        current.status === Status.LOADING ? { ...current, status: Status.SLOW } : current
+      )
+    }, SLOW_SEARCH_MS)
     timer.current = setTimeout(() => {
       timer.current = undefined
       const controller = new AbortController()
@@ -258,8 +288,14 @@ export function CommandPalette<T extends CommandPaletteOption>(
       const settle = (next: Remote<T>) => {
         if (call.current !== controller) return
         call.current = null
+        clearTimeout(slowTimer.current)
+        slowTimer.current = undefined
         setRemote(next)
         setActiveIndex(0)
+        if (pickWhenAnswered.current) {
+          pickWhenAnswered.current = false
+          choose(next.options[0])
+        }
       }
       let answer: Promise<readonly T[]>
       try {
@@ -305,7 +341,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const choose = (option: T | undefined) => {
     if (!option) return
     close()
-    onSelect(option)
+    // The latest `onSelect`: a pick that waited for a search runs after later renders.
+    latest.current.onSelect(option)
   }
 
   useHotkeys(
@@ -333,6 +370,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
       close()
       return
     }
+    if (key === "Enter" && busy) {
+      // The highlighted row belongs to the previous query: wait for this one's answer instead.
+      event.preventDefault()
+      pickWhenAnswered.current = true
+      return
+    }
     const action = comboboxKeyAction(key, { activeIndex, isOpen: true }, flat.length)
     if (action.preventDefault) event.preventDefault()
     if (action.select >= 0) return choose(flat[action.select])
@@ -340,21 +383,23 @@ export function CommandPalette<T extends CommandPaletteOption>(
   }
 
   const listbox = `${id}-results`
-  const optionId = (index: number) => `${id}-result-${index}`
+  // Keyed by the option's own id, not its row: when an answer puts another option in the
+  // highlighted row, the active descendant changes and a screen reader announces the new one.
+  const optionId = (option: T) => `${id}-result-${encodeURIComponent(option.id)}`
   const active = flat.length === 0 ? -1 : Math.min(activeIndex, flat.length - 1)
 
   // Keep the highlighted result on screen, as `Combobox` does: the list scrolls by just the row
   // that went past its edge, and a row already in view does not move it.
   useEffect(() => {
     if (active < 0 || !dialog.current?.open) return
-    document.getElementById(optionId(active))?.scrollIntoView({ block: "nearest" })
-  }, [active, flat.length])
-  const status = remote.status === Status.LOADING && remoteMode
+    document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
+  }, [active, flat.length, flat[active]?.id])
+  const status = !remoteMode || remote.status === Status.IDLE
+    ? flat.length === 0 ? labels.empty : ""
+    : remote.status === Status.SLOW
     ? labels.loading
-    : remote.status === Status.ERROR && remoteMode
+    : remote.status === Status.ERROR
     ? labels.error
-    : flat.length === 0
-    ? labels.empty
     : ""
   const firstHotkey = hotkeys[0]
   const shortcuts = hotkeys.length === 0
@@ -364,20 +409,30 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const row = (option: T, index: number) => (
     <li
       key={option.id}
-      id={optionId(index)}
+      id={optionId(option)}
       role="option"
       aria-selected={index === active}
       onClick={() => choose(option)}
       onMouseMove={() => index !== active && setActiveIndex(index)}
       class={cn(
         "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
+        // A touch target on a phone, however short its text.
+        "max-sm:min-h-11 max-sm:items-center",
         index === active && "bg-selected-soft text-selected",
       )}
     >
       <span class="min-w-0">
-        <span class="block text-sm font-medium [overflow-wrap:anywhere]">{option.label}</span>
+        {
+          /* A long name stops at two lines and a long detail at one, so one result cannot push the
+        rest off the screen. */
+        }
+        <span class="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]">
+          {option.label}
+        </span>
         {option.detail !== undefined && (
-          <span class="block text-xs text-muted">{option.detail}</span>
+          <span class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]">
+            {option.detail}
+          </span>
         )}
       </span>
       {option.hint !== undefined && <span class="shrink-0 text-xs text-muted">{option.hint}</span>}
@@ -442,7 +497,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-expanded="true"
             aria-controls={listbox}
             aria-autocomplete="list"
-            aria-activedescendant={active >= 0 ? optionId(active) : undefined}
+            aria-activedescendant={active >= 0 ? optionId(flat[active]) : undefined}
             aria-label={labels.search}
             placeholder={labels.placeholder}
             autocomplete="off"
@@ -458,6 +513,19 @@ export function CommandPalette<T extends CommandPaletteOption>(
             onKeyDown={onKeyDown}
             class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"
           />
+          {
+            /* A slow search over results still listed says so here, beside the field, so the rows
+            neither move nor fade. Hidden from screen readers: the status line below tells them. */
+          }
+          {remote.status === Status.SLOW && flat.length > 0 && (
+            <span
+              aria-hidden="true"
+              data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-searching`}
+              class="shrink-0 text-xs text-muted"
+            >
+              {labels.loading}
+            </span>
+          )}
           {
             /* Escape and a backdrop click close it too, but a phone has neither a key nor much
             backdrop: the button is the way out a reader can see. */
@@ -477,7 +545,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             id={listbox}
             role="listbox"
             aria-label={labels.search}
-            aria-busy={remote.status === Status.LOADING && remoteMode ? "true" : undefined}
+            aria-busy={busy ? "true" : undefined}
           >
             {groups.map((group, groupIndex) =>
               group.label === undefined ? group.options.map((option) => row(option, index++)) : (
