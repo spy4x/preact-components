@@ -379,6 +379,14 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "Save exists only in the browser; the second editor's region stays empty in both, " +
       "because its demo row passes that validation",
   },
+  "demo-LineChart": {
+    selector: `[data-chart="line"] > [aria-hidden="true"] .inset-x-3`,
+    parts: 3,
+    reason:
+      "LineChart fits its X labels to its axis: the server cannot measure, so it picks them " +
+      "for a phone's 280 px axis, and the browser measures the real axis and picks again, so a " +
+      "wider card shows more dates; each of the card's three charts has one such label row",
+  },
   "demo-Map": {
     selector: `[data-e2e="map-slot"]`,
     parts: 1,
