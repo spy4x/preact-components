@@ -53,6 +53,14 @@ export {
 } from "./push-settings.tsx"
 export { pageHeading, type RouteAnnouncerOptions, useRouteAnnouncer } from "./route-announcer.ts"
 export {
+  AccountMenu,
+  type AccountMenuItem,
+  type AccountMenuLabels,
+  type AccountMenuProps,
+  type AccountMenuTheme,
+  type AccountMenuUser,
+} from "./account-menu.tsx"
+export {
   RailShell,
   type RailShellItem,
   type RailShellLabels,
