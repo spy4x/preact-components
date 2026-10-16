@@ -282,6 +282,98 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
+      "CrudList: a term typed right after a search, before the page paints again, stays in the field and is what the next search looks for",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-CrudList")
+      const field = card.getByRole("textbox", { name: "Team name", exact: true })
+
+      await card.locator("table.min-w-full").waitFor()
+      await field.fill("zzz")
+      // The search and the next keystroke land in one task, so no paint falls between them: the
+      // search's render runs in a microtask, and the keystroke comes after it, as it does on a
+      // busy machine where the next frame is late.
+      const searched = await card.evaluate(async (root) => {
+        const input = root.querySelector<HTMLInputElement>(`input[aria-label="Team name"]`)
+        const button = root.querySelector<HTMLButtonElement>(`button[title="Search teams"]`)
+        if (input === null || button === null) throw new Error(`the search box is not there`)
+        button.click()
+        for (let i = 0; i < 10; i++) await Promise.resolve()
+        const rendered = root.querySelector("table.min-w-full") === null
+        input.value = "Des"
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+        return rendered
+      })
+      if (!searched) throw new Error(`the search for "zzz" had not rendered before the keystroke`)
+
+      await card.getByRole("button", { name: "Search teams", exact: true }).click()
+      await card.locator("tbody tr").filter({ hasText: "Design" }).waitFor()
+      const now = await field.inputValue()
+      if (now !== "Des") throw new Error(`the field shows "${now}", not the typed "Des"`)
+    },
+  },
+  {
+    name:
+      "CrudList: a typing pause that ends after the search was cleared from outside does not bring the old term back",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-CrudList")
+      const rows = card.locator("tbody tr")
+      const field = card.getByRole("textbox", { name: "Team name", exact: true })
+
+      await rows.filter({ hasText: "Design" }).waitFor()
+      // The typing pause's timer is held back and fired by hand, right after the page clears the
+      // search and before the page paints again: the moment a slow machine can reach by itself.
+      await card.evaluate(async (root) => {
+        const input = root.querySelector<HTMLInputElement>(`input[aria-label="Team name"]`)
+        const button = root.querySelector<HTMLButtonElement>(`button[title="Search teams"]`)
+        const clear = root.querySelector<HTMLButtonElement>(`[data-e2e="clear-search"]`)
+        if (input === null || button === null || clear === null) {
+          throw new Error(`the search box or the clear button is not there`)
+        }
+        const realSet = globalThis.setTimeout
+        const realClear = globalThis.clearTimeout
+        const held = new Map<number, () => void>()
+        let next = -1
+        globalThis.setTimeout = ((handler: TimerHandler, delay?: number, ...rest: unknown[]) => {
+          if (delay !== 300 || typeof handler !== "function") {
+            return realSet(handler, delay, ...rest)
+          }
+          const id = next--
+          held.set(id, () => handler(...rest))
+          return id
+        }) as typeof globalThis.setTimeout
+        globalThis.clearTimeout = ((id?: number) => {
+          if (id !== undefined && held.delete(id)) return
+          realClear(id)
+        }) as typeof globalThis.clearTimeout
+        try {
+          input.value = "Supp"
+          input.dispatchEvent(new Event("input", { bubbles: true }))
+          const until = performance.now() + 5_000
+          while (held.size === 0) {
+            if (performance.now() > until) throw new Error(`the typing pause never started`)
+            await new Promise((done) => realSet(done, 10))
+          }
+          button.click()
+          for (let i = 0; i < 10; i++) await Promise.resolve()
+          clear.click()
+          for (let i = 0; i < 10; i++) await Promise.resolve()
+          for (const fire of [...held.values()]) fire()
+          held.clear()
+        } finally {
+          globalThis.setTimeout = realSet
+          globalThis.clearTimeout = realClear
+        }
+      })
+
+      await rows.filter({ hasText: "Design" }).waitFor()
+      await field.and(page.locator(":placeholder-shown")).waitFor()
+      await rows.filter({ hasText: "Platform" }).waitFor()
+    },
+  },
+  {
+    name:
       "CrudList: with a page size the rows are paged by Pagination, and a new status starts again at page 1",
     pageId: "crud",
     run: async (page) => {
