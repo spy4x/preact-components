@@ -223,7 +223,7 @@
 }
 
 @utility text-placeholder {
-  color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+  color: var(--color-placeholder, oklch(0.54 0.027 264.364));
 }
 
 @utility bg-foreground {
@@ -603,7 +603,7 @@
   color: var(--color-foreground, oklch(0.13 0.028 261.692));
 
   &::placeholder {
-    color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+    color: var(--color-placeholder, oklch(0.54 0.027 264.364));
   }
 
   /* A native control draws itself in the page's colour scheme, not from the tokens. */
@@ -638,7 +638,7 @@
   color: var(--color-foreground, oklch(0.13 0.028 261.692));
 
   &::placeholder {
-    color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+    color: var(--color-placeholder, oklch(0.54 0.027 264.364));
   }
 
   /* A native control draws itself in the page's colour scheme, not from the tokens. */
