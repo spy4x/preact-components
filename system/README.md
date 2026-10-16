@@ -33,6 +33,7 @@ Extracted from earlier source applications.
 | `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`        | `calendar`          | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
 | `SiteHeader`      | `site-header`       | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
+| `SiteFooter`      | `site-footer`       | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
 | `Shell`           | `shell`             | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`       | `state-init`        | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
 | `RailShell`       | `rail-shell`        | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `header?`, `children`, `labels?`, `class?`                                                                |
@@ -719,6 +720,25 @@ There is no pure logic in it to unit test: every behaviour is a `document` liste
 a mount-time DOM read, none of which a string render executes. `pages/checks/system.ts` drives all of
 it in a real browser instead.
 
+## The `SiteFooter` contract
+
+`SiteFooter` is `SiteHeader`'s counterpart at the bottom of a public page: an optional `brand` on
+top, then `groups` of links with an optional `aside` beside them, then an optional `bottom` line
+under a top border. It has no JavaScript at all, no hook and no handler, so it renders the same on a
+server-only page and with scripts off.
+
+**Each group is its own landmark.** A group is `{ title, links }` and renders as
+`<nav aria-label={title}>` holding an `<h2>` with the title and a `<ul>` of plain `<a href>` links.
+A link with `external: true` gets an `IconExternalLink`, hidden from assistive tech, after its label.
+It still opens in the same tab: leaving the page is the visitor's choice.
+
+**Layout.** On a phone the groups sit two to a row and `aside` takes the full width below them;
+from `lg` up the groups share one row and `aside` takes its last third, or the groups take the whole
+row when there is no `aside`. Each link is `py-3` around a `text-sm` line on a phone, 44 px tall,
+and `py-1` from `lg` up. Colours are the theme's tokens, the same as `SiteHeader`'s bar.
+
+**Every word is the caller's**, and a slot that is not given draws no element at all.
+
 ## The `Shell` contract
 
 `Shell` (#135) is the signed-in app's own frame: a sticky header (menu button, `brand`, `status`,
@@ -1207,6 +1227,11 @@ already-present live region, a busy `requestSubmit()` calling no callback, and a
 disabled script execution with no query string added to the URL are effects, key presses, a focus
 change and a real navigation — none reachable from a string render — and are proven in
 `pages/checks/system.ts` instead.
+
+`site-footer.test.tsx` covers all of `SiteFooter`, since it has no behaviour beyond its markup: each
+group as a `<nav>` named by its title with its heading and links, the external marker, the
+phone-width padding of a link, each slot rendered as given and no element drawn for a slot that is
+not, and the full set of visible words, so a hard-coded string has nowhere to hide.
 
 `site-header.test.tsx` is the markup half of `SiteHeader`: every link's `href` present once inline
 and once in the panel, `aria-current` on the one link matching `currentPath` and on no other, `brand`
