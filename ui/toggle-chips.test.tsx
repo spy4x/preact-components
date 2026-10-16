@@ -70,7 +70,7 @@ describe("ToggleChips", () => {
     expect(html.match(/<svg/g)?.length).toBe(1)
   })
 
-  it("makes every chip a 44 px touch target on a phone and badge height from sm up", () => {
+  it("makes every chip a 44 px touch target on a phone and 32 px tall from sm up", () => {
     const chips = chipClasses(
       render(<ToggleChips options={options} value={["home"]} onChange={() => {}} />),
     )

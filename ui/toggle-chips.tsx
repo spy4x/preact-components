@@ -60,7 +60,7 @@ export function toggleChipSelection(
 }
 
 /**
- * Every chip: a 44 px touch target on a phone, the badge's own height from `sm` up, with room for
+ * Every chip: a 44 px touch target on a phone, 32 px (`min-h-8`) from `sm` up, with room for
  * the pressed chip's check.
  */
 const chip =
