@@ -119,6 +119,14 @@ describe("SiteFooter", () => {
     expect([...html.matchAll(/\bborder-t\b/g)]).toHaveLength(1)
   })
 
+  it("treats a slot given as false like a missing one, as in aside={show && <Form />}", () => {
+    const html = render(<SiteFooter groups={groups} brand={false} aside={false} bottom={false} />)
+
+    expect(html).not.toContain("<div></div>")
+    expect(html).not.toContain("lg:col-span-2")
+    expect([...html.matchAll(/\bborder-t\b/g)]).toHaveLength(1)
+  })
+
   it("prints no visible text beyond the caller's own titles, labels and slots", () => {
     const html = render(
       <SiteFooter

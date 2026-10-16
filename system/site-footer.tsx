@@ -60,14 +60,14 @@ export interface SiteFooterProps {
  */
 export function SiteFooter(props: SiteFooterProps): JSX.Element {
   const { groups, brand, aside, bottom, class: className } = props
-  const hasAside = aside !== undefined && aside !== null
+  const hasAside = isGiven(aside)
 
   return (
     <footer
       class={cn("border-t border-subtle bg-surface dark:bg-canvas", barFocusOffset, className)}
     >
       <div class="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
-        {brand !== undefined && brand !== null && <div>{brand}</div>}
+        {isGiven(brand) && <div>{brand}</div>}
 
         <div class="grid gap-8 lg:grid-cols-3">
           <div
@@ -103,10 +103,15 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
           {hasAside && <div>{aside}</div>}
         </div>
 
-        {bottom !== undefined && bottom !== null && (
+        {isGiven(bottom) && (
           <div class="border-t border-subtle pt-8 text-sm text-muted">{bottom}</div>
         )}
       </div>
     </footer>
   )
+}
+
+/** Whether a slot holds something to draw: `false`, as from `show && <Form />`, counts as absent. */
+function isGiven(slot: ComponentChildren): boolean {
+  return slot !== undefined && slot !== null && slot !== false
 }
