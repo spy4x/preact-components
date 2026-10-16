@@ -2366,7 +2366,7 @@ function remotePaletteSpecs(): Spec[] {
     },
     {
       name: "CommandPalette remote: while the next search runs the last results stay listed, " +
-        "and only after 300 ms are they dimmed and the list says Searching…",
+        "neither moving nor fading, and only after 300 ms does Searching… show beside the field",
       pageId: "ui",
       run: async (page) => {
         const palette = await openRemotePalette(page)
@@ -2375,7 +2375,8 @@ function remotePaletteSpecs(): Spec[] {
           const entries: {
             at: number
             busy: boolean
-            dimmed: boolean
+            searching: boolean
+            opacity: number
             rows: number
             status: string
           }[] = []
@@ -2384,7 +2385,19 @@ function remotePaletteSpecs(): Spec[] {
             entries.push({
               at: performance.now(),
               busy: list?.getAttribute("aria-busy") === "true",
-              dimmed: list?.classList.contains("opacity-60") ?? false,
+              searching: dialog.querySelector(`[data-e2e="palette-remote-searching"]`)
+                ?.checkVisibility() ?? false,
+              opacity: Math.min(
+                ...[...dialog.querySelectorAll(`[role="option"]`)]
+                  .map((option) => {
+                    let opacity = 1
+                    for (let node: Element | null = option; node; node = node.parentElement) {
+                      opacity *= Number(getComputedStyle(node).opacity)
+                    }
+                    return opacity
+                  }),
+                1,
+              ),
               rows: dialog.querySelectorAll(`[role="option"]`).length,
               status: dialog.querySelector(`[role="status"]`)?.textContent ?? "",
             })
@@ -2407,25 +2420,52 @@ function remotePaletteSpecs(): Spec[] {
           throw new Error(`busy at ${busy}, Searching… at ${slow}, answered at ${answered}`)
         }
         const first = entries[busy]
-        if (first.rows !== 7 || first.status !== "" || first.dimmed) {
+        if (first.rows !== 7 || first.status !== "" || first.searching) {
           throw new Error(
-            `as the search starts: ${first.rows} rows, status "${first.status}", dimmed ` +
-              `${first.dimmed}`,
+            `as the search starts: ${first.rows} rows, status "${first.status}", Searching… ` +
+              `shown ${first.searching}`,
           )
         }
         const waited = entries[slow].at - first.at
         // A timer never fires early; the 10 ms are rendering's slack between the two records.
         if (waited < 290) throw new Error(`Searching… came ${Math.round(waited)} ms in`)
-        if (entries[slow].rows !== 7 || !entries[slow].dimmed) {
+        if (entries[slow].rows !== 7 || !entries[slow].searching) {
           throw new Error(
-            `with Searching…: ${entries[slow].rows} rows, dimmed ${entries[slow].dimmed}`,
+            `with Searching… announced: ${entries[slow].rows} rows, shown beside the field ` +
+              `${entries[slow].searching}`,
           )
         }
+        const faded = entries.slice(busy, answered).find((entry) => entry.opacity < 1)
+        if (faded) throw new Error(`a row faded to opacity ${faded.opacity} while "a" loaded`)
         const blank = entries.slice(busy, answered).find((entry) => entry.rows !== 7)
         if (blank) throw new Error(`the list fell to ${blank.rows} rows while "a" loaded`)
-        return `Searching… after ${Math.round(waited)} ms, with the 7 rows kept and dimmed`
+        return `Searching… after ${Math.round(waited)} ms, with the 7 rows kept as they were`
       },
     },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1280].map((width): Spec => ({
+        name: `CommandPalette remote at ${width} px in the ${colorScheme} palette: while a slow ` +
+          "search runs over the last results, axe finds no violation in the dialog, colour " +
+          "contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          const dark = await page.evaluate(() =>
+            document.documentElement.classList.contains("dark")
+          )
+          if (dark !== (colorScheme === "dark")) {
+            throw new Error(`the page is drawn ${dark ? "dark" : "light"}, not ${colorScheme}`)
+          }
+          const palette = await openRemotePalette(page, width)
+          // "slow" answers in five seconds: the kept rows and Searching… stay for the whole scan.
+          await palette.field.fill("slow")
+          await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
+          const result = await axePasses(page, [`[data-e2e="palette-remote"]`])
+          await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
+          return result
+        },
+      }))
+    ),
     {
       name: "CommandPalette remote: Enter while a search runs waits for its answer and picks its " +
         "first result, not the highlighted row of the previous query",

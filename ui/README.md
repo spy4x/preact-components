@@ -1450,7 +1450,8 @@ It takes its results one of two ways, never both:
   each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
   and the stale answer is ignored even when the function does not listen to it. While a call runs
   the previous results stay listed, so the list does not blink on every keystroke; once the reader
-  has waited 300 ms they are dimmed and the list says "Searching…". Enter pressed while a call runs
+  has waited 300 ms, "Searching…" shows beside the field (or in the list, when it is empty) and
+  is announced; the rows neither move nor fade. Enter pressed while a call runs
   waits for its answer and picks the answer's first result, never a row of the previous query. A
   rejection says the search failed.
 

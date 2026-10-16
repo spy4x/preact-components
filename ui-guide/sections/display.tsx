@@ -2001,7 +2001,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "search",
         type: "(query, signal) => Promise<options>",
         description:
-          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, dimmed with “Searching…” after 300 ms; Enter waits for the answer.",
+          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
       { name: "onSelect", type: "(option) => void", description: "The picked option." },
       {
@@ -2194,7 +2194,8 @@ const paletteLongFruit = {
 
 /**
  * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
- * quickly, so a stale answer arrives after the fresh one, and `boom` fails. It answers even after
+ * quickly, so a stale answer arrives after the fresh one; `slow` takes five seconds, long enough to
+ * look at the loading state; and `boom` fails. It answers even after
  * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
  * query through `onAbort`.
  */
@@ -2204,7 +2205,7 @@ function paletteFruitSearch(
   onAbort: (query: string) => void,
 ): Promise<CommandPaletteOption[]> {
   const needle = query.trim().toLowerCase()
-  const delay = needle.length === 1 ? 900 : 100
+  const delay = needle === "slow" ? 5_000 : needle.length === 1 ? 900 : 100
   // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
   // records which queries were aborted.
   signal.addEventListener("abort", () => onAbort(query), { once: true })
@@ -2271,8 +2272,8 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-remote-answered">{answered.value}</span>; aborted{" "}
         <span data-e2e="palette-remote-aborted">
           {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
-        </span>. One letter answers slowly, longer queries quickly, “dragon” finds a long name, and
-        “boom” fails.
+        </span>. One letter answers slowly, longer queries quickly, “slow” takes five seconds,
+        “dragon” finds a long name, and “boom” fails.
       </DemoNote>
     </Stack>
   )

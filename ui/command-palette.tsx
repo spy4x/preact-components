@@ -62,8 +62,7 @@ const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
 
 /**
  * How long, in milliseconds after a keystroke, the remote mode waits for its answer before it says
- * it is searching and dims the previous results. A quicker answer changes the list without a flash
- * of the loading label in between.
+ * it is searching. A quicker answer changes the list without a flash of the loading label in between.
  */
 const SLOW_SEARCH_MS = 300
 
@@ -116,9 +115,9 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * The options for a query. Called with the empty query when the palette opens, then once per
    * pause in typing. `signal` aborts when a newer query or a close makes the answer stale; a stale
    * answer is ignored even when the function does not listen to `signal`. A rejection shows the
-   * error label. While the next answer loads, the previous results stay listed; past
-   * {@link SLOW_SEARCH_MS} they are dimmed and the loading label is announced. Enter pressed while
-   * it loads waits for the answer and picks its first result.
+   * error label. While the next answer loads, the previous results stay listed as they are; past
+   * {@link SLOW_SEARCH_MS} the loading label shows beside the field and is announced. Enter pressed
+   * while it loads waits for the answer and picks its first result.
    */
   search: (query: string, signal: AbortSignal) => Promise<readonly T[]>
   /** Milliseconds of quiet typing before `search` is called. Defaults to `200`. */
@@ -200,7 +199,7 @@ enum Status {
   /** Loading for less than {@link SLOW_SEARCH_MS}: the previous results show as they were. */
   LOADING = 2,
   ERROR = 3,
-  /** Loading for {@link SLOW_SEARCH_MS} or longer: the previous results are dimmed. */
+  /** Loading for {@link SLOW_SEARCH_MS} or longer: the loading label shows. */
   SLOW = 4,
 }
 
@@ -513,6 +512,19 @@ export function CommandPalette<T extends CommandPaletteOption>(
             class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"
           />
           {
+            /* A slow search over results still listed says so here, beside the field, so the rows
+            neither move nor fade. Hidden from screen readers: the status line below tells them. */
+          }
+          {remote.status === Status.SLOW && flat.length > 0 && (
+            <span
+              aria-hidden="true"
+              data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-searching`}
+              class="shrink-0 text-xs text-muted"
+            >
+              {labels.loading}
+            </span>
+          )}
+          {
             /* Escape and a backdrop click close it too, but a phone has neither a key nor much
             backdrop: the button is the way out a reader can see. */
           }
@@ -532,10 +544,6 @@ export function CommandPalette<T extends CommandPaletteOption>(
             role="listbox"
             aria-label={labels.search}
             aria-busy={busy ? "true" : undefined}
-            class={cn(
-              "transition-opacity motion-reduce:transition-none",
-              remote.status === Status.SLOW && remoteMode && "opacity-60",
-            )}
           >
             {groups.map((group, groupIndex) =>
               group.label === undefined ? group.options.map((option) => row(option, index++)) : (
