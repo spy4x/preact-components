@@ -96,7 +96,8 @@ language fixes both: the apps feel related, and the work of making one look good
 - **Shadows: two.** `--shadow-raised` on a card in the light palette only; `--shadow-popover` on a
   menu, dialog or tooltip. In the dark palette a card has no shadow (it cannot show on near-black);
   a raised frame there gets a 1 px border and an inner top highlight instead.
-- **No card inside a card**, no card around a single line, no dashed box inside a card.
+- **No card inside a card**, no card around a single line, no dashed box inside a card: an empty
+  section inside a card is `<EmptyState inset />`, in the place of its `CardBody`.
 
 ### Motion
 
@@ -177,7 +178,7 @@ product.
 | A form                  | `EnhancedForm` with `Field`s in one column, labels above inputs, hint under the label, the submit button last and right-aligned (full width on a phone). Pending disables it. |
 | Field errors            | Under the field, tied with `aria-describedby`; focus moves to the first error. An error no field owns sits under the form, never in a toast.                                  |
 | A list or table         | `DataTable` or `Table`; numbers right-aligned with tabular figures; row actions in a `MoreMenu`; archived rows behind a filter, not mixed in.                                 |
-| Nothing in a list yet   | `EmptyState`: one line on what will appear here, one action that adds the first item. No paragraph of explanation.                                                            |
+| Nothing in a list yet   | `EmptyState`: one line on what will appear here, one action that adds the first item. No paragraph of explanation. Inside a `Card`, `inset` drops the dashed box.             |
 | Something failed        | `ErrorState` in place of the content, saying what happened and what to do, with a retry. A failed background action gets a toast with a retry.                                |
 | Loading                 | Nothing for the first 300 ms, then `LoadingSkeleton` shaped like the content. `LoadingSpinner` only inside a button or a small inline area. Never a full-page spinner.        |
 | Confirmation of success | The change itself is the confirmation. A toast (`Toastr`) only for something that happened out of view, or that can be undone.                                                |

@@ -138,6 +138,35 @@ describe("EmptyState copy slots", () => {
   })
 })
 
+describe("EmptyState inset inside a card", () => {
+  it("draws no dashed border, no background and no maximum width when inset", () => {
+    const html = render(<EmptyState inset title="No devices yet" />)
+
+    expect(html).not.toContain("border")
+    expect(html).not.toContain("bg-")
+    expect(html).not.toContain("max-w-")
+    expect(html).not.toContain("rounded-lg")
+  })
+
+  it("pads itself like a card body when inset, so it lines up with the card's header", () => {
+    expect(render(<EmptyState inset title="No devices yet" />)).toBe(
+      '<div role="status" class="px-4 py-6 text-center sm:p-8">' +
+        '<h3 class="text-base font-medium text-foreground">No devices yet</h3>' +
+        "</div>",
+    )
+  })
+
+  it("keeps the dashed box when inset is false", () => {
+    expect(render(<EmptyState inset={false} title="No devices yet" />)).toBe(
+      render(<EmptyState title="No devices yet" />),
+    )
+  })
+
+  it("still renders nothing without any slot when inset", () => {
+    expect(render(<EmptyState inset />)).toBe("")
+  })
+})
+
 describe("EmptyState hardcoded wording", () => {
   it("renders no text the caller did not pass", () => {
     const html = render(
