@@ -43,7 +43,7 @@ function focusRingSpec(what: string, selector: string): Spec {
 
       const before = await outline()
       if (before.style !== "none") {
-        throw new Error(`an unfocused ${what} already draws a ${before.style} outline`)
+        throw new Error(`${what} draws a ${before.style} outline before it is focused`)
       }
 
       // Away and back with real key presses, so the focus arrives the way a keyboard user's does.
@@ -59,7 +59,7 @@ function focusRingSpec(what: string, selector: string): Spec {
         focused.color !== focused.ringToken
       ) {
         throw new Error(
-          `the focused ${what} draws ${drawn}; wanted 2px solid ${focused.ringToken}, offset 2px`,
+          `${what}, focused, draws ${drawn}; wanted 2px solid ${focused.ringToken}, offset 2px`,
         )
       }
       return `${drawn} (--color-ring), none before`
