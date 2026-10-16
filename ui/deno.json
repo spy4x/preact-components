@@ -63,6 +63,8 @@
     "./use-succeeded": "./use-succeeded.ts",
     "./use-fresh-error": "./use-fresh-error.ts",
     "./use-focus-after-removal": "./use-focus-after-removal.ts",
+    "./use-focus-on-error": "./use-focus-on-error.ts",
+    "./use-focus-on-change": "./use-focus-on-change.ts",
     "./kbd": "./kbd.tsx",
     "./shortcuts-dialog": "./shortcuts-dialog.tsx",
     "./inline-edit": "./inline-edit.tsx",
