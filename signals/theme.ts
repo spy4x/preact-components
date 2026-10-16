@@ -291,13 +291,17 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
  * - A record the server has saved before (version above `0`) wins over this device's copy, and so
  *   does every newer record after it: one from another device ({@link SettingsSignals.apply}), a
  *   later load, or the record that won a conflict. The theme store's `set` stores it locally too.
+ *   The theme follows the settings store's `value`, not its bare record, so while a theme change
+ *   made here is still waiting for its answer, a record that arrives (the answer to an earlier
+ *   change, or the socket's echo of it) never changes the theme back.
  * - A record never saved (version `0`) takes this device's copy, so a new account keeps the theme
  *   the person picked before signing up.
  * - A preference set here (the account menu, `toggle`, `cycle`) is saved to `settings`.
  * - A save that fails for want of a network keeps the theme here, and is sent again on the next
- *   record `settings` takes, such as the reload an app runs when its socket reconnects. A newer
- *   record from another device that arrives first is overwritten by it: the last choice made wins.
- *   The retry is held in memory only, so a page reloaded while offline loses it.
+ *   record `settings` takes, such as the reload an app runs when its socket reconnects. That resend
+ *   replaces whatever theme another device saved in the meantime, even one chosen later than the
+ *   offline change, and nobody is told. The retry is held in memory only, so a page reloaded while
+ *   offline loses it, and a `reset` (sign-out) cancels it.
  *
  * Before `settings` loads, and after its `reset` (sign-out), nothing is sent and nothing followed:
  * the theme is this device's own again.
@@ -319,13 +323,25 @@ export function syncThemeWithSettings<K extends string, T extends Record<K, `${T
   let seen = -1
   // A preference this device set whose save could not reach the server.
   let unsynced = false
+  // Bumped whenever `settings` stops being loaded (sign-out), so an answer to a save sent for the
+  // person before cannot schedule a resend for the person after.
+  let session = 0
+
+  /** The theme the settings store shows: its record with the changes still waiting on top. */
+  const shown = (): unknown => settings.value.peek()[key]
 
   const push = (preference: ThemePreference): void => {
+    const sentIn = session
     const patch = { [key]: preference } as unknown as Partial<T>
-    settings.save(patch).then((outcome) => {
-      // A conflict needs nothing here: the record that won reaches the effect below.
-      unsynced = !outcome.ok && outcome.reason === `failed`
-    })
+    settings.save(patch).then(
+      (outcome) => {
+        // A conflict needs nothing here: the record that won reaches the effect below.
+        if (sentIn === session) unsynced = !outcome.ok && outcome.reason === `failed`
+      },
+      () => {
+        if (sentIn === session) unsynced = true
+      },
+    )
   }
 
   const stopRecord = effect(() => {
@@ -333,21 +349,23 @@ export function syncThemeWithSettings<K extends string, T extends Record<K, `${T
     const record = settings.record.value
     untracked(() => {
       if (!isLoaded) {
+        session++
         seen = -1
         unsynced = false
         return
       }
       const local = theme.preference.peek()
-      const remote: unknown = record.value[key]
       if (unsynced || (seen === -1 && record.version === 0)) {
         unsynced = false
         seen = record.version
-        if (remote !== local) push(local)
+        if (shown() !== local) push(local)
         return
       }
       if (record.version === seen) return
       seen = record.version
-      if (isThemePreference(remote) && remote !== local) theme.set(remote)
+      // `shown()`, not the record: a theme change still waiting outranks the record it was made on.
+      const next = shown()
+      if (isThemePreference(next) && next !== local) theme.set(next)
     })
   })
 
@@ -355,7 +373,7 @@ export function syncThemeWithSettings<K extends string, T extends Record<K, `${T
     const preference = theme.preference.value
     untracked(() => {
       if (!settings.loaded.peek() || seen === -1) return
-      if (preference !== settings.value.peek()[key]) push(preference)
+      if (preference !== shown()) push(preference)
     })
   })
 

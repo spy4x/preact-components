@@ -581,9 +581,12 @@ works; when its socket delivers a record another device saved, it calls `apply(r
 `syncThemeWithSettings(theme, settings, key)` connects a `createThemeStore` to one key of such a
 store. The theme keeps its copy in storage, so it paints before sign-in and while offline. After
 `load`, a record the server has saved wins and the theme follows every newer one; a record never
-saved takes this device's theme; a preference set here is saved. A save that fails offline keeps the
-theme here and is sent again on the next record the settings store takes, such as the reload an app
-runs when its socket reconnects. That retry lives in memory only.
+saved takes this device's theme; a preference set here is saved. The theme follows the store's
+`value`, so a record that arrives while a theme change made here is still waiting never changes it
+back. A save that fails offline keeps the theme here and is sent again on the next record the
+settings store takes, such as the reload an app runs when its socket reconnects. That resend
+replaces any theme another device saved meanwhile, even a later one, without a notice. The retry
+lives in memory only, and `reset()` cancels it.
 
 ```ts
 const settings = createSettingsStore(preferences, { load, save })
