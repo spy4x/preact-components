@@ -57,15 +57,20 @@ describe("LineChart", () => {
     expect(xLabels(html)).toEqual(["0% a", "75% d", "100% e"])
   })
 
-  it("thins a dense category axis to about six labels on its own", () => {
+  it("renders on the server only the category labels that fit a phone's axis", () => {
     const series: LineSeries[] = [{
-      name: "Hourly",
-      points: Array.from({ length: 24 }, (_, index) => ({ x: `h${index}`, y: index })),
+      name: "Daily",
+      points: Array.from({ length: 30 }, (_, index) => ({ x: `Oct ${index + 1}`, y: index })),
     }]
     const labels = xLabels(render(<LineChart series={series} />))
 
-    expect(labels.length).toBeLessThanOrEqual(7)
-    expect(labels.at(-1)).toBe("100% h23")
+    expect(labels).toEqual([
+      "0% Oct 1",
+      "24.14% Oct 8",
+      "48.28% Oct 15",
+      "72.41% Oct 22",
+      "100% Oct 30",
+    ])
   })
 
   it("leaves the dots out when a series asks for a line only", () => {

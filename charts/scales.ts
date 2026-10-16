@@ -115,7 +115,8 @@ export function linearScale(
 
 /**
  * Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label
- * count without dropping the right-hand end.
+ * count without dropping the right-hand end. It counts labels, not the space they need: `LineChart`
+ * picks its labels from the axis width instead.
  */
 export function xLabelStride(count: number, maxLabels = 8): number {
   const limit = Number.isFinite(maxLabels) && maxLabels >= 1 ? Math.floor(maxLabels) : 8
