@@ -46,6 +46,18 @@ const orders = [
   },
 ]
 
+/**
+ * Thirty days of sign-ups, one point a day: enough dates that the axis has to leave labels out.
+ * Literal day labels and values, so every build renders the same markup.
+ */
+const signups = [{
+  name: "Sign-ups",
+  points: Array.from({ length: 30 }, (_, day) => ({
+    x: `Oct ${day + 1}`,
+    y: [12, 15, 9, 14, 18, 22, 17][day % 7] + day,
+  })),
+}]
+
 /** Four slices summing to 100, so the legend percentages read as a whole. */
 const traffic: { label: string; value: number; href?: string }[] = [
   { label: "Organic", value: 52 },
@@ -213,6 +225,14 @@ export const chartsDemos = {
           yDomain={[0, 60]}
           yFormat={(value) => value.toFixed(0)}
         />
+        <div data-e2e="chart-30-days">
+          <LineChart
+            series={signups}
+            title="Sign-ups per day"
+            height={160}
+            yFormat={(value) => value.toFixed(0)}
+          />
+        </div>
       </div>
     ),
   },

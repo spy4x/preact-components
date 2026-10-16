@@ -8,7 +8,8 @@ import {
   DEFAULT_TEXT_COLOR,
   seriesColor,
 } from "./colors.ts"
-import { extent, niceScale, ticks, xLabelStride } from "./scales.ts"
+import { extent, niceScale, ticks } from "./scales.ts"
+import { type AxisLabel, fitXLabels } from "./x-labels.ts"
 import {
   formatTimeFull,
   formatTimeTick,
@@ -57,7 +58,10 @@ export interface LineChartProps {
   yDomain?: readonly [number, number]
   /** Requested number of Y steps. Defaults to `5`. */
   yTicks?: number
-  /** Category axis only: label every n-th X value. Defaults to a stride that keeps about six. */
+  /**
+   * Category axis only: label every n-th X value. Left out, the chart keeps as many labels as fit
+   * its width. Either way, a label that would overlap its neighbour is left out.
+   */
   xStride?: number
   /**
    * Time axis only: the zone whose midnights, hours and months the ticks fall on and the labels
@@ -97,6 +101,12 @@ export interface LineChartProps {
 
 /** The SVG's user space: both axes run 0…1000, stretched to the plot's size. */
 const SPAN = 1000
+
+/**
+ * The X axis width, in pixels, the labels are chosen for before the browser measures it: a phone's
+ * axis, so a chart seen with no JavaScript never draws two labels on top of each other there.
+ */
+const ASSUMED_LABEL_WIDTH = 280
 
 /** One X position: its key, where it sits (`0…1`), and how it is printed. */
 interface Slot {
@@ -160,9 +170,24 @@ export function LineChart({
   const rootRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
+  const labelRowRef = useRef<HTMLDivElement>(null)
+  // The server cannot measure, so the first render assumes a phone's axis; the browser then
+  // measures the real one and keeps as many labels as fit it.
+  const [labelWidth, setLabelWidth] = useState(ASSUMED_LABEL_WIDTH)
   const [interactive, setInteractive] = useState(false)
   const [chosen, setActive] = useState<number | null>(null)
   useEffect(() => setInteractive(true), [])
+  useEffect(() => {
+    const row = labelRowRef.current
+    if (!row || typeof ResizeObserver === "undefined") return
+    const measure = () => {
+      if (row.clientWidth > 0) setLabelWidth(row.clientWidth)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(row)
+    return () => observer.disconnect()
+  }, [])
 
   const isDefined = (value: number | null | undefined): value is number =>
     typeof value === "number" && Number.isFinite(value) && !(ignoreZeroes && value === 0)
@@ -192,7 +217,10 @@ export function LineChart({
   const y = resolveYDomain(yDomain, bounds ?? [0, 1], yTicks)
   const toFraction = (value: number) => y.max === y.min ? 0.5 : (y.max - value) / (y.max - y.min)
   const gutter = Math.max(24, ...y.ticks.map((tick) => yFormat(tick).length * 7 + 4))
-  const xLabels = axisLabels(slots, step, xAxis, xStride, { xFormat, timeZone, locale })
+  const xLabels = fitXLabels(
+    axisLabels(slots, step, xAxis, xStride, { xFormat, timeZone, locale }),
+    labelWidth,
+  )
   const bridged = lines.some((line) => bridges(line.values, isDefined).length > 0)
   const legend = showLegend ?? series.length > 1
 
@@ -428,7 +456,7 @@ export function LineChart({
       <div class="flex gap-2" aria-hidden="true">
         <div class="shrink-0" style={{ width: `${gutter}px` }} />
         <div class="relative h-4 min-w-0 flex-1 text-xs" style={{ color: textColor }}>
-          <div class="absolute inset-y-0 inset-x-3">
+          <div ref={labelRowRef} class="absolute inset-y-0 inset-x-3">
             {xLabels.map((tick) => (
               <span
                 key={`x-${tick.position}`}
@@ -573,16 +601,19 @@ function buildSlots(
   }
 }
 
-/** The labels under the plot: every n-th category, or the time axis's round instants. */
+/**
+ * The candidate labels under the plot: every category (every n-th with a stride), or the time
+ * axis's round instants. {@link fitXLabels} then keeps the ones that fit the axis.
+ */
 function axisLabels(
   slots: readonly Slot[],
   step: TimeStep | null,
   xAxis: "category" | "time",
   stride: number | undefined,
   context: FormatContext,
-): { position: number; label: string }[] {
+): AxisLabel[] {
   if (xAxis === "category" || !step || slots.length === 0) {
-    const every = stride && stride >= 1 ? Math.floor(stride) : xLabelStride(slots.length, 6)
+    const every = stride && stride >= 1 ? Math.floor(stride) : 1
     return slots.filter((_, index) => index % every === 0 || index === slots.length - 1)
   }
   const first = Number(slots[0].key)
