@@ -205,6 +205,7 @@ IconShieldCheck	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) 
 IconSmile	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconSparkle	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "sparkles" from heroicons@1.0.6 (#233).
 IconSpinner	component	@spy4x/preact-icons	Lucide outline (stroke 2.5); matches Lucide's "loader-circle"/"loader-2" exactly.
+IconSprout	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "sprout" (lucide-static@1.47.0) exactly.
 IconStar	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons; `filled` for solid.
 IconStopCircle	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconSuccess	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
