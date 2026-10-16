@@ -277,6 +277,49 @@ describe("DropdownItem", () => {
     expect(html).toMatch(/<kbd[^>]*>Strg<\/kbd>/)
   })
 
+  it("renders a checked item as a checked menuitemradio with a check before its text", () => {
+    const html = render(<DropdownItem checked onClick={() => {}}>Family</DropdownItem>)
+
+    expect(attrOf(html, /<button[^>]*>/, "role")).toBe("menuitemradio")
+    expect(attrOf(html, /<button[^>]*>/, "aria-checked")).toBe("true")
+    expect(html).toMatch(
+      /<button[^>]*><svg[^>]*aria-hidden="true"[^>]*class="[^"]*size-4[^"]*">.*<\/svg>Family<\/button>/,
+    )
+  })
+
+  it("renders an unchecked choice as an unchecked menuitemradio with an empty slot as wide as the check", () => {
+    const html = render(<DropdownItem checked={false} href="/groups/2">Work</DropdownItem>)
+
+    expect(attrOf(html, /<a[^>]*>/, "role")).toBe("menuitemradio")
+    expect(attrOf(html, /<a[^>]*>/, "aria-checked")).toBe("false")
+    expect(html).toMatch(
+      /<a[^>]*><span class="size-4 shrink-0" aria-hidden="true"><\/span>Work<\/a>/,
+    )
+    expect(html).not.toContain("<svg")
+  })
+
+  it("keeps an item without checked a menuitem, with no aria-checked and no check slot", () => {
+    const html = render(<DropdownItem onClick={() => {}}>Archive</DropdownItem>)
+
+    expect(attrOf(html, /<button[^>]*>/, "role")).toBe("menuitem")
+    expect(html).not.toContain("aria-checked")
+    expect(html).toMatch(/<button[^>]*>Archive<\/button>/)
+  })
+
+  it("marks the checked item of a server-rendered dropdown as the current one, with no menu role", () => {
+    const html = render(
+      <Dropdown trigger="Groups" triggerNamedByContent>
+        <DropdownItem checked onClick={() => {}}>Family</DropdownItem>
+        <DropdownItem checked={false} onClick={() => {}}>Work</DropdownItem>
+      </Dropdown>,
+    )
+
+    expect(html).not.toContain("role=")
+    expect(html).not.toContain("aria-checked")
+    expect(attrOf(html, /<button[^>]*>(?=<svg)/, "aria-current")).toBe("true")
+    expect(html.match(/aria-current/g)?.length).toBe(1)
+  })
+
   it("has no hint and no aria-keyshortcuts without a hotkey", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
     expect(html).not.toContain("aria-keyshortcuts")

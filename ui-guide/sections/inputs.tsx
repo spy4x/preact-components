@@ -190,7 +190,41 @@ function DropdownItemDemo() {
           : `navigate called ${navigated.value} ${navigated.value === 1 ? "time" : "times"}`}
       </span>
       <DropdownItemHotkeyDemo />
+      <DropdownItemCheckedDemo />
     </Stack>
+  )
+}
+
+const GROUPS = ["Family", "Work", "Book club"]
+
+/**
+ * `DropdownItem`'s `checked`, in a real `Dropdown`: a switcher whose current group carries the
+ * check, and whose other groups keep an empty space where it would be, so the names line up.
+ * Choosing a group, by pointer or by the arrow keys and Enter, moves the check and closes the
+ * menu. `pages/e2e/ui.spec.ts` chooses one with the keyboard.
+ */
+function DropdownItemCheckedDemo() {
+  const current = useSignal(GROUPS[0])
+  return (
+    <DropdownRow title={<span data-e2e="dropdown-checked-status">Group: {current.value}</span>}>
+      <Dropdown
+        trigger={current.value}
+        triggerNamedByContent
+        triggerClasses="rounded-md px-3 py-2 text-sm ring-1 ring-subtle"
+        triggerDataE2E="dropdown-checked-trigger"
+        menuLabel="Switch group"
+      >
+        {GROUPS.map((group) => (
+          <DropdownItem
+            key={group}
+            checked={group === current.value}
+            onClick={() => current.value = group}
+          >
+            {group}
+          </DropdownItem>
+        ))}
+      </Dropdown>
+    </DropdownRow>
   )
 }
 
@@ -1327,6 +1361,12 @@ export const inputDemos = {
         type: "Partial<KbdLabels>",
         description: "The words the hint shows for a key; see `KBD_LABELS`.",
       },
+      {
+        name: "checked",
+        type: "boolean",
+        description:
+          "Makes it one choice of a set: a `menuitemradio` with `aria-checked`, a check before its text when `true` and an empty space as wide when `false`.",
+      },
       { name: "class", type: "string", description: "Extra classes, merged over its own." },
     ],
     snippet: `<DropdownItem href="/regions/1/edit">Edit</DropdownItem>
@@ -1338,7 +1378,12 @@ export const inputDemos = {
 <DropdownItem onClick={duplicate} hotkey="shift+e">Duplicate</DropdownItem>
 <form method="post" action="/sign-out" role="none">
   <DropdownItem type="submit">Sign out</DropdownItem>
-</form>`,
+</form>
+{groups.map((group) => (
+  <DropdownItem checked={group.id === currentId} onClick={() => switchTo(group.id)}>
+    {group.name}
+  </DropdownItem>
+))}`,
     render: () => <DropdownItemDemo />,
   },
   Combobox: {

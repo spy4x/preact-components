@@ -1116,6 +1116,58 @@ export const specs: readonly Spec[] = [
       await tags.getByText("tags: (none)", { exact: true }).waitFor()
     },
   },
+  {
+    name:
+      "DropdownItem: the arrow keys reach an unchecked group of a switcher, Enter chooses it, " +
+      "the check moves to it and the menu closes with focus on its trigger",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-DropdownItem")
+      const trigger = card.locator(`[data-e2e="dropdown-checked-trigger"]`)
+      const menu = card.getByRole("menu", { name: "Switch group", exact: true })
+      const choice = (name: string, checked: boolean) =>
+        menu.getByRole("menuitemradio", { name, exact: true, checked })
+      const focused = page.locator(":focus")
+
+      await trigger.click()
+      await choice("Family", true).and(focused).waitFor()
+      await choice("Work", false).waitFor()
+      await page.keyboard.press("ArrowDown")
+      await choice("Work", false).and(focused).waitFor()
+      await page.keyboard.press("Enter")
+      await card.locator(`[data-e2e="dropdown-checked-status"]`)
+        .getByText("Group: Work", { exact: true }).waitFor()
+      await trigger.and(page.locator(`[aria-expanded="false"]`)).and(focused).waitFor()
+
+      await trigger.press("Enter")
+      await choice("Work", true).waitFor()
+      await choice("Family", false).waitFor()
+      const marks = await menu.getByRole("menuitemradio").evaluateAll((items) =>
+        items.map((item) => [
+          item.textContent?.trim(),
+          item.querySelector("svg") !== null,
+          item.firstElementChild?.getBoundingClientRect().width,
+        ])
+      )
+      const widths = new Set(marks.map(([, , width]) => width))
+      const checks = marks.filter(([, hasCheck]) => hasCheck).map(([name]) => name)
+      if (checks.join() !== "Work" || widths.size !== 1) {
+        throw new Error(`items (name, check, slot width): ${JSON.stringify(marks)}`)
+      }
+      return `slot ${[...widths][0]} px on every item`
+    },
+  },
+  ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+    name: `ToggleChips: pressed and unpressed chips pass axe, contrast included, ${colorScheme}`,
+    pageId: "ui",
+    colorScheme,
+    run: async (page) => {
+      const card = page.locator("#demo-ToggleChips")
+      await card.getByRole("button", { name: "home", pressed: false }).waitFor()
+      await card.getByRole("button", { name: "work", pressed: true }).waitFor()
+      return await axePasses(page, ["#demo-ToggleChips"])
+    },
+  })),
   ...unsavedHistorySpecs(),
   ...quickAddSpecs(),
   ...confirmDialogNameSpecs(),
