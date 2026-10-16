@@ -48,6 +48,13 @@
 
   --color-border-subtle: oklch(0.34 0.014 260);
   --color-border-control: oklch(0.4 0.016 260);
+  --color-border-strong: oklch(0.55 0.016 260);
+
+  /* The state fills, on ink's own scale rather than the default dark palette's gray-700 and
+     gray-600: muted text keeps 4.5:1 on a hovered row (0.3, the active surface below), and a
+     track sits a step above the card. */
+  --color-hover: oklch(0.3 0.016 260);
+  --color-track: oklch(0.4 0.016 260);
 
   --color-foreground: oklch(0.93 0.006 260); /* primary text tone */
   /* 0.68, not the surface scale's own 0.66 step: muted text needs to clear 4.5:1 against every
