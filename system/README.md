@@ -29,7 +29,7 @@ Extracted from earlier source applications.
 | Component         | Subpath             | Ports / key props                                                                                                                                                                           |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AuthForm`        | `auth-form`         | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
-| `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
+| `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`        | `calendar`          | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
 | `SiteHeader`      | `site-header`       | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
@@ -58,6 +58,7 @@ import { SEOHead } from "@spy4x/preact-system"
   canonical="https://acme.example/products/widgets"
   siteName="Acme"
   ogImage="https://acme.example/og/widgets.png"
+  imageAlt="Three blue widgets on a desk"
   imageWidth={1200}
   imageHeight={630}
   twitterCreator="@jane"
@@ -77,7 +78,9 @@ on.
 `imageWidth` and `imageHeight` publish the preview image's size in pixels as `og:image:width` and
 `og:image:height`, right after `og:image`; LinkedIn and Facebook read them to lay out a link
 preview before the image loads. Each is emitted only when it is set and an `ogImage` is given,
-since a size with no image describes nothing. `twitterCreator` publishes the author's handle as
+since a size with no image describes nothing. `imageAlt` describes the preview image for people who
+cannot see it, as `og:image:alt` and `twitter:image:alt`, under the same rule: it is emitted only
+with an `ogImage`. `twitterCreator` publishes the author's handle as
 `twitter:creator`, right after `twitter:site`. Every tag in the set has its own `name`, `property`
 or `rel`, so Fresh's `<Head>`, which identifies an unkeyed tag by those attributes, prints each one
 once.

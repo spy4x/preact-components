@@ -10,6 +10,7 @@ const PAGE = {
   description: "Widgets for teams.",
   canonical: "https://acme.example/products/widgets",
   ogImage: "https://acme.example/og/widgets.png",
+  imageAlt: "Three blue widgets",
   imageWidth: 1200,
   imageHeight: 630,
   twitterSite: "@acme",
@@ -72,7 +73,7 @@ describe("SEOHead inside Fresh's <Head>", () => {
     expect(html).toContain(`href="/b.css"`)
   })
 
-  it("prints the image size and twitter:creator once each", async () => {
+  it("prints the image size, its alt texts and twitter:creator once each", async () => {
     const html = await serve(
       <Head>
         <SEOHead {...PAGE} />
@@ -86,6 +87,8 @@ describe("SEOHead inside Fresh's <Head>", () => {
         `property="og:image"`,
         `property="og:image:width" content="1200"`,
         `property="og:image:height" content="630"`,
+        `property="og:image:alt" content="Three blue widgets"`,
+        `name="twitter:image:alt" content="Three blue widgets"`,
         `name="twitter:site" content="@acme"`,
         `name="twitter:creator" content="@jane"`,
       ]

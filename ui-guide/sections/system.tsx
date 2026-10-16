@@ -92,6 +92,7 @@ const pageHead: PageHead = {
   description: "Specifications, prices and reviews for the blue widget.",
   canonical: "https://example.com/products/widgets/12#reviews",
   ogImage: "https://example.com/og/widgets.png",
+  imageAlt: "A blue widget on a desk",
   imageWidth: 1200,
   imageHeight: 630,
   ogType: "article",
@@ -2174,6 +2175,11 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
       },
       { name: "jsonLd", type: "unknown[]", description: "More structured data for the graph." },
       {
+        name: "imageAlt",
+        type: "string",
+        description: "The preview image described in words; published only with an `ogImage`.",
+      },
+      {
         name: "imageWidth",
         type: "number",
         description: "The preview image's width in pixels; published only with an `ogImage`.",
@@ -2194,6 +2200,7 @@ const state = readStateInit<{ userId: string; features: string[] }>()`,
   description="Specifications, prices and reviews for the blue widget."
   canonical="https://example.com/products/widgets/12"
   ogImage="https://example.com/og/widgets.png"
+  imageAlt="A blue widget on a desk"
   imageWidth={1200}
   imageHeight={630}
   siteName="Acme"

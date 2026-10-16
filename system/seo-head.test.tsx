@@ -12,6 +12,7 @@ const PAGE: PageHead = {
   siteName: "Acme",
   twitterSite: "@acme",
   twitterCreator: "@jane",
+  imageAlt: "Three blue widgets on a desk",
   imageWidth: 1200,
   imageHeight: 630,
   locale: "en_US",
@@ -113,6 +114,7 @@ describe("seoHeadTags", () => {
     expect(tags.get("og:image")).toBe("https://acme.example/og/widgets.png")
     expect(tags.get("og:image:width")).toBe("1200")
     expect(tags.get("og:image:height")).toBe("630")
+    expect(tags.get("og:image:alt")).toBe("Three blue widgets on a desk")
     expect(tags.get("og:site_name")).toBe("Acme")
     expect(tags.get("og:locale")).toBe("en_US")
   })
@@ -140,11 +142,13 @@ describe("seoHeadTags", () => {
         "og:image",
         "og:image:width",
         "og:image:height",
+        "og:image:alt",
         "og:site_name",
         "og:locale",
         "twitter:site",
         "twitter:creator",
         "twitter:image",
+        "twitter:image:alt",
       ]
     ) {
       expect(tags.has(key)).toBe(false)
@@ -156,6 +160,27 @@ describe("seoHeadTags", () => {
     const image = keys.indexOf("og:image")
 
     expect(keys.slice(image, image + 3)).toEqual(["og:image", "og:image:width", "og:image:height"])
+  })
+
+  it("publishes the image's alt text in both the open graph and the twitter sets", () => {
+    const tags = tagMap(PAGE)
+
+    expect(tags.get("og:image:alt")).toBe("Three blue widgets on a desk")
+    expect(tags.get("twitter:image:alt")).toBe("Three blue widgets on a desk")
+  })
+
+  it("puts each alt text right after its image's own tags", () => {
+    const keys = seoHeadTags(PAGE).map((tag) => tag.attrs.property ?? tag.attrs.name)
+
+    expect(keys[keys.indexOf("twitter:image") + 1]).toBe("twitter:image:alt")
+    expect(keys[keys.indexOf("og:image:height") + 1]).toBe("og:image:alt")
+  })
+
+  it("publishes no alt text for a page with no image", () => {
+    const tags = tagMap({ ...PAGE, ogImage: undefined })
+
+    expect(tags.has("og:image:alt")).toBe(false)
+    expect(tags.has("twitter:image:alt")).toBe(false)
   })
 
   it("puts twitter:creator right after twitter:site", () => {

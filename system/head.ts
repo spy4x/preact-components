@@ -46,6 +46,14 @@ export interface PageHead {
   /** Absolute social preview image. The `og:image` / `twitter:image` pair is omitted without it. */
   ogImage?: string
   /**
+   * Text alternative of {@link PageHead.ogImage}, published as `og:image:alt` and
+   * `twitter:image:alt` for people who cannot see the preview.
+   *
+   * Omitted when unset, and also when there is no `ogImage`: it describes an image, and a page
+   * without one has nothing to describe.
+   */
+  imageAlt?: string
+  /**
    * Width of {@link PageHead.ogImage} in pixels, published as `og:image:width`.
    *
    * Omitted when unset, and also when there is no `ogImage`: a size describes an image, and a
