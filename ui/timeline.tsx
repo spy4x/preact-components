@@ -2,7 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 
 /** The colour of an entry's dot. */
-export type TimelineTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type TimelineTone = "neutral" | "success" | "warning" | "danger"
 
 /** One thing that happened. */
 export interface TimelineItem {
@@ -12,12 +12,9 @@ export interface TimelineItem {
   title: ComponentChildren
   /** When it happened, as an ISO 8601 instant; it becomes the `<time>`'s `dateTime`. */
   at: string
-  /**
-   * What the time reads, such as "3 days ago". Defaults to `at` as a medium date and a short time
-   * in `timeZone`.
-   */
-  when?: ComponentChildren
-  /** A second line: who, from where, what changed. */
+  /** What the time reads, such as "3 days ago" or a formatted date. */
+  when: ComponentChildren
+  /** A second line: who, from where, what changed. Shown whenever it is not `null` or `undefined`. */
   description?: ComponentChildren
   /** The dot's colour. Defaults to `"neutral"`. */
   tone?: TimelineTone
@@ -31,11 +28,6 @@ export interface TimelineProps {
   label?: string
   /** What shows in place of an empty list. Defaults to `"Nothing yet."`. */
   empty?: ComponentChildren
-  /**
-   * The zone a default `when` is printed in. Defaults to `"UTC"`, so a page rendered on the server
-   * reads the same in the browser.
-   */
-  timeZone?: string
   class?: string
   dataE2E?: string
 }
@@ -43,18 +35,9 @@ export interface TimelineProps {
 /** Each tone's dot, read through the shared colour tokens. */
 const DOTS: Record<TimelineTone, string> = {
   neutral: "bg-track",
-  accent: "bg-selected",
   success: "bg-success",
   warning: "bg-warning",
   danger: "bg-danger",
-}
-
-/** `at` as a medium date and a short time in `timeZone`, or `at` itself when it is no date. */
-export function timelineTime(at: string, timeZone = "UTC"): string {
-  const date = new Date(at)
-  if (Number.isNaN(date.getTime())) return at
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short", timeZone })
-    .format(date)
 }
 
 /**
@@ -73,7 +56,6 @@ export function Timeline(
     items,
     label = "Timeline",
     empty = "Nothing yet.",
-    timeZone = "UTC",
     class: className,
     dataE2E,
   }: TimelineProps,
@@ -104,10 +86,10 @@ export function Timeline(
             <div class="flex flex-wrap items-baseline gap-x-2">
               <span class="font-medium">{item.title}</span>
               <time class="text-xs text-muted" dateTime={item.at}>
-                {item.when ?? timelineTime(item.at, timeZone)}
+                {item.when}
               </time>
             </div>
-            {item.description && (
+            {item.description != null && (
               <div class="text-sm text-muted wrap-anywhere">{item.description}</div>
             )}
           </div>
