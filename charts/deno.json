@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-charts",
-  "version": "3.25.0",
+  "version": "3.26.0",
   "exports": {
     ".": "./+index.ts",
     "./bars": "./bars.tsx",
