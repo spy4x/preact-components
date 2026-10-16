@@ -65,9 +65,11 @@ const GLYPH = "color-contrast: nonBmp"
 
 /**
  * How many elements axe could not decide on, per page, rule and reason, and per palette. The reason
- * is axe's own `messageKey` (or the check's id when it gives none). The count is exact, as in
- * `KNOWN_VIOLATIONS`: a new undecided element fails the page's spec, and so does one fewer, so the
- * list only shrinks. A pair that is not listed allows none.
+ * is axe's own `messageKey` (or the check's id when it gives none). The count is a ceiling: one
+ * more undecided element fails the page's spec, and a pair that is not listed allows none. One
+ * fewer does not fail, unlike `KNOWN_VIOLATIONS`, because whether axe can decide on an element
+ * hangs on font metrics: CI's browser decides on the header's version pill, which this machine's
+ * leaves undecided on every page. The spec's result names each pair held below its ceiling.
  *
  * The guide's dotted stage is scanned without its dots (`STAGE_DOTS`), so the text on it is
  * decided before these are counted.
@@ -157,13 +159,13 @@ type Half = "contrast" | "rest"
 
 /**
  * One page in one palette, for one half of axe's rules: each rule fails on exactly as many
- * elements as is known, and on none when the rule is not listed; and axe leaves exactly as many
- * elements undecided, per rule and reason, as `KNOWN_INCOMPLETE` lists for that half.
+ * elements as is known, and on none when the rule is not listed; and axe leaves no more elements
+ * undecided, per rule and reason, than `KNOWN_INCOMPLETE` lists for that half.
  */
 function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half): Spec {
   const which = half === "contrast"
-    ? "colour-contrast violation or undecided result"
-    : "violation or undecided result of another rule"
+    ? "colour-contrast violation and no new undecided result"
+    : "violation of another rule and no new undecided result"
   return {
     name: `axe: the ${pageId} page has no new and no fixed ${which} in the ${colorScheme} palette`,
     pageId,
@@ -238,15 +240,9 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
           )
         }
       }
-      for (const key of Object.keys(knownUndecided)) {
-        const now = undecided.get(key)?.length ?? 0
-        if (now < expectedUndecided(key)) {
-          problems.push(
-            `undecided ${key} on ${now}, known ${expectedUndecided(key)}: lower it in ` +
-              `KNOWN_INCOMPLETE`,
-          )
-        }
-      }
+      const below = Object.keys(knownUndecided)
+        .filter((key) => (undecided.get(key)?.length ?? 0) < expectedUndecided(key))
+        .map((key) => `${key} ${undecided.get(key)?.length ?? 0} of ${expectedUndecided(key)}`)
       // Every page has text on it, so a contrast scan that measured none had the rule switched off.
       const measured = passes.find(({ id }) => id === CONTRAST)?.nodes.length ?? 0
       if (half === "contrast" && measured === 0) {
@@ -261,14 +257,16 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
         ? `contrast passes on ${measured} elements`
         : `${passes.length} rules pass`) +
         `, ${unsettled} known undecided` +
-        (listed.length > 0 ? `; known and not held: ${listed.join(", ")}` : "")
+        (listed.length > 0 ? `; known and not held: ${listed.join(", ")}` : "") +
+        (below.length > 0 ? `; undecided below the ceiling: ${below.join(", ")}` : "")
     },
   }
 }
 
 /**
  * How many elements on a page's hovered rows axe could not decide on, per reason, as
- * `[light, dark, ink]`. Exact, like `KNOWN_INCOMPLETE`; a page with no entry allows none.
+ * `[light, dark, ink]`. Exact, both ways, unlike `KNOWN_INCOMPLETE`: the only reason listed is a
+ * glyph outside the basic plane, which no font metric changes. A page with no entry allows none.
  */
 const KNOWN_HOVER_INCOMPLETE: Partial<
   Record<GuidePageId, Readonly<Record<string, readonly [light: number, dark: number, ink: number]>>>
