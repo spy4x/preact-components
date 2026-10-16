@@ -9,6 +9,7 @@
     "./sw-updater": "./sw-updater.tsx",
     "./calendar": "./calendar.tsx",
     "./site-header": "./site-header.tsx",
+    "./site-footer": "./site-footer.tsx",
     "./shell": "./shell.tsx",
     "./rail-shell": "./rail-shell.tsx",
     "./state-init": "./state-init.tsx",
