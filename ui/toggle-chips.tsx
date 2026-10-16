@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconCheck } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { badgeClasses, type BadgeColor } from "./badge.tsx"
 
@@ -58,23 +59,28 @@ export function toggleChipSelection(
   return options.map((option) => option.value).filter((value) => next.has(value))
 }
 
+/**
+ * Every chip: a 44 px touch target on a phone, 32 px (`min-h-8`) from `sm` up, with room for
+ * the pressed chip's check.
+ */
 const chip =
-  "normal-case cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+  "normal-case gap-1 min-h-11 sm:min-h-8 px-3 cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 
 /**
- * The unpressed chip's hover, the one thing it adds to `Badge`'s grey outline, whose colours it
- * takes for both palettes. The hover swaps to `text-foreground` because, under `.dark`, muted text
- * reads 4.1:1 on the gray-700 hover fill.
+ * The unpressed chip: the surface with full-strength text and a quiet border, so it reads as a
+ * live control rather than a disabled one. Its text is the foreground token on the surface token,
+ * and on the hover token under the pointer, in both palettes.
  */
-const unpressed = "hover:bg-hover hover:text-foreground"
+const unpressed = "bg-surface text-foreground border-subtle hover:bg-hover"
 
 /**
  * A group of pressable chips for filtering a list — the clickable counterpart of `Badge`, which
  * only shows text.
  *
  * Each chip is a real `button` with `aria-pressed`, so Space and Enter press it and a screen
- * reader says "pressed" or "not pressed". A pressed chip is a filled badge in `color`; an unpressed
- * one is a grey outlined badge. The group is a `role="group"` named by `label`.
+ * reader says "pressed" or "not pressed". A pressed chip is a filled badge in `color` with a check
+ * before its text, so being pressed does not rest on colour alone; an unpressed one is a plain
+ * chip on the surface, in the full text colour. Every chip is 44 px tall on a phone. The group is a `role="group"` named by `label`.
  *
  * Controlled: the chips show `value` and report every press through `onChange`. `mode="single"`
  * holds at most one chip; the default, `"multiple"`, holds any number. A chip's text keeps the
@@ -107,6 +113,7 @@ export function ToggleChips(props: ToggleChipsProps): JSX.Element {
             )}
             onClick={() => press(option.value)}
           >
+            {pressed ? <IconCheck class="size-3.5" /> : null}
             {option.label}
           </button>
         )

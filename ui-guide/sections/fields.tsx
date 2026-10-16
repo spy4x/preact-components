@@ -1144,7 +1144,8 @@ export const fieldDemos = {
         name: "color",
         type: "BadgeColor",
         default: `"purple"`,
-        description: "A pressed chip's colour; an unpressed chip is a grey outline.",
+        description:
+          "A pressed chip's colour, with a check before its text; an unpressed chip is plain, on the surface.",
       },
     ],
     snippet: `<ToggleChips

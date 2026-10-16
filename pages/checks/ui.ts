@@ -1874,7 +1874,7 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-Shell": 1,
   "demo-PageHeader": 2,
   "demo-MoreMenu": 1,
-  "demo-DropdownItem": 1,
+  "demo-DropdownItem": 2,
 }
 
 /**
@@ -15273,15 +15273,11 @@ interface BadgeContrast {
   filled: boolean
 }
 
-/** Both palettes' readings of every outline badge, and the unpressed chip beside them in dark. */
+/** Both palettes' readings of every outline badge. */
 interface OutlineBadgeReading {
   found: number
   light: BadgeContrast[]
   dark: BadgeContrast[]
-  /** An unpressed `ToggleChips` chip's text colour, and the grey outline badge's, in dark. */
-  chipColor: string
-  grayColor: string
-  chipRatio: number
 }
 
 /**
@@ -15299,8 +15295,8 @@ const DARK_OUTLINE_BADGE_COLOURS: Record<string, string> = {
  * In both palettes every outline `Badge` label reaches 4.5:1 against what it sits on: the
  * catalogue card behind it, the canvas and the surface (#396 for dark, #463 for light). A badge
  * with its own fill (`purpleNav`) is measured against that fill alone. The dark red, orange, green
- * and blue labels keep their 400 shades. An unpressed `ToggleChips` chip draws the grey outline
- * badge's own dark colour, so the chip needs no dark override of its own.
+ * and blue labels keep their 400 shades. The unpressed `ToggleChips` chip's contrast is a
+ * Playwright spec in `pages/e2e/ui.spec.ts` since it stopped drawing the grey outline badge.
  *
  * @param devtools The connected session, on a hydrated page.
  */
@@ -15313,8 +15309,6 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
     const card = document.querySelector("#demo-Badge")
     const row = [...card.querySelectorAll("span")].find((span) => span.textContent.trim() === "outline")
     const badges = [...(row?.nextElementSibling?.children ?? [])]
-    const chip = document.querySelector('#demo-ToggleChips button[aria-pressed="false"]')
-    const grayBadge = badges.find((badge) => badge.textContent.trim() === "gray")
     const token = (name) => {
       const probe = document.createElement("div")
       probe.style.backgroundColor = "var(" + name + ")"
@@ -15324,8 +15318,8 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
       return color
     }
     const settle = () => Promise.all(
-      [...badges, chip].flatMap((element) =>
-        element ? element.getAnimations().map((animation) => animation.finished.catch(() => {})) : []
+      badges.flatMap((element) =>
+        element.getAnimations().map((animation) => animation.finished.catch(() => {}))
       ),
     )
     const measure = () => {
@@ -15354,14 +15348,7 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
       root.classList.add("dark")
       await settle()
       const dark = measure()
-      return {
-        found: badges.length,
-        light,
-        dark,
-        chipColor: chip ? getComputedStyle(chip).color : "no unpressed chip",
-        grayColor: grayBadge ? getComputedStyle(grayBadge).color : "no gray badge",
-        chipRatio: chip ? seenRatio(chip) : 0,
-      }
+      return { found: badges.length, light, dark }
     } finally {
       root.classList.toggle("dark", wasDark)
     }
@@ -15393,12 +15380,6 @@ async function outlineBadgeContrastCheck(devtools: Devtools): Promise<void> {
     "in the dark palette the red, orange, green and blue outline Badges keep their 400 shades",
     darkMoved.length === 0,
     reading.dark.map((badge) => `${badge.name} ${badge.color}`).join(", "),
-  )
-  check(
-    "in the dark palette an unpressed ToggleChips chip draws the grey outline Badge's colour",
-    reading.chipColor === reading.grayColor && reading.chipRatio >= 4.5,
-    `chip ${reading.chipColor}, grey badge ${reading.grayColor}, chip on its card ` +
-      `${reading.chipRatio.toFixed(2)}:1`,
   )
 }
 

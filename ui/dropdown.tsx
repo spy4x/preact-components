@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconCheck } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, createContext, type JSX, type RefObject } from "preact"
 import { useContext, useEffect, useLayoutEffect, useRef } from "preact/hooks"
@@ -194,6 +195,13 @@ export interface DropdownItemProps extends HotkeyProps {
    * whose trigger is shown takes the key, whichever row the reader meant.
    */
   hotkey?: string
+  /**
+   * Makes the item one choice of a set, such as the current group of a switcher. Given at all, the
+   * item is a `menuitemradio` with `aria-checked`, and draws a check before its text when `true`
+   * and an empty space of the same width when `false`, so the names of a set line up. Left out,
+   * the item is a plain `menuitem` with no space before its text.
+   */
+  checked?: boolean
   children: ComponentChildren
 }
 
@@ -237,6 +245,7 @@ export function DropdownItem(
     hotkey,
     hotkeyHint = true,
     kbdLabels,
+    checked,
     children,
   }: DropdownItemProps,
 ): JSX.Element {
@@ -258,8 +267,16 @@ export function DropdownItem(
   const disabledButton = href === undefined && disabled === true
   const classes = cn(itemClasses, danger && !disabledButton && dangerClasses, className)
   const enhanced = useContext(DropdownEnhanced)
-  const role = enhanced ? "menuitem" : undefined
+  const choice = checked !== undefined
+  const role = enhanced ? (choice ? "menuitemradio" : "menuitem") : undefined
   const tabindex = enhanced ? -1 : undefined
+  // The no-JavaScript fallback is a plain link or button, where `aria-checked` means nothing, so a
+  // checked item there says it is the current one instead.
+  const ariaChecked = enhanced && choice ? checked : undefined
+  const ariaCurrent = !enhanced && checked === true ? "true" : undefined
+  const mark = choice
+    ? checked ? <IconCheck class="size-4" /> : <span class="size-4 shrink-0" aria-hidden="true" />
+    : null
 
   return href !== undefined
     ? (
@@ -269,6 +286,8 @@ export function DropdownItem(
         class={classes}
         role={role}
         tabindex={tabindex}
+        aria-checked={ariaChecked}
+        aria-current={ariaCurrent}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
         onClick={(event) => {
@@ -276,6 +295,7 @@ export function DropdownItem(
           followLinkClick(event, { href, navigate })
         }}
       >
+        {mark}
         {children}
         {hint}
       </a>
@@ -288,15 +308,21 @@ export function DropdownItem(
         role={role}
         tabindex={tabindex}
         disabled={disabled}
+        aria-checked={ariaChecked}
+        aria-current={ariaCurrent}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
         onClick={onClick}
       >
+        {mark}
         {children}
         {hint}
       </button>
     )
 }
+
+/** The roles {@link DropdownItem} renders: the arrow keys move between them, a click closes. */
+const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"]`
 
 /**
  * The menu's focusable items, in DOM order.
@@ -315,7 +341,7 @@ export function DropdownItem(
 function menuItems(panel: HTMLElement | null): HTMLElement[] {
   if (!panel) return []
 
-  return Array.from(panel.querySelectorAll<HTMLElement>(`[role="menuitem"]`))
+  return Array.from(panel.querySelectorAll<HTMLElement>(MENU_ITEM))
     .filter((item) =>
       !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true"
     )
@@ -490,7 +516,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   // An item's hotkey clicks it while the menu is closed too; focus then stays where the reader is.
   const handlePanelClick = (event: MouseEvent) => {
     if (!isOpen.value) return
-    if (!(event.target as HTMLElement | null)?.closest(`[role="menuitem"]`)) return
+    if (!(event.target as HTMLElement | null)?.closest(MENU_ITEM)) return
     close(true)
   }
 

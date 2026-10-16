@@ -144,7 +144,8 @@ describe("UIGuide's navigation", () => {
 
     expect(html).toContain('href="#/inputs"')
     expect(html).toContain('href="#/inputs/toggle-switch" aria-current="true"')
-    expect(html.match(/aria-current="true"/g)?.length).toBe(1)
+    // Counted on the guide's own links: a demo's switcher marks its current item the same way.
+    expect(html.match(/href="#\/[^"]*" aria-current="true"/g)?.length).toBe(1)
     // Another page's cards are not listed while it is not showing.
     expect(html).not.toContain('href="#/crud/crud-editor"')
   })
@@ -153,7 +154,8 @@ describe("UIGuide's navigation", () => {
     const html = render(<UIGuide hash="#/fields" />)
 
     expect(html).toContain('href="#/fields" aria-current="true"')
-    expect(html.match(/aria-current="true"/g)?.length).toBe(1)
+    // Counted on the guide's own links: a demo's switcher marks its current item the same way.
+    expect(html.match(/href="#\/[^"]*" aria-current="true"/g)?.length).toBe(1)
   })
 
   it("renders a phone menu button that controls a labelled dialog, with overridable names", () => {

@@ -3,6 +3,13 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { ToggleChips, toggleChipSelection } from "./toggle-chips.tsx"
 
+/** Each chip's classes, in the order of the chips. */
+function chipClasses(html: string): string[][] {
+  return (html.match(/<button[^>]*>/g) ?? []).map((tag) =>
+    tag.match(/\sclass="([^"]*)"/)?.[1]?.split(" ") ?? []
+  )
+}
+
 const options = [
   { value: "work", label: "work" },
   { value: "home", label: "home" },
@@ -26,7 +33,7 @@ describe("ToggleChips", () => {
     expect(html).toContain(`role="group" aria-label="Filters"`)
     expect(html.match(/<button type="button"/g)?.length).toBe(3)
     expect(html).toMatch(/aria-pressed="false"[^>]*>work</)
-    expect(html).toMatch(/aria-pressed="true"[^>]*>home</)
+    expect(html).toMatch(/aria-pressed="true"[^>]*>(<svg.*?<\/svg>)?home</)
   })
 
   it("marks the one chip of a single-select group that matches the value", () => {
@@ -35,29 +42,44 @@ describe("ToggleChips", () => {
     )
 
     expect(html.match(/aria-pressed="true"/g)?.length).toBe(1)
-    expect(html).toMatch(/aria-pressed="true"[^>]*>work</)
+    expect(html).toMatch(/aria-pressed="true"[^>]*>(<svg.*?<\/svg>)?work</)
   })
 
-  it("draws a pressed chip as a filled badge and an unpressed one as a grey outline", () => {
+  it("draws a pressed chip as a filled badge and an unpressed one in the full text colour on the surface", () => {
     const html = render(
       <ToggleChips options={options} value={["home"]} color="green" onChange={() => {}} />,
     )
-    const home = html.match(/<button[^>]*>home</)?.[0] ?? ""
-    const work = html.match(/<button[^>]*>work</)?.[0] ?? ""
+    const [work, home] = chipClasses(html)
 
     expect(home).toContain("bg-success")
-    expect(work).toContain("border-control")
+    expect(work).toEqual(
+      expect.arrayContaining(["bg-surface", "text-foreground", "border-subtle", "hover:bg-hover"]),
+    )
+    expect(work).not.toContain("text-muted")
+    expect(work).not.toContain("border-control")
     expect(work).not.toContain("bg-success")
   })
 
-  it("gives an unpressed chip readable hover text, and a pressed one none", () => {
+  it("shows a check before a pressed chip's text, and none on an unpressed chip", () => {
     const html = render(<ToggleChips options={options} value={["home"]} onChange={() => {}} />)
-    const home = html.match(/<button[^>]*>home</)?.[0] ?? ""
-    const work = html.match(/<button[^>]*>work</)?.[0] ?? ""
 
-    expect(work).toContain("hover:text-foreground")
-    expect(work).toContain("hover:bg-hover")
-    expect(home).not.toContain("hover:text-foreground")
+    expect(html).toMatch(
+      /aria-pressed="true"[^>]*><svg[^>]*aria-hidden="true"[^>]*>.*?<\/svg>home</,
+    )
+    expect(html).toMatch(/aria-pressed="false"[^>]*>work</)
+    expect(html.match(/<svg/g)?.length).toBe(1)
+  })
+
+  it("makes every chip a 44 px touch target on a phone and 32 px tall from sm up", () => {
+    const chips = chipClasses(
+      render(<ToggleChips options={options} value={["home"]} onChange={() => {}} />),
+    )
+
+    expect(chips.length).toBe(3)
+    for (const classes of chips) {
+      expect(classes).toEqual(expect.arrayContaining(["min-h-11", "sm:min-h-8", "px-3"]))
+      expect(classes).not.toContain("px-2")
+    }
   })
 
   it("keeps the caller's case rather than capitalising like Badge", () => {
