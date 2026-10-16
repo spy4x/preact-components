@@ -1533,16 +1533,16 @@ function RailShellDemoAccount(
  * Every item is a link followed through the `navigateLink` port, so a plain click moves the
  * current marker and prints the key and `href` it was handed instead of following the link; the
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
- * `href`, so it is a button through `navigate`. The second checkbox draws the older layout's
- * `header`, a brand and one button, which the skip link jumps past; the house layout has no top
- * bar. The frame scrolls the shell, so it takes the tab bar's scroll padding itself and takes it
+ * `href`, so it is a button through `navigate`. The second checkbox, off at first, draws the older
+ * layout's `header`, a brand and one button, which the skip link jumps past; the house layout has
+ * no top bar. The frame scrolls the shell, so it takes the tab bar's scroll padding itself and takes it
  * off the root, as the component's doc asks of such a caller.
  */
 function RailShellDemo() {
   const current = useSignal("home")
   const via = useSignal("start")
   const routeLinks = useSignal(true)
-  const withHeader = useSignal(true)
+  const withHeader = useSignal(false)
   const workspace = useSignal("acme")
   const theme = useSignal<AccountMenuTheme>("system")
   const unread = 3

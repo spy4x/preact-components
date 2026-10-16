@@ -7598,6 +7598,35 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
   }
 }
 
+const RAIL_SHELL_WITH_HEADER = RAIL_SHELL + ' [data-e2e="rail-shell-demo-with-header"]'
+
+/**
+ * Ticks or unticks the RailShell demo's "Draw a top bar" checkbox and waits until the header is
+ * drawn or gone. The demo starts without it, as the house layout has no top bar, so the checks of
+ * the `header` slot draw it first and take it away again in their `finally`.
+ */
+async function setRailShellHeader(devtools: Devtools, on: boolean): Promise<boolean> {
+  await read(
+    devtools,
+    `(() => {
+      const box = document.querySelector('${RAIL_SHELL_WITH_HEADER}')
+      if (box && box.checked !== ${on}) box.click()
+      return true
+    })()`,
+    false,
+  )
+  return await poll(
+    () =>
+      read(
+        devtools,
+        `document.querySelector('${RAIL_SHELL_WITH_HEADER}')?.checked === ${on} && ` +
+          `Boolean(document.querySelector('${RAIL_SHELL_HEADER}')) === ${on}`,
+        false,
+      ),
+    3_000,
+  )
+}
+
 /** Where the shell's copy at page level is put while {@link railShellHeaderBannerCheck} reads it. */
 const RAIL_SHELL_PAGE_LEVEL = '[data-e2e="rail-shell-page-level-copy"]'
 
@@ -7612,6 +7641,7 @@ const RAIL_SHELL_PAGE_LEVEL = '[data-e2e="rail-shell-page-level-copy"]'
  * in the tree; its ids are dropped so nothing on the page is duplicated by id.
  */
 async function railShellHeaderBannerCheck(devtools: Devtools): Promise<void> {
+  await setRailShellHeader(devtools, true)
   const placed = await read(
     devtools,
     `(() => {
@@ -7645,6 +7675,7 @@ async function railShellHeaderBannerCheck(devtools: Devtools): Promise<void> {
     )
   } finally {
     await read(devtools, `(document.querySelector('${RAIL_SHELL_PAGE_LEVEL}')?.remove(), 0)`, 0)
+    await setRailShellHeader(devtools, false)
   }
 }
 
@@ -7654,6 +7685,7 @@ async function railShellHeaderBannerCheck(devtools: Devtools): Promise<void> {
  * `<main>`, the next real Tab press lands after `<main>`, never back in the header or the rail.
  */
 async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
+  await setRailShellHeader(devtools, true)
   const restoreUrl = await watchRailShellAddress(devtools)
   const focusSkipLink = () =>
     read(
@@ -7732,6 +7764,7 @@ async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
   } finally {
     await read(devtools, `(document.activeElement?.blur(), 0)`, 0)
     await restoreRailShellAddress(devtools, restoreUrl)
+    await setRailShellHeader(devtools, false)
   }
 }
 
