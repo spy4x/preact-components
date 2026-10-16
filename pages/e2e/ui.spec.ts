@@ -2475,12 +2475,14 @@ function remotePaletteSpecs(): Spec[] {
           // "slow" answers in five seconds: the kept rows and Searching… stay for the whole scan.
           await palette.field.fill("slow")
           await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
-          // `aria-allowed-role` is left out: every palette's group headings sit in an
-          // `<li role="group">`, markup older than this spec, which axe flags with or without a
-          // search running. Everything else, colour contrast included, must pass.
+          // Two rules are left out, both about markup older than this spec that axe flags with or
+          // without a search running: `aria-allowed-role` (each group heading sits in an
+          // `<li role="group">`) and `scrollable-region-focusable` (the results' scroll box holds no
+          // focusable element, as the options are reached through the field's
+          // `aria-activedescendant`). Everything else, colour contrast included, must pass.
           const { violations, passes } = await new AxeBuilder({ page })
             .include(`[data-e2e="palette-remote"]`)
-            .disableRules(["aria-allowed-role"])
+            .disableRules(["aria-allowed-role", "scrollable-region-focusable"])
             .analyze()
           if (violations.length > 0) {
             throw new Error(
