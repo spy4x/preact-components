@@ -3598,7 +3598,8 @@ CSS shows one; a slot's controls therefore need no ids of their own, or ids that
 **Tooltips in the icon rail** are `aria-hidden` copies of the label, drawn on hover and on keyboard
 focus. Each is `position: fixed`, so the scrolling list does not clip it; the entry's own box,
 read on hover and focus, places it at the entry's right edge, so it needs JavaScript and shows
-only after hydration. Scrolling the list hides it until the next hover or focus. An ancestor with a
+only after hydration. Scrolling the list measures the boxes again, so a shown tooltip follows
+its entry. An ancestor with a
 `transform` or `filter` becomes a fixed element's containing block and would misplace it. Escape hides them while the pointer or focus stays in the column, as a tooltip must be
 dismissable without moving; the next focus move or pointer move brings them back.
 

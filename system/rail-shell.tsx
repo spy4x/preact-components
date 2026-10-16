@@ -532,8 +532,10 @@ export function RailShell(props: RailShellProps): JSX.Element {
           <nav
             aria-label={navLabel}
             class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-1"
-            // A shown tooltip would stay where its entry was; the next hover or focus places it anew.
-            onScroll={() => columnRef.current?.setAttribute(TIPS_HIDDEN, "")}
+            // A shown tooltip follows its entry when the list scrolls, as it does when focus moves
+            // to an entry out of view.
+            onScroll={(event) =>
+              event.currentTarget.querySelectorAll("[data-tip-placed]").forEach(placeTip)}
             data-e2e="rail-shell-rail"
           >
             {primary && (
