@@ -4543,6 +4543,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                  |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                               |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                       |
+| `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                        |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                     |
 | `ToggleChips`         | `toggle-chips`         | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                                                                                                         |
 | `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                                                                                                 |
@@ -5117,6 +5118,32 @@ opening moves focus in, every close driven from inside (both time presets, Apply
 a second press on the trigger) hands focus back to the trigger, and both closes driven from outside
 leave it alone — driven against the `withTime` card directly, the same way the day-only proof above
 is driven against its own.
+
+## Timeline
+
+`Timeline` lists events as an ordered list with an accessible name (`label`, `"Timeline"` by
+default): a dot per entry on a line that joins them, the title and its time, and an optional
+description. The dots and the line are hidden from assistive tech, so a tone (`neutral`,
+`success`, `warning`, `danger`) never carries meaning alone. Each time is a `<time>` whose
+`dateTime` is the entry's `at` and whose text is the caller's `when`, such as "3 days ago" or a date
+from `formatTime` in `@spy4x/platform/universal/time`. An empty list renders `empty` instead.
+
+```tsx
+<Timeline
+  label="Activity"
+  items={[
+    {
+      id: 2,
+      title: "Blocked",
+      at: "2026-03-04T10:15:00Z",
+      when: "today",
+      tone: "danger",
+      description: "By Sam",
+    },
+    { id: 1, title: "Signed in", at: "2026-03-03T08:00:00Z", when: "yesterday" },
+  ]}
+/>
+```
 
 ## Pagination
 

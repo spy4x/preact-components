@@ -330,6 +330,7 @@ export {
   defaultComparisonTableLabels,
 } from "./comparison-table.tsx"
 export { StatusMark, type StatusMarkProps, type StatusMarkStatus } from "./status-mark.tsx"
+export { Timeline, type TimelineItem, type TimelineProps, type TimelineTone } from "./timeline.tsx"
 export { Table, type TableProps } from "./table.tsx"
 export { nextTabIndex, type TabItem, Tabs, type TabsProps } from "./tabs.tsx"
 export {

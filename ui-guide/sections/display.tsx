@@ -43,6 +43,8 @@ import {
   type TabItem,
   Table,
   Tabs,
+  Timeline,
+  type TimelineItem,
   Tooltip,
   type TooltipPlacement,
   useHotkeys,
@@ -1163,6 +1165,33 @@ function ShortcutsDialogDemo() {
   )
 }
 
+/** A person's recent activity, newest first, one entry per tone the demo needs. */
+const TIMELINE_ITEMS: TimelineItem[] = [
+  {
+    id: 4,
+    title: "Blocked by an operator",
+    at: "2026-03-04T10:15:00Z",
+    when: "Mar 4, 10:15",
+    tone: "danger",
+    description: "Sam Rivera, from 203.0.113.7",
+  },
+  {
+    id: 3,
+    title: "Sessions ended",
+    at: "2026-03-03T18:40:00Z",
+    when: "Mar 3, 18:40",
+    tone: "warning",
+  },
+  {
+    id: 2,
+    title: "Email confirmed",
+    at: "2026-03-03T08:05:00Z",
+    when: "Mar 3, 08:05",
+    tone: "success",
+  },
+  { id: 1, title: "Signed up", at: "2026-03-03T08:00:00Z", when: "Mar 3, 08:00" },
+]
+
 export const displayDemos = {
   PageTitle: {
     summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
@@ -1773,6 +1802,40 @@ export const displayDemos = {
   onOpen={(image) => analytics.track("lightbox", image.src)}
 />`,
     render: () => <ZoomableImagesDemo />,
+  },
+  Timeline: {
+    summary:
+      "Events in order, as a dot per entry on a line that joins them, each with its title, time and an optional description.",
+    wide: false,
+    props: [
+      {
+        name: "items",
+        type: "TimelineItem[]",
+        description:
+          "Each entry's `id`, `title`, `at` (an ISO instant) and `when` (the time as it reads), with an optional `description`, `tone` and `dataE2E`.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: '"Timeline"',
+        description: "The list's accessible name.",
+      },
+      {
+        name: "empty",
+        type: "ComponentChildren",
+        default: '"Nothing yet."',
+        description: "What shows when there are no entries.",
+      },
+    ],
+    snippet: `<Timeline
+  label="Activity"
+  items={[
+    { id: 3, title: "Blocked", at: "2026-03-04T10:15:00Z", when: "today", tone: "danger" },
+    { id: 2, title: "Sessions ended", at: "2026-03-03T18:40:00Z", when: "yesterday", tone: "warning" },
+    { id: 1, title: "Signed in", at: "2026-03-03T08:00:00Z", when: "yesterday" },
+  ]}
+/>`,
+    render: () => <Timeline label="Activity" items={TIMELINE_ITEMS} />,
   },
   Kbd: {
     summary:
