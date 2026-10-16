@@ -735,9 +735,18 @@ async function axePasses(page: Page, selectors: readonly string[]): Promise<stri
   return `${passes.length} rules pass`
 }
 
-/** `FaqList`, `Steps` and `WindowFrame`: the blocks of a public page, which need no JavaScript. */
+/**
+ * `BrandMark`, `PageHero`, `FaqList`, `Steps` and `WindowFrame`: the blocks of a public page, which
+ * need no JavaScript.
+ */
 function marketingBlockSpecs(): Spec[] {
-  const cards = ["#demo-FaqList", "#demo-Steps", "#demo-WindowFrame"] as const
+  const cards = [
+    "#demo-BrandMark",
+    "#demo-PageHero",
+    "#demo-FaqList",
+    "#demo-Steps",
+    "#demo-WindowFrame",
+  ] as const
   return [
     {
       name:
@@ -784,12 +793,18 @@ function marketingBlockSpecs(): Spec[] {
       name: "Install",
       key: "ArrowRight",
     }),
-    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
-      name: `FaqList, Steps and WindowFrame: axe finds no violation, ${colorScheme}`,
+    ...(["light", "dark", "ink"] as const).map((palette): Spec => ({
+      name:
+        `BrandMark, PageHero, FaqList, Steps and WindowFrame: axe finds no violation, ${palette}`,
       pageId: "ui",
-      colorScheme,
+      colorScheme: palette === "light" ? "light" : "dark",
       run: async (page) => {
         await page.locator(cards[0]).waitFor()
+        if (palette === "ink") {
+          // The guide bundles ink.css; it paints once `data-theme="ink"` joins `.dark` on <html>.
+          await page.evaluate(() => document.documentElement.setAttribute("data-theme", "ink"))
+          await page.locator(`html.dark[data-theme="ink"]`).waitFor({ state: "attached" })
+        }
         return await axePasses(page, cards)
       },
     })),

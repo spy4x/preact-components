@@ -1,9 +1,10 @@
 /**
- * The cards of the blocks a public, server-rendered site is built from — `FaqList`, `Steps` and
- * `WindowFrame` — spread into the Display section. None needs JavaScript.
+ * The cards of the blocks a public, server-rendered site is built from — `BrandMark`, `PageHero`,
+ * `FaqList`, `Steps` and `WindowFrame` — spread into the Display section. None needs JavaScript.
  */
 
-import { FaqList, Steps, WindowFrame } from "@spy4x/preact-ui"
+import { IconSprout } from "@spy4x/preact-icons"
+import { BrandMark, Button, FaqList, PageHero, Steps, WindowFrame } from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
 const FAQ = [
@@ -29,6 +30,65 @@ const STEPS = [
 ]
 
 export const marketingBlockDemos: DemoFragment = {
+  BrandMark: {
+    summary:
+      "A product's mark: one glyph in a tile at the card radius, filled with the brand hue, then the product's name.",
+    wide: false,
+    props: [
+      {
+        name: "Icon",
+        type: "ComponentType<IconProps>",
+        description: "The glyph in the tile, any icon of `@spy4x/preact-icons`.",
+      },
+      { name: "name", type: "string", description: "The product's name, printed after the tile." },
+      { name: "class", type: "string", description: "Utilities merged over the root's own." },
+    ],
+    snippet: `<a href="/" class="rounded-md">
+  <BrandMark Icon={IconSprout} name="Acme" />
+</a>`,
+    render: () => (
+      <a href="#demo-BrandMark" class="inline-flex rounded-md">
+        <BrandMark Icon={IconSprout} name="Acme" />
+      </a>
+    ),
+  },
+  PageHero: {
+    summary:
+      "The top band of a public site's inner page: an eyebrow, the page's heading, a lead and its buttons, in the marketing column.",
+    wide: true,
+    props: [
+      { name: "title", type: "ComponentChildren", description: "The page's heading." },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3 | 4 | 5 | 6",
+        default: "1",
+        description: "The heading's level; the card here uses 4, under the card's own `h3`.",
+      },
+      { name: "eyebrow", type: "ComponentChildren", description: "A short line above the title." },
+      { name: "lead", type: "ComponentChildren", description: "One or two sentences under it." },
+      { name: "children", type: "ComponentChildren", description: "The page's buttons." },
+      { name: "class", type: "string", description: "The band's background, such as a glow." },
+    ],
+    snippet: `<PageHero
+  eyebrow="Pricing"
+  title="One price per seat"
+  lead="Every feature on every plan. Pay monthly, cancel any time."
+>
+  <Button href="/sign-up">Start free</Button>
+</PageHero>`,
+    render: () => (
+      <PageHero
+        eyebrow="Pricing"
+        title="One price per seat"
+        headingLevel={4}
+        lead="Every feature on every plan. Pay monthly, cancel any time."
+      >
+        <div>
+          <Button href="#demo-PageHero">Start free</Button>
+        </div>
+      </PageHero>
+    ),
+  },
   FaqList: {
     summary: "Questions and answers as native disclosures that open with no JavaScript.",
     wide: true,

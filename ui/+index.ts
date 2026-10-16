@@ -47,6 +47,7 @@ export {
   type UpgradePromptLabels,
   type UpgradePromptProps,
 } from "./billing.tsx"
+export { BrandMark, type BrandMarkProps } from "./brand-mark.tsx"
 export {
   Button,
   buttonClasses,
@@ -287,6 +288,7 @@ export {
   type PageHeaderProps,
   TOUCH_TARGET,
 } from "./page-header.tsx"
+export { PageHero, type PageHeroProps } from "./page-hero.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {
