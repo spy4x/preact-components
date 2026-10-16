@@ -1158,7 +1158,8 @@ export const specs: readonly Spec[] = [
     },
   },
   ...(["light", "dark"] as const).map((colorScheme): Spec => ({
-    name: `ToggleChips: pressed and unpressed chips pass axe, contrast included, ${colorScheme}`,
+    name:
+      `ToggleChips: axe finds no violation on the chips, text colour contrast included, ${colorScheme}`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
