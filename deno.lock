@@ -3,11 +3,11 @@
   "specifiers": {
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2.3.3": "2.3.3",
-    "jsr:@spy4x/platform@1.59.0": "1.59.0",
-    "jsr:@spy4x/time@1.59.0": "1.59.0",
-    "jsr:@spy4x/time@^1.59.0": "1.59.0",
-    "jsr:@spy4x/validation@1.59.0": "1.59.0",
-    "jsr:@spy4x/validation@^1.59.0": "1.59.0",
+    "jsr:@spy4x/platform@1.74.0": "1.74.0",
+    "jsr:@spy4x/time@1.74.0": "1.74.0",
+    "jsr:@spy4x/time@^1.74.0": "1.74.0",
+    "jsr:@spy4x/validation@1.74.0": "1.74.0",
+    "jsr:@spy4x/validation@^1.74.0": "1.74.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.1",
@@ -69,20 +69,20 @@
         "npm:preact@^10.29.1"
       ]
     },
-    "@spy4x/platform@1.59.0": {
-      "integrity": "52529dac4b3c17814e990f52af5a4e593ca6e72450b7533c71eab77d516c0145",
+    "@spy4x/platform@1.74.0": {
+      "integrity": "6f434d0ada4f4e93599d49077a765d38b4e7e0d75c497fddf675a5a1bad56f62",
       "dependencies": [
-        "jsr:@spy4x/time@^1.59.0",
-        "jsr:@spy4x/validation@^1.59.0",
+        "jsr:@spy4x/time@^1.74.0",
+        "jsr:@spy4x/validation@^1.74.0",
         "jsr:@std/path@1.1.6",
         "npm:arktype"
       ]
     },
-    "@spy4x/time@1.59.0": {
-      "integrity": "35a93218a3d074b807db3cb2f173899d06c2939de5c1b2d13471e097a44e4b6d"
+    "@spy4x/time@1.74.0": {
+      "integrity": "5070cd8451606329a0692d6598e709580263f47fad326402ad5fcd7d97ba1254"
     },
-    "@spy4x/validation@1.59.0": {
-      "integrity": "216d732f5000a261eb3942546cf74ef868c8641c91cf560bab5b11c54736f0d4",
+    "@spy4x/validation@1.74.0": {
+      "integrity": "d3239d6e677254910b1903858f0fd57f37b3a1c2c4851906c3156f64a1143b54",
       "dependencies": [
         "npm:arktype"
       ]
@@ -376,9 +376,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@spy4x/platform@1.59.0",
-      "jsr:@spy4x/time@1.59.0",
-      "jsr:@spy4x/validation@1.59.0",
+      "jsr:@spy4x/platform@1.74.0",
+      "jsr:@spy4x/time@1.74.0",
+      "jsr:@spy4x/validation@1.74.0",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/expect@1.0.20",
       "jsr:@std/path@1.1.6",
