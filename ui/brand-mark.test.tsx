@@ -20,10 +20,4 @@ describe("BrandMark", () => {
     expect(html).toMatch(/^<span class="[^"]*\bfont-medium\b[^"]*"/)
     expect(html).toMatch(/<\/svg><\/span><span>Acme<\/span><\/span>$/)
   })
-
-  it("merges the caller's class over the root's own", () => {
-    const html = render(<BrandMark Icon={IconSprout} name="Acme" class="text-lg font-semibold" />)
-    expect(html).toMatch(/^<span class="[^"]*\btext-lg\b[^"]*"/)
-    expect(html).not.toMatch(/^<span class="[^"]*\bfont-medium\b/)
-  })
 })

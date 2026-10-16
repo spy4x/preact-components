@@ -17,12 +17,6 @@ describe("PageHero", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
-  it("draws the title at the heading level it is given, with the same look", () => {
-    const html = render(<PageHero title="Features" headingLevel={4} />)
-    expect(html).not.toContain("<h1")
-    expect(html).toMatch(/<h4 class="[^"]*\btext-3xl\b[^"]*">Features<\/h4>/)
-  })
-
   it("leaves out the eyebrow and the lead when they are not given", () => {
     const html = render(<PageHero title="Features" />)
     expect(html.match(/<p[ >]/g)).toBeNull()

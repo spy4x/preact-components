@@ -5,13 +5,8 @@ import type { ComponentChildren, JSX } from "preact"
 export interface PageHeroProps {
   /** A short line above the title, in mono accent text, such as "Pricing". */
   eyebrow?: ComponentChildren
-  /** The page's heading, an `<h1>` unless {@link headingLevel} says otherwise. */
+  /** The page's heading, its `<h1>`. */
   title: ComponentChildren
-  /**
-   * Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`, the page's own heading; pick
-   * another only where the page already has its `<h1>`, such as a catalogue. The look stays the same.
-   */
-  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6
   /** One or two sentences under the title, in the lead size. */
   lead?: ComponentChildren
   /** The page's buttons, or a line such as a date, under the lead. */
@@ -36,16 +31,15 @@ export interface PageHeroProps {
  * @returns The band.
  */
 export function PageHero(
-  { eyebrow, title, headingLevel = 1, lead, children, class: className }: PageHeroProps,
+  { eyebrow, title, lead, children, class: className }: PageHeroProps,
 ): JSX.Element {
-  const Heading = `h${headingLevel}` as "h1"
   return (
     <div class={cn("border-b border-subtle", className)} data-e2e="page-hero">
       <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         {eyebrow && <p class="font-mono text-sm font-medium text-primary">{eyebrow}</p>}
-        <Heading class="max-w-3xl text-3xl font-semibold tracking-tight text-balance text-foreground lg:text-5xl">
+        <h1 class="max-w-3xl text-3xl font-semibold tracking-tight text-balance text-foreground lg:text-5xl">
           {title}
-        </Heading>
+        </h1>
         {lead && <p class="max-w-2xl text-lg text-muted text-pretty lg:text-xl">{lead}</p>}
         {children}
       </div>

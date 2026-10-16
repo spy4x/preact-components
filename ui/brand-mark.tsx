@@ -1,4 +1,3 @@
-import { cn } from "@spy4x/preact-cn"
 import type { IconProps } from "@spy4x/preact-icons"
 import type { ComponentType, JSX } from "preact"
 
@@ -8,8 +7,6 @@ export interface BrandMarkProps {
   Icon: ComponentType<IconProps>
   /** The product's name, printed after the tile. */
   name: string
-  /** Utilities merged over the root's own, such as a text size. */
-  class?: string
 }
 
 /**
@@ -28,12 +25,9 @@ export interface BrandMarkProps {
  * @param props See {@link BrandMarkProps}.
  * @returns The tile and the name, in one inline row.
  */
-export function BrandMark({ Icon, name, class: className }: BrandMarkProps): JSX.Element {
+export function BrandMark({ Icon, name }: BrandMarkProps): JSX.Element {
   return (
-    <span
-      class={cn("inline-flex items-center gap-2 font-medium text-foreground", className)}
-      data-e2e="brand-mark"
-    >
+    <span class="inline-flex items-center gap-2 font-medium text-foreground" data-e2e="brand-mark">
       <span
         class="flex size-8 shrink-0 items-center justify-center rounded-card bg-accent-900 text-accent-foreground"
         aria-hidden="true"

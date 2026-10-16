@@ -41,7 +41,6 @@ export const marketingBlockDemos: DemoFragment = {
         description: "The glyph in the tile, any icon of `@spy4x/preact-icons`.",
       },
       { name: "name", type: "string", description: "The product's name, printed after the tile." },
-      { name: "class", type: "string", description: "Utilities merged over the root's own." },
     ],
     snippet: `<a href="/" class="rounded-md">
   <BrandMark Icon={IconSprout} name="Acme" />
@@ -57,13 +56,7 @@ export const marketingBlockDemos: DemoFragment = {
       "The top band of a public site's inner page: an eyebrow, the page's heading, a lead and its buttons, in the marketing column.",
     wide: true,
     props: [
-      { name: "title", type: "ComponentChildren", description: "The page's heading." },
-      {
-        name: "headingLevel",
-        type: "1 | 2 | 3 | 4 | 5 | 6",
-        default: "1",
-        description: "The heading's level; the card here uses 4, under the card's own `h3`.",
-      },
+      { name: "title", type: "ComponentChildren", description: "The page's `<h1>`." },
       { name: "eyebrow", type: "ComponentChildren", description: "A short line above the title." },
       { name: "lead", type: "ComponentChildren", description: "One or two sentences under it." },
       { name: "children", type: "ComponentChildren", description: "The page's buttons." },
@@ -80,7 +73,6 @@ export const marketingBlockDemos: DemoFragment = {
       <PageHero
         eyebrow="Pricing"
         title="One price per seat"
-        headingLevel={4}
         lead="Every feature on every plan. Pay monthly, cancel any time."
       >
         <div>
