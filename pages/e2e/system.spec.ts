@@ -295,7 +295,7 @@ export const specs: readonly Spec[] = [
       const bar = page.locator(`#demo-RailShell [data-e2e="rail-shell-tabbar"]`)
       const target = page.locator(`[data-e2e="rail-shell-demo-focus-target"]`)
       const checkbox = page.locator(`[data-e2e="rail-shell-demo-route-links"]`)
-      // The demo scrolls inside a 420 px box; an app's shell scrolls the window. Lift the box's
+      // The demo scrolls inside a 600 px box; an app's shell scrolls the window. Lift the box's
       // bounds so the window scrolls the shell, and add the last control of the page after its
       // last line, as a form's last button or a "Danger zone" would sit.
       await page.evaluate(() => {
@@ -394,8 +394,12 @@ export const specs: readonly Spec[] = [
         true,
         "the avatar account menu",
       )
-      // The 420 px frame is shorter than the rail's entries: the list scrolls between the slots
-      // instead of running under the bottom one.
+      // A 420 px frame is shorter than the rail's entries, as a phone held sideways is: the list
+      // scrolls between the slots instead of running under the bottom one.
+      await rail(page, "rail-shell-demo").evaluate((frame) => {
+        frame.style.height = "420px"
+        frame.style.setProperty("--rail-shell-height", "420px")
+      })
       const [list, foot] = await Promise.all([
         rail(page, "rail-shell-rail").boundingBox(),
         rail(page, "rail-shell-bottom").boundingBox(),

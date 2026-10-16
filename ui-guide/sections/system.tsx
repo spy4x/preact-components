@@ -1548,7 +1548,7 @@ function RailShellDemo() {
   const unread = 3
   return (
     <div
-      class="h-[420px] overflow-y-auto [--rail-shell-height:420px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+      class="h-[600px] overflow-y-auto [--rail-shell-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
       data-e2e="rail-shell-demo"
     >
       <RailShell
