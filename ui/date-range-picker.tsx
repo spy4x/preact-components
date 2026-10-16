@@ -245,10 +245,12 @@ function rangeText<R extends { from: string; to: string }>(
  *
  * The panel is hand-written rather than built on `Dropdown`: that primitive wraps its panel in
  * `role="menu"`, and a menu may not contain the form controls the custom range needs. The
- * outside-click and Escape handling follow the same handler-only-`document` pattern, and so does
- * naming: `labels.menuLabel` labels the panel, while the trigger is named by its content — the
- * placeholder or the chosen range — so its accessible name contains its visible text (WCAG 2.5.3,
- * Label in Name). An `aria-label` on the trigger would override that text instead of extending it.
+ * outside-click handling follows the same handler-only-`document` pattern, and so does naming:
+ * `labels.menuLabel` labels the panel, while the trigger is named by its content — the placeholder
+ * or the chosen range — so its accessible name contains its visible text (WCAG 2.5.3, Label in
+ * Name). An `aria-label` on the trigger would override that text instead of extending it.
+ * Escape is the one difference: a press from inside is handled on the component's root and stops
+ * there, as `Dropdown`'s does, so a `Modal` around the picker closes only on the next press.
  *
  * **Focus follows the panel**, which is the difference between a keyboard user keeping their place
  * and losing it. Opening moves focus inside; a close the person drove **from inside** the panel
@@ -525,11 +527,24 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     ? rangeText(props.range, props.formatRange)
     : rangeText(props.range, props.formatRange)
 
+  /**
+   * Escape pressed from inside the component closes the panel and stops there, so a `Modal` around
+   * the picker stays open: the first Escape closes the panel, the next one the dialog. The document
+   * listener only ever hears the presses from outside, and it lets them through.
+   */
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (!isOpen.value || event.key !== "Escape") return
+    event.preventDefault()
+    event.stopPropagation()
+    closePanel(true)
+  }
+
   return (
     <div
       class={cn("relative inline-flex text-left", className)}
       ref={rootRef}
       onFocusOut={handleFocusOut}
+      onKeyDown={handleKeyDown}
     >
       <button
         type="button"
