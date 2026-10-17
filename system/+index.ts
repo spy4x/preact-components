@@ -59,7 +59,31 @@ export {
   type AccountMenuProps,
   type AccountMenuTheme,
   type AccountMenuUser,
+  AccountTag,
 } from "./account-menu.tsx"
+export {
+  Rail,
+  type RailCurrent,
+  type RailItem,
+  type RailLabels,
+  type RailMoreTab,
+  type RailPlace,
+  type RailProps,
+  type RailVariant,
+  TAB_BAR_SLOTS,
+  tabBarSlots,
+  type TabBarSplit,
+} from "./rail.tsx"
+export {
+  AppShell,
+  type AppShellAccount,
+  type AppShellConnection,
+  type AppShellItem,
+  type AppShellLabels,
+  type AppShellNotifications,
+  type AppShellProps,
+  connectionIsNews,
+} from "./app-shell.tsx"
 export {
   RailShell,
   type RailShellItem,
@@ -67,9 +91,6 @@ export {
   type RailShellMoreTab,
   type RailShellProps,
   type RailShellSidebarPlace,
-  TAB_BAR_SLOTS,
-  tabBarSlots,
-  type TabBarSplit,
 } from "./rail-shell.tsx"
 export {
   Shell,
