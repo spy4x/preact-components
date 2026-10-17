@@ -7,6 +7,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { COMPONENT_CLASSES, INK_CSS, PRESET_CSS, TOKENS_CSS } from "./+index.ts"
 import {
+  denoModuleIds,
   npmSpecifiers,
   NpmVersionMismatchError,
   preactThemeCss,
@@ -456,4 +457,58 @@ describe("npmSpecifiers with a caret range", () => {
       )
     })
   }
+})
+
+/** A JSR module as `@deno/vite-plugin` 2.0.4 names it after `specifier`: its id holds both. */
+function denoId(specifier: string): string {
+  return `\0deno::TSX::${specifier}::https://jsr.io/@spy4x/preact-ui/6.1.1/format.tsx#deno`
+}
+
+/** The three specifiers the template's build reached `format.tsx` by, as the Deno plugin got them. */
+const FORMAT_SPECIFIERS = [
+  "jsr:@spy4x/preact-ui@^6.1.1/format",
+  "jsr:/@spy4x/preact-ui@6.1.1/format",
+  "https://jsr.io/@spy4x/preact-ui/6.1.1/format.tsx",
+]
+
+/** Runs the module-id plugin's resolveId, and records what it asked `this.resolve` for. */
+async function resolveDenoId(
+  source: string,
+  resolves: Record<string, string>,
+): Promise<{ result: VitePartialResolvedId | null | undefined; asked: unknown[][] }> {
+  const asked: unknown[][] = []
+  const context: ViteResolveContext = {
+    resolve(specifier, from, options) {
+      asked.push([specifier, from, options])
+      const id = resolves[specifier]
+      return Promise.resolve(id === undefined ? null : { id })
+    },
+    environment: { name: "client" },
+  }
+  const result = await denoModuleIds().resolveId!.call(context, source, "/app/src/main.tsx")
+  return { result, asked }
+}
+
+describe("denoModuleIds", () => {
+  it("runs before other plugins", () => {
+    expect(denoModuleIds().enforce).toBe("pre")
+  })
+
+  it("gives a module the Deno plugin reached by three specifiers one id", async () => {
+    const resolves = Object.fromEntries(FORMAT_SPECIFIERS.map((s) => [s, denoId(s)]))
+    const ids = new Set<string | undefined>()
+    for (const specifier of FORMAT_SPECIFIERS) {
+      const { result, asked } = await resolveDenoId(specifier, resolves)
+      expect(asked).toEqual([[specifier, "/app/src/main.tsx", { skipSelf: true }]])
+      ids.add(result?.id)
+    }
+    // The id the Deno plugin itself gives the module when it is imported by its URL.
+    expect([...ids]).toEqual([denoId("https://jsr.io/@spy4x/preact-ui/6.1.1/format.tsx")])
+  })
+
+  it("leaves an id that is already resolved to Vite without asking the other plugins", async () => {
+    const { result, asked } = await resolveDenoId(denoId(FORMAT_SPECIFIERS[0]), {})
+    expect(result).toBeUndefined()
+    expect(asked).toEqual([])
+  })
 })

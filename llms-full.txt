@@ -3826,11 +3826,17 @@ the plugins from `@spy4x/preact-theme/vite` instead:
 import deno from "@deno/vite-plugin"
 import preact from "@preact/preset-vite"
 import tailwindcss from "@tailwindcss/vite"
-import { npmSpecifiers, preactThemeCss, requireComponentCss } from "@spy4x/preact-theme/vite"
+import {
+  denoModuleIds,
+  npmSpecifiers,
+  preactThemeCss,
+  requireComponentCss,
+} from "@spy4x/preact-theme/vite"
 import { defineConfig } from "vite"
 
 export default defineConfig({
   plugins: [
+    denoModuleIds(),
     npmSpecifiers({ readTextFile: Deno.readTextFile }),
     deno(),
     preact(),
@@ -3868,6 +3874,13 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   resolved package's `package.json` through the `readTextFile` it is given — `Deno.readTextFile`,
   or Node's `(path) => readFile(path, "utf8")` — so the module itself calls no Deno-only API. List
   it before `deno()`.
+- `denoModuleIds()` gives each module `@deno/vite-plugin` loads one id: its resolved URL, such
+  as `https://jsr.io/@spy4x/preact-ui/6.1.1/format.tsx`. `@deno/vite-plugin` 2.0.4 names a module
+  after the specifier that reached it, so one module imported as `jsr:@spy4x/preact-ui@^6.1.1/format`
+  by the app and as `jsr:/@spy4x/preact-ui@6.1.1/format` or by its URL inside the library ran once
+  per name. A context then split in two: the app's provider filled one copy and a screen read the
+  other. List it first, before `npmSpecifiers()` and `deno()`, so it sees every id the Deno plugin
+  gives; it needs no options.
 - `serviceWorker({ entry, build, plugins, readDir, readFile })` builds a service worker after the
   app build, because a browser cannot load a worker that imports a `jsr:` or `npm:` specifier. It
   writes `sw.js` (`fileName` changes it) into the output folder as one classic script, with
