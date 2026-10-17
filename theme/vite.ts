@@ -2,13 +2,14 @@
  * `@spy4x/preact-theme/vite` — the Vite plugins a Deno app needs to use the `@spy4x/preact-*`
  * packages.
  *
- * Five plugins, each a factory an app lists in its `vite.config.ts`:
+ * Six plugins, each a factory an app lists in its `vite.config.ts`:
  *
  * - {@link preactThemeCss} answers the theme's `@import` lines in the app's stylesheet with the
  *   text this package exports, and appends `@source inline(...)` with {@link COMPONENT_CLASSES}.
  * - {@link requireComponentCss} fails a build whose CSS lacks the components' classes.
  * - {@link npmSpecifiers} resolves the `npm:` specifiers inside the library's modules to the app's
  *   own copy, and fails when the versions differ.
+ * - {@link denoModuleIds} gives each module `@deno/vite-plugin` loads one id, so it runs once.
  * - {@link serviceWorker} bundles a service worker after the app build, with a hash of the build
  *   defined in it.
  * - {@link webManifest} writes `manifest.webmanifest` from a typed object with install defaults.
@@ -397,6 +398,51 @@ export function npmSpecifiers(options: NpmSpecifiersOptions): VitePlugin {
         throw new NpmVersionMismatchError(source, actual, importer, range)
       }
       return resolved
+    },
+  }
+}
+
+/** The start of the module ids `@deno/vite-plugin` gives the modules it loads itself. */
+const DENO_ID_PREFIX = "\0deno::"
+
+/**
+ * The one id of a module `@deno/vite-plugin` loads, whatever specifier reached it.
+ *
+ * The Deno plugin's ids read `\0deno::<media type>::<specifier>::<resolved URL>#deno`. Its load
+ * hook reads only the media type and the resolved URL, so the specifier in between is replaced by
+ * the resolved URL. Any other id comes back unchanged.
+ */
+function denoModuleId(id: string): string {
+  if (!id.startsWith(DENO_ID_PREFIX)) return id
+  const [mediaType, _specifier, ...rest] = id.slice(DENO_ID_PREFIX.length).split("::")
+  if (rest.length === 0) return id
+  const resolved = rest.join("::")
+  const url = resolved.endsWith("#deno") ? resolved.slice(0, -"#deno".length) : resolved
+  return `${DENO_ID_PREFIX}${mediaType}::${url}::${resolved}`
+}
+
+/**
+ * Gives each module `@deno/vite-plugin` loads one id, so a page runs one copy of it.
+ *
+ * `@deno/vite-plugin` 2.0.4 puts the specifier it was asked for into a module's id. The same JSR
+ * module arrives as `jsr:@spy4x/preact-ui@^6.1.1/format` from the app,
+ * `jsr:/@spy4x/preact-ui@6.1.1/format` from a module that loaded before its package did, and
+ * `https://jsr.io/@spy4x/preact-ui/6.1.1/format.tsx` afterwards. Vite runs a module once per id,
+ * so each name got a copy of its own, and a context such as `FormatContext` split in two: the
+ * app's provider filled one copy and the screens read the other. This plugin rewrites every such
+ * id so it names the module by its resolved URL alone.
+ *
+ * List it before `deno()` from `@deno/vite-plugin`, so it sees every id the Deno plugin gives.
+ */
+export function denoModuleIds(): VitePlugin {
+  return {
+    name: "deno-module-ids",
+    enforce: "pre",
+    async resolveId(source, importer) {
+      if (source.startsWith("\0")) return
+      const resolved = await this.resolve(source, importer, { skipSelf: true })
+      if (!resolved || !resolved.id.startsWith(DENO_ID_PREFIX)) return resolved
+      return { ...resolved, id: denoModuleId(resolved.id) }
     },
   }
 }
