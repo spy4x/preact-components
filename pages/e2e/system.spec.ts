@@ -1049,6 +1049,86 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "RailShell: a switcher in a RailCell gets an entry's tooltip — after 300 ms on a first " +
+      "hover, at once on keyboard focus, in the same place, bubble and focus ring",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = rail(page, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const cell = rail(page, "rail-shell-demo-switcher-cell")
+      const trigger = rail(page, "rail-shell-demo-switcher-rail")
+      const tip = cell.locator(`[data-e2e="rail-shell-tooltip"]`)
+      // Never hovered before in this page: the tooltip has not been shown once.
+      await trigger.hover()
+      const [early, late] = await tip.evaluate(async (element) => {
+        const shown = () =>
+          getComputedStyle(element).visibility === "visible" && element.checkVisibility()
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        const early = shown()
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        return [early, shown()]
+      })
+      if (early) throw new Error("the switcher's first hover showed its tooltip within 100 ms")
+      if (!late) throw new Error("the switcher's first hover had not shown its tooltip at 500 ms")
+      await page.keyboard.press("Escape")
+      await tip.waitFor({ state: "hidden" })
+      await page.mouse.move(1400, 10)
+
+      const look = (locator: Locator) =>
+        locator.evaluate((element) => {
+          const box = element.getBoundingClientRect()
+          const bubble = getComputedStyle(element.firstElementChild as Element)
+          return {
+            x: box.x,
+            delay: getComputedStyle(element).transitionDelay,
+            bubble: [
+              bubble.backgroundColor,
+              bubble.color,
+              bubble.fontWeight,
+              bubble.boxShadow,
+            ].join(" / "),
+          }
+        })
+      const ring = (locator: Locator) =>
+        locator.evaluate((element) => {
+          const style = getComputedStyle(element)
+          return `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`
+        })
+      // An entry eases its colours, its ring's among them, so without motion the rings are read at
+      // their end rather than on their way there.
+      await page.emulateMedia({ reducedMotion: "reduce" })
+      // Keyboard focus, so `:focus-visible` holds, on the switcher and then on the first entry.
+      const entry = column.locator(`[data-e2e="rail-shell-entry"]`).first()
+      await trigger.focus()
+      await page.keyboard.press("Tab")
+      await page.keyboard.press("Shift+Tab")
+      await tip.waitFor({ state: "visible" })
+      const [switcher, switcherRing] = await Promise.all([look(tip), ring(trigger)])
+      await page.keyboard.press("Tab")
+      const entryTip = tipOf(entry)
+      await entryTip.waitFor({ state: "visible" })
+      const [entryLook, entryRing] = await Promise.all([look(entryTip), ring(entry)])
+      if (!switcher.delay.split(", ").every((value) => value === "0s")) {
+        throw new Error(`the focused switcher's tooltip waits ${switcher.delay}, not 0s`)
+      }
+      if (Math.abs(switcher.x - entryLook.x) > 0.5) {
+        throw new Error(
+          `the switcher's tooltip starts at x ${switcher.x}, an entry's ${entryLook.x}`,
+        )
+      }
+      if (switcher.bubble !== entryLook.bubble) {
+        throw new Error(
+          `the switcher's bubble is ${switcher.bubble}, an entry's ${entryLook.bubble}`,
+        )
+      }
+      if (switcherRing !== entryRing || !switcherRing.startsWith("solid 2px")) {
+        throw new Error(`the switcher's focus ring is ${switcherRing}, an entry's ${entryRing}`)
+      }
+      return `tooltip at x ${switcher.x}, ${switcher.bubble}; ring ${switcherRing}`
+    },
+  },
+  {
     name: "AppShell on a touch screen at 1024 px: a label wraps only between words, and " +
       '"Notifications" never breaks between two letters',
     pageId: "system",
