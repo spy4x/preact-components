@@ -1512,3 +1512,10 @@ order, the theme buttons, the placeholder, the absence of a top bar, and every l
 240 px labelled sidebar from `lg`, the current entry's left bar and the `header` slot are gone, and
 `--rail-shell-height` is now `--rail-height`. App code draws `AppShell`; the boundary rule fails a
 test that imports `RailShell` (see "The screen boundary rule").
+
+Three more breaking changes since 6.x:
+
+- `RailShellSidebarPlace` loses `"sidebar"` with the 240 px sidebar: it is `"rail" | "overlay"`.
+- `tabBarSlots` puts the primary action in the bar's centre slot. In 6.x it went first under More
+  whenever the entries overflowed the bar; now it always keeps a tab, and the items give way.
+- The `rail-shell-header` test hook is gone with the `header` slot.
