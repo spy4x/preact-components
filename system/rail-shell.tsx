@@ -604,7 +604,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
       >
         <ul class="flex min-h-16">
           {tabs.map((item, index) => (
-            <li key={`${index}-${item.key}`} class="min-w-0 flex-1 px-px py-1">
+            <li key={`${index}-${item.key}`} class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1">
               <Entry
                 item={item}
                 place="tab"
@@ -615,7 +615,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
             </li>
           ))}
           {hasOverlay && (
-            <li class="min-w-0 flex-1 px-px py-1">
+            <li class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1">
               <button
                 ref={moreRef}
                 type="button"

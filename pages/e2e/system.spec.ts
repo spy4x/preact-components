@@ -621,6 +621,16 @@ export const specs: readonly Spec[] = [
           throw new Error(`tab ${index + 1} is ${box?.width} by ${box?.height} px`)
         }
       }
+      // The focus ring sits 2 px outside a tab and is 2 px wide, so the outer tabs keep 4 px from
+      // the page's edges, or their ring is cut off there.
+      const first = await targets.first().boundingBox()
+      const last = await targets.last().boundingBox()
+      if (!first || !last || first.x < 4 || last.x + last.width > pageWidth - 4) {
+        throw new Error(
+          `the outer tabs leave no room for their focus ring: ${first?.x} px on the ` +
+            `left, ${last ? pageWidth - last.x - last.width : undefined} px on the right`,
+        )
+      }
       return `"Dashboard" needs ${fit.scroll} px and has ${fit.client} px; five tabs of 44 px or more`
     },
   },
