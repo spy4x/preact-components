@@ -134,3 +134,10 @@ export {
   watchForUpdate,
   type WorkerLike,
 } from "./sw-updater.tsx"
+export {
+  DEFAULT_UNSENT_CHANGES_DIALOG_LABELS,
+  UnsentChangesDialog,
+  type UnsentChangesDialogLabels,
+  type UnsentChangesDialogProps,
+  type UnsentChangesState,
+} from "./unsent-changes-dialog.tsx"

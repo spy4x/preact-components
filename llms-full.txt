@@ -2315,23 +2315,24 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component         | Subpath             | Ports / key props                                                                                                                                                                           |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`     | `account-menu`      | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `navigate?`, `dataE2E?`, `labels?`                                                        |
-| `AuthForm`        | `auth-form`         | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
-| `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
-| `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
-| `Calendar`        | `calendar`          | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader`      | `site-header`       | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
-| `SiteFooter`      | `site-footer`       | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
-| `Shell`           | `shell`             | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
-| `StateInit`       | `state-init`        | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`       | `rail-shell`        | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `header?`, `children`, `labels?`, `class?`                   |
-| `SyncStatus`      | `sync-status`       | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
-| `SavedCopyNotice` | `saved-copy-notice` | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
-| `ConflictChooser` | `conflict-chooser`  | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
-| `InstallPrompt`   | `install-prompt`    | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
-| `PushSettings`    | `push-settings`     | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
+| Component             | Subpath                 | Ports / key props                                                                                                                                                                           |
+| --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `navigate?`, `dataE2E?`, `labels?`                                                        |
+| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
+| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
+| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
+| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
+| `SiteHeader`          | `site-header`           | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
+| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
+| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
+| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
+| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `header?`, `children`, `labels?`, `class?`                   |
+| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
+| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
+| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
+| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                               |
+| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
+| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -3412,6 +3413,20 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   shows `labels.failed` under the item and announces it, with nothing left uncaught.
   `DEFAULT_CONFLICT_CHOOSER_LABELS` holds its English words; `labels` replaces any of them, per
   reason inside the records.
+- **`UnsentChangesDialog`** asks before a person signs out while changes wait to reach the
+  server: "Send, then sign out" (the one primary action, focused on open), "Sign out anyway", or
+  "Cancel" (also Escape, the close control and the backdrop). Mount it to open it, as
+  `ConfirmDialog`. The caller owns the waiting: on `onSend` it starts sending and passes `state`
+  (`sending`, `offline` or `retrying`) and the counts as they drop, then signs out itself once
+  nothing sendable is left. The same dialog shows the wait: the primary stays focused and busy, and
+  one polite `role="status"` line with a progress bar ("1 of 3 sent") changes only when the state
+  or a count does. Changes the server refused never send alone: pass them as `conflicts`. Once
+  every change left is one (`unsent` equals `conflicts`), the title says they need a choice and the
+  primary becomes "Review changes" on the same button, so focus stays. The default words say that
+  signing out keeps the changes on this browser, to send at the next sign-in there; replace
+  `labels.kept` if your app does something else with them. `DEFAULT_UNSENT_CHANGES_DIALOG_LABELS`
+  holds its English words, and every control has a fixed `data-e2e` (`unsent-dialog`,
+  `unsent-wait`, `unsent-review`, `unsent-sign-out-anyway`, `unsent-cancel`, `unsent-status`).
 - **`InstallPrompt`** offers to install the app: an Install button where the browser has an
   install dialog (`mode: "prompt"`), and "Tap Share, then Add to Home Screen" on an iPhone or iPad
   (`mode: "ios"`). It renders nothing for `installed` and `unavailable`. `createInstallPrompt` in
@@ -3450,6 +3465,7 @@ import {
   InstallPrompt,
   SavedCopyNotice,
   SyncStatus,
+  UnsentChangesDialog,
 } from "@spy4x/preact-system"
 
 const connection = createOnlineStatus()
@@ -3481,6 +3497,20 @@ const byId = (id: string) => entries.value.find((entry) => String(entry.seq) ===
   onKeepMine={(id) => outbox.keepMine(byId(id)).then(refresh)}
   onUseTheirs={(id) => outbox.useTheirs(byId(id)).then(refresh)}
 />
+// At sign-out, when the outbox holds anything. `sent` counts what left since "Send" was pressed.
+{asking.value && (
+  <UnsentChangesDialog
+    unsent={entries.value.length}
+    conflicts={conflicts.length}
+    sent={sent.value}
+    state={!asking.value.sending ? "ask" : !connection.online.value ? "offline"
+      : failed.value ? "retrying" : "sending"}
+    onSend={() => (asking.value = { sending: true })}
+    onSignOut={signOut}
+    onCancel={() => (asking.value = null)}
+    onReview={() => (asking.value = null)}
+  />
+)}
 <InstallPrompt mode={install.visible.value ? install.mode.value : "unavailable"}
   onInstall={install.install} onDismiss={install.dismiss}
   returnFocus={() => document.getElementById("app-menu")} />

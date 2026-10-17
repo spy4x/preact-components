@@ -225,6 +225,45 @@ async function routeShown(page: Page, title: string): Promise<string[]> {
   return page.evaluate(() => (globalThis as { focusLog?: string[] }).focusLog ?? [])
 }
 
+/** The `UnsentChangesDialog` card, one element in it, and the open dialog by its `data-e2e`. */
+const UNSENT = `[data-e2e="unsent-demo"]`
+const unsentDemo = (page: Page, e2e: string) => page.locator(`${UNSENT} [data-e2e="${e2e}"]`)
+const unsentDialog = (page: Page, e2e = "unsent-dialog") =>
+  page.locator(
+    `dialog[data-e2e="unsent-dialog"]${e2e === "unsent-dialog" ? "" : ` [data-e2e="${e2e}"]`}`,
+  )
+
+/** Open the card's dialog from its Sign out button, with or without a change that needs a choice. */
+async function openUnsentDialog(page: Page, withConflict = false): Promise<Locator> {
+  const trigger = unsentDemo(page, "unsent-demo-sign-out")
+  await trigger.scrollIntoViewIfNeeded()
+  if (withConflict) await unsentDemo(page, "unsent-demo-conflict").click()
+  await trigger.click()
+  await unsentDialog(page).waitFor()
+  return trigger
+}
+
+/** Throw unless the element with `data-e2e="<e2e>"` inside the open dialog has focus. */
+async function expectUnsentFocus(page: Page, e2e: string): Promise<void> {
+  const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-e2e"))
+  if (focused !== e2e) throw new Error(`focus is on ${focused ?? "nothing named"}, not ${e2e}`)
+}
+
+/**
+ * Record every distinct text the dialog's live region shows from now on, in order, so a spec can
+ * read back what a screen reader was told.
+ */
+function recordUnsentStatus(page: Page): Promise<void> {
+  return unsentDialog(page, "unsent-status").evaluate((element) => {
+    const seen: string[] = []
+    ;(globalThis as typeof globalThis & { unsentSeen?: string[] }).unsentSeen = seen
+    new MutationObserver(() => {
+      const text = element.textContent ?? ""
+      if (text !== seen.at(-1)) seen.push(text)
+    }).observe(element, { childList: true, characterData: true, subtree: true })
+  })
+}
+
 export const specs: readonly Spec[] = [
   {
     name: "useRouteAnnouncer with keepPageFocus: a page that focuses its own field as it opens " +
@@ -914,4 +953,124 @@ export const specs: readonly Spec[] = [
       return "Your profile routed to /profile"
     },
   },
+  {
+    name: "UnsentChangesDialog: opens with focus on Send, then sign out; Escape cancels it and " +
+      "returns focus to the trigger",
+    pageId: "system",
+    run: async (page) => {
+      const trigger = await openUnsentDialog(page)
+      await expectUnsentFocus(page, "unsent-wait")
+      await page.keyboard.press("Escape")
+      await unsentDialog(page).waitFor({ state: "detached" })
+      await unsentDemo(page, "unsent-demo-log").filter({ hasText: "cancelled" }).waitFor()
+      if (!await trigger.evaluate((element) => element === document.activeElement)) {
+        throw new Error("focus did not return to the Sign out trigger")
+      }
+      return "focus on the primary, Escape called onCancel, focus back on the trigger"
+    },
+  },
+  {
+    name: "UnsentChangesDialog: while sending, the primary keeps focus as an aria-disabled busy " +
+      "button, the status line counts the sent changes up in order, and the dialog closes " +
+      "when none is left",
+    pageId: "system",
+    run: async (page) => {
+      await openUnsentDialog(page)
+      await recordUnsentStatus(page)
+      const primary = unsentDialog(page, "unsent-wait")
+      await primary.press("Enter")
+      await primary.and(page.locator(`[aria-disabled="true"][aria-busy="true"]`)).waitFor()
+      await expectUnsentFocus(page, "unsent-wait")
+      await primary.press("Enter")
+      await unsentDialog(page).waitFor({ state: "detached" })
+      await unsentDemo(page, "unsent-demo-log").filter({ hasText: "signed out after sending" })
+        .waitFor()
+      const seen = await page.evaluate(() =>
+        (globalThis as typeof globalThis & { unsentSeen?: string[] }).unsentSeen ?? []
+      )
+      const expected = [0, 1, 2].map((sent) => `Sending changes…${sent} of 3 sent`)
+      if (JSON.stringify(seen.slice(0, 3)) !== JSON.stringify(expected)) {
+        throw new Error(`the status line said ${JSON.stringify(seen)}`)
+      }
+      return `status line: ${seen.join(" | ")}`
+    },
+  },
+  {
+    name: "UnsentChangesDialog: once only a change that needs a choice is left, the focused " +
+      "primary turns into Review changes in place and keeps focus",
+    pageId: "system",
+    run: async (page) => {
+      await openUnsentDialog(page, true)
+      await unsentDialog(page, "unsent-wait").press("Enter")
+      const review = unsentDialog(page, "unsent-review")
+      await review.waitFor()
+      if (await review.getAttribute("aria-disabled") !== null) {
+        throw new Error("Review changes is still aria-disabled")
+      }
+      await expectUnsentFocus(page, "unsent-review")
+      await unsentDialog(page).getByRole("heading", { name: "1 change needs your choice" })
+        .waitFor()
+      await review.press("Enter")
+      await unsentDemo(page, "unsent-demo-log").filter({ hasText: "review" }).waitFor()
+      return "the same button became Review changes with focus on it, and called onReview"
+    },
+  },
+  {
+    name: "UnsentChangesDialog: at 390 px the buttons stack full width with the primary on top",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await openUnsentDialog(page)
+      const boxes = await Promise.all(
+        ["unsent-wait", "unsent-sign-out-anyway", "unsent-cancel"].map((e2e) =>
+          unsentDialog(page, e2e).boundingBox()
+        ),
+      )
+      const [send, signOut, cancel] = boxes.map((box) => {
+        if (!box) throw new Error("a footer button is not drawn")
+        return box
+      })
+      if (!(send.y < signOut.y && signOut.y < cancel.y)) {
+        throw new Error(`the buttons are not stacked primary first: ${JSON.stringify(boxes)}`)
+      }
+      if (new Set([send.width, signOut.width, cancel.width]).size !== 1) {
+        throw new Error(`the buttons differ in width: ${JSON.stringify(boxes)}`)
+      }
+      return `${send.width} px wide, stacked`
+    },
+  },
+  {
+    name: "UnsentChangesDialog at 1440 px: the three buttons sit in one row, primary last",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await openUnsentDialog(page)
+      const boxes = await Promise.all(
+        ["unsent-cancel", "unsent-sign-out-anyway", "unsent-wait"].map((e2e) =>
+          unsentDialog(page, e2e).boundingBox()
+        ),
+      )
+      const ys = new Set(boxes.map((box) => Math.round(box?.y ?? -1)))
+      const xs = boxes.map((box) => box?.x ?? -1)
+      if (ys.size !== 1 || !(xs[0] < xs[1] && xs[1] < xs[2])) {
+        throw new Error(`the buttons are not in one row: ${JSON.stringify(boxes)}`)
+      }
+      return "one row: Cancel, Sign out anyway, Send, then sign out"
+    },
+  },
+  ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+    name: `UnsentChangesDialog: the dialog, asking and sending, passes axe in ${colorScheme} mode`,
+    pageId: "system",
+    colorScheme,
+    run: async (page) => {
+      await unsentDemo(page, "unsent-demo-offline").scrollIntoViewIfNeeded()
+      await unsentDemo(page, "unsent-demo-offline").click()
+      await openUnsentDialog(page)
+      const asking = await expectAxeClean(page, `dialog[data-e2e="unsent-dialog"]`)
+      await unsentDialog(page, "unsent-wait").click()
+      await unsentDialog(page, "unsent-status").filter({ hasText: "You're offline." }).waitFor()
+      const waiting = await expectAxeClean(page, `dialog[data-e2e="unsent-dialog"]`)
+      return `asking: ${asking}; offline: ${waiting}`
+    },
+  })),
 ]
