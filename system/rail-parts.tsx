@@ -71,10 +71,13 @@ const entryBase = cn(
  * hover, where a tooltip cannot appear, it takes the labels variant's shape instead.
  */
 export const iconsCell =
-  "size-12 justify-center [@media(hover:none)]:h-auto [@media(hover:none)]:min-h-14 [@media(hover:none)]:w-16 [@media(hover:none)]:flex-col [@media(hover:none)]:gap-1 [@media(hover:none)]:px-1 [@media(hover:none)]:py-2"
+  "size-12 justify-center [@media(hover:none)]:h-auto [@media(hover:none)]:min-h-14 [@media(hover:none)]:w-16 [@media(hover:none)]:flex-col [@media(hover:none)]:gap-1 [@media(hover:none)]:px-0 [@media(hover:none)]:py-2"
 
-/** A desktop cell of the labels variant: 64 px wide, at least 56 tall, the label under the icon. */
-export const labelsCell = "min-h-14 w-16 flex-col justify-center gap-1 px-1 py-2 text-center"
+/**
+ * A desktop cell of the labels variant: 64 px wide, at least 56 tall, the label under the icon.
+ * No side padding, so a label has the whole 64 px: "Dashboard" fits on one line.
+ */
+export const labelsCell = "min-h-14 w-16 flex-col justify-center gap-1 px-0 py-2 text-center"
 
 /** The cell classes of each variant in the desktop column. */
 export const railCell: Record<RailVariant, string> = { icons: iconsCell, labels: labelsCell }
@@ -87,8 +90,14 @@ const entryPlace: Record<Exclude<EntryPlace, "rail">, string> = {
   sheet: "min-h-11 w-full gap-3 px-3 py-2 text-sm",
 }
 
-/** The label's text in a desktop cell: two lines at most, centred under the icon. */
-const cellLabelText = "min-w-0 max-w-full text-center leading-4 line-clamp-2 break-words"
+/**
+ * The label's text in a desktop cell: two lines at most, centred under the icon. It wraps only
+ * between words. A single word wider than the cell, such as "Notifications", is hyphenated where
+ * the browser has a dictionary for the page's `lang`, and otherwise ends in an ellipsis, as a tab
+ * label does; it is never split between two letters with no hyphen.
+ */
+const cellLabelText =
+  "min-w-0 max-w-full text-center leading-4 tracking-tight line-clamp-2 break-normal hyphens-auto text-ellipsis"
 
 /**
  * The label in each place. In the icons variant it is visually hidden and names the cell; on a

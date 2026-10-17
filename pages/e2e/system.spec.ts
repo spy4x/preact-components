@@ -1049,6 +1049,51 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AppShell on a touch screen at 1024 px: a label wraps only between words, and " +
+      '"Notifications" never breaks between two letters',
+    pageId: "system",
+    run: async (page) => {
+      const session = await page.context().newCDPSession(page)
+      await session.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 })
+      await page.setViewportSize({ width: 1024, height: 900 })
+      if (!(await page.evaluate(() => matchMedia("(hover: none)").matches))) {
+        throw new Error("touch emulation did not make the screen (hover: none)")
+      }
+      const column = inCard(page, APP, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const labels = column.locator("[data-rail-cell] span").filter({ hasNotText: /\s/ })
+      const words = await labels.evaluateAll((spans) =>
+        spans.filter((span) =>
+          span.childElementCount === 0 && span.checkVisibility({ visibilityProperty: true })
+        ).map((span) => {
+          const text = span.textContent ?? ""
+          const tops = new Set<number>()
+          for (let index = 0; index < text.length; index++) {
+            const range = document.createRange()
+            range.setStart(span.firstChild!, index)
+            range.setEnd(span.firstChild!, index + 1)
+            const rect = range.getClientRects()[0]
+            if (rect) tops.add(Math.round(rect.top))
+          }
+          const style = getComputedStyle(span)
+          // Only hyphenation may break a word: no overflow-wrap or word-break that splits it bare.
+          const hyphenOnly = style.hyphens === "auto" && style.overflowWrap === "normal" &&
+            style.wordBreak === "normal"
+          return { text, lines: tops.size, hyphenOnly }
+        })
+      )
+      const notifications = words.find((word) => word.text === "Notifications")
+      if (!notifications) throw new Error(`no visible "Notifications" label among ${words.length}`)
+      const split = words.filter((word) => word.lines > 1 && !word.hyphenOnly)
+      if (split.length > 0) {
+        throw new Error(
+          `split between letters with no hyphen: ${split.map((word) => word.text).join(", ")}`,
+        )
+      }
+      return words.map((word) => `${word.text} on ${word.lines} line(s)`).join(", ")
+    },
+  },
+  {
     name: "Rail labels: every cell prints its label under its icon and draws no tooltip",
     pageId: "system",
     run: async (page) => {
