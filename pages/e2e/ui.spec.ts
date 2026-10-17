@@ -720,18 +720,9 @@ const onboardingChecklistSpecs: readonly Spec[] = [
   },
 ]
 
-/**
- * Throws with each violation's rule and targets when axe finds any in the given areas, leaving out
- * the rules in `skip`.
- */
-async function axePasses(
-  page: Page,
-  selectors: readonly string[],
-  skip: readonly string[] = [],
-): Promise<string> {
-  let builder = skip.length > 0
-    ? new AxeBuilder({ page }).disableRules([...skip])
-    : new AxeBuilder({ page })
+/** Throws with each violation's rule and targets when axe finds any in the given areas. */
+async function axePasses(page: Page, selectors: readonly string[]): Promise<string> {
+  let builder = new AxeBuilder({ page })
   for (const selector of selectors) builder = builder.include(selector)
   const { violations, passes } = await builder.analyze()
   if (violations.length > 0) {
@@ -822,9 +813,7 @@ function marketingBlockSpecs(): Spec[] {
         if (mark.passes.length === 0 && mark.violations.length === 0) {
           throw new Error("axe did not measure the BrandMark's contrast")
         }
-        // PageHero's h1 sits above FaqList's card title, an h3, which only the guide does. The ui
-        // page's own axe spec counts that one heading-order failure exactly (`ui-guide.spec.ts`).
-        return await axePasses(page, cards, ["heading-order"])
+        return await axePasses(page, cards)
       },
     })),
   ]

@@ -1,6 +1,8 @@
 /**
- * The cards of the blocks a public, server-rendered site is built from — `BrandMark`, `PageHero`,
- * `FaqList`, `Steps` and `WindowFrame` — spread into the Display section. None needs JavaScript.
+ * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript.
+ * `BrandMark`, `FaqList`, `Steps` and `WindowFrame` are spread into the Display section.
+ * `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
+ * {@link pageHeroDemo}).
  */
 
 import { IconSprout } from "@spy4x/preact-icons"
@@ -49,36 +51,6 @@ export const marketingBlockDemos: DemoFragment = {
       <a href="#demo-BrandMark" class="inline-flex rounded-md">
         <BrandMark Icon={IconSprout} name="Acme" />
       </a>
-    ),
-  },
-  PageHero: {
-    summary:
-      "The top band of a public site's inner page: an eyebrow, the page's heading, a lead and its buttons, in the marketing column.",
-    wide: true,
-    props: [
-      { name: "title", type: "ComponentChildren", description: "The page's `<h1>`." },
-      { name: "eyebrow", type: "ComponentChildren", description: "A short line above the title." },
-      { name: "lead", type: "ComponentChildren", description: "One or two sentences under it." },
-      { name: "children", type: "ComponentChildren", description: "The page's buttons." },
-      { name: "class", type: "string", description: "The band's background, such as a glow." },
-    ],
-    snippet: `<PageHero
-  eyebrow="Pricing"
-  title="One price per seat"
-  lead="Every feature on every plan. Pay monthly, cancel any time."
->
-  <Button href="/sign-up">Start free</Button>
-</PageHero>`,
-    render: () => (
-      <PageHero
-        eyebrow="Pricing"
-        title="One price per seat"
-        lead="Every feature on every plan. Pay monthly, cancel any time."
-      >
-        <div>
-          <Button href="#demo-PageHero">Start free</Button>
-        </div>
-      </PageHero>
     ),
   },
   FaqList: {
@@ -183,6 +155,47 @@ export const marketingBlockDemos: DemoFragment = {
           </div>
         </WindowFrame>
       </div>
+    ),
+  },
+}
+
+/**
+ * The `PageHero` card, kept apart from {@link marketingBlockDemos} because of where it must sit.
+ *
+ * The hero's title is the page's `<h1>`, as on a site's own page. Every card title is an `<h3>`, so
+ * a card after this one would follow an `<h1>` with an `<h3>`, and axe's `heading-order` rule fails
+ * on that skipped level. The registry puts this card last on the UI page, where the next heading is
+ * the page's own `<h2>`.
+ */
+export const pageHeroDemo: DemoFragment = {
+  PageHero: {
+    summary:
+      "The top band of a public site's inner page: an eyebrow, the page's heading, a lead and its buttons, in the marketing column.",
+    wide: true,
+    props: [
+      { name: "title", type: "ComponentChildren", description: "The page's `<h1>`." },
+      { name: "eyebrow", type: "ComponentChildren", description: "A short line above the title." },
+      { name: "lead", type: "ComponentChildren", description: "One or two sentences under it." },
+      { name: "children", type: "ComponentChildren", description: "The page's buttons." },
+      { name: "class", type: "string", description: "The band's background, such as a glow." },
+    ],
+    snippet: `<PageHero
+  eyebrow="Pricing"
+  title="One price per seat"
+  lead="Every feature on every plan. Pay monthly, cancel any time."
+>
+  <Button href="/sign-up">Start free</Button>
+</PageHero>`,
+    render: () => (
+      <PageHero
+        eyebrow="Pricing"
+        title="One price per seat"
+        lead="Every feature on every plan. Pay monthly, cancel any time."
+      >
+        <div>
+          <Button href="#demo-PageHero">Start free</Button>
+        </div>
+      </PageHero>
     ),
   },
 }
