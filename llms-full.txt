@@ -3674,7 +3674,8 @@ names it "Account". Without slots and `moreTab` the slot is "More" with three do
 
 **A tab's label fits nine letters on a 390 px phone.** A tab has no side padding of its own, and
 its `<li>` keeps 1 px on each side, except the bar's two outer ends, which keep 4 px so the first
-and last tabs' focus ring stays on screen. "Dashboard" in the bar's 12 px type fits a fifth of the bar.
+and last tabs' focus ring stays on screen. The label is set with tight letter spacing, so "Dashboard"
+in the bar's 12 px type fits a fifth of the bar, also in a wider fallback font.
 A longer label still truncates with an ellipsis, as the last resort; every tab stays at least
 44 px wide and tall.
 

@@ -231,7 +231,7 @@ const labelPlace: Record<Place, (hasIcon: boolean) => string> = {
     hasIcon
       ? "max-lg:sr-only lg:min-w-0 lg:flex-1 lg:truncate"
       : "min-w-0 max-w-full line-clamp-2 break-words lg:flex-1 lg:line-clamp-none lg:truncate",
-  tab: () => "min-w-0 max-w-full truncate",
+  tab: () => "min-w-0 max-w-full truncate tracking-tight",
   sheet: () => "min-w-0 flex-1 truncate",
 }
 /** The counter's badge: on the icon's corner in the rail and the tab bar, at the row's end else. */
@@ -641,7 +641,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
                     {moreTab.icon}
                   </span>
                 )}
-                <span class="min-w-0 max-w-full truncate">{moreLabel}</span>
+                <span class="min-w-0 max-w-full truncate tracking-tight">{moreLabel}</span>
                 {hasCount(moreTab?.counter) && <CounterBadge count={moreTab.counter} place="tab" />}
               </button>
             </li>
