@@ -357,6 +357,7 @@ DEFAULT_INSTALL_PROMPT_LABELS	constant	@spy4x/preact-system	The English words `I
 DEFAULT_PUSH_SETTINGS_LABELS	constant	@spy4x/preact-system	The English words `PushSettings` shows when the caller passes none.
 DEFAULT_SAVED_COPY_NOTICE_LABELS	constant	@spy4x/preact-system	The English words `SavedCopyNotice` shows when the caller passes none.
 DEFAULT_SYNC_STATUS_LABELS	constant	@spy4x/preact-system	The English words `SyncStatus` shows when the caller passes none.
+DEFAULT_UNSENT_CHANGES_DIALOG_LABELS	constant	@spy4x/preact-system	The English words `UnsentChangesDialog` shows when the caller passes none.
 DEFAULT_UPDATE_MESSAGE	constant	@spy4x/preact-system	What a waiting worker is told to take over with, when the caller names nothing else.
 HeadStore	type	@spy4x/preact-system	A head signal with the defaults it was created from, so `resetHead()` is exact.
 HeadTag	type	@spy4x/preact-system	A serialisable `<head>` element, in document order.
@@ -393,6 +394,8 @@ SyncState	type	@spy4x/preact-system	Which of the five states the line shows.
 SyncStatus	component	@spy4x/preact-system	Whether the app's offline changes have reached the server, in one compact line.
 TAB_BAR_SLOTS	constant	@spy4x/preact-system	The tab bar's slot count, "More" included.
 TabBarSplit	type	@spy4x/preact-system	What `tabBarSlots` decides for the phone bar.
+UnsentChangesDialog	component	@spy4x/preact-system	The dialog to show when a person signs out with changes that have not reached the server.
+UnsentChangesState	type	@spy4x/preact-system	Where the dialog stands.
 UpdateStart	type	@spy4x/preact-system	Everything `startUpdates` needs beyond the container itself.
 UpdateWatcher	type	@spy4x/preact-system	Tuning for `watchForUpdate`.
 WorkerLike	type	@spy4x/preact-system	The slice of `ServiceWorker` this package uses.
@@ -433,7 +436,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1041 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1045 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
