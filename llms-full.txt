@@ -2317,7 +2317,7 @@ Extracted from earlier source applications.
 
 | Component         | Subpath             | Ports / key props                                                                                                                                                                           |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`     | `account-menu`      | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `dataE2E?`, `labels?`                                                                     |
+| `AccountMenu`     | `account-menu`      | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `navigate?`, `dataE2E?`, `labels?`                                                        |
 | `AuthForm`        | `auth-form`         | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
 | `SEOHead`         | `seo-head`          | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`       | `sw-updater`        | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
@@ -3106,10 +3106,10 @@ links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`
 asking to close, so it must not fight wherever the click actually sends focus next.
 
 **`navigate` is the client-router port, shaped like `RailShell`'s `navigateLink`.** Without it, every link is an
-ordinary link. With it, a plain left click on a nav link, or on an action that has an `href`, calls
-`navigate(href)` and cancels the browser's own navigation. A click with Ctrl, Meta, Shift or Alt
-held, or with another button, is left to the browser, so "open in a new tab" still works, and such a
-click leaves the drawer open. A link to another origin is always the browser's, since a router
+ordinary link. With it, a plain left click on a nav link, on an action that has an `href`, or on a
+link item of the user menu (passed on to `AccountMenu`), calls `navigate(href)` and cancels the
+browser's own navigation. A click with Ctrl, Meta, Shift or Alt held, or with another button, is
+left to the browser, so "open in a new tab" still works, and such a click leaves the drawer open. A link to another origin is always the browser's, since a router
 cannot open another site. A click something earlier already cancelled (a capture listener of
 the app's own router, say) does not call the port twice; in the drawer it still closes the drawer.
 Enter on a focused link fires the same plain click, so the keyboard takes the same path.
@@ -3174,6 +3174,12 @@ carries the same one at its foot. It is `ui/`'s `Dropdown`, so the keyboard, the
 fallback and the focus moves are that component's. The menu holds, in order: the caller's `items`
 (a link, a button, or a form post through `action`), the theme choice when `onThemeChange` is
 given, and `signOut` after a divider.
+
+**`navigate` is the client-router port, as on `DropdownItem`.** Without it, a link item is an
+ordinary link and choosing it loads the page. With it, a plain left click on a link item (an `href`
+and no `action`) calls `navigate(href)` and cancels the browser's own navigation, so "Profile" does
+not reload the app. A click with Ctrl, Meta, Shift or Alt held, a click with another button, and a
+link to another origin are left to the browser. Form posts and buttons never call it.
 
 **Two triggers.** `display="full"`, the default, is one wide button with the avatar, the name and
 the e-mail, named by that text (the avatar is `alt=""`, since the name is printed beside it); its
@@ -3638,6 +3644,12 @@ and the item list scrolling on its own between them when the window is too short
 phone held sideways. Both slots are drawn twice in the column, once per width, and
 CSS shows one; a slot's controls therefore need no ids of their own, or ids that differ by place.
 
+**The column is a landmark.** It is an `<aside>` named by `labels.sidebar` ("Sidebar" by default),
+so the slots' controls, such as a workspace switcher, notifications and the account menu, sit
+inside a landmark like the navigation between them does. As a plain column, a page whose frame is
+`RailShell` left them outside every landmark, which axe reports as a `region` violation from `md`
+up. In the phone overlay they are inside the modal `<dialog>`.
+
 **Tooltips in the icon rail** are `aria-hidden` copies of the label, drawn on hover and on keyboard
 focus. Each is `position: fixed`, so the scrolling list does not clip it; the entry's own box,
 read on hover and focus, places it at the entry's right edge, so it needs JavaScript and shows
@@ -3659,6 +3671,13 @@ overlay then holds `sidebarTop("overlay")`, the overflow entries (if any) and
 `sidebarBottom("overlay")`. `moreTab` sets the slot's `icon` (any node, such as an `Avatar` with
 `alt=""`) and its `counter`; its label stays `labels.more`, so an app that puts the account there
 names it "Account". Without slots and `moreTab` the slot is "More" with three dots, as before.
+
+**A tab's label fits nine letters on a 390 px phone.** A tab has no side padding of its own, and
+its `<li>` keeps 1 px on each side, except the bar's two outer ends, which keep 4 px so the first
+and last tabs' focus ring stays on screen. The label is set with tight letter spacing, so "Dashboard"
+in the bar's 12 px type fits a fifth of the bar, also in a wider fallback font.
+A longer label still truncates with an ellipsis, as the last resort; every tab stays at least
+44 px wide and tall.
 
 **Nothing covers the page.** The rail is a column in the layout, and its contents stick to the top
 while the page scrolls. The tab bar sticks to the bottom but keeps its place in the flow, so the

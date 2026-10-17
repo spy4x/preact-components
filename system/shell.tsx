@@ -112,10 +112,10 @@ export interface ShellProps {
   /** The page. Lands inside the skip link's target, a `<main>` this component owns. */
   children: ComponentChildren
   /**
-   * Port to the app's client router. Given, a plain left click on a nav link (or a link action)
-   * calls it with the link's `href` and prevents the browser's own navigation. A click with Ctrl,
-   * Meta, Shift or Alt held, or another mouse button, keeps the browser's behaviour. Without it,
-   * every link is an ordinary link.
+   * Port to the app's client router. Given, a plain left click on a nav link (or a link action, or
+   * a link item of the user menu) calls it with the link's `href` and prevents the browser's own
+   * navigation. A click with Ctrl, Meta, Shift or Alt held, or another mouse button, keeps the
+   * browser's behaviour. Without it, every link is an ordinary link.
    */
   navigate?: (href: string) => void
   /**
@@ -440,6 +440,7 @@ export function Shell(props: ShellProps): JSX.Element {
             <AccountMenu
               user={user}
               items={userMenuItems}
+              navigate={navigate}
               display="avatar"
               vertical="auto"
               horizontal="right"

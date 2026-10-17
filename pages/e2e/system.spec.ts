@@ -61,6 +61,66 @@ async function expectAxeClean(page: Page, selector: string): Promise<string> {
 const ROUTE_PAGE = `[data-e2e="route-demo-page"]`
 const ROUTE_HEADING = `${ROUTE_PAGE} h1`
 
+/**
+ * Click `item` (with `modifiers`, if any) and report whether the page had cancelled the browser's
+ * own navigation by the time the click reached the item's last listener. The listener added here
+ * runs after the component's own, records `defaultPrevented`, then cancels the click itself, so a
+ * modifier click opens no tab and a link left to the browser does not move the guide page.
+ */
+async function clickCancelled(item: Locator, modifiers: ("Control" | "Meta")[] = []) {
+  // Kept on `window`, since choosing an item closes the menu and hides the item before it is read.
+  type Watched = typeof globalThis & { e2eClickCancelled?: boolean }
+  await item.evaluate((element) => {
+    delete (globalThis as Watched).e2eClickCancelled
+    element.addEventListener("click", (event) => {
+      ;(globalThis as Watched).e2eClickCancelled = event.defaultPrevented
+      event.preventDefault()
+    }, { once: true })
+  })
+  await item.click({ modifiers })
+  const cancelled = await item.page().evaluate(() => (globalThis as Watched).e2eClickCancelled)
+  if (cancelled === undefined) throw new Error("the click never reached the item")
+  return cancelled
+}
+
+/**
+ * Make the `RailShell` card's frame the whole page: the body's only child, full width, and return
+ * its locator. The guide draws the card inside its own `<main>` and a padded card, where every node
+ * is in a landmark and the bar is narrower than the window; an app draws the shell as the page
+ * itself, which is what the checks that call this need to see.
+ */
+async function railFrameAlone(page: Page): Promise<Locator> {
+  await rail(page, "rail-shell-column").evaluate((column) => {
+    const frame = column.parentElement
+    if (!frame) throw new Error("the column has no frame around it")
+    frame.id = "e2e-rail-frame"
+    document.body.replaceChildren(frame)
+  })
+  return page.locator("body > #e2e-rail-frame")
+}
+
+/**
+ * Run axe over the whole page and throw on any violation, or when the page-level `region` rule
+ * (content outside every landmark) or colour contrast was not measured. `region` runs only over a
+ * whole page, never over an `include`d part, so {@link expectAxeClean} cannot catch it.
+ */
+async function expectPageAxeClean(page: Page): Promise<string> {
+  // The page's own heading is the caller's content, and the demo's page has none of level one.
+  const skipped = ["page-has-heading-one"]
+  const { violations, passes } = await new AxeBuilder({ page }).disableRules(skipped).analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map((rule) =>
+        `${rule.id}: ${rule.help} (${rule.nodes.map((node) => node.target.join(" ")).join(", ")})`
+      ).join("; "),
+    )
+  }
+  for (const rule of ["region", "color-contrast"]) {
+    if (!passes.some((passed) => passed.id === rule)) throw new Error(`axe did not run ${rule}`)
+  }
+  return `${passes.length} axe rules passed`
+}
+
 /** Press one of the route demo's controls. */
 const routeControl = (page: Page, name: string) => page.locator(`[data-e2e="route-demo-${name}"]`)
 
@@ -500,6 +560,81 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name:
+      "RailShell as the page frame: no content of the sidebar's slots sits outside a landmark, " +
+      "at 1440 and 900 px and in the phone overlay",
+    pageId: "system",
+    run: async (page) => {
+      const frame = await railFrameAlone(page)
+      const results: string[] = []
+      const failures: string[] = []
+      // Every place is measured before the check fails, so a failure names each place it holds in.
+      const measure = async (place: string) => {
+        try {
+          results.push(`${place}: ${await expectPageAxeClean(page)}`)
+        } catch (error) {
+          failures.push(`${place}: ${error instanceof Error ? error.message : error}`)
+        }
+      }
+      for (const width of [1440, 900]) {
+        await page.setViewportSize({ width, height: 900 })
+        await measure(`${width} px`)
+      }
+      await page.setViewportSize({ width: 390, height: 844 })
+      await frame.locator(`[data-e2e="rail-shell-more"]`).click()
+      await frame.locator(`[data-e2e="rail-shell-dialog"]`).waitFor({ state: "visible" })
+      await measure("overlay")
+      if (failures.length > 0) throw new Error(failures.join(" | "))
+      return results.join("; ")
+    },
+  },
+  {
+    name: "RailShell below md: a nine-letter tab label fits its tab at 390 px, " +
+      "and every tab stays a 44 px target",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const bar = (await railFrameAlone(page)).locator(`[data-e2e="rail-shell-tabbar"]`)
+      await bar.scrollIntoViewIfNeeded()
+      // The window's scrollbar takes its width off the page, so the bar is a little narrower than
+      // 390 px here than on a phone, whose scrollbar overlays the page: a stricter test, not a
+      // looser one. It must still span the whole page, not a card inside it.
+      const barWidth = (await bar.boundingBox())?.width
+      const pageWidth = await page.evaluate(() => document.documentElement.clientWidth)
+      if (barWidth !== pageWidth || pageWidth > 390) {
+        throw new Error(`the bar is ${barWidth} px wide on a page of ${pageWidth} px`)
+      }
+      const label = bar.getByRole("link", { name: "Dashboard" }).getByText("Dashboard")
+      const fit = await label.evaluate((element) => ({
+        scroll: element.scrollWidth,
+        client: element.clientWidth,
+      }))
+      if (fit.scroll > fit.client) {
+        throw new Error(`"Dashboard" is clipped: ${fit.scroll} px of text in ${fit.client} px`)
+      }
+      const targets = bar.locator(`a, button`)
+      const count = await targets.count()
+      if (count !== 5) throw new Error(`the bar holds ${count} tabs, not five`)
+      for (let index = 0; index < count; index++) {
+        const box = await targets.nth(index).boundingBox()
+        if (!box || box.width < 44 || box.height < 44) {
+          throw new Error(`tab ${index + 1} is ${box?.width} by ${box?.height} px`)
+        }
+      }
+      // The focus ring sits 2 px outside a tab and is 2 px wide, so the outer tabs keep 4 px from
+      // the page's edges, or their ring is cut off there.
+      const first = await targets.first().boundingBox()
+      const last = await targets.last().boundingBox()
+      if (!first || !last || first.x < 4 || last.x + last.width > pageWidth - 4) {
+        throw new Error(
+          `the outer tabs leave no room for their focus ring: ${first?.x} px on the ` +
+            `left, ${last ? pageWidth - last.x - last.width : undefined} px on the right`,
+        )
+      }
+      return `"Dashboard" needs ${fit.scroll} px and has ${fit.client} px; five tabs of 44 px or more`
+    },
+  },
+  {
     name: "RailShell: the icon rail with its slots passes axe in dark mode",
     pageId: "system",
     colorScheme: "dark",
@@ -540,6 +675,51 @@ export const specs: readonly Spec[] = [
         throw new Error("Dark is not checked after it was chosen")
       }
       return "opened upward; Dark chosen and checked"
+    },
+  },
+  {
+    name:
+      "AccountMenu: a plain click on a link item calls navigate instead of following the link, " +
+      "and a Ctrl-click leaves the link to the browser",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`[data-e2e="account-menu-demo"]`)
+      const trigger = card.locator(`[data-e2e="account-menu-button"]`)
+      const route = card.locator(`[data-e2e="account-menu-demo-route"]`)
+      const profile = card.getByRole("menuitem", { name: "Profile", exact: true })
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      if (await clickCancelled(profile, ["Control"])) {
+        throw new Error("a Ctrl-click on Profile cancelled the browser's own navigation")
+      }
+      if (await route.textContent() !== "none") {
+        throw new Error(`a Ctrl-click on Profile called navigate: ${await route.textContent()}`)
+      }
+      if (!await profile.isVisible()) await trigger.click()
+      const before = page.url()
+      if (!await clickCancelled(profile)) {
+        throw new Error("a plain click on Profile left the browser to follow the link")
+      }
+      await route.filter({ hasText: "#account-profile" }).waitFor()
+      if (page.url() !== before) throw new Error(`the page moved to ${page.url()}`)
+      return "Ctrl-click left to the browser; plain click routed to #account-profile"
+    },
+  },
+  {
+    name: "Shell: a plain click on a user-menu link goes through navigate",
+    pageId: "system",
+    run: async (page) => {
+      const shell = page.locator(`[data-e2e="shell-demo"]`)
+      const trigger = shell.locator(`[data-e2e="shell-user-menu-button"]`)
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      const profile = shell.getByRole("menuitem", { name: "Your profile", exact: true })
+      if (!await clickCancelled(profile)) {
+        throw new Error("a plain click on Your profile left the browser to follow the link")
+      }
+      await shell.locator(`[data-e2e="shell-demo-path"]`).filter({ hasText: /^\/profile$/ })
+        .waitFor()
+      return "Your profile routed to /profile"
     },
   },
 ]

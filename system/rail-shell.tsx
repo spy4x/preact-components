@@ -79,6 +79,11 @@ export interface RailShellLabels {
   /** `aria-label` of the rail's and the tab bar's `<nav>`. Defaults to `"Main navigation"`. */
   nav?: string
   /**
+   * `aria-label` of the desktop column's `<aside>`, the landmark that holds the slots and the
+   * navigation. Defaults to `"Sidebar"`.
+   */
+  sidebar?: string
+  /**
    * The tab bar's last slot, which opens the overlay. Defaults to `"More"`. An app whose overlay
    * holds the account sets `"Account"`, with {@link RailShellProps.moreTab} for its avatar.
    */
@@ -214,7 +219,10 @@ const entryBase =
 const entryPlace: Record<Place, string> = {
   rail:
     "group/entry relative w-full flex-col justify-center gap-1 px-1 py-3 text-center lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2 lg:text-left lg:text-sm",
-  tab: "relative h-full w-full flex-col justify-center gap-1 px-1 py-1 text-center",
+  // No side padding in a tab, and 1 px on each side of its `<li>`: the 4 px each used to take made
+  // a nine-letter label such as "Dashboard" truncate in a fifth of a 390 px bar. The bar's two
+  // outer ends keep 4 px, so the first and last tabs' focus ring stays on screen.
+  tab: "relative h-full w-full flex-col justify-center gap-1 px-0 py-1 text-center",
   sheet: "w-full gap-3 px-3 py-3 text-sm",
 }
 /** The label beside or under the icon. In the rail, an entry with an icon names itself silently. */
@@ -223,7 +231,7 @@ const labelPlace: Record<Place, (hasIcon: boolean) => string> = {
     hasIcon
       ? "max-lg:sr-only lg:min-w-0 lg:flex-1 lg:truncate"
       : "min-w-0 max-w-full line-clamp-2 break-words lg:flex-1 lg:line-clamp-none lg:truncate",
-  tab: () => "min-w-0 max-w-full truncate",
+  tab: () => "min-w-0 max-w-full truncate tracking-tight",
   sheet: () => "min-w-0 flex-1 truncate",
 }
 /** The counter's badge: on the icon's corner in the rail and the tab bar, at the row's end else. */
@@ -394,7 +402,9 @@ function placeTip(target: EventTarget | null): void {
  * The frame: a skip link, the desktop column from `md` up, the caller's `header` above the page,
  * the page in `<main>`, the phone tab bar below `md`, and the "More" overlay.
  *
- * **The desktop column has three zones.** `sidebarTop` at the top, the primary action and the
+ * **The desktop column has three zones,** inside an `<aside>` named by `labels.sidebar`, so the
+ * slots' controls sit in a landmark as the navigation does. `sidebarTop` at the top, the primary
+ * action and the
  * items in the `<nav>` between, `sidebarBottom` at the bottom. The column sticks to the top at the
  * window's full height (`--rail-shell-height`, `100dvh` unless a caller sets it), so the bottom
  * zone stays in view on a long page; from `lg` the `<nav>` scrolls on its own when the items do
@@ -454,6 +464,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
     class: className,
   } = props
   const navLabel = labels?.nav ?? "Main navigation"
+  const sidebarLabel = labels?.sidebar ?? "Sidebar"
   const moreLabel = labels?.more ?? "More"
   const dialogLabel = labels?.moreDialog ?? "More"
   const closeLabel = labels?.close ?? "Close"
@@ -465,7 +476,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
   const headingId = useId()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const moreRef = useRef<HTMLButtonElement>(null)
-  const columnRef = useRef<HTMLDivElement>(null)
+  const columnRef = useRef<HTMLElement>(null)
 
   // Escape hides the rail's tooltip while the pointer or focus is on the column; the key is not
   // consumed, so whatever else Escape does on the page still happens. One listener on `document`,
@@ -507,8 +518,9 @@ export function RailShell(props: RailShellProps): JSX.Element {
         {skipLabel}
       </a>
 
-      <div
+      <aside
         ref={columnRef}
+        aria-label={sidebarLabel}
         class={cn("group/rail hidden shrink-0 border-r md:block md:w-18 lg:w-60", rule, surface)}
         onFocusIn={(event) => {
           placeTip(event.target)
@@ -568,7 +580,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
             </div>
           )}
         </div>
-      </div>
+      </aside>
 
       <div class="flex min-w-0 flex-1 flex-col">
         {header !== undefined && <header data-e2e="rail-shell-header">{header}</header>}
@@ -593,7 +605,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
       >
         <ul class="flex min-h-16">
           {tabs.map((item, index) => (
-            <li key={`${index}-${item.key}`} class="min-w-0 flex-1 p-1">
+            <li key={`${index}-${item.key}`} class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1">
               <Entry
                 item={item}
                 place="tab"
@@ -604,7 +616,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
             </li>
           ))}
           {hasOverlay && (
-            <li class="min-w-0 flex-1 p-1">
+            <li class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1">
               <button
                 ref={moreRef}
                 type="button"
@@ -629,7 +641,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
                     {moreTab.icon}
                   </span>
                 )}
-                <span class="min-w-0 max-w-full truncate">{moreLabel}</span>
+                <span class="min-w-0 max-w-full truncate tracking-tight">{moreLabel}</span>
                 {hasCount(moreTab?.counter) && <CounterBadge count={moreTab.counter} place="tab" />}
               </button>
             </li>
