@@ -13,8 +13,10 @@ import {
   CardHeader,
   Checkbox,
   Cluster,
+  Combobox,
   ConfirmDialog,
   createLeaveGuard,
+  DateRangePicker,
   defaultToastActionDuration,
   defaultToastDuration,
   type DialogTone,
@@ -30,6 +32,7 @@ import {
   RadioGroup,
   type SpinnerSize,
   Stack,
+  TagInput,
   type ToastCorner,
   Toastr,
   type ToastVariant,
@@ -38,6 +41,7 @@ import {
   useFreshError,
 } from "@spy4x/preact-ui"
 import { createToastStore } from "@spy4x/preact-signals/toast"
+import type { DateRange } from "@spy4x/time/date"
 import { useSignal } from "@preact/signals"
 import { render } from "preact"
 import { useEffect, useMemo, useRef, useState } from "preact/hooks"
@@ -415,7 +419,9 @@ function EmptyStateDemo() {
  * `pages/checks/ui.ts` and `pages/checks/system.ts` drive this card: they find the first trigger by
  * its text starting with "default", press the step control inside the dialog, press Escape, and
  * read `data-closed-at` to see that the close port saw the step the parent has now. The last
- * trigger is the uncontrolled dialog, found by `data-e2e="modal-uncontrolled-open"`.
+ * trigger is the uncontrolled dialog, found by `data-e2e="modal-uncontrolled-open"`. The one before
+ * it opens a dialog holding a form whose fields open a list or a panel: `pages/e2e/ui.spec.ts`
+ * opens each and presses Escape twice, to see the first press close only the field's popup.
  *
  * **Why the step is `useState` and not a signal.** A signal read from any render's closure returns
  * the current value, which is exactly what hides a handler that captured an old one. The step is
@@ -430,6 +436,7 @@ function ModalDemo() {
   // dialog cannot be re-opened from outside — it seeds its flag from `defaultOpen` and settles that
   // flag itself — so asking for another one means mounting another one.
   const [uncontrolled, setUncontrolled] = useState(0)
+  const formOpen = useSignal(false)
 
   return (
     <Stack gap="sm">
@@ -444,6 +451,14 @@ function ModalDemo() {
             {label}
           </Button>
         ))}
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="modal-form-open"
+          onClick={() => formOpen.value = true}
+        >
+          dialog with a form
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -502,6 +517,8 @@ function ModalDemo() {
         </Modal>
       )}
 
+      {formOpen.value && <ModalFormDialog onClose={() => formOpen.value = false} />}
+
       {uncontrolled > 0 && (
         <Modal
           key={uncontrolled}
@@ -517,6 +534,63 @@ function ModalDemo() {
         </Modal>
       )}
     </Stack>
+  )
+}
+
+const formCities = ["Lisbon", "Porto", "Madrid"]
+const formTags = ["work", "home", "errand"]
+const formPresets = [
+  { preset: "last-7-days", label: "Last 7 days" },
+  { preset: "this-month", label: "This month" },
+] as const
+const formNow = new Date("2026-02-15T12:00:00Z")
+
+/**
+ * A dialog around a form whose fields each open a popup: a `Combobox` list, a `TagInput` suggestion
+ * list and a `DateRangePicker` panel. Escape with one of them open closes only that popup, so the
+ * form's draft survives; the next Escape closes the dialog.
+ */
+function ModalFormDialog({ onClose }: { onClose: () => void }) {
+  const city = useSignal<string | null>(null)
+  const tags = useSignal<string[]>([])
+  const range = useSignal<DateRange | null>(null)
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Plan a trip"
+      cancelLabel="Close"
+      dataE2E="guide-modal-form"
+      footer={<Button onClick={onClose}>Save</Button>}
+    >
+      <Stack gap="sm">
+        <p class="text-sm text-muted">
+          Open a list or the date panel, then press Escape: only that closes. Press it again to
+          close the dialog.
+        </p>
+        <Combobox
+          items={formCities}
+          value={city.value}
+          onChange={(next) => city.value = next}
+          ariaLabel="City"
+        />
+        <TagInput
+          label="Tags"
+          value={tags.value}
+          onChange={(next) => tags.value = next}
+          suggestions={formTags}
+        />
+        <DateRangePicker
+          range={range.value}
+          onChange={(next) => range.value = next}
+          timeZone="Europe/Paris"
+          now={formNow}
+          presets={formPresets}
+          dataE2E="guide-modal-form-dates"
+        />
+      </Stack>
+    </Modal>
   )
 }
 

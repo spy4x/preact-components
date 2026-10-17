@@ -365,6 +365,7 @@ describe("comboboxKeyAction", () => {
     expect(comboboxKeyAction("Home", openAt(2), 3)).toEqual({
       state: { activeIndex: 0, isOpen: true },
       preventDefault: true,
+      stopPropagation: false,
       select: -1,
     })
     expect(comboboxKeyAction("End", openAt(0), 3).state.activeIndex).toBe(2)
@@ -382,15 +383,25 @@ describe("comboboxKeyAction", () => {
     expect(comboboxKeyAction("Escape", openAt(1), 3)).toEqual({
       state: { activeIndex: -1, isOpen: false },
       preventDefault: true,
+      stopPropagation: true,
       select: -1,
     })
     expect(comboboxKeyAction("Escape", closed, 3).preventDefault).toBe(true)
+  })
+
+  it("keeps an Escape that closes the list from a dialog around it, and lets a closed one through", () => {
+    expect(comboboxKeyAction("Escape", openAt(1), 3).stopPropagation).toBe(true)
+    expect(comboboxKeyAction("Escape", openAt(-1), 0).stopPropagation).toBe(true)
+    expect(comboboxKeyAction("Escape", closed, 3).stopPropagation).toBe(false)
+    expect(comboboxKeyAction("Enter", openAt(1), 3).stopPropagation).toBe(false)
+    expect(comboboxKeyAction("ArrowDown", openAt(1), 3).stopPropagation).toBe(false)
   })
 
   it("selects the highlighted option on Enter", () => {
     expect(comboboxKeyAction("Enter", openAt(1), 3)).toEqual({
       state: { activeIndex: -1, isOpen: false },
       preventDefault: true,
+      stopPropagation: false,
       select: 1,
     })
   })
@@ -403,6 +414,7 @@ describe("comboboxKeyAction", () => {
     expect(comboboxKeyAction("Enter", closed, 3)).toEqual({
       state: { activeIndex: -1, isOpen: false },
       preventDefault: true,
+      stopPropagation: false,
       select: -1,
     })
   })

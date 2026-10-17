@@ -89,7 +89,16 @@ describe("tagInputKeyAction", () => {
       pick: -1,
       commit: true,
       removeLast: false,
+      stopPropagation: false,
     })
+  })
+
+  it("keeps an Escape that closes the list from a dialog around it, and lets a closed one through", () => {
+    const open = tagInputKeyAction(key("Escape"), { activeIndex: 0, isOpen: true }, 3, "wo")
+    expect(open?.state.isOpen).toBe(false)
+    expect(open?.stopPropagation).toBe(true)
+    const shut = tagInputKeyAction(key("Escape"), closed, 3, "")
+    expect(shut?.stopPropagation).toBe(false)
   })
 
   it("picks the highlighted suggestion on Enter", () => {

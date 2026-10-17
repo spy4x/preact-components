@@ -16,6 +16,10 @@ import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.
  * a surrounding `<form>` from submitting on `Enter` and stops Safari from clearing the input on
  * `Escape`. Consuming them while closed changes no state, so they are no-ops in that column.
  *
+ * An `Escape` that closes an open list also stops there: it does not bubble on to a surrounding
+ * `Modal`, so the first press closes the list and the second closes the dialog. A closed combobox
+ * lets `Escape` bubble, so the dialog around it still closes on one press.
+ *
  * | Key                   | Closed                                    | Open                                    |
  * | --------------------- | ----------------------------------------- | --------------------------------------- |
  * | `ArrowDown`           | opens, activates the first option         | activates the next option, wrapping     |
@@ -24,7 +28,7 @@ import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.
  * | `Alt`+`ArrowUp`       | closes (already closed: no-op)            | closes                                  |
  * | `Home` / `End`        | not consumed, so the caret keeps them      | activates the first / last option       |
  * | `Enter`               | consumed, no-op                           | selects the active option, closes       |
- * | `Escape`              | consumed, no-op                           | closes and drops the query              |
+ * | `Escape`              | consumed, no-op, reaches a dialog         | closes, drops the query, stops there    |
  * | `Tab`                 | not consumed anywhere                     | list closes when focus leaves the input |
  */
 export type ComboboxKey =
@@ -165,6 +169,11 @@ export interface ComboboxKeyAction {
   state: ComboboxState
   /** Call `preventDefault()`. `false` for the keys the browser still owns, `Home`/`End` while closed. */
   preventDefault: boolean
+  /**
+   * Call `stopPropagation()`. `true` only for `Escape` while the list is open: that press is the
+   * list's, so a dialog around the combobox must not close on it too.
+   */
+  stopPropagation?: boolean
   /** Select `items[index]` and close. `-1` when the key selects nothing. */
   select: number
 }
@@ -194,12 +203,14 @@ export function comboboxKeyAction(
   const target = nextComboboxState(state, key, count)
   const next: ComboboxState = { activeIndex: target.activeIndex, isOpen: target.isOpen }
   const caret = key === "Home" || key === "End"
-  if (key === "Escape") return { state: next, preventDefault: true, select: -1 }
+  if (key === "Escape") {
+    return { state: next, preventDefault: true, stopPropagation: state.isOpen, select: -1 }
+  }
   if (key === "Enter") {
     const chosen = state.isOpen && state.activeIndex >= 0 ? state.activeIndex : -1
-    return { state: next, preventDefault: true, select: chosen }
+    return { state: next, preventDefault: true, stopPropagation: false, select: chosen }
   }
-  return { state: next, preventDefault: !caret || state.isOpen, select: -1 }
+  return { state: next, preventDefault: !caret || state.isOpen, stopPropagation: false, select: -1 }
 }
 
 /**
@@ -861,6 +872,7 @@ export function Combobox<T>({
       isOpen: isOpen.value,
     }, visible.length)
     if (action.preventDefault) event.preventDefault()
+    if (action.stopPropagation) event.stopPropagation()
     if (action.select >= 0) {
       const item = visible[action.select]
       if (item !== undefined) select(item)
