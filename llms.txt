@@ -548,6 +548,7 @@ DateRangePicker	component	@spy4x/preact-ui	Preset menu plus a custom from/to pan
 DateRangePickerTimeProps	type	@spy4x/preact-ui	`AnyDateRangePickerProps` with `withTime` on: From and To are `datetime-local` fields, and the panel also offers `"last-hour"` and `"last-24-hours"`, the two presets that only make sense with a time of day.
 DateRangePreset	type	@spy4x/preact-ui	Every preset the maths knows.
 DateRangePresetOption	type	@spy4x/preact-ui	One option of the preset list: the maths identifier plus the caller's label for it.
+DateTextLabels	type	@spy4x/preact-ui	The words `OnDay` shows around a date.
 DateTimeOccurrences	type	@spy4x/preact-ui	The occurrence chosen for each end of a range; an end left out means `"earlier"`.
 DateTimeRange	type	@spy4x/preact-ui	Inclusive wall-clock range, minute precision, in the caller's zone.
 DialogRect	type	@spy4x/preact-ui	Rectangle in viewport coordinates: a structural subset of `DOMRect`, so tests need no DOM.
@@ -573,6 +574,7 @@ FileInput	component	@spy4x/preact-ui	File picker built on a real `<input type="f
 FileRejection	type	@spy4x/preact-ui	One file a `FileInput` refused, and why.
 FocusAfterRemovalOptions	type	@spy4x/preact-ui	Options of `useFocusAfterRemoval`.
 FocusableElement	type	@spy4x/preact-ui	Anything the browser can move focus to.
+FormatContext	component	@spy4x/preact-ui	The formatter the components read.
 Grid	component	@spy4x/preact-ui	Equal columns that fill the width: as many as fit at `minColumnWidth`, a named `gap` apart.
 GridColumnWidth	type	@spy4x/preact-ui	The narrowest a `Grid` column may get before the grid drops a column.
 GroupSplit	type	@spy4x/preact-ui	How an `AvatarGroup` splits its members between the stack and the `+N` chip.
@@ -612,6 +614,7 @@ MoneyInputRangeMessage	type	@spy4x/preact-ui	A `MoneyInputProps.rangeMessage` fu
 MoreMenu	component	@spy4x/preact-ui	A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list.
 Notice	component	@spy4x/preact-ui	A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed.
 NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`).
+OnDay	component	@spy4x/preact-ui	A calendar day in the person's format (`FormatContext`), `17 Oct 2026`, in a `<time datetime>` whose hover text is the exact instant.
 OnOffButtons	component	@spy4x/preact-ui	Segmented ON/OFF pair, optionally annotated with counts.
 OnboardingChecklist	component	@spy4x/preact-ui	A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one primary button, and Dismiss.
 OnboardingStep	type	@spy4x/preact-ui	One step of an `OnboardingChecklist`.
@@ -699,7 +702,9 @@ UnsavedClick	type	@spy4x/preact-ui	The parts of a click that decide whether the 
 UnsavedGuard	component	@spy4x/preact-ui	Asks before a person leaves a page with unsaved changes.
 UnsavedLink	type	@spy4x/preact-ui	The parts of a link that decide where it goes.
 UpgradePrompt	component	@spy4x/preact-ui	A short message and an upgrade link, shown in place of a feature the current plan does not include.
+WHEN_LABELS	constant	@spy4x/preact-ui	The English words `When` and `OnDay` show when the caller passes none.
 WallClockOccurrence	type	@spy4x/preact-ui	Which of the two instants a repeated wall-clock time names: before or after the clocks go back.
+When	component	@spy4x/preact-ui	A moment as its distance from now, `3 days ago`, in a `<time datetime>` whose hover text is the exact instant in the person's format (`FormatContext`).
 WindowFrame	component	@spy4x/preact-ui	Draws a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
 WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` draws around its content.
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
@@ -803,6 +808,7 @@ useApplePlatform	hook	@spy4x/preact-ui	Whether this browser is an Apple platform
 useFocusAfterRemoval	hook	@spy4x/preact-ui	Keeps focus on the page when a row leaves a list because its own removal went through.
 useFocusOnChange	hook	@spy4x/preact-ui	Moves focus to an element when a value, such as the step of a flow, differs from the one the component mounted with.
 useFocusOnError	hook	@spy4x/preact-ui	Moves focus to an element each time a new error arrives, so a failed submit lands on it.
+useFormat	hook	@spy4x/preact-ui	The formatter of the person whose screen this is: the nearest `FormatContext` value.
 useFreshError	hook	@spy4x/preact-ui	Hides an error left from an earlier attempt, so a dialog opened again does not start on the last refusal.
 useHotkeyClick	hook	@spy4x/preact-ui	Bind a key to one element: pressing it clicks the element through `clickByHotkey`.
 useHotkeys	hook	@spy4x/preact-ui	Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches.
