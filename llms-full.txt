@@ -3672,6 +3672,11 @@ overlay then holds `sidebarTop("overlay")`, the overflow entries (if any) and
 `alt=""`) and its `counter`; its label stays `labels.more`, so an app that puts the account there
 names it "Account". Without slots and `moreTab` the slot is "More" with three dots, as before.
 
+**A tab's label fits nine letters on a 390 px phone.** A tab has no side padding of its own, and
+its `<li>` keeps 1 px on each side, so "Dashboard" in the bar's 12 px type fits a fifth of the bar.
+A longer label still truncates with an ellipsis, as the last resort; every tab stays at least
+44 px wide and tall.
+
 **Nothing covers the page.** The rail is a column in the layout, and its contents stick to the top
 while the page scrolls. The tab bar sticks to the bottom but keeps its place in the flow, so the
 page's last line always ends above it; it pads itself by the bottom safe-area inset. Inside a

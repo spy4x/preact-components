@@ -219,7 +219,9 @@ const entryBase =
 const entryPlace: Record<Place, string> = {
   rail:
     "group/entry relative w-full flex-col justify-center gap-1 px-1 py-3 text-center lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2 lg:text-left lg:text-sm",
-  tab: "relative h-full w-full flex-col justify-center gap-1 px-1 py-1 text-center",
+  // No side padding in a tab, and 1 px on each side of its `<li>`: the 4 px each used to take made
+  // a nine-letter label such as "Dashboard" truncate in a fifth of a 390 px bar.
+  tab: "relative h-full w-full flex-col justify-center gap-1 px-0 py-1 text-center",
   sheet: "w-full gap-3 px-3 py-3 text-sm",
 }
 /** The label beside or under the icon. In the rail, an entry with an icon names itself silently. */
@@ -602,7 +604,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
       >
         <ul class="flex min-h-16">
           {tabs.map((item, index) => (
-            <li key={`${index}-${item.key}`} class="min-w-0 flex-1 p-1">
+            <li key={`${index}-${item.key}`} class="min-w-0 flex-1 px-px py-1">
               <Entry
                 item={item}
                 place="tab"
@@ -613,7 +615,7 @@ export function RailShell(props: RailShellProps): JSX.Element {
             </li>
           ))}
           {hasOverlay && (
-            <li class="min-w-0 flex-1 p-1">
+            <li class="min-w-0 flex-1 px-px py-1">
               <button
                 ref={moreRef}
                 type="button"

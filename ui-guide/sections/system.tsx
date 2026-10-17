@@ -1372,7 +1372,7 @@ function StateInitDemo() {
  * to a fragment that names nothing on the page, so a click the demo lets through moves no page.
  */
 const railShellItems: RailShellItem[] = [
-  { key: "home", label: "Home", href: "#rail-home", Icon: IconHome },
+  { key: "home", label: "Dashboard", href: "#rail-home", Icon: IconHome },
   { key: "projects", label: "Projects", href: "#rail-projects", Icon: IconFolder },
   { key: "notes", label: "Notes", href: "#rail-notes", Icon: IconBookOpen, counter: 3 },
   { key: "stats", label: "Stats", href: "#rail-stats", Icon: IconChartPie },

@@ -568,6 +568,42 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "RailShell below md: a nine-letter tab label fits its tab at 390 px, " +
+      "and every tab stays a 44 px target",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const bar = page.locator(`${await railFrameAtTopLevel(page)} [data-e2e="rail-shell-tabbar"]`)
+      await bar.scrollIntoViewIfNeeded()
+      // The window's scrollbar takes its width off the page, so the bar is a little narrower than
+      // 390 px here than on a phone, whose scrollbar overlays the page: a stricter test, not a
+      // looser one. It must still span the whole page, not a card inside it.
+      const barWidth = (await bar.boundingBox())?.width
+      const pageWidth = await page.evaluate(() => document.documentElement.clientWidth)
+      if (barWidth !== pageWidth || pageWidth > 390) {
+        throw new Error(`the bar is ${barWidth} px wide on a page of ${pageWidth} px`)
+      }
+      const label = bar.getByRole("link", { name: "Dashboard" }).getByText("Dashboard")
+      const fit = await label.evaluate((element) => ({
+        scroll: element.scrollWidth,
+        client: element.clientWidth,
+      }))
+      if (fit.scroll > fit.client) {
+        throw new Error(`"Dashboard" is clipped: ${fit.scroll} px of text in ${fit.client} px`)
+      }
+      const targets = bar.locator(`a, button`)
+      const count = await targets.count()
+      if (count !== 5) throw new Error(`the bar holds ${count} tabs, not five`)
+      for (let index = 0; index < count; index++) {
+        const box = await targets.nth(index).boundingBox()
+        if (!box || box.width < 44 || box.height < 44) {
+          throw new Error(`tab ${index + 1} is ${box?.width} by ${box?.height} px`)
+        }
+      }
+      return `"Dashboard" needs ${fit.scroll} px and has ${fit.client} px; five tabs of 44 px or more`
+    },
+  },
+  {
     name: "RailShell: the icon rail with its slots passes axe in dark mode",
     pageId: "system",
     colorScheme: "dark",
