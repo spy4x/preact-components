@@ -1416,7 +1416,21 @@ focus past the rail and the header's controls in one press. Left out, there is n
 
 **Colours are theme tokens read through `var()`,** each with the default palette's value as its
 fallback — the same pattern `theme/preset.css` uses — so the shell follows whichever palette the
-page sets and draws without the preset too.
+page sets and draws without the preset too. Each one stands 3:1 or more off the rail in light, dark
+and ink (#789):
+
+- **The focus ring** of every entry, the close button and `AccountMenu`'s full trigger is the
+  components' ring, `--color-ring` (the accent; step 400 in the dark palettes). Tailwind's
+  `outline-2` sets no colour, and the browser's own ring is near-black on a dark rail.
+- **The primary action** is `Button`'s primary fill. In the dark palettes that fill, accent step
+  600, is about 2.7:1 against the rail, so a 1 px border in step 400 draws its edge.
+- **A counter's badge** is the accent in light, and accent step 400 with dark text in the dark
+  palettes, where the near-black `--color-primary` read 1.2:1.
+- **The current entry** is tinted with the accent (step 100 in light, `--color-selected-soft` in
+  dark) and drawn in `--color-selected-text`, and in the desktop column a bar in that colour marks
+  its left edge, so in the 72 px rail, where the bold label is hidden, it still differs from a
+  hovered entry's neutral fill (#779). Ink's `--color-surface-active` and `--color-nav-active`
+  replace the tint and the colour when set.
 
 **Icons come from the caller** as a component (`Icon`), not an element, because every entry is drawn
 twice — in the rail, and in the tab bar or the overlay — and one element can only be mounted once.
@@ -1426,8 +1440,9 @@ The "More" glyph is three dots drawn inline, so the package gains no icon.
 place in it, `aria-current` from either `currentKey` or `currentPath`, the "More" button pointing at
 the dialog, every label's English default and override, each slot called with its places, the
 counter's badge and name, and the last slot's icon and counter. The sidebar's width, the slots'
-places at each width, the tooltip and its Escape, and the overlay's slots and focus return are
-proven in `pages/e2e/system.spec.ts`. The breakpoint switch, the layout, the
+places at each width, the tooltip and its Escape, the overlay's slots and focus return, and the
+contrast of the focus ring, the primary action, the badge and the current entry in every palette
+are proven in `pages/e2e/system.spec.ts`. The breakpoint switch, the layout, the
 dialog's keyboard and pointer behaviour, the focus moves, the header's banner role, the skip
 link's jump past the header and which link clicks `navigateLink` takes are proven in
 `pages/checks/system.ts`.
