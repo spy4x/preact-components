@@ -14,21 +14,28 @@ export interface ScrollRegion {
   name: string
   /** The arrow key that scrolls it, which also picks the axis that is read. */
   key: "ArrowRight" | "ArrowDown"
+  /** Its role; `group` when left out. */
+  role?: "group" | "region"
+  /** The viewport's width in pixels, for an area that scrolls only on a narrow screen. */
+  width?: number
 }
 
 /**
- * A spec proving a keyboard can scroll one area: it is a named group, the Tab key lands on it from
- * the stop before it, and an arrow key then moves its content.
+ * A spec proving a keyboard can scroll one area: it is a named group or region, the Tab key lands
+ * on it from the stop before it, and an arrow key then moves its content.
  *
  * @param region The area and what is expected of it.
  * @returns The spec.
  */
-export function scrollRegionSpec({ what, pageId, selector, name, key }: ScrollRegion): Spec {
+export function scrollRegionSpec(
+  { what, pageId, selector, name, key, role = "group", width }: ScrollRegion,
+): Spec {
   return {
     name: `${what}: Tab reaches the scrolling area, which is named, and an arrow key scrolls it`,
     pageId,
     run: async (page) => {
-      const region = page.locator(selector).and(page.getByRole("group", { name, exact: true }))
+      if (width !== undefined) await page.setViewportSize({ width, height: 800 })
+      const region = page.locator(selector).and(page.getByRole(role, { name, exact: true }))
       await region.waitFor()
       const horizontal = key === "ArrowRight"
       const room = await region.evaluate(

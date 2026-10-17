@@ -110,7 +110,7 @@ describe("DataTable", () => {
       />,
     )
 
-    expect(html).toContain("<caption>Invoices</caption>")
+    expect(html).toMatch(/<caption id="[^"]+">Invoices<\/caption>/)
   })
 
   it("hides the caption visually when captionHidden, without removing it", () => {
@@ -126,7 +126,7 @@ describe("DataTable", () => {
       />,
     )
 
-    expect(html).toContain('<caption class="sr-only">Invoices</caption>')
+    expect(html).toMatch(/<caption id="[^"]+" class="sr-only">Invoices<\/caption>/)
   })
 
   it("marks every header a column header, and only a sortable one a button", () => {

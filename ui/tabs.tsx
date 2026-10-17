@@ -84,7 +84,14 @@ const tabSelected = "border-selected text-selected"
 
 const tabIdle = "border-transparent text-muted hover:border-control hover:text-foreground"
 
-const panelBase = "pt-4 text-sm text-foreground focus-visible:outline-hidden"
+/**
+ * A panel is a Tab stop (`tabindex="0"`), as the ARIA tabs pattern asks when a panel may start with
+ * no focusable element of its own, so it draws the components' focus ring when a keyboard lands on
+ * it: 2px of `--color-ring` (`ring-focus`), set off by the page colour (`ring-offset-focus`). The
+ * browser's own outline is hidden because the ring replaces it.
+ */
+const panelBase =
+  "pt-4 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 
 /** `id` of the tab button controlling panel `tabId`. */
 function tabElementId(tabId: string): string {
