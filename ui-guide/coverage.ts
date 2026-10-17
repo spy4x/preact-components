@@ -56,7 +56,13 @@ export const COMPONENTS_WITHOUT_CARD: Record<PackageId, readonly AllowedExport[]
   ui: [],
   charts: [],
   map: [],
-  system: [],
+  system: [
+    {
+      name: "AccountTag",
+      reason:
+        "The badge `AccountMenu` and `AppShell` draw for `tag`; the AppShell card shows it with its admin panel switched on.",
+    },
+  ],
   crud: [],
   theme: [],
   signals: [],
