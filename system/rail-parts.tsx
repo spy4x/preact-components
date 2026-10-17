@@ -1,7 +1,8 @@
 /**
  * The parts `Rail` and `AppShell` share: the cell and tooltip classes, one navigation entry, the
  * counter badge, and the tooltip's placement. Internal to this package, so it is not in the
- * package's exports; import `Rail` or `AppShell` instead.
+ * package's exports; import `Rail` or `AppShell` instead. `rail.tsx` re-exports `RailCell` and the
+ * focus ring (as `railFocusRing`) for content in `Rail`'s slots.
  *
  * Every colour is a theme token read through `var()` with the default palette's value as its
  * fallback, the pattern `theme/preset.css` uses, so the rail follows whichever palette the page
@@ -156,6 +157,31 @@ export function RailTooltip({ children }: { children: ComponentChildren }): JSX.
     <span class={tooltip} aria-hidden="true" data-rail-tip="" data-e2e="rail-shell-tooltip">
       <span class={tooltipBubble}>{children}</span>
     </span>
+  )
+}
+
+/** {@link RailCell}'s props. */
+export interface RailCellProps {
+  /** The tooltip's words, such as the control's name. Hidden from assistive technology. */
+  tip: ComponentChildren
+  /** The cell's control, such as a `Dropdown` trigger carrying `railFocusRing`. */
+  children: ComponentChildren
+  /** `data-e2e` on the cell's wrapper. */
+  dataE2E?: string
+}
+
+/**
+ * A desktop cell for caller content in `Rail`'s `top` or `bottom` slot, drawn like the rail's own:
+ * the control with the rail's tooltip beside it, placed by `Rail` 8 px past the column, shown 300 ms
+ * after the pointer rests or at once on keyboard focus, and hidden after Escape, while the control's
+ * menu is open (`aria-expanded="true"`) and on a screen with no hover.
+ */
+export function RailCell({ tip, children, dataE2E }: RailCellProps): JSX.Element {
+  return (
+    <div class={cellGroup} data-rail-cell="" data-e2e={dataE2E}>
+      {children}
+      <RailTooltip>{tip}</RailTooltip>
+    </div>
   )
 }
 

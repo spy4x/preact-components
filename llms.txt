@@ -375,6 +375,7 @@ PushSettings	component	@spy4x/preact-system	Say whether this device gets notific
 PushSettingsAction	type	@spy4x/preact-system	The three things a person can ask for here.
 PushSettingsStatus	type	@spy4x/preact-system	What the block shows.
 Rail	component	@spy4x/preact-system	The frame: a skip link, the desktop column from `md` up, the page in `<main>`, the phone tab bar below `md`, and the sheet.
+RailCell	component	@spy4x/preact-system	A desktop cell for caller content in `Rail`'s `top` or `bottom` slot, drawn like the rail's own: the control with the rail's tooltip beside it, placed by `Rail` 8 px past the column, shown 300 ms after the pointer rests or at once on keyboard focus, and hidden after Escape, while the control's menu is open (`aria-expanded="true"`) and on a screen with no hover.
 RailCurrent	type	@spy4x/preact-system	How an entry is current: `"page"` when it is the page itself, `"true"` when the page is inside its section, such as a note's page under Notes.
 RailItem	type	@spy4x/preact-system	One destination in `RailProps.items`, or the `RailProps.primary` action.
 RailMoreTab	type	@spy4x/preact-system	`RailProps.moreTab`: what the phone bar's last slot shows in place of the three dots, such as the signed-in person's avatar, and a count on it.
@@ -416,6 +417,7 @@ describeCalendarDay	helper	@spy4x/preact-system	Default day description: the dat
 isCurrentLink	helper	@spy4x/preact-system	Whether `href` is the page `currentPath` names.
 offersKeepMine	helper	@spy4x/preact-system	Whether an item offers "Keep mine": the item says, or its reason decides.
 pageHeading	helper	@spy4x/preact-system	The element that names the current page: the first `<h1>` inside `main`, or `main` itself while the page has no `<h1>`.
+railFocusRing	helper	@spy4x/preact-system	The rail's keyboard focus ring, for a control a caller draws in a `RailCell`: 2 px in the components' ring colour, 2 px off the control, as on every rail entry.
 readStateInit	helper	@spy4x/preact-system	Read back the value a `StateInit` with the same `id` wrote into this page.
 reloadOnControllerChange	helper	@spy4x/preact-system	Reload once a new worker takes control of the page.
 seoHeadJsonLd	helper	@spy4x/preact-system	Build the JSON-LD `@graph` for a page: the caller's entities, then the breadcrumb.

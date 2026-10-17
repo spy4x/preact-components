@@ -63,7 +63,10 @@ export {
 } from "./account-menu.tsx"
 export {
   Rail,
+  RailCell,
+  type RailCellProps,
   type RailCurrent,
+  railFocusRing,
   type RailItem,
   type RailLabels,
   type RailMoreTab,

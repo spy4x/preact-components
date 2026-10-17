@@ -31,14 +31,13 @@ import {
 } from "./account-menu.tsx"
 import { Rail, type RailItem, type RailPlace } from "./rail.tsx"
 import {
-  cellGroup,
   currentStates,
   Entry,
   entryCurrent,
   entryIdle,
   focusRing,
   iconsCell,
-  RailTooltip,
+  RailCell,
   sectionRule,
 } from "./rail-parts.tsx"
 
@@ -319,7 +318,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
   const railBottom = (
     <>
       {news && (
-        <div class={cellGroup} data-rail-cell="" data-e2e="app-shell-connection">
+        <RailCell tip={connectionWord} dataE2E="app-shell-connection">
           <span
             aria-hidden="true"
             class={cn(
@@ -330,13 +329,12 @@ export function AppShell(props: AppShellProps): JSX.Element {
             <IconAlertTriangle class="size-6 shrink-0" />
             <span class="sr-only [@media(hover:none)]:not-sr-only">{connectionWord}</span>
           </span>
-          <RailTooltip>{connectionWord}</RailTooltip>
-        </div>
+        </RailCell>
       )}
       {bell && <Entry item={bell} place="rail" current={bellCurrent} {...entryPorts} />}
       {user
         ? (
-          <div class={cellGroup} data-rail-cell="" data-e2e="app-shell-account">
+          <RailCell tip={user.name} dataE2E="app-shell-account">
             <AccountMenu
               user={user}
               items={account.items}
@@ -351,8 +349,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               panelClasses={accountPanel}
               labels={{ ...labels?.accountMenu, trigger: triggerName }}
             />
-            <RailTooltip>{user.name}</RailTooltip>
-          </div>
+          </RailCell>
         )
         : (
           <div class="flex size-12 items-center justify-center">

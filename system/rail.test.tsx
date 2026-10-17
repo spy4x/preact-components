@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconHome } from "@spy4x/preact-icons"
-import { Rail, type RailItem, tabBarSlots } from "./rail.tsx"
+import { Rail, RailCell, railFocusRing, type RailItem, tabBarSlots } from "./rail.tsx"
 
 /** `count` items keyed `i1`…, each a link to `/i1`…. */
 function itemsOf(count: number): RailItem[] {
@@ -332,6 +332,42 @@ describe("Rail", () => {
     expect(rail.slice(rail.indexOf("</a>"))).toMatch(
       /aria-hidden="true" data-rail-tip data-e2e="rail-shell-tooltip"><span[^>]*>Home</,
     )
+  })
+
+  it("draws a RailCell in a slot with the same cell, tooltip and focus ring as an entry's", () => {
+    const html = render(
+      <Rail
+        items={[{ key: "home", label: "Home", href: "/", Icon: IconHome }]}
+        top={(place) =>
+          place === "rail" && (
+            <RailCell tip="Acme" dataE2E="switcher-cell">
+              <button type="button" class={railFocusRing}>A</button>
+            </RailCell>
+          )}
+      >
+        page
+      </Rail>,
+    )
+    const cellOf = (part: string) => part.match(/<div class="([^"]*)" data-rail-cell[ >]/)?.[1]
+    const tipOf = (part: string) =>
+      part.match(
+        /<span class="([^"]*)" aria-hidden="true" data-rail-tip data-e2e="rail-shell-tooltip"><span class="([^"]*)">([^<]*)</,
+      )?.slice(1)
+    // The top zone alone: from its wrapper up to the list's `<nav>`.
+    const top = html.slice(
+      html.indexOf('data-e2e="rail-shell-top"'),
+      html.indexOf('data-e2e="rail-shell-rail"'),
+    )
+    const rail = region(html, "rail-shell-rail", "nav")
+    expect(top).toContain('data-rail-cell data-e2e="switcher-cell"')
+    expect(cellOf(top)).toBeDefined()
+    expect(cellOf(top)).toBe(cellOf(rail))
+    const [tipClass, bubbleClass, words] = tipOf(top) ?? []
+    expect(words).toBe("Acme")
+    expect([tipClass, bubbleClass]).toEqual(tipOf(rail)?.slice(0, 2))
+    const entryClass = rail.match(/<a [^>]*class="([^"]*)"/)?.[1] ?? ""
+    for (const ring of railFocusRing.split(" ")) expect(entryClass.split(" ")).toContain(ring)
+    expect(top).toContain(`<button type="button" class="${railFocusRing}">A</button>`)
   })
 
   it("draws the labels variant's label visibly and gives it no tooltip", () => {
