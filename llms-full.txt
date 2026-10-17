@@ -5970,8 +5970,9 @@ field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leav
 Mac, where it deletes to the end of the line; a caller who lists `ctrl+k` takes it from every
 field. The page behind does not scroll while the palette is open (a page already locked, by an open
 `Modal` or by an app's own CSS class, stays as it is), and the highlighted result is scrolled
-into view as it moves. On a phone the button is an icon, the dialog fills the screen and every
-result row is at least 44 px tall. A long label stops at two lines and a long `detail` at one.
+into view as it moves: the listbox is the box that scrolls, so focus stays in the field. On a
+phone the button is an icon, the dialog fills the screen, and the close button and every result
+row are at least 44 px tall. A long label stops at two lines and a long `detail` at one.
 
 While an input method is still composing a word, the results stay those of the text from before
 and no `search` is asked; they follow once the word is finished. Enter and Escape pressed to

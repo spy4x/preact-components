@@ -103,15 +103,39 @@ describe("CommandPalette", () => {
     expect(html).toMatch(/<kbd[^>]*>Strg<\/kbd>/)
   })
 
-  it("lists grouped options under a heading that names their group", () => {
+  it("lists grouped options in a list group named by its heading, in a role-less list item", () => {
     const html = render(<CommandPalette options={options} onSelect={() => {}} />)
     const heading = html.match(
-      /<li role="group" aria-labelledby="([^"]+)"><div id="([^"]+)"[^>]*>Components</,
+      /<li role="none"><ul role="group" aria-labelledby="([^"]+)"><li id="([^"]+)" role="presentation"[^>]*>Components</,
     )
     expect(heading).not.toBeNull()
     expect(heading?.[1]).toBe(heading?.[2])
     // The unheaded option comes first, so it is the first option the arrows reach.
     expect(html.indexOf(">Home<")).toBeLessThan(html.indexOf(">Badge<"))
+  })
+
+  it("makes the listbox the results' scroll box, so the box that scrolls is the combobox's popup", () => {
+    const html = render(<CommandPalette options={options} onSelect={() => {}} />)
+    const listbox = html.match(/<ul id="([^"]+)" role="listbox"[^>]*class="([^"]*)"/)
+    expect(listbox?.[2].split(" ")).toContain("overflow-y-auto")
+    expect(html).toContain(`aria-controls="${listbox?.[1]}"`)
+    expect(html.match(/overflow-y-auto/g)).toHaveLength(1)
+  })
+
+  it("draws the field as a text combobox with a search keyboard, so no second clear button shows", () => {
+    const html = render(<CommandPalette options={options} onSelect={() => {}} />)
+    expect(html).toMatch(
+      /<input type="text" inputmode="search" enterkeyhint="search" role="combobox"/,
+    )
+    expect(html).not.toContain(`type="search"`)
+  })
+
+  it("gives the close button a 44 px touch target below sm and 36 px from sm", () => {
+    const html = render(<CommandPalette options={options} onSelect={() => {}} dataE2E="palette" />)
+    const close = html.match(
+      /<button type="button" aria-label="[^"]+" data-e2e="palette-close" class="([^"]*)"/,
+    )
+    expect(close?.[1].split(" ")).toEqual(expect.arrayContaining(["size-11", "sm:size-9"]))
   })
 
   it("names each result after its option's id, so another option in a row gets another id", () => {
