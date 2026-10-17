@@ -104,6 +104,16 @@ describe("Tabs", () => {
     expect(tagWithId(html, "one-tab")).toContain('tabindex="-1"')
   })
 
+  it("keeps every panel a Tab stop that draws the components' focus ring", () => {
+    const html = render(<Tabs tabs={twoTabs} active="overview" onChange={() => {}} />)
+
+    for (const id of ["overview-panel", "settings-panel"]) {
+      const panel = tagWithId(html, id)
+      expect(panel).toContain('tabindex="0"')
+      for (const utility of FOCUS_RING) expect(panel).toContain(utility)
+    }
+  })
+
   it("falls back to the first tab when active matches nothing", () => {
     const html = render(<Tabs tabs={fourTabs} active="gone" onChange={() => {}} />)
 
@@ -281,6 +291,14 @@ function countOccurrences(haystack: string, needle: string): number {
 }
 
 /** The opening tag of the single element carrying `id="…"`. */
+/** The utilities of the components' focus ring, as `Button` and the tab buttons draw it. */
+const FOCUS_RING = [
+  "focus-visible:ring-2",
+  "focus-visible:ring-focus",
+  "focus-visible:ring-offset-2",
+  "focus-visible:ring-offset-focus",
+]
+
 function tagWithId(html: string, id: string): string {
   const match = html.match(new RegExp(`<[a-z]+[^>]*\\bid="${id}"[^>]*>`))
   if (match === null) throw new Error(`no element carries id="${id}"`)
