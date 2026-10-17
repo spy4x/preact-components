@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconHome } from "@spy4x/preact-icons"
-import { AppShell, type AppShellItem, type AppShellProps, connectionIsNews } from "./app-shell.tsx"
+import { AppShell, type AppShellItem, type AppShellProps } from "./app-shell.tsx"
 
 /** `count` destinations keyed `i1`…, each a link to `/i1`…. */
 function itemsOf(count: number): AppShellItem[] {
@@ -99,8 +99,6 @@ describe("AppShell", () => {
       expect(html).not.toContain("app-shell-connection")
       expect(html).not.toContain("app-shell-offline-strip")
     }
-    expect(connectionIsNews("closed")).toBe(true)
-    expect(connectionIsNews("open")).toBe(false)
   })
 
   it("orders the bottom zone: connection, bell, account", () => {

@@ -1272,8 +1272,6 @@ component's subpath.
   `Rail` adds the section match described in its contract.
 - `TAB_BAR_SLOTS` is `5`, the number of slots in `Rail`'s phone tab bar, "More" included, and
   `tabBarSlots(items, primary?, reserveMore?)` splits the entries between the bar and the sheet.
-- `connectionIsNews(connection)` answers whether `AppShell` draws a connection: `true` for
-  `"idle"`, `"closed"` and `"reconnecting"`, the states a person should know about.
 - `serviceWorkerContainer(host)` returns `host.serviceWorker`, by default from
   `globalThis.navigator`, or `undefined` where there is none, such as on the server.
 - `skipWaiting(registration, message)` posts `message` (by default `DEFAULT_UPDATE_MESSAGE`,
@@ -1476,7 +1474,7 @@ panel. An app passes data, never markup: its destinations, the signed-in person,
 the connection and the page. It is `Rail`'s icons variant with the bottom zone filled in, and it
 draws no brand mark and no top bar: the page starts with its own `PageHeader`.
 
-- **The bottom zone,** in order: the connection while it is news (see `connectionIsNews`), a
+- **The bottom zone,** in order: the connection while it is news (`"idle"`, `"closed"` or `"reconnecting"`), a
   warning cell with a tooltip; the bell, a link named with its count ("Notifications, 3 unread");
   and the account, `AccountMenu` drawn as the avatar with its `header` row, opening beside the
   column. While `account.user` is unknown, a plain placeholder stands in its place and no menu is

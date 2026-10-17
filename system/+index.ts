@@ -82,7 +82,6 @@ export {
   type AppShellLabels,
   type AppShellNotifications,
   type AppShellProps,
-  connectionIsNews,
 } from "./app-shell.tsx"
 export {
   RailShell,

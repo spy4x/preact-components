@@ -158,7 +158,7 @@ const CONNECTION_WORDS: Record<AppShellConnection, string> = {
 }
 
 /** Whether the connection is news to the person: not live, and not about to be. */
-export function connectionIsNews(connection: AppShellConnection | undefined): boolean {
+function connectionIsNews(connection: AppShellConnection | undefined): boolean {
   return connection === "idle" || connection === "closed" || connection === "reconnecting"
 }
 
