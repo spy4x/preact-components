@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-map",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "exports": {
     ".": "./+index.ts"
   },
