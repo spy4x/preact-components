@@ -64,6 +64,10 @@ import { ConflictChooser, type ConflictItem } from "@spy4x/preact-system/conflic
 import { InstallPrompt } from "@spy4x/preact-system/install-prompt"
 import { SyncStatus } from "@spy4x/preact-system/sync-status"
 import { SavedCopyNotice } from "@spy4x/preact-system/saved-copy-notice"
+import {
+  UnsentChangesDialog,
+  type UnsentChangesState,
+} from "@spy4x/preact-system/unsent-changes-dialog"
 import { createInstallPrompt, type InstallPromptEvent } from "@spy4x/preact-signals/install-prompt"
 import {
   Avatar,
@@ -1905,6 +1909,91 @@ function ConflictChooserDemo() {
   )
 }
 
+/**
+ * `UnsentChangesDialog` at a sign-out, with a pretend queue of three changes. "Send, then sign out"
+ * sends one change every 700 ms, as an outbox would, and signs out once none is left. With "One
+ * needs a choice" the last change never sends, so the dialog turns into "Review changes"; with
+ * "Offline" nothing sends at all. The log says which way the dialog closed.
+ */
+function UnsentChangesDialogDemo() {
+  const open = useSignal(false)
+  const withConflict = useSignal(false)
+  const offline = useSignal(false)
+  const state = useSignal<UnsentChangesState>("ask")
+  const unsent = useSignal(3)
+  const sent = useSignal(0)
+  const log = useSignal<string[]>([])
+  const conflicts = withConflict.value ? 1 : 0
+  const close = (how: string) => {
+    open.value = false
+    log.value = [...log.value, how]
+  }
+
+  useEffect(() => {
+    if (!open.value || state.value !== "sending") return
+    const timer = setInterval(() => {
+      if (unsent.value <= conflicts) return
+      unsent.value -= 1
+      sent.value += 1
+      if (unsent.value === 0) close("signed out after sending")
+    }, 700)
+    return () => clearInterval(timer)
+  }, [open.value, state.value, conflicts])
+
+  return (
+    <Stack gap="md" data-e2e="unsent-demo">
+      <Cluster gap="sm">
+        <Button
+          data-e2e="unsent-demo-sign-out"
+          onClick={() => {
+            state.value = "ask"
+            unsent.value = 3
+            sent.value = 0
+            open.value = true
+          }}
+        >
+          Sign out
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="unsent-demo-conflict"
+          aria-pressed={withConflict.value}
+          onClick={() => (withConflict.value = !withConflict.value)}
+        >
+          One needs a choice
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="unsent-demo-offline"
+          aria-pressed={offline.value}
+          onClick={() => (offline.value = !offline.value)}
+        >
+          Offline
+        </Button>
+      </Cluster>
+      {open.value
+        ? (
+          <UnsentChangesDialog
+            unsent={unsent.value}
+            conflicts={conflicts}
+            sent={sent.value}
+            state={state.value}
+            onSend={() => (state.value = offline.value ? "offline" : "sending")}
+            onSignOut={() => close("signed out anyway")}
+            onCancel={() => close("cancelled")}
+            onReview={() => close("review")}
+          />
+        )
+        : null}
+      <ol data-e2e="unsent-demo-log" class="text-sm text-muted">
+        {log.value.map((line, index) => <li key={index}>{line}</li>)}
+      </ol>
+    </Stack>
+  )
+}
+
 const IPHONE = {
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Safari/604.1",
 }
@@ -2758,6 +2847,57 @@ const tags = seoHeadTags(head)`,
   onUseTheirs={(id) => outbox.useTheirs(byId(id)).then(refresh)}
 />`,
     render: () => <ConflictChooserDemo />,
+  },
+  UnsentChangesDialog: {
+    summary:
+      "Asks before signing out while changes wait to reach the server: send them first, sign out anyway, or stay; then shows the wait in the same dialog.",
+    wide: true,
+    props: [
+      {
+        name: "unsent",
+        type: "number",
+        description: "Changes still waiting, those that need a choice included.",
+      },
+      {
+        name: "conflicts",
+        type: "number",
+        description:
+          "How many of them the server refused. Once only these are left, the primary becomes Review changes.",
+      },
+      {
+        name: "sent",
+        type: "number",
+        description: "Sent since Send was pressed, for the progress bar.",
+      },
+      {
+        name: "state",
+        type: '"ask" | "sending" | "offline" | "retrying"',
+        description: "Where the wait stands; the caller owns the sending.",
+      },
+      {
+        name: "onSend / onSignOut / onCancel / onReview",
+        type: "() => void",
+        description: "One per action. Escape, the close control and the backdrop call onCancel.",
+      },
+      {
+        name: "labels",
+        type: "Partial<UnsentChangesDialogLabels>",
+        description: "Replaces any of the words.",
+      },
+    ],
+    snippet: `{asking.value && (
+  <UnsentChangesDialog
+    unsent={entries.value.length}
+    conflicts={entries.value.filter((e) => e.conflict).length}
+    sent={sent.value}
+    state={sending.value ? (online.value ? "sending" : "offline") : "ask"}
+    onSend={startSending}
+    onSignOut={signOut}
+    onCancel={() => (asking.value = false)}
+    onReview={openConflicts}
+  />
+)}`,
+    render: () => <UnsentChangesDialogDemo />,
   },
   InstallPrompt: {
     summary:
