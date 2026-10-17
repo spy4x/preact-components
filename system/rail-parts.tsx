@@ -36,9 +36,13 @@ export const rule = "border-[color:var(--color-border-subtle,oklch(0.928_0.006_2
 export const sectionRule =
   "divide-y divide-[color:var(--color-border-subtle,oklch(0.928_0.006_264.531))]"
 
-/** An entry at rest: a muted icon, the canvas step and the foreground under the pointer. */
+/**
+ * An entry at rest: a muted icon, the canvas step and the foreground under the pointer. Ink's hover
+ * step is its current row's surface, so in the rail ink hovers on the card step instead and the
+ * current cell keeps a fill of its own.
+ */
 export const entryIdle =
-  "text-[color:var(--color-muted-foreground,oklch(0.551_0.027_264.364))] hover:bg-[var(--color-hover,oklch(0.967_0.003_264.542))] hover:text-[color:var(--color-foreground,oklch(0.13_0.028_261.692))]"
+  "text-[color:var(--color-muted-foreground,oklch(0.551_0.027_264.364))] hover:bg-[var(--color-hover,oklch(0.967_0.003_264.542))] [[data-theme=ink]_&]:hover:bg-[var(--color-surface-card)] hover:text-[color:var(--color-foreground,oklch(0.13_0.028_261.692))]"
 
 /**
  * The current entry: a tint of the accent (step 100 in light, the selected tint in dark) with its
