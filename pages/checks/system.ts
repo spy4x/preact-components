@@ -6853,8 +6853,6 @@ const RAIL_SHELL_DIALOG = RAIL_SHELL + ' [data-e2e="rail-shell-dialog"]'
 const RAIL_SHELL_CLOSE = RAIL_SHELL + ' [data-e2e="rail-shell-close"]'
 const RAIL_SHELL_CONTENT = RAIL_SHELL + ' [data-e2e="rail-shell-content"]'
 const RAIL_SHELL_SKIP_LINK = RAIL_SHELL + ' [data-e2e="rail-shell-skip-link"]'
-const RAIL_SHELL_HEADER = RAIL_SHELL + ' [data-e2e="rail-shell-header"]'
-const RAIL_SHELL_ACCOUNT = RAIL_SHELL + ' [data-e2e="rail-shell-demo-account"]'
 const RAIL_SHELL_CURRENT = RAIL_SHELL + ' [data-e2e="rail-shell-demo-current"]'
 const RAIL_SHELL_LAST_LINE = RAIL_SHELL + ' [data-e2e="rail-shell-demo-last-line"]'
 
@@ -7027,8 +7025,7 @@ async function openRailShellByKey(devtools: Devtools, key: "Enter" | "Space"): P
  * `RailShell`: the rail at desktop width and the tab bar at phone width, switched by CSS alone; the
  * "More" overlay opened by real Enter and Space presses with focus moved inside, closed by a real
  * Escape and by a real backdrop click with focus back on "More", and closed by choosing an entry;
- * the skip link reaching `<main>`; and the `header` slot, a banner outside `<main>` that the skip
- * link jumps past.
+ * and the skip link reaching `<main>`.
  *
  * The viewport is set with `Emulation.setDeviceMetricsOverride` and cleared in `finally`, so every
  * block after this one sees the run's normal size. The overlay is a modal dialog in the top layer,
@@ -7051,8 +7048,6 @@ async function railShellChecks(devtools: Devtools): Promise<void> {
     )
 
     await railShellSkipLinkCheck(devtools)
-    await railShellHeaderBannerCheck(devtools)
-    await railShellSkipPastHeaderCheck(devtools)
     await railShellLinkPortChecks(devtools)
 
     await devtools.send("Emulation.setDeviceMetricsOverride", {
@@ -7595,176 +7590,6 @@ async function railShellLinkPortChecks(devtools: Devtools): Promise<void> {
     await setRailShellRouteLinks(devtools, true)
     // Back on the first entry, so the overlay checks after this one read the card they expect.
     await read(devtools, `(document.querySelector('${link("home")}')?.click(), 0)`, 0)
-  }
-}
-
-const RAIL_SHELL_WITH_HEADER = RAIL_SHELL + ' [data-e2e="rail-shell-demo-with-header"]'
-
-/**
- * Ticks or unticks the RailShell demo's "Draw a top bar" checkbox and waits until the header is
- * drawn or gone. The demo starts without it, as the house layout has no top bar, so the checks of
- * the `header` slot draw it first and take it away again in their `finally`.
- */
-async function setRailShellHeader(devtools: Devtools, on: boolean): Promise<boolean> {
-  await read(
-    devtools,
-    `(() => {
-      const box = document.querySelector('${RAIL_SHELL_WITH_HEADER}')
-      if (box && box.checked !== ${on}) box.click()
-      return true
-    })()`,
-    false,
-  )
-  return await poll(
-    () =>
-      read(
-        devtools,
-        `document.querySelector('${RAIL_SHELL_WITH_HEADER}')?.checked === ${on} && ` +
-          `Boolean(document.querySelector('${RAIL_SHELL_HEADER}')) === ${on}`,
-        false,
-      ),
-    3_000,
-  )
-}
-
-/** Where the shell's copy at page level is put while {@link railShellHeaderBannerCheck} reads it. */
-const RAIL_SHELL_PAGE_LEVEL = '[data-e2e="rail-shell-page-level-copy"]'
-
-/**
- * The `header` slot is a banner landmark: it sits outside `<main>`, and Chromium gives it the
- * `banner` role once the shell stands at page level, the way an app places it.
- *
- * The card cannot show the role itself: the guide draws every card inside an `<article>` within its
- * own `<main>`, and a `<header>` inside either is not a banner (Chromium calls it `sectionheader`). So the check copies the card's shell into
- * `<body>`, outside every sectioning element, reads the copy's role from the accessibility tree,
- * and removes the copy. The copy is invisible and click-through but still displayed, so it stays
- * in the tree; its ids are dropped so nothing on the page is duplicated by id.
- */
-async function railShellHeaderBannerCheck(devtools: Devtools): Promise<void> {
-  await setRailShellHeader(devtools, true)
-  const placed = await read(
-    devtools,
-    `(() => {
-      const header = document.querySelector('${RAIL_SHELL_HEADER}')
-      const main = document.querySelector('${RAIL_SHELL_CONTENT}')
-      const shell = document.querySelector('${RAIL_SHELL_FRAME}')?.firstElementChild
-      if (!header || !main || !shell) return { found: false }
-      const copy = shell.cloneNode(true)
-      copy.setAttribute("data-e2e", "rail-shell-page-level-copy")
-      for (const el of [copy, ...copy.querySelectorAll("[id]")]) el.removeAttribute("id")
-      copy.style.cssText = "position:fixed;inset:0;opacity:0;pointer-events:none"
-      document.body.append(copy)
-      return {
-        found: true,
-        outsideMain: !main.contains(header),
-        beforeMain: Boolean(header.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING),
-      }
-    })()`,
-    { found: false } as { found: boolean; outsideMain?: boolean; beforeMain?: boolean },
-  )
-  try {
-    const copied = placed.found
-      ? await readAxNodes(devtools, RAIL_SHELL_PAGE_LEVEL + ' [data-e2e="rail-shell-header"]')
-      : []
-    const inCard = placed.found ? await readAxNodes(devtools, RAIL_SHELL_HEADER) : []
-    check(
-      "RailShell's header renders before main and outside it, and at page level it is a banner",
-      placed.found && placed.outsideMain === true && placed.beforeMain === true &&
-        copied.length === 1 && copied[0].role === "banner" && !copied[0].ignored,
-      JSON.stringify({ placed, pageLevel: copied, inGuideCard: inCard }),
-    )
-  } finally {
-    await read(devtools, `(document.querySelector('${RAIL_SHELL_PAGE_LEVEL}')?.remove(), 0)`, 0)
-    await setRailShellHeader(devtools, false)
-  }
-}
-
-/**
- * The skip link jumps past the header: real Tab presses from the skip link reach the header's
- * button, so the header is reachable from it, and after a real Enter on the skip link puts focus on
- * `<main>`, the next real Tab press lands after `<main>`, never back in the header or the rail.
- */
-async function railShellSkipPastHeaderCheck(devtools: Devtools): Promise<void> {
-  await setRailShellHeader(devtools, true)
-  const restoreUrl = await watchRailShellAddress(devtools)
-  const focusSkipLink = () =>
-    read(
-      devtools,
-      `(() => {
-        const link = document.querySelector('${RAIL_SHELL_SKIP_LINK}')
-        link?.focus()
-        return Boolean(link) && document.activeElement === link
-      })()`,
-      false,
-    )
-  const onAccount = () =>
-    read(
-      devtools,
-      `document.activeElement === document.querySelector('${RAIL_SHELL_ACCOUNT}')`,
-      false,
-    )
-  try {
-    let presses = 0
-    let reached = false
-    if (await focusSkipLink()) {
-      while (presses < 20 && !reached) {
-        await pressKey(devtools, "Tab")
-        presses++
-        reached = await onAccount()
-      }
-    }
-    check(
-      "Tab from RailShell's skip link reaches the header's button",
-      reached,
-      reached ? `${presses} Tab presses` : "the header's button was not reached in 20 Tab presses",
-    )
-
-    const focused = await focusSkipLink()
-    if (focused) await pressKey(devtools, "Enter")
-    const onMain = focused && await poll(
-      () =>
-        read(
-          devtools,
-          `document.activeElement === document.querySelector('${RAIL_SHELL_CONTENT}')`,
-          false,
-        ),
-      3_000,
-    )
-    if (onMain) await pressKey(devtools, "Tab")
-    const next = await read(
-      devtools,
-      `(() => {
-        const active = document.activeElement
-        const main = document.querySelector('${RAIL_SHELL_CONTENT}')
-        const header = document.querySelector('${RAIL_SHELL_HEADER}')
-        const rail = document.querySelector('${RAIL_SHELL_RAIL}')
-        if (!active || !main || !header || !rail) return { found: false }
-        return {
-          found: true,
-          inHeader: header.contains(active),
-          inRail: rail.contains(active),
-          afterMain: Boolean(main.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING),
-          active: active.tagName + " " + (active.textContent ?? "").trim().slice(0, 40),
-        }
-      })()`,
-      { found: false } as {
-        found: boolean
-        inHeader?: boolean
-        inRail?: boolean
-        afterMain?: boolean
-        active?: string
-      },
-    )
-    check(
-      "after RailShell's skip link, the next Tab press lands past main, not in the header",
-      onMain && next.found && next.inHeader === false && next.inRail === false &&
-        next.afterMain === true,
-      JSON.stringify({ onMain, next }),
-    )
-  } finally {
-    await read(devtools, `(document.activeElement?.blur(), 0)`, 0)
-    await restoreRailShellAddress(devtools, restoreUrl)
-    await setRailShellHeader(devtools, false)
   }
 }
 

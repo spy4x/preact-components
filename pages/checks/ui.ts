@@ -1872,8 +1872,10 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-Dropdown": 4,
   "demo-CrudList": 3,
   "demo-Shell": 1,
-  // The workspace switcher and AccountMenu, each drawn for the sidebar, the rail and the overlay.
-  "demo-RailShell": 6,
+  // The workspace switcher and AccountMenu, each drawn for the rail and the overlay.
+  "demo-RailShell": 4,
+  // AccountMenu in the rail; the phone sheet lists the account's entries without a dropdown.
+  "demo-AppShell": 1,
   "demo-AccountMenu": 1,
   "demo-PageHeader": 2,
   "demo-MoreMenu": 1,
