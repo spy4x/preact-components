@@ -2569,14 +2569,15 @@ function remotePaletteSpecs(): Spec[] {
           // "slow" answers in twenty seconds: the kept rows and Searching… stay for the whole scan.
           await palette.field.fill("slow")
           await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
-          // Two rules are left out, both about markup older than this spec that axe flags with or
-          // without a search running: `aria-allowed-role` (each group heading sits in an
-          // `<li role="group">`) and `scrollable-region-focusable` (the results' scroll box holds no
-          // focusable element, as the options are reached through the field's
-          // `aria-activedescendant`). Everything else, colour contrast included, must pass.
+          // From `sm` up the seven rows overflow the list's 384 px, so the scan meets a list that
+          // scrolls: axe's `scrollable-region-focusable` has a scroll box to judge.
+          const scrolls = await palette.dialog.getByRole("listbox").evaluate((list) =>
+            list.scrollHeight > list.clientHeight
+          )
+          if (width >= 640 && !scrolls) throw new Error("the results list does not scroll")
+          // Every rule runs, colour contrast included.
           const { violations, passes } = await new AxeBuilder({ page })
             .include(`[data-e2e="palette-remote"]`)
-            .disableRules(["aria-allowed-role", "scrollable-region-focusable"])
             .analyze()
           if (violations.length > 0) {
             throw new Error(
@@ -2670,6 +2671,73 @@ function remotePaletteSpecs(): Spec[] {
         await palette.field.fill("zz")
         await palette.shows("Nothing matches.")
         await palette.idle.waitFor({ state: "attached" })
+      },
+    },
+    {
+      name: "CommandPalette at 1280 px: End scrolls the listbox itself, the results' scroll box, " +
+        "to the last row while focus stays in the field",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const list = palette.dialog.getByRole("listbox")
+        /** Whether the last row is highlighted and lies inside the list's box, which scrolls. */
+        const read = () =>
+          list.evaluate((box) => {
+            const id = document.querySelector(`[data-e2e="palette-remote"] [role="combobox"]`)
+              ?.getAttribute("aria-activedescendant")
+            const option = document.getElementById(id ?? "")
+            const row = option?.getBoundingClientRect()
+            const edge = box.getBoundingClientRect()
+            return {
+              last: option !== null &&
+                option === [...box.querySelectorAll(`[role="option"]`)].at(-1),
+              top: box.scrollTop,
+              scrolls: box.scrollHeight > box.clientHeight,
+              shown: row !== undefined && row.top >= edge.top && row.bottom <= edge.bottom,
+            }
+          })
+        await palette.field.press("End")
+        await page.waitForFunction(() => {
+          const box = document.querySelector(`[data-e2e="palette-remote"] [role="listbox"]`)
+          return box !== null && box.scrollTop > 0
+        })
+        const end = await read()
+        if (!end.last || !end.scrolls || !end.shown) {
+          throw new Error(
+            `after End: last row highlighted ${end.last}, list scrolls ${end.scrolls}, ` +
+              `highlighted row shown ${end.shown}`,
+          )
+        }
+        await palette.field.and(page.locator(":focus")).waitFor()
+        return `End scrolled the list to ${Math.round(end.top)} px`
+      },
+    },
+    {
+      name: "CommandPalette at 390 px: the close button is a 44 px square, and the field is a " +
+        "text combobox, so the browser draws no clear button of its own beside it",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page, 390)
+        const close = await palette.dialog.locator(`[data-e2e="palette-remote-close"]`)
+          .boundingBox()
+        if (close === null || Math.round(close.width) !== 44 || Math.round(close.height) !== 44) {
+          throw new Error(`the close button is ${close?.width}×${close?.height} px`)
+        }
+        const field = await palette.field.evaluate((input) => ({
+          type: (input as HTMLInputElement).type,
+          inputMode: (input as HTMLInputElement).inputMode,
+          enterKeyHint: (input as HTMLInputElement).enterKeyHint,
+        }))
+        if (
+          field.type !== "text" || field.inputMode !== "search" || field.enterKeyHint !== "search"
+        ) {
+          throw new Error(
+            `the field is type ${field.type}, inputmode ${field.inputMode}, enterkeyhint ` +
+              field.enterKeyHint,
+          )
+        }
+        await palette.dialog.getByRole("combobox", { name: "Search" }).waitFor()
+        return `close button ${close.width}×${close.height} px; field type ${field.type}`
       },
     },
     {

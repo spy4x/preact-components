@@ -492,7 +492,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
           <IconSearch class="size-4 shrink-0 text-muted" />
           <input
             ref={input}
-            type="search"
+            // A text field rather than `type="search"`, whose own clear button Chromium draws
+            // beside the close button: a second "×". The role is `combobox` either way, and the
+            // phone keyboard still offers its search key.
+            type="text"
+            inputMode="search"
+            enterkeyhint="search"
             role="combobox"
             aria-expanded="true"
             aria-controls={listbox}
@@ -535,39 +540,18 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-label={labels.close}
             data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-close`}
             onClick={close}
-            class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
+            class="-mr-2 flex size-11 shrink-0 sm:size-9 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
           >
             <IconXMark class="size-5" />
           </button>
         </div>
-        <div class="max-h-96 overflow-y-auto p-2 max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1">
-          <ul
-            id={listbox}
-            role="listbox"
-            aria-label={labels.search}
-            aria-busy={busy ? "true" : undefined}
-          >
-            {groups.map((group, groupIndex) =>
-              group.label === undefined ? group.options.map((option) => row(option, index++)) : (
-                <li
-                  key={`group ${group.label}`}
-                  role="group"
-                  aria-labelledby={`${id}-group-${groupIndex}`}
-                >
-                  <div
-                    id={`${id}-group-${groupIndex}`}
-                    role="presentation"
-                    class="px-3 pb-1 pt-3 text-xs font-medium text-muted"
-                  >
-                    {group.label}
-                  </div>
-                  <ul role="none">
-                    {group.options.map((option) => row(option, index++))}
-                  </ul>
-                </li>
-              )
-            )}
-          </ul>
+        {
+          /* The listbox is the scroll box itself, so the field's `aria-controls` names the box that
+          scrolls: a combobox's popup, which the arrow keys scroll by moving the highlight (the
+          effect above), while focus stays in the field. A plain box around it would scroll with
+          nothing in it to focus. */
+        }
+        <div class="flex min-h-0 flex-col max-sm:flex-1">
           {
             /* Always in the page, so a screen reader hears each change; shown only when there is no
             list to show it beside. */
@@ -575,10 +559,39 @@ export function CommandPalette<T extends CommandPaletteOption>(
           <p
             role="status"
             data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-status`}
-            class={flat.length === 0 ? "px-3 py-6 text-center text-sm text-muted" : "sr-only"}
+            class={flat.length === 0 ? "m-2 px-3 py-6 text-center text-sm text-muted" : "sr-only"}
           >
             {status}
           </p>
+          <ul
+            id={listbox}
+            role="listbox"
+            aria-label={labels.search}
+            aria-busy={busy ? "true" : undefined}
+            class={cn(
+              "max-h-96 overflow-y-auto max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1",
+              flat.length > 0 && "p-2",
+            )}
+          >
+            {groups.map((group, groupIndex) =>
+              group.label === undefined ? group.options.map((option) => row(option, index++)) : (
+                // A listbox holds options and groups of options; the `<li>` around the group is
+                // only there for the HTML list, so it has no role.
+                <li key={`group ${group.label}`} role="none">
+                  <ul role="group" aria-labelledby={`${id}-group-${groupIndex}`}>
+                    <li
+                      id={`${id}-group-${groupIndex}`}
+                      role="presentation"
+                      class="px-3 pb-1 pt-3 text-xs font-medium text-muted"
+                    >
+                      {group.label}
+                    </li>
+                    {group.options.map((option) => row(option, index++))}
+                  </ul>
+                </li>
+              )
+            )}
+          </ul>
         </div>
       </dialog>
     </>
