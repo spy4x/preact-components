@@ -58,7 +58,13 @@ import {
   type RailShellItem,
   type RailShellSidebarPlace,
 } from "@spy4x/preact-system/rail-shell"
-import { Rail, type RailItem, type RailVariant } from "@spy4x/preact-system/rail"
+import {
+  Rail,
+  RailCell,
+  railFocusRing,
+  type RailItem,
+  type RailVariant,
+} from "@spy4x/preact-system/rail"
 import {
   AppShell,
   type AppShellConnection,
@@ -1440,8 +1446,9 @@ const railShellWorkspaces = [
 const railShellUser = { name: "Uma Lee", email: "uma@example.com" }
 
 /**
- * The workspace switcher in the demo's `sidebarTop`: the workspace's mark and name, a mark alone in
- * the 72 px rail, and a menu of workspaces.
+ * The workspace switcher in the demo's `sidebarTop`: the workspace's mark and name, a menu of
+ * workspaces, and in the 72 px rail the mark alone in a `RailCell`, whose tooltip names the
+ * workspace as an entry's names its destination.
  */
 function RailShellDemoSwitcher(
   { place, current, onChoose }: {
@@ -1461,7 +1468,7 @@ function RailShellDemoSwitcher(
     </span>
   )
   const compact = place === "rail"
-  return (
+  const menu = (
     <Dropdown
       trigger={compact ? mark : (
         <>
@@ -1474,7 +1481,7 @@ function RailShellDemoSwitcher(
       )}
       triggerLabel={`Workspace: ${workspace.name}`}
       triggerClasses={compact
-        ? "flex w-full cursor-pointer justify-center rounded-md py-2 hover:bg-hover"
+        ? `flex w-full cursor-pointer justify-center rounded-md py-2 hover:bg-hover ${railFocusRing}`
         : "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-hover"}
       containerClasses="flex w-full"
       triggerDataE2E={`rail-shell-demo-switcher-${place}`}
@@ -1494,6 +1501,9 @@ function RailShellDemoSwitcher(
       ))}
     </Dropdown>
   )
+  return compact
+    ? <RailCell tip={workspace.name} dataE2E="rail-shell-demo-switcher-cell">{menu}</RailCell>
+    : menu
 }
 
 /**
@@ -2520,7 +2530,8 @@ useEffect(() => {
       {
         name: "switcher",
         type: "(place: RailPlace) => ComponentChildren",
-        description: "The workspace switcher, in the column's top zone and the sheet.",
+        description:
+          "The workspace switcher, in the column's top zone and the sheet. In the column, wrap its control in `RailCell` and give the control `railFocusRing`, so it gets the rail's tooltip and focus ring.",
       },
       {
         name: "width",
@@ -2550,6 +2561,20 @@ useEffect(() => {
     signOut: { label: "Sign out", action: "/sign-out" },
   }}
   connection={socketState}
+  switcher={(place) =>
+    place === "rail"
+      ? (
+        <RailCell tip={group.name}>
+          <Dropdown
+            trigger={<GroupMark group={group} />}
+            triggerLabel={\`Group: \${group.name}\`}
+            triggerClasses={\`size-10 rounded-md \${railFocusRing}\`}
+          >
+            {groupItems}
+          </Dropdown>
+        </RailCell>
+      )
+      : <GroupList />}
 >
   <Page />
 </AppShell>`,
