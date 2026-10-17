@@ -1711,9 +1711,10 @@ function RailDemo() {
           <p>
             Current: <strong data-e2e="rail-demo-current">{current.value}</strong>
           </p>
-          <p class="text-muted">
-            The labels variant renders on the server and needs no script: every cell is a link and
-            every label is printed.
+          <p class="text-muted" data-e2e="rail-demo-note">
+            {variant.value === "labels"
+              ? "Each label is printed under its icon, so the rail needs no script: every cell is a link."
+              : "Each label is a tooltip: rest the pointer on an icon, or reach it with Tab."}
           </p>
         </div>
       </Rail>
@@ -1732,7 +1733,7 @@ const appShellApps: Record<"product" | "admin", AppShellItem[]> = {
   ],
   admin: [
     { key: "users", label: "Users", href: "#admin-users", Icon: IconUsers },
-    { key: "workspaces", label: "Workspaces", href: "#admin-workspaces", Icon: IconFolder },
+    { key: "teams", label: "Teams", href: "#admin-teams", Icon: IconFolder },
     { key: "billing", label: "Billing", href: "#admin-billing", Icon: IconCreditCard },
     { key: "flags", label: "Flags", href: "#admin-flags", Icon: IconFlag },
     { key: "audit", label: "Audit log", href: "#admin-audit", Icon: IconShieldCheck },
