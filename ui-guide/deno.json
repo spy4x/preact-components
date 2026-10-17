@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui-guide",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "exports": {
     ".": "./+index.tsx",
     "./registry": "./registry.ts",
