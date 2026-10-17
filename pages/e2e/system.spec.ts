@@ -43,17 +43,9 @@ async function expectVisible(locator: Locator, visible: boolean, what: string): 
   }
 }
 
-/**
- * Run axe over `selector`, colour contrast included, and throw on any violation. `disabledRules`
- * leaves out rules the setup itself breaks, each named with its reason at the call.
- */
-async function expectAxeClean(
-  page: Page,
-  selector: string,
-  disabledRules: string[] = [],
-): Promise<string> {
-  const { violations, passes } = await new AxeBuilder({ page }).include(selector)
-    .disableRules(disabledRules).analyze()
+/** Run axe over `selector`, colour contrast included, and throw on any violation. */
+async function expectAxeClean(page: Page, selector: string): Promise<string> {
+  const { violations, passes } = await new AxeBuilder({ page }).include(selector).analyze()
   if (violations.length > 0) {
     throw new Error(
       violations.map((rule) => `${rule.id}: ${rule.help} (${rule.nodes.length})`).join("; "),
@@ -92,19 +84,41 @@ async function clickCancelled(item: Locator, modifiers: ("Control" | "Meta")[] =
 }
 
 /**
- * Move the `RailShell` card's frame out of the guide to the top level of the body, full width, and
- * return its selector. The guide draws the card inside its own `<main>` and a padded card, where
- * every node is in a landmark and the bar is narrower than the window; an app draws the shell as
- * the page itself, which is what the checks that call this need to see.
+ * Make the `RailShell` card's frame the whole page: the body's only child, full width, and return
+ * its locator. The guide draws the card inside its own `<main>` and a padded card, where every node
+ * is in a landmark and the bar is narrower than the window; an app draws the shell as the page
+ * itself, which is what the checks that call this need to see.
  */
-async function railFrameAtTopLevel(page: Page): Promise<string> {
+async function railFrameAlone(page: Page): Promise<Locator> {
   await rail(page, "rail-shell-column").evaluate((column) => {
     const frame = column.parentElement
     if (!frame) throw new Error("the column has no frame around it")
     frame.id = "e2e-rail-frame"
-    document.body.append(frame)
+    document.body.replaceChildren(frame)
   })
-  return "body > #e2e-rail-frame"
+  return page.locator("body > #e2e-rail-frame")
+}
+
+/**
+ * Run axe over the whole page and throw on any violation, or when the page-level `region` rule
+ * (content outside every landmark) or colour contrast was not measured. `region` runs only over a
+ * whole page, never over an `include`d part, so {@link expectAxeClean} cannot catch it.
+ */
+async function expectPageAxeClean(page: Page): Promise<string> {
+  // The page's own heading is the caller's content, and the demo's page has none of level one.
+  const skipped = ["page-has-heading-one"]
+  const { violations, passes } = await new AxeBuilder({ page }).disableRules(skipped).analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map((rule) =>
+        `${rule.id}: ${rule.help} (${rule.nodes.map((node) => node.target.join(" ")).join(", ")})`
+      ).join("; "),
+    )
+  }
+  for (const rule of ["region", "color-contrast"]) {
+    if (!passes.some((passed) => passed.id === rule)) throw new Error(`axe did not run ${rule}`)
+  }
+  return `${passes.length} axe rules passed`
 }
 
 /** Press one of the route demo's controls. */
@@ -551,19 +565,26 @@ export const specs: readonly Spec[] = [
       "at 1440 and 900 px and in the phone overlay",
     pageId: "system",
     run: async (page) => {
-      const FRAME = await railFrameAtTopLevel(page)
-      const frame = page.locator(FRAME)
-      // The guide's own `<main>` stays on the page beside the shell's, which an app never has.
-      const disabled = ["landmark-no-duplicate-main"]
+      const frame = await railFrameAlone(page)
       const results: string[] = []
+      const failures: string[] = []
+      // Every place is measured before the check fails, so a failure names each place it holds in.
+      const measure = async (place: string) => {
+        try {
+          results.push(`${place}: ${await expectPageAxeClean(page)}`)
+        } catch (error) {
+          failures.push(`${place}: ${error instanceof Error ? error.message : error}`)
+        }
+      }
       for (const width of [1440, 900]) {
         await page.setViewportSize({ width, height: 900 })
-        results.push(`${width} px: ${await expectAxeClean(page, FRAME, disabled)}`)
+        await measure(`${width} px`)
       }
       await page.setViewportSize({ width: 390, height: 844 })
       await frame.locator(`[data-e2e="rail-shell-more"]`).click()
       await frame.locator(`[data-e2e="rail-shell-dialog"]`).waitFor({ state: "visible" })
-      results.push(`overlay: ${await expectAxeClean(page, FRAME, disabled)}`)
+      await measure("overlay")
+      if (failures.length > 0) throw new Error(failures.join(" | "))
       return results.join("; ")
     },
   },
@@ -573,7 +594,7 @@ export const specs: readonly Spec[] = [
     pageId: "system",
     run: async (page) => {
       await page.setViewportSize({ width: 390, height: 844 })
-      const bar = page.locator(`${await railFrameAtTopLevel(page)} [data-e2e="rail-shell-tabbar"]`)
+      const bar = (await railFrameAlone(page)).locator(`[data-e2e="rail-shell-tabbar"]`)
       await bar.scrollIntoViewIfNeeded()
       // The window's scrollbar takes its width off the page, so the bar is a little narrower than
       // 390 px here than on a phone, whose scrollbar overlays the page: a stricter test, not a
