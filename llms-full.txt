@@ -3644,6 +3644,12 @@ and the item list scrolling on its own between them when the window is too short
 phone held sideways. Both slots are drawn twice in the column, once per width, and
 CSS shows one; a slot's controls therefore need no ids of their own, or ids that differ by place.
 
+**The column is a landmark.** It is an `<aside>` named by `labels.sidebar` ("Sidebar" by default),
+so the slots' controls, such as a workspace switcher, notifications and the account menu, sit
+inside a landmark like the navigation between them does. As a plain column, a page whose frame is
+`RailShell` left them outside every landmark, which axe reports as a `region` violation from `md`
+up. In the phone overlay they are inside the modal `<dialog>`.
+
 **Tooltips in the icon rail** are `aria-hidden` copies of the label, drawn on hover and on keyboard
 focus. Each is `position: fixed`, so the scrolling list does not clip it; the entry's own box,
 read on hover and focus, places it at the entry's right edge, so it needs JavaScript and shows

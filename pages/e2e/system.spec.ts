@@ -43,9 +43,17 @@ async function expectVisible(locator: Locator, visible: boolean, what: string): 
   }
 }
 
-/** Run axe over `selector`, colour contrast included, and throw on any violation. */
-async function expectAxeClean(page: Page, selector: string): Promise<string> {
-  const { violations, passes } = await new AxeBuilder({ page }).include(selector).analyze()
+/**
+ * Run axe over `selector`, colour contrast included, and throw on any violation. `disabledRules`
+ * leaves out rules the setup itself breaks, each named with its reason at the call.
+ */
+async function expectAxeClean(
+  page: Page,
+  selector: string,
+  disabledRules: string[] = [],
+): Promise<string> {
+  const { violations, passes } = await new AxeBuilder({ page }).include(selector)
+    .disableRules(disabledRules).analyze()
   if (violations.length > 0) {
     throw new Error(
       violations.map((rule) => `${rule.id}: ${rule.help} (${rule.nodes.length})`).join("; "),
@@ -81,6 +89,22 @@ async function clickCancelled(item: Locator, modifiers: ("Control" | "Meta")[] =
   const cancelled = await item.page().evaluate(() => (globalThis as Watched).e2eClickCancelled)
   if (cancelled === undefined) throw new Error("the click never reached the item")
   return cancelled
+}
+
+/**
+ * Move the `RailShell` card's frame out of the guide to the top level of the body, full width, and
+ * return its selector. The guide draws the card inside its own `<main>` and a padded card, where
+ * every node is in a landmark and the bar is narrower than the window; an app draws the shell as
+ * the page itself, which is what the checks that call this need to see.
+ */
+async function railFrameAtTopLevel(page: Page): Promise<string> {
+  await rail(page, "rail-shell-column").evaluate((column) => {
+    const frame = column.parentElement
+    if (!frame) throw new Error("the column has no frame around it")
+    frame.id = "e2e-rail-frame"
+    document.body.append(frame)
+  })
+  return "body > #e2e-rail-frame"
 }
 
 /** Press one of the route demo's controls. */
@@ -519,6 +543,28 @@ export const specs: readonly Spec[] = [
     run: async (page) => {
       await page.setViewportSize({ width: 1440, height: 900 })
       return await expectAxeClean(page, `${RAIL} [data-e2e="rail-shell-column"]`)
+    },
+  },
+  {
+    name:
+      "RailShell as the page frame: no content of the sidebar's slots sits outside a landmark, " +
+      "at 1440 and 900 px and in the phone overlay",
+    pageId: "system",
+    run: async (page) => {
+      const FRAME = await railFrameAtTopLevel(page)
+      const frame = page.locator(FRAME)
+      // The guide's own `<main>` stays on the page beside the shell's, which an app never has.
+      const disabled = ["landmark-no-duplicate-main"]
+      const results: string[] = []
+      for (const width of [1440, 900]) {
+        await page.setViewportSize({ width, height: 900 })
+        results.push(`${width} px: ${await expectAxeClean(page, FRAME, disabled)}`)
+      }
+      await page.setViewportSize({ width: 390, height: 844 })
+      await frame.locator(`[data-e2e="rail-shell-more"]`).click()
+      await frame.locator(`[data-e2e="rail-shell-dialog"]`).waitFor({ state: "visible" })
+      results.push(`overlay: ${await expectAxeClean(page, FRAME, disabled)}`)
+      return results.join("; ")
     },
   },
   {
