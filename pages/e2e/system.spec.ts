@@ -971,7 +971,8 @@ export const specs: readonly Spec[] = [
   },
   {
     name: "UnsentChangesDialog: while sending, the primary keeps focus as an aria-disabled busy " +
-      "button, the status line says each count once, and the dialog closes when none is left",
+      "button, the status line counts the sent changes up in order, and the dialog closes " +
+      "when none is left",
     pageId: "system",
     run: async (page) => {
       await openUnsentDialog(page)
