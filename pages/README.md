@@ -286,7 +286,13 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
   `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
   axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
   the number with it and the list only shrinks. axe reports what it cannot decide as
-  "incomplete", and the spec does not fail on those. For one component's markup, run
+  "incomplete": `KNOWN_INCOMPLETE` holds, per page, rule, reason and palette, how many such
+  elements are known, and one it does not know fails the spec. That count is a ceiling, since
+  whether axe can decide on an element hangs on font metrics: fewer does not fail. The demo
+  stage's dotted background is taken off before the scan, so the text on it is measured. A
+  further spec per page forces `:hover` on every hovered row and measures the contrast rule on
+  the rows that repaint, in the light, dark and ink palettes. Nothing that opens (a dialog, a
+  menu, a toast) is scanned; for one component's markup, run
   `new AxeBuilder({ page }).include(selector)` in that package's spec.
 - **How they run.** As the last block of `verify`'s browser phase, named `e2e`, after the blocks
   under `checks/`. Playwright attaches to the Chromium `verify` already launched

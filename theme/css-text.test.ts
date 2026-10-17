@@ -87,7 +87,8 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-border-control": "oklch(0.872 0.01 258.338)",
   "--color-foreground": "oklch(0.13 0.028 261.692)",
   "--color-muted-foreground": "oklch(0.446 0.03 256.802)",
-  "--color-placeholder": "oklch(0.551 0.027 264.364)",
+  // #695: placeholder text a step darker, so it reads at 4.5:1 on the canvas too.
+  "--color-placeholder": "oklch(0.54 0.027 264.364)",
   // #463: the light status text a step or two darker, so it reads at 4.5:1 on the surface and the
   // canvas; the fills below keep the steps the text tokens used to have.
   "--color-danger": "oklch(0.505 0.213 27.518)",
@@ -150,6 +151,8 @@ const EXPECTED_DARK_TOKENS: Record<string, string> = {
   "--color-placeholder": "oklch(0.707 0.022 261.325)",
   // #429: status text reads at 4.5:1 on the dark surface and canvas; the fills keep their steps.
   "--color-danger": "oklch(0.704 0.191 22.216)",
+  // #695: a dark label on that colour as a fill, where red-50 read 2.65:1.
+  "--color-danger-foreground": "oklch(0.258 0.092 26.042)",
   "--color-warning": "oklch(0.75 0.183 55.934)",
   "--color-success": "oklch(0.792 0.209 151.711)",
   "--color-warning-fill": "oklch(0.646 0.222 41.116)",

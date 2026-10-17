@@ -2,7 +2,7 @@
 import type { Spec } from "./runner.ts"
 import { scrollRegionSpec } from "./scroll-region.ts"
 
-/** The outline a checkbox draws, and the colour `--color-ring` resolves to beside it. */
+/** The outline a form control draws, and the colour `--color-ring` resolves to beside it. */
 interface Outline {
   style: string
   width: string
@@ -11,20 +11,19 @@ interface Outline {
   ringToken: string
 }
 
-export const specs: readonly Spec[] = [
-  scrollRegionSpec({
-    what: "the `.pc-scrollbar` card's row of months",
-    pageId: "theme",
-    selector: `#demo-class-scrollbar [data-e2e="scrollbar"]`,
-    name: "Months",
-    key: "ArrowRight",
-  }),
-  {
-    name: "a square `.pc-checkbox` reached with Tab draws the components' focus ring, and no " +
-      "outline before",
+/**
+ * A theme form control reached with Tab draws the components' focus ring, 2px solid in
+ * `--color-ring` at a 2px offset, and no outline before.
+ *
+ * @param what The control, as the spec's name says it.
+ * @param selector The control on the theme page; the first match is the one tabbed to.
+ */
+function focusRingSpec(what: string, selector: string): Spec {
+  return {
+    name: `${what} reached with Tab draws the components' focus ring, and no outline before`,
     pageId: "theme",
     run: async (page) => {
-      const box = page.locator("#demo-class-checkbox input.pc-checkbox").first()
+      const box = page.locator(selector).first()
       const outline = () =>
         box.evaluate((element): Outline => {
           const probe = document.createElement("span")
@@ -44,7 +43,7 @@ export const specs: readonly Spec[] = [
 
       const before = await outline()
       if (before.style !== "none") {
-        throw new Error(`an unfocused checkbox already draws a ${before.style} outline`)
+        throw new Error(`${what} draws a ${before.style} outline before it is focused`)
       }
 
       // Away and back with real key presses, so the focus arrives the way a keyboard user's does.
@@ -60,12 +59,24 @@ export const specs: readonly Spec[] = [
         focused.color !== focused.ringToken
       ) {
         throw new Error(
-          `the focused checkbox draws ${drawn}; wanted 2px solid ${focused.ringToken}, offset 2px`,
+          `${what}, focused, draws ${drawn}; wanted 2px solid ${focused.ringToken}, offset 2px`,
         )
       }
       return `${drawn} (--color-ring), none before`
     },
-  },
+  }
+}
+
+export const specs: readonly Spec[] = [
+  scrollRegionSpec({
+    what: "the `.pc-scrollbar` card's row of months",
+    pageId: "theme",
+    selector: `#demo-class-scrollbar [data-e2e="scrollbar"]`,
+    name: "Months",
+    key: "ArrowRight",
+  }),
+  focusRingSpec("a square `.pc-checkbox`", "#demo-class-checkbox input.pc-checkbox"),
+  focusRingSpec("a `.pc-radio`", "#demo-class-radio input.pc-radio"),
   {
     name: `ink: an app that sets --color-primary and --color-accent on :root keeps its colour ` +
       `under .dark and data-theme="ink", and links take the accent's step 400`,

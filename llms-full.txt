@@ -4307,10 +4307,11 @@ palette, sets the matching fill tokens too (`--color-danger-fill` and `--color-d
 `--color-warning-fill`, `--color-success-fill`), or its fills keep the library's colours. A
 repainted `--color-danger` also wants a matching `--color-danger-soft`, the background `ErrorState`
 draws its message on.
-`bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself, and
-`border-warning` and `border-success` read the warning and success text colours, `--color-warning`
-and `--color-success`, for a box's outline. `--color-danger-soft`, `--color-info-soft`,
-`--color-warning-soft` and `--color-success-soft` are the tinted backgrounds of an error or a
+`bg-danger`, `border-danger` and the unknown map marker read the danger text colour itself. A label
+on `bg-danger` takes `--color-danger-foreground`: red-50 in light (5.88:1 on red-700) and red-950 in
+dark (5.58:1 on red-400). `border-warning` and `border-success` read the warning and success text
+colours, `--color-warning` and `--color-success`, for a box's outline. `--color-danger-soft`,
+`--color-info-soft`, `--color-warning-soft` and `--color-success-soft` are the tinted backgrounds of an error or a
 `Notice`: the 50 step of each hue in light, the text hue at 25–30% over the page in dark. A
 repainted `--color-info`, `--color-warning` or `--color-success` wants its matching soft token too.
 
@@ -4444,7 +4445,9 @@ default dark palette — `--color-nav-active` and `--color-focus-ring`, split of
 so focus states and a rail's current item do not use the accent. `--color-nav-active` is a
 **foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
 background — the background a rail paints behind its current item is `--color-surface-active`
-above, a separate token. `--color-focus-ring` is read by three focus rules in `preset.css`:
+above, a separate token. A hovered row or ghost button takes that same surface: ink sets
+`--color-hover` to `--color-surface-active`, where its muted text reads 4.73:1 (on the default dark
+palette's gray-700 it read 3.58:1). `--color-focus-ring` is read by three focus rules in `preset.css`:
 `.btn`'s ring under any `.dark`, and the `.pc-input`/`.pc-select`/`.pc-textarea` outline. Each falls back to
 the accent, `--color-primary-muted`, where the token is not set, which is everywhere but ink. So the
 form fields draw the rings they drew before, and a focused `.btn` in default dark draws purple-400

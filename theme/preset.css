@@ -223,7 +223,7 @@
 }
 
 @utility text-placeholder {
-  color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+  color: var(--color-placeholder, oklch(0.54 0.027 264.364));
 }
 
 @utility bg-foreground {
@@ -603,7 +603,7 @@
   color: var(--color-foreground, oklch(0.13 0.028 261.692));
 
   &::placeholder {
-    color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+    color: var(--color-placeholder, oklch(0.54 0.027 264.364));
   }
 
   /* A native control draws itself in the page's colour scheme, not from the tokens. */
@@ -638,7 +638,7 @@
   color: var(--color-foreground, oklch(0.13 0.028 261.692));
 
   &::placeholder {
-    color: var(--color-placeholder, oklch(0.551 0.027 264.364));
+    color: var(--color-placeholder, oklch(0.54 0.027 264.364));
   }
 
   /* A native control draws itself in the page's colour scheme, not from the tokens. */
@@ -686,6 +686,17 @@
   @apply size-4;
   border-color: var(--color-border-control, oklch(0.872 0.01 258.338));
   color: var(--color-primary-muted, oklch(0.558 0.288 302.321));
+
+  /* The same ring as `.pc-checkbox`, for a keyboard user only, instead of the browser's own outline
+     or `@tailwindcss/forms`' shadow on every focus. */
+  &:focus {
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-ring, var(--color-accent-900, oklch(0.381 0.176 304.987)));
+    outline-offset: 2px;
+  }
 
   :where(.dark) & {
     color-scheme: dark;

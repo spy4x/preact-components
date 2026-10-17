@@ -95,7 +95,8 @@
     /* Text — base, secondary, placeholder. */
     --color-foreground: oklch(0.13 0.028 261.692); /* gray-950 */
     --color-muted-foreground: oklch(0.446 0.03 256.802); /* gray-600: AA on the canvas too */
-    --color-placeholder: oklch(0.551 0.027 264.364); /* gray-500 */
+    /* A step darker than gray-500, which read 4.39:1 on the canvas: 4.6:1 there, 5.06:1 on white. */
+    --color-placeholder: oklch(0.54 0.027 264.364);
 
     /* Status — text colours (`text-danger`, `text-warning`, `text-success`, metric readouts), each
        at 4.5:1 or better on the surface and the canvas (#463). The fills below keep their own,
@@ -170,6 +171,9 @@
 
     /* Status text: each reads at 4.5:1 or better on the surface and the canvas. */
     --color-danger: oklch(0.704 0.191 22.216); /* red-400 */
+    /* The label on that colour as a fill (`bg-danger`): red-950, 5.58:1 on red-400, where the light
+       palette's red-50 read 2.65:1. */
+    --color-danger-foreground: oklch(0.258 0.092 26.042); /* red-950 */
     --color-warning: oklch(0.75 0.183 55.934); /* orange-400 */
     --color-success: oklch(0.792 0.209 151.711); /* green-400 */
     /* The fills keep the light palette's steps, under the same labels as in light. */

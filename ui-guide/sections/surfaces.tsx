@@ -404,8 +404,8 @@ function TokenClassesDemo() {
         <span class={`bg-danger-fill-hover text-danger-fill-foreground ${swatch}`}>
           bg-danger-fill-hover
         </span>
-        {/* On a fixed red: the label reads below 4.5:1 on red-600, the light fill and dark hover. */}
-        <span class={`bg-red-700 text-danger-foreground ${swatch}`}>text-danger-foreground</span>
+        {/* On the danger colour itself: red-50 on red-700 in light, red-950 on red-400 in dark. */}
+        <span class={`bg-danger text-danger-foreground ${swatch}`}>text-danger-foreground</span>
         <span class={`bg-primary text-primary-foreground ${swatch}`}>text-primary-foreground</span>
         <span class={`bg-accent-900 text-accent-foreground ${swatch}`}>text-accent-foreground</span>
       </Cluster>
@@ -609,6 +609,7 @@ export const surfaceDemos = {
       "text-info-foreground",
       "bg-danger-fill",
       "bg-danger-fill-hover",
+      "bg-danger",
       "text-danger-foreground",
       "text-primary-foreground",
       "text-accent-foreground",
