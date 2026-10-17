@@ -220,7 +220,8 @@ const entryPlace: Record<Place, string> = {
   rail:
     "group/entry relative w-full flex-col justify-center gap-1 px-1 py-3 text-center lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2 lg:text-left lg:text-sm",
   // No side padding in a tab, and 1 px on each side of its `<li>`: the 4 px each used to take made
-  // a nine-letter label such as "Dashboard" truncate in a fifth of a 390 px bar.
+  // a nine-letter label such as "Dashboard" truncate in a fifth of a 390 px bar. The bar's two
+  // outer ends keep 4 px, so the first and last tabs' focus ring stays on screen.
   tab: "relative h-full w-full flex-col justify-center gap-1 px-0 py-1 text-center",
   sheet: "w-full gap-3 px-3 py-3 text-sm",
 }
