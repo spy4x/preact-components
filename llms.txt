@@ -337,6 +337,12 @@ AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose 
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
 AccountMenuTheme	type	@spy4x/preact-system	The theme preferences `AccountMenu` offers; `"system"` follows the device.
 AccountMenuUser	type	@spy4x/preact-system	The signed-in person `AccountMenu` names and draws.
+AccountTag	component	@spy4x/preact-system	The neutral role badge `AccountMenuProps.tag` draws.
+AppShell	component	@spy4x/preact-system	The frame every app draws: a skip link, the 72 px rail from `md`, the page in one centred column, and on a phone the tab bar and its sheet.
+AppShellAccount	type	@spy4x/preact-system	`AppShellProps.account`: the signed-in person and what their menu offers.
+AppShellConnection	type	@spy4x/preact-system	The realtime connection's state, as an app's socket reports it.
+AppShellItem	type	@spy4x/preact-system	One destination of `AppShellProps.items`: always a link with an icon.
+AppShellNotifications	type	@spy4x/preact-system	`AppShellProps.notifications`: where the bell leads and how many are unread.
 AuthCredentials	type	@spy4x/preact-system	What a credentials submit hands back.
 AuthForm	component	@spy4x/preact-system	Sign-in, sign-up and a one-time-code step, drawn from props and reported through callbacks.
 AuthFormError	type	@spy4x/preact-system	One error `AuthForm` shows.
@@ -368,10 +374,16 @@ PageHead	type	@spy4x/preact-system	Every field `SEOHead` renders, plus the JSON-
 PushSettings	component	@spy4x/preact-system	Say whether this device gets notifications, and turn them on or off.
 PushSettingsAction	type	@spy4x/preact-system	The three things a person can ask for here.
 PushSettingsStatus	type	@spy4x/preact-system	What the block shows.
-RailShell	component	@spy4x/preact-system	The frame: a skip link, the desktop column from `md` up, the caller's `header` above the page, the page in `<main>`, the phone tab bar below `md`, and the "More" overlay.
-RailShellItem	type	@spy4x/preact-system	One destination in `RailShellProps.items`, or the `RailShellProps.primary` action.
-RailShellMoreTab	type	@spy4x/preact-system	`RailShellProps.moreTab`: what the phone bar's last slot shows in place of the three dots, such as the signed-in person's avatar, and a count on it.
-RailShellSidebarPlace	type	@spy4x/preact-system	Where a sidebar slot is being drawn: the labelled sidebar from `lg`, the icon rail from `md` to `lg`, or the phone overlay.
+Rail	component	@spy4x/preact-system	The frame: a skip link, the desktop column from `md` up, the page in `<main>`, the phone tab bar below `md`, and the sheet.
+RailCurrent	type	@spy4x/preact-system	How an entry is current: `"page"` when it is the page itself, `"true"` when the page is inside its section, such as a note's page under Notes.
+RailItem	type	@spy4x/preact-system	One destination in `RailProps.items`, or the `RailProps.primary` action.
+RailMoreTab	type	@spy4x/preact-system	`RailProps.moreTab`: what the phone bar's last slot shows in place of the three dots, such as the signed-in person's avatar, and a count on it.
+RailPlace	type	@spy4x/preact-system	Where a caller slot is being drawn: the desktop column, or the phone sheet.
+RailShell	component	@spy4x/preact-system	`<Rail variant="icons">` with `sidebarTop` and `sidebarBottom` as its `top` and `bottom`.
+RailShellItem	type	@spy4x/preact-system	One destination in `RailShellProps.items`: a `Rail` item.
+RailShellMoreTab	type	@spy4x/preact-system	`RailShellProps.moreTab`: a `Rail` more tab.
+RailShellSidebarPlace	type	@spy4x/preact-system	Where a sidebar slot is being drawn: the desktop column, or the phone overlay.
+RailVariant	type	@spy4x/preact-system	`RailProps.variant`: icon cells with tooltips, or cells with a label under the icon.
 RegistrationLike	type	@spy4x/preact-system	The slice of `ServiceWorkerRegistration` this package uses.
 RouteAnnouncerOptions	type	@spy4x/preact-system	Options of `useRouteAnnouncer`.
 SEOHead	component	@spy4x/preact-system	Render the head tag set for a page.
@@ -392,13 +404,14 @@ StateInitElementLike	type	@spy4x/preact-system	One element, as `readStateInit` n
 StateInitSourceLike	type	@spy4x/preact-system	The one thing `readStateInit` needs from `document` — a seam a test can fake without a DOM.
 SyncState	type	@spy4x/preact-system	Which of the five states the line shows.
 SyncStatus	component	@spy4x/preact-system	Whether the app's offline changes have reached the server, in one compact line.
-TAB_BAR_SLOTS	constant	@spy4x/preact-system	The tab bar's slot count, "More" included.
+TAB_BAR_SLOTS	constant	@spy4x/preact-system	The tab bar's slot count, the sheet's slot included.
 TabBarSplit	type	@spy4x/preact-system	What `tabBarSlots` decides for the phone bar.
 UnsentChangesDialog	component	@spy4x/preact-system	The dialog to show when a person signs out with changes that have not reached the server.
 UnsentChangesState	type	@spy4x/preact-system	Where the dialog stands.
 UpdateStart	type	@spy4x/preact-system	Everything `startUpdates` needs beyond the container itself.
 UpdateWatcher	type	@spy4x/preact-system	Tuning for `watchForUpdate`.
 WorkerLike	type	@spy4x/preact-system	The slice of `ServiceWorker` this package uses.
+connectionIsNews	helper	@spy4x/preact-system	Whether the connection is news to the person: not live, and not about to be.
 createHeadStore	helper	@spy4x/preact-system	Build a head store from defaults.
 describeCalendarDay	helper	@spy4x/preact-system	Default day description: the date as the locale writes it, then why it cannot be picked.
 isCurrentLink	helper	@spy4x/preact-system	Whether `href` is the page `currentPath` names.
@@ -413,7 +426,7 @@ skipWaiting	helper	@spy4x/preact-system	Tell the waiting worker to take over.
 startUpdates	helper	@spy4x/preact-system	Register the service worker and watch that registration for an update.
 stateInitText	helper	@spy4x/preact-system	Serialise `data` for embedding inside `StateInit`'s `<script type="application/json">`.
 syncState	helper	@spy4x/preact-system	The state to show, most urgent first: offline, then failed, then syncing, then waiting.
-tabBarSlots	helper	@spy4x/preact-system	Split the entries between the phone tab bar and its "More" overlay.
+tabBarSlots	helper	@spy4x/preact-system	Split the entries between the phone tab bar and its sheet.
 useRouteAnnouncer	hook	@spy4x/preact-system	On a route change, set `document.title` and move focus to the new page's main heading.
 watchForUpdate	helper	@spy4x/preact-system	Watch a registration for an update and report each waiting worker once.
 AuthFormModeHrefs	type	@spy4x/preact-system/auth-form	The page of each mode, for `AuthFormProps.modeHrefs`.
@@ -424,10 +437,13 @@ BoundaryOptions	type	@spy4x/preact-system/boundary	What `boundaryPlugin` and `ch
 BoundaryRuleContext	type	@spy4x/preact-system/boundary	What a rule gets from Deno's linter: the file it runs over, and a way to report.
 BoundaryViolation	type	@spy4x/preact-system/boundary	One place `checkModule` found a module breaking the boundary.
 DEFAULT_FORBIDDEN_GLOBALS	constant	@spy4x/preact-system/boundary	Globals a screen must not read by default: each fetches, routes or reads the page.
+DEFAULT_FORBIDDEN_NAMES	constant	@spy4x/preact-system/boundary	Exports app code must not import by default: `RailShell`, because every app draws `AppShell`, which owns the frame, so no app builds its own chrome around the rail.
 DEFAULT_FORBIDDEN_PACKAGES	constant	@spy4x/preact-system/boundary	Import sources a screen must not use by default: signals stores and the router.
+ForbiddenName	type	@spy4x/preact-system/boundary	One export a module must not import by name, and why: `BoundaryOptions.forbiddenNames`.
 boundaryPlugin	helper	@spy4x/preact-system/boundary	Build the Deno lint plugin `ui` with one rule, `boundary`, from the lists in `options`.
 checkModule	helper	@spy4x/preact-system/boundary	Check one module's source against the boundary and return every violation Deno reports.
 forbiddenImport	helper	@spy4x/preact-system/boundary	Why an import source is forbidden for a module at `filename`, or `null` when it is allowed.
+forbiddenName	helper	@spy4x/preact-system/boundary	Why importing `names` from `source` is forbidden, or `null` when every name is allowed.
 BoundaryRunnerOptions	type	@spy4x/preact-system/boundary-runner	What `registerBoundaryTests` needs: where the screens are, and what they must not use.
 DEFAULT_BOUNDARY_EXTENSIONS	constant	@spy4x/preact-system/boundary-runner	The file extensions the boundary guard reads by default: modules only.
 registerBoundaryTests	helper	@spy4x/preact-system/boundary-runner	Register the boundary tests for an app's folders of pure screens.
@@ -436,7 +452,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1045 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1071 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
