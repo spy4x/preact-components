@@ -411,7 +411,6 @@ UnsentChangesState	type	@spy4x/preact-system	Where the dialog stands.
 UpdateStart	type	@spy4x/preact-system	Everything `startUpdates` needs beyond the container itself.
 UpdateWatcher	type	@spy4x/preact-system	Tuning for `watchForUpdate`.
 WorkerLike	type	@spy4x/preact-system	The slice of `ServiceWorker` this package uses.
-connectionIsNews	helper	@spy4x/preact-system	Whether the connection is news to the person: not live, and not about to be.
 createHeadStore	helper	@spy4x/preact-system	Build a head store from defaults.
 describeCalendarDay	helper	@spy4x/preact-system	Default day description: the date as the locale writes it, then why it cannot be picked.
 isCurrentLink	helper	@spy4x/preact-system	Whether `href` is the page `currentPath` names.
