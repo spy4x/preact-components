@@ -113,7 +113,7 @@ describe("AccountMenu", () => {
       withHeader.lastIndexOf("<div", start),
       withHeader.indexOf("</div>", start),
     )
-    expect(row).toContain('aria-hidden="true"')
+    expect(row.slice(0, row.indexOf(">"))).toContain('aria-hidden="true"')
     expect(row).toContain(">ada@example.com<")
     expect(row).toContain(">Admin<")
     expect(render(<AccountMenu user={user} />)).not.toContain("account-menu-header")
