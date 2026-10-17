@@ -24,6 +24,14 @@ describe("When", () => {
     expect(html).toContain(">3 days ago</time>")
   })
 
+  it("writes epoch milliseconds or a Date as an ISO datetime", () => {
+    const epoch = Date.parse(THREE_DAYS_AGO)
+    expect(inZone(utc, <When at={epoch} now={NOW} />)).toContain(`datetime="${THREE_DAYS_AGO}"`)
+    expect(inZone(utc, <When at={new Date(epoch)} now={NOW} />)).toContain(
+      `datetime="${THREE_DAYS_AGO}"`,
+    )
+  })
+
   it("puts the exact instant in the provided zone in its title", () => {
     const html = inZone(tokyo, <When at={THREE_DAYS_AGO} now={NOW} />)
     expect(html).toContain(`title="${tokyo.exact(THREE_DAYS_AGO)}"`)
