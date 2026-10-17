@@ -41,6 +41,24 @@ export const DEFAULT_FORBIDDEN_GLOBALS: readonly string[] = [
   "sessionStorage",
 ]
 
+/** One export a module must not import by name, and why: {@link BoundaryOptions.forbiddenNames}. */
+export interface ForbiddenName {
+  /** The exported name, such as `"RailShell"`. */
+  name: string
+  /** The package that exports it; a subpath, a version or a `jsr:`/`npm:` prefix matches too. */
+  from: string
+  /** What to do instead, ready to print after the name. */
+  reason: string
+}
+
+/**
+ * Exports app code must not import by default: `RailShell`, because every app draws `AppShell`,
+ * which owns the frame, so no app builds its own chrome around the rail.
+ */
+export const DEFAULT_FORBIDDEN_NAMES: readonly ForbiddenName[] = [
+  { name: "RailShell", from: "@spy4x/preact-system", reason: "draw AppShell instead." },
+]
+
 /** What {@link boundaryPlugin} and {@link checkModule} forbid. Every list is optional. */
 export interface BoundaryOptions {
   /**
@@ -60,6 +78,11 @@ export interface BoundaryOptions {
   appDirectories?: readonly string[]
   /** Global names a screen must not read. Defaults to {@link DEFAULT_FORBIDDEN_GLOBALS}. */
   forbiddenGlobals?: readonly string[]
+  /**
+   * Exports a module must not import or re-export by name from a package. Defaults to
+   * {@link DEFAULT_FORBIDDEN_NAMES}; pass `[]` to allow every name.
+   */
+  forbiddenNames?: readonly ForbiddenName[]
 }
 
 /** One place {@link checkModule} found a module breaking the boundary. */
@@ -68,6 +91,30 @@ export interface BoundaryViolation {
   message: string
   /** Start and end character offsets of the offending node in the source. */
   range: [number, number]
+}
+
+/** Whether an import source names a package: itself, a subpath, a version or a scheme of it. */
+function namesPackage(source: string, name: string): boolean {
+  const bare = source.replace(/^(jsr|npm):/, "")
+  return bare === name || bare.startsWith(`${name}/`) || bare.startsWith(`${name}@`)
+}
+
+/**
+ * Why importing `names` from `source` is forbidden, or `null` when every name is allowed.
+ *
+ * @param source The import specifier as written.
+ * @param names The exported names the module takes from it, as imported or re-exported.
+ * @param options The list to check against; see {@link BoundaryOptions.forbiddenNames}.
+ */
+export function forbiddenName(
+  source: string,
+  names: readonly string[],
+  options: BoundaryOptions = {},
+): string | null {
+  const rule = (options.forbiddenNames ?? DEFAULT_FORBIDDEN_NAMES).find((rule) =>
+    names.includes(rule.name) && namesPackage(source, rule.from)
+  )
+  return rule ? `"${rule.name}" from "${source}" is not for app code; ${rule.reason}` : null
 }
 
 /**
@@ -83,11 +130,7 @@ export function forbiddenImport(
   options: BoundaryOptions = {},
 ): string | null {
   const packages = options.forbiddenPackages ?? DEFAULT_FORBIDDEN_PACKAGES
-  const bare = source.replace(/^(jsr|npm):/, "")
-  const named = packages.some((name) =>
-    bare === name || bare.startsWith(`${name}/`) || bare.startsWith(`${name}@`)
-  )
-  if (named) {
+  if (packages.some((name) => namesPackage(source, name))) {
     return `"${source}" is a store or a router; take state as props, report through callbacks.`
   }
   if ((options.appAliases ?? []).some((alias) => source.startsWith(alias))) {
@@ -150,6 +193,25 @@ function sourceOf(node: BoundaryLintNode): string | null {
   return field(source, "type") === "Literal" && typeof value === "string" ? value : null
 }
 
+/**
+ * The exported names an import or a re-export takes from its source: each specifier's imported
+ * name, or, in a re-export, its local one. A default or namespace import takes no name.
+ */
+function importedNames(node: BoundaryLintNode): string[] {
+  const specifiers = field(node, "specifiers")
+  if (!Array.isArray(specifiers)) return []
+  return specifiers.flatMap((specifier) => {
+    const type = field(specifier, "type")
+    const named = type === "ImportSpecifier"
+      ? field(specifier, "imported")
+      : type === "ExportSpecifier"
+      ? field(specifier, "local")
+      : undefined
+    const name = field(named, "name") ?? field(named, "value")
+    return typeof name === "string" ? [name] : []
+  })
+}
+
 /** Whether an identifier here names a variable, rather than a property or a key. */
 function isReference(node: BoundaryLintNode): boolean {
   const parent = node.parent
@@ -188,9 +250,9 @@ export function boundaryPlugin(options: BoundaryOptions = {}): BoundaryLintPlugi
         create(context) {
           const checkSource = (node: BoundaryLintNode) => {
             const source = sourceOf(node)
-            const reason = source === null
-              ? null
-              : forbiddenImport(source, context.filename, options)
+            if (source === null) return
+            const reason = forbiddenImport(source, context.filename, options) ??
+              forbiddenName(source, importedNames(node), options)
             if (reason) context.report({ range: node.range, message: reason })
           }
           return {
