@@ -8,7 +8,7 @@
  * @module
  */
 
-import { createContext, type JSX } from "preact"
+import { type Context, createContext, type JSX } from "preact"
 import { useContext } from "preact/hooks"
 import { createFormatters, type DateInput, type Formatters } from "@spy4x/time/format"
 import { TimeFormatter } from "@spy4x/platform/universal/time"
@@ -18,7 +18,7 @@ import { TimeFormatter } from "@spy4x/platform/universal/time"
  * `<FormatContext.Provider value={createFormatters(settings)}>`; without a provider (a test, a page
  * before sign-in) it is this device's own region format and time zone.
  */
-export const FormatContext = createContext<Formatters>(createFormatters())
+export const FormatContext: Context<Formatters> = createContext<Formatters>(createFormatters())
 
 /** The formatter of the person whose screen this is: the nearest `FormatContext` value. */
 export function useFormat(): Formatters {
