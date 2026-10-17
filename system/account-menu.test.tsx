@@ -96,4 +96,40 @@ describe("AccountMenu", () => {
     const html = render(<AccountMenu user={user} dataE2E="sidebar-account" />)
     expect(triggerTag(html, "sidebar-account")).not.toEqual("")
   })
+
+  it("draws the tag as a neutral gray badge under the avatar, inside the trigger's name", () => {
+    const html = render(<AccountMenu user={user} display="avatar" tag="Admin" />)
+    const content = trigger(html)
+    expect(content).toMatch(/<span class="[^"]*bg-track[^"]*">Admin<\/span>/)
+    expect(content).not.toMatch(/bg-selected|bg-accent/)
+    expect(content.indexOf("Ada Lovelace")).toBeLessThan(content.indexOf(">Admin<"))
+  })
+
+  it("draws a hidden header row with the name, the e-mail and the tag only when asked", () => {
+    const withHeader = render(<AccountMenu user={user} tag="Admin" header />)
+    const start = withHeader.indexOf('data-e2e="account-menu-header"')
+    expect(start).toBeGreaterThan(-1)
+    const row = withHeader.slice(
+      withHeader.lastIndexOf("<div", start),
+      withHeader.indexOf("</div>", start),
+    )
+    expect(row).toContain('aria-hidden="true"')
+    expect(row).toContain(">ada@example.com<")
+    expect(row).toContain(">Admin<")
+    expect(render(<AccountMenu user={user} />)).not.toContain("account-menu-header")
+  })
+
+  it("merges the caller's trigger and panel classes over its own", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        display="avatar"
+        triggerClasses="size-12 caller-trigger"
+        panelClasses="left-[calc(100%+1.25rem)] bottom-0"
+      />,
+    )
+    expect(triggerTag(html)).toContain("caller-trigger")
+    expect(html).toContain("left-[calc(100%+1.25rem)]")
+    expect(html).not.toMatch(/class="[^"]*bottom-full[^"]*left-\[calc/)
+  })
 })
