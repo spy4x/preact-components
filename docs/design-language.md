@@ -55,7 +55,8 @@ language fixes both: the apps feel related, and the work of making one look good
   | App section title (`Section`, card) | `text-base` | `text-lg`   | 500                    |
   | Lead paragraph                      | `text-lg`   | `text-xl`   | 400, muted             |
   | Body                                | `text-base` | `text-base` | 400                    |
-  | Secondary, table cell, rail label   | `text-sm`   | `text-sm`   | 400, muted where quiet |
+  | Secondary, table cell               | `text-sm`   | `text-sm`   | 400, muted where quiet |
+  | Rail and tab bar label              | `text-xs`   | `text-xs`   | 500                    |
   | Eyebrow above a marketing `h2`      | `text-sm`   | `text-sm`   | 500, mono, accent text |
   | Code                                | `text-sm`   | `text-sm`   | Geist Mono 400         |
 
@@ -153,13 +154,13 @@ Tailwind's `duration-150` and `ease-out` express all of this; there are no motio
 
 Pick the shell by the kind of app; all of them are library components.
 
-| Kind of app                       | Shell                                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Product (SPA)                     | `RailShell` with no top bar; the sidebar is the only chrome: the workspace switcher on top (`sidebarTop`), the navigation, then notifications and the account menu (`AccountMenu`) at the bottom (`sidebarBottom`). Labelled at about 240 px from `lg`, a 72 px icon rail with tooltips from `md`, a bottom tab bar on a phone whose last slot (the avatar) opens the rest. |
-| Admin panel                       | The same shell as its product, so an operator recognises it: no top bar; sidebar: workspace switcher on top, nav, then notifications and account at the bottom. An "Admin" badge in the sidebar's top slot keeps anybody from mistaking it for the product.                                                                                                                 |
-| Marketing site                    | `SiteHeader` (sticky through its `class` prop, one call to action on the right, a disclosure menu on phones) and `SiteFooter`.                                                                                                                                                                                                                                              |
-| Personal site                     | `SiteHeader` for a few pages, or `RailShell` with a bottom tab bar when the site has five or more sections.                                                                                                                                                                                                                                                                 |
-| Single-page tool (a status board) | A top bar with the brand mark and the page's one control (a search box), then the content column. No rail.                                                                                                                                                                                                                                                                  |
+| Kind of app                       | Shell                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Product (SPA)                     | `AppShell`: a 72 px icon rail from `md` at every desktop width, with a tooltip on each icon; the workspace switcher on top, the destinations in the middle, notifications and the account menu at the bottom. No top bar and no brand mark: the page starts with its `PageHeader`. On a phone, a bottom tab bar of at most four destinations, whose last slot (the avatar, "Account") opens a sheet with the rest. |
+| Admin panel                       | The same `AppShell` as its product, with no switcher. An "Admin" badge in neutral gray under the avatar in the account cell, "Admin" as the phone's last tab and "Admin" in every page title keep an operator from mistaking it for the product.                                                                                                                                                                   |
+| Marketing site                    | `SiteHeader` (sticky through its `class` prop, one call to action on the right, a disclosure menu on phones) and `SiteFooter`.                                                                                                                                                                                                                                                                                     |
+| Personal site                     | `Rail` with labels: the same 72 px column, cells and current style as an app's rail, with a short label under each icon, because first-time visitors do not know the icons. The portrait sits in the top slot and links home; the one primary action (Book) is pinned first. On a phone, a tab bar with the primary action in the centre and "More" last.                                                          |
+| Single-page tool (a status board) | A top bar with the brand mark and the page's one control (a search box), then the content column. No rail.                                                                                                                                                                                                                                                                                                         |
 
 **Every signed-in page starts with `PageHeader`:** the title on the left; the one primary action
 and, if needed, one "More actions" menu on the right. On a phone the title stays on one line and
@@ -170,6 +171,28 @@ away, once or never in a menu or a "Danger zone" disclosure at the bottom. Forms
 in a `Modal` for a short form or `InlineEdit` for one value. What cannot happen is not shown. The
 full set, written for the template, is in its `docs/design/ui-layout.md`, and holds for every
 product.
+
+### App shell
+
+Every app (every product SPA and its admin panel) uses `AppShell` and draws no chrome of its own.
+An app chooses only its brand hue, its destinations and its content.
+
+- **Rail.** 72 px (`w-18`) from `md`, `bg-surface` with a right hairline. Cells are 48 px squares
+  with a 24 px icon, 4 px apart, at `--radius-primary`. The current destination is a filled
+  rounded square in `--color-surface-active` with the icon in the nav-active colour; hover is the
+  canvas step. Each icon has a tooltip on its right, 8 px past the rail, after 300 ms of hover or
+  at once on keyboard focus. Escape hides it.
+- **Zones.** The top holds the switcher, a 40 px tile. The middle holds the destinations and is
+  the only part that scrolls on a short screen. The bottom holds the connection while it is not
+  live, the bell with its unread count, and the account avatar (32 px) opening `AccountMenu`.
+- **Labels variant.** The same 72 px column with 64 × 56 px cells and a `text-xs` label under each
+  icon, used on the personal site and on touch-only screens, where tooltips cannot appear.
+- **Content.** One centred column, `px-4 md:px-8`, `py-6 sm:py-8`: 48 rem by default, 64 rem for
+  tables. Screens never set a width.
+- **Phone.** Below `md`, a 64 px tab bar of at most four destinations plus the account slot, which
+  opens a sheet with the switcher, the rest, notifications and the account menu. Offline shows as a
+  strip on top of the tab bar.
+- **Counts** sit on the icon's top-right corner and read "99+" above 99.
 
 ### Component patterns
 
