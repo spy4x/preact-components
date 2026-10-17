@@ -192,6 +192,17 @@ export {
   type FileRejection,
   matchesAccept,
 } from "./file-input.tsx"
+export {
+  type DateTextLabels,
+  FormatContext,
+  OnDay,
+  type OnDayProps,
+  useFormat,
+  When,
+  WHEN_LABELS,
+  type WhenLabels,
+  type WhenProps,
+} from "./format.tsx"
 export { honeypotField } from "./honeypot.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
 export {

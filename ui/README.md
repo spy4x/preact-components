@@ -80,6 +80,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                       |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                          |
 | `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                                                       |
+| `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                           |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                 |
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                |
 | `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                                                  |
@@ -97,6 +98,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `MoreMenu`            | `page-header`          | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                                                                                                   |
 | `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`; `status` without it), `data-*`; renders nothing when empty                                                                                  |
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                |
+| `OnDay`               | `format`               | `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`                                                                                                                  |
 | `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`                                                                                                                                                                           |
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                          |
 | `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                    |
@@ -134,6 +136,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`                                      |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                         |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab |
+| `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                  |
 | `WindowFrame`         | `window-frame`         | `variant` (`"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                     |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                                              |
 
@@ -1256,6 +1259,35 @@ never a stale one; a form submitted right after posts what was actually typed, o
 is empty; `aria-invalid` marks it for a reason of the caller's. `Field` sets both, from its own
 `required` and `error`.
 
+## When and OnDay
+
+An app shows every date through one formatter: `Formatters` from `@spy4x/time/format`, built
+by `createFormatters(settings)` from the person's region format, time zone and clock. An app
+provides it once, around everything, with `FormatContext`; `When` and `OnDay` read it, and so does
+any other component through `useFormat()`. Without a provider the formatter is this device's own
+region format and zone. A server's zone is rarely the reader's, so a page rendered on the server and
+hydrated in a browser provides the same formatter on both sides, or the two texts differ.
+
+```tsx
+import { createFormatters } from "@spy4x/time/format"
+import { FormatContext, OnDay, When } from "@spy4x/preact-ui/format"
+
+<FormatContext.Provider value={createFormatters({ locale: "de-DE", timeZone: "Europe/Berlin" })}>
+  <When at={note.updatedAt} />
+  <OnDay at={invoice.issuedAt} />
+</FormatContext.Provider>
+```
+
+`When` shows the distance from now, `3 days ago`; `OnDay` shows the calendar day, `17 Oct 2026`.
+Both render a `<time>` whose `datetime` is the instant in ISO form and whose `title` is the exact
+instant to the second in the person's zone, so hovering answers "when exactly". A missing or
+unreadable date renders `labels.missing` (`-`) in a plain `<span>`, with no `<time>`.
+
+The words are English by default, as everywhere in this library, and the region format changes how
+a date is written, never the language of the app. `labels.relative(at, now)` replaces the distance
+text: pass `(at) => format.relative(at)` for the region format's own words, or your translation.
+`now` fixes the present for a render whose text must not depend on the clock (a test, a demo).
+
 ## FileInput
 
 A real `<input type="file">`, hidden with `sr-only` rather than `display: none`, so it keeps the
@@ -2122,6 +2154,14 @@ components and tests means exactly that: nothing outside this package should bui
   `"wrong-type"` or, without `multiple`, `"too-many"` for every accepted file after the first.
 - `resolveLabels(labels)` is exported for the package's own components and tests: it fills every
   message label a `FileInput` was not given with its English default.
+
+### Format (`./format`)
+
+- `FormatContext` is the Preact context holding the `Formatters` every date text reads; its value
+  without a provider is `createFormatters()`, this device's region format and zone.
+- `useFormat()` returns the nearest `FormatContext` value, for a component that writes a date
+  itself (`useFormat().dateTime(at)`).
+- `WHEN_LABELS` holds the English words `When` and `OnDay` use: `missing`, `title` and `relative`.
 
 ### ImageGallery (`./image-gallery`)
 

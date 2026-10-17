@@ -28,6 +28,7 @@
     "./faq-list": "./faq-list.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
+    "./format": "./format.tsx",
     "./honeypot": "./honeypot.tsx",
     "./image-gallery": "./image-gallery.tsx",
     "./input": "./input.tsx",
