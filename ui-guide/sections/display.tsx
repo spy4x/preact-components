@@ -23,6 +23,7 @@ import {
   DataTable,
   describedImages,
   Field,
+  FormatContext,
   Grid,
   type HotkeyBinding,
   ImageGallery,
@@ -32,6 +33,7 @@ import {
   Lightbox,
   type LightboxImage,
   MoneyDisplay,
+  OnDay,
   pageRange,
   PageTitle,
   Pagination,
@@ -47,8 +49,11 @@ import {
   type TimelineItem,
   Tooltip,
   type TooltipPlacement,
+  useFormat,
   useHotkeys,
+  When,
 } from "@spy4x/preact-ui"
+import { createFormatters } from "@spy4x/time/format"
 import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
@@ -434,6 +439,91 @@ function MoneyDisplayDemo() {
         </Fragment>
       ))}
     </div>
+  )
+}
+
+/**
+ * The date demos' fixed present and formatters. Fixed instants and explicit zones, so the card
+ * prints the same text on the server, in every browser and on every day.
+ */
+const demoNow = Date.parse("2026-10-17T12:00:00.000Z")
+const londonFormat = createFormatters({ locale: "en-GB", timeZone: "Europe/London" })
+const tokyoFormat = createFormatters({ locale: "en-GB", timeZone: "Asia/Tokyo" })
+const newYorkFormat = createFormatters({
+  locale: "en-US",
+  timeZone: "America/New_York",
+  hourCycle: "h12",
+})
+
+const whenRows: { at: string | null; note: string }[] = [
+  { at: "2026-10-17T11:59:55.000Z", note: "five seconds before" },
+  { at: "2026-10-17T11:55:00.000Z", note: "five minutes before" },
+  { at: "2026-10-14T12:00:00.000Z", note: "three days before" },
+  { at: null, note: "no date" },
+]
+
+/** Each moment beside what it is; hovering one shows the exact instant in London time. */
+function WhenDemo() {
+  return (
+    <FormatContext.Provider value={londonFormat}>
+      <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
+        {whenRows.map((row) => (
+          <Fragment key={row.note}>
+            <When at={row.at} now={demoNow} />
+            <span class="text-xs text-muted">{row.note}</span>
+          </Fragment>
+        ))}
+      </div>
+    </FormatContext.Provider>
+  )
+}
+
+const onDayZones = [
+  { format: londonFormat, note: "London, en-GB" },
+  { format: tokyoFormat, note: "Tokyo, en-GB: already the next day" },
+  { format: newYorkFormat, note: "New York, en-US" },
+]
+
+/** One instant, late evening in London, as the day three readers see. */
+function OnDayDemo() {
+  return (
+    <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
+      {onDayZones.map((zone) => (
+        <FormatContext.Provider key={zone.note} value={zone.format}>
+          <OnDay at="2026-10-17T22:30:00.000Z" />
+          <span class="text-xs text-muted">{zone.note}</span>
+        </FormatContext.Provider>
+      ))}
+    </div>
+  )
+}
+
+/** A clock time written by hand through `useFormat()`, as any component that is not `When` would. */
+function ClockTime({ at }: { at: string }) {
+  return <span>{useFormat().time(at)}</span>
+}
+
+const contextReaders = [
+  { format: londonFormat, note: "London, en-GB, region clock" },
+  { format: newYorkFormat, note: "New York, en-US, 12-hour clock" },
+]
+
+/** One instant under two providers: every reader inside a provider follows it. */
+function FormatContextDemo() {
+  const at = "2026-10-17T09:05:00.000Z"
+  return (
+    <Stack gap="sm">
+      {contextReaders.map((reader) => (
+        <FormatContext.Provider key={reader.note} value={reader.format}>
+          <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+            <OnDay at={at} />
+            <ClockTime at={at} />
+            <When at={at} now={demoNow} />
+            <span class="text-xs text-muted">{reader.note}</span>
+          </div>
+        </FormatContext.Provider>
+      ))}
+    </Stack>
   )
 }
 
@@ -1233,6 +1323,55 @@ export const displayDemos = {
     snippet: `<MoneyDisplay amount={12345} currency="EUR" />
 <MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
     render: () => <MoneyDisplayDemo />,
+  },
+  FormatContext: {
+    summary:
+      "Hands one person's date format, time zone and clock to every date below it, `When`, `OnDay` and `useFormat()` alike.",
+    wide: false,
+    snippet: `<FormatContext.Provider value={createFormatters({
+  locale: "en-US",
+  timeZone: "America/New_York",
+  hourCycle: "h12",
+})}>
+  <OnDay at={at} /> {useFormat().time(at)} <When at={at} />
+</FormatContext.Provider>`,
+    render: () => <FormatContextDemo />,
+  },
+  When: {
+    summary:
+      "A moment as its distance from now, with the exact instant in the person's own format on hover.",
+    wide: false,
+    props: [
+      {
+        name: "at",
+        type: "Date | number | string | null",
+        description: "The moment; a missing or unreadable one shows the missing label.",
+      },
+      {
+        name: "now",
+        type: "number",
+        default: "the time of the render",
+        description: "The present in epoch milliseconds, for text that must not move.",
+      },
+      {
+        name: "labels",
+        type: "Partial<WhenLabels>",
+        default: "WHEN_LABELS",
+        description: "The distance text, the missing date and the hover text.",
+      },
+    ],
+    snippet: `<FormatContext.Provider value={createFormatters(settings)}>
+  <When at={note.updatedAt} />
+</FormatContext.Provider>`,
+    render: () => <WhenDemo />,
+  },
+  OnDay: {
+    summary: "A calendar day in the person's own format and zone, with the exact instant on hover.",
+    wide: false,
+    snippet: `<FormatContext.Provider value={createFormatters({ timeZone: "Asia/Tokyo" })}>
+  <OnDay at="2026-10-17T22:30:00.000Z" />
+</FormatContext.Provider>`,
+    render: () => <OnDayDemo />,
   },
   Progress: {
     summary:
