@@ -143,7 +143,7 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
   })()`)
   check(
     "the surface classes reach the browser",
-    surfaces.cardRadius === "8px" && surfaces.headerBorder === "1px" &&
+    surfaces.cardRadius === "12px" && surfaces.headerBorder === "1px" &&
       surfaces.footerBorder === "1px" && surfaces.kpiValue === "24px" &&
       surfaces.barHeight === "6px",
     `card radius ${surfaces.cardRadius}, header ${surfaces.headerBorder}, ` +

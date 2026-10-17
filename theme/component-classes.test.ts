@@ -144,6 +144,12 @@ describe("an app's own words", () => {
       ".pc-card",
     )
   })
+
+  it("draw a pc-card at the card radius, not the button's", async () => {
+    const css = await build(APP_ENTRY, scannedWords(`<div class="pc-card">x</div>`))
+    const rule = css.match(/\.pc-card\s*\{[^}]*\}/)?.[0] ?? ""
+    expect(rule).toMatch(/border-radius:\s*var\(--radius-card,\s*0?\.75rem\)/)
+  })
 })
 
 describe("preset.css utility names", () => {

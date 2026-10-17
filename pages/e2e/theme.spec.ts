@@ -1,4 +1,5 @@
 /** Playwright specs for the `theme/` classes, on the guide's theme page. */
+import { AxeBuilder } from "@axe-core/playwright"
 import type { Spec } from "./runner.ts"
 import { scrollRegionSpec } from "./scroll-region.ts"
 
@@ -128,6 +129,37 @@ export const specs: readonly Spec[] = [
         throw new Error(`with the brand ${read.brand} on :root, ${wrong.join("; ")}`)
       }
       return `primary and accent ${read.brand}, links ${read.muted}, canvas ${read.canvas}`
+    },
+  },
+  {
+    name: `ink: muted text on a hovered row's fill passes axe's colour contrast`,
+    pageId: "theme",
+    colorScheme: "dark",
+    run: async (page) => {
+      await page.evaluate(() => {
+        const root = document.documentElement
+        root.classList.add("dark")
+        root.setAttribute("data-theme", "ink")
+        // The fill a hovered table row, menu item or option paints, with the muted text a row holds.
+        const row = document.createElement("div")
+        row.setAttribute("data-e2e", "ink-hover-probe")
+        row.className = "bg-hover p-4"
+        row.innerHTML = `<span class="text-sm text-muted">Updated 3 days ago</span>`
+        document.body.prepend(row)
+      })
+      await page.locator(`html.dark[data-theme="ink"]`).waitFor({ state: "attached" })
+      const probe = `[data-e2e="ink-hover-probe"]`
+      const { violations, passes } = await new AxeBuilder({ page }).include(probe)
+        .withRules(["color-contrast"]).analyze()
+      if (violations.length > 0) {
+        throw new Error(
+          violations.map((rule) => rule.nodes.map((n) => n.failureSummary)).join("; "),
+        )
+      }
+      if (!passes.some((rule) => rule.id === "color-contrast")) {
+        throw new Error("axe did not measure the hovered row's colour contrast")
+      }
+      return await page.locator(probe).evaluate((row) => getComputedStyle(row).backgroundColor)
     },
   },
 ]

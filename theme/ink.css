@@ -52,6 +52,11 @@
 
   --color-border-subtle: oklch(0.34 0.014 260);
   --color-border-control: oklch(0.4 0.016 260);
+  --color-border-strong: oklch(0.55 0.016 260);
+
+  /* A track sits a step above the card, on ink's own scale rather than the default dark
+     palette's gray-600. */
+  --color-track: oklch(0.4 0.016 260);
 
   --color-foreground: oklch(0.93 0.006 260); /* primary text tone */
   /* 0.68, not the surface scale's own 0.66 step: muted text needs to clear 4.5:1 against every

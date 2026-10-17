@@ -775,7 +775,8 @@
 
 @utility pc-card {
   @apply border;
-  border-radius: var(--radius-primary, 0.5rem);
+  /* A card is the card radius, 12 px, as docs/design-language.md says; a button is 8 px. */
+  border-radius: var(--radius-card, 0.75rem);
   border-color: var(--color-border-subtle, oklch(0.928 0.006 264.531));
   background-color: var(--color-surface, oklch(1 0 0));
   /* A focus ring's gap inside the card is the card's colour, not the page's (#465). */

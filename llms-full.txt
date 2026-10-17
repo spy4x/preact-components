@@ -875,7 +875,7 @@ actions column, empty state (on the real `buildModelStore` too) and paging (`cru
 
 # `@spy4x/preact-icons`
 
-Merged icon set. 123 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+Merged icon set. 124 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
 
 ```tsx
 import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
@@ -899,9 +899,9 @@ export interface IconProps {
 - The root is always an `<svg xmlns="…" viewBox="…">`; sizing comes from the class, not from
   `width`/`height` attributes.
 - Colour comes from `currentColor`, so an icon inherits the text colour of its container.
-- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (83 glyphs) unless
+- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (84 glyphs) unless
   the glyph already shipped elsewhere as `size-6` (39 glyphs). One glyph, `IconUpwork`, defaults to
-  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 122
+  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 123
   draw on a 24-unit `viewBox`, `IconLockClosedFilled` on Heroicons v1 solid's 20-unit one — so
   `IconUpwork` renders 20 × 20 at its default.
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
@@ -937,11 +937,11 @@ surface; mixing them is visible at small sizes.
 | Family                         | Count | Notes                                                                                                                                                                        |
 | ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Heroicons (v1 or v2)           | 73    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
-| Feather and/or Lucide outlines | 26    | round caps and joins; 17 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
+| Feather and/or Lucide outlines | 27    | round caps and joins; 18 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
 | Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
 | Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-The table is a partition of all 123 glyphs: every row above is disjoint from every other, the
+The table is a partition of all 124 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
@@ -989,13 +989,13 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 123 glyphs, **all 123 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Of the 124 glyphs, **all 124 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
 or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 32
 replaced in #233 also the upstream file name and version.
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
 
-Four glyphs were added after the merge, straight from a pack rather than from a source app:
+Five glyphs were added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
 ([issue #381](https://github.com/spy4x/preact-components/issues/381)); `IconCopy` is Feather's
 `copy` and `IconPen` Feather's `edit-2`, a plain pen
@@ -1003,7 +1003,8 @@ Four glyphs were added after the merge, straight from a pack rather than from a 
 so they sit next to `IconStar`, Feather's `star`, at the same `stroke-2` weight. `IconExclamationCircle` is
 Heroicons v2's `exclamation-circle` (24, outline), the glyph of `Notice`'s danger tone
 ([issue #552](https://github.com/spy4x/preact-components/issues/552)), drawn at `stroke-1.5` like
-`IconInformationCircle` beside it.
+`IconInformationCircle` beside it. `IconSprout` is Lucide's `sprout`, the glyph a brand mark tile
+(`BrandMark` in `@spy4x/preact-ui`) can hold (spy4x/template#444).
 
 ### Brand marks
 
@@ -4236,9 +4237,9 @@ won over an app's own `@theme --font-sans` (#470). An app that wants that font s
 - **Weights.** `font-medium` and `font-bold` read Tailwind's own `--font-weight-medium` and
   `--font-weight-bold` (500 and 700). An app whose fonts ship only 400 and 600 sets both to `600`
   in `:root`, after the preset, so no weight is faked. No token of this package is needed.
-- **Radius.** `--radius-primary` (`rounded-primary`, 0.5rem) is the shape of a button, a card body
-  and most controls; `--radius-control` (`rounded-control`, 0.375rem) is a small field or chip and
-  `--radius-card` (`rounded-card`, 0.75rem) a card. An app whose controls use `rounded-lg` sets
+- **Radius.** `--radius-primary` (`rounded-primary`, 0.5rem) is the shape of a button and most
+  controls; `--radius-control` (`rounded-control`, 0.375rem) is a small field or chip and
+  `--radius-card` (`rounded-card`, 0.75rem) a card, `Card` and `.pc-card` included. An app whose controls use `rounded-lg` sets
   `--radius-control: 0.5rem`. Pills stay `rounded-full`.
 - **Shadows.** `--shadow-raised` (`shadow-raised`) is a card's and `--shadow-popover`
   (`shadow-popover`) a menu's, dialog's or tooltip's. `none` gives flat chrome with hairline
@@ -4588,6 +4589,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                                                                                 |
 | `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                                                                               |
 | `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link)                                                                                                                                                                                               |
+| `BrandMark`           | `brand-mark`           | `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header                                                                                                                               |
 | `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                                                                                 |
 | `Card`                | `card`                 | `children`, `class` — a bordered surface; forwards `ref` to its `<div>`                                                                                                                                                                                                      |
 | `CardBody`            | `card`                 | `children`, `class`                                                                                                                                                                                                                                                          |
@@ -4634,6 +4636,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                          |
 | `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                    |
 | `PageHeader`          | `page-header`          | `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`                              |
+| `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `class?` (the band's background) — the top band of a public inner page, no JavaScript                                                                                                               |
 | `PageTitle`           | `page-title`           | `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                             |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                          |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                            |

@@ -30,6 +30,7 @@
 import type { ComponentChildren } from "preact"
 import { badgeDemos } from "./sections/badges.tsx"
 import { billingDemos } from "./sections/billing.tsx"
+import { pageHeroDemo } from "./sections/marketing-blocks.tsx"
 import { buttonDemos } from "./sections/buttons.tsx"
 import { chartsDemos } from "./sections/charts.tsx"
 import { crudDemos } from "./sections/crud.tsx"
@@ -249,6 +250,12 @@ export type SectionId =
 /** The System section's cards: the section file's own, then the cards kept in their own files. */
 const systemSectionDemos = { ...systemDemos, ...pushSettingsDemos }
 
+/**
+ * The Billing section's cards, then `PageHero`'s. Billing is the UI page's last section, so the hero's
+ * `<h1>` is followed by the page's next `<h2>` and no card title skips a level after it.
+ */
+const billingSectionDemos = { ...billingDemos, ...pageHeroDemo }
+
 const catalogue = {
   badges: {
     group: "foundations",
@@ -318,8 +325,8 @@ const catalogue = {
     package: "ui",
     title: "Billing",
     blurb:
-      "A pricing table, the current plan's card and an upgrade prompt. Every choice is a plain form that posts before any script runs; prices are integers in the currency's smallest unit.",
-    demos: billingDemos,
+      "A pricing table, the current plan's card and an upgrade prompt. Every choice is a plain form that posts before any script runs; prices are integers in the currency's smallest unit. It ends with `PageHero`, the band at the top of a pricing page.",
+    demos: billingSectionDemos,
   },
   forms: {
     group: "surfaces",
@@ -474,7 +481,7 @@ export const demoRegistry: DemoRegistry = {
   ...layoutDemos,
   ...displayDemos,
   ...enhancedFormDemos,
-  ...billingDemos,
+  ...billingSectionDemos,
   ...feedbackDemos,
   ...inputDemos,
   ...fieldDemos,
