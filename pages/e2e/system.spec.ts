@@ -858,6 +858,9 @@ export const specs: readonly Spec[] = [
       "and ink at 900 and 1440 px, and axe passes there",
     pageId: "system",
     run: async (page) => {
+      // Entries ease their colours, the ring's among them; without motion every colour read below
+      // is the one that stays, not a step of the transition.
+      await page.emulateMedia({ reducedMotion: "reduce" })
       const column = rail(page, "rail-shell-column")
       const failures: string[] = []
       const results: string[] = []
@@ -918,6 +921,8 @@ export const specs: readonly Spec[] = [
       "colours an outline marks it",
     pageId: "system",
     run: async (page) => {
+      // The hovered fill eases in; without motion it is read at its end, not on its way there.
+      await page.emulateMedia({ reducedMotion: "reduce" })
       await page.setViewportSize({ width: 900, height: 900 })
       const column = rail(page, "rail-shell-column")
       const results: string[] = []
