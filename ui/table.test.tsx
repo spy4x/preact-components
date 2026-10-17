@@ -107,7 +107,7 @@ describe("Table", () => {
       <Table headerSlot={header} bodySlots={[]} caption="Invoices" captionClass="sr-only" />,
     )
 
-    expect(html).toContain('<caption class="sr-only">Invoices</caption>')
+    expect(html).toMatch(/<caption id="[^"]+" class="sr-only">Invoices<\/caption>/)
     expect(html.indexOf("<caption")).toBeLessThan(html.indexOf("<thead"))
   })
 
@@ -116,7 +116,7 @@ describe("Table", () => {
     // <caption> element — caller-supplied content, however falsy, is not "no caption".
     const html = render(<Table headerSlot={header} bodySlots={[]} caption={0} />)
 
-    expect(html).toContain("<caption>0</caption>")
+    expect(html).toMatch(/<caption id="[^"]+">0<\/caption>/)
     // The bug this guards: `caption && <caption>…</caption>` renders the falsy caption itself —
     // a bare "0" text node right before <thead> — instead of a <caption> element around it.
     expect(html).not.toContain(">0<thead")
@@ -129,6 +129,29 @@ describe("Table", () => {
       const html = render(<Table headerSlot={header} bodySlots={[]} caption={caption} />)
       expect(html).not.toContain("<caption")
     }
+  })
+
+  it("renders its scroll area as a region named by the caption, a Tab stop with a focus ring", () => {
+    // The server cannot measure, so the markup is the scrolling form; a mounted table that fits
+    // drops it, which only the browser check in `pages/e2e/ui.spec.ts` can show.
+    const html = render(<Table headerSlot={header} bodySlots={[]} caption="Invoices" />)
+    const frame = html.match(/^<div[^>]*>/)?.[0] ?? ""
+    const captionId = html.match(/<caption id="([^"]+)"/)?.[1]
+
+    expect(captionId).toBeTruthy()
+    expect(frame).toContain('role="region"')
+    expect(frame).toContain(`aria-labelledby="${captionId}"`)
+    expect(frame).toContain('tabindex="0"')
+    for (const utility of FOCUS_RING) expect(frame).toContain(utility)
+  })
+
+  it("makes its scroll area a Tab stop with no role or name when there is no caption", () => {
+    const frame = render(<Table headerSlot={header} bodySlots={[]} />).match(/^<div[^>]*>/)?.[0]
+
+    expect(frame).toContain('tabindex="0"')
+    expect(frame).not.toContain("role=")
+    expect(frame).not.toContain("aria-labelledby")
+    for (const utility of FOCUS_RING) expect(frame).toContain(utility)
   })
 
   it("keys each body row by its bodyKeys entry, not by its position", () => {
@@ -194,6 +217,14 @@ function findElement(node: unknown, type: string): VNode<{ children?: unknown }>
   }
   return undefined
 }
+
+/** The utilities of the components' focus ring, as `Button` and the tab buttons draw it. */
+const FOCUS_RING = [
+  "focus-visible:ring-2",
+  "focus-visible:ring-focus",
+  "focus-visible:ring-offset-2",
+  "focus-visible:ring-offset-focus",
+]
 
 function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1

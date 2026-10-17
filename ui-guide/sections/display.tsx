@@ -537,12 +537,15 @@ const tableRows = [
 /**
  * The caller owns every cell; the primitive owns the dividers, the hover and the scroll. `bodyKeys`
  * gives each row its own identity — the date here, unique in this data — so a reorder would move
- * rows rather than repaint them in place.
+ * rows rather than repaint them in place. The caption, hidden visually, names the table and, on a
+ * screen too narrow for it, the scroll area a keyboard reaches with Tab.
  */
 function TableDemo() {
   return (
     <Table
       rowDataE2E="ui-guide-row"
+      caption="February transactions"
+      captionClass="sr-only"
       headerSlot={
         <>
           <th scope="col" class="text-left">Date</th>
@@ -1431,10 +1434,18 @@ export const displayDemos = {
       {
         name: "caption",
         type: "ComponentChildren",
-        description: "The table's name.",
+        description:
+          "The table's name, and the scroll area's while the table is too wide for it and Tab reaches it.",
+      },
+      {
+        name: "captionClass",
+        type: "string",
+        description: "Classes for the caption, such as `sr-only` to hide it visually.",
       },
     ],
     snippet: `<Table
+  caption="February transactions"
+  captionClass="sr-only"
   headerSlot={<th scope="col">Merchant</th>}
   bodySlots={rows.map((row) => <td>{row.merchant}</td>)}
   bodyKeys={rows.map((row) => row.id)}
