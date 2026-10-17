@@ -1026,6 +1026,29 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AppShell: the first hover on a cell waits 300 ms too — its tooltip is still hidden " +
+      "100 ms in and shown 500 ms in",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = inCard(page, APP, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const projects = column.getByRole("link", { name: "Projects", exact: true })
+      // Never hovered before in this page: the tooltip has not been shown once.
+      await projects.hover()
+      const [early, late] = await tipOf(projects).evaluate(async (tip) => {
+        const shown = () => getComputedStyle(tip).visibility === "visible" && tip.checkVisibility()
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        const early = shown()
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        return [early, shown()]
+      })
+      if (early) throw new Error("the first hover showed the tooltip within 100 ms")
+      if (!late) throw new Error("the first hover had not shown the tooltip after 500 ms")
+      return "hidden at 100 ms, shown at 500 ms"
+    },
+  },
+  {
     name: "Rail labels: every cell prints its label under its icon and draws no tooltip",
     pageId: "system",
     run: async (page) => {
