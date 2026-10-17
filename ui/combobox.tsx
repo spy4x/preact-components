@@ -173,7 +173,7 @@ export interface ComboboxKeyAction {
    * Call `stopPropagation()`. `true` only for `Escape` while the list is open: that press is the
    * list's, so a dialog around the combobox must not close on it too.
    */
-  stopPropagation: boolean
+  stopPropagation?: boolean
   /** Select `items[index]` and close. `-1` when the key selects nothing. */
   select: number
 }

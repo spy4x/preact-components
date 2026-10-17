@@ -115,7 +115,7 @@ export interface TagInputKeyAction {
   /** Call `preventDefault()`. */
   preventDefault: boolean
   /** Call `stopPropagation()`: `Escape` closing the list, so a dialog around the field stays open. */
-  stopPropagation: boolean
+  stopPropagation?: boolean
   /** Index of the suggestion to add, `-1` for none. */
   pick: number
   /** Add the typed text as a tag. */
