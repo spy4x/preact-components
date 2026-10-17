@@ -1754,7 +1754,8 @@ const appShellConnections: readonly AppShellConnection[] = [
  * draws the same shell with the neutral "Admin" tag on the account and a wide content column; the
  * product draws the default column. The select sets the connection: while it is not live the rail
  * shows a warning cell and a phone shows a strip above the tab bar, and the live region speaks it
- * either way. Every link goes through `navigate`, which moves the current marker.
+ * either way. Every link goes through `navigate`, which moves the current marker. The button opens
+ * a page inside the second section, whose entry then reads as the current section, not the page.
  */
 function AppShellDemo() {
   const app = useSignal<"product" | "admin">("product")
@@ -1821,6 +1822,16 @@ function AppShellDemo() {
           <p>
             Current: <strong data-e2e="app-shell-demo-current">{current.value}</strong>, theme:{" "}
             <strong>{theme.value}</strong>
+          </p>
+          <p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => current.value = `${items[1].href}/42`}
+              data-e2e="app-shell-demo-inside"
+            >
+              Open a page inside {items[1].label}
+            </Button>
           </p>
           <p class="text-muted">
             The page starts here, in a column centred in the space beside the rail:{" "}
