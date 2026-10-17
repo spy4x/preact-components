@@ -214,8 +214,17 @@ function hasCount(counter: number | undefined): counter is number {
  */
 type Place = "rail" | "tab" | "sheet"
 
-const entryBase =
-  "flex min-w-0 cursor-pointer items-center rounded-md text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
+/**
+ * The keyboard focus ring: the components' ring colour (`--color-ring`, the accent, step 400 in the
+ * dark palettes), which stands 3:1 or more off the rail in every palette. Tailwind's `outline-2`
+ * sets no colour, so without it the browser draws its own ring, near-black on a dark rail.
+ */
+const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
+const entryBase = cn(
+  "flex min-w-0 cursor-pointer items-center rounded-md text-xs font-medium",
+  focusRing,
+)
 const entryPlace: Record<Place, string> = {
   rail:
     "group/entry relative w-full flex-col justify-center gap-1 px-1 py-3 text-center lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2 lg:text-left lg:text-sm",
@@ -244,11 +253,28 @@ const surface = "bg-[var(--color-surface,oklch(1_0_0))]"
 const rule = "border-[color:var(--color-border-subtle,oklch(0.928_0.006_264.531))]"
 const entryIdle =
   "text-[color:var(--color-muted-foreground,oklch(0.551_0.027_264.364))] hover:bg-[var(--color-canvas,oklch(0.985_0.002_247.839))]"
-const entryCurrent = "bg-[var(--color-canvas,oklch(0.985_0.002_247.839))] font-semibold"
+/**
+ * The current entry: a tint of the accent (step 100 in light, the selected tint in dark) with its
+ * text and icon in the selected colour, so it differs from a hovered entry's neutral fill. Ink sets
+ * its own pair, `--color-surface-active` behind and `--color-nav-active` on top, and they win.
+ */
+const entryCurrent =
+  "bg-[var(--color-surface-active,var(--color-accent-100,oklch(0.946_0.033_307.174)))] dark:bg-[var(--color-surface-active,var(--color-selected-soft,color-mix(in_oklab,oklch(0.381_0.176_304.987)_30%,transparent)))] text-[color:var(--color-nav-active,var(--color-selected-text,var(--color-accent-900,oklch(0.381_0.176_304.987))))] font-semibold"
+/**
+ * The current entry's second cue in the desktop column: a bar on its left edge in the same colour
+ * as its text, because in the 72 px rail the label, and with it the bold weight, is hidden.
+ */
+const entryCurrentBar =
+  "before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-[var(--color-nav-active,var(--color-selected-text,var(--color-accent-900,oklch(0.381_0.176_304.987))))]"
+/**
+ * The primary action: `Button`'s primary fill. In the dark palettes that fill, step 600, is about
+ * 2.7:1 against the rail's surface, so a border in step 400 draws its edge at 3:1 or more.
+ */
 const entryPrimary =
-  "bg-[var(--color-primary,oklch(0.381_0.176_304.987))] text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))] hover:opacity-90"
+  "border border-transparent bg-[var(--color-accent-900,oklch(0.381_0.176_304.987))] text-[color:var(--color-accent-foreground,oklch(1_0_0))] hover:bg-[var(--color-accent-800,oklch(0.438_0.218_303.724))] dark:border-[color:var(--color-accent-400,oklch(0.714_0.203_305.504))] dark:bg-[var(--color-accent-600,oklch(0.558_0.288_302.321))] dark:hover:bg-[var(--color-accent-700,oklch(0.496_0.265_301.924))]"
+/** A counter's badge: the accent in light; step 400 with dark text in the dark palettes. */
 const badge =
-  "h-5 min-w-5 shrink-0 rounded-full bg-[var(--color-primary,oklch(0.381_0.176_304.987))] px-1 text-center text-xs leading-5 font-semibold text-[color:var(--color-primary-foreground,oklch(0.977_0.014_308.299))]"
+  "h-5 min-w-5 shrink-0 rounded-full bg-[var(--color-accent-900,oklch(0.381_0.176_304.987))] px-1 text-center text-xs leading-5 font-semibold text-[color:var(--color-accent-foreground,oklch(1_0_0))] dark:bg-[var(--color-accent-400,oklch(0.714_0.203_305.504))] dark:text-[color:var(--color-canvas,oklch(0.21_0.034_264.665))]"
 /**
  * The rail's tooltip: shown on hover and keyboard focus between `md` and `lg` only, where the label
  * is not drawn. Escape hides it through the column's `data-tips-hidden` (see `RailShell`).
@@ -313,6 +339,7 @@ function Entry(
     entryBase,
     entryPlace[place],
     primary ? entryPrimary : current ? entryCurrent : entryIdle,
+    current && !primary && place === "rail" && entryCurrentBar,
   )
   const content = (
     <>
@@ -678,7 +705,8 @@ export function RailShell(props: RailShellProps): JSX.Element {
                 command="close"
                 commandfor={dialogId}
                 class={cn(
-                  "flex size-10 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2",
+                  "flex size-10 cursor-pointer items-center justify-center rounded-md",
+                  focusRing,
                   entryIdle,
                 )}
                 onClick={(event) => {

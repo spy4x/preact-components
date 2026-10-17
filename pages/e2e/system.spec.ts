@@ -99,6 +99,83 @@ async function railFrameAlone(page: Page): Promise<Locator> {
   return page.locator("body > #e2e-rail-frame")
 }
 
+/** A palette of the rail checks: ink is the opt-in dark palette, `data-theme="ink"` with `.dark`. */
+type RailPalette = "light" | "dark" | "ink"
+
+/**
+ * Draw the page in `palette` the way an app that toggles the class itself does: `.dark` on the
+ * root (and `data-theme="ink"` for ink), with the root's `color-scheme` left light. The browser
+ * then draws its own focus ring near-black, as it does in an app whose person chose Dark while
+ * the system is light, so a ring that relies on the browser's colour shows here.
+ */
+async function drawRailPalette(page: Page, palette: RailPalette): Promise<void> {
+  await page.evaluate((palette) => {
+    const root = document.documentElement
+    root.classList.toggle("dark", palette !== "light")
+    if (palette === "ink") root.setAttribute("data-theme", "ink")
+    else root.removeAttribute("data-theme")
+    root.style.colorScheme = "light"
+  }, palette)
+}
+
+/**
+ * The contrast of each `[element, property, pseudo]` colour against the background of `against`,
+ * composited the way the eye sees it: each colour over the one under it. Rounded to two decimals.
+ */
+function contrastsAgainst(
+  against: Locator,
+  colours: Record<string, [selector: string, property: string, pseudo?: string]>,
+): Promise<Record<string, number>> {
+  return against.evaluate((base, colours) => {
+    const canvas = document.createElement("canvas")
+    canvas.width = canvas.height = 1
+    const context = canvas.getContext("2d", { willReadFrequently: true })
+    if (!context) throw new Error("no 2D canvas to resolve colours with")
+    /** A CSS colour as sRGB bytes, painted over `under` when it is not opaque. */
+    const bytes = (colour: string, under?: number[]): number[] => {
+      context.clearRect(0, 0, 1, 1)
+      if (under) {
+        context.fillStyle = `rgb(${under[0]} ${under[1]} ${under[2]})`
+        context.fillRect(0, 0, 1, 1)
+      }
+      context.fillStyle = colour
+      context.fillRect(0, 0, 1, 1)
+      return [...context.getImageData(0, 0, 1, 1).data]
+    }
+    const luminance = (rgb: number[]) => {
+      const [r, g, b] = rgb.map((byte) => {
+        const v = byte / 255
+        return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const ratio = (a: number[], b: number[]) => {
+      const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+      return Math.round((light + 0.05) / (dark + 0.05) * 100) / 100
+    }
+    const backdrop = bytes(getComputedStyle(base).backgroundColor)
+    const result: Record<string, number> = {}
+    for (const [name, [selector, property, pseudo]] of Object.entries(colours)) {
+      const element = selector === ":focus" ? document.activeElement : base.querySelector(selector)
+      if (!element) throw new Error(`${name}: nothing matches ${selector}`)
+      const style = getComputedStyle(element, pseudo)
+      if (pseudo && style.content === "none") throw new Error(`${name}: ${pseudo} is not drawn`)
+      result[name] = ratio(bytes(style.getPropertyValue(property), backdrop), backdrop)
+    }
+    return result
+  }, colours)
+}
+
+/** Throw unless every measured contrast is `minimum` or more, naming the ones that are not. */
+function expectContrast(measured: Record<string, number>, minimum: number, where: string): void {
+  const low = Object.entries(measured).filter(([, value]) => value < minimum)
+  if (low.length > 0) {
+    throw new Error(
+      `${where}: ${low.map(([name, value]) => `${name} ${value}:1`).join(", ")} below ${minimum}:1`,
+    )
+  }
+}
+
 /**
  * Run axe over the whole page and throw on any violation, or when the page-level `region` rule
  * (content outside every landmark) or colour contrast was not measured. `region` runs only over a
@@ -641,6 +718,121 @@ export const specs: readonly Spec[] = [
     run: async (page) => {
       await page.setViewportSize({ width: 900, height: 900 })
       return await expectAxeClean(page, `${RAIL} [data-e2e="rail-shell-column"]`)
+    },
+  },
+  {
+    name: "RailShell: the focus ring of an entry and of the account menu's trigger stands 3:1 or " +
+      "more off the rail, as do the primary action's edge and a counter badge, in light, dark " +
+      "and ink at 900 and 1440 px, and axe passes there",
+    pageId: "system",
+    run: async (page) => {
+      const column = rail(page, "rail-shell-column")
+      const failures: string[] = []
+      const results: string[] = []
+      for (const palette of ["light", "dark", "ink"] as const) {
+        await drawRailPalette(page, palette)
+        for (const width of [900, 1440]) {
+          const where = `${palette} ${width} px`
+          await page.setViewportSize({ width, height: 900 })
+          await column.scrollIntoViewIfNeeded()
+          // Keyboard focus, so `:focus-visible` holds: onto Projects, the first entry not current.
+          const entries = column.locator(`[data-e2e="rail-shell-entry"]`)
+          await entries.nth(1).focus()
+          await page.keyboard.press("Tab")
+          const ring = await contrastsAgainst(column, { "entry ring": [":focus", "outline-color"] })
+          const account = width < 1024 ? "rail" : "sidebar"
+          await column.locator(`[data-e2e="rail-shell-demo-account-menu-${account}"]`).focus()
+          await page.keyboard.press("Shift+Tab")
+          await page.keyboard.press("Tab")
+          const accountRing = await contrastsAgainst(column, {
+            "account ring": [":focus", "outline-color"],
+          })
+          // The primary action is the first entry. Its edge is its fill, or its border where one is
+          // drawn; a border of no width has a colour too, so only a drawn one counts.
+          const fills = await contrastsAgainst(column, {
+            "primary fill": [`[data-e2e="rail-shell-entry"]`, "background-color"],
+            "primary border": [`[data-e2e="rail-shell-entry"]`, "border-top-color"],
+            "badge": [`[data-e2e="rail-shell-counter"]`, "background-color"],
+          })
+          const borderWidth = await entries.first().evaluate((element) =>
+            parseFloat(getComputedStyle(element).borderTopWidth)
+          )
+          const measured = {
+            ...ring,
+            ...(width < 1024 ? {} : accountRing),
+            badge: fills.badge,
+            "primary edge": Math.max(
+              fills["primary fill"],
+              borderWidth >= 1 ? fills["primary border"] : 1,
+            ),
+          }
+          try {
+            expectContrast(measured, 3, where)
+            await expectAxeClean(page, `${RAIL} [data-e2e="rail-shell-column"]`)
+          } catch (error) {
+            failures.push(error instanceof Error ? error.message : String(error))
+          }
+          results.push(
+            `${where}: ${Object.entries(measured).map(([k, v]) => `${k} ${v}`).join(", ")}`,
+          )
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join(" | "))
+      return results.join("; ")
+    },
+  },
+  {
+    name: "RailShell in the 72 px rail: the current entry has a bar at 3:1 or more off the rail " +
+      "and a different text colour and fill from a hovered entry, in light, dark and ink",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 900, height: 900 })
+      const column = rail(page, "rail-shell-column")
+      const results: string[] = []
+      for (const palette of ["light", "dark", "ink"] as const) {
+        await drawRailPalette(page, palette)
+        await column.scrollIntoViewIfNeeded()
+        const current = column.locator(`[aria-current="page"]`)
+        const idle = column.getByRole("link", { name: "Stats", exact: true })
+        await idle.hover()
+        const look = (entry: Locator) =>
+          entry.evaluate((element) => {
+            const style = getComputedStyle(element)
+            return `${style.backgroundColor} / ${style.color}`
+          })
+        const [hovered, chosen] = await Promise.all([look(idle), look(current)])
+        const [hoveredFill, hoveredText] = hovered.split(" / ")
+        const [chosenFill, chosenText] = chosen.split(" / ")
+        if (hoveredFill === chosenFill || hoveredText === chosenText) {
+          throw new Error(`${palette}: the hovered entry (${hovered}) looks like the current one`)
+        }
+        const bar = await contrastsAgainst(column, {
+          bar: [`[aria-current="page"]`, "background-color", "::before"],
+        })
+        expectContrast(bar, 3, palette)
+        results.push(`${palette}: bar ${bar.bar}:1; current ${chosen}, hovered ${hovered}`)
+      }
+      return results.join("; ")
+    },
+  },
+  {
+    name: "RailShell in the 72 px rail: after Escape hides a hovered entry's tooltip, hovering " +
+      "another entry shows that entry's tooltip",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 900, height: 900 })
+      const column = rail(page, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const projects = column.getByRole("link", { name: "Projects", exact: true })
+      const stats = column.getByRole("link", { name: "Stats", exact: true })
+      const tip = (entry: Locator) => entry.locator(`[data-e2e="rail-shell-tooltip"]`)
+      await projects.hover()
+      await tip(projects).waitFor({ state: "visible" })
+      await page.keyboard.press("Escape")
+      await tip(projects).waitFor({ state: "hidden" })
+      await stats.hover()
+      await tip(stats).waitFor({ state: "visible" })
+      return "Stats' tooltip shown after Escape hid Projects'"
     },
   },
   {
