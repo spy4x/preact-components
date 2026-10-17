@@ -2,10 +2,10 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconHome } from "@spy4x/preact-icons"
-import { RailShell, type RailShellItem, tabBarSlots } from "./rail-shell.tsx"
+import { Rail, type RailItem, tabBarSlots } from "./rail.tsx"
 
 /** `count` items keyed `i1`…, each a link to `/i1`…. */
-function itemsOf(count: number): RailShellItem[] {
+function itemsOf(count: number): RailItem[] {
   return Array.from({ length: count }, (_, index) => ({
     key: `i${index + 1}`,
     label: `Item ${index + 1}`,
@@ -13,7 +13,7 @@ function itemsOf(count: number): RailShellItem[] {
   }))
 }
 
-const primary: RailShellItem = { key: "new", label: "New post", href: "/new" }
+const primary: RailItem = { key: "new", label: "New post", href: "/new" }
 
 /** The markup inside the first element carrying this `data-e2e`, up to the element's own close. */
 function region(html: string, e2e: string, tag: string): string {
@@ -47,32 +47,39 @@ describe("tabBarSlots", () => {
     expect(split.more.map((item) => item.key)).toEqual(["i5", "i6"])
   })
 
-  it("gives the primary action the last tab when four items leave room for it", () => {
+  it("puts the primary action in the centre slot when four items leave room for it", () => {
     const split = tabBarSlots(itemsOf(4), primary)
-    expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "i3", "i4", "new"])
+    expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "new", "i3", "i4"])
     expect(split.more).toEqual([])
   })
 
-  it("keeps the last slot for the overlay when told to, even when every item would fit", () => {
+  it("keeps the last slot for the sheet when told to, even when every item would fit", () => {
     const split = tabBarSlots(itemsOf(5), undefined, true)
     expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "i3", "i4"])
     expect(split.more.map((item) => item.key)).toEqual(["i5"])
     expect(tabBarSlots(itemsOf(3), undefined, true).more).toEqual([])
   })
 
-  it("puts the primary action first behind More when five items fill the bar", () => {
+  it("keeps the primary action a tab in the centre when the items overflow the bar", () => {
     const split = tabBarSlots(itemsOf(5), primary)
-    expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "i3", "i4"])
-    expect(split.more.map((item) => item.key)).toEqual(["new", "i5"])
+    expect(split.tabs.map((item) => item.key)).toEqual(["i1", "i2", "new", "i3"])
+    expect(split.more.map((item) => item.key)).toEqual(["i4", "i5"])
+  })
+
+  it("centres the primary action in a short bar too", () => {
+    expect(tabBarSlots(itemsOf(2), primary).tabs.map((item) => item.key))
+      .toEqual(["i1", "new", "i2"])
+    expect(tabBarSlots(itemsOf(2), primary, true).tabs.map((item) => item.key))
+      .toEqual(["i1", "new", "i2"])
   })
 })
 
-describe("RailShell", () => {
+describe("Rail", () => {
   it("draws every item in the rail, primary action first, with the page in main", () => {
     const html = render(
-      <RailShell items={itemsOf(3)} primary={primary}>
+      <Rail items={itemsOf(3)} primary={primary}>
         <p>page body</p>
-      </RailShell>,
+      </Rail>,
     )
     const rail = region(html, "rail-shell-rail", "nav")
     const order = [...rail.matchAll(/href="([^"]+)"/g)].map((m) => m[1])
@@ -81,7 +88,7 @@ describe("RailShell", () => {
   })
 
   it("marks the item matching currentKey as the current page in the rail and the tab bar", () => {
-    const html = render(<RailShell items={itemsOf(3)} currentKey="i2">page</RailShell>)
+    const html = render(<Rail items={itemsOf(3)} currentKey="i2">page</Rail>)
     const current = linkTags(html, "/i2")
     expect(current).toHaveLength(2)
     for (const tag of current) expect(tag).toContain('aria-current="page"')
@@ -91,28 +98,28 @@ describe("RailShell", () => {
   })
 
   it("marks the item whose href equals currentPath as the current page", () => {
-    const html = render(<RailShell items={itemsOf(3)} currentPath="/i3">page</RailShell>)
+    const html = render(<Rail items={itemsOf(3)} currentPath="/i3">page</Rail>)
     for (const tag of linkTags(html, "/i3")) expect(tag).toContain('aria-current="page"')
     for (const tag of linkTags(html, "/i1")) expect(tag).not.toContain("aria-current")
   })
 
   it("renders no More button and no dialog with five items", () => {
-    const html = render(<RailShell items={itemsOf(5)}>page</RailShell>)
+    const html = render(<Rail items={itemsOf(5)}>page</Rail>)
     expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"])
     expect(html).not.toContain('data-e2e="rail-shell-more"')
     expect(html).not.toContain("<dialog")
   })
 
-  it("renders four tabs, a More button and a dialog holding the rest with six items", () => {
-    const html = render(<RailShell items={itemsOf(6)} primary={primary}>page</RailShell>)
-    expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "Item 3", "Item 4", "More"])
+  it("renders the primary action in the centre tab and the rest in the sheet with six items", () => {
+    const html = render(<Rail items={itemsOf(6)} primary={primary}>page</Rail>)
+    expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "New post", "Item 3", "More"])
     const dialog = region(html, "rail-shell-dialog", "dialog")
     const inDialog = [...dialog.matchAll(/href="([^"]+)"/g)].map((m) => m[1])
-    expect(inDialog).toEqual(["/new", "/i5", "/i6"])
+    expect(inDialog).toEqual(["/i4", "/i5", "/i6"])
   })
 
   it("points the More button at the dialog and names the dialog by its heading", () => {
-    const html = render(<RailShell items={itemsOf(6)}>page</RailShell>)
+    const html = render(<Rail items={itemsOf(6)}>page</Rail>)
     const more = html.match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
     const dialogId = html.match(/<dialog[^>]*id="([^"]+)"/)?.[1]
     expect(dialogId).toBeDefined()
@@ -126,15 +133,15 @@ describe("RailShell", () => {
   it("highlights More when the current page is behind it, and only then", () => {
     const moreTag = (html: string) =>
       html.match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
-    const behind = render(<RailShell items={itemsOf(7)} currentKey="i6">page</RailShell>)
+    const behind = render(<Rail items={itemsOf(7)} currentKey="i6">page</Rail>)
     expect(moreTag(behind)).toContain("font-semibold")
     expect(moreTag(behind)).not.toContain("aria-current")
-    const inBar = render(<RailShell items={itemsOf(7)} currentKey="i2">page</RailShell>)
+    const inBar = render(<Rail items={itemsOf(7)} currentKey="i2">page</Rail>)
     expect(moreTag(inBar)).not.toContain("font-semibold")
   })
 
   it("prints English defaults for every label", () => {
-    const html = render(<RailShell items={itemsOf(6)}>page</RailShell>)
+    const html = render(<Rail items={itemsOf(6)}>page</Rail>)
     expect(html.match(/aria-label="Main navigation"/g)).toHaveLength(2)
     expect(tabLabels(html)).toContain("More")
     expect(region(html, "rail-shell-dialog", "h2")).toContain(">More")
@@ -144,7 +151,7 @@ describe("RailShell", () => {
 
   it("prints the caller's labels in place of every default", () => {
     const html = render(
-      <RailShell
+      <Rail
         items={itemsOf(6)}
         labels={{
           nav: "Site",
@@ -155,7 +162,7 @@ describe("RailShell", () => {
         }}
       >
         page
-      </RailShell>,
+      </Rail>,
     )
     expect(html.match(/aria-label="Site"/g)).toHaveLength(2)
     expect(tabLabels(html)).toContain("Plus")
@@ -169,7 +176,7 @@ describe("RailShell", () => {
 
   it("renders an item without href as a button and hides its icon from assistive technology", () => {
     const html = render(
-      <RailShell items={[{ key: "home", label: "Home", Icon: IconHome }]}>page</RailShell>,
+      <Rail items={[{ key: "home", label: "Home", Icon: IconHome }]}>page</Rail>,
     )
     const rail = region(html, "rail-shell-rail", "nav")
     expect(rail).toContain('<button type="button"')
@@ -177,50 +184,24 @@ describe("RailShell", () => {
     expect(rail).toMatch(/<span class="[^"]*" aria-hidden="true"><svg/)
   })
 
-  it("renders the header slot in a header before main and outside it", () => {
-    const html = render(
-      <RailShell items={itemsOf(3)} header={<button type="button">Account</button>}>
-        <p>page body</p>
-      </RailShell>,
-    )
-    const header = html.indexOf('<header data-e2e="rail-shell-header">')
-    const main = html.indexOf("<main")
-    expect(header).toBeGreaterThan(html.indexOf('data-e2e="rail-shell-skip-link"'))
-    expect(header).toBeLessThan(main)
-    expect(region(html, "rail-shell-header", "header")).toContain(">Account</button>")
-    expect(region(html, "rail-shell-content", "main")).not.toContain("Account")
-  })
-
-  it("renders no header element when the header slot is left out", () => {
-    const html = render(<RailShell items={itemsOf(3)}>page</RailShell>)
-    expect(html).not.toContain("<header")
-  })
-
-  it("calls each sidebar slot once per place: sidebar and rail in the column, overlay in the dialog", () => {
+  it("calls each slot once per place: rail in the column, sheet in the dialog", () => {
     const calls: string[] = []
     const html = render(
-      <RailShell
+      <Rail
         items={itemsOf(3)}
-        sidebarTop={(place) => {
+        top={(place) => {
           calls.push(`top:${place}`)
           return <span>{`top-${place}`}</span>
         }}
-        sidebarBottom={(place) => {
+        bottom={(place) => {
           calls.push(`bottom:${place}`)
           return <span>{`bottom-${place}`}</span>
         }}
       >
         page
-      </RailShell>,
+      </Rail>,
     )
-    expect(calls.sort()).toEqual([
-      "bottom:overlay",
-      "bottom:rail",
-      "bottom:sidebar",
-      "top:overlay",
-      "top:rail",
-      "top:sidebar",
-    ])
+    expect(calls.sort()).toEqual(["bottom:rail", "bottom:sheet", "top:rail", "top:sheet"])
     const top = html.indexOf('data-e2e="rail-shell-top"')
     const nav = html.indexOf('data-e2e="rail-shell-rail"')
     const bottom = html.indexOf('data-e2e="rail-shell-bottom"')
@@ -228,16 +209,14 @@ describe("RailShell", () => {
     expect(top).toBeLessThan(nav)
     expect(bottom).toBeGreaterThan(nav)
     expect(html.slice(top, nav)).toContain("top-rail")
-    expect(html.slice(top, nav)).toContain("top-sidebar")
     expect(html.slice(bottom, html.indexOf("<main"))).toContain("bottom-rail")
-    expect(html.slice(bottom, html.indexOf("<main"))).toContain("bottom-sidebar")
-    expect(region(html, "rail-shell-overlay-top", "div")).toContain("top-overlay")
-    expect(region(html, "rail-shell-overlay-bottom", "div")).toContain("bottom-overlay")
+    expect(region(html, "rail-shell-overlay-top", "div")).toContain("top-sheet")
+    expect(region(html, "rail-shell-overlay-bottom", "div")).toContain("bottom-sheet")
   })
 
   it("draws no slot wrappers when the slots are left out", () => {
-    // Six items, so the overlay exists and its slot wrappers could appear.
-    const html = render(<RailShell items={itemsOf(6)}>page</RailShell>)
+    // Six items, so the sheet exists and its slot wrappers could appear.
+    const html = render(<Rail items={itemsOf(6)}>page</Rail>)
     expect(html).toContain("<dialog")
     const wrappers = [
       "rail-shell-top",
@@ -250,9 +229,9 @@ describe("RailShell", () => {
     }
   })
 
-  it("gives the phone bar a last slot opening the overlay when slots exist and every item fits", () => {
+  it("gives the phone bar a last slot opening the sheet when slots exist and every item fits", () => {
     const html = render(
-      <RailShell items={itemsOf(3)} sidebarBottom={() => <span>account</span>}>page</RailShell>,
+      <Rail items={itemsOf(3)} bottom={() => <span>account</span>}>page</Rail>,
     )
     expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "Item 3", "More"])
     expect(html).toContain('data-e2e="rail-shell-more"')
@@ -260,12 +239,12 @@ describe("RailShell", () => {
   })
 
   it("draws an item's counter as a hidden badge and speaks it in the entry's name", () => {
-    const items: RailShellItem[] = [
+    const items: RailItem[] = [
       { key: "inbox", label: "Inbox", href: "/inbox", Icon: IconHome, counter: 3 },
       { key: "done", label: "Done", href: "/done", Icon: IconHome, counter: 0 },
     ]
     const html = render(
-      <RailShell items={items} labels={{ counter: (count) => `${count} unread` }}>page</RailShell>,
+      <Rail items={items} labels={{ counter: (count) => `${count} unread` }}>page</Rail>,
     )
     const rail = region(html, "rail-shell-rail", "nav")
     expect(rail).toContain('aria-label="Inbox, 3 unread"')
@@ -278,9 +257,9 @@ describe("RailShell", () => {
 
   it("speaks a bare count by default and caps the badge at 99+", () => {
     const html = render(
-      <RailShell items={[{ key: "a", label: "Alerts", href: "/a", Icon: IconHome, counter: 120 }]}>
+      <Rail items={[{ key: "a", label: "Alerts", href: "/a", Icon: IconHome, counter: 120 }]}>
         page
-      </RailShell>,
+      </Rail>,
     )
     expect(html).toContain('aria-label="Alerts, 120"')
     expect(html).toMatch(/data-e2e="rail-shell-counter">99\+</)
@@ -289,13 +268,13 @@ describe("RailShell", () => {
 
   it("draws the last slot's icon and counter from moreTab, under labels.more", () => {
     const html = render(
-      <RailShell
+      <Rail
         items={itemsOf(6)}
         labels={{ more: "Account" }}
         moreTab={{ icon: <b data-e2e="avatar-icon">U</b>, counter: 4 }}
       >
         page
-      </RailShell>,
+      </Rail>,
     )
     const moreTag = html.match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
     const more = html.slice(
@@ -307,5 +286,85 @@ describe("RailShell", () => {
     expect(more).toContain(">Account<")
     expect(moreTag).toContain('aria-label="Account, 4"')
     expect(more).toMatch(/data-e2e="rail-shell-counter">4</)
+  })
+
+  it("marks the entry holding the page in its section with aria-current true", () => {
+    const items: RailItem[] = [
+      { key: "home", label: "Home", href: "/" },
+      { key: "notes", label: "Notes", href: "/notes" },
+      { key: "tags", label: "Tags", href: "/notes/tags" },
+    ]
+    const inNote = render(<Rail items={items} currentPath="/notes/42">page</Rail>)
+    for (const tag of linkTags(inNote, "/notes")) expect(tag).toContain('aria-current="true"')
+    for (const tag of linkTags(inNote, "/")) expect(tag).not.toContain("aria-current")
+    const inTag = render(<Rail items={items} currentPath="/notes/tags/7">page</Rail>)
+    for (const tag of linkTags(inTag, "/notes/tags")) expect(tag).toContain('aria-current="true"')
+    for (const tag of linkTags(inTag, "/notes")) expect(tag).not.toContain("aria-current")
+  })
+
+  it("lets an exact match be the only current entry", () => {
+    const items: RailItem[] = [
+      { key: "notes", label: "Notes", href: "/notes" },
+      { key: "tags", label: "Tags", href: "/notes/tags" },
+    ]
+    const html = render(<Rail items={items} currentPath="/notes/tags">page</Rail>)
+    for (const tag of linkTags(html, "/notes/tags")) expect(tag).toContain('aria-current="page"')
+    for (const tag of linkTags(html, "/notes")) expect(tag).not.toContain("aria-current")
+  })
+
+  it("fills the current cell with no left bar, and outlines it under forced colours", () => {
+    const html = render(<Rail items={itemsOf(3)} currentKey="i2">page</Rail>)
+    const [railTag] = linkTags(region(html, "rail-shell-rail", "nav"), "/i2")
+    expect(railTag).toContain("bg-[var(--color-surface-active")
+    expect(railTag).toContain("forced-colors:outline-[CanvasText]")
+    expect(html).not.toContain("before:w-1")
+  })
+
+  it("names an icon cell by hidden text and keeps its aria-hidden tooltip outside the control", () => {
+    const html = render(
+      <Rail items={[{ key: "home", label: "Home", href: "/", Icon: IconHome }]}>page</Rail>,
+    )
+    const rail = region(html, "rail-shell-rail", "nav")
+    const link = rail.slice(rail.indexOf("<a "), rail.indexOf("</a>"))
+    expect(link).not.toContain("aria-label")
+    expect(link).toMatch(/<span class="[^"]*sr-only[^"]*">Home<\/span>/)
+    expect(link).not.toContain("rail-shell-tooltip")
+    expect(rail.slice(rail.indexOf("</a>"))).toMatch(
+      /aria-hidden="true" data-rail-tip data-e2e="rail-shell-tooltip"><span[^>]*>Home</,
+    )
+  })
+
+  it("draws the labels variant's label visibly and gives it no tooltip", () => {
+    const html = render(
+      <Rail variant="labels" items={[{ key: "work", label: "Work", href: "/w", Icon: IconHome }]}>
+        page
+      </Rail>,
+    )
+    const rail = region(html, "rail-shell-rail", "nav")
+    expect(rail).toMatch(/<span class="[^"]*line-clamp-2[^"]*">Work<\/span>/)
+    expect(rail).not.toMatch(/sr-only[^"]*">Work/)
+    expect(html).not.toContain("data-rail-tip")
+    expect(html).toContain('data-rail-variant="labels"')
+  })
+
+  it("keeps the column 72 px at every desktop width and pads it by the left safe-area inset", () => {
+    const html = render(<Rail items={itemsOf(3)}>page</Rail>)
+    const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
+    expect(aside).toContain("pl-safe")
+    expect(html).toContain("w-18")
+    expect(html).not.toContain("lg:w-60")
+  })
+
+  it("passes an item's data attributes through to its control", () => {
+    const html = render(
+      <Rail
+        variant="labels"
+        items={itemsOf(1)}
+        primary={{ ...primary, attributes: { "data-primary-book": "" } }}
+      >
+        page
+      </Rail>,
+    )
+    for (const tag of linkTags(html, "/new")) expect(tag).toMatch(/ data-primary-book[ >]/)
   })
 })
