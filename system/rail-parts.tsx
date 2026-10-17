@@ -91,10 +91,12 @@ const entryPlace: Record<Exclude<EntryPlace, "rail">, string> = {
 }
 
 /**
- * The label's text in a desktop cell: two lines at most, centred under the icon. It wraps only
- * between words. A single word wider than the cell, such as "Notifications", is hyphenated where
- * the browser has a dictionary for the page's `lang`, and otherwise ends in an ellipsis, as a tab
- * label does; it is never split between two letters with no hyphen.
+ * The label's text in a desktop cell, centred under the icon. It wraps only between words, and a
+ * single word wider than the cell, such as "Notifications", is hyphenated where the browser has a
+ * dictionary for the page's `lang`; it is never split between two letters with no hyphen. In the
+ * labels variant it stops at two lines and ends in an ellipsis. In the icons variant on a screen
+ * with no hover, the label is shown with `overflow: visible`, which cancels both: a word wider
+ * than the cell overflows it slightly, inside the 72 px column, and is not clipped.
  */
 const cellLabelText =
   "min-w-0 max-w-full text-center leading-4 tracking-tight line-clamp-2 break-normal hyphens-auto text-ellipsis"
