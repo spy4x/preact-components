@@ -26,13 +26,22 @@
 import {
   IconBell,
   IconBookOpen,
+  IconBriefcase,
+  IconCalendar,
   IconChartPie,
+  IconCheckCircle,
   IconCog6Tooth,
+  IconCreditCard,
+  IconDocumentText,
+  IconFlag,
   IconFolder,
   IconGlobe,
   IconHome,
   IconPencilSquare,
   IconSearch,
+  IconShieldCheck,
+  IconUsers,
+  IconWrench,
 } from "@spy4x/preact-icons"
 import {
   AuthForm,
@@ -49,6 +58,12 @@ import {
   type RailShellItem,
   type RailShellSidebarPlace,
 } from "@spy4x/preact-system/rail-shell"
+import { Rail, type RailItem, type RailVariant } from "@spy4x/preact-system/rail"
+import {
+  AppShell,
+  type AppShellConnection,
+  type AppShellItem,
+} from "@spy4x/preact-system/app-shell"
 import { Shell } from "@spy4x/preact-system/shell"
 import { SiteFooter } from "@spy4x/preact-system/site-footer"
 import { SiteHeader } from "@spy4x/preact-system/site-header"
@@ -1532,38 +1547,37 @@ function RailShellDemoAccount(
 /**
  * `RailShell` inside a bounded, scrolling frame, so the card does not take over the guide's page.
  *
- * `min-h-full` replaces the component's own `min-h-dvh`, and `--rail-shell-height` the window's
- * height the desktop column fills, so the frame is the scroll container the column and the tab
- * bar stick to. Which of them shows follows the viewport, not this frame: the guide at desktop
- * width shows the labelled sidebar, between `md` and `lg` the icon rail, and a phone-width window
- * the tab bar, whose last slot is "Account" with the avatar and an unread count. `sidebarTop`
- * holds a workspace switcher; `sidebarBottom` holds a notifications link and `AccountMenu`.
+ * `min-h-full` replaces the component's own `min-h-dvh`, and `--rail-height` the window's height
+ * the desktop column fills, so the frame is the scroll container the column and the tab bar stick
+ * to. Which of them shows follows the viewport, not this frame: from `md` the 72 px icon rail, and
+ * a phone-width window the tab bar, whose last slot is "Account" with the avatar and an unread
+ * count. `sidebarTop` holds a workspace switcher; `sidebarBottom` holds a notifications link and
+ * `AccountMenu`, each compact in the rail and full in the overlay.
  *
  * Every item is a link followed through the `navigateLink` port, so a plain click moves the
  * current marker and prints the key and `href` it was handed instead of following the link; the
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
- * `href`, so it is a button through `navigate`. The second checkbox, off at first, draws the older
- * layout's `header`, a brand and one button, which the skip link jumps past; the house layout has
- * no top bar. The frame scrolls the shell, so it takes the tab bar's scroll padding itself and takes it
- * off the root, as the component's doc asks of such a caller.
+ * `href`, so it is a button through `navigate`. The frame scrolls the shell, so it takes the tab
+ * bar's scroll padding itself and takes it off the root, as the component's doc asks of such a
+ * caller.
  */
 function RailShellDemo() {
   const current = useSignal("home")
   const via = useSignal("start")
   const routeLinks = useSignal(true)
-  const withHeader = useSignal(false)
   const workspace = useSignal("acme")
   const theme = useSignal<AccountMenuTheme>("system")
   const unread = 3
   return (
     <div
-      class="h-[600px] overflow-y-auto [--rail-shell-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+      class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
       data-e2e="rail-shell-demo"
     >
       <RailShell
         class="min-h-full"
         labels={{
           nav: "RailShell demo navigation",
+          sidebar: "RailShell demo sidebar",
           more: "Account",
           moreDialog: "Account",
           counter: (count) => `${count} unread`,
@@ -1597,33 +1611,12 @@ function RailShellDemo() {
           />
         )}
         moreTab={{ icon: <Avatar name={railShellUser.name} size="sm" alt="" />, counter: unread }}
-        header={withHeader.value
-          ? (
-            <div class="flex items-center justify-between gap-4 border-b border-subtle px-4 py-3">
-              <strong class="text-sm">Brand</strong>
-              <Button size="sm" variant="outline" data-e2e="rail-shell-demo-account">
-                Account
-              </Button>
-            </div>
-          )
-          : undefined}
       >
         <div class="flex flex-col gap-4 p-4 text-sm">
           <p>
             Navigated to: <strong data-e2e="rail-shell-demo-current">{current.value}</strong>{" "}
             through <code data-e2e="rail-shell-demo-via">{via}</code>
           </p>
-          <label class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={withHeader.value}
-              onChange={(event) => {
-                withHeader.value = event.currentTarget.checked
-              }}
-              data-e2e="rail-shell-demo-with-header"
-            />
-            Draw a top bar in <code>header</code> (the older layout)
-          </label>
           <label class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -1644,7 +1637,7 @@ function RailShellDemo() {
             (_, index) => (
               <p key={index} class="text-muted">
                 Paragraph {index + 1}{" "}
-                of the page. It is here so the frame scrolls and the sidebar and the tab bar can be
+                of the page. It is here so the frame scrolls and the rail and the tab bar can be
                 seen staying in place while it does.
               </p>
             ),
@@ -1652,6 +1645,200 @@ function RailShellDemo() {
           <p data-e2e="rail-shell-demo-last-line">The last line of the page.</p>
         </div>
       </RailShell>
+    </div>
+  )
+}
+
+/** The rail demo's destinations: a personal site's, read by first-time visitors. */
+const railItems: RailItem[] = [
+  { key: "work", label: "Work", href: "#rail-demo-work", Icon: IconBriefcase },
+  { key: "services", label: "Services", href: "#rail-demo-services", Icon: IconCheckCircle },
+  { key: "tools", label: "Tools", href: "#rail-demo-tools", Icon: IconWrench },
+  { key: "how", label: "How I work", href: "#rail-demo-how", Icon: IconBookOpen },
+  { key: "writing", label: "Writing", href: "#rail-demo-writing", Icon: IconDocumentText },
+]
+
+/**
+ * `Rail` in a bounded frame, as a personal site draws it: a portrait linking home in the top zone,
+ * "Book" pinned first as the primary action, and the variant chosen with two radio buttons. The
+ * labels variant prints each destination's name under its icon, for visitors who do not know the
+ * icons yet; the icons variant names them in tooltips. On a phone the primary action takes the tab
+ * bar's centre slot. The frame sizes the column through `--rail-height`, as the `RailShell` card's.
+ */
+function RailDemo() {
+  const variant = useSignal<RailVariant>("labels")
+  const current = useSignal("work")
+  return (
+    <div
+      class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+      data-e2e="rail-demo"
+    >
+      <Rail
+        class="min-h-full"
+        variant={variant.value}
+        labels={{ nav: "Rail demo navigation", sidebar: "Rail demo sidebar" }}
+        items={railItems}
+        currentKey={current.value}
+        primary={{ key: "book", label: "Book", href: "#rail-demo-book", Icon: IconCalendar }}
+        navigateLink={(key) => current.value = key}
+        top={() => (
+          <a
+            href="#rail-demo-home"
+            class="flex justify-center rounded-[var(--radius-primary,0.5rem)] py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            data-e2e="rail-demo-portrait"
+          >
+            <Avatar name="Uma Lee" size="md" alt="Uma Lee, home" />
+          </a>
+        )}
+      >
+        <div class="flex flex-col gap-4 p-4 text-sm">
+          <fieldset class="flex flex-wrap gap-4">
+            <legend class="mb-2 font-medium">Variant</legend>
+            {(["labels", "icons"] as const).map((value) => (
+              <label key={value} class="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="rail-demo-variant"
+                  checked={variant.value === value}
+                  onChange={() =>
+                    variant.value = value}
+                  data-e2e={`rail-demo-variant-${value}`}
+                />
+                <code>{value}</code>
+              </label>
+            ))}
+          </fieldset>
+          <p>
+            Current: <strong data-e2e="rail-demo-current">{current.value}</strong>
+          </p>
+          <p class="text-muted" data-e2e="rail-demo-note">
+            {variant.value === "labels"
+              ? "Each label is printed under its icon, so the rail needs no script: every cell is a link."
+              : "Each label is a tooltip: rest the pointer on an icon, or reach it with Tab."}
+          </p>
+        </div>
+      </Rail>
+    </div>
+  )
+}
+
+/** The `AppShell` demo's two apps: a product's and its admin panel's destinations. */
+const appShellApps: Record<"product" | "admin", AppShellItem[]> = {
+  product: [
+    { key: "home", label: "Dashboard", href: "#app-home", Icon: IconHome },
+    { key: "notes", label: "Notes", href: "#app-notes", Icon: IconBookOpen },
+    { key: "projects", label: "Projects", href: "#app-projects", Icon: IconFolder },
+    { key: "calendar", label: "Calendar", href: "#app-calendar", Icon: IconCalendar },
+    { key: "settings", label: "Settings", href: "#app-settings", Icon: IconCog6Tooth },
+  ],
+  admin: [
+    { key: "users", label: "Users", href: "#admin-users", Icon: IconUsers },
+    { key: "teams", label: "Teams", href: "#admin-teams", Icon: IconFolder },
+    { key: "billing", label: "Billing", href: "#admin-billing", Icon: IconCreditCard },
+    { key: "flags", label: "Flags", href: "#admin-flags", Icon: IconFlag },
+    { key: "audit", label: "Audit log", href: "#admin-audit", Icon: IconShieldCheck },
+  ],
+}
+
+/** The realtime states the `AppShell` demo's select offers. */
+const appShellConnections: readonly AppShellConnection[] = [
+  "open",
+  "connecting",
+  "reconnecting",
+  "closed",
+  "idle",
+]
+
+/**
+ * `AppShell` in a bounded frame, switchable between a product and its admin panel. The admin
+ * draws the same shell with the neutral "Admin" tag on the account and a wide content column; the
+ * product draws the default column. The select sets the connection: while it is not live the rail
+ * shows a warning cell and a phone shows a strip above the tab bar, and the live region speaks it
+ * either way. Every link goes through `navigate`, which moves the current marker. The button opens
+ * a page inside the second section, whose entry then reads as the current section, not the page.
+ */
+function AppShellDemo() {
+  const app = useSignal<"product" | "admin">("product")
+  const connection = useSignal<AppShellConnection>("open")
+  const theme = useSignal<AccountMenuTheme>("system")
+  const items = appShellApps[app.value]
+  const current = useSignal(items[0].href)
+  const admin = app.value === "admin"
+  return (
+    <div
+      class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+      data-e2e="app-shell-demo"
+    >
+      <AppShell
+        class="min-h-full"
+        labels={{ nav: "AppShell demo navigation", sidebar: "AppShell demo sidebar" }}
+        items={items}
+        currentPath={current.value}
+        navigate={(href) => current.value = href}
+        notifications={{ href: "#app-notifications", unread: admin ? 0 : 3 }}
+        account={{
+          user: railShellUser,
+          tag: admin ? "Admin" : undefined,
+          items: [{ label: "Profile", href: "#app-profile" }],
+          theme: theme.value,
+          onThemeChange: (value) => theme.value = value,
+          signOut: { label: "Sign out", action: "#app-sign-out", onClick: () => undefined },
+        }}
+        connection={connection.value}
+        width={admin ? "wide" : "default"}
+      >
+        <div class="flex flex-col gap-4 text-sm">
+          <fieldset class="flex flex-wrap gap-4">
+            <legend class="mb-2 font-medium">App</legend>
+            {(["product", "admin"] as const).map((value) => (
+              <label key={value} class="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="app-shell-demo-app"
+                  checked={app.value === value}
+                  onChange={() => {
+                    app.value = value
+                    current.value = appShellApps[value][0].href
+                  }}
+                  data-e2e={`app-shell-demo-${value}`}
+                />
+                {value === "product" ? "Product" : "Admin panel"}
+              </label>
+            ))}
+          </fieldset>
+          <label class="flex flex-col gap-1">
+            Connection
+            <select
+              class="w-48 rounded-md border border-subtle bg-surface px-2 py-1"
+              value={connection.value}
+              onChange={(event) =>
+                connection.value = event.currentTarget.value as AppShellConnection}
+              data-e2e="app-shell-demo-connection"
+            >
+              {appShellConnections.map((value) => <option key={value} value={value}>{value}
+              </option>)}
+            </select>
+          </label>
+          <p>
+            Current: <strong data-e2e="app-shell-demo-current">{current.value}</strong>, theme:{" "}
+            <strong>{theme.value}</strong>
+          </p>
+          <p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => current.value = `${items[1].href}/42`}
+              data-e2e="app-shell-demo-inside"
+            >
+              Open a page inside {items[1].label}
+            </Button>
+          </p>
+          <p class="text-muted">
+            The page starts here, in a column centred in the space beside the rail:{" "}
+            {admin ? "64 rem wide, for tables" : "48 rem wide by default"}.
+          </p>
+        </div>
+      </AppShell>
     </div>
   )
 }
@@ -2231,9 +2418,146 @@ useEffect(() => {
 </Shell>`,
     render: () => <ShellDemo />,
   },
+  Rail: {
+    summary:
+      "The house frame's navigation: a 72 px column from `md` with three zones, of which only the middle one scrolls, and a bottom tab bar on a phone. `icons` names each cell in a tooltip; `labels` prints the name under the icon and works with no script.",
+    wide: true,
+    props: [
+      {
+        name: "variant",
+        type: '"icons" | "labels"',
+        description:
+          "`icons` (the default) for apps, whose people learn the icons; `labels` for a site read by first-time visitors.",
+      },
+      {
+        name: "items",
+        type: "RailItem[]",
+        description:
+          "The destinations. An item's `counter` draws a badge and joins its name; `attributes` passes `data-*` attributes to its link.",
+      },
+      {
+        name: "primary",
+        type: "RailItem",
+        description:
+          "The one accent-filled action, pinned first in the column and in the tab bar's centre slot.",
+      },
+      {
+        name: "currentPath",
+        type: "string",
+        description:
+          'Marks an exact `href` match with `aria-current="page"`, and the item whose `href` is the longest section prefix with `aria-current="true"`. `currentKey` marks by key.',
+      },
+      {
+        name: "navigateLink",
+        type: "(key: string, href: string) => void",
+        description:
+          "Called on a plain left click on an item's same-origin link, instead of following it.",
+      },
+      {
+        name: "top",
+        type: "(place: RailPlace) => ComponentChildren",
+        description:
+          'The column\'s top zone and the sheet\'s first section, called with `"rail"` or `"sheet"`.',
+      },
+      {
+        name: "bottom",
+        type: "(place: RailPlace) => ComponentChildren",
+        description: "The column's bottom zone and the sheet's last section.",
+      },
+      {
+        name: "tabBarNotice",
+        type: "ComponentChildren",
+        description: "A strip drawn right above the phone tab bar, such as an offline notice.",
+      },
+    ],
+    snippet: `<Rail
+  variant="labels"
+  items={[
+    { key: "work", label: "Work", href: "/work", Icon: IconBriefcase },
+    { key: "writing", label: "Writing", href: "/writing", Icon: IconDocumentText },
+  ]}
+  currentPath={url.pathname}
+  primary={{ key: "book", label: "Book", href: "/book", Icon: IconCalendar }}
+  top={() => <a href="/"><Avatar name="Uma Lee" size="md" alt="Uma Lee, home" /></a>}
+>
+  <Page />
+</Rail>`,
+    render: () => <RailDemo />,
+  },
+  AppShell: {
+    summary:
+      "All the chrome around an app's page, for a product and its admin panel alike: the icon rail with the bell and the account at its foot, the phone tab bar and sheet, the connection, and a centred page column. An app passes data, not markup.",
+    wide: true,
+    props: [
+      {
+        name: "items",
+        type: "AppShellItem[]",
+        description:
+          "The daily destinations, each a link with an icon. Four reach the phone bar; the rest go to the sheet.",
+      },
+      {
+        name: "account",
+        type: "AppShellAccount",
+        description:
+          'The signed-in person, the menu\'s items, the theme, **Sign out**, and an optional `tag` such as `"Admin"`, drawn as a neutral badge.',
+      },
+      {
+        name: "notifications",
+        type: "AppShellNotifications",
+        description: "The bell's `href` and `unread` count, spoken in its name.",
+      },
+      {
+        name: "connection",
+        type: "AppShellConnection",
+        description:
+          "The realtime connection. Not live, it draws a warning cell, a phone strip and a polite announcement.",
+      },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description: "The app router's port: a plain click on any shell link calls it.",
+      },
+      {
+        name: "switcher",
+        type: "(place: RailPlace) => ComponentChildren",
+        description: "The workspace switcher, in the column's top zone and the sheet.",
+      },
+      {
+        name: "width",
+        type: '"default" | "wide"',
+        description: "The page column: 48 rem, or 64 rem for tables.",
+      },
+      {
+        name: "banner",
+        type: "ComponentChildren",
+        description: "Content above the page's own header, in the same column.",
+      },
+    ],
+    snippet: `<AppShell
+  items={[
+    { key: "home", label: "Dashboard", href: "/", Icon: IconHome },
+    { key: "notes", label: "Notes", href: "/notes", Icon: IconBookOpen },
+  ]}
+  currentPath={location.pathname}
+  navigate={(href) => router.go(href)}
+  notifications={{ href: "/notifications", unread }}
+  account={{
+    user: { name: session.name, email: session.email },
+    tag: isAdminApp ? "Admin" : undefined,
+    items: [{ label: "Profile", href: "/profile" }],
+    theme,
+    onThemeChange: setTheme,
+    signOut: { label: "Sign out", action: "/sign-out" },
+  }}
+  connection={socketState}
+>
+  <Page />
+</AppShell>`,
+    render: () => <AppShellDemo />,
+  },
   RailShell: {
     summary:
-      "An app frame whose sidebar is its only chrome: labelled at `lg`, an icon rail with tooltips from `md`, and a bottom tab bar on a phone whose last slot holds the rest.",
+      "`Rail`'s icons variant under its earlier name and slot props, kept so an app can move to `AppShell` in its own time: a 72 px icon rail with tooltips from `md`, and a bottom tab bar on a phone whose last slot holds the rest.",
     wide: true,
     props: [
       {
@@ -2267,7 +2591,7 @@ useEffect(() => {
         name: "sidebarTop",
         type: "(place: RailShellSidebarPlace) => ComponentChildren",
         description:
-          'Drawn above the items, such as a workspace switcher; called with `"sidebar"`, `"rail"` or `"overlay"`, so it can draw a compact form in the 72 px rail.',
+          'Drawn above the items, such as a workspace switcher; called with `"rail"` or `"overlay"`, so it can draw a compact form in the 72 px rail.',
       },
       {
         name: "sidebarBottom",
@@ -2280,12 +2604,6 @@ useEffect(() => {
         type: "RailShellMoreTab",
         description:
           "The phone bar's last slot: an `icon` node, such as an avatar, and a `counter`. Its label is `labels.more`.",
-      },
-      {
-        name: "header",
-        type: "ComponentChildren",
-        description:
-          "An older layout's top bar, drawn above the page as its banner; the house layout has none.",
       },
     ],
     snippet: `<RailShell

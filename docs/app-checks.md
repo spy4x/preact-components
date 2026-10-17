@@ -29,7 +29,8 @@ registerSpacingTests({
 every module in a folder of pure screens to the boundary rule
 ([`system/README.md`](../system/README.md), "The screen boundary rule"), and a second test that
 checks your own lists: every alias and every import under `refusedImports` must be refused, and
-every import under `allowedImports` must pass.
+every import under `allowedImports` must pass. The rule also refuses `RailShell` by name, through
+the default `forbiddenNames`: a screen draws `AppShell`.
 
 ```ts
 // tests/ui-boundary.test.ts

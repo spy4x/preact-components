@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { fromFileUrl, relative } from "@std/path"
-import { checkModule, forbiddenImport } from "./boundary.ts"
+import { checkModule, forbiddenImport, forbiddenName } from "./boundary.ts"
 
 /** The messages `checkModule` reports for `source`, in the order Deno reports them. */
 function messages(source: string, options: Parameters<typeof checkModule>[1] = {}): string[] {
@@ -116,11 +116,43 @@ describe("checkModule", () => {
       ])
   })
 
+  it("reports RailShell imported or re-exported from the system package, barrel or subpath", () => {
+    const source = `
+      import { Badge } from "@spy4x/preact-ui"
+      import { AppShell, RailShell } from "@spy4x/preact-system"
+      import { RailShell as Frame } from "jsr:@spy4x/preact-system@7.0.0/rail-shell"
+      export { RailShell } from "@spy4x/preact-system/rail-shell"
+    `
+    const found = messages(source)
+    expect(found).toHaveLength(3)
+    for (const message of found) expect(message).toContain("draw AppShell instead")
+  })
+
+  it("allows the system package's other names and a RailShell of the caller's own", () => {
+    const source = `
+      import { AppShell, type RailShellItem } from "@spy4x/preact-system"
+      import { RailShell } from "./my-rail-shell.tsx"
+      import * as system from "@spy4x/preact-system"
+    `
+    expect(messages(source)).toEqual([])
+    const allowed = `import { RailShell } from "@spy4x/preact-system"`
+    expect(messages(allowed, { forbiddenNames: [] })).toEqual([])
+  })
+
   it("gives each violation the source range of its node", () => {
     const source = `const a = 1; fetch("/x")`
     const [violation] = checkModule(source)
 
     expect(source.slice(...violation.range)).toBe("fetch")
+  })
+})
+
+describe("forbiddenName", () => {
+  it("names the export, the source and what to do instead", () => {
+    expect(forbiddenName("@spy4x/preact-system", ["AppShell", "RailShell"])).toBe(
+      `"RailShell" from "@spy4x/preact-system" is not for app code; draw AppShell instead.`,
+    )
+    expect(forbiddenName("@spy4x/preact-systemic", ["RailShell"])).toBeNull()
   })
 })
 

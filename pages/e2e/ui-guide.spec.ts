@@ -39,14 +39,14 @@ const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>
   charts: {},
   map: {},
   // All three come from the page showing whole-page components several times inside one page,
-  // which an app does not do. `Shell` and `RailShell` each own the page's `<main>`, correct on an
-  // app's page, and their cards put two more inside the guide's own: both nested, and three in
-  // all. `AuthForm` names its `<form>` after its mode, and its card mounts it several times in the
+  // which an app does not do. `Shell`, `RailShell`, `Rail` and `AppShell` each own the page's
+  // `<main>`, correct on an app's page, and their cards put four more inside the guide's own: all
+  // nested, and five in all. `AuthForm` names its `<form>` after its mode, and its card mounts it several times in the
   // same two modes. The components are right, and a card cannot take a landmark off what it
   // mounts, so these stay until the owner decides whether the shells may render a `div` in place
   // of `<main>` and `AuthForm` may take a form name of its own.
   system: {
-    "landmark-main-is-top-level": [2, 2],
+    "landmark-main-is-top-level": [4, 4],
     "landmark-no-duplicate-main": [1, 1],
     // The unnamed `<main>` regions as one group, then the forms named "Sign in" and "Sign up".
     "landmark-unique": [3, 3],

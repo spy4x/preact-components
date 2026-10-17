@@ -14,6 +14,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconChevronDown } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
+import { Badge } from "@spy4x/preact-ui/badge"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import type { JSX } from "preact"
 
@@ -108,7 +109,34 @@ export interface AccountMenuProps {
   navigate?: (href: string) => void
   /** `data-e2e` on the trigger. Defaults to `"account-menu-button"`. */
   dataE2E?: string
+  /**
+   * A short word for the role the person is signed in as, such as `"Admin"`, drawn as a neutral
+   * gray badge: under the avatar on the avatar trigger, after the name on the wide one, and in
+   * {@link header}. It is never accent-coloured, so it does not read as a second accent.
+   */
+  tag?: string
+  /**
+   * Draw a header row at the top of the menu with the avatar, the name, the e-mail and the
+   * {@link tag}. It is not an item, and it is hidden from assistive technology, because the
+   * trigger's name already says who is signed in.
+   */
+  header?: boolean
+  /** Utilities merged over the trigger's own, such as a rail cell's shape. */
+  triggerClasses?: string
+  /** Utilities merged over the open menu's own, such as a placement beside a rail. */
+  panelClasses?: string
   labels?: AccountMenuLabels
+}
+
+/** The neutral role badge {@link AccountMenuProps.tag} draws. */
+export function AccountTag({ tag }: { tag: string }): JSX.Element {
+  return (
+    <Badge
+      text={tag}
+      color="gray"
+      class="rounded-[var(--radius-control,0.375rem)] px-1 py-0 leading-4"
+    />
+  )
 }
 
 /**
@@ -161,7 +189,8 @@ const fullTriggerClasses =
  * **The wide trigger names itself from its text.** The avatar beside the name is decorative there
  * (`alt=""`), because the name is already printed next to it; the avatar-only trigger is named by
  * `Avatar`'s own label, the person's name, as `Shell`'s header menu always was. `labels.trigger`
- * replaces either with a name of the caller's, such as "Account: Ada Lovelace".
+ * replaces either with a name of the caller's, such as "Account: Ada Lovelace". A `tag` is part of
+ * the text, so it is part of the name too: "Ada Lovelace Admin" unless `labels.trigger` says more.
  *
  * **The panel sits at `z-30`.** `Shell`'s mobile drawer is `z-20` inside its sticky `z-30` header,
  * and `RailShell`'s tab bar is `z-10`; at `Dropdown`'s default `z-10` the drawer painted over the
@@ -179,6 +208,10 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     horizontal = "left",
     navigate,
     dataE2E = "account-menu-button",
+    tag,
+    header = false,
+    triggerClasses,
+    panelClasses,
     labels,
   } = props
   const full = display === "full"
@@ -194,7 +227,10 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
       <>
         <Avatar name={user.name} src={user.avatarUrl} size="sm" alt="" />
         <span class="flex min-w-0 flex-1 flex-col">
-          <span class="truncate font-medium text-foreground">{user.name}</span>
+          <span class="flex min-w-0 items-center gap-2">
+            <span class="truncate font-medium text-foreground">{user.name}</span>
+            {tag && <AccountTag tag={tag} />}
+          </span>
           {user.email && <span class="truncate text-xs text-muted">{user.email}</span>}
         </span>
         <IconChevronDown
@@ -202,6 +238,13 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
           aria-hidden="true"
         />
       </>
+    )
+    : tag
+    ? (
+      <span class="flex flex-col items-center gap-1">
+        <Avatar name={user.name} src={user.avatarUrl} size="sm" />
+        <AccountTag tag={tag} />
+      </span>
     )
     : <Avatar name={user.name} src={user.avatarUrl} size="sm" />
 
@@ -213,14 +256,30 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     <Dropdown
       trigger={trigger}
       {...naming}
-      triggerClasses={full ? fullTriggerClasses : undefined}
+      triggerClasses={full ? cn(fullTriggerClasses, triggerClasses) : triggerClasses}
       containerClasses={full ? "flex w-full" : undefined}
       triggerDataE2E={dataE2E}
       menuLabel={labels?.menu ?? "Account menu"}
       vertical={vertical}
       horizontal={horizontal}
-      panelClasses={cn("z-30", full && "min-w-full")}
+      panelClasses={cn("z-30", full && "min-w-full", panelClasses)}
     >
+      {header && (
+        <div
+          aria-hidden="true"
+          class="mb-1 flex items-center gap-3 border-b border-subtle px-4 py-2"
+          data-e2e="account-menu-header"
+        >
+          <Avatar name={user.name} src={user.avatarUrl} size="sm" alt="" />
+          <span class="flex min-w-0 flex-1 flex-col">
+            <span class="flex min-w-0 items-center gap-2">
+              <span class="truncate text-sm font-medium text-foreground">{user.name}</span>
+              {tag && <AccountTag tag={tag} />}
+            </span>
+            {user.email && <span class="truncate text-xs text-muted">{user.email}</span>}
+          </span>
+        </div>
+      )}
       {items.map((item, index) => (
         <AccountMenuEntry key={`${index}-${item.label}`} item={item} navigate={navigate} />
       ))}

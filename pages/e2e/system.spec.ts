@@ -36,6 +36,9 @@ function textChanges(region: Locator): Promise<number> {
 const RAIL = "#demo-RailShell"
 const rail = (page: Page, e2e: string) => page.locator(`${RAIL} [data-e2e="${e2e}"]`)
 
+/** The tooltip `Rail` draws beside `entry`, inside the entry's cell. */
+const tipOf = (entry: Locator) => entry.locator(`xpath=../*[@data-e2e="rail-shell-tooltip"]`)
+
 /** Throw unless `locator` is drawn, or unless it is not, naming it by `what`. */
 async function expectVisible(locator: Locator, visible: boolean, what: string): Promise<void> {
   if (await locator.isVisible() !== visible) {
@@ -55,6 +58,73 @@ async function expectAxeClean(page: Page, selector: string): Promise<string> {
     throw new Error(`axe did not measure colour contrast in ${selector}`)
   }
   return `${passes.length} axe rules passed`
+}
+
+/** The `Rail` and `AppShell` cards, and one element in either by its `data-e2e`. */
+const RAIL_CARD = "#demo-Rail"
+const APP = "#demo-AppShell"
+const inCard = (page: Page, card: string, e2e: string) =>
+  page.locator(`${card} [data-e2e="${e2e}"]`)
+
+/**
+ * Make a card's demo frame the whole page, as an app draws its shell: the body's only child, with
+ * the frame's own height, scroll box and scroll padding taken off, so the window scrolls the shell
+ * and axe sees one `<main>` at the top level.
+ */
+async function demoFrameAlone(page: Page, card: string): Promise<Locator> {
+  await page.locator(`${card} [data-e2e$="-demo"]`).first().evaluate((frame: HTMLElement) => {
+    frame.className = ""
+    frame.id = "e2e-demo-frame"
+    document.body.replaceChildren(frame)
+  })
+  return page.locator("body > #e2e-demo-frame")
+}
+
+/**
+ * Switch the `AppShell` card to its admin panel with the connection reconnecting, so the column
+ * holds every cell it can draw: the connection, the bell and the tagged account.
+ */
+async function appShellAdmin(page: Page): Promise<void> {
+  await inCard(page, APP, "app-shell-demo-admin").check()
+  await inCard(page, APP, "app-shell-demo-connection").selectOption("reconnecting")
+  await inCard(page, APP, "app-shell-connection").waitFor({ state: "attached" })
+}
+
+/**
+ * Axe over the `Rail` card (both variants) and the `AppShell` card (product, then the admin panel
+ * reconnecting), each made the whole page, at 390 and 1440 px. Every case is measured before the
+ * check fails, so a failure names each case it holds in.
+ */
+async function shellsAxeClean(page: Page): Promise<string> {
+  const results: string[] = []
+  const failures: string[] = []
+  const measure = async (where: string) => {
+    try {
+      results.push(`${where}: ${await expectPageAxeClean(page)}`)
+    } catch (error) {
+      failures.push(`${where}: ${error instanceof Error ? error.message : error}`)
+    }
+  }
+  const cases = [
+    [RAIL_CARD, "labels"],
+    [RAIL_CARD, "icons"],
+    [APP, "product"],
+    [APP, "admin"],
+  ] as const
+  for (const [card, name] of cases) {
+    for (const width of [390, 1440]) {
+      // Each case starts from a fresh guide page, since the last one replaced the body.
+      await page.reload()
+      await page.locator(`html[data-hydrated="true"]`).waitFor()
+      await page.setViewportSize({ width, height: 900 })
+      if (name === "icons") await inCard(page, card, "rail-demo-variant-icons").check()
+      if (name === "admin") await appShellAdmin(page)
+      await demoFrameAlone(page, card)
+      await measure(`${card} ${name} at ${width} px`)
+    }
+  }
+  if (failures.length > 0) throw new Error(failures.join(" | "))
+  return results.join("; ")
 }
 
 /** The `useRouteAnnouncer` demo's page region, its heading, and the tab title it sets. */
@@ -153,6 +223,21 @@ function contrastsAgainst(
       const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x)
       return Math.round((light + 0.05) / (dark + 0.05) * 100) / 100
     }
+    /**
+     * The colour `property` names. `focus-ring` is the ring a focused control draws: its outline
+     * when it draws one, else the outermost layer of its box-shadow ring, the one the rail meets.
+     */
+    const colourOf = (style: CSSStyleDeclaration, property: string, name: string): string => {
+      if (property !== "focus-ring") return style.getPropertyValue(property)
+      if (style.outlineStyle !== "none") return style.outlineColor
+      const layers = style.boxShadow.split(/,(?![^(]*\))/).map((layer) => {
+        const colour = layer.match(/^\s*((?:rgb|oklch|oklab|lab|color)a?\([^)]*\)|#\w+)/)?.[1]
+        const lengths = layer.replace(colour ?? "", "").trim().split(/\s+/).map(parseFloat)
+        return { colour, spread: lengths[3] ?? 0 }
+      }).filter((layer) => layer.colour && layer.spread > 0)
+      if (layers.length === 0) throw new Error(`${name}: the focused control draws no ring`)
+      return layers.sort((a, b) => b.spread - a.spread)[0].colour as string
+    }
     const backdrop = bytes(getComputedStyle(base).backgroundColor)
     const result: Record<string, number> = {}
     for (const [name, [selector, property, pseudo]] of Object.entries(colours)) {
@@ -160,7 +245,7 @@ function contrastsAgainst(
       if (!element) throw new Error(`${name}: nothing matches ${selector}`)
       const style = getComputedStyle(element, pseudo)
       if (pseudo && style.content === "none") throw new Error(`${name}: ${pseudo} is not drawn`)
-      result[name] = ratio(bytes(style.getPropertyValue(property), backdrop), backdrop)
+      result[name] = ratio(bytes(colourOf(style, property, name), backdrop), backdrop)
     }
     return result
   }, colours)
@@ -480,6 +565,15 @@ export const specs: readonly Spec[] = [
         // Its classes also move the tab bar's scroll padding from the root to the frame; dropping
         // them gives the root back the padding an app's shell gets.
         frame.className = ""
+        // The Rail and AppShell cards' frames hand the root the same override; drop it there too,
+        // or their frames would take the root's padding away again.
+        for (
+          const other of document.querySelectorAll(
+            `[data-e2e="rail-demo"], [data-e2e="app-shell-demo"]`,
+          )
+        ) {
+          other.classList.remove("max-md:[:root:has(&)]:scroll-pb-0!")
+        }
         // The guide scrolls smoothly; an instant scroll lets the box be read right after focus.
         document.documentElement.style.scrollBehavior = "auto"
         const button = document.createElement("button")
@@ -515,7 +609,7 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "RailShell from lg: a labelled sidebar of 240 px with sidebarTop above the items, " +
+    name: "RailShell at 1440 px: the 72 px column with sidebarTop above the items, " +
       "sidebarBottom at its foot, and an item's counter spoken in its name",
     pageId: "system",
     run: async (page) => {
@@ -523,19 +617,12 @@ export const specs: readonly Spec[] = [
       const column = rail(page, "rail-shell-column")
       await column.scrollIntoViewIfNeeded()
       const box = await column.boundingBox()
-      if (!box || Math.abs(box.width - 240) > 1) throw new Error(`the column is ${box?.width} wide`)
-      await expectVisible(rail(page, "rail-shell-demo-switcher-sidebar"), true, "the wide switcher")
-      await expectVisible(rail(page, "rail-shell-demo-switcher-rail"), false, "the rail switcher")
-      await expectVisible(
-        // The first match is the label; the second, the rail's tooltip, is not drawn from lg.
-        rail(page, "rail-shell-rail").getByText("Notes", { exact: true }).first(),
-        true,
-        "the Notes label",
-      )
+      if (!box || Math.abs(box.width - 72) > 1) throw new Error(`the column is ${box?.width} wide`)
+      await expectVisible(rail(page, "rail-shell-demo-switcher-rail"), true, "the rail switcher")
       const [top, nav, bottom, frame] = await Promise.all([
-        rail(page, "rail-shell-demo-switcher-sidebar").boundingBox(),
+        rail(page, "rail-shell-demo-switcher-rail").boundingBox(),
         rail(page, "rail-shell-rail").boundingBox(),
-        rail(page, "rail-shell-demo-account-menu-sidebar").boundingBox(),
+        rail(page, "rail-shell-demo-account-menu-rail").boundingBox(),
         rail(page, "rail-shell-demo").boundingBox(),
       ])
       if (!top || !nav || !bottom || !frame) throw new Error("a slot or the list is not drawn")
@@ -554,8 +641,9 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "RailShell from md to lg: a 72 px icon rail whose label shows as a tooltip on focus " +
-      "and hides on Escape, each slot in its rail form, and the list scrolling above the bottom slot",
+    name: "RailShell from md: a 72 px icon rail whose label shows as a tooltip 8 px past the " +
+      "column on focus and hides on Escape, each slot in its rail form, and the list scrolling " +
+      "above the bottom slot",
     pageId: "system",
     run: async (page) => {
       await page.setViewportSize({ width: 900, height: 900 })
@@ -564,7 +652,6 @@ export const specs: readonly Spec[] = [
       const box = await column.boundingBox()
       if (!box || Math.abs(box.width - 72) > 1) throw new Error(`the rail is ${box?.width} wide`)
       await expectVisible(rail(page, "rail-shell-demo-switcher-rail"), true, "the rail switcher")
-      await expectVisible(rail(page, "rail-shell-demo-switcher-sidebar"), false, "the wide one")
       await expectVisible(
         rail(page, "rail-shell-demo-account-menu-rail"),
         true,
@@ -574,7 +661,7 @@ export const specs: readonly Spec[] = [
       // scrolls between the slots instead of running under the bottom one.
       await rail(page, "rail-shell-demo").evaluate((frame) => {
         frame.style.height = "420px"
-        frame.style.setProperty("--rail-shell-height", "420px")
+        frame.style.setProperty("--rail-height", "420px")
       })
       const [list, foot] = await Promise.all([
         rail(page, "rail-shell-rail").boundingBox(),
@@ -600,30 +687,36 @@ export const specs: readonly Spec[] = [
         name: "Notes, 3 unread",
         exact: true,
       })
-      const tip = notes.locator(`[data-e2e="rail-shell-tooltip"]`)
+      const tip = tipOf(notes)
       await expectVisible(tip, false, "the tooltip before focus")
       await notes.focus()
       await page.keyboard.press("Shift+Tab")
       await page.keyboard.press("Tab")
       await tip.waitFor({ state: "visible" })
-      const [tipBox, entryBox] = await Promise.all([tip.boundingBox(), notes.boundingBox()])
-      if (!tipBox || !entryBox) throw new Error("the tooltip or its entry is not drawn")
+      const [tipBox, entryBox, columnBox] = await Promise.all([
+        tip.boundingBox(),
+        notes.boundingBox(),
+        column.boundingBox(),
+      ])
+      if (!tipBox || !entryBox || !columnBox) {
+        throw new Error("the tooltip or its entry is not drawn")
+      }
       const tipMiddle = tipBox.y + tipBox.height / 2
       const entryMiddle = entryBox.y + entryBox.height / 2
       if (
-        Math.abs(tipBox.x - (entryBox.x + entryBox.width)) > 1 ||
+        Math.abs(tipBox.x - (columnBox.x + columnBox.width + 8)) > 1 ||
         Math.abs(tipMiddle - entryMiddle) > 1
       ) {
         throw new Error(
-          `the tooltip is at ${tipBox.x},${tipMiddle}, not beside the entry's right edge ` +
-            `${entryBox.x + entryBox.width},${entryMiddle}`,
+          `the tooltip is at ${tipBox.x},${tipMiddle}, not 8 px past the column's right edge ` +
+            `${columnBox.x + columnBox.width} beside the entry's middle ${entryMiddle}`,
         )
       }
       await page.keyboard.press("Escape")
       await tip.waitFor({ state: "hidden" })
       await page.keyboard.press("Tab")
       const next = page.locator(`${RAIL} [data-e2e="rail-shell-rail"] :focus`)
-      await next.locator(`[data-e2e="rail-shell-tooltip"]`).waitFor({ state: "visible" })
+      await tipOf(next).waitFor({ state: "visible" })
       return `rail ${box.width} px; tooltip at x ${tipBox.x}`
     },
   },
@@ -668,7 +761,7 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "RailShell: the sidebar with its slots passes axe at lg, colour contrast included",
+    name: "RailShell: the column with its slots passes axe at 1440 px, colour contrast included",
     pageId: "system",
     run: async (page) => {
       await page.setViewportSize({ width: 1440, height: 900 })
@@ -765,6 +858,9 @@ export const specs: readonly Spec[] = [
       "and ink at 900 and 1440 px, and axe passes there",
     pageId: "system",
     run: async (page) => {
+      // Entries ease their colours, the ring's among them; without motion every colour read below
+      // is the one that stays, not a step of the transition.
+      await page.emulateMedia({ reducedMotion: "reduce" })
       const column = rail(page, "rail-shell-column")
       const failures: string[] = []
       const results: string[] = []
@@ -778,13 +874,12 @@ export const specs: readonly Spec[] = [
           const entries = column.locator(`[data-e2e="rail-shell-entry"]`)
           await entries.nth(1).focus()
           await page.keyboard.press("Tab")
-          const ring = await contrastsAgainst(column, { "entry ring": [":focus", "outline-color"] })
-          const account = width < 1024 ? "rail" : "sidebar"
-          await column.locator(`[data-e2e="rail-shell-demo-account-menu-${account}"]`).focus()
+          const ring = await contrastsAgainst(column, { "entry ring": [":focus", "focus-ring"] })
+          await column.locator(`[data-e2e="rail-shell-demo-account-menu-rail"]`).focus()
           await page.keyboard.press("Shift+Tab")
           await page.keyboard.press("Tab")
           const accountRing = await contrastsAgainst(column, {
-            "account ring": [":focus", "outline-color"],
+            "account ring": [":focus", "focus-ring"],
           })
           // The primary action is the first entry. Its edge is its fill, or its border where one is
           // drawn; a border of no width has a colour too, so only a drawn one counts.
@@ -798,7 +893,7 @@ export const specs: readonly Spec[] = [
           )
           const measured = {
             ...ring,
-            ...(width < 1024 ? {} : accountRing),
+            ...accountRing,
             badge: fills.badge,
             "primary edge": Math.max(
               fills["primary fill"],
@@ -821,17 +916,20 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "RailShell in the 72 px rail: the current entry has a bar at 3:1 or more off the rail " +
-      "and a different text colour and fill from a hovered entry, in light, dark and ink",
+    name: "RailShell in the 72 px rail: the current entry is a filled cell with no bar, in a " +
+      "different text colour and fill from a hovered entry, in light, dark and ink; under forced " +
+      "colours an outline marks it",
     pageId: "system",
     run: async (page) => {
+      // The hovered fill eases in; without motion it is read at its end, not on its way there.
+      await page.emulateMedia({ reducedMotion: "reduce" })
       await page.setViewportSize({ width: 900, height: 900 })
       const column = rail(page, "rail-shell-column")
       const results: string[] = []
+      const current = column.locator(`[aria-current="page"]`)
       for (const palette of ["light", "dark", "ink"] as const) {
         await drawRailPalette(page, palette)
         await column.scrollIntoViewIfNeeded()
-        const current = column.locator(`[aria-current="page"]`)
         const idle = column.getByRole("link", { name: "Stats", exact: true })
         await idle.hover()
         const look = (entry: Locator) =>
@@ -845,12 +943,24 @@ export const specs: readonly Spec[] = [
         if (hoveredFill === chosenFill || hoveredText === chosenText) {
           throw new Error(`${palette}: the hovered entry (${hovered}) looks like the current one`)
         }
-        const bar = await contrastsAgainst(column, {
-          bar: [`[aria-current="page"]`, "background-color", "::before"],
-        })
-        expectContrast(bar, 3, palette)
-        results.push(`${palette}: bar ${bar.bar}:1; current ${chosen}, hovered ${hovered}`)
+        const bar = await current.evaluate((element) =>
+          getComputedStyle(element, "::before").content
+        )
+        if (bar !== "none" && bar !== "normal") {
+          throw new Error(`${palette}: a bar is drawn: ${bar}`)
+        }
+        results.push(`${palette}: current ${chosen}, hovered ${hovered}`)
       }
+      const plain = await current.evaluate((element) => getComputedStyle(element).outlineStyle)
+      await page.emulateMedia({ forcedColors: "active" })
+      const forced = await current.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return { style: style.outlineStyle, width: style.outlineWidth }
+      })
+      if (plain !== "none" || forced.style !== "solid" || forced.width !== "2px") {
+        throw new Error(`outline ${plain} normally, ${forced.style} ${forced.width} when forced`)
+      }
+      results.push(`forced colours: a ${forced.width} ${forced.style} outline`)
       return results.join("; ")
     },
   },
@@ -864,7 +974,7 @@ export const specs: readonly Spec[] = [
       await column.scrollIntoViewIfNeeded()
       const projects = column.getByRole("link", { name: "Projects", exact: true })
       const stats = column.getByRole("link", { name: "Stats", exact: true })
-      const tip = (entry: Locator) => entry.locator(`[data-e2e="rail-shell-tooltip"]`)
+      const tip = tipOf
       await projects.hover()
       await tip(projects).waitFor({ state: "visible" })
       await page.keyboard.press("Escape")
@@ -873,6 +983,247 @@ export const specs: readonly Spec[] = [
       await tip(stats).waitFor({ state: "visible" })
       return "Stats' tooltip shown after Escape hid Projects'"
     },
+  },
+  {
+    name: "Rail: a tooltip waits 300 ms under a resting pointer and none on keyboard focus, " +
+      "Escape hides it, and moving on brings the next one back",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await inCard(page, RAIL_CARD, "rail-demo-variant-icons").check()
+      const column = inCard(page, RAIL_CARD, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const tools = column.getByRole("link", { name: "Tools", exact: true })
+      const writing = column.getByRole("link", { name: "Writing", exact: true })
+      const delay = (entry: Locator) =>
+        tipOf(entry).evaluate((tip) => getComputedStyle(tip).transitionDelay)
+      await tools.hover()
+      await tipOf(tools).waitFor({ state: "visible" })
+      const hoverDelay = await delay(tools)
+      if (!hoverDelay.split(", ").every((value) => value === "0.3s")) {
+        throw new Error(`a hovered cell's tooltip waits ${hoverDelay}, not 0.3s`)
+      }
+      await page.keyboard.press("Escape")
+      await tipOf(tools).waitFor({ state: "hidden" })
+      await page.mouse.move(1200, 10)
+      await writing.focus()
+      await page.keyboard.press("Shift+Tab")
+      await page.keyboard.press("Tab")
+      await tipOf(writing).waitFor({ state: "visible" })
+      const focusDelay = await delay(writing)
+      if (!focusDelay.split(", ").every((value) => value === "0s")) {
+        throw new Error(`a focused cell's tooltip waits ${focusDelay}, not 0s`)
+      }
+      await page.keyboard.press("Escape")
+      await tipOf(writing).waitFor({ state: "hidden" })
+      if (!(await writing.evaluate((element) => element === document.activeElement))) {
+        throw new Error("Escape moved focus off the cell")
+      }
+      await page.keyboard.press("Shift+Tab")
+      const before = column.locator(`[data-e2e="rail-shell-entry"]:focus`)
+      await tipOf(before).waitFor({ state: "visible" })
+      return `hover waits ${hoverDelay}, focus ${focusDelay}`
+    },
+  },
+  {
+    name: "AppShell: the first hover on a cell waits 300 ms too — its tooltip is still hidden " +
+      "100 ms in and shown 500 ms in",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = inCard(page, APP, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const projects = column.getByRole("link", { name: "Projects", exact: true })
+      // Never hovered before in this page: the tooltip has not been shown once.
+      await projects.hover()
+      const [early, late] = await tipOf(projects).evaluate(async (tip) => {
+        const shown = () => getComputedStyle(tip).visibility === "visible" && tip.checkVisibility()
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        const early = shown()
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        return [early, shown()]
+      })
+      if (early) throw new Error("the first hover showed the tooltip within 100 ms")
+      if (!late) throw new Error("the first hover had not shown the tooltip after 500 ms")
+      return "hidden at 100 ms, shown at 500 ms"
+    },
+  },
+  {
+    name: "AppShell on a touch screen at 1024 px: a label wraps only between words, and " +
+      '"Notifications" never breaks between two letters',
+    pageId: "system",
+    run: async (page) => {
+      const session = await page.context().newCDPSession(page)
+      await session.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 })
+      await page.setViewportSize({ width: 1024, height: 900 })
+      if (!(await page.evaluate(() => matchMedia("(hover: none)").matches))) {
+        throw new Error("touch emulation did not make the screen (hover: none)")
+      }
+      const column = inCard(page, APP, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const labels = column.locator("[data-rail-cell] span").filter({ hasNotText: /\s/ })
+      const words = await labels.evaluateAll((spans) =>
+        spans.filter((span) =>
+          span.childElementCount === 0 && span.checkVisibility({ visibilityProperty: true })
+        ).map((span) => {
+          const text = span.textContent ?? ""
+          const tops = new Set<number>()
+          for (let index = 0; index < text.length; index++) {
+            const range = document.createRange()
+            range.setStart(span.firstChild!, index)
+            range.setEnd(span.firstChild!, index + 1)
+            const rect = range.getClientRects()[0]
+            if (rect) tops.add(Math.round(rect.top))
+          }
+          const style = getComputedStyle(span)
+          // Only hyphenation may break a word: no overflow-wrap or word-break that splits it bare.
+          const hyphenOnly = style.hyphens === "auto" && style.overflowWrap === "normal" &&
+            style.wordBreak === "normal"
+          return { text, lines: tops.size, hyphenOnly }
+        })
+      )
+      const notifications = words.find((word) => word.text === "Notifications")
+      if (!notifications) throw new Error(`no visible "Notifications" label among ${words.length}`)
+      const split = words.filter((word) => word.lines > 1 && !word.hyphenOnly)
+      if (split.length > 0) {
+        throw new Error(
+          `split between letters with no hyphen: ${split.map((word) => word.text).join(", ")}`,
+        )
+      }
+      return words.map((word) => `${word.text} on ${word.lines} line(s)`).join(", ")
+    },
+  },
+  {
+    name: "Rail labels: every cell prints its label under its icon and draws no tooltip",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = inCard(page, RAIL_CARD, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const box = await column.boundingBox()
+      if (!box || Math.abs(box.width - 72) > 1) throw new Error(`the column is ${box?.width} wide`)
+      const work = column.getByRole("link", { name: "Work", exact: true })
+      const [icon, label] = await Promise.all([
+        work.locator("svg").boundingBox(),
+        work.getByText("Work", { exact: true }).boundingBox(),
+      ])
+      if (!icon || !label || label.y < icon.y + icon.height) {
+        throw new Error("the label is not drawn under the icon")
+      }
+      await work.hover()
+      const tips = await column.locator(`[data-e2e="rail-shell-tooltip"]`).count()
+      if (tips !== 0) throw new Error(`the labels variant draws ${tips} tooltips`)
+      return `label at y ${label.y}, icon ends at y ${icon.y + icon.height}`
+    },
+  },
+  {
+    name: "Rail below md: the primary action takes the tab bar's centre slot and More the last",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const bar = inCard(page, RAIL_CARD, "rail-shell-tabbar")
+      await bar.scrollIntoViewIfNeeded()
+      const names = await bar.locator(`li > :is(a, button)`).evaluateAll((tabs) =>
+        tabs.map((tab) => tab.getAttribute("aria-label") ?? tab.textContent?.trim() ?? "")
+      )
+      const wanted = ["Work", "Services", "Book", "Tools", "More"]
+      if (JSON.stringify(names) !== JSON.stringify(wanted)) {
+        throw new Error(`the bar is ${JSON.stringify(names)}, not ${JSON.stringify(wanted)}`)
+      }
+      return names.join(", ")
+    },
+  },
+  {
+    name: 'AppShell: a destination\'s own page is aria-current="page", and a page inside its ' +
+      'section makes it aria-current="true" without claiming the page',
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = inCard(page, APP, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const notes = column.getByRole("link", { name: "Notes", exact: true })
+      await notes.click()
+      const state = () => notes.getAttribute("aria-current")
+      if (await state() !== "page") throw new Error(`Notes is ${await state()} on its own page`)
+      await inCard(page, APP, "app-shell-demo-inside").click()
+      await inCard(page, APP, "app-shell-demo-current").getByText("#app-notes/42").waitFor()
+      const pages = await column.locator(`[aria-current="page"]`).count()
+      if (await state() !== "true" || pages !== 0) {
+        throw new Error(`inside the section Notes is ${await state()}, with ${pages} pages`)
+      }
+      return 'Notes: "page" on #app-notes, "true" on #app-notes/42'
+    },
+  },
+  {
+    name: "AppShell below md: closing the account sheet with its close button or Escape returns " +
+      "focus to the account tab",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tab = page.locator(APP).getByRole("button", { name: "Account, 3 unread" })
+      const dialog = inCard(page, APP, "rail-shell-dialog")
+      await tab.scrollIntoViewIfNeeded()
+      for (const how of ["close button", "Escape"] as const) {
+        await tab.click()
+        await dialog.waitFor({ state: "visible" })
+        if (how === "Escape") await page.keyboard.press("Escape")
+        else await inCard(page, APP, "rail-shell-close").click()
+        await dialog.waitFor({ state: "hidden" })
+        await tab.and(page.locator(":focus")).waitFor()
+      }
+      return "focus back on the account tab after the close button and after Escape"
+    },
+  },
+  {
+    name: 'AppShell admin: a neutral "Admin" badge under the avatar, spoken in the account ' +
+      "button's name and printed as the phone's last tab",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await appShellAdmin(page)
+      const column = inCard(page, APP, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const account = column.getByRole("button", { name: "Account: Uma Lee, Admin", exact: true })
+      const badge = account.getByText("Admin", { exact: true })
+      const [button, tag] = await Promise.all([account.boundingBox(), badge.boundingBox()])
+      if (!button || !tag || tag.y < button.y + button.height / 2) {
+        throw new Error("the badge is not under the avatar")
+      }
+      const fill = await badge.evaluate((element) => getComputedStyle(element).backgroundColor)
+      const chroma = await badge.evaluate((element) => {
+        const canvas = document.createElement("canvas")
+        canvas.width = canvas.height = 1
+        const context = canvas.getContext("2d")
+        if (!context) return -1
+        context.fillStyle = getComputedStyle(element).backgroundColor
+        context.fillRect(0, 0, 1, 1)
+        const [r, g, b] = context.getImageData(0, 0, 1, 1).data
+        return Math.max(r, g, b) - Math.min(r, g, b)
+      })
+      if (chroma < 0 || chroma > 16) {
+        throw new Error(`the badge's fill ${fill} is not a neutral gray (spread ${chroma})`)
+      }
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tab = inCard(page, APP, "rail-shell-more")
+      await tab.scrollIntoViewIfNeeded()
+      // The tab draws the avatar, whose initials are text too, above its word.
+      const words = (await tab.locator("span.truncate").innerText()).trim()
+      if (words !== "Admin") throw new Error(`the last tab reads "${words}"`)
+      return `badge ${fill}, channel spread ${chroma}; last tab "${words}"`
+    },
+  },
+  {
+    name: "Rail and AppShell as the page frame pass axe at 390 and 1440 px in light, colour " +
+      "contrast and landmarks included",
+    pageId: "system",
+    run: shellsAxeClean,
+  },
+  {
+    name: "Rail and AppShell as the page frame pass axe at 390 and 1440 px in dark, colour " +
+      "contrast and landmarks included",
+    pageId: "system",
+    colorScheme: "dark",
+    run: shellsAxeClean,
   },
   {
     name: "AccountMenu: the menu opens upward, marks the current theme as a checked radio item, " +

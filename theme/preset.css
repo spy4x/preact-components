@@ -462,6 +462,14 @@
 }
 
 /*
+ * Left padding that clears a notch or rounded corner on a phone or tablet held sideways: `Rail`'s
+ * desktop column pads itself by it, so its 72 px of cells never sit under the cut-out.
+ */
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/*
  * Scroll padding that keeps a focused control clear of `RailShell`'s phone tab bar, which sticks to
  * the bottom of the window: the bar's 64 px row and its 1 px top rule, the device's bottom inset the
  * bar pads itself by, and step 2 (8 px) more so the focus ring clears the bar too. `RailShell` sets

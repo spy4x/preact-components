@@ -307,8 +307,8 @@ classes keep their names: no app writes them as ordinary words.
 - **Data display** — `pc-num`, `pc-kpi`, `pc-kpi-label`, `pc-kpi-value`, `pc-bar`.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
-- **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator) and `pb-safe-3`
-  (step 3 plus that inset). The inset is the device's, not a step, so it gets a name here instead
+- **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`
+  (step 3 plus that inset) and `pl-safe` (left padding that clears a landscape phone's notch). The inset is the device's, not a step, so it gets a name here instead
   of an arbitrary value in a component.
 
 ## Spacing

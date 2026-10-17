@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-system",
-  "version": "6.3.0",
+  "version": "7.0.0",
   "exports": {
     ".": "./+index.ts",
     "./auth-form": "./auth-form.tsx",
@@ -12,6 +12,8 @@
     "./site-footer": "./site-footer.tsx",
     "./shell": "./shell.tsx",
     "./account-menu": "./account-menu.tsx",
+    "./rail": "./rail.tsx",
+    "./app-shell": "./app-shell.tsx",
     "./rail-shell": "./rail-shell.tsx",
     "./state-init": "./state-init.tsx",
     "./boundary": "./boundary.ts",

@@ -114,7 +114,7 @@ const PREFIX = "pc-"
  * the deprecated `page-layout`. Any other name has to carry {@link PREFIX}.
  */
 const NAMESPACED =
-  /^(?:(?:text|bg|border|rounded|ring|divide|decoration|shadow|font|pb|list)-|btn(?:-|$)|page-layout$)/
+  /^(?:(?:text|bg|border|rounded|ring|divide|decoration|shadow|font|pb|pl|list)-|btn(?:-|$)|page-layout$)/
 
 /** Every `@utility` name `preset.css` defines, read from the file itself. */
 async function presetUtilityNames(): Promise<string[]> {

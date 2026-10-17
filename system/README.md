@@ -28,7 +28,9 @@ Extracted from earlier source applications.
 
 | Component             | Subpath                 | Ports / key props                                                                                                                                                                           |
 | --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `vertical?`, `horizontal?`, `navigate?`, `dataE2E?`, `labels?`                                                        |
+| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
+| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                  |
+| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                          |
 | `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
 | `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
@@ -37,7 +39,8 @@ Extracted from earlier source applications.
 | `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
 | `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `header?`, `children`, `labels?`, `class?`                   |
+| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `labels?`, `class?`               |
+| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                              |
 | `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
 | `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
 | `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
@@ -198,18 +201,19 @@ function Layout({ store, children }: { store: HeadStore; children: ComponentChil
   const [path, setLocation] = useLocation()
   useRouteAnnouncer({ path, title: store.head.value.title })
   return (
-    <RailShell
+    <AppShell
       items={items}
+      account={account}
       currentPath={path}
-      navigateLink={(_key, href) => setLocation(href)}
+      navigate={setLocation}
     >
       {children}
-    </RailShell>
+    </AppShell>
   )
 }
 ```
 
-In a single-page app the two make one route change: `navigateLink` (or `Shell`'s `navigate`) hands
+In a single-page app the two make one route change: `navigate` (or `Rail`'s `navigateLink`) hands
 a plain click on a shell link to the router instead of loading a new page, the router's new `path`
 reaches the hook, and the hook moves focus and sets the title the way the page load it replaced
 would have.
@@ -218,7 +222,7 @@ would have.
   the first `?` or `#` is ignored, so a filter written to the query string is not a new page.
 - **Focus goes to the page's `<h1>`, or to `<main>` without one.** It looks inside `main`, the
   document's first `<main>` unless you pass a ref, and gives the target `tabindex="-1"` when it has
-  no `tabindex`, so script can focus it and Tab still skips it. `Shell` and `RailShell` both render
+  no `tabindex`, so script can focus it and Tab still skips it. `Shell`, `Rail` and `AppShell` render
   that `<main>`.
 - **`pageHeading(main?)` is that target without a route change.** It returns the same element,
   made focusable the same way, or `null` when there is no `main`. Pass it as `returnFocus` to a
@@ -226,7 +230,7 @@ would have.
   (`returnFocus={pageHeading}`), so the reader lands on the page's heading instead of the page
   body. It reads the document, so call it from a handler or an effect, not during a render.
 - **A focused heading shows the browser's focus ring.** That is intended: after a keyboard press
-  the ring shows a sighted keyboard user where they landed. `Shell` and `RailShell` give their
+  the ring shows a sighted keyboard user where they landed. `Shell` and `Rail` give their
   `<main>` `focus:outline-none`, so a page with no `<h1>` shows no ring when focus lands there.
 - **The first render moves nothing.** On a page load the reader starts at the top of the document,
   where the skip link is; only a later path change moves focus.
@@ -817,7 +821,7 @@ links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`
 `close(false)`-not-`close(true)` reasoning: a navigating link, like the scrim, is not the menu button
 asking to close, so it must not fight wherever the click actually sends focus next.
 
-**`navigate` is the client-router port, shaped like `RailShell`'s `navigateLink`.** Without it, every link is an
+**`navigate` is the client-router port, shaped like `Rail`'s `navigateLink`.** Without it, every link is an
 ordinary link. With it, a plain left click on a nav link, on an action that has an `href`, or on a
 link item of the user menu (passed on to `AccountMenu`), calls `navigate(href)` and cancels the
 browser's own navigation. A click with Ctrl, Meta, Shift or Alt held, or with another button, is
@@ -844,7 +848,7 @@ focused button would drop keyboard focus to `<body>`. The visitor closes the dra
 with Escape, the scrim or a link. Its icon defaults to `IconPlus`, the common "create" control.
 
 **Collapsing hides the desktop sidebar; it does not shrink it to icons.** The slots hold content
-with no icon form, and an item may have no icon; `RailShell` is the frame for a navigation of
+with no icon form, and an item may have no icon; `Rail` is the frame for a navigation of
 icons. `collapsed` and `onCollapsedChange` are a controlled pair: the collapse button is drawn in
 the header, from `lg` up, only when `onCollapsedChange` is given, and reports its state with
 `aria-expanded` and `aria-controls`. Where the value is stored is the caller's choice; the guide's
@@ -881,7 +885,7 @@ Escape-scoping proof and the Shell-vs-Dropdown one testing the same code path.
 
 ## The `AccountMenu` contract
 
-`AccountMenu` (#756) is the signed-in person's menu, taken out of `Shell` so a `RailShell` sidebar
+`AccountMenu` (#756) is the signed-in person's menu, taken out of `Shell` so `AppShell`'s rail
 carries the same one at its foot. It is `ui/`'s `Dropdown`, so the keyboard, the no-JavaScript
 fallback and the focus moves are that component's. The menu holds, in order: the caller's `items`
 (a link, a button, or a form post through `action`), the theme choice when `onThemeChange` is
@@ -903,7 +907,19 @@ replaces either name.
 `aria-checked`, in a `role="group"` named by the visible "Theme" heading. Choosing one calls
 `onThemeChange` and closes the menu; the component stores nothing.
 
-**The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `RailShell`'s tab bar (`z-10`).
+**`tag` marks a second app of the same product,** such as `"Admin"` for its admin panel. It draws
+`AccountTag`, a neutral gray badge at the control radius: under the avatar in the avatar trigger,
+after the name in the full one. The tag is part of the trigger's name ("Account: Uma Lee, Admin"
+when `labels.trigger` says so), never colour alone. It is gray on purpose: an accent badge would be
+a second accent beside the brand hue.
+
+**`header` adds a row at the menu's top** with the avatar, the name, the tag and the e-mail, for the
+avatar trigger, which shows none of them. The row is `aria-hidden`, because the trigger's name
+already says who is signed in. `triggerClasses` and `panelClasses` are merged over the trigger's
+and the panel's own classes, so a frame such as `AppShell` can size the trigger to its cell and open
+the panel beside its column.
+
+**The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `Rail`'s tab bar (`z-10`).
 Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that
 puts `AccountMenu` in a scrolling overlay leaves room below or above it.
 
@@ -995,6 +1011,13 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   `navigator`, `localStorage`, `sessionStorage`). `appAliases` (import prefixes such as `"@api/"`)
   and `appDirectories` (directory names such as `"apps"` that a relative import must not resolve
   into) default to none, because only the app knows them.
+- `forbiddenNames` lists exports an app must not import by name, each with the package it comes
+  from and the reason the message prints. It defaults to `DEFAULT_FORBIDDEN_NAMES`, which holds
+  `RailShell` from `@spy4x/preact-system`, any subpath of it included: an app draws `AppShell`, and
+  `RailShell` stays only so an app can move in its own time. An `import { RailShell }` and an
+  `export { RailShell } from` both fail; a dynamic `import()` is not checked by name. Pass `[]` to
+  turn it off. `forbiddenName(source, names, options)` is that half on its own: the message for one
+  imported name, or `null`.
 
 `@spy4x/preact-system/boundary-runner` is that test, ready to register. It imports no test
 framework: you pass your own `test` function, and a failure is a thrown `Error` that lists every
@@ -1245,9 +1268,10 @@ component's subpath.
   is nothing to print. Use it to put the same structured data somewhere other than the head.
 - `isCurrentLink(href, currentPath)` answers whether a link is the current page. It is exact string
   equality, so `/docs` is not current while `/docs/intro` is on screen; normalise `currentPath`
-  first if your routes want a prefix match. `SiteHeader`, `Shell` and `RailShell` use it for
-  `aria-current`.
-- `TAB_BAR_SLOTS` is `5`, the number of slots in `RailShell`'s phone tab bar, "More" included.
+  first if your routes want a prefix match. `SiteHeader` and `Shell` use it for `aria-current`;
+  `Rail` adds the section match described in its contract.
+- `TAB_BAR_SLOTS` is `5`, the number of slots in `Rail`'s phone tab bar, "More" included, and
+  `tabBarSlots(items, primary?, reserveMore?)` splits the entries between the bar and the sheet.
 - `serviceWorkerContainer(host)` returns `host.serviceWorker`, by default from
   `globalThis.navigator`, or `undefined` where there is none, such as on the server.
 - `skipWaiting(registration, message)` posts `message` (by default `DEFAULT_UPDATE_MESSAGE`,
@@ -1345,134 +1369,151 @@ getElementById }` source correctly — including the three ways there is nothing
 to prove for this component: it touches no listener, no focus and no timer, so nothing about it is
 unreachable from a string render.
 
-## The `RailShell` contract
+## The `Rail` contract
 
-`RailShell` (#257) is a third frame beside `Shell` and `SiteHeader`, for a site whose navigation is
-a short list of destinations with one primary action. From `lg` up it draws a labelled sidebar of
-240 px: each item an icon beside its label, and the primary action pinned at the top in the primary
-colour. From `md` to `lg` the same column is a 72 px icon rail, each entry named by its label for
-assistive technology and showing it as a tooltip on hover and focus (#756). Below `md` the column
-gives way to a bottom tab bar of at most five slots. `Shell` is different in
-kind — a header, a sidebar, a user menu and a `<details>` drawer for a signed-in app — and so is
-`SiteHeader`, a public site's top bar that collapses into the same kind of `<details>` panel.
-Neither has a rail or a tab bar, which is why this is a new component rather than a mode of either.
+`Rail` (#798) is the house frame's navigation: a 72 px column from `md` at every desktop width, and
+below `md` a bottom tab bar of at most five slots whose last slot opens a sheet with the rest. Apps
+draw `AppShell`, which builds on it; a site whose first-time visitors do not know the icons draws
+`Rail` with `variant="labels"` itself. `Shell` (a header, a sidebar and a `<details>` drawer) and
+`SiteHeader` (a public site's top bar) are different in kind: neither has a rail or a tab bar.
 
-**Which entries become tabs.** Items and the primary action together fill the bar when there are
-five or fewer of them, and then there is no "More". Past five, the first four items are tabs and
-the fifth slot is "More", which holds the primary action first and then every remaining item.
-Counting the primary action is a deliberate step past the plain "five items or fewer" rule: with
-five items and a primary action, a bar that showed all five items would leave the primary action
-unreachable on a phone. `tabBarSlots(items, primary)` is that rule as a pure function.
+**One width, two variants.** The column is 72 px (`w-18`) plus the device's left safe-area inset
+(`pl-safe`), so a landscape phone's notch never covers a cell. There is no wider labelled mode.
+`"icons"`, the default, draws a 48 px square per destination with the label as visually hidden
+text. `"labels"` draws a 64 × 56 px cell with a `text-xs` label under the icon, clamped to two
+lines, and no tooltip, so it renders on the server and works with no script. On a screen whose
+pointer cannot hover (`(hover: none)`, such as a tablet), the icons variant draws the labels too,
+because a tooltip cannot appear there; the width does not change.
 
-**"More" opens a modal `<dialog>`,** the pattern `ui/`'s `Lightbox` already uses, rather than the `<details>` disclosure the other two shells share: a modal gets Escape,
-an inert page behind it and the top layer from the browser. `showModal()` moves focus to the first
-control inside, which is the close button. Escape closes it natively, a click on the backdrop closes
-it, and choosing an entry or the close button closes it. Every way of closing ends in the `close`
-event, whose handler returns focus to "More". Chromium also returns focus to "More" by itself when a
-modal dialog closes, so in Chromium no check can prove the component's part; the handler is there
-for engines that do not. With no JavaScript every entry that has an `href` is a plain link, and
-"More" and the close button carry `command`/`commandfor`, so a browser that supports invoker
-commands still opens and closes the overlay — `pages/checks/system.ts` proves that in Chromium with
-script execution disabled.
+**Three zones, one scrolls.** The column is an `<aside>` named by `labels.sidebar` ("Sidebar" by
+default), so the zones' controls sit inside a landmark. `top` is above the `<nav>`, `bottom` at the
+column's foot, and only the `<nav>` between them scrolls, on its own, when the window is too short,
+as on a phone held sideways. The column sticks at the window's full height (`--rail-height`,
+`100dvh` by default, which a bounded container sets to its own height). `top` and `bottom` are
+render props called with the place they are drawn in, `"rail"` or `"sheet"`, so a slot can draw a
+compact form in the column.
 
-**The sidebar is the app's only chrome (#756).** `sidebarTop` and `sidebarBottom` are render props:
-the column calls them with the place it draws them in — `"sidebar"` from `lg`, `"rail"` from `md`
-to `lg`, `"overlay"` on a phone — so a slot can draw a compact form in the 72 px rail, such as a
-workspace switcher reduced to its mark or `AccountMenu` with `display="avatar"`. The column is
-sticky at the window's full height (`--rail-shell-height`, `100dvh` by default, which a bounded
-container sets to its own height), with the top slot above the items, the bottom slot at its foot,
-and the item list scrolling on its own between them when the window is too short for it, as on a
-phone held sideways. Both slots are drawn twice in the column, once per width, and
-CSS shows one; a slot's controls therefore need no ids of their own, or ids that differ by place.
+**Tooltips in the icons variant** are `aria-hidden` copies of the label, beside the cell rather than
+inside it, so the cell's name is its hidden text alone. One shows 8 px past the column 300 ms after
+the pointer rests on a cell, so moving the pointer down the rail flashes nothing, and at once on
+keyboard focus (`:focus-visible`). Each is `position: fixed`, so the scrolling list does not clip
+it; the cell's own box, read on hover and focus, places it, so it shows only after hydration, and it
+follows its cell when the list scrolls. An invisible bridge joins the cell to its tooltip, so the
+pointer can cross the gap. An ancestor with a `transform` or `filter` becomes a fixed element's
+containing block and would misplace it. Escape hides them while the pointer or focus stays in the
+column, without moving focus or consuming the key; the next hover or focus brings them back. A
+cell whose menu is open (`aria-expanded="true"`) shows none.
 
-**The column is a landmark.** It is an `<aside>` named by `labels.sidebar` ("Sidebar" by default),
-so the slots' controls, such as a workspace switcher, notifications and the account menu, sit
-inside a landmark like the navigation between them does. As a plain column, a page whose frame is
-`RailShell` left them outside every landmark, which axe reports as a `region` violation from `md`
-up. In the phone overlay they are inside the modal `<dialog>`.
+**The current entry is a filled cell.** It is tinted with the accent and drawn in the selected text
+colour; there is no bar on its edge. Under forced colours, where a fill disappears, a 2 px outline
+in `CanvasText` marks it. `currentKey` marks an item by key. `currentPath` marks the item whose
+`href` equals it with `aria-current="page"`; with no exact match, the item whose `href` is the
+longest prefix of the path followed by `/` gets `aria-current="true"`, so a note's page shows its
+section as current without claiming to be the list. `"/"` never claims a section.
 
-**Tooltips in the icon rail** are `aria-hidden` copies of the label, drawn on hover and on keyboard
-focus. Each is `position: fixed`, so the scrolling list does not clip it; the entry's own box,
-read on hover and focus, places it at the entry's right edge, so it needs JavaScript and shows
-only after hydration. Scrolling the list measures the boxes again, so a shown tooltip follows
-its entry. An ancestor with a
-`transform` or `filter` becomes a fixed element's containing block and would misplace it. Escape hides them while the pointer or focus stays in the column, as a tooltip must be
-dismissable without moving; the next focus move or pointer move brings them back.
+**The primary action** is the one accent-filled cell, pinned first in the column, and in the tab
+bar's centre slot (the left of the two middle slots in an even bar), so a thumb reaches it. Apps
+pass none.
 
-**Counters.** `RailShellItem.counter` draws a badge on the entry in every place: beside the label in
-the sidebar, on the icon's corner in the rail and the tab bar, and beside the label in the overlay.
-The badge is `aria-hidden`; the entry is named by an `aria-label` of its label and
-`labels.counter(count)`, "Notes, 3" by default (hidden text after the label would reach Chromium's
-name as "Notes , 3"), so a screen reader hears "Notes, 3 unread" with `counter: (n) => \`${n} unread\``.
-Past 99 the badge shows "99+" and the name keeps the exact count. A counter of 0 draws nothing.
+**Which entries become tabs.** Items and the primary action together fill the bar when they number
+five or fewer and there is nothing else for the sheet. Past five, or with `top` or `bottom`
+given, the last slot opens the sheet, and the first items fill the rest. The sheet then
+holds `top("sheet")`, the items that did not fit and `bottom("sheet")`, with a hairline between
+them. `moreTab` sets the last slot's `icon` and `counter`; its words are `labels.more`.
+`tabBarSlots(items, primary, reserveMore)` is that rule as a pure function.
 
-**The phone bar's last slot.** With either slot given, the bar keeps its fifth place for the
-overlay, even when every item would fit, because the slots have nowhere else to go on a phone. The
-overlay then holds `sidebarTop("overlay")`, the overflow entries (if any) and
-`sidebarBottom("overlay")`. `moreTab` sets the slot's `icon` (any node, such as an `Avatar` with
-`alt=""`) and its `counter`; its label stays `labels.more`, so an app that puts the account there
-names it "Account". Without slots and `moreTab` the slot is "More" with three dots, as before.
+**The sheet is a modal `<dialog>`,** for Escape, an inert page and the top layer from the browser.
+`showModal()` moves focus to the close button. Escape closes it natively; a backdrop click, the
+close button, choosing an entry, a plain click on any link inside it and a click on an element
+marked `data-rail-close` close it too. Every way of closing ends in the `close` event, which
+returns focus to the last slot. With no JavaScript every entry that has an `href` is a link, and the
+last slot and the close button carry `command`/`commandfor`, so a browser that supports invoker
+commands still opens and closes the sheet.
 
-**A tab's label fits nine letters on a 390 px phone.** A tab has no side padding of its own, and
-its `<li>` keeps 1 px on each side, except the bar's two outer ends, which keep 4 px so the first
-and last tabs' focus ring stays on screen. The label is set with tight letter spacing, so "Dashboard"
-in the bar's 12 px type fits a fifth of the bar, also in a wider fallback font.
-A longer label still truncates with an ellipsis, as the last resort; every tab stays at least
-44 px wide and tall.
+**Counters.** `RailItem.counter` draws an `aria-hidden` badge on the icon's top-right corner, and
+the entry is named by an `aria-label` of its label and `labels.counter(count)`, "Notes, 3" by
+default, so a screen reader hears "Notes, 3 unread" with `counter: (n) => \`${n} unread\``. Past 99
+the badge shows "99+" and the name keeps the exact count. A counter of 0 draws nothing.
 
-**Nothing covers the page.** The rail is a column in the layout, and its contents stick to the top
-while the page scrolls. The tab bar sticks to the bottom but keeps its place in the flow, so the
-page's last line always ends above it; it pads itself by the bottom safe-area inset. Inside a
-bounded, scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and
-that container becomes what both stick to.
+**Nothing covers the page.** The column is a column in the layout. The tab bar sticks to the bottom
+but keeps its place in the flow, pads itself by the bottom safe-area inset, and below `md` gives the
+root element the tab bar's scroll padding, so a control tabbed to near the bottom scrolls into view
+above it. `tabBarNotice` is drawn right above the bar, such as an offline strip. Inside a bounded,
+scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and that
+container becomes what both stick to.
 
-**Links reach a client router through `navigateLink`.** An entry with an `href` is a real link, so
-middle-click, "open in a new tab" and the address in the status bar all work. Without
-`navigateLink` a click on it loads the page, as any link does. With it, a plain left click —
-primary button, no Ctrl, Meta, Shift or Alt, not already cancelled by an earlier listener, on a
-link that resolves to the page's own origin — calls `navigateLink(key, href)` and cancels the
-browser's navigation. Every other click is left to the browser; a middle click fires `auxclick`,
-not `click`, so it never reaches the port. The rule is `followLinkClick` from `ui/`'s `link`, the
-one `Link`, `Button` and `Shell` follow, origin test included, because a client router cannot open
-another site. In the "More" overlay the entry closes the overlay either way. `navigate` stays the
-port for an entry with no `href`, which is a button. Pair it with `useRouteAnnouncer` (see "Route
-changes move focus and set the title") so a routed click moves focus and sets the title.
-
-**`header` is an older layout's banner.** The house layout has no top bar (see
-`docs/design-language.md`), so a new app leaves `header` out. Where one is drawn, the brand, a picker or the user menu go in `header`, not in
-`children`: `header` renders in a `<header>` beside `<main>`, never inside it, so at page level it is
-the document's banner landmark, and the skip link — first in tab order, aimed at `<main>` — moves
-focus past the rail and the header's controls in one press. Left out, there is no `<header>`.
+**Links reach a client router through `navigateLink`.** An entry with an `href` is a real link.
+With `navigateLink`, a plain left click on a same-origin link calls `navigateLink(key, href)` and
+cancels the browser's navigation; every other click is left to the browser. The rule is
+`followLinkClick` from `ui/`'s `link`. `navigate` is the port for an entry with no `href`, which is
+a button. `RailItem.attributes` passes `data-*` attributes to an entry's link or button, for
+analytics or a test hook.
 
 **Colours are theme tokens read through `var()`,** each with the default palette's value as its
-fallback — the same pattern `theme/preset.css` uses — so the shell follows whichever palette the
-page sets and draws without the preset too. Each one stands 3:1 or more off the rail in light, dark
-and ink (#789):
-
-- **The focus ring** of every entry, the close button and `AccountMenu`'s full trigger is the
-  components' ring, `--color-ring` (the accent; step 400 in the dark palettes). Tailwind's
-  `outline-2` sets no colour, and the browser's own ring is near-black on a dark rail.
-- **The primary action** is `Button`'s primary fill. In the dark palettes that fill, accent step
-  600, is about 2.7:1 against the rail, so a 1 px border in step 400 draws its edge.
-- **A counter's badge** is the accent in light, and accent step 400 with dark text in the dark
-  palettes, where the near-black `--color-primary` read 1.2:1.
-- **The current entry** is tinted with the accent (step 100 in light, `--color-selected-soft` in
-  dark) and drawn in `--color-selected-text`, and in the desktop column a bar in that colour marks
-  its left edge, so in the 72 px rail, where the bold label is hidden, it still differs from a
-  hovered entry's neutral fill (#779). Ink's `--color-surface-active` and `--color-nav-active`
-  replace the tint and the colour when set.
+fallback, so the rail follows whichever palette the page sets. The focus ring is `--color-ring`;
+the primary action is `Button`'s primary fill, with a 1 px border in the dark palettes, where the
+fill alone stands too close to the rail; a counter's badge is the accent, or accent step 400 with
+dark text in the dark palettes.
 
 **Icons come from the caller** as a component (`Icon`), not an element, because every entry is drawn
-twice — in the rail, and in the tab bar or the overlay — and one element can only be mounted once.
-The "More" glyph is three dots drawn inline, so the package gains no icon.
+twice, in the column and in the tab bar or the sheet, and one element can only be mounted once.
 
-`rail-shell.test.tsx` proves what a string render can: the split at five, the primary action's
-place in it, `aria-current` from either `currentKey` or `currentPath`, the "More" button pointing at
-the dialog, every label's English default and override, each slot called with its places, the
-counter's badge and name, and the last slot's icon and counter. The sidebar's width, the slots'
-places at each width, the tooltip and its Escape, the overlay's slots and focus return, and the
-contrast of the focus ring, the primary action, the badge and the current entry in every palette
-are proven in `pages/e2e/system.spec.ts`. The breakpoint switch, the layout, the
-dialog's keyboard and pointer behaviour, the focus moves, the header's banner role, the skip
-link's jump past the header and which link clicks `navigateLink` takes are proven in
-`pages/checks/system.ts`.
+`rail.test.tsx` proves what a string render can: the split and the centre slot, `aria-current` by
+key, by exact path and by section, the fill and the forced-colours outline, the hidden name and the
+tooltip beside the cell, both variants' cells, the column's width and inset, the attributes, the
+labels and their overrides, and the counter's badge and name. The tooltip's delay, focus and
+Escape, the sheet's focus return, the centre slot on a phone and axe in light and dark at 390 and
+1440 px are proven in `pages/e2e/system.spec.ts`; the breakpoint switch, the dialog's keyboard and
+pointer behaviour, the skip link and which link clicks `navigateLink` takes in
+`pages/checks/system.ts`, through the `RailShell` card.
+
+## The `AppShell` contract
+
+`AppShell` (#798) is all the chrome around an app's page, the same for every product and its admin
+panel. An app passes data, never markup: its destinations, the signed-in person, the unread count,
+the connection and the page. It is `Rail`'s icons variant with the bottom zone filled in, and it
+draws no brand mark and no top bar: the page starts with its own `PageHeader`.
+
+- **The bottom zone,** in order: the connection while it is news (`"idle"`, `"closed"` or `"reconnecting"`), a
+  warning cell with a tooltip; the bell, a link named with its count ("Notifications, 3 unread");
+  and the account, `AccountMenu` drawn as the avatar with its `header` row, opening beside the
+  column. While `account.user` is unknown, a plain placeholder stands in its place and no menu is
+  drawn; it fades in only after 300 ms, so a fast load shows nothing.
+- **The admin's mark** is `account.tag`, `"Admin"` in an admin panel: the neutral badge under the
+  avatar, part of the account button's name ("Account: Uma Lee, Admin"), and the phone's last tab's
+  label in place of "Account". The admin panel passes no `switcher`.
+- **One live region.** A `role="status"` span (`data-e2e="shell-ws-status"`) is always in the page,
+  outside the rail, and speaks the connection's word when it changes; it is empty without a
+  `connection`. The warning cell and the phone strip are `aria-hidden`, so the state is announced
+  once.
+- **The phone.** At most four destinations reach the tab bar; the last slot is the account, the
+  avatar with the unread count, opening a sheet with the switcher, the destinations that did not
+  fit, Notifications, then the account: the header row, the menu's items, the theme as three
+  pressed buttons, and **Sign out** last. While the connection is news, a strip above the tab bar
+  shows it.
+- **The page column** is centred in the space beside the rail, `px-4 md:px-8` and `py-6 sm:py-8`
+  outside it: 48 rem by default, 64 rem with `width="wide"`, for tables. `banner` sits above the
+  page in the same column. Nothing else sets a width.
+- **Ports:** `navigate(href)` receives a plain click on any shell link, the destinations, the bell
+  and the account's links. Every label has an English default and an override in `labels`.
+
+`app-shell.test.tsx` proves the bell's name, the account's name with and without a tag, the badge's
+neutral colour in the column, the tab and the sheet, the one live region, the connection cell and
+strip, the bottom zone's order, the column widths and the banner, the phone split and the sheet's
+order, the theme buttons, the placeholder, the absence of a top bar, and every label's override.
+
+## `RailShell`, kept for the move
+
+`RailShell` is `<Rail variant="icons">` under its earlier name: `sidebarTop` and `sidebarBottom` are
+`top` and `bottom`, and their place is `"rail"` or `"overlay"` (the sheet). It keeps the
+`rail-shell-*` test hooks, which `Rail` draws too, so an app's page objects keep working. The
+240 px labelled sidebar from `lg`, the current entry's left bar and the `header` slot are gone, and
+`--rail-shell-height` is now `--rail-height`. App code draws `AppShell`; the boundary rule fails a
+test that imports `RailShell` (see "The screen boundary rule").
+
+Three more breaking changes since 6.x:
+
+- `RailShellSidebarPlace` loses `"sidebar"` with the 240 px sidebar: it is `"rail" | "overlay"`.
+- `tabBarSlots` puts the primary action in the bar's centre slot. In 6.x it went first under More
+  whenever the entries overflowed the bar; now it always keeps a tab, and the items give way.
+- The `rail-shell-header` test hook is gone with the `header` slot.
