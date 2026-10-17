@@ -45,15 +45,17 @@
   /* Re-paint the tokens preset.css already reads, so buttons, cards, forms and tables repaint. */
   --color-surface: oklch(0.26 0.014 260); /* card */
   --color-canvas: oklch(0.15 0.012 260); /* page */
+  /* A hovered row or ghost button takes the active row's surface. The default dark palette's
+     gray-700 left ink's muted text at 3.58:1 there; every ink text tone reads 4.7:1 or better on
+     this one. */
+  --color-hover: var(--color-surface-active);
 
   --color-border-subtle: oklch(0.34 0.014 260);
   --color-border-control: oklch(0.4 0.016 260);
   --color-border-strong: oklch(0.55 0.016 260);
 
-  /* The state fills, on ink's own scale rather than the default dark palette's gray-700 and
-     gray-600: muted text keeps 4.5:1 on a hovered row (0.3, the active surface below), and a
-     track sits a step above the card. */
-  --color-hover: oklch(0.3 0.016 260);
+  /* A track sits a step above the card, on ink's own scale rather than the default dark
+     palette's gray-600. */
   --color-track: oklch(0.4 0.016 260);
 
   --color-foreground: oklch(0.93 0.006 260); /* primary text tone */

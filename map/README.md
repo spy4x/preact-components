@@ -281,3 +281,11 @@ What none of that proves — a real map mounting, tiles loading from the local p
 attribution staying visible, the pin count matching the marker count, and the pins' own keyboard path
 actually calling `onMarkerClick` with the right `id` — is `pages/checks/map.ts`'s job, driven in a
 real browser by `deno task --cwd pages verify`.
+
+The guide's axe scan (`pages/e2e/ui-guide.spec.ts`) skips one rule on one element: the colour
+contrast of the credit line. The credit line is opaque and sits over tiles that Leaflet blends with
+`plus-lighter`, a blend mode axe 4.13 has no formula for. On that element axe throws, and then
+reports no contrast for the whole page, so the page scan runs every rule except contrast on the
+credit line. `pages/e2e/map.spec.ts` measures its contrast with axe instead, in the dark theme
+only, with the tiles kept away, which is also what a reader sees when the tile server is down. In
+the light theme nothing measures the credit line's contrast.
