@@ -41,6 +41,14 @@ import {
   surface,
 } from "./rail-parts.tsx"
 
+export { RailCell, type RailCellProps } from "./rail-parts.tsx"
+
+/**
+ * The rail's keyboard focus ring, for a control a caller draws in a {@link RailCell}: 2 px in the
+ * components' ring colour, 2 px off the control, as on every rail entry.
+ */
+export const railFocusRing: string = focusRing
+
 /** {@link RailProps.variant}: icon cells with tooltips, or cells with a label under the icon. */
 export type RailVariant = "icons" | "labels"
 

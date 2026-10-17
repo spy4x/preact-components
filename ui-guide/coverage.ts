@@ -62,6 +62,11 @@ export const COMPONENTS_WITHOUT_CARD: Record<PackageId, readonly AllowedExport[]
       reason:
         "The badge `AccountMenu` and `AppShell` draw for `tag`; the AppShell card shows it with its admin panel switched on.",
     },
+    {
+      name: "RailCell",
+      reason:
+        "A cell for content in `Rail`'s `top` and `bottom` slots, with nothing to show outside a rail; the RailShell card draws its workspace switcher in one.",
+    },
   ],
   crud: [],
   theme: [],

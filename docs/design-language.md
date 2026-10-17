@@ -181,7 +181,8 @@ An app chooses only its brand hue, its destinations and its content.
   with a 24 px icon, 4 px apart, at `--radius-primary`. The current destination is a filled
   rounded square in `--color-surface-active` with the icon in the nav-active colour; hover is the
   canvas step. Each icon has a tooltip on its right, 8 px past the rail, after 300 ms of hover or
-  at once on keyboard focus. Escape hides it.
+  at once on keyboard focus. Escape hides it. A control an app draws in a zone, such as the
+  switcher, sits in a `RailCell` and wears `railFocusRing`, so its tooltip and ring match.
 - **Zones.** The top holds the switcher, a 40 px tile. The middle holds the destinations and is
   the only part that scrolls on a short screen. The bottom holds the connection while it is not
   live, the bell with its unread count, and the account avatar (32 px) opening `AccountMenu`.

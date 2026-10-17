@@ -40,6 +40,7 @@ Extracted from earlier source applications.
 | `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
 | `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `labels?`, `class?`               |
+| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                       |
 | `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                              |
 | `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
 | `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
@@ -1403,6 +1404,12 @@ pointer can cross the gap. An ancestor with a `transform` or `filter` becomes a 
 containing block and would misplace it. Escape hides them while the pointer or focus stays in the
 column, without moving focus or consuming the key; the next hover or focus brings them back. A
 cell whose menu is open (`aria-expanded="true"`) shows none.
+
+**A slot's control draws as a cell with `RailCell`.** `<RailCell tip="Acme">` wraps a caller's
+control in `top` or `bottom` the way the rail wraps an entry, so `Rail` places its tooltip and it
+shows, hides and waits exactly as an entry's. `railFocusRing` is the entries' focus ring as a class
+string, for the caller's own control, such as a `Dropdown` trigger. `AppShell`'s connection and
+account cells are drawn with it.
 
 **The current entry is a filled cell.** It is tinted with the accent and drawn in the selected text
 colour; there is no bar on its edge. Under forced colours, where a fill disappears, a 2 px outline
