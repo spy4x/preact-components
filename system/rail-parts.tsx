@@ -89,7 +89,8 @@ const entryPlace: Record<Exclude<EntryPlace, "rail">, string> = {
   // a nine-letter label such as "Dashboard" truncate in a fifth of a 390 px bar. The bar's two
   // outer ends keep 4 px, so the first and last tabs' focus ring stays on screen.
   tab: "h-full w-full flex-col justify-center gap-1 px-0 py-1 text-center",
-  sheet: "min-h-11 w-full gap-3 px-3 py-2 text-sm",
+  // `text-left`: a `<button>` centres its text by default, unlike a link in the next row.
+  sheet: "min-h-11 w-full gap-3 px-3 py-2 text-left text-sm",
 }
 
 /**
