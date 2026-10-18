@@ -3662,19 +3662,21 @@ unreachable from a string render.
 
 ## The `Rail` contract
 
-`Rail` (#798) is the house frame's navigation: a 72 px column from `md` at every desktop width, and
+`Rail` (#798) is the house frame's navigation: a column from `md` at every desktop width, and
 below `md` a bottom tab bar of at most five slots whose last slot opens a sheet with the rest. Apps
 draw `AppShell`, which builds on it; a site whose first-time visitors do not know the icons draws
 `Rail` with `variant="labels"` itself. `Shell` (a header, a sidebar and a `<details>` drawer) and
 `SiteHeader` (a public site's top bar) are different in kind: neither has a rail or a tab bar.
 
-**One width, two variants.** The column is 72 px (`w-18`) plus the device's left safe-area inset
-(`pl-safe`), so a landscape phone's notch never covers a cell. There is no wider labelled mode.
-`"icons"`, the default, draws a 48 px square per destination with the label as visually hidden
-text. `"labels"` draws a 64 × 56 px cell with a `text-xs` label under the icon, clamped to two
-lines, and no tooltip, so it renders on the server and works with no script. On a screen whose
-pointer cannot hover (`(hover: none)`, such as a tablet), the icons variant draws the labels too,
-because a tooltip cannot appear there; the width does not change.
+**Two variants, two widths.** The column is 72 px (`w-18`) in the icons variant and 88 px
+(`w-22`) in the labels variant, plus the device's left safe-area inset (`pl-safe`), so a landscape
+phone's notch never covers a cell. The page beside it is the rest of the row, so it follows either
+width. `"icons"`, the default, draws a 48 px square per destination with the label as visually
+hidden text. `"labels"` draws an 80 × 56 px cell with 4 px of side padding and a `text-xs` label
+under the icon, 72 px wide at most and clamped to two lines, and no tooltip, so it renders on the
+server and works with no script. On a screen whose pointer cannot hover (`(hover: none)`, such as
+a tablet), the icons variant draws the labels too, in 64 px cells, because a tooltip cannot appear
+there; its width does not change.
 
 **Three zones, one scrolls.** The column is an `<aside>` named by `labels.sidebar` ("Sidebar" by
 default), so the zones' controls sit inside a landmark. `top` is above the `<nav>`, `bottom` at the
