@@ -22,6 +22,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { type IconProps, IconXMark } from "@spy4x/preact-icons"
+import type { KbdLabels } from "@spy4x/preact-ui/kbd"
 import { isPlainClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
@@ -89,6 +90,15 @@ export interface RailItem {
    * gives the bar its sheet slot, and the slot is marked current while the item is.
    */
   sheetOnly?: boolean
+  /**
+   * The key combinations that do what this entry does, written the way `useHotkeys` takes them,
+   * such as `["mod+k", "/"]` for a search the app opens from anywhere. The rail does not bind them:
+   * the app does. The entry announces them all in `aria-keyshortcuts`, and the icons variant's
+   * tooltip shows the first one after the label as the platform writes it: "Search (Ctrl K)", or
+   * "Search (⌘K)" on Apple platforms. The phone's tab and sheet row show no hint, since a touch
+   * screen has no keys to press.
+   */
+  keyshortcuts?: readonly string[]
 }
 
 /**
@@ -133,6 +143,8 @@ export interface RailLabels {
    * number, so "Notifications, 3"; `(count) => \`${count} unread\`` gives "Notifications, 3 unread".
    */
   counter?: (count: number) => string
+  /** The words a key shortcut's hint shows in a tooltip, such as "Ctrl"; see `KBD_LABELS`. */
+  kbd?: Partial<KbdLabels>
 }
 
 /** Everything `Rail` draws comes from here. Nothing is read from app state or the window. */
@@ -247,6 +259,8 @@ export interface RailEntryProps {
   navigateLink?: (key: string, href: string) => void
   /** The words a counter adds to the name, as {@link RailLabels.counter}. Defaults to the number. */
   counterWords?: (count: number) => string
+  /** The words a key shortcut's hint shows, as {@link RailLabels.kbd}. */
+  kbdLabels?: Partial<KbdLabels>
 }
 
 /**
@@ -271,6 +285,7 @@ export function RailEntry(props: RailEntryProps): JSX.Element {
       navigate={navigate}
       navigateLink={navigateLink}
       counterWords={props.counterWords ?? String}
+      kbdLabels={props.kbdLabels}
     />
   )
 }
@@ -397,7 +412,7 @@ export function Rail(props: RailProps): JSX.Element {
   const sheetTop = hasSheet ? top?.("sheet") : undefined
   const sheetBottom = hasSheet ? bottom?.("sheet") : undefined
   const close = () => dialogRef.current?.close()
-  const entryPorts = { navigate, navigateLink, counterWords, variant }
+  const entryPorts = { navigate, navigateLink, counterWords, variant, kbdLabels: labels?.kbd }
   const zonePad = variant === "labels" ? "px-1" : "px-3 [@media(hover:none)]:px-1"
 
   const page = (

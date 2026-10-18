@@ -105,6 +105,7 @@ import {
 } from "@spy4x/preact-ui"
 import { makeStorage } from "@spy4x/platform/browser/storage"
 import { useSignal } from "@preact/signals"
+import { useHotkeys } from "@spy4x/preact-ui/hotkeys"
 import { type } from "arktype"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
@@ -1670,7 +1671,15 @@ const railItems: RailItem[] = [
   { key: "services", label: "Services", href: "#rail-demo-services", Icon: IconCheckCircle },
   { key: "tools", label: "Tools", href: "#rail-demo-tools", Icon: IconWrench },
   { key: "how", label: "How I work", href: "#rail-demo-how", Icon: IconBookOpen },
-  { key: "writing", label: "Writing", href: "#rail-demo-writing", Icon: IconDocumentText },
+  // W goes to Writing: the demo binds the key, and the entry announces it and shows it in its
+  // tooltip in the icons variant.
+  {
+    key: "writing",
+    label: "Writing",
+    href: "#rail-demo-writing",
+    Icon: IconDocumentText,
+    keyshortcuts: ["w"],
+  },
 ]
 
 /** The demo site's portrait as an entry's icon: any element, here an avatar standing in a photo. */
@@ -1685,11 +1694,12 @@ function RailDemoPortrait() {
  * variant prints each destination's name under its icon, for visitors who do not know the icons
  * yet; the icons variant names them in tooltips. On a phone the primary action takes the tab bar's
  * centre slot, and "More" is current while Home or About is. The frame sizes the column through
- * `--rail-height`, as the `RailShell` card's.
+ * `--rail-height`, as the `RailShell` card's. W goes to Writing, whose tooltip says so.
  */
 function RailDemo() {
   const variant = useSignal<RailVariant>("labels")
   const current = useSignal("work")
+  useHotkeys([{ keys: "w", handler: () => current.value = "writing" }])
   return (
     <div
       class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
@@ -2470,7 +2480,7 @@ useEffect(() => {
         name: "items",
         type: "RailItem[]",
         description:
-          "The destinations. An item's `counter` draws a badge and joins its name; `attributes` passes `data-*` attributes to its link; `sheetOnly` draws it only as a row of the phone sheet, which then marks More current while it is.",
+          "The destinations. An item's `counter` draws a badge and joins its name; `attributes` passes `data-*` attributes to its link; `sheetOnly` draws it only as a row of the phone sheet, which then marks More current while it is; `keyshortcuts` names the keys the app binds to it, announced in `aria-keyshortcuts` and shown in the icons variant's tooltip, such as \"Search (Ctrl K)\".",
       },
       {
         name: "primary",
@@ -2519,7 +2529,8 @@ useEffect(() => {
   variant="labels"
   items={[
     { key: "work", label: "Work", href: "/work", Icon: IconBriefcase },
-    { key: "writing", label: "Writing", href: "/writing", Icon: IconDocumentText },
+    // The app binds W itself; the entry announces it and shows it in its tooltip.
+    { key: "writing", label: "Writing", href: "/writing", Icon: IconDocumentText, keyshortcuts: ["w"] },
     // Phone sheet only: the column reaches Home through the portrait.
     { key: "home", label: "Home", href: "/", Icon: IconHome, sheetOnly: true },
     { key: "about", label: "About", href: "/about", Icon: IconUsers, sheetOnly: true },

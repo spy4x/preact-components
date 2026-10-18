@@ -18,6 +18,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconAlertTriangle, IconBell, type IconProps } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
+import type { KbdLabels } from "@spy4x/preact-ui/kbd"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
@@ -111,6 +112,8 @@ export interface AppShellLabels {
   accountTrigger?: (name: string, tag?: string) => string
   /** The account menu's own labels: its name and the theme choice's words. */
   accountMenu?: Omit<AccountMenuLabels, "trigger">
+  /** The words a key shortcut's hint shows in a tooltip, as `RailLabels.kbd`. */
+  kbd?: Partial<KbdLabels>
 }
 
 /** Everything `AppShell` draws comes from here. */
@@ -449,6 +452,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
           close: labels?.close,
           skipToContent: labels?.skipToContent,
           counter: counterWords,
+          kbd: labels?.kbd,
         }}
         class={className}
       >
