@@ -66,6 +66,8 @@ export {
   RailCell,
   type RailCellProps,
   type RailCurrent,
+  RailEntry,
+  type RailEntryProps,
   railFocusRing,
   type RailItem,
   type RailLabels,

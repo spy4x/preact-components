@@ -13,7 +13,8 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { followLinkClick } from "@spy4x/preact-ui/link"
-import type { ComponentChildren, JSX } from "preact"
+import { type ComponentChildren, createContext, type JSX } from "preact"
+import { useContext } from "preact/hooks"
 import type { RailCurrent, RailItem, RailVariant } from "./rail.tsx"
 
 /** Where an entry is drawn: the desktop column, the phone tab bar, or the phone sheet. */
@@ -160,6 +161,13 @@ export function RailTooltip({ children }: { children: ComponentChildren }): JSX.
   )
 }
 
+/**
+ * The variant of the `Rail` a cell is drawn in, which `Rail` provides to its slots, so a
+ * {@link RailCell} in the labels variant draws no tooltip without the caller saying so. Outside a
+ * `Rail` it is `"icons"`, the cell's shape before the labels variant existed.
+ */
+export const RailVariantContext = createContext<RailVariant>("icons")
+
 /** {@link RailCell}'s props. */
 export interface RailCellProps {
   /** The tooltip's words, such as the control's name. Hidden from assistive technology. */
@@ -174,13 +182,15 @@ export interface RailCellProps {
  * A desktop cell for caller content in `Rail`'s `top` or `bottom` slot, drawn like the rail's own:
  * the control with the rail's tooltip beside it, placed by `Rail` 8 px past the column, shown 300 ms
  * after the pointer rests or at once on keyboard focus, and hidden after Escape, while the control's
- * menu is open (`aria-expanded="true"`) and on a screen with no hover.
+ * menu is open (`aria-expanded="true"`) and on a screen with no hover. In the labels variant, whose
+ * cells print their label, it draws no tooltip, as the rail's own entries do there.
  */
 export function RailCell({ tip, children, dataE2E }: RailCellProps): JSX.Element {
+  const variant = useContext(RailVariantContext)
   return (
     <div class={cellGroup} data-rail-cell="" data-e2e={dataE2E}>
       {children}
-      <RailTooltip>{tip}</RailTooltip>
+      {variant === "icons" && <RailTooltip>{tip}</RailTooltip>}
     </div>
   )
 }

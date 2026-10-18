@@ -36,6 +36,7 @@ import {
   hasCount,
   MoreDots,
   placeTip,
+  RailVariantContext,
   rule,
   sectionRule,
   surface,
@@ -82,6 +83,12 @@ export interface RailItem {
   counter?: number
   /** `data-*` attributes passed through to the link or button, such as an analytics hook. */
   attributes?: Record<`data-${string}`, string>
+  /**
+   * Drawn only as a row of the phone sheet: never in the desktop column and never as a tab, such as
+   * a site's Home, whose column reaches it through a portrait in the `top` slot. Any such item
+   * gives the bar its sheet slot, and the slot is marked current while the item is.
+   */
+  sheetOnly?: boolean
 }
 
 /**
@@ -174,6 +181,11 @@ export interface RailProps {
   tabBarNotice?: ComponentChildren
   /** The page. Lands inside a `<main>` this component owns, the skip link's target. */
   children: ComponentChildren
+  /**
+   * Drawn after `<main>` and outside it, under the page in the content column, such as a site's
+   * `<footer>`, which keeps its `contentinfo` landmark there.
+   */
+  footer?: ComponentChildren
   labels?: RailLabels
   /** Utilities merged over the root element's own, e.g. `min-h-full` inside a bounded frame. */
   class?: string
@@ -219,6 +231,59 @@ export function tabBarSlots(
   return { tabs, more }
 }
 
+/** {@link RailEntry}'s props. */
+export interface RailEntryProps {
+  /** The destination: its label, `href` or key, `Icon` and `counter`, as in {@link RailProps.items}. */
+  item: RailItem
+  /** Drawn as a cell of the desktop column (`"rail"`) or as a row of the phone sheet (`"sheet"`). */
+  place: RailPlace
+  /** The variant of the `Rail` it sits in, which shapes its cell. Defaults to `"icons"`. */
+  variant?: RailVariant
+  /** How the entry is current, the caller's own answer for its page: `aria-current` and the fill. */
+  current?: RailCurrent
+  /** Port for an entry with no `href`: receives its key. */
+  navigate?: (key: string) => void
+  /** Port to a client router for an entry with an `href`, as {@link RailProps.navigateLink}. */
+  navigateLink?: (key: string, href: string) => void
+  /** The words a counter adds to the name, as {@link RailLabels.counter}. Defaults to the number. */
+  counterWords?: (count: number) => string
+}
+
+/**
+ * One rail entry for a caller's own slot content, drawn exactly as `Rail` draws its items: in the
+ * column a cell of the given variant (with its tooltip in the icons variant), in the sheet a 44 px
+ * row, with the rail's current fill, hover, focus ring and `aria-current`. A site's portrait in
+ * the `top` slot is one, its `Icon` a component that draws the photo.
+ *
+ * In the sheet, an entry with no `href` closes the sheet when chosen (`data-rail-close`), and a
+ * link's plain click closes it as any link inside the sheet does.
+ */
+export function RailEntry(props: RailEntryProps): JSX.Element {
+  const { item, place, variant = "icons", current, navigate, navigateLink } = props
+  const closes = place === "sheet" && item.href === undefined
+  return (
+    <Entry
+      item={closes ? { ...item, attributes: { ...item.attributes, "data-rail-close": "" } } : item}
+      place={place}
+      variant={variant}
+      current={current}
+      primary={false}
+      navigate={navigate}
+      navigateLink={navigateLink}
+      counterWords={props.counterWords ?? String}
+    />
+  )
+}
+
+/**
+ * Whether a slot's render left nothing to draw: `null`, `undefined`, a boolean, an empty string,
+ * or a list of those. A component that renders `null` is not detected, since that needs a render.
+ */
+function isEmptySlot(node: ComponentChildren): boolean {
+  if (node === null || node === undefined || typeof node === "boolean" || node === "") return true
+  return Array.isArray(node) && node.every((child) => isEmptySlot(child))
+}
+
 /** The attribute that hides the column's tooltips after Escape, until the next hover or focus. */
 const TIPS_HIDDEN = "data-tips-hidden"
 
@@ -246,13 +311,19 @@ const TIPS_HIDDEN = "data-tips-hidden"
  * bottom inset, and below `md` gives the root element the preset's `pc-scroll-pb-tab-bar`, so a
  * control a person tabs to near the bottom scrolls into view above it.
  *
- * **The sheet is a modal `<dialog>`** holding `top`, the items that did not fit and `bottom`, with
- * a hairline between them. The last slot opens it with `showModal()`; Escape closes it natively, a
- * backdrop click closes it here, and so does choosing an entry, the close button, a plain click on
- * any link inside it, or a click on any element marked `data-rail-close`. Every way of closing ends
- * in the `close` event, which returns focus to the last slot. With no JavaScript, the last slot and
- * the close button still work in a browser that supports `command`/`commandfor` invokers, and
- * every entry with an `href` is a link.
+ * **The sheet is a modal `<dialog>`** holding `top`, the items that did not fit and the
+ * `sheetOnly` ones, and `bottom`, with a hairline between them. The last slot opens it with
+ * `showModal()`; Escape closes it natively, and a backdrop click closes it natively too where the
+ * browser honours `closedby="any"` (Chrome and Edge 134+, Firefox 141+, no shipping Safari) and
+ * here otherwise. Choosing an entry, the close button, a plain click on any link inside it, or a
+ * click on any element marked `data-rail-close` closes it as well. Every way of closing ends in the
+ * `close` event, which returns focus to the last slot. With no JavaScript, the last slot and the
+ * close button still work in a browser that supports `command`/`commandfor` invokers, and every
+ * entry with an `href` is a link. The last slot is marked current while one of the sheet's items
+ * is.
+ *
+ * **A slot that renders nothing draws nothing:** no empty zone in the column and no empty section
+ * in the sheet. **`footer`** is drawn after `<main>`, under the page in the content column.
  */
 export function Rail(props: RailProps): JSX.Element {
   const {
@@ -268,6 +339,7 @@ export function Rail(props: RailProps): JSX.Element {
     moreTab,
     tabBarNotice,
     children,
+    footer,
     labels,
     class: className,
   } = props
@@ -312,15 +384,34 @@ export function Rail(props: RailProps): JSX.Element {
   })
 
   const hasSlots = top !== undefined || bottom !== undefined
-  const { tabs, more } = tabBarSlots(items, primary, hasSlots)
-  const hasSheet = more.length > 0 || hasSlots
+  const columnItems = items.filter((item) => !item.sheetOnly)
+  const hasSheetOnly = columnItems.length < items.length
+  const { tabs, more } = tabBarSlots(columnItems, primary, hasSlots || hasSheetOnly)
+  // The sheet's rows keep the caller's order: the items that did not fit and the sheet-only ones.
+  const sheetItems = items.filter((item) => item.sheetOnly || more.includes(item))
+  const hasSheet = sheetItems.length > 0 || hasSlots
   const states = currentStates(primary ? [primary, ...items] : items, currentKey, currentPath)
-  const moreHoldsCurrent = more.some((item) => states.has(item))
+  const moreHoldsCurrent = sheetItems.some((item) => states.has(item))
+  const railTop = top?.("rail")
+  const railBottom = bottom?.("rail")
+  const sheetTop = hasSheet ? top?.("sheet") : undefined
+  const sheetBottom = hasSheet ? bottom?.("sheet") : undefined
   const close = () => dialogRef.current?.close()
   const entryPorts = { navigate, navigateLink, counterWords, variant }
   const zonePad = variant === "labels" ? "px-1" : "px-3 [@media(hover:none)]:px-1"
 
-  return (
+  const page = (
+    <main
+      id={contentId}
+      tabindex={-1}
+      class="min-w-0 flex-1 focus:outline-none"
+      data-e2e="rail-shell-content"
+    >
+      {children}
+    </main>
+  )
+
+  const frame = (
     <div
       class={cn(
         "flex min-h-dvh flex-col md:flex-row max-md:[:root:has(&)]:pc-scroll-pb-tab-bar",
@@ -353,12 +444,12 @@ export function Rail(props: RailProps): JSX.Element {
         data-e2e="rail-shell-column"
       >
         <div class="sticky top-0 z-20 flex h-[var(--rail-height,100dvh)] w-18 flex-col py-3">
-          {top && (
+          {!isEmptySlot(railTop) && (
             <div
               class={cn("mb-4 flex shrink-0 flex-col items-center", zonePad)}
               data-e2e="rail-shell-top"
             >
-              {top("rail")}
+              {railTop}
             </div>
           )}
           <nav
@@ -370,9 +461,9 @@ export function Rail(props: RailProps): JSX.Element {
             // A shown tooltip follows its cell when the list scrolls, as it does when focus moves
             // to a cell out of view.
             onScroll={(event) =>
-              event.currentTarget.querySelectorAll("[data-rail-tip][data-placed]").forEach((tip) =>
-                placeTip(tip, columnRef.current)
-              )}
+              event.currentTarget.querySelectorAll("[data-rail-tip][data-placed]").forEach((
+                tip,
+              ) => placeTip(tip, columnRef.current))}
             data-e2e="rail-shell-rail"
           >
             {primary && (
@@ -385,7 +476,7 @@ export function Rail(props: RailProps): JSX.Element {
               />
             )}
             <ul class="flex flex-col items-center gap-1">
-              {items.map((item, index) => (
+              {columnItems.map((item, index) => (
                 <li key={`${index}-${item.key}`}>
                   <Entry
                     item={item}
@@ -398,25 +489,25 @@ export function Rail(props: RailProps): JSX.Element {
               ))}
             </ul>
           </nav>
-          {bottom && (
+          {!isEmptySlot(railBottom) && (
             <div
               class={cn("flex shrink-0 flex-col items-center gap-1 pt-1", zonePad)}
               data-e2e="rail-shell-bottom"
             >
-              {bottom("rail")}
+              {railBottom}
             </div>
           )}
         </div>
       </aside>
 
-      <main
-        id={contentId}
-        tabindex={-1}
-        class="min-w-0 flex-1 focus:outline-none"
-        data-e2e="rail-shell-content"
-      >
-        {children}
-      </main>
+      {footer === undefined ? page : (
+        // The page and the footer share the content column, so the footer sits under the page on
+        // every width instead of becoming a third column beside it.
+        <div class="flex min-w-0 flex-1 flex-col" data-e2e="rail-shell-page">
+          {page}
+          {footer}
+        </div>
+      )}
 
       <div class="sticky bottom-0 z-10 shrink-0 md:hidden" data-e2e="rail-shell-dock">
         {tabBarNotice}
@@ -485,6 +576,9 @@ export function Rail(props: RailProps): JSX.Element {
         <dialog
           ref={dialogRef}
           id={dialogId}
+          // A backdrop tap closes the sheet with no script where the browser honours `closedby`
+          // (Chrome and Edge 134+, Firefox 141+); elsewhere the click handler below does it.
+          closedby="any"
           aria-labelledby={headingId}
           class={cn(
             "m-0 mt-auto max-h-[80dvh] w-full max-w-none rounded-t-[var(--radius-card,0.75rem)] border-t p-0 text-[inherit] backdrop:bg-scrim backdrop:opacity-80",
@@ -528,12 +622,12 @@ export function Rail(props: RailProps): JSX.Element {
               </button>
             </div>
             <div class={cn("flex flex-col", sectionRule)}>
-              {top && (
-                <div class="py-2 first:pt-0" data-e2e="rail-shell-overlay-top">{top("sheet")}</div>
+              {!isEmptySlot(sheetTop) && (
+                <div class="py-2 first:pt-0" data-e2e="rail-shell-overlay-top">{sheetTop}</div>
               )}
-              {more.length > 0 && (
+              {sheetItems.length > 0 && (
                 <ul class="flex flex-col gap-1 py-2 first:pt-0">
-                  {more.map((item, index) => (
+                  {sheetItems.map((item, index) => (
                     <li key={`${index}-${item.key}`}>
                       <Entry
                         item={item}
@@ -547,9 +641,9 @@ export function Rail(props: RailProps): JSX.Element {
                   ))}
                 </ul>
               )}
-              {bottom && (
+              {!isEmptySlot(sheetBottom) && (
                 <div class="py-2 first:pt-0" data-e2e="rail-shell-overlay-bottom">
-                  {bottom("sheet")}
+                  {sheetBottom}
                 </div>
               )}
             </div>
@@ -558,4 +652,6 @@ export function Rail(props: RailProps): JSX.Element {
       )}
     </div>
   )
+
+  return <RailVariantContext.Provider value={variant}>{frame}</RailVariantContext.Provider>
 }

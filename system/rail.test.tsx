@@ -2,7 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconHome } from "@spy4x/preact-icons"
-import { Rail, RailCell, railFocusRing, type RailItem, tabBarSlots } from "./rail.tsx"
+import type { IconProps } from "@spy4x/preact-icons"
+import { Rail, RailCell, RailEntry, railFocusRing, type RailItem, tabBarSlots } from "./rail.tsx"
 
 /** `count` items keyed `i1`…, each a link to `/i1`…. */
 function itemsOf(count: number): RailItem[] {
@@ -402,5 +403,183 @@ describe("Rail", () => {
       </Rail>,
     )
     for (const tag of linkTags(html, "/new")) expect(tag).toMatch(/ data-primary-book[ >]/)
+  })
+})
+
+/** A portrait drawn as an entry's icon: any element, here a photo. */
+function Portrait(props: IconProps) {
+  return <img src="/me.jpg" alt="" class={props.class} data-e2e="portrait-photo" />
+}
+
+/** The `class` of the first `<a>` or `<button>` in `html`. */
+function controlClass(html: string): string {
+  return html.match(/<(?:a|button) [^>]*class="([^"]*)"/)?.[1] ?? ""
+}
+
+describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
+  const home: RailItem = { key: "home", label: "Home", href: "/", Icon: Portrait }
+
+  it("draws a RailEntry in the column exactly like a labels-variant entry, current included", () => {
+    const html = render(
+      <Rail
+        variant="labels"
+        items={[{ key: "work", label: "Work", href: "/work", Icon: IconHome }]}
+        currentPath="/work"
+        top={(place) =>
+          place === "rail" && (
+            <RailEntry
+              item={home}
+              place="rail"
+              variant="labels"
+              current="page"
+            />
+          )}
+      >
+        page
+      </Rail>,
+    )
+    const top = html.slice(
+      html.indexOf('data-e2e="rail-shell-top"'),
+      html.indexOf('data-e2e="rail-shell-rail"'),
+    )
+    const [portraitTag] = linkTags(top, "/")
+    const [workTag] = linkTags(region(html, "rail-shell-rail", "nav"), "/work")
+    expect(portraitTag).toContain('aria-current="page"')
+    expect(controlClass(portraitTag)).not.toBe("")
+    expect(controlClass(portraitTag)).toBe(controlClass(workTag))
+    expect(top).toMatch(/<span class="[^"]*" aria-hidden="true"><img src="\/me.jpg"/)
+    expect(top).toMatch(/<span class="[^"]*line-clamp-2[^"]*">Home<\/span>/)
+    expect(top).not.toContain("data-rail-tip")
+  })
+
+  it("draws a RailEntry in the icons variant's column with the entry's cell and tooltip", () => {
+    const html = render(
+      <Rail
+        items={[{ key: "work", label: "Work", href: "/work", Icon: IconHome }]}
+        top={(place) => place === "rail" && <RailEntry item={home} place="rail" />}
+      >
+        page
+      </Rail>,
+    )
+    const top = html.slice(
+      html.indexOf('data-e2e="rail-shell-top"'),
+      html.indexOf('data-e2e="rail-shell-rail"'),
+    )
+    const rail = region(html, "rail-shell-rail", "nav")
+    expect(controlClass(top)).toBe(controlClass(rail))
+    expect(top).toMatch(/data-rail-tip data-e2e="rail-shell-tooltip"><span[^>]*>Home</)
+  })
+
+  it("draws a RailEntry in the sheet exactly like the sheet's own rows", () => {
+    const html = render(
+      <Rail
+        items={itemsOf(6)}
+        currentKey="i6"
+        top={(place) =>
+          place === "sheet" && (
+            <>
+              <RailEntry item={{ key: "x", label: "X", href: "/x" }} place="sheet" current="page" />
+              <RailEntry item={{ key: "y", label: "Y" }} place="sheet" />
+            </>
+          )}
+      >
+        page
+      </Rail>,
+    )
+    const sheetTop = region(html, "rail-shell-overlay-top", "div")
+    const [ownRow] = linkTags(region(html, "rail-shell-dialog", "dialog"), "/i6")
+    const [entryRow] = linkTags(sheetTop, "/x")
+    expect(entryRow).toContain('aria-current="page"')
+    expect(controlClass(entryRow)).toContain("min-h-11")
+    expect(controlClass(entryRow)).toBe(controlClass(ownRow))
+    // A button in the sheet closes it when chosen, as the sheet's own entries do.
+    expect(sheetTop).toMatch(/<button data-rail-close type="button"/)
+  })
+
+  it("draws sheet-only items as sheet rows alone, never in the column or as tabs", () => {
+    const items: RailItem[] = [
+      { key: "work", label: "Work", href: "/work" },
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+      { key: "writing", label: "Writing", href: "/writing" },
+    ]
+    const html = render(<Rail variant="labels" items={items}>page</Rail>)
+    expect(linkTags(region(html, "rail-shell-rail", "nav"), "/about")).toEqual([])
+    expect(tabLabels(html)).toEqual(["Work", "Writing", "More"])
+    const sheet = region(html, "rail-shell-dialog", "dialog")
+    expect(linkTags(sheet, "/about")).toHaveLength(1)
+    expect(linkTags(sheet, "/work")).toEqual([])
+  })
+
+  it("keeps the caller's order in the sheet between overflow and sheet-only rows", () => {
+    const items: RailItem[] = [
+      ...itemsOf(5),
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+      { key: "i6", label: "Item 6", href: "/i6" },
+    ]
+    const sheet = region(render(<Rail items={items}>page</Rail>), "rail-shell-dialog", "dialog")
+    const hrefs = [...sheet.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1])
+    expect(hrefs).toEqual(["/i5", "/about", "/i6"])
+  })
+
+  it("marks More current when the page is a sheet-only item, and only then", () => {
+    const items: RailItem[] = [
+      { key: "work", label: "Work", href: "/work" },
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const moreTag = (path: string) =>
+      render(<Rail variant="labels" items={items} currentPath={path}>page</Rail>)
+        .match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
+    expect(moreTag("/about")).toContain("bg-[var(--color-surface-active")
+    expect(moreTag("/work")).not.toContain("bg-[var(--color-surface-active")
+    expect(moreTag("/work")).not.toBe("")
+  })
+
+  it("draws no tooltip on a RailCell in the labels variant, and keeps it in the icons variant", () => {
+    const cell = (place: string) =>
+      place === "rail" && (
+        <RailCell tip="Acme">
+          <button type="button">A</button>
+        </RailCell>
+      )
+    const items = [{ key: "work", label: "Work", href: "/w", Icon: IconHome }]
+    expect(render(<Rail variant="labels" items={items} top={cell}>page</Rail>))
+      .not.toContain("data-rail-tip")
+    expect(render(<Rail variant="icons" items={items} top={cell}>page</Rail>))
+      .toMatch(/data-rail-tip data-e2e="rail-shell-tooltip"><span[^>]*>Acme</)
+  })
+
+  it("draws the footer after main and outside it", () => {
+    const html = render(
+      <Rail items={itemsOf(2)} footer={<footer data-e2e="site-footer">foot</footer>}>
+        page
+      </Rail>,
+    )
+    const mainEnd = html.indexOf("</main>")
+    const footer = html.indexOf('<footer data-e2e="site-footer">')
+    expect(mainEnd).toBeGreaterThan(-1)
+    expect(footer).toBeGreaterThan(mainEnd)
+    expect(footer).toBeLessThan(html.indexOf('data-e2e="rail-shell-dock"'))
+    expect(render(<Rail items={itemsOf(2)}>page</Rail>)).not.toContain("rail-shell-page")
+  })
+
+  it("lets a backdrop tap close the sheet with no script", () => {
+    const html = render(<Rail items={itemsOf(6)}>page</Rail>)
+    expect(html.match(/<dialog[^>]*>/)?.[0]).toContain('closedby="any"')
+  })
+
+  it("draws no wrapper for a slot that renders nothing in a place", () => {
+    const html = render(
+      <Rail
+        items={itemsOf(6)}
+        top={(place) => place === "rail" ? <span>portrait</span> : null}
+        bottom={(place) => place === "sheet" ? [<span key="a">account</span>] : [false, ""]}
+      >
+        page
+      </Rail>,
+    )
+    expect(html).toContain('data-e2e="rail-shell-top"')
+    expect(html).not.toContain('data-e2e="rail-shell-overlay-top"')
+    expect(html).not.toContain('data-e2e="rail-shell-bottom"')
+    expect(html).toContain('data-e2e="rail-shell-overlay-bottom"')
   })
 })
