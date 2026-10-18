@@ -1026,6 +1026,32 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "Rail: an entry with a key shortcut announces it and shows it in its tooltip, and the " +
+      "key the demo binds goes there",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await inCard(page, RAIL_CARD, "rail-demo-variant-icons").check()
+      const column = inCard(page, RAIL_CARD, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const writing = column.getByRole("link", { name: "Writing", exact: true })
+      const shortcuts = await writing.getAttribute("aria-keyshortcuts")
+      if (shortcuts !== "W") throw new Error(`Writing announces ${shortcuts}, not W`)
+      const work = column.getByRole("link", { name: "Work", exact: true })
+      if (await work.getAttribute("aria-keyshortcuts") !== null) {
+        throw new Error("Work announces a shortcut it does not have")
+      }
+      await writing.hover()
+      await tipOf(writing).waitFor({ state: "visible" })
+      const tip = (await tipOf(writing).textContent())?.trim()
+      if (tip !== "Writing (W)") throw new Error(`Writing's tooltip reads ${tip}`)
+      await page.mouse.move(1200, 10)
+      await page.keyboard.press("w")
+      await column.locator(`a[aria-current="page"]`).filter({ hasText: "Writing" }).waitFor()
+      return `aria-keyshortcuts ${shortcuts}, tooltip ${tip}`
+    },
+  },
+  {
     name: "Rail: a backdrop tap closes the sheet with no script, through closedby alone",
     pageId: "system",
     run: async (page) => {

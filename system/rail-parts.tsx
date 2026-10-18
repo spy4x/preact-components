@@ -12,6 +12,8 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
+import { ariaKeyShortcuts, useApplePlatform } from "@spy4x/preact-ui/hotkeys"
+import { KBD_LABELS, type KbdLabels, keyFaces } from "@spy4x/preact-ui/kbd"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext } from "preact/hooks"
@@ -282,6 +284,36 @@ export interface EntryProps {
   /** Runs after the entry is chosen; the sheet closes itself through this. */
   onChoose?: () => void
   counterWords: (count: number) => string
+  /** The words a key shortcut's hint shows, as {@link RailLabels.kbd}. */
+  kbdLabels?: Partial<KbdLabels>
+}
+
+/**
+ * An entry's `aria-keyshortcuts`: every combination of {@link RailItem.keyshortcuts}, separated by
+ * spaces, or `undefined` without one.
+ */
+export function entryKeyShortcuts(
+  keyshortcuts: readonly string[] | undefined,
+  apple: boolean,
+): string | undefined {
+  if (keyshortcuts === undefined || keyshortcuts.length === 0) return undefined
+  return keyshortcuts.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
+}
+
+/**
+ * A cell's tooltip words: the label, and the first of {@link RailItem.keyshortcuts} in brackets as
+ * the platform writes it, such as "Search (Ctrl K)" or "Search (⌘K)".
+ */
+export function entryTip(
+  label: string,
+  keyshortcuts: readonly string[] | undefined,
+  apple: boolean,
+  kbdLabels: Partial<KbdLabels> = {},
+): string {
+  const first = keyshortcuts?.[0]
+  if (first === undefined) return label
+  const faces = keyFaces(first, apple, { ...KBD_LABELS, ...kbdLabels }).map((face) => face.text)
+  return `${label} (${faces.join(apple ? "" : " ")})`
 }
 
 /**
@@ -293,7 +325,9 @@ export interface EntryProps {
 export function Entry(props: EntryProps): JSX.Element {
   const { item, place, variant, current, primary, navigate, navigateLink, onChoose, counterWords } =
     props
-  const { Icon, label, href, key, counter, attributes } = item
+  const { Icon, label, href, key, counter, attributes, keyshortcuts } = item
+  const apple = useApplePlatform()
+  const shortcuts = entryKeyShortcuts(keyshortcuts, apple)
   const name = countedName(label, counter, counterWords)
   const className = cn(
     entryBase,
@@ -319,6 +353,7 @@ export function Entry(props: EntryProps): JSX.Element {
         href={href}
         aria-current={current ?? "false"}
         aria-label={name}
+        aria-keyshortcuts={shortcuts}
         class={className}
         onClick={(event) => {
           // The anchor's own address, as the browser would follow it, decides the origin test.
@@ -339,6 +374,7 @@ export function Entry(props: EntryProps): JSX.Element {
         type="button"
         aria-current={current ?? "false"}
         aria-label={name}
+        aria-keyshortcuts={shortcuts}
         class={className}
         onClick={() => {
           navigate?.(key)
@@ -354,7 +390,9 @@ export function Entry(props: EntryProps): JSX.Element {
   return (
     <div class={cellGroup} data-rail-cell="">
       {control}
-      {variant === "icons" && Icon && <RailTooltip>{label}</RailTooltip>}
+      {variant === "icons" && Icon && (
+        <RailTooltip>{entryTip(label, keyshortcuts, apple, props.kbdLabels)}</RailTooltip>
+      )}
     </div>
   )
 }

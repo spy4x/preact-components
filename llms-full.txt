@@ -3709,6 +3709,13 @@ the same fill, hover, focus ring and `aria-current`. `current` is the caller's a
 The `Icon` may draw any element, such as a site's portrait photo. In the sheet, a `RailEntry` with
 no `href` carries `data-rail-close`, so choosing it closes the sheet.
 
+**Key shortcuts.** An item's `keyshortcuts`, such as `["mod+k", "/"]`, names the combinations the
+app binds to what the entry does, written the way `useHotkeys` takes them. The rail binds nothing:
+the entry announces every combination in `aria-keyshortcuts`, in every place, and the icons
+variant's tooltip shows the first after the label as the platform writes it, "Search (Ctrl K)" or
+"Search (⌘K)". `labels.kbd` overrides the words, such as "Ctrl". The phone's tab and sheet row show
+no hint.
+
 **Sheet-only items.** An item with `sheetOnly: true` is drawn only as a row of the phone sheet,
 never in the column or as a tab, such as a site's Home, which the column reaches through the
 portrait. Any such item gives the bar its sheet slot; the sheet lists the items that did not fit

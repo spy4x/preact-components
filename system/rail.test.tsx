@@ -4,6 +4,7 @@ import { render } from "preact-render-to-string"
 import { IconHome } from "@spy4x/preact-icons"
 import type { IconProps } from "@spy4x/preact-icons"
 import { Rail, RailCell, RailEntry, railFocusRing, type RailItem, tabBarSlots } from "./rail.tsx"
+import { entryKeyShortcuts, entryTip } from "./rail-parts.tsx"
 
 /** `count` items keyed `i1`…, each a link to `/i1`…. */
 function itemsOf(count: number): RailItem[] {
@@ -584,5 +585,53 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(html).not.toContain('data-e2e="rail-shell-overlay-top"')
     expect(html).not.toContain('data-e2e="rail-shell-bottom"')
     expect(html).toContain('data-e2e="rail-shell-overlay-bottom"')
+  })
+
+  it("announces an entry's key shortcuts in every place and shows the first in its tooltip", () => {
+    const search: RailItem = {
+      key: "search",
+      label: "Search",
+      Icon: IconHome,
+      keyshortcuts: ["mod+k", "/"],
+    }
+    const html = render(
+      <Rail
+        items={[{ key: "work", label: "Work", href: "/work", Icon: IconHome }]}
+        top={(place) => <RailEntry item={search} place={place} />}
+      >
+        page
+      </Rail>,
+    )
+    const buttons = [...html.matchAll(/<button[^>]*aria-keyshortcuts="([^"]*)"[^>]*>/g)]
+    // The column's cell and the sheet's row; the server render writes Ctrl, as off Apple.
+    expect(buttons.map((match) => match[1])).toEqual(["Control+K /", "Control+K /"])
+    const tips = [...html.matchAll(/data-e2e="rail-shell-tooltip"><span[^>]*>([^<]*)</g)]
+    expect(tips.map((match) => match[1]).sort()).toEqual(["Search (Ctrl K)", "Work"])
+    // An entry with none announces none.
+    expect(linkTags(html, "/work").every((tag) => !tag.includes("aria-keyshortcuts"))).toBe(true)
+  })
+
+  it("writes the tooltip's shortcut as the platform does, in the words labels.kbd gives", () => {
+    expect(entryTip("Search", ["mod+k"], false)).toBe("Search (Ctrl K)")
+    expect(entryTip("Search", ["mod+k"], true)).toBe("Search (⌘K)")
+    expect(entryTip("Search", ["mod+k"], false, { ctrl: "Strg" })).toBe("Search (Strg K)")
+    expect(entryTip("Search", undefined, false)).toBe("Search")
+    expect(entryKeyShortcuts(["mod+k", "/"], true)).toBe("Meta+K /")
+    expect(entryKeyShortcuts([], false)).toBeUndefined()
+    const html = render(
+      <Rail
+        items={[{
+          key: "find",
+          label: "Find",
+          href: "/find",
+          Icon: IconHome,
+          keyshortcuts: ["mod+k"],
+        }]}
+        labels={{ kbd: { ctrl: "Strg" } }}
+      >
+        page
+      </Rail>,
+    )
+    expect(html).toMatch(/data-e2e="rail-shell-tooltip"><span[^>]*>Find \(Strg K\)</)
   })
 })
