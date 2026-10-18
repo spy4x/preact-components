@@ -61,6 +61,7 @@ import {
 import {
   Rail,
   RailCell,
+  RailEntry,
   railFocusRing,
   type RailItem,
   type RailVariant,
@@ -1661,6 +1662,10 @@ function RailShellDemo() {
 
 /** The rail demo's destinations: a personal site's, read by first-time visitors. */
 const railItems: RailItem[] = [
+  // Shown only in the phone sheet, first there: the column reaches Home through the portrait, and
+  // About from the page itself.
+  { key: "home", label: "Home", href: "#rail-demo-home", Icon: IconHome, sheetOnly: true },
+  { key: "about", label: "About", href: "#rail-demo-about", Icon: IconUsers, sheetOnly: true },
   { key: "work", label: "Work", href: "#rail-demo-work", Icon: IconBriefcase },
   { key: "services", label: "Services", href: "#rail-demo-services", Icon: IconCheckCircle },
   { key: "tools", label: "Tools", href: "#rail-demo-tools", Icon: IconWrench },
@@ -1668,12 +1673,19 @@ const railItems: RailItem[] = [
   { key: "writing", label: "Writing", href: "#rail-demo-writing", Icon: IconDocumentText },
 ]
 
+/** The demo site's portrait as an entry's icon: any element, here an avatar standing in a photo. */
+function RailDemoPortrait() {
+  return <Avatar name="Uma Lee" size="sm" alt="" />
+}
+
 /**
  * `Rail` in a bounded frame, as a personal site draws it: a portrait linking home in the top zone,
- * "Book" pinned first as the primary action, and the variant chosen with two radio buttons. The
- * labels variant prints each destination's name under its icon, for visitors who do not know the
- * icons yet; the icons variant names them in tooltips. On a phone the primary action takes the tab
- * bar's centre slot. The frame sizes the column through `--rail-height`, as the `RailShell` card's.
+ * drawn as a `RailEntry`, "Book" pinned first as the primary action, Home and About only in the
+ * phone sheet, a footer under the page, and the variant chosen with two radio buttons. The labels
+ * variant prints each destination's name under its icon, for visitors who do not know the icons
+ * yet; the icons variant names them in tooltips. On a phone the primary action takes the tab bar's
+ * centre slot, and "More" is current while Home or About is. The frame sizes the column through
+ * `--rail-height`, as the `RailShell` card's.
  */
 function RailDemo() {
   const variant = useSignal<RailVariant>("labels")
@@ -1691,15 +1703,30 @@ function RailDemo() {
         currentKey={current.value}
         primary={{ key: "book", label: "Book", href: "#rail-demo-book", Icon: IconCalendar }}
         navigateLink={(key) => current.value = key}
-        top={() => (
-          <a
-            href="#rail-demo-home"
-            class="flex justify-center rounded-[var(--radius-primary,0.5rem)] py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            data-e2e="rail-demo-portrait"
+        top={(place) =>
+          place === "rail" && (
+            <RailEntry
+              item={{
+                key: "home",
+                label: "Home",
+                href: "#rail-demo-home",
+                Icon: RailDemoPortrait,
+                attributes: { "data-e2e-portrait": "" },
+              }}
+              place="rail"
+              variant={variant.value}
+              current={current.value === "home" ? "page" : undefined}
+              navigateLink={(key) => current.value = key}
+            />
+          )}
+        footer={
+          <footer
+            class="border-t border-subtle px-4 py-6 text-sm text-muted"
+            data-e2e="rail-demo-footer"
           >
-            <Avatar name="Uma Lee" size="md" alt="Uma Lee, home" />
-          </a>
-        )}
+            © Uma Lee. The footer sits under the page, outside its main.
+          </footer>
+        }
       >
         <div class="flex flex-col gap-4 p-4 text-sm">
           <fieldset class="flex flex-wrap gap-4">
@@ -2443,7 +2470,7 @@ useEffect(() => {
         name: "items",
         type: "RailItem[]",
         description:
-          "The destinations. An item's `counter` draws a badge and joins its name; `attributes` passes `data-*` attributes to its link.",
+          "The destinations. An item's `counter` draws a badge and joins its name; `attributes` passes `data-*` attributes to its link; `sheetOnly` draws it only as a row of the phone sheet, which then marks More current while it is.",
       },
       {
         name: "primary",
@@ -2467,7 +2494,7 @@ useEffect(() => {
         name: "top",
         type: "(place: RailPlace) => ComponentChildren",
         description:
-          'The column\'s top zone and the sheet\'s first section, called with `"rail"` or `"sheet"`.',
+          'The column\'s top zone and the sheet\'s first section, called with `"rail"` or `"sheet"`. `RailEntry` draws a link there exactly like an entry, such as a portrait linking home; a place that renders nothing gets no wrapper.',
       },
       {
         name: "bottom",
@@ -2479,16 +2506,36 @@ useEffect(() => {
         type: "ComponentChildren",
         description: "A strip drawn right above the phone tab bar, such as an offline notice.",
       },
+      {
+        name: "footer",
+        type: "ComponentChildren",
+        description:
+          "Drawn after `<main>` and outside it, under the page, such as a site's `<footer>`, which keeps its `contentinfo` landmark.",
+      },
     ],
-    snippet: `<Rail
+    snippet: `const Portrait = () => <img src="/me.jpg" alt="" class="size-8 rounded-full" />
+
+<Rail
   variant="labels"
   items={[
     { key: "work", label: "Work", href: "/work", Icon: IconBriefcase },
     { key: "writing", label: "Writing", href: "/writing", Icon: IconDocumentText },
+    // Phone sheet only: the column reaches Home through the portrait.
+    { key: "home", label: "Home", href: "/", Icon: IconHome, sheetOnly: true },
+    { key: "about", label: "About", href: "/about", Icon: IconUsers, sheetOnly: true },
   ]}
   currentPath={url.pathname}
   primary={{ key: "book", label: "Book", href: "/book", Icon: IconCalendar }}
-  top={() => <a href="/"><Avatar name="Uma Lee" size="md" alt="Uma Lee, home" /></a>}
+  top={(place) =>
+    place === "rail" && (
+      <RailEntry
+        item={{ key: "home", label: "Home", href: "/", Icon: Portrait }}
+        place="rail"
+        variant="labels"
+        current={url.pathname === "/" ? "page" : undefined}
+      />
+    )}
+  footer={<SiteFooter groups={groups} />}
 >
   <Page />
 </Rail>`,

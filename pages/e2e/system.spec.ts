@@ -1026,6 +1026,34 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "Rail: a backdrop tap closes the sheet with no script, through closedby alone",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      // A clone carries the server-rendered attributes and none of the component's listeners, so
+      // only the platform can close it.
+      await inCard(page, RAIL_CARD, "rail-shell-dialog").evaluate((sheet: HTMLDialogElement) => {
+        const clone = sheet.cloneNode(true) as HTMLDialogElement
+        clone.id = "e2e-sheet-clone"
+        document.body.append(clone)
+        clone.showModal()
+      })
+      const clone = page.locator("#e2e-sheet-clone")
+      if (!(await clone.evaluate((sheet: HTMLDialogElement) => sheet.open))) {
+        throw new Error("the cloned sheet did not open")
+      }
+      // The sheet sits at the bottom; the window's top-left corner is backdrop.
+      await page.mouse.click(8, 8)
+      const open = await clone.evaluate((sheet: HTMLDialogElement) => {
+        const open = sheet.open
+        sheet.remove()
+        return open
+      })
+      if (open) throw new Error("a backdrop tap left the script-free sheet open")
+      return "the script-free sheet closed on a backdrop tap"
+    },
+  },
+  {
     name: "AppShell: the first hover on a cell waits 300 ms too — its tooltip is still hidden " +
       "100 ms in and shown 500 ms in",
     pageId: "system",
