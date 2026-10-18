@@ -302,6 +302,11 @@
   border-color: var(--color-border-strong, oklch(0.707 0.022 261.325));
 }
 
+/* A secondary button's edge, at 3:1 or more against the page and a card in every palette. */
+@utility border-button {
+  border-color: var(--color-border-button, oklch(0.551 0.027 264.364));
+}
+
 @utility decoration-control {
   text-decoration-color: var(--color-border-control, oklch(0.872 0.01 258.338));
 }

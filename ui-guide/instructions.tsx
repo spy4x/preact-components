@@ -89,6 +89,7 @@ export const documentedClasses: Record<string, string[]> = {
     "border-on-scrim",
     "text-on-scrim-muted",
     "border-strong",
+    "border-button",
     "decoration-control",
     "border-surface",
     "ring-surface",
