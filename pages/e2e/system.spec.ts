@@ -1228,14 +1228,15 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "Rail labels: every cell prints its label under its icon and draws no tooltip",
+    name: "Rail labels: the 88 px column, where every cell prints its label under its icon and " +
+      "draws no tooltip",
     pageId: "system",
     run: async (page) => {
       await page.setViewportSize({ width: 1440, height: 900 })
       const column = inCard(page, RAIL_CARD, "rail-shell-column")
       await column.scrollIntoViewIfNeeded()
       const box = await column.boundingBox()
-      if (!box || Math.abs(box.width - 72) > 1) throw new Error(`the column is ${box?.width} wide`)
+      if (!box || Math.abs(box.width - 88) > 1) throw new Error(`the column is ${box?.width} wide`)
       const work = column.getByRole("link", { name: "Work", exact: true })
       const [icon, label] = await Promise.all([
         work.locator("svg").boundingBox(),
