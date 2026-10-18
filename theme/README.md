@@ -331,7 +331,7 @@ argument is not a numeric step. It cannot see a raw CSS declaration (`padding: 1
 `style`, a class name built at run time or Tailwind's legacy `theme()` function, so it is a floor
 that review builds on, not a proof. It reads any file's text — TypeScript, TSX,
 CSS with `@apply`, HTML — and uses no Deno API, so an app can call it from its own test. This is
-the whole test an app built from `spy4x/template` needs, run with `--allow-read`:
+the whole test an app built from `spy4x/seed` needs, run with `--allow-read`:
 
 ```ts
 // tests/spacing.test.ts

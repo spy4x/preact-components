@@ -34,7 +34,7 @@ Worked examples: [`docs/maintaining.md`](./docs/maintaining.md), "What belongs".
 
 Code flows both ways: apps feed `spy4x/ts-libs` and this library with anything reusable and import
 from them instead of keeping copies (each app tracks that switch in its own issue); this library
-also feeds `spy4x/template`. Removing an export breaks apps: move every app that imports it onto a
+also feeds `spy4x/seed`. Removing an export breaks apps: move every app that imports it onto a
 replacement, or back onto its own copy, first. A project deleted before its components were
 extracted is not a source for anything here; do not name it. This is a public repository: no private
 application's code, file paths, file lists or business vocabulary in components, docs, PRs or
@@ -162,7 +162,7 @@ re-renders forever, #300); write it in a handler, an effect, or a callback one o
 component's root carries no margin: siblings are spaced by the parent's named gap (`Page`,
 `Section`, `Stack`, `Cluster`, `Grid`). See [`docs/spacing.md`](./docs/spacing.md).
 
-**The `crud/` data contract** (every app built from `spy4x/template`; details in `crud/README.md`):
+**The `crud/` data contract** (every app built from `spy4x/seed`; details in `crud/README.md`):
 rows are never deleted but carry `deletedAt`, set and cleared by an optional archive checkbox in the
 normal update, and the list filters active from archived; the store is shaped like
 `buildModelStore` (`CrudListStore` and `CrudEditorStore` in `crud/store.ts`, proven by
@@ -195,7 +195,7 @@ grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' 
 ```
 
 The root import map is the only list of pins, except `leaflet` and `@types/leaflet` in
-`map/deno.json`. Matching pins with `spy4x/template` and `spy4x/ts-libs` is checked by hand:
+`map/deno.json`. Matching pins with `spy4x/seed` and `spy4x/ts-libs` is checked by hand:
 `grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` in each repo.
 
 Pinning and the dependency allowlist are held by review, not CI: the lockfile is a record, not a

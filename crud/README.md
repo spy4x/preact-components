@@ -73,7 +73,7 @@ validation signal — and the list gets `header`, `row` and `actions`.
 
 Decided in [#118](https://github.com/spy4x/preact-components/issues/118): `crud/` assumes three
 things about any app that uses it, and this is the agreed standard for every app built from
-`spy4x/template`.
+`spy4x/seed`.
 
 - A row is never really deleted — it carries a `deletedAt` timestamp; the editor sets and clears it
   through an optional archive checkbox, submitted with the form's normal update, and the list

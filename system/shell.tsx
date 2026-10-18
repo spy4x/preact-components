@@ -1,5 +1,5 @@
 /**
- * `Shell` — the frame every signed-in app built from `spy4x/template` needs: a top bar, a side
+ * `Shell` — the frame every signed-in app built from `spy4x/seed` needs: a top bar, a side
  * navigation that collapses into a mobile drawer, a user menu, and a content area with a skip link
  * in front of all of it.
  *
