@@ -483,5 +483,6 @@ export {
   type UnsavedLink,
 } from "./unsaved-guard.tsx"
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
+export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { type StepItem, Steps, type StepsProps } from "./steps.tsx"
 export { WindowFrame, type WindowFrameProps, type WindowFrameVariant } from "./window-frame.tsx"
