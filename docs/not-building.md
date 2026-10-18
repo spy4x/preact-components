@@ -13,7 +13,7 @@ entries below — not effort, and not taste.
 | Component        | Why not now                                                                                                                                                                                  |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Carousel`       | A private application has shadcn/embla-based carousels. No Deno-app evidence of need. Embla-style physics is a large hand-written surface — a poor fit for the no-dependency policy.         |
-| `Accordion`      | A private application has shadcn's (Radix-based). No consumer in `financy`, `template` or any other Deno app. Fold into `Dropdown` or `Tabs` if it ever appears.                             |
+| `Accordion`      | A private application has shadcn's (Radix-based). No consumer in `financy`, `seed` or any other Deno app. Fold into `Dropdown` or `Tabs` if it ever appears.                                 |
 | `Drawer`/`Sheet` | A private application has shadcn's (Vaul-based). Mobile nav in `financy` and another Deno app uses plain off-canvas CSS, which is adequate. Build only if a product needs gesture dismissal. |
 | `RichTextEditor` | An earlier application wrapped CodeMirror 6. Heavy, niche, and CodeMirror is a large third-party surface — a poor fit while the no-dependency policy holds.                                  |
 | `TreeView`       | No evidence of need in any of the owner's applications.                                                                                                                                      |
@@ -31,7 +31,7 @@ entry with the same reasoning.
 
 Both, not either:
 
-1. A real product requirement in `financy`, `template` or a new app — not a resemblance to a component
+1. A real product requirement in `financy`, `seed` or a new app — not a resemblance to a component
    another library ships.
 2. An explicit decision on whether the dependency the component needs is acceptable under #34.
 

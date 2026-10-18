@@ -125,7 +125,7 @@ reusable Preact + signals package. See [`CREDITS.md`](./CREDITS.md).
 ## Built by
 
 I'm [Anton Shubin](https://antonshubin.com), a senior full-stack engineer and tech lead.
-preact-components is the UI I extracted from earlier applications, and `spy4x/template`, which new
+preact-components is the UI I extracted from earlier applications, and `spy4x/seed`, which new
 projects start from, builds on it. Need
 something like it built for your product? [That's my day job →](https://antonshubin.com)
 
