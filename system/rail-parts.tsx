@@ -316,7 +316,7 @@ export function Entry(props: EntryProps): JSX.Element {
       <a
         {...attributes}
         href={href}
-        aria-current={current}
+        aria-current={current ?? "false"}
         aria-label={name}
         class={className}
         onClick={(event) => {
@@ -336,7 +336,7 @@ export function Entry(props: EntryProps): JSX.Element {
       <button
         {...attributes}
         type="button"
-        aria-current={current}
+        aria-current={current ?? "false"}
         aria-label={name}
         class={className}
         onClick={() => {

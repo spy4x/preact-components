@@ -94,14 +94,14 @@ describe("Rail", () => {
     expect(current).toHaveLength(2)
     for (const tag of current) expect(tag).toContain('aria-current="page"')
     for (const tag of [...linkTags(html, "/i1"), ...linkTags(html, "/i3")]) {
-      expect(tag).not.toContain("aria-current")
+      expect(tag).toContain(`aria-current="false"`)
     }
   })
 
   it("marks the item whose href equals currentPath as the current page", () => {
     const html = render(<Rail items={itemsOf(3)} currentPath="/i3">page</Rail>)
     for (const tag of linkTags(html, "/i3")) expect(tag).toContain('aria-current="page"')
-    for (const tag of linkTags(html, "/i1")) expect(tag).not.toContain("aria-current")
+    for (const tag of linkTags(html, "/i1")) expect(tag).toContain(`aria-current="false"`)
   })
 
   it("renders no More button and no dialog with five items", () => {
@@ -297,10 +297,10 @@ describe("Rail", () => {
     ]
     const inNote = render(<Rail items={items} currentPath="/notes/42">page</Rail>)
     for (const tag of linkTags(inNote, "/notes")) expect(tag).toContain('aria-current="true"')
-    for (const tag of linkTags(inNote, "/")) expect(tag).not.toContain("aria-current")
+    for (const tag of linkTags(inNote, "/")) expect(tag).toContain(`aria-current="false"`)
     const inTag = render(<Rail items={items} currentPath="/notes/tags/7">page</Rail>)
     for (const tag of linkTags(inTag, "/notes/tags")) expect(tag).toContain('aria-current="true"')
-    for (const tag of linkTags(inTag, "/notes")) expect(tag).not.toContain("aria-current")
+    for (const tag of linkTags(inTag, "/notes")) expect(tag).toContain(`aria-current="false"`)
   })
 
   it("lets an exact match be the only current entry", () => {
@@ -310,7 +310,7 @@ describe("Rail", () => {
     ]
     const html = render(<Rail items={items} currentPath="/notes/tags">page</Rail>)
     for (const tag of linkTags(html, "/notes/tags")) expect(tag).toContain('aria-current="page"')
-    for (const tag of linkTags(html, "/notes")) expect(tag).not.toContain("aria-current")
+    for (const tag of linkTags(html, "/notes")) expect(tag).toContain(`aria-current="false"`)
   })
 
   it("fills the current cell with no left bar, and outlines it under forced colours", () => {
