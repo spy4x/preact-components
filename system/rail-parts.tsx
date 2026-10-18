@@ -78,10 +78,10 @@ export const iconsCell =
   "size-12 justify-center [@media(hover:none)]:h-auto [@media(hover:none)]:min-h-14 [@media(hover:none)]:w-16 [@media(hover:none)]:flex-col [@media(hover:none)]:gap-1 [@media(hover:none)]:px-0 [@media(hover:none)]:py-2"
 
 /**
- * A desktop cell of the labels variant: 64 px wide, at least 56 tall, the label under the icon.
- * No side padding, so a label has the whole 64 px: "Dashboard" fits on one line.
+ * A desktop cell of the labels variant: 80 px wide, at least 56 tall, the label under the icon.
+ * 4 px of side padding leave a label 72 px, so "How I work" fits on one line with room around it.
  */
-export const labelsCell = "min-h-14 w-16 flex-col justify-center gap-1 px-0 py-2 text-center"
+export const labelsCell = "min-h-14 w-20 flex-col justify-center gap-1 px-1 py-2 text-center"
 
 /** The cell classes of each variant in the desktop column. */
 export const railCell: Record<RailVariant, string> = { icons: iconsCell, labels: labelsCell }

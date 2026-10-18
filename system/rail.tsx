@@ -1,6 +1,6 @@
 /**
- * `Rail` — the house page frame's navigation: a 72 px column from `md` at every desktop width, and
- * below `md` a bottom tab bar of at most five slots whose last slot opens a sheet with the rest.
+ * `Rail` — the house page frame's navigation: a column from `md` at every desktop width, 72 px in
+ * the icons variant and 88 px in the labels variant, and below `md` a bottom tab bar of at most five slots whose last slot opens a sheet with the rest.
  *
  * Two variants share the column, the cells and the current style. `"icons"`, for apps, draws a
  * 48 px square per destination, names it with visually hidden text and shows the label as a tooltip
@@ -308,8 +308,8 @@ const TIPS_HIDDEN = "data-tips-hidden"
  *
  * **The column has three zones** inside an `<aside>` named by `labels.sidebar`: `top`, then the
  * primary action and the items in the `<nav>`, then `bottom`. Only the `<nav>` scrolls, on its own,
- * when the window is too short; the two other zones never move. The column is 72 px wide plus the
- * device's left safe-area inset, sticks to the top at the window's full height (`--rail-height`,
+ * when the window is too short; the two other zones never move. The column is 72 px wide (88 px in the labels
+ * variant) plus the device's left safe-area inset, sticks to the top at the window's full height (`--rail-height`,
  * `100dvh` unless a caller that scrolls the frame inside a box of its own sets it), and is a column
  * in the layout, not a layer over the page.
  *
@@ -414,6 +414,8 @@ export function Rail(props: RailProps): JSX.Element {
   const close = () => dialogRef.current?.close()
   const entryPorts = { navigate, navigateLink, counterWords, variant, kbdLabels: labels?.kbd }
   const zonePad = variant === "labels" ? "px-1" : "px-3 [@media(hover:none)]:px-1"
+  // The labels variant's column is wider, so a label such as "How I work" has room to breathe.
+  const columnWidth = variant === "labels" ? "w-22" : "w-18"
 
   const page = (
     <main
@@ -458,7 +460,12 @@ export function Rail(props: RailProps): JSX.Element {
         }}
         data-e2e="rail-shell-column"
       >
-        <div class="sticky top-0 z-20 flex h-[var(--rail-height,100dvh)] w-18 flex-col py-3">
+        <div
+          class={cn(
+            "sticky top-0 z-20 flex h-[var(--rail-height,100dvh)] flex-col py-3",
+            columnWidth,
+          )}
+        >
           {!isEmptySlot(railTop) && (
             <div
               class={cn("mb-4 flex shrink-0 flex-col items-center", zonePad)}

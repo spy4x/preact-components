@@ -385,12 +385,32 @@ describe("Rail", () => {
     expect(html).toContain('data-rail-variant="labels"')
   })
 
-  it("keeps the column 72 px at every desktop width and pads it by the left safe-area inset", () => {
+  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the left safe-area inset", () => {
     const html = render(<Rail items={itemsOf(3)}>page</Rail>)
     const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
     expect(aside).toContain("pl-safe")
-    expect(html).toContain("w-18")
+    const column = columnClasses(html)
+    expect(column).toContain("w-18")
+    expect(column).not.toContain("w-22")
     expect(html).not.toContain("lg:w-60")
+    const cell = controlClass(region(html, "rail-shell-rail", "nav")).split(" ")
+    expect(cell).toContain("size-12")
+    expect(cell).toContain("[@media(hover:none)]:w-16")
+    expect(cell).toContain("[@media(hover:none)]:px-0")
+    expect(cell).not.toContain("w-20")
+  })
+
+  it("draws the labels variant in an 88 px column of 80 px cells that leave a label 72 px", () => {
+    const html = render(<Rail variant="labels" items={itemsOf(3)}>page</Rail>)
+    const column = columnClasses(html)
+    expect(column).toContain("w-22")
+    expect(column).not.toContain("w-18")
+    const cell = controlClass(region(html, "rail-shell-rail", "nav")).split(" ")
+    expect(cell).toContain("w-20")
+    expect(cell).toContain("px-1")
+    expect(cell).toContain("min-h-14")
+    expect(cell).not.toContain("w-16")
+    expect(cell).not.toContain("px-0")
   })
 
   it("passes an item's data attributes through to its control", () => {
@@ -410,6 +430,13 @@ describe("Rail", () => {
 /** A portrait drawn as an entry's icon: any element, here a photo. */
 function Portrait(props: IconProps) {
   return <img src="/me.jpg" alt="" class={props.class} data-e2e="portrait-photo" />
+}
+
+/** The `class` of the desktop column's sized box, the first element inside its `<aside>`. */
+function columnClasses(html: string): string[] {
+  const classes = html.match(/data-e2e="rail-shell-column"[^>]*>\s*<div class="([^"]*)"/)?.[1]
+  if (classes === undefined) throw new Error("no sized box inside the rail's column")
+  return classes.split(" ")
 }
 
 /** The `class` of the first `<a>` or `<button>` in `html`. */
