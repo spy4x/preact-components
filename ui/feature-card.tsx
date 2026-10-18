@@ -15,7 +15,9 @@ export interface FeatureCardProps {
   Icon?: ComponentType<IconProps>
   /** Where the card's link goes, such as `/features#sign-in`. Left out, the card has no link. */
   href?: string
-  /** The link's text. The heading describes it, so a screen reader hears which feature it is for. */
+  /**
+   * The link's text. The heading describes it, so a screen reader hears which feature it is for.
+   */
   linkLabel?: string
   /** A picture under the text, such as a screenshot, drawn to the card's edges. */
   media?: ComponentChildren
@@ -32,9 +34,10 @@ export interface FeatureCardProps {
  * an optional link and an optional picture under them, on a library {@link Card}.
  *
  * Only the link is a link, so the text stays selectable. The link's text is generic ("Learn more")
- * and `aria-describedby` points it at the heading, so each card's link is told apart. A card with a
- * link lifts by 1 px on hover where motion is allowed, as the design language lets a linked card do.
- * It renders on the server and needs no JavaScript.
+ * and `aria-describedby` points it at the heading, so each card's link is told apart. The card
+ * does not lift on hover, because only its link is clickable. The link sits at the bottom of the
+ * card, so in a grid of cards of different heights, align the row's items to the start to keep it
+ * near the text. It renders on the server and needs no JavaScript.
  *
  * @param props See {@link FeatureCardProps}.
  * @returns The card, an `article` labelled by its heading.
@@ -62,7 +65,6 @@ export function FeatureCard(
       class={cn(
         "flex flex-col overflow-hidden",
         wide && "lg:col-span-2",
-        href && "motion-safe:transition-transform motion-safe:hover:-translate-y-px",
         className,
       )}
     >
@@ -75,13 +77,15 @@ export function FeatureCard(
             <Icon class="size-5" />
           </span>
         )}
-        <Heading id={id} class="text-lg font-semibold text-foreground">{title}</Heading>
+        <Heading id={id} class="text-lg font-semibold text-balance text-foreground">
+          {title}
+        </Heading>
         <p class="text-muted text-pretty">{children}</p>
         {href && (
           <a
             href={href}
             aria-describedby={id}
-            class="mt-auto inline-flex items-center gap-1 self-start text-sm font-medium text-primary hover:underline"
+            class="mt-auto inline-flex items-center gap-1 self-start text-sm font-medium text-foreground hover:underline"
           >
             {linkLabel} <IconArrowRight class="size-4" />
           </a>

@@ -1,7 +1,7 @@
 /**
  * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript.
- * `BrandMark`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame` are spread into the Display section.
- * `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
+ * `BrandMark`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame` are spread into the Display
+ * section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
 
