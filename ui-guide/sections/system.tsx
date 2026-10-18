@@ -2467,7 +2467,7 @@ useEffect(() => {
   },
   Rail: {
     summary:
-      "The house frame's navigation: a 72 px column from `md` with three zones, of which only the middle one scrolls, and a bottom tab bar on a phone. `icons` names each cell in a tooltip; `labels` prints the name under the icon and works with no script.",
+      "The house frame's navigation: a column from `md` (72 px for `icons`, 88 px for `labels`) with three zones, of which only the middle one scrolls, and a bottom tab bar on a phone. `icons` names each cell in a tooltip; `labels` prints the name under the icon and works with no script.",
     wide: true,
     props: [
       {
