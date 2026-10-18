@@ -67,6 +67,11 @@ export const COMPONENTS_WITHOUT_CARD: Record<PackageId, readonly AllowedExport[]
       reason:
         "A cell for content in `Rail`'s `top` and `bottom` slots, with nothing to show outside a rail; the RailShell card draws its workspace switcher in one.",
     },
+    {
+      name: "RailEntry",
+      reason:
+        "An entry for content in `Rail`'s `top` and `bottom` slots, with nothing to show outside a rail; the Rail card draws its portrait with one.",
+    },
   ],
   crud: [],
   theme: [],
