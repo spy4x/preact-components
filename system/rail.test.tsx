@@ -494,6 +494,9 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(controlClass(entryRow)).toBe(controlClass(ownRow))
     // A button in the sheet closes it when chosen, as the sheet's own entries do.
     expect(sheetTop).toMatch(/<button data-rail-close type="button"/)
+    // A button centres its text by default; its label starts at the left like a link row's.
+    const [buttonRow] = sheetTop.match(/<button data-rail-close[^>]*>/) ?? [``]
+    expect(controlClass(buttonRow).split(` `)).toContain(`text-left`)
   })
 
   it("draws sheet-only items as sheet rows alone, never in the column or as tabs", () => {
