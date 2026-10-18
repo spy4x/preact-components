@@ -39,8 +39,9 @@ Extracted from earlier source applications.
 | `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
 | `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `labels?`, `class?`               |
+| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`    |
 | `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                       |
+| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                        |
 | `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                              |
 | `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
 | `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
@@ -1409,7 +1410,29 @@ cell whose menu is open (`aria-expanded="true"`) shows none.
 control in `top` or `bottom` the way the rail wraps an entry, so `Rail` places its tooltip and it
 shows, hides and waits exactly as an entry's. `railFocusRing` is the entries' focus ring as a class
 string, for the caller's own control, such as a `Dropdown` trigger. `AppShell`'s connection and
-account cells are drawn with it.
+account cells are drawn with it. In the labels variant, whose cells print their label, a `RailCell`
+draws no tooltip: `Rail` hands its variant to the cells in its slots.
+
+**A slot's link draws as an entry with `RailEntry`.** `<RailEntry item={home} place="rail"
+variant="labels" current="page" />` draws a `RailItem` exactly as `Rail` draws its own: in the
+column a cell of the variant (with its tooltip in the icons variant), in the sheet a 44 px row, with
+the same fill, hover, focus ring and `aria-current`. `current` is the caller's answer for its page.
+The `Icon` may draw any element, such as a site's portrait photo. In the sheet, a `RailEntry` with
+no `href` carries `data-rail-close`, so choosing it closes the sheet.
+
+**Sheet-only items.** An item with `sheetOnly: true` is drawn only as a row of the phone sheet,
+never in the column or as a tab, such as a site's Home, which the column reaches through the
+portrait. Any such item gives the bar its sheet slot; the sheet lists the items that did not fit
+and the sheet-only ones in the caller's order, and the last slot is marked current while any of
+them is the page or holds it.
+
+**A slot that renders nothing draws nothing.** A place for which `top` or `bottom` returns `null`,
+`undefined`, a boolean, `""` or a list of those gets no zone in the column and no section in the
+sheet, so no empty `<div>` takes a margin. A component that renders `null` is not detected.
+
+**`footer`** is drawn after `<main>` and outside it, under the page in the content column at every
+width, such as a site's `<footer>`, which keeps its `contentinfo` landmark there. With a footer,
+`<main>` and the footer share one column wrapper (`data-e2e="rail-shell-page"`).
 
 **The current entry is a filled cell.** It is tinted with the accent and drawn in the selected text
 colour; there is no bar on its edge. Under forced colours, where a fill disappears, a 2 px outline
@@ -1430,7 +1453,9 @@ them. `moreTab` sets the last slot's `icon` and `counter`; its words are `labels
 `tabBarSlots(items, primary, reserveMore)` is that rule as a pure function.
 
 **The sheet is a modal `<dialog>`,** for Escape, an inert page and the top layer from the browser.
-`showModal()` moves focus to the close button. Escape closes it natively; a backdrop click, the
+`showModal()` moves focus to the close button. Escape closes it natively. A backdrop click closes
+it natively too where the browser honours `closedby="any"` (Chrome and Edge 134+, Firefox 141+; no
+shipping Safari, the support floor `Modal` documents), and through a click handler elsewhere. The
 close button, choosing an entry, a plain click on any link inside it and a click on an element
 marked `data-rail-close` close it too. Every way of closing ends in the `close` event, which
 returns focus to the last slot. With no JavaScript every entry that has an `href` is a link, and the
@@ -1468,7 +1493,11 @@ twice, in the column and in the tab bar or the sheet, and one element can only b
 `rail.test.tsx` proves what a string render can: the split and the centre slot, `aria-current` by
 key, by exact path and by section, the fill and the forced-colours outline, the hidden name and the
 tooltip beside the cell, both variants' cells, the column's width and inset, the attributes, the
-labels and their overrides, and the counter's badge and name. The tooltip's delay, focus and
+labels and their overrides, the counter's badge and name, `RailEntry` matching an entry's cell and
+sheet row, sheet-only items and the current More slot, `RailCell` without a tooltip in the labels
+variant, the footer after `<main>`, `closedby` on the sheet and no wrapper for an empty slot. A
+backdrop tap closing the sheet with no script is proven in `pages/e2e/system.spec.ts`. The
+tooltip's delay, focus and
 Escape, the sheet's focus return, the centre slot on a phone and axe in light and dark at 390 and
 1440 px are proven in `pages/e2e/system.spec.ts`; the breakpoint switch, the dialog's keyboard and
 pointer behaviour, the skip link and which link clicks `navigateLink` takes in

@@ -377,6 +377,7 @@ PushSettingsStatus	type	@spy4x/preact-system	What the block shows.
 Rail	component	@spy4x/preact-system	The frame: a skip link, the desktop column from `md` up, the page in `<main>`, the phone tab bar below `md`, and the sheet.
 RailCell	component	@spy4x/preact-system	A desktop cell for caller content in `Rail`'s `top` or `bottom` slot, drawn like the rail's own: the control with the rail's tooltip beside it, placed by `Rail` 8 px past the column, shown 300 ms after the pointer rests or at once on keyboard focus, and hidden after Escape, while the control's menu is open (`aria-expanded="true"`) and on a screen with no hover.
 RailCurrent	type	@spy4x/preact-system	How an entry is current: `"page"` when it is the page itself, `"true"` when the page is inside its section, such as a note's page under Notes.
+RailEntry	component	@spy4x/preact-system	One rail entry for a caller's own slot content, drawn exactly as `Rail` draws its items: in the column a cell of the given variant (with its tooltip in the icons variant), in the sheet a 44 px row, with the rail's current fill, hover, focus ring and `aria-current`.
 RailItem	type	@spy4x/preact-system	One destination in `RailProps.items`, or the `RailProps.primary` action.
 RailMoreTab	type	@spy4x/preact-system	`RailProps.moreTab`: what the phone bar's last slot shows in place of the three dots, such as the signed-in person's avatar, and a count on it.
 RailPlace	type	@spy4x/preact-system	Where a caller slot is being drawn: the desktop column, or the phone sheet.
