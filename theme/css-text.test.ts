@@ -122,6 +122,8 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-scrim-strong": `oklch(0 0 0 / 0.9)`,
   "--color-scrim-foreground": `oklch(1 0 0)`,
   "--color-border-strong": `oklch(0.707 0.022 261.325)`,
+  // spy4x/seed#172: a secondary button's edge, 3:1 against the page.
+  "--color-border-button": `oklch(0.551 0.027 264.364)`,
   "--color-danger-fill": `oklch(0.577 0.245 27.325)`,
   "--color-danger-fill-hover": `oklch(0.505 0.213 27.518)`,
   "--color-danger-fill-foreground": `oklch(1 0 0)`,
@@ -160,6 +162,7 @@ const EXPECTED_DARK_TOKENS: Record<string, string> = {
   "--color-hover": `oklch(0.373 0.034 259.733)`,
   "--color-track": `oklch(0.446 0.03 256.802)`,
   "--color-border-strong": `oklch(0.551 0.027 264.364)`,
+  "--color-border-button": `var(--color-border-strong)`,
   // #434: the selected fill and the focus ring stand off the dark page.
   "--color-selected": `var(--color-accent-600)`,
   "--color-ring": `var(--color-accent-400)`,

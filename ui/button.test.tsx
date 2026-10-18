@@ -54,6 +54,13 @@ describe("Button", () => {
     expect(render(<Button variant="ghost">More</Button>)).toContain("bg-transparent")
   })
 
+  it("draws the secondary variant's edge in the button border token, since its fill can match the page", () => {
+    const classes = classOf(render(<Button variant="secondary">Export CSV</Button>)).split(" ")
+
+    expect(classes).toContain("border")
+    expect(classes).toContain("border-button")
+  })
+
   it("renders a square box for the icon variant", () => {
     const html = render(<Button variant="icon" size="lg" aria-label="Close" />)
 

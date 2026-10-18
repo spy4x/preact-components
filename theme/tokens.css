@@ -91,6 +91,9 @@
     --color-border-subtle: oklch(0.928 0.006 264.531); /* gray-200 */
     --color-border-control: oklch(0.872 0.01 258.338); /* gray-300 */
     --color-border-strong: oklch(0.707 0.022 261.325); /* gray-400: a checkbox, a divider that must show */
+    /* A secondary button's edge: gray-500, 4.84:1 on white and 4.39:1 on the canvas. gray-400 reads
+       only 2.36:1 on the canvas, below the 3:1 a control's boundary needs (spy4x/seed#172). */
+    --color-border-button: oklch(0.551 0.027 264.364); /* gray-500 */
 
     /* Text — base, secondary, placeholder. */
     --color-foreground: oklch(0.13 0.028 261.692); /* gray-950 */
@@ -162,6 +165,9 @@
     --color-border-subtle: oklch(0.373 0.034 259.733); /* gray-700 */
     --color-border-control: oklch(0.446 0.03 256.802); /* gray-600 */
     --color-border-strong: oklch(0.551 0.027 264.364); /* gray-500 */
+    /* The strong border, so ink's own strong step follows: 3.67:1 on the canvas, 3.04:1 on the
+       surface; ink's reads 4.06:1 and 3.20:1. */
+    --color-border-button: var(--color-border-strong);
 
     --color-foreground: oklch(0.985 0.002 247.839); /* gray-50 */
     /* A step lighter than gray-400, which read 3.96:1 on the gray-700 of a hovered row and of a

@@ -87,11 +87,14 @@ const baseLook =
  * The dark primary fill is accent step 600: the one step that stands 3:1 off the gray-900 canvas
  * and still holds the white label at 4.5:1. Its hover darkens to 700, which keeps the label and
  * shows the pointer, and sits below 3:1 on the canvas only while the pointer is on it.
+ *
+ * The secondary fill is the hover step, which in light is the canvas itself, so its edge is a
+ * `--color-border-button` border that stands 3:1 off the page and a card in every palette.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-accent-900 text-accent-foreground hover:bg-accent-800 dark:bg-accent-600 dark:hover:bg-accent-700",
-  secondary: "bg-hover text-foreground hover:bg-track",
+  secondary: "border border-button bg-hover text-foreground hover:bg-track",
   outline: "border border-control bg-surface text-foreground hover:bg-hover",
   ghost: "bg-transparent text-foreground hover:bg-hover",
   icon: "bg-transparent text-muted hover:bg-hover hover:text-foreground",
