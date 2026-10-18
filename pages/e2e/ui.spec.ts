@@ -2995,5 +2995,55 @@ function remotePaletteSpecs(): Spec[] {
         return `row heights ${read.heights.map(Math.round).join(", ")} px`
       },
     },
+    {
+      name:
+        "CommandPalette: Escape gives focus back to the trigger, or, with the trigger hidden, " +
+        "to the element that had focus before it opened, and leaves none in the closed dialog",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 })
+        const card = page.locator("#demo-CommandPalette")
+        const trigger = card.locator(`[data-e2e="palette-local-open"]`)
+        const other = card.locator(`[data-e2e="palette-remote-open"]`)
+        const dialog = page.locator(`dialog[data-e2e="palette-local"]`)
+        const field = dialog.getByRole("combobox")
+        const closeWithEscape = async () => {
+          await field.and(page.locator(":focus")).waitFor()
+          await page.keyboard.press("Escape")
+          await dialog.waitFor({ state: "hidden" })
+        }
+
+        await trigger.click()
+        await closeWithEscape()
+        await trigger.and(page.locator(":focus")).waitFor()
+
+        // An app that opens the palette from controls of its own hides the trigger and clicks it,
+        // here from a key of its own. Ctrl+F8: Ctrl+K would also open the guide's own search.
+        await trigger.evaluate((button) => {
+          const hidden = button as HTMLElement
+          hidden.style.display = "none"
+          document.addEventListener("keydown", (event) => {
+            if (event.key !== "F8" || !event.ctrlKey) return
+            event.preventDefault()
+            hidden.click()
+          })
+        })
+        await other.focus()
+        await page.keyboard.press("Control+F8")
+        await closeWithEscape()
+        await other.and(page.locator(":focus")).waitFor()
+
+        await other.evaluate((button) => (button as HTMLElement).blur())
+        await page.keyboard.press("Control+F8")
+        await closeWithEscape()
+        const focused = await page.evaluate(() => {
+          const active = document.activeElement
+          return active === document.body ? "body" : active?.outerHTML.slice(0, 80) ?? "none"
+        })
+        if (focused !== "body") {
+          throw new Error(`focus after Escape with nothing before: ${focused}`)
+        }
+      },
+    },
   ]
 }

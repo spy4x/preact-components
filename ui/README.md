@@ -1454,7 +1454,9 @@ in spy4x/ts-libs, which also documents the keyboard-layout and AltGr rules.
 `CommandPalette` is a search button and the dialog it opens: one field and a list of results.
 The arrow keys move through the results, Home and End jump to either end, Enter picks the
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
-focus back on the button. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
+focus back on the button. When the button is hidden, as when an app opens the palette from controls
+of its own by clicking it, focus goes back to the element that had it before the palette opened,
+or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
 bound by the machinery of a button's `hotkey`: each clicks the button, which announces them all in
 `aria-keyshortcuts` and shows the first as a button's hotkey hint, from `sm` up and only where the
 main pointer is fine; `kbdLabels` changes its words. `hotkeys` names other keys, and `[]` turns them

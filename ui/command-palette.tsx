@@ -4,6 +4,7 @@ import type { JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
+import { focusBefore, focusOnClose } from "./palette-focus.ts"
 import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
@@ -213,7 +214,8 @@ interface Remote<T> {
  * A search trigger and the dialog it opens: one field and a list of results that the arrow keys
  * move through, as `Combobox` does. Home and End jump to either end, Enter picks the highlighted
  * result, and Escape, the close button or a click on the backdrop closes it, with focus back on the
- * trigger. `/` and ⌘K (Ctrl+K off Apple platforms) open it unless `hotkeys` says otherwise. The page
+ * trigger. When the trigger is hidden, such as when an app opens the palette from controls of its
+ * own by clicking it, focus goes back to the element that had it before the palette opened. `/` and ⌘K (Ctrl+K off Apple platforms) open it unless `hotkeys` says otherwise. The page
  * behind does not scroll while it is open.
  *
  * Give `options` to have it filter a list itself, or `search` to ask a server, which it calls after
@@ -230,6 +232,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  // What had focus when the palette opened: where focus goes back to while the trigger is hidden.
+  const before = useRef<HTMLElement | null>(null)
   const id = useId()
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
@@ -334,6 +338,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
     // an open `Modal` behind the palette or an app dialog that adds a class, keeps that lock, and a
     // `Modal` the palette's `onSelect` opens keeps the page locked after the palette lets go.
     lock.current ??= acquireScrollLock()
+    before.current = focusBefore(document.activeElement as HTMLElement | null, document.body)
     dialog.current?.showModal()
     input.current?.focus()
   }
@@ -475,7 +480,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
         onClose={() => {
           cancel()
           unlock()
-          trigger.current?.focus()
+          focusOnClose(trigger.current, before.current, input.current)
+          before.current = null
         }}
         onClick={(event) => {
           // A click on the backdrop lands on the dialog element itself.
