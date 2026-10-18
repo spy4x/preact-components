@@ -1,12 +1,20 @@
 /**
  * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript.
- * `BrandMark`, `FaqList`, `Steps` and `WindowFrame` are spread into the Display section.
- * `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
+ * `BrandMark`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame` are spread into the Display
+ * section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
 
 import { IconSprout } from "@spy4x/preact-icons"
-import { BrandMark, Button, FaqList, PageHero, Steps, WindowFrame } from "@spy4x/preact-ui"
+import {
+  BrandMark,
+  Button,
+  FaqList,
+  FeatureCard,
+  PageHero,
+  Steps,
+  WindowFrame,
+} from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
 const FAQ = [
@@ -82,6 +90,76 @@ export const marketingBlockDemos: DemoFragment = {
   ]}
 />`,
     render: () => <FaqList items={FAQ} name="guide-faq" />,
+  },
+  FeatureCard: {
+    summary:
+      "One feature of a product on its public site: an icon, a heading, a line of text, a link the heading describes and an optional picture to the card's edges.",
+    wide: true,
+    props: [
+      { name: "id", type: "string", description: "The heading's id; it labels the card." },
+      { name: "title", type: "string", description: "The feature's name, the card's heading." },
+      { name: "children", type: "ComponentChildren", description: "A line or two on the feature." },
+      { name: "Icon", type: "ComponentType<IconProps>", description: "A glyph in an accent tile." },
+      { name: "href", type: "string", description: "Where the link goes; left out, no link." },
+      {
+        name: "linkLabel",
+        type: "string",
+        default: `"Learn more"`,
+        description: "The link's text; the heading describes it.",
+      },
+      { name: "media", type: "ComponentChildren", description: "A picture under the text." },
+      {
+        name: "wide",
+        type: "boolean",
+        default: "false",
+        description: "Spans two columns of the grid from `lg`.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3",
+        default: "3",
+        description: "The level of the heading.",
+      },
+    ],
+    snippet: `<div class="grid gap-6 lg:grid-cols-3">
+  <FeatureCard id="feature-sync" title="Works offline" Icon={IconSprout} href="/features#sync">
+    Every record is on your device and syncs when you are back online.
+  </FeatureCard>
+  <FeatureCard
+    id="feature-admin"
+    title="An admin panel"
+    href="/features#admin"
+    wide
+    media={<img src="/admin.png" alt="The admin panel's list of users" />}
+  >
+    Every feature has its operator view on a host of its own.
+  </FeatureCard>
+</div>`,
+    render: () => (
+      <div class="grid gap-6 lg:grid-cols-3">
+        <FeatureCard
+          id="guide-feature-sync"
+          title="Works offline"
+          Icon={IconSprout}
+          href="#demo-FeatureCard"
+        >
+          Every record is on your device and syncs when you are back online.
+        </FeatureCard>
+        <FeatureCard
+          id="guide-feature-admin"
+          title="An admin panel"
+          href="#demo-FeatureCard"
+          wide
+          media={
+            <div class="flex h-32 items-center justify-center text-sm text-muted">
+              Your screenshot
+            </div>
+          }
+        >
+          Every feature has its operator view on a host of its own.
+        </FeatureCard>
+      </div>
+    ),
   },
   Steps: {
     summary:

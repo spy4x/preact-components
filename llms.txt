@@ -588,6 +588,7 @@ ErrorState	component	@spy4x/preact-ui	Message for an expected failure, shown whe
 ExactDateTimeRange	type	@spy4x/preact-ui	A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant.
 FaqItem	type	@spy4x/preact-ui	One question of a `FaqList`.
 FaqList	component	@spy4x/preact-ui	Questions and answers as native `<details>` disclosures: they open and close with no JavaScript, so the list works on a server-rendered page with scripts off.
+FeatureCard	component	@spy4x/preact-ui	One feature of a product on its public site: an optional icon, a heading, a line or two of text, an optional link and an optional picture under them, on a library `Card`.
 Field	component	@spy4x/preact-ui	Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls.
 FieldChild	type	@spy4x/preact-ui	The control of one `Field`: exactly one element, or a function that returns one.
 FieldControlWiring	type	@spy4x/preact-ui	The DOM attributes of one `Field`, handed to the control.

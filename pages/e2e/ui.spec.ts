@@ -736,14 +736,15 @@ async function axePasses(page: Page, selectors: readonly string[]): Promise<stri
 }
 
 /**
- * `BrandMark`, `PageHero`, `FaqList`, `Steps` and `WindowFrame`: the blocks of a public page, which
- * need no JavaScript.
+ * `BrandMark`, `PageHero`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame`: the blocks of a
+ * public page, which need no JavaScript.
  */
 function marketingBlockSpecs(): Spec[] {
   const cards = [
     "#demo-BrandMark",
     "#demo-PageHero",
     "#demo-FaqList",
+    "#demo-FeatureCard",
     "#demo-Steps",
     "#demo-WindowFrame",
   ] as const
@@ -794,8 +795,8 @@ function marketingBlockSpecs(): Spec[] {
       key: "ArrowRight",
     }),
     ...(["light", "dark", "ink"] as const).map((palette): Spec => ({
-      name: `BrandMark, PageHero, FaqList, Steps and WindowFrame: axe finds no violation, their ` +
-        `text's contrast included, ${palette}`,
+      name: `BrandMark, PageHero, FaqList, FeatureCard, Steps and WindowFrame: axe finds no ` +
+        `violation, their text's contrast included, ${palette}`,
       pageId: "ui",
       colorScheme: palette === "light" ? "light" : "dark",
       run: async (page) => {

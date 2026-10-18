@@ -26,6 +26,7 @@
     "./error-boundary": "./error-boundary.tsx",
     "./error-state": "./error-state.tsx",
     "./faq-list": "./faq-list.tsx",
+    "./feature-card": "./feature-card.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
     "./format": "./format.tsx",
