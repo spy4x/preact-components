@@ -557,7 +557,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                     ? (
                       <span
                         title={formatTime(vm.value.deletedAt, { full: true })}
-                        class="text-red-500"
+                        class="text-danger"
                       >
                         ({timeAgo(vm.value.deletedAt)})
                       </span>
