@@ -1,5 +1,16 @@
 /** Playwright specs for `crud/` components, on the guide's CRUD page. */
+import type { Locator, Page } from "playwright-core"
 import type { Spec } from "./runner.ts"
+
+/** Wait until an input shows `value`: Preact sets the property, so no attribute selector sees it. */
+async function waitForValue(page: Page, input: Locator, value: string): Promise<void> {
+  const element = await input.elementHandle()
+  await page.waitForFunction(
+    ({ element, value }) => (element as HTMLInputElement | null)?.value === value,
+    { element, value },
+    { timeout: 10_000 },
+  )
+}
 
 export const specs: readonly Spec[] = [
   {
@@ -702,6 +713,106 @@ export const specs: readonly Spec[] = [
       await demo.locator(`[data-e2e="missing-row"]`).click()
       await demo.getByText("That team is no longer here", { exact: true }).waitFor()
       await demo.getByText("Team not found").waitFor({ state: "detached" })
+    },
+  },
+  {
+    name:
+      "CrudEditor: a new editId on the same mounted editor loads that row, and Save keeps its own values",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+      const name = demo.getByLabel("Name", { exact: true })
+      const stored = demo.locator(`[data-e2e="stored"]`)
+
+      await waitForValue(page, name, "Design")
+      await demo.locator(`[data-e2e="other-row"]`).click()
+      await stored.filter({ hasText: `team #2 in the store: "Support", 0 members` }).waitFor()
+      await waitForValue(page, name, "Support")
+      await waitForValue(page, demo.getByLabel("Members", { exact: true }), "0")
+
+      await demo.getByRole("button", { name: "Save the team" }).click()
+      await stored.filter({ hasText: `update #2 ("Support" → "Support")` }).waitFor()
+      await stored.filter({ hasText: `team #2 in the store: "Support", 0 members` }).waitFor()
+    },
+  },
+  {
+    name:
+      "CrudEditor: a save that answers after the row was switched leaves the new row's form and values alone",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+      const name = demo.getByLabel("Name", { exact: true })
+      const stored = demo.locator(`[data-e2e="stored"]`)
+      const hold = demo.locator(`[data-e2e="hold-save"]`)
+      const save = demo.getByRole("button", { name: "Save the team" })
+
+      await waitForValue(page, name, "Design")
+      await hold.click()
+      await hold.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+      await save.click()
+      await demo.locator(`[data-e2e="other-row"]`).click()
+      await waitForValue(page, name, "Support")
+
+      // Row 1's answer arrives while row 2 is on screen.
+      await hold.click()
+      await stored.filter({ hasText: `update #1 ("Design" → "Design")` }).waitFor()
+      await waitForValue(page, name, "Support")
+      await waitForValue(page, demo.getByLabel("Members", { exact: true }), "0")
+
+      await save.click()
+      await stored.filter({ hasText: `update #2 ("Support" → "Support")` }).waitFor()
+      await stored.filter({ hasText: `team #2 in the store: "Support", 0 members` }).waitFor()
+    },
+  },
+  {
+    name: "CrudEditor: Enter in a field saves the value just typed",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+      const name = demo.getByLabel("Name", { exact: true })
+      const stored = demo.locator(`[data-e2e="stored"]`)
+
+      await waitForValue(page, name, "Design")
+      await name.fill("Design v2")
+      await name.press("Enter")
+      await stored.filter({ hasText: `update #1 ("Design" → "Design v2")` }).waitFor()
+      await stored.filter({ hasText: `team #1 in the store: "Design v2", 4 members` }).waitFor()
+      await waitForValue(page, name, "Design v2")
+    },
+  },
+  {
+    name: "CrudEditor: in add mode Save is enabled while the last field still has focus",
+    pageId: "crud",
+    run: async (page) => {
+      const form = page.locator("#demo-CrudEditor form").first()
+      const name = form.getByLabel("Name", { exact: true })
+      const save = form.getByRole("button", { name: "Save" })
+
+      await save.and(page.locator(":disabled")).waitFor()
+      await name.fill("Night shift")
+      await name.and(page.locator(":focus")).waitFor()
+      await save.and(page.locator(":enabled")).waitFor()
+    },
+  },
+  {
+    name: "CrudEditor: an edit link opened while the list loads says nothing is missing",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+      const name = demo.getByLabel("Name", { exact: true })
+      const notFound = demo.getByText("Team not found")
+
+      await waitForValue(page, name, "Design")
+      await demo.locator(`[data-e2e="hold-list"]`).click()
+      await demo.locator(`[data-e2e="other-row"]`).click()
+      // The form drops row 1 in the same render that would say "not found".
+      await waitForValue(page, name, "")
+      const shown = await notFound.count()
+      if (shown !== 0) throw new Error(`"Team not found" shown while the list loads (${shown})`)
+
+      await demo.locator(`[data-e2e="hold-list"]`).click()
+      await waitForValue(page, name, "Support")
+      if (await notFound.count() !== 0) throw new Error(`"Team not found" shown after the load`)
     },
   },
 ]

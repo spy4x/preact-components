@@ -6,7 +6,7 @@ import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
-import { useId } from "preact/hooks"
+import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { formatTime, timeAgo } from "@spy4x/platform/universal/time"
 import {
   type FieldIssue,
@@ -18,6 +18,7 @@ import {
 } from "@spy4x/validation/model"
 import { DeletionValidation } from "./deletion-validation.tsx"
 import { setField } from "./field.tsx"
+import { listSettled } from "./list-settled.ts"
 import type { CrudEditorStore } from "./store.ts"
 import type { CrudRow, DeletionDependency, StoreErrorLike } from "./types.ts"
 
@@ -349,7 +350,12 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
 
     const row = store.one.byId(props.editId).value
     if (row === undefined) {
-      error.value = notFoundLabel ?? `${entity} not found`
+      // `undefined` also means "not loaded yet": say "not found" only once the list has settled,
+      // or failed. A store with no `op.list` cannot tell the two apart, so it is told at once.
+      const load = store.op.list?.value
+      error.value = load === undefined || listSettled(load) || load.error !== null
+        ? notFoundLabel ?? `${entity} not found`
+        : ""
       return
     }
 
@@ -366,7 +372,24 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     return validate?.(value, next) ?? next
   }
 
-  // Load once. `one.byId` is a computed over the collection, so a row that has not arrived yet
+  // Another row, or the other mode, on the same mounted editor (a router that keeps the component
+  // when only `editId` changes): drop the form and load again, so Save never writes the previous
+  // row's values into this one. A layout effect, so the previous row is never painted under the new
+  // id.
+  const rowKey = props.mode === "add" ? "add" : `edit:${props.editId}`
+  const loadedKey = useRef(rowKey)
+  useLayoutEffect(() => {
+    if (loadedKey.current === rowKey) return
+    loadedKey.current = rowKey
+    vm.value = structuredClone(blank)
+    vl.value = {}
+    error.value = ""
+    saveError.value = ""
+    blocked.value = []
+    initialized.value = false
+  }, [rowKey])
+
+  // Load once per row. `one.byId` is a computed over the collection, so a row that has not arrived yet
   // re-runs this effect when it does — the editor does not need the caller to wait for a load.
   useSignalEffect(() => {
     if (!initialized.value) loadFromStore()
@@ -455,6 +478,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     event.preventDefault()
     if (!readyToSave()) return
     saveError.value = ""
+    // The row this save belongs to. The editor may show another row by the time the store answers.
+    const savedKey = loadedKey.current
 
     const outcome = props.mode === "add"
       ? await submitEditor({ mode: "add", store, value: vm.value })
@@ -466,11 +491,14 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         blocked: blocked.value.length,
       })
 
+    if (outcome.created !== null) onCreated?.(outcome.created)
+    // Another row is on screen now: its form must not take the old row's error or reload, which
+    // would read the old `editId` from this render and put that row's values under the new one.
+    if (loadedKey.current !== savedKey) return
     if (outcome.error !== null) {
       const label = saveErrorLabel ?? "Could not save"
       saveError.value = outcome.error.message ? `${label}: ${outcome.error.message}` : label
     }
-    if (outcome.created !== null) onCreated?.(outcome.created)
     if (outcome.updated) loadFromStore()
   }
 
@@ -534,7 +562,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                     ? (
                       <span
                         title={formatTime(vm.value.deletedAt, { full: true })}
-                        class="text-red-500"
+                        class="text-danger"
                       >
                         ({timeAgo(vm.value.deletedAt)})
                       </span>

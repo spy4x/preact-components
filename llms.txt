@@ -104,6 +104,7 @@ rowsForStatus	helper	@spy4x/preact-crud	The status slice of a store's collection
 setField	helper	@spy4x/preact-crud	Merge one field into a model signal.
 submitEditor	helper	@spy4x/preact-crud	Route a submit to the store operation the mode implies.
 toggleArchiveState	helper	@spy4x/preact-crud	The archive toggle's next state.
+typedNumber	helper	@spy4x/preact-crud	The number a keystroke may commit, or `undefined` while the box holds a half-typed value.
 IconAlertTriangle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArchive	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons.
 IconArrowDown	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.

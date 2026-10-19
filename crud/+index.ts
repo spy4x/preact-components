@@ -49,6 +49,7 @@ export {
   setField,
   TextareaField,
   TextField,
+  typedNumber,
 } from "./field.tsx"
 export {
   type AssociationActions,

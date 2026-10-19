@@ -164,7 +164,10 @@ interface ControlWiring {
   "aria-invalid": true | undefined
 }
 
-/** One labelled text input. Commits on blur, trimmed, so a keystroke is not a store write. */
+/**
+ * One labelled text input. Commits each keystroke to the form model, so Enter saves what is typed,
+ * and trims on blur. The model is the form's own copy: nothing reaches the store before Save.
+ */
 export function TextField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K>,
 ): JSX.Element {
@@ -185,6 +188,7 @@ export function TextField<M extends object, K extends keyof M & string>(
           class={props.inputClass}
           placeholder={props.placeholder}
           value={fieldText(props.vm.value[props.name])}
+          onInput={(event) => setField(props.vm, props.name, event.currentTarget.value)}
           onBlur={(event) => setField(props.vm, props.name, event.currentTarget.value.trim())}
         />
       )}
@@ -197,7 +201,9 @@ export function TextField<M extends object, K extends keyof M & string>(
  *
  * A number input reports `""` for anything the browser cannot parse — and for the intermediate
  * states of typing `-`, `1e` or `1.` — so an empty or unparsable box commits `0` rather than
- * `NaN`, which is what the arktype schema would otherwise reject on every keystroke.
+ * `NaN`, which is what the arktype schema would otherwise reject on every keystroke. A keystroke
+ * commits only a number the box already shows as typed ({@link typedNumber}); the rest waits for
+ * blur.
  */
 export function NumberField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K>,
@@ -219,6 +225,10 @@ export function NumberField<M extends object, K extends keyof M & string>(
           class={props.inputClass}
           placeholder={props.placeholder}
           value={fieldText(props.vm.value[props.name])}
+          onInput={(event) => {
+            const value = typedNumber(event.currentTarget.value)
+            if (value !== undefined) setField(props.vm, props.name, value)
+          }}
           onBlur={(event) =>
             setField(props.vm, props.name, commitNumber(event.currentTarget.value))}
         />
@@ -233,7 +243,18 @@ export function commitNumber(raw: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-/** One labelled multi-line text input. Commits on blur, trimmed. */
+/**
+ * The number a keystroke may commit, or `undefined` while the box holds a half-typed value.
+ *
+ * Only text that reads back unchanged commits (`12`, `-3.5`), because the box is rendered from the
+ * model: committing `1.0` as `1`, or `-` as `0`, would rewrite the box under the cursor.
+ */
+export function typedNumber(raw: string): number | undefined {
+  const parsed = Number(raw)
+  return raw !== "" && Number.isFinite(parsed) && String(parsed) === raw ? parsed : undefined
+}
+
+/** One labelled multi-line text input. Commits each keystroke, like {@link TextField}, and trims on blur. */
 export function TextareaField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K> & { rows?: number },
 ): JSX.Element {
@@ -254,6 +275,7 @@ export function TextareaField<M extends object, K extends keyof M & string>(
           class={props.inputClass}
           placeholder={props.placeholder}
           value={fieldText(props.vm.value[props.name])}
+          onInput={(event) => setField(props.vm, props.name, event.currentTarget.value)}
           onBlur={(event) => setField(props.vm, props.name, event.currentTarget.value.trim())}
         />
       )}

@@ -450,7 +450,7 @@ function RemovedConflict<M extends CrudRow>(
 
   return (
     <div ref={offer} class="mt-4 flex items-center gap-3">
-      <p class="text-sm text-red-600">
+      <p class="text-sm text-danger">
         {hint ??
           "Restoring it keeps the record that was there before instead of creating a second one."}
       </p>
@@ -517,7 +517,7 @@ function AssociationFooter<M extends CrudRow>(
         }}
       />
       {removed && (
-        <span class="text-red-500 mr-auto" title={vm.value.deletedAt?.toString()}>
+        <span class="text-danger mr-auto" title={vm.value.deletedAt?.toString()}>
           {removedLabel?.(ago) ?? `Removed ${ago}`}
         </span>
       )}

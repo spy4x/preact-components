@@ -13,6 +13,7 @@ import {
   SelectField,
   TextareaField,
   TextField,
+  typedNumber,
 } from "./field.tsx"
 
 interface Form {
@@ -122,6 +123,13 @@ describe("NumberField", () => {
   it("commits a parsable number", () => {
     expect(commitNumber(" 12 ")).toBe(12)
     expect(commitNumber("-3.5")).toBe(-3.5)
+  })
+  it("commits a keystroke only when the box reads back unchanged", () => {
+    expect(typedNumber("12")).toBe(12)
+    expect(typedNumber("-3.5")).toBe(-3.5)
+    for (const halfTyped of ["", "-", "1.", "1.0", "1e3", " 12"]) {
+      expect(typedNumber(halfTyped)).toBeUndefined()
+    }
   })
 })
 
