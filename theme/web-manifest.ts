@@ -112,24 +112,22 @@ export interface WebManifestOptions {
 }
 
 /**
- * Writes the manifest into the output folder once the app build is written, and serves it from the
- * dev server at `/<fileName>` (under Vite's `base`). The manifest is checked when the config
- * resolves, so a missing icon fails `vite build` and `vite dev` at once.
+ * Writes the manifest into the output folder in `writeBundle`, once the app build is written, and
+ * serves it from the dev server at `/<fileName>` (under Vite's `base`). The manifest is checked when the config
+ * resolves, so a missing icon fails `vite build` and `vite dev` at once. A failed app build never
+ * reaches `writeBundle`, so it writes no manifest and the app build's own error is the one reported.
  *
  * @param options See {@link WebManifestOptions}.
  */
 export function webManifest(options: WebManifestOptions): VitePlugin {
   const fileName = options.fileName ?? "manifest.webmanifest"
-  let command = ""
   let base = "/"
   let root = ""
   let outDir = ""
   let text = ""
-  let appBuildFailed = false
   return {
     name: "web-manifest",
     configResolved(resolved) {
-      command = resolved.command
       base = resolved.base ?? "/"
       root = resolved.root
       outDir = resolved.build.outDir
@@ -145,12 +143,7 @@ export function webManifest(options: WebManifestOptions): VitePlugin {
         response.end(text)
       })
     },
-    buildEnd(error) {
-      appBuildFailed = error !== undefined
-    },
-    async closeBundle() {
-      // The dev server calls `closeBundle` too, when it shuts down.
-      if (command !== "build" || appBuildFailed) return
+    async writeBundle() {
       const dir = this?.environment?.config.build.outDir ?? outDir
       const out = dir.startsWith("/") ? dir : `${root}/${dir.replace(/^\.\//, "")}`
       await options.writeTextFile(`${out}/${fileName}`, text)

@@ -1,6 +1,12 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { buildIdOf, serviceWorker, type ServiceWorkerOptions, type ViteMiddleware } from "./vite.ts"
+import {
+  buildIdOf,
+  serviceWorker,
+  type ServiceWorkerOptions,
+  type ViteMiddleware,
+  type VitePlugin,
+} from "./vite.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
@@ -55,28 +61,29 @@ function fixture(files: Record<string, string>, extra: Partial<ServiceWorkerOpti
   return { calls, plugin: serviceWorker(options) }
 }
 
-async function run(plugin: ReturnType<typeof serviceWorker>, outDir = `dist`) {
+/** The plugin's `writeBundle` handler. */
+function writeBundle(plugin: VitePlugin) {
+  const hook = plugin.writeBundle!
+  return typeof hook === `function` ? hook : hook.handler
+}
+
+async function run(plugin: VitePlugin, outDir = `dist`) {
   plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir } })
-  plugin.buildEnd!()
-  await plugin.closeBundle!.call({})
+  await writeBundle(plugin).call({})
 }
 
 const define = (call: Record<string, unknown>) => call.define as Record<string, string>
 
 describe(`serviceWorker`, () => {
-  it(`builds nothing when the dev server shuts down`, async () => {
-    const { calls, plugin } = fixture({ "index.html": `x` })
-    plugin.configResolved!({ command: `serve`, root: `/app`, build: { outDir: `dist` } })
-    await plugin.closeBundle!.call({})
-    expect(calls).toHaveLength(0)
+  it(`does its work in writeBundle alone, which neither a failed build nor the dev server calls`, () => {
+    const { plugin } = fixture({ "index.html": `x` })
+    expect(plugin.closeBundle).toBeUndefined()
+    expect(plugin.buildEnd).toBeUndefined()
   })
 
-  it(`skips the worker when the app build failed, so the app's error is the one reported`, async () => {
-    const { calls, plugin } = fixture({ "index.html": `x` })
-    plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir: `dist` } })
-    plugin.buildEnd!(new Error(`the app failed`))
-    await plugin.closeBundle!.call({})
-    expect(calls).toHaveLength(0)
+  it(`hashes after every other plugin's writeBundle, whatever the plugin order`, () => {
+    const { plugin } = fixture({ "index.html": `x` })
+    expect(plugin.writeBundle).toMatchObject({ order: `post`, sequential: true })
   })
 
   it(`fails when the output folder is missing, rather than ship no worker`, async () => {
@@ -90,13 +97,12 @@ describe(`serviceWorker`, () => {
     expect(calls).toHaveLength(0)
   })
 
-  it(`builds into the output folder of the environment whose build closed`, async () => {
+  it(`builds into the output folder of the environment whose bundle was written`, async () => {
     const { calls, plugin } = fixture({ "index.html": `x` })
     // Vite resolves one config per environment; the last one seen is the server's.
     plugin.configResolved!({ command: `build`, root: `/app`, build: { outDir: `dist-ssr` } })
-    plugin.buildEnd!()
     const client = { environment: { config: { build: { outDir: `./dist` } } } }
-    await plugin.closeBundle!.call(client)
+    await writeBundle(plugin).call(client)
     expect((calls[0].build as { outDir: string }).outDir).toBe(`/app/dist`)
   })
 

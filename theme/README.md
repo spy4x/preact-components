@@ -161,7 +161,9 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   worker's cache after it and a deploy changes both the worker's bytes, so browsers see an update,
   and the cache name, so the old cache is dropped. Pass Vite's `build`, `[deno()]` as `plugins`,
   and `Deno.readDir` and `Deno.readFile`. `buildIdOf(files)` is the hash, exported for a test.
-  A failed app build builds no worker, so its own error is the one Vite reports. The dev server
+  It runs in `writeBundle`, after every other plugin's `writeBundle`, so the manifest
+  `webManifest` writes is in the hash whatever the plugin order. A failed app build, the CSS
+  guard's included, builds no worker, so its own error is the one Vite reports. The dev server
   (`vite dev`) serves the same worker from memory at `/sw.js` (under Vite's `base`) with
   `Cache-Control: no-cache` and `__BUILD_ID__` set to `"dev"`, so push and end-to-end tests work
   there too. It rebuilds the worker on every request, which browsers make rarely, so an edit shows
