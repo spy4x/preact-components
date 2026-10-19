@@ -20,6 +20,7 @@
     "./data-table": "./data-table.tsx",
     "./date-range": "./date-range.ts",
     "./date-range-picker": "./date-range-picker.tsx",
+    "./demo-video": "./demo-video.tsx",
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",

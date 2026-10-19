@@ -11,10 +11,10 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on ten exports.** Most components pass a caller's `class` through
+- **A `class` is merged, except on eleven exports.** Most components pass a caller's `class` through
   `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
   group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  and `EnhancedForm` (#511) use `join` instead, and `CopyButton` and `ZoomableImages` hand their
+  `EnhancedForm` (#511) and `DemoVideo` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
   `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
   before. Their `class` is appended after their own classes, and replaces one of them only when
@@ -71,6 +71,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                       |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                              |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                     |
+| `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`                        |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                                                                                                          |
 | `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before                           |
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)                                                                               |
@@ -704,6 +705,41 @@ opening moves focus in, every close driven from inside (both time presets, Apply
 a second press on the trigger) hands focus back to the trigger, and both closes driven from outside
 leave it alone — driven against the `withTime` card directly, the same way the day-only proof above
 is driven against its own.
+
+## DemoVideo
+
+A short demo clip that costs nothing until a reader asks for it. The server renders the poster
+`<img>`, with its `width` and `height`, inside a link to the first of `sources`, and draws a round
+play mark over it. Without JavaScript the link opens the clip in the browser's own player.
+
+After hydration, a click, Enter or Space on the link stays on the page and swaps the poster for
+`<video controls autoplay muted playsinline preload="auto">`, one `<source>` per entry of
+`sources`, in the same box: the box keeps the poster's aspect, so nothing below it moves. Focus
+moves to the video, so a keyboard reader can pause it at once. No `<video>` element exists before
+the press, so the browser requests no video bytes. Under `prefers-reduced-motion: reduce` the clip
+still plays, since the reader asked for it, but `loop` is ignored.
+
+The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
+`title`. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
+for a clip on the first screen. `class` is joined, not merged, so an island that renders the
+component carries no `tailwind-merge`. Any other attribute, such as `id` or a `data-*` analytics
+attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`.
+
+When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its size
+and shows `errorLabel` ("The video didn't load.") with a link, `openFileLabel` ("Open the video
+file"), to the first source, in a `role="status"` region. Focus moves to that link when it was on
+the video.
+
+```tsx
+<DemoVideo
+  title="Creating an invoice"
+  poster={{ src: "/demo.webp", width: 1280, height: 720 }}
+  sources={[
+    { src: "/demo.webm", type: "video/webm" },
+    { src: "/demo.mp4", type: "video/mp4" },
+  ]}
+/>
+```
 
 ## Timeline
 
