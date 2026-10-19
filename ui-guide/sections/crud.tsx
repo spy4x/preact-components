@@ -51,7 +51,7 @@ interface Team extends CrudRow {
   name: string
   members: number
   notes: string
-  archived: boolean
+  hiring: boolean
   parentId: number
   deletedAt: Date | null
 }
@@ -68,7 +68,7 @@ function blankTeam(): Team {
     name: "",
     members: 0,
     notes: "",
-    archived: false,
+    hiring: false,
     parentId: 0,
     deletedAt: null,
   }
@@ -92,7 +92,6 @@ function seedTeams(): Team[] {
       id: 4,
       name: "Research",
       members: 2,
-      archived: true,
       deletedAt: new Date("2026-01-15T09:00:00.000Z"),
     },
   ]
@@ -109,6 +108,8 @@ function makeTeamStore() {
   const rows = signal<Team[]>(seedTeams())
   const writes = signal<string[]>([])
   const settledOp = signal<OperationState>(settled(null))
+  // The list load settled with its rows: only then may an editor say a row is not found.
+  const listOp = signal<OperationState>(settled(seedTeams()))
   const inProgress: ReadonlySignal<OperationState | undefined> = computed(() => undefined)
   let nextId = 100
 
@@ -121,7 +122,7 @@ function makeTeamStore() {
       byId: (id: number) => computed(() => rows.value.find((row) => row.id === id)),
     },
     op: {
-      list: settledOp,
+      list: listOp,
       create: settledOp,
       update: () => inProgress,
     },
@@ -305,12 +306,12 @@ function TeamFieldsDemo() {
           options={parentOptions}
           placeholder="— none —"
         />
-        <CheckboxField vm={vm} vl={vl} name="archived" label="Is archived?" />
+        <CheckboxField vm={vm} vl={vl} name="hiring" label="Hiring" />
         <TextareaField vm={vm} vl={vl} name="notes" label="Notes" rows={3} />
       </div>
       <Caption e2e="model">
         name: {fieldText(vm.value.name)} · members: {fieldText(vm.value.members)} · parentId:{" "}
-        {fieldText(vm.value.parentId)} · archived: {vm.value.archived ? "on" : "off"} · notes:{" "}
+        {fieldText(vm.value.parentId)} · hiring: {vm.value.hiring ? "on" : "off"} · notes:{" "}
         {fieldText(vm.value.notes) || "(empty)"}
       </Caption>
     </Stack>
@@ -445,10 +446,27 @@ function CrudEditorDemo() {
  * the list of what has to be archived first.
  */
 function CrudEditorArchiveDemo() {
-  const { store } = useMemo(() => makeTeamStore(), [])
+  const { store, rows, writes } = useMemo(() => makeTeamStore(), [])
   const readOnly = useSignal(false)
   const worded = useSignal(false)
   const missing = useSignal(false)
+  const other = useSignal(false)
+  // Keeps the list loading, the way a cold edit link meets a store that has not answered yet.
+  const loading = useSignal(false)
+  const demoStore = useMemo<CrudEditorStore<Team>>(() => ({
+    ...store,
+    one: {
+      byId: (id) => computed(() => loading.value ? undefined : store.one.byId(id).value),
+    },
+    op: {
+      ...store.op,
+      list: computed(() =>
+        loading.value ? { inProgress: true, result: null, error: null } : store.op.list.value
+      ),
+    },
+  }), [])
+  const editId = missing.value ? 999 : other.value ? 2 : 1
+  const held = rows.value.find((row) => row.id === editId)
 
   return (
     <Stack data-e2e="archive-demo">
@@ -476,6 +494,26 @@ function CrudEditorArchiveDemo() {
         variant="outline"
         size="sm"
         class="self-start"
+        aria-pressed={other.value}
+        data-e2e="other-row"
+        onClick={() => other.value = !other.value}
+      >
+        Edit the Support team in the same editor
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={loading.value}
+        data-e2e="hold-list"
+        onClick={() => loading.value = !loading.value}
+      >
+        Keep the list loading
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
         aria-pressed={readOnly.value}
         data-e2e="read-only"
         onClick={() => readOnly.value = !readOnly.value}
@@ -483,11 +521,10 @@ function CrudEditorArchiveDemo() {
         View as someone who may not change the team
       </Button>
       <CrudEditor
-        store={store}
-        // Keyed, so the other row is loaded by a fresh editor.
-        key={missing.value ? "missing" : "held"}
+        // Not keyed: a new `editId` reloads the same mounted editor, as a router that keeps it does.
+        store={demoStore}
         mode="edit"
-        editId={missing.value ? 999 : 1}
+        editId={editId}
         blank={blankTeam()}
         schema={teamCrossFieldSchema}
         entity="Team"
@@ -505,8 +542,23 @@ function CrudEditorArchiveDemo() {
           }],
         }}
       >
-        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
+        {({ vm, vl }) => (
+          <>
+            <TextField vm={vm} vl={vl} name="name" label="Name" />
+            <NumberField vm={vm} vl={vl} name="members" label="Members" />
+          </>
+        )}
       </CrudEditor>
+      <Stack gap="xs" class="text-xs text-muted" data-e2e="stored">
+        <p>
+          team #{editId} in the store:{" "}
+          {held === undefined ? "none" : `"${held.name}", ${held.members} members`}
+        </p>
+        <p>
+          the update port logged:{" "}
+          {writes.value.length === 0 ? "nothing yet" : writes.value.join(", ")}
+        </p>
+      </Stack>
     </Stack>
   )
 }
@@ -796,11 +848,11 @@ function SelectFieldDemo() {
 
 /** The checkbox row, on a model whose field is already true. */
 function CheckboxFieldDemo() {
-  const { vm, vl } = useTeamForm({ ...blankTeam(), archived: true })
+  const { vm, vl } = useTeamForm({ ...blankTeam(), hiring: true })
   return (
     <Stack gap="sm" class="max-w-sm">
-      <CheckboxField vm={vm} vl={vl} name="archived" label="Is archived?" />
-      <Caption e2e="model">archived in the model: {vm.value.archived ? "on" : "off"}</Caption>
+      <CheckboxField vm={vm} vl={vl} name="hiring" label="Hiring" />
+      <Caption e2e="model">hiring in the model: {vm.value.hiring ? "on" : "off"}</Caption>
     </Stack>
   )
 }
@@ -947,7 +999,6 @@ export const crudDemos = {
       menuLabel={\`Actions for \${row.name}\`}
     >
       <DropdownItem href={\`/teams/\${row.id}/edit\`}>Edit</DropdownItem>
-      <DropdownItem danger onClick={() => archive(row.id)}>Archive</DropdownItem>
     </Dropdown>
   )}
 />`,
@@ -1197,7 +1248,7 @@ export const crudDemos = {
   CheckboxField: {
     summary: "A labelled checkbox bound to one boolean field of the model.",
     wide: false,
-    snippet: `<CheckboxField vm={vm} vl={vl} name="archived" label="Is archived?" />`,
+    snippet: `<CheckboxField vm={vm} vl={vl} name="hiring" label="Hiring" />`,
     render: () => <CheckboxFieldDemo />,
   },
   TextareaField: {
