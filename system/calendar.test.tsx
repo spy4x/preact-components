@@ -260,12 +260,24 @@ describe("Calendar", () => {
     expect(html).toContain("rounded-full")
   })
 
+  it("draws its frame at the card radius and the weekday row on the type scale", () => {
+    const html = render(<Calendar {...base} />)
+    const frame = html.match(/^<div class="([^"]*)"/)?.[1].split(" ") ?? []
+    const headers = [...html.matchAll(/<div[^>]*role="columnheader"[^>]*>/g)].map((m) => m[0])
+
+    expect(frame).toContain("rounded-[var(--radius-card,0.75rem)]")
+    expect(headers).toHaveLength(7)
+    for (const tag of headers) {
+      expect(tag.match(/class="([^"]*)"/)?.[1].split(" ")).toContain("text-xs")
+    }
+  })
+
   it("keeps the caller's utilities and lets them win over the frame", () => {
     const html = render(<Calendar {...base} class="rounded-none shadow-none" />)
 
     expect(html).toContain("shadow-none")
     expect(html).toContain("rounded-none")
-    expect(html).not.toContain("rounded-2xl")
+    expect(html).not.toContain("rounded-[var(--radius-card")
   })
 
   it("stays server-renderable without a today prop", () => {
