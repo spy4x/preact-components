@@ -1385,6 +1385,34 @@ function demoVideoSpecs(): Spec[] {
       },
     },
     {
+      name: "DemoVideo: keyboard focus on the play link draws a ring over the poster's edge",
+      pageId: "ui",
+      run: async (page) => {
+        const { link } = await demoVideoCard(page)
+        await page.mouse.move(0, 0)
+        await link.focus()
+        await page.keyboard.press("Shift+Tab")
+        // A strip across the left edge, inside the box, where an inset ring is drawn. Scrolled to and
+        // measured before each shot, since Shift+Tab and Tab may scroll the page.
+        const edge = async () => {
+          await link.scrollIntoViewIfNeeded()
+          const box = await link.boundingBox()
+          if (box === null) throw new Error("the play link has no box")
+          return page.screenshot({
+            animations: "disabled",
+            clip: { x: box.x, y: box.y + box.height / 2 - 8, width: 4, height: 16 },
+          })
+        }
+        const rest = await edge()
+        await page.keyboard.press("Tab")
+        await link.and(page.locator(":focus-visible")).waitFor()
+        const focused = await edge()
+        if (rest.equals(focused)) {
+          throw new Error("the poster's edge looks the same focused and at rest")
+        }
+      },
+    },
+    {
       name: "DemoVideo: Space on the play link starts the clip without scrolling the page",
       pageId: "ui",
       run: async (page) => {
