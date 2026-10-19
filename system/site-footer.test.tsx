@@ -149,4 +149,9 @@ describe("SiteFooter", () => {
     expect(tag).toContain("border-t")
     expect(tag).toContain("bg-surface")
   })
+
+  it("balances each group title's lines, so a wrapped title leaves no word alone", () => {
+    const html = render(<SiteFooter groups={groups} />)
+    expect(html.match(/<h2 class="[^"]*\btext-balance\b[^"]*">/g)?.length).toBe(2)
+  })
 })

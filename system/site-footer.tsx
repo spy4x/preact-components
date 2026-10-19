@@ -82,7 +82,7 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
                 aria-label={group.title}
                 class="flex min-w-0 flex-col gap-2 lg:flex-1"
               >
-                <h2 class="text-sm font-semibold text-foreground">{group.title}</h2>
+                <h2 class="text-sm font-semibold text-balance text-foreground">{group.title}</h2>
                 <ul class="flex flex-col">
                   {group.links.map((link, linkIndex) => (
                     <li key={`${linkIndex}-${link.href}`}>

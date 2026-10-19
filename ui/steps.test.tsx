@@ -50,4 +50,9 @@ describe("Steps", () => {
     const html = render(<Steps items={[{ title: "Invite" }]} />)
     expect(html).not.toContain("text-muted")
   })
+
+  it("balances each step title's lines, so a wrapped title leaves no word alone", () => {
+    const html = render(<Steps items={ITEMS} />)
+    expect(html.match(/<h3 class="[^"]*\btext-balance\b[^"]*">/g)?.length).toBe(3)
+  })
 })
