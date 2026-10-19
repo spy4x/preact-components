@@ -453,8 +453,19 @@ function CrudEditorArchiveDemo() {
   const other = useSignal(false)
   // Keeps the list loading, the way a cold edit link meets a store that has not answered yet.
   const loading = useSignal(false)
+  // Holds the store's answer to an update until released, so a row can be switched mid-save.
+  const holdingSave = useSignal(false)
+  const heldSaves = useMemo<(() => void)[]>(() => [], [])
+  const setHoldingSave = (next: boolean) => {
+    holdingSave.value = next
+    if (!next) heldSaves.splice(0).forEach((release) => release())
+  }
   const demoStore = useMemo<CrudEditorStore<Team>>(() => ({
     ...store,
+    update: (id, data) =>
+      holdingSave.value
+        ? new Promise((resolve) => heldSaves.push(() => resolve(store.update(id, data))))
+        : store.update(id, data),
     one: {
       byId: (id) => computed(() => loading.value ? undefined : store.one.byId(id).value),
     },
@@ -509,6 +520,16 @@ function CrudEditorArchiveDemo() {
         onClick={() => loading.value = !loading.value}
       >
         Keep the list loading
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        class="self-start"
+        aria-pressed={holdingSave.value}
+        data-e2e="hold-save"
+        onClick={() => setHoldingSave(!holdingSave.value)}
+      >
+        Hold the store's answer to updates
       </Button>
       <Button
         variant="outline"

@@ -736,6 +736,35 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name:
+      "CrudEditor: a save that answers after the row was switched leaves the new row's form and values alone",
+    pageId: "crud",
+    run: async (page) => {
+      const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+      const name = demo.getByLabel("Name", { exact: true })
+      const stored = demo.locator(`[data-e2e="stored"]`)
+      const hold = demo.locator(`[data-e2e="hold-save"]`)
+      const save = demo.getByRole("button", { name: "Save the team" })
+
+      await waitForValue(page, name, "Design")
+      await hold.click()
+      await hold.and(page.locator(`[aria-pressed="true"]`)).waitFor()
+      await save.click()
+      await demo.locator(`[data-e2e="other-row"]`).click()
+      await waitForValue(page, name, "Support")
+
+      // Row 1's answer arrives while row 2 is on screen.
+      await hold.click()
+      await stored.filter({ hasText: `update #1 ("Design" → "Design")` }).waitFor()
+      await waitForValue(page, name, "Support")
+      await waitForValue(page, demo.getByLabel("Members", { exact: true }), "0")
+
+      await save.click()
+      await stored.filter({ hasText: `update #2 ("Support" → "Support")` }).waitFor()
+      await stored.filter({ hasText: `team #2 in the store: "Support", 0 members` }).waitFor()
+    },
+  },
+  {
     name: "CrudEditor: Enter in a field saves the value just typed",
     pageId: "crud",
     run: async (page) => {
