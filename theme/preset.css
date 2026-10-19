@@ -516,8 +516,11 @@
    * Scoped with `:where()`, so it adds no specificity, and the light palette keeps the browser's
    * ring. The tone buttons below set their own ring colour, a lighter shade under `.dark`.
    */
-  :where(.dark) &:focus-visible {
-    outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)));
+  @variant dark {
+    &:focus-visible {
+      outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203
+        305.504)));
+    }
   }
 
   &:disabled,
@@ -610,7 +613,7 @@
   @apply size-9 shrink-0 inline-flex items-center justify-center whitespace-nowrap text-sm;
   @apply font-medium transition-colors;
   @apply disabled:opacity-50;
-  @apply hover:bg-gray-100 hover:text-black dark:hover:bg-gray-700 dark:hover:text-white;
+  @apply hover:bg-hover hover:text-foreground;
   border-radius: var(--radius-control, 0.375rem);
   color: var(--color-foreground, oklch(0.13 0.028 261.692));
 }
@@ -631,7 +634,7 @@
   }
 
   /* A native control draws itself in the page's colour scheme, not from the tokens. */
-  :where(.dark) & {
+  @variant dark {
     color-scheme: dark;
   }
 
@@ -681,7 +684,7 @@
   }
 
   /* A native control draws itself in the page's colour scheme, not from the tokens. */
-  :where(.dark) & {
+  @variant dark {
     color-scheme: dark;
   }
 
@@ -731,7 +734,7 @@
   }
 
   /* Without it Chromium draws a white box on a dark page (#347). */
-  :where(.dark) & {
+  @variant dark {
     color-scheme: dark;
   }
 }
@@ -752,7 +755,7 @@
     outline-offset: 2px;
   }
 
-  :where(.dark) & {
+  @variant dark {
     color-scheme: dark;
   }
 }
@@ -778,11 +781,12 @@
  * page that never opted in.
  *
  * Order inside the gate is load-bearing, and follows the host's placement:
- * `dark` goes on `<html>` and `theme-base` on `<body>` (see README), so on such
- * a page a control is a descendant of `.dark` first and of `.theme-base`
- * second. Written the other way round every part is still present and the rule
- * matches nothing at all — which is what shipped in #87. The suite therefore
- * evaluates these selectors against that ancestor chain, not against their text.
+ * `dark` goes on `<html>` and `theme-base` on `<body>` (see README). The `dark`
+ * variant sits on the `theme-base` element, so it matches when that element or
+ * one of its ancestors is dark: `.dark`, or the auto-dark marker while the
+ * system asks for dark. With `theme-base` above `.dark` the rule matches
+ * nothing — the order that shipped in #87. The suite therefore evaluates these
+ * selectors against the ancestor chain, not against their text.
  *
  * `:where()` keeps both classes out of the specificity arithmetic, deliberately.
  * `@tailwindcss/forms` is loaded after this preset and would land in a later
@@ -794,32 +798,36 @@
  * claims.
  */
 @layer base {
-  :where(.dark) :where(.theme-base) select,
-  :where(.dark) :where(.theme-base) input,
-  :where(.dark) :where(.theme-base) textarea,
-  :where(.dark) :where(.theme-base) [role="combobox"],
-  :where(.dark) :where(.theme-base) [role="listbox"] {
-    background-color: var(--color-surface, oklch(0.278 0.033 256.848));
-    border-color: var(--color-border-control, oklch(0.446 0.03 256.802));
-    color: var(--color-foreground, oklch(0.985 0.002 247.839));
-  }
+  :where(.theme-base) {
+    @variant dark {
+      & select,
+      & input,
+      & textarea,
+      & [role="combobox"],
+      & [role="listbox"] {
+        background-color: var(--color-surface, oklch(0.278 0.033 256.848));
+        border-color: var(--color-border-control, oklch(0.446 0.03 256.802));
+        color: var(--color-foreground, oklch(0.985 0.002 247.839));
+      }
 
-  :where(.dark) :where(.theme-base) option {
-    background-color: var(--color-surface, oklch(0.278 0.033 256.848));
-    color: var(--color-foreground, oklch(0.985 0.002 247.839));
-  }
+      & option {
+        background-color: var(--color-surface, oklch(0.278 0.033 256.848));
+        color: var(--color-foreground, oklch(0.985 0.002 247.839));
+      }
 
-  :where(.dark) :where(.theme-base) table {
-    background-color: var(--color-surface, oklch(0.278 0.033 256.848));
-  }
+      & table {
+        background-color: var(--color-surface, oklch(0.278 0.033 256.848));
+      }
 
-  :where(.dark) :where(.theme-base) thead {
-    background-color: var(--color-border-subtle, oklch(0.373 0.034 259.733));
-  }
+      & thead {
+        background-color: var(--color-border-subtle, oklch(0.373 0.034 259.733));
+      }
 
-  :where(.dark) :where(.theme-base) th,
-  :where(.dark) :where(.theme-base) td {
-    border-color: var(--color-border-control, oklch(0.446 0.03 256.802));
+      & th,
+      & td {
+        border-color: var(--color-border-control, oklch(0.446 0.03 256.802));
+      }
+    }
   }
 }
 

@@ -92,9 +92,9 @@ export interface ViteResolvedConfig {
   build: { outDir: string }
 }
 
-/** The plugin context inside `closeBundle`: the environment being built, in Vite 6+. */
+/** The plugin context inside `writeBundle` and `closeBundle`: the environment, in Vite 6+. */
 export interface ViteBuildContext {
-  /** The environment whose build just closed, with its own resolved config. */
+  /** The environment whose bundle was written or closed, with its own resolved config. */
   environment?: { config: { build: { outDir: string } } }
 }
 
@@ -158,6 +158,15 @@ export interface VitePlugin {
   buildEnd?: (error?: Error) => void
   /** Runs once the build has written its files, and also after a failed build. */
   closeBundle?: (this: ViteBuildContext) => Promise<void>
+  /**
+   * Runs once the build has written its files, never after a failed build. As an object, `order:
+   * "post"` runs it after the others and `sequential` waits for the ones before it to finish.
+   */
+  writeBundle?: ((this: ViteBuildContext) => Promise<void>) | {
+    order?: "pre" | "post"
+    sequential?: boolean
+    handler: (this: ViteBuildContext) => Promise<void>
+  }
   /** Runs once the bundle is written in memory, before it reaches disk. */
   generateBundle?: (
     this: VitePluginContext,

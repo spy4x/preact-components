@@ -69,24 +69,20 @@ describe("webManifest", () => {
       writeTextFile: (path, text) => Promise.resolve(void written.push([path, text])),
     })
     plugin.configResolved!({ command: "build", root: "/app", build: { outDir: "dist" } })
-    plugin.buildEnd!()
-    await plugin.closeBundle!.call({})
+    const write = plugin.writeBundle!
+    await (typeof write === "function" ? write : write.handler).call({})
 
     expect(written.map(([path]) => path)).toEqual(["/app/dist/manifest.webmanifest"])
     expect(JSON.parse(written[0][1]).display).toBe("standalone")
   })
 
-  it("writes nothing when the app build failed", async () => {
-    const written: string[] = []
+  it("writes in writeBundle alone, which neither a failed build nor the dev server calls", () => {
     const plugin = webManifest({
       manifest: { name: "Tasks", icons },
-      writeTextFile: (path) => Promise.resolve(void written.push(path)),
+      writeTextFile: () => Promise.resolve(),
     })
-    plugin.configResolved!({ command: "build", root: "/app", build: { outDir: "dist" } })
-    plugin.buildEnd!(new Error("boom"))
-    await plugin.closeBundle!.call({})
-
-    expect(written).toEqual([])
+    expect(plugin.closeBundle).toBeUndefined()
+    expect(plugin.buildEnd).toBeUndefined()
   })
 
   it("serves the manifest from the dev server under the base", () => {
