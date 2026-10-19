@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
+import { useBackdropPress } from "./backdrop-press.ts"
 import { acquireScrollLock } from "./scroll-lock.ts"
 
 export {
@@ -117,7 +118,9 @@ export interface ModalProps {
   /**
    * Whether a click on the backdrop closes the dialog. Defaults to `true`.
    *
-   * Native `<dialog>` does not dismiss on a backdrop click; see {@link isBackdropClick}.
+   * Native `<dialog>` does not dismiss on a backdrop click; see {@link isBackdropClick}. Both the
+   * press and the release must land on the backdrop, so a text selection dragged out of the panel
+   * leaves it open.
    */
   closeOnBackdrop?: boolean
   /** Stamps `data-e2e` on the dialog element. */
@@ -404,12 +407,15 @@ export function Modal(
     }
   }, [isOpen])
 
+  const backdrop = useBackdropPress((event) => {
+    const dialog = dialogRef.current
+    if (!dialog) return false
+    return backdropClickDismisses(event, dialog.getBoundingClientRect(), dialog, closeOnBackdrop)
+  })
+
   const handleBackdropClick = (event: MouseEvent) => {
     const dialog = dialogRef.current
-    if (!dialog) return
-
-    const rect = dialog.getBoundingClientRect()
-    if (backdropClickDismisses(event, rect, dialog, closeOnBackdrop)) requestClose(dialog)
+    if (dialog && backdrop.isBackdropClick(event)) requestClose(dialog)
   }
 
   const handleHeaderClose = () => {
@@ -441,6 +447,7 @@ export function Modal(
         tone === "danger" ? "border-red-300 dark:border-red-800" : "",
         className,
       )}
+      onPointerDown={backdrop.onPointerDown}
       onClick={handleBackdropClick}
     >
       {title
