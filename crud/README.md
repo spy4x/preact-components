@@ -101,6 +101,7 @@ interface CrudEditorStore<M extends CrudRow, T = M> {
   op: {
     create: ReadonlySignal<OperationState>
     update: (id: number) => ReadonlySignal<OperationState | undefined>
+    list?: ReadonlySignal<OperationState> // optional: holds "not found" back until it settles
   }
   create: (data: T) => Promise<OperationResult<M>>
   update: (id: number, data: T) => Promise<OperationResult<M>>
@@ -187,6 +188,11 @@ passes a selector (`state.child.childrenOfParent(parentId)`); a read-only collec
 soft-delete column passes its own signal and its own error. Either way the status filter is off,
 because there is nothing to switch between.
 
+A row's actions menu is `@spy4x/preact-ui`'s `Dropdown` with `DropdownItem`s, returned from
+`CrudList`'s `actions` slot: this package once wrapped the two as `RowActions` and `RowAction`, but
+the wrapper only picked the three-dots icon and a label, and an item's red tone is `DropdownItem`'s
+`danger` now.
+
 ## `CrudEditor`
 
 ```tsx
@@ -208,9 +214,12 @@ because there is nothing to switch between.
 
 The harness is the six parts, once:
 
-1. **Load once** through `useSignalEffect` — the row is copied out of the store with
+1. **Load once per row** through `useSignalEffect` — the row is copied out of the store with
    `structuredClone`, so an edit nobody submitted cannot reach the store the rest of the page reads.
-   A row that has not arrived yet re-runs the effect when it does.
+   A row that has not arrived yet re-runs the effect when it does. A new `editId` or `mode` on the
+   same mounted editor drops the form and loads again, so a router that keeps the component between
+   rows needs no `key`. "Not found" waits until the store's `op.list` has settled, so a cold edit
+   link shows no error while the list is still loading.
 2. **Validate on every change** with arktype, plus the caller's own checks through `validate`, which
    runs after the schema and may read signals — that is how a check against a not-yet-loaded
    collection fixes itself. A rule that compares two fields, or a value arktype rejects before it
@@ -237,7 +246,10 @@ The harness is the six parts, once:
    message yourself with `ctx.reject({ message })` instead of `ctx.mustBe(...)`. The form itself
    carries no margin, and the dependency block is taken out of the flow while it is empty, so the
    editor ends at the form's bottom edge in any parent layout; once the block holds a list, the
-   section's 24px gap separates it from the form (#279).
+   section's 24px gap separates it from the form (#279). The archive line's time is formatted with
+   `timeAgo` and `formatTime` from `@spy4x/platform/universal/time` (#306); import them from there.
+   This package no longer re-exports them (#359): `formatTimestamp` was `formatTime` under this
+   package's name.
 
 | Prop             | Default              | Notes                                                             |
 | ---------------- | -------------------- | ----------------------------------------------------------------- |
@@ -266,7 +278,7 @@ The harness is the six parts, once:
 A row is `@spy4x/preact-ui`'s `Field` around `ui`'s own control — `Input`, `Textarea`, `Select` or
 `Checkbox` — so the label, the hint and their id wiring are `Field`'s, and a fix there reaches every
 editor. What a row adds is the validation model: it binds the control to one field of `vm`, commits
-on blur, and renders that field's issues under `Field`, where the control's `aria-describedby`
+as you type (trimmed on blur), and renders that field's issues under `Field`, where the control's `aria-describedby`
 points at them and `aria-invalid` is set while there are any. `CheckboxField`'s label is the
 `Checkbox`'s own, after the box, so `Field` renders none of its own there.
 
@@ -288,15 +300,17 @@ Four behaviours the copies got wrong, now in one place:
 
 - **Ids.** Every control generates its own id with `useId`, so two rows — or two editors on one
   page — can no longer share one and steal each other's label.
-- **Writes.** A field commits on blur into a fresh object (`setField`), because signals compare by
-  reference and an in-place mutation renders nothing.
+- **Writes.** A field commits every keystroke into a fresh object (`setField`), because signals
+  compare by reference and an in-place mutation renders nothing. Committing as you type is what lets
+  Enter save the typed value and Save enable in add mode before the last field loses focus; the
+  model is the form's own copy, so nothing reaches the store before Save.
 - **Selects.** The control's value is the model's, not each option's `selected` flag; a value no
   option carries falls back to the empty option instead of displaying the first entry as chosen.
   Option values are rendered as strings, because a browser only reports a string and the server
   renderer compares an option to its select with `==` — a numeric `0` matched the empty placeholder
   (`"" == 0`) and rendered two options selected.
-- **Numbers.** An empty or half-typed number box commits `0`, not `NaN`, which is what the schema
-  would otherwise reject on every keystroke.
+- **Numbers.** A keystroke commits only a number the box shows as typed; on blur an empty or
+  half-typed number box commits `0`, not `NaN`, which is what the schema would otherwise reject.
 
 ## `DeletionValidation`
 
@@ -320,13 +334,7 @@ replaces an _empty_ list with a non-empty one scrolls again, which is what a sec
 attempt does for `CrudEditor` — unchecking its archive checkbox empties `dependencies` before
 rechecking it repopulates it, even when the entities blocking the archive are the same both times.
 Scrolling stays inside the component rather than becoming a caller-controlled port, because every
-caller wants the same outcome and a port would only make each one write the same call back in. A
-row's actions menu is `@spy4x/preact-ui`'s `Dropdown` with `DropdownItem`s, returned from
-`CrudList`'s `actions` slot: this package once wrapped the two as `RowActions` and `RowAction`, but
-the wrapper only picked the three-dots icon and a label, and an item's red tone is `DropdownItem`'s
-`danger` now. The archive line is formatted with `timeAgo` and `formatTime` from
-`@spy4x/platform/universal/time` (#306); import them from there. This package no longer re-exports
-them (#359): `formatTimestamp` was `formatTime` under this package's name.
+caller wants the same outcome and a port would only make each one write the same call back in.
 
 ## Worked example: a source application's regions, end to end
 
@@ -505,9 +513,6 @@ Small, deliberate, and each one is why the source files could drift:
   library's to define, and the wording is a prop (`{ archived: "Banned" }`).
 - **The error banner renders `error.message`.** The source files interpolated the error object into
   a paragraph.
-- **`timeAgo` no longer reports "0 years ago"** for something 360–364 days old; it keeps counting
-  months until a full year has passed. ts-libs carries the same fix since 1.4.0
-  (spy4x/ts-libs#206).
 - **`undelete`, not `restore`.** The state layer names the operation `undelete`, and the scaffold
   uses its vocabulary — the button label stays "Restore".
 - **The archive toggle is a port (`archive`), not a default.** Every source editor had one; a
@@ -538,6 +543,8 @@ the same rules.
   un-archiving clears both.
 - `fieldText(value)` is a model value as the text a control shows, with `null` and `undefined` as
   `""`. `commitNumber(raw)` parses a number box's text, reading an empty or half-typed value as `0`.
+  `typedNumber(raw)` is the number a keystroke may commit, or `undefined` while the text would not
+  read back unchanged (`-`, `1.`, `1.0`).
 - `CONFLICT` (`"CONFLICT"`) is the issue type an association editor reports a duplicate under, on
   the field the user has to change. `isRestorable(row)` answers whether that duplicate was removed
   earlier (it carries a `deletedAt`) and can be restored instead of re-created.
@@ -550,7 +557,7 @@ the same rules.
 deno test crud/       # from the repository root
 ```
 
-Every module has a colocated suite: the time labels (`time.test.ts`), the save-enabled
+Every module has a colocated suite: the save-enabled
 rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
 actions column, empty state (on the real `buildModelStore` too) and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
