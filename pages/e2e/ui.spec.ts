@@ -1266,7 +1266,223 @@ function tabsAndTableKeyboardSpecs(): Spec[] {
   ]
 }
 
+/** The parts of the `DemoVideo` card a spec drives, with its poster scrolled into view and loaded. */
+async function demoVideoCard(page: Page) {
+  const card = page.locator("#demo-DemoVideo")
+  const link = card.getByRole("link", { name: "Play video: A test pattern", exact: true })
+  await link.scrollIntoViewIfNeeded()
+  await link.locator("img").evaluate((image) =>
+    new Promise<void>((resolve, reject) => {
+      const poster = image as HTMLImageElement
+      if (poster.complete && poster.naturalWidth > 0) return resolve()
+      poster.addEventListener("load", () => resolve(), { once: true })
+      poster.addEventListener("error", () => reject(new Error("the poster did not load")), {
+        once: true,
+      })
+    })
+  )
+  return {
+    card,
+    link,
+    video: card.locator("video"),
+    /** Every request for one of the clip's files that this page made, by resource timing. */
+    clipRequests: () =>
+      page.evaluate(() =>
+        performance.getEntriesByType("resource").map((entry) => entry.name)
+          .filter((name) => /\/video-demo\/clip\./.test(name))
+      ),
+    /**
+     * Waits until the video has started playing on its own, or throws after ten seconds with what
+     * it is doing instead.
+     */
+    playing: () =>
+      card.locator("video").evaluate((element) =>
+        new Promise<void>((resolve, reject) => {
+          const video = element as HTMLVideoElement
+          const timer = setTimeout(() =>
+            reject(
+              new Error(
+                `not playing: paused ${video.paused}, readyState ${video.readyState}, ` +
+                  `currentTime ${video.currentTime}, hidden ${document.hidden}`,
+              ),
+            ), 10_000)
+          const done = () => {
+            if (video.paused) return
+            clearTimeout(timer)
+            resolve()
+          }
+          video.addEventListener("play", done)
+          done()
+        })
+      ),
+  }
+}
+
+/**
+ * The `DemoVideo` card: nothing of the clip loads before the press; a click or a key plays it in
+ * the poster's box, muted, with controls; focus moves to it; reduced motion stops the loop; and
+ * with JavaScript off the link opens the clip file.
+ */
+function demoVideoSpecs(): Spec[] {
+  return [
+    {
+      name: "DemoVideo: no video element and no request for the clip before the press; a click " +
+        "plays it inline, muted, with controls, in the poster's box",
+      pageId: "ui",
+      run: async (page) => {
+        const requested: string[] = []
+        page.on("request", (request) => {
+          if (/\/video-demo\/clip\./.test(request.url())) requested.push(request.url())
+        })
+        const { card, link, video, clipRequests, playing } = await demoVideoCard(page)
+        if (await card.locator("video, source").count() > 0) {
+          throw new Error("a video element exists before the press")
+        }
+        const early = [...requested, ...await clipRequests()]
+        if (early.length > 0) throw new Error(`requested before the press: ${early.join(", ")}`)
+        const before = await link.boundingBox()
+
+        await link.click()
+        await video.and(page.locator("[controls][autoplay][playsinline]")).waitFor()
+        await playing()
+        const state = await video.evaluate((element) => {
+          const played = element as HTMLVideoElement
+          return { muted: played.muted, src: played.currentSrc }
+        })
+        if (!state.muted) throw new Error("the clip plays with sound")
+        if (!/\/video-demo\/clip\.webm$/.test(state.src)) {
+          throw new Error(`the clip plays ${state.src}, not the first source`)
+        }
+        if (!page.url().includes("#/")) throw new Error(`the click navigated to ${page.url()}`)
+        const after = await video.locator("..").boundingBox()
+        if (
+          before === null || after === null ||
+          Math.abs(before.width - after.width) > 0.5 || Math.abs(before.height - after.height) > 0.5
+        ) {
+          throw new Error(
+            `the box moved from ${JSON.stringify(before)} to ${JSON.stringify(after)}`,
+          )
+        }
+        return `${requested.length} clip request(s) after the press`
+      },
+    },
+    {
+      name:
+        "DemoVideo: Tab reaches the play link, Enter starts the clip and focus lands on the video",
+      pageId: "ui",
+      run: async (page) => {
+        const { link, video, playing } = await demoVideoCard(page)
+        await link.focus()
+        await page.keyboard.press("Shift+Tab")
+        if (await link.evaluate((element) => element === document.activeElement)) {
+          throw new Error("Shift+Tab left focus on the play link")
+        }
+        await page.keyboard.press("Tab")
+        await link.and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("Enter")
+        await video.and(page.locator(":focus")).waitFor()
+        await playing()
+      },
+    },
+    {
+      name: "DemoVideo: Space on the play link starts the clip without scrolling the page",
+      pageId: "ui",
+      run: async (page) => {
+        const { link, video, playing } = await demoVideoCard(page)
+        await link.focus()
+        const scrolled = () => page.evaluate(() => globalThis.scrollY)
+        const before = await scrolled()
+        await page.keyboard.press(" ")
+        await video.and(page.locator(":focus")).waitFor()
+        await playing()
+        const after = await scrolled()
+        if (Math.abs(after - before) > 1) throw new Error(`the page scrolled ${after - before}px`)
+      },
+    },
+    ...([false, true] as const).map((reduced): Spec => ({
+      name: reduced
+        ? "DemoVideo: under reduced motion the clip still plays on press, but does not loop"
+        : "DemoVideo: with motion allowed the card's looping clip loops",
+      pageId: "ui",
+      run: async (page) => {
+        if (reduced) await page.emulateMedia({ reducedMotion: "reduce" })
+        const { link, video, playing } = await demoVideoCard(page)
+        await link.click()
+        await playing()
+        const loops = await video.evaluate((element) => (element as HTMLVideoElement).loop)
+        if (loops === reduced) throw new Error(`loop is ${loops}`)
+      },
+    })),
+    {
+      name: "DemoVideo: a clip whose file is missing shows the error and a link to the file in " +
+        "the poster's box, with focus moved to the link",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-DemoVideo")
+        const link = card.getByRole("link", { name: "Play video: A missing clip", exact: true })
+        await link.scrollIntoViewIfNeeded()
+        const before = await link.boundingBox()
+        await link.focus()
+        await page.keyboard.press("Enter")
+        const status = card.getByRole("status").filter({ hasText: "The video didn't load." })
+        const file = status.getByRole("link", { name: "Open the video file", exact: true })
+        await file.and(page.locator(":focus")).waitFor()
+        const href = await file.getAttribute("href")
+        if (href !== "video-demo/missing.webm") throw new Error(`the file link goes to ${href}`)
+        if (await card.locator("video").count() > 0) {
+          throw new Error("the failed video is still shown")
+        }
+        const after = await status.locator("..").boundingBox()
+        if (
+          before === null || after === null ||
+          Math.abs(before.width - after.width) > 0.5 || Math.abs(before.height - after.height) > 0.5
+        ) {
+          throw new Error(
+            `the box moved from ${JSON.stringify(before)} to ${JSON.stringify(after)}`,
+          )
+        }
+        const { violations } = await new AxeBuilder({ page }).include("#demo-DemoVideo").analyze()
+        if (violations.length > 0) throw new Error(violations.map(({ id }) => id).join(", "))
+      },
+    },
+    {
+      name: "DemoVideo: with JavaScript off, the play link opens the clip file",
+      pageId: "ui",
+      run: async (page) => {
+        const session = await page.context().newCDPSession(page)
+        await session.send("Emulation.setScriptExecutionDisabled", { value: true })
+        await page.reload()
+        const link = page.locator("#demo-DemoVideo a[aria-label='Play video: A test pattern']")
+        await link.scrollIntoViewIfNeeded()
+        await Promise.all([page.waitForURL(/\/video-demo\/clip\.webm$/), link.click()])
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `DemoVideo in the ${colorScheme} palette: axe finds nothing on the card, before and ` +
+        "after the press",
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const { link, video } = await demoVideoCard(page)
+        await page.addStyleTag({ content: `[data-card-part="demo"] { background-image: none; }` })
+        const scan = async (state: string) => {
+          const { violations } = await new AxeBuilder({ page }).include("#demo-DemoVideo")
+            .analyze()
+          if (violations.length > 0) {
+            throw new Error(`${state}: ${violations.map(({ id }) => id).join(", ")}`)
+          }
+        }
+        await scan("before the press")
+        await link.click()
+        await video.waitFor()
+        await scan("after the press")
+      },
+    })),
+  ]
+}
+
 export const specs: readonly Spec[] = [
+  ...demoVideoSpecs(),
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),
   ...escapeInsideModalSpecs(),
