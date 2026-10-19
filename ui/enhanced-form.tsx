@@ -84,8 +84,9 @@ export interface EnhancedFormProps {
   onSubmit?: (data: FormData) => Promise<void> | void
   /** The form's fields. Rendered inside a `<fieldset>` this component disables while sending. */
   children: ComponentChildren
-  /** Replaces `children` while a background submit is in flight. Omit it to keep `children` on
-   * screen, disabled, so the visitor still sees what they typed. */
+  /** Shown in place of `children` while a background submit is in flight. The fields stay mounted,
+   * hidden and disabled, so a failed submit brings back what the visitor typed. Omit it to keep
+   * `children` on screen, disabled. */
   sending?: ComponentChildren
   /** Replaces `children` once a background submit resolves. */
   done?: ComponentChildren
@@ -131,7 +132,7 @@ export interface EnhancedFormProps {
  * **Once hydrated, a submit calls `onSubmit` instead, and the page stays.** `event.preventDefault()`
  * only fires when `onSubmit` is given — the same "no callback, let the native post proceed" rule
  * every other progressively-enhanced form in this library follows. While the returned promise is
- * outstanding, `children` sits inside a disabled `<fieldset>` (or `sending` replaces it, when given),
+ * outstanding, `children` sits inside a disabled `<fieldset>` (hidden behind `sending`, when given),
  * so a second click on the submit button does nothing to the browser's own controls; a
  * `form.requestSubmit()` called from outside the disabled button is still blocked, by a ref this
  * component checks before either branch below runs. **The sending state always ends**: a resolved
@@ -317,7 +318,11 @@ export function EnhancedForm(
         busyRef.current = false
         if (mountedRef.current) setStatus("done")
       })
-      .catch(() => {
+      .catch((error) => {
+        // Swallowed into `"failed"` for the visitor, but still reported for the developer. Safari
+        // before 15.4 has no `reportError`.
+        if (typeof globalThis.reportError === "function") globalThis.reportError(error)
+        else console.error(error)
         if (submitIdRef.current !== id) return
         busyRef.current = false
         if (mountedRef.current) setStatus("failed")
@@ -326,7 +331,8 @@ export function EnhancedForm(
 
   const message = enhancedFormMessage(status, copy)
 
-  const activeSlot = status === "sending" && sending !== undefined
+  const showsSending = status === "sending" && sending !== undefined
+  const activeSlot = showsSending
     ? sending
     : status === "done" && done !== undefined
     ? done
@@ -334,8 +340,14 @@ export function EnhancedForm(
     ? failed
     : undefined
 
-  const slot = activeSlot !== undefined ? activeSlot : (
-    <fieldset disabled={status === "sending"} class="m-0 min-w-0 border-0 p-0">
+  // The `sending` slot is drawn beside the fields, not in their place: unmounted, uncontrolled
+  // inputs would come back empty when the submit fails. `done` and `failed` replace them.
+  const fields = (activeSlot === undefined || showsSending) && (
+    <fieldset
+      disabled={status === "sending"}
+      hidden={showsSending}
+      class="m-0 min-w-0 border-0 p-0"
+    >
       {children}
     </fieldset>
   )
@@ -351,7 +363,10 @@ export function EnhancedForm(
       onSubmit={handleSubmit}
       class={join("space-y-4", className)}
     >
-      <div>{slot}</div>
+      <div>
+        {fields}
+        {activeSlot}
+      </div>
       {
         /* Always in the page, empty until there is something to say — see this component's own
            doc, and `system/README.md`'s "A live region is always present and empty". The slot's

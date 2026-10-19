@@ -598,8 +598,8 @@ function ModalFormDialog({ onClose }: { onClose: () => void }) {
  * Confirmation panels for both tones, with the ports wired to visible state.
  *
  * `onConfirm` writes the sentence a real handler would produce, and the panel does **not** close
- * itself — the port clears `open`, which is the shape that keeps a failed request from discarding
- * the panel. The third trigger's `onCancel` returns `false`, so that dialog stays open.
+ * itself — the port clears the flag that mounts it, which is the shape that keeps a failed request
+ * from discarding the panel. The third trigger's `onCancel` returns `false`, so that dialog stays open.
  */
 function ConfirmDialogDemo() {
   const target = useSignal<string | null>(null)
@@ -1394,12 +1394,13 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
       {
         name: "onConfirm",
         type: "(event) => boolean | void",
-        description: "Called on confirm; the dialog stays open until you close it.",
+        description: "Called on confirm; the dialog stays open until you unmount it.",
       },
       {
         name: "onCancel",
         type: "() => boolean | void",
-        description: "Called on cancel; return `false` to keep it open.",
+        description:
+          "Called on cancel; unmount the dialog to close it. Return `false` to keep Escape or the cross from closing it.",
       },
       {
         name: "confirmLabel",
@@ -1440,17 +1441,20 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         description: "The buttons' `data-e2e` hooks.",
       },
     ],
-    snippet: `<ConfirmDialog
-  title="Delete invoice INV-0007?"
-  message="This cannot be undone."
-  confirmLabel="Delete"
-  cancelLabel="Keep it"
-  tone="danger"
-  busy={deleting.value}
-  busyLabel="Deleting…"
-  onConfirm={() => deleteInvoice()}
-  onCancel={() => confirming.value = false}
-/>`,
+    snippet: `// Mounted to open, unmounted to close.
+{confirming.value && (
+  <ConfirmDialog
+    title="Delete invoice INV-0007?"
+    message="This cannot be undone."
+    confirmLabel="Delete"
+    cancelLabel="Keep it"
+    tone="danger"
+    busy={deleting.value}
+    busyLabel="Deleting…"
+    onConfirm={() => deleteInvoice().then(() => confirming.value = false)}
+    onCancel={() => confirming.value = false}
+  />
+)}`,
     render: () => <ConfirmDialogDemo />,
   },
   UnsavedGuard: {

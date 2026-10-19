@@ -10,6 +10,7 @@ import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
 import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
+import { useBackdropPress } from "./backdrop-press.ts"
 
 /** One result the palette lists. Extend it with whatever `onSelect` needs, such as an `href`. */
 export interface CommandPaletteOption {
@@ -246,6 +247,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const lock = useRef<ScrollLock | null>(null)
   const latest = useRef(props)
   latest.current = props
+  // A click on the backdrop lands on the dialog element itself; the press has to begin there too.
+  const backdrop = useBackdropPress((event) => event.target === dialog.current)
 
   const remoteMode = props.search !== undefined
   const busy = remoteMode && (remote.status === Status.LOADING || remote.status === Status.SLOW)
@@ -483,9 +486,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
           focusOnClose(trigger.current, before.current, input.current)
           before.current = null
         }}
+        onPointerDown={backdrop.onPointerDown}
         onClick={(event) => {
-          // A click on the backdrop lands on the dialog element itself.
-          if (event.target === dialog.current) close()
+          if (backdrop.isBackdropClick(event)) close()
         }}
         class={cn(
           "inset-x-0 top-16 bottom-auto mx-auto my-0 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-subtle bg-surface p-0 text-foreground shadow-2xl",

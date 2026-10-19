@@ -681,6 +681,7 @@ export function Combobox<T>({
   const inputRef = useRef<HTMLInputElement>(null)
   /** Whether the last render had nothing to show, so the next one can tell arrival from a change. */
   const wasEmpty = useRef(true)
+  const closeRef = useRef(() => {})
   const draftQuery = useSignal("")
   const isOpen = useSignal(false)
   const activeIndex = useSignal(-1)
@@ -760,10 +761,7 @@ export function Combobox<T>({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        isOpen.value = false
-        activeIndex.value = -1
-      }
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) closeRef.current()
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
@@ -825,16 +823,22 @@ export function Combobox<T>({
     apply(typingState(visibleItems(text), isDisabled))
   }
 
-  const close = () => {
-    isOpen.value = false
-    activeIndex.value = -1
-  }
-
-  /** Apply a state the pure functions decided. */
+  /**
+   * Apply a state the pure functions decided.
+   *
+   * Closing drops the query with the list, whichever way it closes (a key, a blur, an outside
+   * click, a pick): a closed combobox displays its selection, so a kept-but-invisible draft would
+   * only be a trap, and the status region would go on answering it with "No matches".
+   */
   const apply = (state: ComboboxState) => {
+    if (!state.isOpen && isOpen.value) setQuery("")
     isOpen.value = state.isOpen
     activeIndex.value = state.activeIndex
   }
+
+  const close = () => apply({ isOpen: false, activeIndex: -1 })
+  // The outside-click listener is bound once, so it reaches the latest `close` through a ref.
+  closeRef.current = close
 
   /**
    * Open the list and put the highlight where a fresh list belongs.
@@ -858,7 +862,6 @@ export function Combobox<T>({
 
   const select = (item: T) => {
     onChange(item)
-    setQuery("")
     close()
   }
 
@@ -878,9 +881,6 @@ export function Combobox<T>({
       if (item !== undefined) select(item)
       return
     }
-    // Closing drops the query with the list, matching what the input shows anyway: a closed
-    // combobox displays its selection, so a kept-but-invisible draft would only be a trap.
-    if (!action.state.isOpen && isOpen.value) setQuery("")
     apply(action.state)
   }
 
@@ -961,8 +961,9 @@ export function Combobox<T>({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 onChange(null)
-                setQuery("")
-                close()
+                // Closing drops the query; a closed field may still hold a controlled one.
+                if (isOpen.value) close()
+                else setQuery("")
               }}
             >
               <CrossGlyph />

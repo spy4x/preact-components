@@ -39,6 +39,27 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** A failure a demo throws on purpose, when its "Fail the submit" box is ticked. */
+class SimulatedFailure extends Error {}
+
+/**
+ * Keeps a demo's own {@link SimulatedFailure} out of the console.
+ *
+ * `EnhancedForm` hands a rejected submit to `reportError`, which reports it to the console unless
+ * an `error` listener cancels it. An app does the same when it sends errors to its own telemetry;
+ * here it keeps the failures a visitor asked for from reading as bugs, and lets every other error
+ * through.
+ */
+function useQuietSimulatedFailures() {
+  useEffect(() => {
+    const quiet = (event: ErrorEvent) => {
+      if (event.error instanceof SimulatedFailure) event.preventDefault()
+    }
+    globalThis.addEventListener("error", quiet)
+    return () => globalThis.removeEventListener("error", quiet)
+  }, [])
+}
+
 /** A quiet counter under a form: how many submits reached its `onSubmit`. */
 function Count({ e2e, children }: { e2e: string; children: ComponentChildren }) {
   return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
@@ -47,13 +68,15 @@ function Count({ e2e, children }: { e2e: string; children: ComponentChildren }) 
 /**
  * The raw building block: one field, two ways to fail — an asynchronous rejection and a
  * synchronous throw, which reach `EnhancedForm`'s submit handler differently and both have to end
- * in `"failed"` — and an explicit `done` slot so the result visibly replaces the field instead of
- * leaving it on screen re-enabled.
+ * in `"failed"` — a `sending` slot shown while the note stays mounted behind it, so a failure brings
+ * the typed note back, and an explicit `done` slot so the result visibly replaces the field instead
+ * of leaving it on screen re-enabled.
  */
 function EnhancedFormDemo() {
   const submits = useSignal(0)
   const shouldFail = useSignal(false)
   const throwSync = useSignal(false)
+  useQuietSimulatedFailures()
 
   return (
     <Stack gap="md" class="max-w-md" data-e2e="enhanced-form">
@@ -81,12 +104,15 @@ function EnhancedFormDemo() {
           // `EnhancedForm`'s own `Promise.resolve().then(() => onSubmit(data))` is what folds it
           // into the same "failed" path a rejected promise takes, which is the one behaviour
           // `enhancedFormSynchronousThrowCheck` in `pages/checks/ui.ts` proves.
-          if (throwSync.value) throw new Error("simulated synchronous failure")
+          if (throwSync.value) throw new SimulatedFailure("simulated synchronous failure")
           return (async () => {
             await delay(200)
-            if (shouldFail.value) throw new Error("simulated failure")
+            if (shouldFail.value) throw new SimulatedFailure("simulated failure")
           })()
         }}
+        sending={
+          <p class="text-sm text-muted" data-e2e="enhanced-form-sending">Sending your note…</p>
+        }
         done={<p class="text-sm text-muted">Done.</p>}
       >
         <Field id="guide-enhanced-form-note" label="A note, any note">
@@ -241,6 +267,7 @@ function ContactDemo() {
   const mount = useSignal(0)
   const shouldFail = useSignal(false)
   const hang = useSignal(false)
+  useQuietSimulatedFailures()
 
   return (
     <Stack gap="md" data-e2e="contact-form">
@@ -270,7 +297,7 @@ function ContactDemo() {
             return
           }
           await delay(200)
-          if (shouldFail.value) throw new Error("simulated failure")
+          if (shouldFail.value) throw new SimulatedFailure("simulated failure")
         }}
       />
       <Cluster justify="between">
@@ -485,7 +512,8 @@ export const enhancedFormDemos = {
       {
         name: "done / failed / sending",
         type: "ComponentChildren",
-        description: "What replaces the fields in each state.",
+        description:
+          "What shows in each state. `done` and `failed` replace the fields; `sending` hides them, so a failure brings back what was typed.",
       },
       {
         name: "status",
