@@ -408,6 +408,24 @@ describe("Calendar, as a screen reader is told about it", () => {
 })
 
 describe("Calendar, as the locale shapes it", () => {
+  it("writes each day in the digits its name is read with", () => {
+    // Egypt's labels use Arabic-Indic digits, so a Western `9` on screen would not be in the name.
+    const html = render(<Calendar {...base} locale="ar-EG" />)
+    const days = [
+      ...html.matchAll(/<(a|button|span)([^>]*data-calendar-date="[\d-]+"[^>]*)>(.*?)<\/\1>/g),
+    ]
+      .map(([, , attributes, content]) => ({
+        name: /aria-label="([^"]*)"/.exec(attributes)?.[1] ?? "",
+        shown: content.replace(/<[^>]*>/g, ""),
+      }))
+
+    expect(days.length).toBeGreaterThan(27)
+    for (const day of days) {
+      expect(day.shown).toMatch(/^[\u0660-\u0669]+$/)
+      expect(day.name).toContain(day.shown)
+    }
+  })
+
   it("starts the week on the day the locale starts it on", () => {
     // Monday in the United Kingdom, Sunday in the United States, Saturday in Egypt — the three
     // first days `Intl` reports, all for the same month.

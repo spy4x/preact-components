@@ -639,11 +639,13 @@ export function Calendar(
    * A cell of a neighbouring month gets nothing: its number would read as a day of this month that
    * cannot be picked.
    */
+  // Unpadded and in the locale's own digits, as its label writes them: a `09` on screen is not in a
+  // name that reads `9 February 2026`, nor a `9` in `٩ فبراير ٢٠٢٦`, and a speech-input user saying
+  // the number they see would miss the cell.
+  const dayDigits = new Intl.NumberFormat(locale, { useGrouping: false })
   const renderDay = (day: CalendarDay) => {
     if (!day.inMonth) return null
-    // Unpadded, as the locale's own label writes it: a `09` on screen is not in a name that reads
-    // `9 February 2026`, and a speech-input user saying the number they see would miss the cell.
-    const dayNumber = String(Number(day.date.slice(8, 10)))
+    const dayNumber = dayDigits.format(Number(day.date.slice(8, 10)))
 
     const shared = {
       "data-calendar-date": day.date,
