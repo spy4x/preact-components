@@ -285,6 +285,7 @@ SettingsSaveRequest	type	@spy4x/preact-signals	A save request as the server's `s
 SettingsSignals	type	@spy4x/preact-signals	A synced settings store.
 SettingsTransport	type	@spy4x/preact-signals	How the store talks to the server.
 StoreStateOf	type	@spy4x/preact-signals	State of a store built for a given row schema.
+THEME_AUTO_ATTRIBUTE	constant	@spy4x/preact-signals	The attribute a server renders on `<html>` so a page is dark on a dark system before any script runs, and when none runs at all: `@spy4x/preact-theme`'s tokens and `dark` variant apply under it while the system asks for dark.
 Theme	type	@spy4x/preact-signals	A resolved theme: what is actually painted.
 ThemeBootstrapOptions	type	@spy4x/preact-signals	Options for `themeBootstrapScript`.
 ThemeMediaQuery	type	@spy4x/preact-signals	Media-query port.
