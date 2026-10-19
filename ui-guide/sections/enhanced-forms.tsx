@@ -47,8 +47,9 @@ function Count({ e2e, children }: { e2e: string; children: ComponentChildren }) 
 /**
  * The raw building block: one field, two ways to fail — an asynchronous rejection and a
  * synchronous throw, which reach `EnhancedForm`'s submit handler differently and both have to end
- * in `"failed"` — and an explicit `done` slot so the result visibly replaces the field instead of
- * leaving it on screen re-enabled.
+ * in `"failed"` — a `sending` slot shown while the note stays mounted behind it, so a failure brings
+ * the typed note back, and an explicit `done` slot so the result visibly replaces the field instead
+ * of leaving it on screen re-enabled.
  */
 function EnhancedFormDemo() {
   const submits = useSignal(0)
@@ -87,6 +88,9 @@ function EnhancedFormDemo() {
             if (shouldFail.value) throw new Error("simulated failure")
           })()
         }}
+        sending={
+          <p class="text-sm text-muted" data-e2e="enhanced-form-sending">Sending your note…</p>
+        }
         done={<p class="text-sm text-muted">Done.</p>}
       >
         <Field id="guide-enhanced-form-note" label="A note, any note">
@@ -485,7 +489,8 @@ export const enhancedFormDemos = {
       {
         name: "done / failed / sending",
         type: "ComponentChildren",
-        description: "What replaces the fields in each state.",
+        description:
+          "What shows in each state. `done` and `failed` replace the fields; `sending` hides them, so a failure brings back what was typed.",
       },
       {
         name: "status",
