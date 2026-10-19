@@ -714,7 +714,7 @@ export function Calendar(
   return (
     <div
       class={cn(
-        "group rounded-2xl border border-subtle bg-surface",
+        "group rounded-[var(--radius-card,0.75rem)] border border-subtle bg-surface",
         className,
       )}
     >
@@ -763,7 +763,7 @@ export function Calendar(
               role="columnheader"
               aria-colindex={column + 1}
               aria-label={weekday.long}
-              class="py-1 text-center text-[11px] font-medium tracking-wider text-placeholder uppercase"
+              class="py-1 text-center text-xs font-medium tracking-wider text-placeholder uppercase"
             >
               {weekday.short}
             </div>

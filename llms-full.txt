@@ -2324,7 +2324,7 @@ Extracted from earlier source applications.
 | `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader`          | `site-header`           | `links`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                     |
+| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                    |
 | `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
 | `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
 | `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
@@ -2916,6 +2916,11 @@ view, beside whichever form `links` is currently taking. It is the public-site s
 shell's side navigation (#135) — that one is a signed-in app's frame, this one is a landing page's
 top bar — and the two share the mobile-panel open/close behaviour rather than each writing their
 own; see `mobile-panel.ts` below.
+
+**No links, no navigation.** With `links` empty or left out, the bar draws neither `<nav>` nor the
+menu button, because a button that opens an empty panel is a dead control. What remains is `brand`
+on the left and `actions` on the right: the top bar of a single-page tool, in the design language's
+shell table.
 
 **Every link, and every word of `brand`, is the caller's.** `links` is `{ label, href, Icon? }`, and
 nothing here writes a `href`, a label or a brand string of its own — `brand` is rendered exactly as
@@ -3615,7 +3620,8 @@ not, and the full set of visible words, so a hard-coded string has nowhere to hi
 and once in the panel, `aria-current` on the one link matching `currentPath` and on no other, `brand`
 rendered with no anchor of the component's own around it, `actions` rendered exactly once, the menu
 button starting with `aria-expanded` omitted rather than a hard-coded `"false"` and a fixed name, its
-`aria-controls` pointing at the panel's own id, the panel positioned to overlay rather than sit in
+`aria-controls` pointing at the panel's own id, no `<nav>` and no menu button when `links` is empty
+or left out, the panel positioned to overlay rather than sit in
 flow, and a `labels` override replacing every default — checked against the full set of visible words
 the render produces, so a hard-coded brand, button or link label has nowhere to hide. Opening the
 panel with a real click, Escape closing it and returning focus to the button, a client-side navigation
