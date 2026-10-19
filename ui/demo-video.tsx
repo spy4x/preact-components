@@ -74,10 +74,10 @@ export interface DemoVideoProps extends
 /** The box both the poster and the clip fill, so the swap moves nothing. */
 const frameClass = "relative block w-full overflow-hidden"
 
-/** The poster link: the whole frame is the target, with an inset focus ring. */
+/** The poster link: the whole frame is the target; its focus ring is on the overlay. */
 const linkClass = join(
   frameClass,
-  "group cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+  "group cursor-pointer focus-visible:outline-hidden",
 )
 
 const mediaClass = "block h-full w-full object-cover"
@@ -87,7 +87,7 @@ const failedClass =
   "flex h-full w-full flex-col items-center justify-center gap-2 bg-canvas p-4 text-center text-sm text-foreground"
 
 const fileLinkClass =
-  "rounded-sm font-medium underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+  "rounded-sm font-medium underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 
 /** Where a {@link DemoVideo} is: the poster, the clip playing, or a clip that could not load. */
 type Phase =
@@ -95,9 +95,16 @@ type Phase =
   | { kind: "playing"; loop: boolean }
   | { kind: "failed"; hadFocus: boolean }
 
+/**
+ * The layer over the poster: it centres the play mark and carries the focus ring, which the link
+ * itself would paint under the image.
+ */
+const overlayClass =
+  "pointer-events-none absolute inset-0 flex items-center justify-center group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-focus"
+
 /** The play mark: a round dark disc with a white triangle, a little larger under the pointer. */
 const discClass =
-  "flex size-16 items-center justify-center rounded-full bg-scrim text-scrim-foreground shadow-lg transition-transform group-hover:scale-110 group-focus-visible:scale-110 group-focus-visible:ring-2 group-focus-visible:ring-(--color-scrim-foreground) motion-reduce:transition-none"
+  "flex size-16 items-center justify-center rounded-full bg-scrim text-scrim-foreground shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-(--color-scrim-foreground) motion-safe:transition-transform motion-safe:group-hover:scale-110 motion-safe:group-focus-visible:scale-110"
 
 /** Whether the reader asks for reduced motion. Read in a handler, so never on the server. */
 function prefersReducedMotion(): boolean {
@@ -255,7 +262,7 @@ export function DemoVideo(
       />
       <span
         aria-hidden="true"
-        class="pointer-events-none absolute inset-0 flex items-center justify-center"
+        class={overlayClass}
       >
         <span class={discClass}>
           <IconPlaySolid class="size-8 translate-x-px" />
