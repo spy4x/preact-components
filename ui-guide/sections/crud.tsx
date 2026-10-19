@@ -520,6 +520,19 @@ function CrudEditorArchiveDemo() {
       >
         View as someone who may not change the team
       </Button>
+      {
+        // Above the editor, so the editor stays the demo's last child: nothing may sit under its form.
+      }
+      <Stack gap="xs" class="text-xs text-muted" data-e2e="stored">
+        <p>
+          team #{editId} in the store:{" "}
+          {held === undefined ? "none" : `"${held.name}", ${held.members} members`}
+        </p>
+        <p>
+          the update port logged:{" "}
+          {writes.value.length === 0 ? "nothing yet" : writes.value.join(", ")}
+        </p>
+      </Stack>
       <CrudEditor
         // Not keyed: a new `editId` reloads the same mounted editor, as a router that keeps it does.
         store={demoStore}
@@ -549,16 +562,6 @@ function CrudEditorArchiveDemo() {
           </>
         )}
       </CrudEditor>
-      <Stack gap="xs" class="text-xs text-muted" data-e2e="stored">
-        <p>
-          team #{editId} in the store:{" "}
-          {held === undefined ? "none" : `"${held.name}", ${held.members} members`}
-        </p>
-        <p>
-          the update port logged:{" "}
-          {writes.value.length === 0 ? "nothing yet" : writes.value.join(", ")}
-        </p>
-      </Stack>
     </Stack>
   )
 }
