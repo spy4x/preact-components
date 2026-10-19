@@ -1112,6 +1112,14 @@ The defaults name no particular kind of page: the container is `[data-lightbox]`
 host puts where it wants the zoom layer, and an image with no `alt` is described as `Image`. What
 the component puts on the host's images it takes off again when it unmounts.
 
+**An image can open a different file than the one it shows.** A crop of a screenshot that carries
+`data-lightbox-src="full.png"` opens the full screenshot instead of its own `src`;
+`data-lightbox-webp` adds a WebP of that file and `data-lightbox-alt` describes it, used as the
+caption and in the image's accessible name. Without `data-lightbox-alt` the crop's own `alt` is
+used. Both are read only next to a non-blank `data-lightbox-src`, and previous and next still page
+through the container's images in DOM order, each opening its own file. An image without the
+attribute opens itself as before.
+
 - **It uses event delegation, not per-image listeners.** The source attached one
   listener per image and never removed them; delegation also survives images that appear after
   hydration. Escape needs no listener of its own: `<dialog>` closes natively and the `close` event
