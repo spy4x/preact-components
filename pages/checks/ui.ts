@@ -7477,10 +7477,8 @@ async function runLiveRegionChecks(devtools: Devtools): Promise<void> {
  *
  * The rule being pinned is that the description follows the empty message and only the empty
  * message. It is a transition, so all of it is asserted: nothing on an untouched field, nothing
- * while a count is in the region, the message once the query matches nothing, still the message on
- * the closed field the query was abandoned on — which is the state a server-filtered field is
- * rendered in, and the one the description exists for, since a live region announces a change and
- * says nothing at all when focus arrives — and nothing again once the field is cleared.
+ * while a count is in the region, the message once the query matches nothing, and nothing again
+ * once Tab closes the field, which drops the query with the list (#853).
  *
  * @param devtools The connected session, with the field open and the empty message in its region.
  * @param untouched The description read before the field was touched.
@@ -7494,57 +7492,41 @@ async function describedByCheck(
   const message = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
 
   // Tab leaves the input for the clear button, which the component treats as a leave: the list
-  // closes and the query stays, so this is the abandoned-query state a person reaches by walking
-  // away from a search — and the state a controlled `query` renders on its own.
-  //
-  // The poll's answer is kept and asserted rather than waited on and dropped. The fourth reading
-  // is the same string as the third, so a field that never closed produces a line saying "closed
-  // on the abandoned query" that is indistinguishable from the real thing: deleting this key
-  // press left the check green and the line unchanged until the answer went into the condition.
+  // closes and the query goes with it. The poll's answer is asserted, not dropped: a field that
+  // never closed would otherwise pass on a region that emptied for some other reason.
   await pressKey(devtools, "Tab")
   const listClosed = await poll(
     () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`),
     3_000,
   )
-  const closed = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
-
-  const clear = `globalThis.__verifyCombobox?.input?.parentElement?.querySelector("button") ?? null`
-  const pressed = await clickAt(devtools, await aimAt(devtools, clear), clear)
   const regionEmptied = await poll(
     () => devtools.evaluate<boolean>(`${REGION_STATE}.text === ""`),
     3_000,
   )
-  const emptied = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
+  const closed = await accessibleDescription(devtools, `#${ANNOUNCE_ID}`)
 
-  const readings = [untouched, counting, message, closed, emptied]
-  const named =
-    `untouched "${untouched}", counting "${counting}", nothing matching "${message}", ` +
-    `closed on the abandoned query "${closed}", cleared "${emptied}"`
+  const readings = [untouched, counting, message, closed]
+  const named = `untouched "${untouched}", counting "${counting}", nothing matching ` +
+    `"${message}", closed by Tab "${closed}"`
 
   check(
     "a Combobox's input is described by its live region for the empty message alone",
     !readings.includes(null) && untouched === "" && counting === "" &&
-      message === "No coin left" && listClosed && closed === "No coin left" &&
-      pressed?.onTarget === true && regionEmptied && emptied === "",
+      message === "No coin left" && listClosed && regionEmptied && closed === "",
     readings.includes(null)
       ? `the accessibility tree could not be read for #${ANNOUNCE_ID}, so this proves nothing`
       : !listClosed
-      ? `the Tab never closed the list, so the fourth reading "${closed}" is not the closed ` +
-        `state and this says nothing about a description surviving the field closing`
-      : pressed?.onTarget !== true
-      ? `the press never landed on the clear button, so the field was never emptied`
+      ? `the Tab never closed the list, so the last reading is not the closed state`
       : !regionEmptied
-      ? `the region never went empty after the clear, so the last reading is not the cleared state`
+      ? `the region still answers the query after Tab closed the field: ${named}`
       : untouched !== "" || counting !== ""
       ? `the field carries a description before anybody has asked it anything (untouched ` +
         `"${untouched}", with a count in the region "${counting}"): a count is about the last ` +
         `keystroke, and a description is re-read as part of the field every time it is announced`
-      : message !== "No coin left" || closed !== "No coin left"
+      : message !== "No coin left" || closed !== ""
       ? `a field showing the empty message computes its description as "${message}", and the ` +
-        `closed field the query was abandoned on as "${closed}": a live region says nothing when ` +
-        `focus arrives, so a reader tabbing into a server-filtered field rendered with a query ` +
-        `matching nothing would be told nothing about the message on its face`
-      : `"" → "" → "No coin left" → "No coin left" → "": ${named}`,
+        `field Tab closed as "${closed}"`
+      : `"" → "" → "No coin left" → "": ${named}`,
   )
 }
 
