@@ -333,9 +333,12 @@ classes keep their names: no app writes them as ordinary words.
   :where(.theme-base) …` rules, so they apply only inside `theme-base`, and only
   while `.dark` is on an ancestor. Components that already carry `.pc-input` /
   `.pc-select` / `.pc-textarea` are painted by those utilities; these rules are what
-  covers the parts a class cannot reach. The preset does not style
-  `[aria-invalid]`: a field marked invalid keeps its normal border, so the
-  error's colour and text come from the component (`Field` draws both).
+  covers the parts a class cannot reach. A `.pc-input`, `.pc-select` or
+  `.pc-textarea` marked `aria-invalid="true"` draws its border in
+  `--color-danger`, and focused its outline too instead of the focus ring, so a
+  person scanning the form sees which field is wrong; `Field` marks the control
+  and draws the message. `--color-danger` reads at least 5:1 against the
+  surface and the canvas in the light, default dark and ink palettes.
   Under `.dark` the five control classes also set `color-scheme: dark`, so the
   browser draws a checkbox, a radio, a date picker's icon and a field's
   scrollbar dark instead of as a white box. The page's own scrollbar follows the

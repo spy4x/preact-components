@@ -648,6 +648,17 @@
     outline-offset: -1px;
     box-shadow: none;
   }
+
+  /* An invalid field says so with its border too, focused or not, not only with the message under
+     it. --color-danger reads 5:1 or better on the surface and the canvas of the light, default
+     dark and ink palettes. */
+  &[aria-invalid="true"] {
+    border-color: var(--color-danger, oklch(0.505 0.213 27.518));
+  }
+
+  &[aria-invalid="true"]:focus {
+    outline-color: var(--color-danger, oklch(0.505 0.213 27.518));
+  }
 }
 
 @utility pc-select {
@@ -677,6 +688,17 @@
       302.321)));
     outline-offset: -1px;
     box-shadow: none;
+  }
+
+  /* An invalid field says so with its border too, focused or not, not only with the message under
+     it. --color-danger reads 5:1 or better on the surface and the canvas of the light, default
+     dark and ink palettes. */
+  &[aria-invalid="true"] {
+    border-color: var(--color-danger, oklch(0.505 0.213 27.518));
+  }
+
+  &[aria-invalid="true"]:focus {
+    outline-color: var(--color-danger, oklch(0.505 0.213 27.518));
   }
 }
 

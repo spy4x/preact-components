@@ -1323,6 +1323,22 @@ describe("theme preset", () => {
     )
   })
 
+  for (const field of ["pc-input", "pc-select", "pc-textarea"]) {
+    it(`draws an invalid .${field}'s border, and its focus outline, in the danger colour`, async () => {
+      const css = await preset()
+      const start = css.indexOf(`.${field} {`)
+      const rule = css.slice(start, css.indexOf("\n}", start))
+      expect(declarationsOf(rule, '&[aria-invalid="true"]')).toContain(
+        "border-color: var(--color-danger, oklch(0.505 0.213 27.518))",
+      )
+      expect(declarationsOf(rule, '&[aria-invalid="true"]:focus')).toContain(
+        "outline-color: var(--color-danger, oklch(0.505 0.213 27.518))",
+      )
+      // After the focus rule, so on focus the danger colour wins over the focus ring.
+      expect(rule.indexOf('&[aria-invalid="true"]')).toBeGreaterThan(rule.indexOf("&:focus {"))
+    })
+  }
+
   it("emits the disabled and focus-visible states of a button", async () => {
     const css = await preset()
     const btn = css.slice(css.indexOf(".btn {"))
