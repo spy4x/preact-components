@@ -1308,6 +1308,21 @@ describe("theme preset", () => {
     expect(await preset()).toContain("&:where(.dark, .dark *)")
   })
 
+  it("applies the dark variant under the auto-dark marker while the system asks for dark", async () => {
+    const css = await compilePreset(entrypointCss(), ["dark:text-accent-400"])
+    const utility = css.slice(css.indexOf(".dark\\:text-accent-400 {"))
+    expect(utility).toMatch(
+      /&:where\(\.dark, \.dark \*\) \{\s*color: var\(--color-accent-400, /,
+    )
+    expect(utility).toMatch(
+      new RegExp(
+        String.raw`@media \(prefers-color-scheme: dark\) \{\s*` +
+          String.raw`&:where\(\[data-theme-auto\], \[data-theme-auto\] \*\) \{\s*` +
+          String.raw`color: var\(--color-accent-400, `,
+      ),
+    )
+  })
+
   it("emits the disabled and focus-visible states of a button", async () => {
     const css = await preset()
     const btn = css.slice(css.indexOf(".btn {"))

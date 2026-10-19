@@ -213,6 +213,44 @@ exercises it end to end.
 For dark mode, put `dark` on `<html>`. The preset defines the `dark` variant as
 `&:where(.dark, .dark *)`, so no `@custom-variant` is needed in the app.
 
+### Dark mode without JavaScript
+
+Only a script adds `.dark`, so a visitor whose browser runs none gets the light palette even on a
+dark system. A page built to work without JavaScript renders `data-theme-auto` on `<html>`
+(`THEME_AUTO_ATTRIBUTE` from `@spy4x/preact-signals/theme`). While the marker is there and the
+system asks for dark, three things apply exactly as under `.dark`: the `dark` variant (the preset
+defines it for both, the marker inside `@media (prefers-color-scheme: dark)`), `tokens.css`'s dark
+tokens, and ink's, with `data-theme="ink"` beside the marker. `tokens.css`'s copy also sets
+`color-scheme: dark`, which the script sets otherwise, so native controls draw dark too.
+
+```html
+<html lang="en" data-theme-auto>
+```
+
+`themeBootstrapScript` removes the marker as its first statement, and an attached
+`createThemeStore` on every apply, so once a script runs the stored or chosen theme decides alone: a
+visitor who chose light keeps light on a dark system. A page that does not render the marker sees
+no change.
+
+The copies are generated: `auto-dark.ts` writes the `auto-dark` regions of `tokens.css` and
+`ink.css` from their `.dark` blocks (`deno task --cwd theme generate`), and `auto-dark.test.ts`
+fails when they drift. An app that sets its own values on `.dark` sets them for the marker too, or
+the page without scripts shows the library's dark values instead of the app's:
+
+```css
+.dark {
+  --color-surface: oklch(0.25 0.02 40);
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme-auto] {
+    --color-surface: oklch(0.25 0.02 40);
+  }
+}
+```
+
+The preset's own `:where(.dark)` rules (the dark focus colour of `.btn` and the `theme-base` form
+and table chrome) do not follow the marker.
+
 Also put `theme-base` on `<body>`, and note that this is the only thing that
 decides whether the preset's host-level rules apply at all: they do nothing until
 `.theme-base` is present. With it, adding `.dark` paints form controls, the

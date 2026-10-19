@@ -18,11 +18,22 @@
  *
  * Dark mode is class based — put `dark` on `<html>` and Tailwind's `dark`
  * variant, customised below, flips both the tokens and any `dark:` utility.
+ * A page that renders `data-theme-auto` on `<html>` also gets both while the
+ * system asks for dark, until the bootstrap script removes the marker.
  * The preset's own host-level rules stay quiet until `theme-base` is on
  * `<body>`; see the README for why, and for which rule is which.
  */
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme-auto], [data-theme-auto] *) {
+      @slot;
+    }
+  }
+}
 
 @layer base {
   /*
