@@ -100,8 +100,8 @@ function TextareaDemo() {
  *
  * `.pc-label` is one class either way: above the control for a stacked field, below it when the value
  * matters more than the name. The required marker, the hint and the error are text with
- * `.text-danger`/`.text-muted` — the preset ships no `[aria-invalid]` styling, so colour plus
- * `aria-describedby` is what carries the state to both a reader and a screen reader.
+ * `.text-danger`/`.text-muted`. The preset draws an `[aria-invalid="true"]` control's border in the
+ * danger colour, and `aria-describedby` carries the error to a screen reader.
  */
 function LabelDemo() {
   const name = useSignal("")

@@ -84,6 +84,7 @@ export {
   createThemeStore,
   syncThemeWithSettings,
   type Theme,
+  THEME_AUTO_ATTRIBUTE,
   type ThemeBootstrapOptions,
   themeBootstrapScript,
   type ThemeMediaQuery,

@@ -1308,6 +1308,39 @@ describe("theme preset", () => {
     expect(await preset()).toContain("&:where(.dark, .dark *)")
   })
 
+  it("applies the dark variant under the auto-dark marker while the system asks for dark", async () => {
+    const css = await compilePreset(entrypointCss(), ["dark:text-accent-400"])
+    const utility = css.slice(css.indexOf(".dark\\:text-accent-400 {"))
+    expect(utility).toMatch(
+      /&:where\(\.dark, \.dark \*\) \{\s*color: var\(--color-accent-400, /,
+    )
+    expect(utility).toMatch(
+      new RegExp(
+        String.raw`@media \(prefers-color-scheme: dark\) \{\s*` +
+          String.raw`&:where\(\[data-theme-auto\], \[data-theme-auto\] \*\) \{\s*` +
+          String.raw`color: var\(--color-accent-400, `,
+      ),
+    )
+  })
+
+  for (const field of ["pc-input", "pc-select", "pc-textarea"]) {
+    it(`draws an invalid .${field}'s border, and its focus outline, in the danger colour`, async () => {
+      const css = await preset()
+      const start = css.indexOf(`.${field} {`)
+      const rule = css.slice(start, css.indexOf("\n}", start))
+      expect(declarationsOf(rule, '&[aria-invalid="true"]')).toContain(
+        "border-color: var(--color-danger, oklch(0.505 0.213 27.518))",
+      )
+      const focus = declarationsOf(rule, '&[aria-invalid="true"]:focus')
+      expect(focus).toContain("outline-color: var(--color-danger, oklch(0.505 0.213 27.518))")
+      // Twice the resting border's width, so focus still shows on a border already in danger.
+      expect(focus).toContain("outline-width: 2px")
+      expect(focus).toContain("outline-offset: -2px")
+      // After the focus rule, so on focus the danger colour wins over the focus ring.
+      expect(rule.indexOf('&[aria-invalid="true"]')).toBeGreaterThan(rule.indexOf("&:focus {"))
+    })
+  }
+
   it("emits the disabled and focus-visible states of a button", async () => {
     const css = await preset()
     const btn = css.slice(css.indexOf(".btn {"))

@@ -746,7 +746,10 @@ socket.on(`settings`, (record) => settings.apply(record))
   throws; its options are written in as escaped string literals. A page that never attaches a store
   (a server-rendered embed with no islands) passes `followSystem: true`: the script then also
   listens for OS changes and repaints while the stored preference, read again on each change, is
-  `"system"`.
+  `"system"`. The script's first statement removes `THEME_AUTO_ATTRIBUTE` (`data-theme-auto`)
+  from `<html>`, and the store's default `apply` removes it too: a page renders that marker so it is
+  dark on a dark system when no script runs (`@spy4x/preact-theme`'s README, "Dark mode without
+  JavaScript"), and once one runs the stored preference decides alone.
 - **`as` assertions.** The package uses a handful, and only one is unavoidable: the spread of
   `extraOps`/`selectors` onto the base store in `build-model-store.ts`, where TypeScript cannot verify
   a spread of `Extra | undefined` against a generic `Extra`. The rest are local narrowing inside one
