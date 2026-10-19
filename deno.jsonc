@@ -63,10 +63,10 @@
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker
     // on a `v*` tag (docs/publishing.md), and a bare `publish` task would read as the thing that
-    // ships to JSR. Run as its own step in both CI systems — `.github/workflows/pages.yml` and
-    // `.woodpecker.yml` — rather than folded into `check`: `deno publish --dry-run` refuses a
-    // dirty tree, so adding it to `check` would fail every local run against uncommitted work.
-    // Both CI checkouts are clean, so the step there runs this task bare, with no `--allow-dirty`.
+    // ships to JSR. Run as its own step in `.woodpecker.yml` rather than folded into `check`:
+    // `deno publish --dry-run` refuses a dirty tree, so adding it to `check` would fail every local
+    // run against uncommitted work.
+    // The CI checkout is clean, so the step there runs this task bare, with no `--allow-dirty`.
     "publish:dry": "deno publish --dry-run",
     // Whole-word search for private application names across every file each published package
     // would upload to JSR. Not part of `check`: it needs a names file the owner keeps outside
