@@ -11,6 +11,7 @@ import { batch, effect, type ReadonlySignal, type Signal, useSignal } from "@pre
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
 import { filterRows } from "@spy4x/platform/universal/text"
+import { listSettled } from "./list-settled.ts"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
 
@@ -186,19 +187,16 @@ export function pageOf<M>(rows: M[], page: number, pageSize: number): ListPage<M
 }
 
 /**
- * Whether a store's collection has loaded: its load settled with a result, or it already holds a
- * row.
+ * Whether a store's collection has loaded: its load settled with a result ({@link listSettled}), or
+ * it already holds a row.
  *
- * `inProgress` alone does not say so. A store that fills its collection from a pushed list, as
- * `buildModelStore` does, never sets it, and before the first rows arrive its `op.list` is the
- * same `{ inProgress: false, error: null }` as after an empty answer; only `result` tells the two
- * apart. A row held with no settled load (one created before any list arrived) counts as loaded
- * too, so a search over those rows can still say that nothing matches.
+ * A row held with no settled load (one created before any list arrived) counts as loaded too, so a
+ * search over those rows can still say that nothing matches.
  */
 function hasLoaded<M extends CrudModel>(store: CrudListStore<M>): boolean {
   const load = store.op.list.value
   if (load.inProgress) return false
-  return (load.result !== null && load.result !== undefined) ||
+  return listSettled(load) ||
     store.list.nonDeleted.value.length > 0 || store.list.deleted.value.length > 0
 }
 

@@ -10,11 +10,9 @@ import type {
 /**
  * The store slices the scaffold reads, as structural interfaces.
  *
- * `@spy4x/preact-signals` is built in a parallel pull request, so this package does not
- * import it: a real `ModelStore` from `buildModelStore` satisfies both interfaces as written,
- * because TypeScript compares shapes rather than declared names. A follow-up that lands after
- * `signals/` should replace these with `ModelStore`-derived types and delete the duplication —
- * until then this file is the whole contract, and a test double only implements what is listed.
+ * A real `ModelStore` from `buildModelStore` satisfies both interfaces as written, because
+ * TypeScript compares shapes rather than declared names. This file is the whole contract, and a
+ * test double only implements what is listed.
  *
  * Two rules hold for both interfaces:
  *
@@ -67,6 +65,12 @@ export interface CrudEditorStore<M extends CrudRow, T = M> {
     create: ReadonlySignal<OperationState>
     /** Per-row update status; `inProgress` disables the form. */
     update: (id: number) => ReadonlySignal<OperationState | undefined>
+    /**
+     * Status of the collection load, as on {@link CrudListStore}. While it has not settled, a row
+     * `one.byId` cannot find is still loading, not missing, so the editor holds back "not found".
+     * Optional: without it, "not found" shows as soon as the row is absent.
+     */
+    list?: ReadonlySignal<OperationState>
   }
   /** Validate, `POST`, carry the created row back. */
   create: (data: T) => Promise<OperationResult<M>>
