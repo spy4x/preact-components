@@ -20,9 +20,10 @@
  * package's source the demo can import (`ui/`, `system/`, `charts/`, …), `pages/` itself — which
  * covers `pages/src` and every other file the build or the browser checks read — the config files
  * that change how a specifier resolves (the root `deno.jsonc`, `deno.lock`, and each package's own
- * `deno.json`, picked up by the walk since it lives inside that package's directory), and the three
+ * `deno.json`, picked up by the walk since it lives inside that package's directory), and the four
  * static fixture directories `build.ts` copies into the artefact verbatim and the browser checks
- * are served from — `pages/sw-demo`, `pages/form-demo`, `pages/map-demo` — covered whole, regardless
+ * are served from — `pages/sw-demo`, `pages/form-demo`, `pages/map-demo`, `pages/video-demo` —
+ * covered whole, regardless
  * of extension, since a stale copy of a served file is exactly what #280 is about. `deno bundle`
  * does not expose the module graph it built from, only the emitted bundle, so reading it back out
  * would mean re-parsing the output to recover what went in; a walk of the workspace, filtered by
@@ -67,7 +68,12 @@ const ROOT_FILES = ["deno.jsonc", "deno.lock", "llms.txt", "llms-full.txt"] as c
  * `copyDemoDirectory`) — covered whole, unlike the rest of the tree, since none of their files
  * carry one of {@link INCLUDED_EXTENSIONS} and a stale copy is exactly the bug #280 is about.
  */
-const STATIC_FIXTURE_DIRECTORIES = ["pages/sw-demo", "pages/form-demo", "pages/map-demo"] as const
+const STATIC_FIXTURE_DIRECTORIES = [
+  "pages/sw-demo",
+  "pages/form-demo",
+  "pages/map-demo",
+  "pages/video-demo",
+] as const
 
 /** Directory names walked past without descending — build output and caches, never a source. */
 const IGNORED_DIRECTORY_NAMES = new Set([".git", ".volumes", "coverage", "dist", "node_modules"])

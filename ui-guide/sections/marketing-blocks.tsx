@@ -1,7 +1,8 @@
 /**
- * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript.
- * `BrandMark`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame` are spread into the Display
- * section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
+ * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript;
+ * `DemoVideo` uses it to play its clip in place, and without it the play link opens the clip.
+ * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame` are spread into the
+ * Display section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
 
@@ -9,6 +10,7 @@ import { IconSprout } from "@spy4x/preact-icons"
 import {
   BrandMark,
   Button,
+  DemoVideo,
   FaqList,
   FeatureCard,
   PageHero,
@@ -32,6 +34,19 @@ const FAQ = [
     answer: "Yes. The source is open and runs on any server with Docker.",
   },
 ]
+
+/**
+ * The `DemoVideo` card's clip: a four-second silent test pattern `pages/build.ts` copies into
+ * `video-demo/`, beside its poster. Relative, as `form-demo/` is, so it resolves under the guide's
+ * base path.
+ */
+const DEMO_CLIP = {
+  poster: { src: "video-demo/poster.webp", width: 640, height: 360 },
+  sources: [
+    { src: "video-demo/clip.webm", type: "video/webm" },
+    { src: "video-demo/clip.mp4", type: "video/mp4" },
+  ],
+} as const
 
 const STEPS = [
   { title: "Sign up", text: "Create an account with your email; no card needed." },
@@ -59,6 +74,87 @@ export const marketingBlockDemos: DemoFragment = {
       <a href="#demo-BrandMark" class="inline-flex rounded-md">
         <BrandMark Icon={IconSprout} name="Acme" />
       </a>
+    ),
+  },
+  DemoVideo: {
+    summary:
+      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for a muted, inline video with controls.",
+    wide: false,
+    props: [
+      {
+        name: "poster",
+        type: "{ src, srcset?, sizes?, width, height }",
+        description: "The still frame shown before the press; its size keeps the box still.",
+      },
+      {
+        name: "sources",
+        type: "{ src, type }[]",
+        description:
+          "The clip's files, WebM before MP4. The first is where the link goes without JavaScript.",
+      },
+      {
+        name: "title",
+        type: "string",
+        description: "What the clip shows; the link is named `Play video: {title}`.",
+      },
+      {
+        name: "eager",
+        type: "boolean",
+        default: "false",
+        description: "Load the poster at once, at high priority, for a clip on the first screen.",
+      },
+      {
+        name: "loop",
+        type: "boolean",
+        default: "false",
+        description: "Play in a loop, except when the reader asks for reduced motion.",
+      },
+      {
+        name: "errorLabel",
+        type: "string",
+        default: `"The video didn't load."`,
+        description: "Shown in the clip's box, with a link to the file, when no source can play.",
+      },
+      {
+        name: "...rest",
+        type: "anchor attributes",
+        description:
+          "Any other attribute, such as `id` or `data-*` for analytics, on the play link.",
+      },
+    ],
+    snippet: `<WindowFrame variant="browser" title="app.example.com">
+  <DemoVideo
+    title="Creating an invoice"
+    poster={{ src: "/demo.webp", width: 1280, height: 720 }}
+    sources={[
+      { src: "/demo.webm", type: "video/webm" },
+      { src: "/demo.mp4", type: "video/mp4" },
+    ]}
+    data-umami-event="play-demo"
+  />
+</WindowFrame>`,
+    render: () => (
+      <div class="grid gap-6">
+        <WindowFrame variant="browser" title="app.example.com" caption="A four-second test clip">
+          <DemoVideo
+            title="A test pattern"
+            poster={DEMO_CLIP.poster}
+            sources={DEMO_CLIP.sources}
+            loop
+          />
+        </WindowFrame>
+        <WindowFrame
+          variant="browser"
+          title="app.example.com"
+          caption="A clip whose file is missing: press it to see the error state"
+        >
+          <DemoVideo
+            title="A missing clip"
+            poster={DEMO_CLIP.poster}
+            sources={[{ src: "video-demo/missing.webm", type: "video/webm" }]}
+          />
+        </WindowFrame>
+      </div>
     ),
   },
   FaqList: {

@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui",
-  "version": "8.4.0",
+  "version": "8.5.0",
   "exports": {
     ".": "./+index.ts",
     "./avatar": "./avatar.tsx",
@@ -20,6 +20,7 @@
     "./data-table": "./data-table.tsx",
     "./date-range": "./date-range.ts",
     "./date-range-picker": "./date-range-picker.tsx",
+    "./demo-video": "./demo-video.tsx",
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",

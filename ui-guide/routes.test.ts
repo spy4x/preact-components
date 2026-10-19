@@ -172,6 +172,18 @@ const CASES: RouteCase[] = [
     },
   },
   {
+    // A slug that itself begins with `demo-` is read as written, not as a card id.
+    hash: "#demo-video",
+    expected: {
+      kind: "demo",
+      sectionId: "display",
+      name: "DemoVideo",
+      href: "#/display/demo-video",
+      source: "fragment",
+      hash: "#demo-video",
+    },
+  },
+  {
     hash: "  #TOGGLE-SWITCH  ",
     expected: {
       kind: "demo",

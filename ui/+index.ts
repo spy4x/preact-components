@@ -138,6 +138,12 @@ export {
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
 export {
+  DemoVideo,
+  type DemoVideoPoster,
+  type DemoVideoProps,
+  type DemoVideoSource,
+} from "./demo-video.tsx"
+export {
   type DateRangePreset,
   dateRangePresets,
   type DateTimeOccurrences,

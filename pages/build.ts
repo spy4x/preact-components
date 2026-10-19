@@ -84,6 +84,12 @@ const FORM_DEMO_DIRECTORY = "form-demo"
  * OpenStreetMap's tiles instead (`LOCAL_MAP_TILES_FLAG` in `src/site.ts`).
  */
 const MAP_DEMO_DIRECTORY = "map-demo"
+/**
+ * Directory copied verbatim into the artefact for the `DemoVideo` card: a four-second silent test
+ * clip as WebM and MP4, and its poster. The card's browser checks prove no request reaches these
+ * clips before the play button is pressed.
+ */
+const VIDEO_DEMO_DIRECTORY = "video-demo"
 
 /** Sources `deno check` must accept before a single byte is emitted. */
 const CHECKED_ENTRIES = [
@@ -403,6 +409,11 @@ async function main(): Promise<void> {
     ["tile.png"],
     "the Map card",
   )
+  const videoDemo = await copyDemoDirectory(
+    VIDEO_DEMO_DIRECTORY,
+    ["clip.webm", "clip.mp4", "poster.webp"],
+    "the DemoVideo card",
+  )
   // The page that hydrates a server-rendered `Map` (`src/map-page/page.tsx`), beside the tile it
   // requests. Its island and chunks sit in the same directory, so they never mix with the
   // catalogue's `assets/`.
@@ -445,6 +456,9 @@ async function main(): Promise<void> {
       `  ${MAP_DEMO_DIRECTORY}/index.html ${kilobytes(mapPageHtml.length)}, ${assetNames.mapJs} ${
         kilobytes(mapIsland.entry.length)
       } + ${mapIsland.chunks.length} chunks — a server-rendered Map the browser hydrates\n` +
+      `  ${VIDEO_DEMO_DIRECTORY}/ ${
+        videoDemo.join(", ")
+      } — the DemoVideo card's clip and poster\n` +
       `  ${LLMS_FILES.join(", ")} — the generated plain-text maps of the library\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
