@@ -129,7 +129,9 @@ Every package is published at the same version, together (#230), so a sibling's 
 resolves to the set published with it. Semver since 1.0.0: a change that can break an app bumps the
 major. Steps: [`docs/publishing.md`](./docs/publishing.md).
 
-Versions are merged, deployed and published every few hours. Never hold a reviewed merge or deploy,
+Releases are cut in batches (#868), not after every merge: one release when an app PR that is open
+now cannot merge without the change (merge everything that lane needs first), when the change
+closes a security or data-loss hole, or once at the end of a wave. Never hold a reviewed merge or deploy,
 here or in a consumer, for Deno's 24-hour minimum dependency age, and never add a flag or wording to
 hide a version not installable yet. A consumer's CI resolves a young version once its committed
 `deno.lock` records it: write that lockfile once with `deno install --minimum-dependency-age=0`.

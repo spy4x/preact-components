@@ -60,4 +60,15 @@ steps:
       # version bump would go green and publish nothing; this refuses any tag that is not `v` plus
       # the one version every package declares.
       - deno run --allow-read --allow-env=CI_COMMIT_TAG infra/scripts/release-tag.ts
-      - deno publish --token "$${JSR_TOKEN}"
+      # A stalled upload is retried (#868): each attempt gets 10 minutes, and a version already
+      # on JSR is skipped, so a retry publishes only what is missing. Each attempt logs its start,
+      # end and exit code, so a stall shows whether the time went to the upload or to JSR.
+      - |
+          for attempt in 1 2 3; do
+            echo "publish attempt $${attempt} started $$(date -u +%H:%M:%S)"
+            rc=0
+            timeout 600 deno publish --token "$${JSR_TOKEN}" || rc=$$?
+            echo "publish attempt $${attempt} ended $$(date -u +%H:%M:%S), exit code $${rc}"
+            if [ "$${rc}" -eq 0 ]; then exit 0; fi
+          done
+          exit 1

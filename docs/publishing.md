@@ -113,8 +113,9 @@ A new package added later is created on jsr.io the same way before the tag that 
 - **`deno publish` names packages that do not exist:** nothing was published. Create them on
   jsr.io, then restart the pipeline.
 - **`deno publish` fails part-way:** the packages published before the failure are on JSR for good.
-  A temporary failure (network, registry) is fixed by restarting the pipeline, and JSR skips what it
-  already has. A failure in a package's own files is fixed in a pull request, and the tag moves to
+  The `publish` step retries a temporary failure (network, registry, a stalled upload) itself:
+  three attempts of 10 minutes each, and JSR skips what it already has (#868). Restart the pipeline
+  only after all three attempts fail. A failure in a package's own files is fixed in a pull request, and the tag moves to
   the fix as above; the published packages are skipped and the rest go out at the same version. The
   fix must not change a package that already published, or the same version would mean two things;
   when it has to, bump every package to the next version and release that instead.
