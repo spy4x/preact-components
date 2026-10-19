@@ -60,6 +60,13 @@ describe("componentFromFragment", () => {
     expect(componentFromFragment("#BadgePill", NAMES)).toBeUndefined()
   })
 
+  it("resolves the slug and the card id of a name that itself begins with Demo", () => {
+    const names = [...NAMES, "DemoVideo"] as const
+    expect(componentFromFragment("#demo-video", names)).toBe("DemoVideo")
+    expect(componentFromFragment("#demo-DemoVideo", names)).toBe("DemoVideo")
+    expect(componentFromFragment("#demo-", names)).toBeUndefined()
+  })
+
   it("returns undefined for an empty fragment", () => {
     expect(componentFromFragment("#", NAMES)).toBeUndefined()
   })

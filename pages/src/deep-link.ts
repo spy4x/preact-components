@@ -53,10 +53,12 @@ export function componentFromFragment<Name extends string>(
   fragment: string,
   names: readonly Name[],
 ): Name | undefined {
-  const trimmed = decodeFragment(fragment).replace(/^demo-/, "").toLowerCase()
-  if (!trimmed) return undefined
-
-  return names.find((name) => name.toLowerCase() === trimmed || demoSlug(name) === trimmed)
+  const decoded = decodeFragment(fragment).toLowerCase()
+  const match = (key: string) =>
+    key ? names.find((name) => name.toLowerCase() === key || demoSlug(name) === key) : undefined
+  // The fragment as written first, so a slug that itself begins with `demo-` (`DemoVideo`'s) is
+  // not read as a card id; then without the card id's `demo-` prefix.
+  return match(decoded) ?? (decoded.startsWith("demo-") ? match(decoded.slice(5)) : undefined)
 }
 
 /** Strip the `#`, undo percent-encoding, and drop surrounding whitespace. */

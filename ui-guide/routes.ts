@@ -510,10 +510,13 @@ export function parseRoute(
 
   // The legacy bare fragment: the shape this page shipped before hash routing, resolved against
   // every section because the fragment names a component and not a place.
-  const wanted = body.replace(/^demo-/i, "").toLowerCase()
-  for (const section of sections) {
-    const name = nameIn(section, wanted)
-    if (name) return demoRoute(section, name, "fragment", normalised)
+  // As written first, so a slug that begins with `demo-` (`DemoVideo`'s) is not read as a card id.
+  const asWritten = body.toLowerCase()
+  for (const wanted of [asWritten, asWritten.replace(/^demo-/, "")]) {
+    for (const section of sections) {
+      const name = nameIn(section, wanted)
+      if (name) return demoRoute(section, name, "fragment", normalised)
+    }
   }
 
   return indexRoute("unknown", normalised)
