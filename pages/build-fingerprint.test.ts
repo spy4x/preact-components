@@ -45,6 +45,7 @@ Deno.test("isCovered accepts the static fixture directories build.ts copies verb
   assertEquals(isCovered("pages/sw-demo/sw.js"), true)
   assertEquals(isCovered("pages/form-demo/index.html"), true)
   assertEquals(isCovered("pages/map-demo/tile.png"), true)
+  assertEquals(isCovered("pages/video-demo/clip.webm"), true)
 })
 
 Deno.test("isCovered rejects anything under a dist/ directory", () => {
