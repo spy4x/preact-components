@@ -30,6 +30,12 @@ export interface NoticeProps
    * server-rendered one, is often not announced at all; the reader finds it while reading the page.
    */
   urgent?: boolean
+  /**
+   * `false` renders no live region at all: for a notice that is part of the page rather than news,
+   * such as standing instructions drawn once data arrives, which a screen reader should find while
+   * reading, not hear read out uninvited. Defaults to `true`. `urgent` wins over it.
+   */
+  live?: boolean
   class?: string
 }
 
@@ -92,8 +98,16 @@ function isEmpty(children: ComponentChildren): boolean {
  * @returns The banner, or `null` when every slot is empty.
  */
 export function Notice(
-  { tone = "info", title, children, action, urgent = false, class: className, ...rest }:
-    NoticeProps,
+  {
+    tone = "info",
+    title,
+    children,
+    action,
+    urgent = false,
+    live = true,
+    class: className,
+    ...rest
+  }: NoticeProps,
 ): JSX.Element | null {
   const hasBody = !isEmpty(children)
   const hasAction = !isEmpty(action)
@@ -102,7 +116,7 @@ export function Notice(
   return (
     <div
       {...rest}
-      role={urgent ? "alert" : "status"}
+      role={urgent ? "alert" : live ? "status" : undefined}
       class={cn(
         "flex flex-wrap items-start gap-3 rounded-lg border p-4 text-sm text-foreground",
         toneClasses[tone],

@@ -44,6 +44,13 @@ describe("Notice", () => {
     expect(html).not.toContain('role="alert"')
   })
 
+  it("renders no live region when it is not live, unless urgent", () => {
+    expect(rootTag(render(<Notice live={false} title="Public demo" />))).not.toContain("role=")
+    expect(rootTag(render(<Notice live={false} urgent title="Payment failed" />))).toContain(
+      'role="alert"',
+    )
+  })
+
   it("announces itself as an alert only when urgent", () => {
     const html = render(<Notice urgent title="Payment failed" />)
 
