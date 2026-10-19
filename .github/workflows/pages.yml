@@ -11,12 +11,6 @@ name: Pages
 on:
   status:
 
-# A deploy in flight is never cancelled: a half-published artefact is worse than a slightly stale
-# one.
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   deploy:
     if: >-
@@ -25,6 +19,12 @@ jobs:
       contains(github.event.branches.*.name, 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # A deploy in flight is never cancelled: a half-published artefact is worse than a slightly
+    # stale one. The group sits on the job, not the workflow, so the skipped runs that every other
+    # Woodpecker status starts never join it and cannot cancel a queued deploy.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write

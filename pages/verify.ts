@@ -29,8 +29,9 @@
  * renders to an HTML string, so no effect, ref, key press or focus change is executed by any of
  * them; anything that lives behind one is proven here or nowhere. `.woodpecker.yml`
  * runs `deno task check`, the build and this script on every pull request into `main` and on every
- * push to `main`, and the Pages deploy waits for that push build to pass. A missing or unusable browser is a failed
- * check, not a skip — `--static` is the one explicit way to leave the browser phase out.
+ * push to `main`, and the Pages deploy waits for that push build to pass. A missing or unusable
+ * browser is a failed check, not a skip — `--static` is the one explicit way to leave the browser
+ * phase out.
  *
  * The checks that need a hydrated page are not written here: each workspace package that has one
  * owns a file under `pages/checks/`, and `PACKAGE_BLOCKS` below is the one place their run order is
