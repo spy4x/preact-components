@@ -1245,8 +1245,14 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         name: "urgent",
         type: "boolean",
         default: `false`,
+        description: 'Interrupts the screen reader (`role="alert"`). It wins over `live`.',
+      },
+      {
+        name: "live",
+        type: "boolean",
+        default: `true`,
         description:
-          'Interrupts the screen reader (`role="alert"`). Without it the notice is a polite status.',
+          'A polite status (`role="status"`) that a screen reader reads out when it appears. `false` drops the role, for standing instructions that the reader should find while reading.',
       },
     ],
     snippet: `<Notice
@@ -1265,6 +1271,11 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
   action={<Button size="sm" href="/billing">Update card</Button>}
 >
   Your card was declined, so the plan renews on the free tier.
+</Notice>
+
+// Standing instructions that arrive after a fetch, found while reading:
+<Notice live={false} title="Public demo">
+  Anyone can sign in with this account.
 </Notice>`,
     render: () => (
       <Stack>
