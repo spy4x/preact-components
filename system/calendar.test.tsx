@@ -90,7 +90,7 @@ describe("Calendar", () => {
     // where September would be. All eleven are empty and out of the accessibility tree.
     expect(blankCells(html)).toHaveLength(11)
     expect(leadingBlankCells(html)).toBe(5)
-    expect(html.match(/>\d\d</g)).toHaveLength(31)
+    expect(html.match(/>\d\d?</g)).toHaveLength(31)
   })
 
   it("puts the horizon boundary in the grid as the first selectable day", () => {
@@ -344,9 +344,88 @@ describe("Calendar, as a screen reader is told about it", () => {
       /<span role="button" data-calendar-date="2026-08-19" aria-label="19 August 2026 — not available"[^>]* aria-disabled="true"/,
     )
   })
+
+  for (const mode of ["link", "button"] as const) {
+    const handlers = mode === "button" ? { onSelectDate: () => {}, onSelectMonth: () => {} } : {}
+
+    it(`leaves no week row without a cell in the tree, in ${mode} mode`, () => {
+      // February 2026 opens on a Sunday, so a Monday-first grid holds its 28 days in five weeks and
+      // the sixth is blank. Every cell of that week is hidden, so the row is hidden with them: a
+      // `row` with no `gridcell` left is a broken grid. August 2026 has a day in every week.
+      const rowsOf = (html: string) => html.split('<div role="row"').slice(1)
+      const visibleCell = /<div role="(?:gridcell|columnheader)"(?![^>]*aria-hidden)/
+      const february = rowsOf(render(<Calendar {...base} {...handlers} monthAnchor="2026-02-01" />))
+      const august = rowsOf(render(<Calendar {...base} {...handlers} />))
+
+      for (const rows of [february, august]) {
+        expect(rows).toHaveLength(7)
+        for (const row of rows.filter((row) => !row.startsWith(' aria-hidden="true"'))) {
+          expect(row).toMatch(visibleCell)
+        }
+      }
+      expect(february.filter((row) => row.startsWith(' aria-hidden="true"'))).toHaveLength(1)
+      expect(february[6]).toMatch(/^ aria-hidden="true"/)
+      expect(august.filter((row) => row.startsWith(' aria-hidden="true"'))).toHaveLength(0)
+    })
+
+    it(`names every day with the number it shows, past, out, selected or today, in ${mode} mode`, () => {
+      // Each state on a one-digit day, where a padded `09` would be missing from `9 February 2026`.
+      const html = render(
+        <Calendar
+          {...base}
+          {...handlers}
+          monthAnchor="2026-02-01"
+          minDate="2026-02-04"
+          maxDate="2026-02-08"
+          today="2026-02-05"
+          selectedDate="2026-02-06"
+          availableByDate={{ "2026-02-04": 3, "2026-02-05": 3, "2026-02-06": 3, "2026-02-07": 0 }}
+        />,
+      )
+      const days = new Map(
+        [...html.matchAll(/<(a|button|span)([^>]*data-calendar-date="([\d-]+)"[^>]*)>(.*?)<\/\1>/g)]
+          .map(([, , attributes, date, content]) => [date, {
+            name: /aria-label="([^"]*)"/.exec(attributes)?.[1] ?? "",
+            shown: content.replace(/<[^>]*>/g, ""),
+            current: attributes.includes('aria-current="date"'),
+          }]),
+      )
+
+      expect(days.size).toBe(28)
+      for (const [date, day] of days) {
+        expect(day.shown).toBe(String(Number(date.slice(8, 10))))
+        expect(day.name).toContain(day.shown)
+      }
+      expect(days.get("2026-02-03")?.name).toBe("3 February 2026 — past")
+      expect(days.get("2026-02-05")?.name).toBe("5 February 2026 — 3 available") // today
+      expect(cellClass(html, "2026-02-05")).toContain("bg-selected-soft")
+      expect(days.get("2026-02-06")?.current).toBe(true)
+      expect(days.get("2026-02-07")?.name).toBe("7 February 2026 — none left")
+      expect(days.get("2026-02-08")?.name).toBe("8 February 2026 — not available")
+      expect(days.get("2026-02-09")?.name).toBe("9 February 2026 — outside the allowed range")
+    })
+  }
 })
 
 describe("Calendar, as the locale shapes it", () => {
+  it("writes each day in the digits its name is read with", () => {
+    // Egypt's labels use Arabic-Indic digits, so a Western `9` on screen would not be in the name.
+    const html = render(<Calendar {...base} locale="ar-EG" />)
+    const days = [
+      ...html.matchAll(/<(a|button|span)([^>]*data-calendar-date="[\d-]+"[^>]*)>(.*?)<\/\1>/g),
+    ]
+      .map(([, , attributes, content]) => ({
+        name: /aria-label="([^"]*)"/.exec(attributes)?.[1] ?? "",
+        shown: content.replace(/<[^>]*>/g, ""),
+      }))
+
+    expect(days.length).toBeGreaterThan(27)
+    for (const day of days) {
+      expect(day.shown).toMatch(/^[\u0660-\u0669]+$/)
+      expect(day.name).toContain(day.shown)
+    }
+  })
+
   it("starts the week on the day the locale starts it on", () => {
     // Monday in the United Kingdom, Sunday in the United States, Saturday in Egypt — the three
     // first days `Intl` reports, all for the same month.

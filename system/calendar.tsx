@@ -639,9 +639,13 @@ export function Calendar(
    * A cell of a neighbouring month gets nothing: its number would read as a day of this month that
    * cannot be picked.
    */
+  // Unpadded and in the locale's own digits, as its label writes them: a `09` on screen is not in a
+  // name that reads `9 February 2026`, nor a `9` in `٩ فبراير ٢٠٢٦`, and a speech-input user saying
+  // the number they see would miss the cell.
+  const dayDigits = new Intl.NumberFormat(locale, { useGrouping: false })
   const renderDay = (day: CalendarDay) => {
     if (!day.inMonth) return null
-    const dayNumber = day.date.slice(8, 10)
+    const dayNumber = dayDigits.format(Number(day.date.slice(8, 10)))
 
     const shared = {
       "data-calendar-date": day.date,
@@ -770,22 +774,33 @@ export function Calendar(
 
         {Array.from(
           { length: WEEKS },
-          (_, row) => (
-            <div key={row} role="row" class="grid grid-cols-7 gap-px">
-              {days.slice(row * WEEK, row * WEEK + WEEK).map((day, column) => (
-                <div
-                  key={day.date}
-                  role="gridcell"
-                  aria-colindex={column + 1}
-                  // A cell of a neighbouring month is blank, so there is nothing to announce.
-                  aria-hidden={day.inMonth ? undefined : "true"}
-                  class="aspect-square"
-                >
-                  {renderDay(day)}
-                </div>
-              ))}
-            </div>
-          ),
+          (_, row) => {
+            const week = days.slice(row * WEEK, row * WEEK + WEEK)
+            return (
+              <div
+                key={row}
+                role="row"
+                // A week with no day of this month — the sixth week of every February — has only
+                // hidden cells, and a row with no cell left in the tree is a broken grid. The whole
+                // row goes, as its cells already have.
+                aria-hidden={week.some((day) => day.inMonth) ? undefined : "true"}
+                class="grid grid-cols-7 gap-px"
+              >
+                {week.map((day, column) => (
+                  <div
+                    key={day.date}
+                    role="gridcell"
+                    aria-colindex={column + 1}
+                    // A cell of a neighbouring month is blank, so there is nothing to announce.
+                    aria-hidden={day.inMonth ? undefined : "true"}
+                    class="aspect-square"
+                  >
+                    {renderDay(day)}
+                  </div>
+                ))}
+              </div>
+            )
+          },
         )}
       </div>
 
