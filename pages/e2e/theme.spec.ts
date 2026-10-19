@@ -1,5 +1,7 @@
 /** Playwright specs for the `theme/` classes, on the guide's theme page. */
 import { AxeBuilder } from "@axe-core/playwright"
+import { THEME_AUTO_ATTRIBUTE } from "@spy4x/preact-signals/theme"
+import type { Page } from "playwright-core"
 import type { Spec } from "./runner.ts"
 import { scrollRegionSpec } from "./scroll-region.ts"
 
@@ -68,6 +70,145 @@ function focusRingSpec(what: string, selector: string): Spec {
   }
 }
 
+/** What a page paints with the dark palette or without it: the canvas, the scheme, a `dark:` class. */
+interface Painted {
+  canvas: string
+  scheme: string
+  variant: string
+}
+
+/** A span the guide's stylesheet colours only under the `dark` variant. */
+const VARIANT_PROBE = `<span data-e2e="variant-probe" class="dark:text-accent-400">probe</span>`
+
+/** Read what `page` paints: the body's background, the root's `color-scheme`, the probe's colour. */
+function readPainted(page: Page): Promise<Painted> {
+  return page.locator(`[data-e2e="variant-probe"]`).evaluate((probe): Painted => ({
+    canvas: getComputedStyle(document.body).backgroundColor,
+    scheme: getComputedStyle(document.documentElement).colorScheme,
+    variant: getComputedStyle(probe).color,
+  }))
+}
+
+/**
+ * Open the guide's own page in a context with JavaScript off and the system dark, with the root's
+ * attributes rewritten in the served HTML as a server would render them, and read what it paints.
+ *
+ * @param page The spec's page, whose URL and browser are reused.
+ * @param rootAttributes Attributes added to `<html>`, such as the auto-dark marker.
+ */
+async function paintedWithoutScripts(page: Page, rootAttributes: string): Promise<Painted> {
+  const browser = page.context().browser()
+  if (browser === null) throw new Error("the spec's page has no browser to open a context in")
+  const context = await browser.newContext({ colorScheme: "dark", javaScriptEnabled: false })
+  try {
+    const noScript = await context.newPage()
+    await noScript.route("**/*", async (route) => {
+      if (route.request().resourceType() !== "document") return await route.continue()
+      const response = await route.fetch()
+      const html = await response.text()
+      if (!html.includes("<html") || !html.includes("<body")) {
+        throw new Error("the guide's HTML has no <html> or <body> to rewrite")
+      }
+      const body = html.replace("<html", `<html ${rootAttributes}`)
+        .replace(/<body[^>]*>/, (tag) => `${tag}${VARIANT_PROBE}`)
+      await route.fulfill({ response, body })
+    })
+    await noScript.goto(page.url())
+    return await readPainted(noScript)
+  } finally {
+    await context.close()
+  }
+}
+
+/** The same reading in the spec's own page, with JavaScript on, under `.dark` or without it. */
+function paintedWithScripts(page: Page, dark: boolean, ink: boolean): Promise<Painted> {
+  return page.evaluate(([dark, ink, probeHtml]) => {
+    const root = document.documentElement
+    if (document.querySelector(`[data-e2e="variant-probe"]`) === null) {
+      document.body.insertAdjacentHTML("afterbegin", probeHtml)
+    }
+    root.classList.toggle("dark", dark)
+    // As the bootstrap script leaves it under `.dark`; no inline scheme otherwise, as a page
+    // without scripts has none.
+    root.style.colorScheme = dark ? "dark" : ""
+    if (ink) root.setAttribute("data-theme", "ink")
+    else root.removeAttribute("data-theme")
+    const probe = document.querySelector(`[data-e2e="variant-probe"]`) as HTMLElement
+    return {
+      canvas: getComputedStyle(document.body).backgroundColor,
+      scheme: getComputedStyle(root).colorScheme,
+      variant: getComputedStyle(probe).color,
+    }
+  }, [dark, ink, VARIANT_PROBE] as const)
+}
+
+/** The colours an invalid `.pc-input` draws, and the danger token beside it. */
+interface InvalidField {
+  border: string
+  outline: string
+  outlineStyle: string
+  danger: string
+}
+
+/** Read the invalid field's border and outline, and resolve `--color-danger` next to it. */
+function readInvalidField(page: Page, selector: string): Promise<InvalidField> {
+  return page.locator(selector).first().evaluate((element): InvalidField => {
+    const probe = document.createElement("span")
+    probe.style.color = "var(--color-danger)"
+    element.after(probe)
+    const danger = getComputedStyle(probe).color
+    probe.remove()
+    const style = getComputedStyle(element)
+    return {
+      border: style.borderTopColor,
+      outline: style.outlineColor,
+      outlineStyle: style.outlineStyle,
+      danger,
+    }
+  })
+}
+
+/**
+ * A field marked `aria-invalid="true"` draws its border in `--color-danger`, and keeps it, with a
+ * danger outline, once focused.
+ *
+ * @param what The field, as the spec's name says it.
+ * @param selector The field on the theme page.
+ * @param colorScheme The palette.
+ */
+function invalidFieldSpec(what: string, selector: string, colorScheme: "light" | "dark"): Spec {
+  return {
+    name: `${colorScheme}: ${what} marked aria-invalid draws a danger border, and a danger ` +
+      `outline once focused`,
+    pageId: "theme",
+    colorScheme,
+    run: async (page) => {
+      const field = page.locator(selector).first()
+      const valid = await readInvalidField(page, selector)
+      if (valid.border === valid.danger) {
+        throw new Error(`${what} draws the danger border ${valid.border} before it is invalid`)
+      }
+      await field.evaluate((element) => element.setAttribute("aria-invalid", "true"))
+      const resting = await readInvalidField(page, selector)
+      await field.focus()
+      await field.and(page.locator(":focus")).waitFor()
+      const focused = await readInvalidField(page, selector)
+      const wrong = [
+        resting.border !== resting.danger && `at rest its border is ${resting.border}`,
+        focused.border !== focused.danger && `focused its border is ${focused.border}`,
+        (focused.outlineStyle !== "solid" || focused.outline !== focused.danger) &&
+        `focused its outline is ${focused.outlineStyle} ${focused.outline}`,
+      ].filter(Boolean)
+      if (wrong.length > 0) {
+        throw new Error(
+          `${what}, invalid: ${wrong.join("; ")}; --color-danger is ${resting.danger}`,
+        )
+      }
+      return `border and focus outline ${resting.danger} (--color-danger)`
+    },
+  }
+}
+
 export const specs: readonly Spec[] = [
   scrollRegionSpec({
     what: "the `.pc-scrollbar` card's row of months",
@@ -78,6 +219,34 @@ export const specs: readonly Spec[] = [
   }),
   focusRingSpec("a square `.pc-checkbox`", "#demo-class-checkbox input.pc-checkbox"),
   focusRingSpec("a `.pc-radio`", "#demo-class-radio input.pc-radio"),
+  invalidFieldSpec("a `.pc-input`", "#demo-class-input input.pc-input", "light"),
+  invalidFieldSpec("a `.pc-input`", "#demo-class-input input.pc-input", "dark"),
+  invalidFieldSpec("a `.pc-select`", "#demo-class-select select.pc-select", "dark"),
+  {
+    name: `without JavaScript on a dark system, a page that renders ${THEME_AUTO_ATTRIBUTE} ` +
+      `paints the dark palette, ink with data-theme="ink", and one without it stays light`,
+    pageId: "theme",
+    colorScheme: "dark",
+    run: async (page) => {
+      const dark = await paintedWithScripts(page, true, false)
+      const ink = await paintedWithScripts(page, true, true)
+      const light = await paintedWithScripts(page, false, false)
+      if (dark.canvas === light.canvas || dark.variant === light.variant) {
+        throw new Error(`the dark and light palettes paint alike: ${JSON.stringify(dark)}`)
+      }
+      const seen = {
+        marker: await paintedWithoutScripts(page, THEME_AUTO_ATTRIBUTE),
+        markerInk: await paintedWithoutScripts(page, `${THEME_AUTO_ATTRIBUTE} data-theme="ink"`),
+        none: await paintedWithoutScripts(page, ""),
+      }
+      const wanted = { marker: dark, markerInk: ink, none: light }
+      const wrong = (Object.keys(wanted) as (keyof typeof wanted)[]).filter((key) =>
+        JSON.stringify(seen[key]) !== JSON.stringify(wanted[key])
+      ).map((key) => `${key}: ${JSON.stringify(seen[key])}, wanted ${JSON.stringify(wanted[key])}`)
+      if (wrong.length > 0) throw new Error(wrong.join("; "))
+      return `marker ${seen.marker.canvas}, ink ${seen.markerInk.canvas}, none ${seen.none.canvas}`
+    },
+  },
   {
     name: `ink: an app that sets --color-primary and --color-accent on :root keeps its colour ` +
       `under .dark and data-theme="ink", and links take the accent's step 400`,
