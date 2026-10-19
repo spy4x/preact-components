@@ -2657,7 +2657,10 @@ A day that cannot be picked is still focusable and its accessible name is the re
 `maxDate`), `none-left` (`availableByDate` holds `0` for the day; the cell is also struck through)
 and `unavailable` (the day is not in `availableByDate`). The cells before the 1st and after the
 last day of the month are blank: a month shows no date of a neighbouring month, which would read
-as a day of this month that cannot be picked. The
+as a day of this month that cannot be picked. A week with no day of the month at all, such as the
+sixth week of every February, is hidden as a whole row, since a
+`row` with no cell left in the accessibility tree breaks the grid. The day number is written as the
+label writes it, `9` and not `09`, so the name a reader hears contains the text they see. The
 same sentence is shown under the grid while it has focus, for the reader who has no screen reader
 to read the cell out and no mouse to hover a `title` with. The grid itself is a `grid` of `row`s
 and `gridcell`s named after the month it shows.
