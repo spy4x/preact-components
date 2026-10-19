@@ -137,6 +137,8 @@ const CANDIDATES = [
 /** The classes the gate and the dark scope select, in the order they appear. */
 const GATE_CLASS = "theme-base"
 const DARK_CLASS = "dark"
+/** The attribute that makes a page dark without JavaScript while the system asks for dark. */
+const AUTO_DARK_ATTRIBUTE = "data-theme-auto"
 
 /**
  * The host elements a page can put under these rules: the subjects the gate
@@ -187,7 +189,7 @@ const COMPOUND = /:where\(([^()]*)\)|:not\(([^()]*)\)|\.([\w-]+)|\[([\w-]+)(?:="
  *
  * Deliberately not a CSS engine: it understands only the syntax `preset.css`'s
  * own rules are written in — an element name, `:where(<tag>)`, `:where(<class>)`,
- * `:where(*)`, `:where(<class> *)`, `:not(<class>)`, `.<class>` and
+ * `:where(*)`, `:where(<class> *)`, `:where([<attribute>])`, `:not(<class>)`, `.<class>` and
  * `[attribute="value"]` — and **throws on anything it cannot read**, including
  * leftover text. A matcher that drops what it does not understand is a matcher
  * that guesses, and guessing is how a dead selector passes a gate test.
@@ -213,6 +215,7 @@ function parseCompound(compound: string): Compound {
       const argument = readPseudoArgument(where, compound)
       tag = readTag(compound, argument.tag, tag)
       classes.push(...argument.classes)
+      Object.assign(attributes, argument.attributes)
     } else if (not !== undefined) {
       notClasses.push(...readPseudoArgument(not, compound, true).classes)
     } else if (bareClass !== undefined) {
@@ -263,10 +266,16 @@ function readPseudoArgument(
   inner: string,
   compound: string,
   negated = false,
-): { tag: string; classes: string[] } {
+): { tag: string; classes: string[]; attributes?: Record<string, string> } {
   const argument = inner.trim()
   if (argument === "*") {
     return { tag: "", classes: [] }
+  }
+
+  // `:where([data-theme-auto])`, the auto-dark marker the `dark` variant also reads.
+  const attribute = /^\[([\w-]+)\]$/.exec(argument)
+  if (!negated && attribute?.[1]) {
+    return { tag: "", classes: [], attributes: { [attribute[1]]: "" } }
   }
 
   const tag = /^([a-z][\w-]*)$/.exec(argument)
@@ -431,11 +440,154 @@ interface EmittedRule {
  */
 function emittedRules(css: string): EmittedRule[] {
   const rules: EmittedRule[] = []
-  for (const [, prelude, body] of css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
+  let rest = css
+  for (const gate of gateBlocks(cssBlocks(css)).reverse()) {
+    rules.unshift(...flattenGate(gate, [GATE_ROOT]))
+    rest = rest.slice(0, gate.start) + rest.slice(gate.end)
+  }
+  // An at-rule's own block (`@media (hover: hover) { … }` inside a nested `&:hover`) has no
+  // selector: `selectorsOf` drops its `@` prelude, as it drops a `&` rule's.
+  for (const [, prelude, body] of rest.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectors = selectorsOf(prelude ?? "")
     if (selectors.length) {
       rules.push({ selectors, body: normalizeDeclarations(body ?? "") })
     }
+  }
+  return rules
+}
+
+/** The selector the preset's dark host chrome is nested under, with the `dark` variant inside. */
+const GATE_ROOT = ":where(.theme-base)"
+
+/** One `{ … }` block of a stylesheet: its header, its own declarations and its child blocks. */
+interface CssBlock {
+  header: string
+  /** The declarations written directly in the block, not in a child. */
+  body: string
+  children: CssBlock[]
+  /** Where the block's header starts and its closing brace ends, in the stylesheet. */
+  start: number
+  end: number
+}
+
+/**
+ * Read a stylesheet into its blocks, nested as written. Comments are skipped; the preset holds no
+ * brace inside a string.
+ *
+ * @param css A stylesheet.
+ * @returns The top-level blocks.
+ */
+function cssBlocks(css: string): CssBlock[] {
+  const root: CssBlock = { header: "", body: "", children: [], start: 0, end: css.length }
+  const stack = [root]
+  let segment = 0
+  for (let index = 0; index < css.length; index++) {
+    if (css.startsWith("/*", index)) {
+      const close = css.indexOf("*/", index + 2)
+      index = close < 0 ? css.length : close + 1
+      segment = index + 1
+      continue
+    }
+    const character = css[index]
+    const open = stack.at(-1)!
+    if (character === "{") {
+      const block = {
+        header: css.slice(segment, index).trim(),
+        body: "",
+        children: [],
+        start: segment,
+        end: -1,
+      }
+      open.children.push(block)
+      stack.push(block)
+      segment = index + 1
+    } else if (character === "}") {
+      open.body += css.slice(segment, index)
+      open.end = index + 1
+      stack.pop()
+      segment = index + 1
+    } else if (character === ";") {
+      open.body += css.slice(segment, index + 1)
+      segment = index + 1
+    }
+  }
+  return root.children
+}
+
+/**
+ * The gate blocks: every `:where(.theme-base) { … }` block with no style rule around it.
+ *
+ * @param blocks Top-level blocks.
+ * @returns The gate blocks, in source order.
+ */
+function gateBlocks(blocks: CssBlock[]): CssBlock[] {
+  return blocks.flatMap((block) =>
+    block.header === GATE_ROOT
+      ? [block]
+      : block.header.startsWith("@")
+      ? gateBlocks(block.children)
+      : []
+  )
+}
+
+/** The two selector lists the `dark` variant appends: `.dark`, and the auto-dark marker. */
+const DARK_VARIANT_LISTS = [
+  ":where(.dark, .dark *)",
+  ":where([data-theme-auto], [data-theme-auto] *)",
+]
+
+/**
+ * A selector that carries a `dark` variant list, as the plain descendant selectors this suite
+ * matches. Exact, not approximate: `A:where(.dark, .dark *) B` is `A:where(.dark) B` (the marker
+ * on A itself) or `:where(.dark) A B` (on an ancestor of A).
+ *
+ * @param selector A flattened selector.
+ * @returns The selectors it stands for.
+ * @throws If the list sits anywhere but on the first compound, where the expansion is no longer
+ *   one descendant selector.
+ */
+function expandDarkVariant(selector: string): string[] {
+  const compounds = splitTopLevel(selector.trim(), " ").filter(Boolean)
+  const at = compounds.findIndex((compound) =>
+    DARK_VARIANT_LISTS.some((list) => compound.includes(list))
+  )
+  if (at < 0) {
+    return [compounds.join(" ")]
+  }
+  const list = DARK_VARIANT_LISTS.find((candidate) => compounds[at]!.includes(candidate))!
+  const own = compounds[at]!.replace(list, "")
+  if (at !== 0 || !own) {
+    throw new Error(`cannot expand the dark variant in: ${selector}`)
+  }
+  const marker = `${list.slice(0, list.indexOf(","))})`
+  const tail = compounds.slice(1)
+  return [
+    ...expandDarkVariant([`${own}${marker}`, ...tail].join(" ")),
+    ...expandDarkVariant([marker, own, ...tail].join(" ")),
+  ]
+}
+
+/**
+ * A gate block's rules as flat ones, each `&` replaced by its parent selector.
+ *
+ * @param block A block inside the gate.
+ * @param parents The block's own selectors, already resolved.
+ * @returns The rules with declarations, in source order.
+ */
+function flattenGate(block: CssBlock, parents: string[]): EmittedRule[] {
+  const rules: EmittedRule[] = []
+  const body = normalizeDeclarations(block.body)
+  if (body) {
+    rules.push({ selectors: parents.flatMap(expandDarkVariant), body })
+  }
+  for (const child of block.children) {
+    const selectors = child.header.startsWith("@") ? parents : selectorsOf(child.header).flatMap(
+      (selector) =>
+        parents.map((parent) =>
+          selector.includes("&") ? selector.replaceAll("&", parent) : `${parent} ${selector}`
+        ),
+    )
+    rules.push(...flattenGate(child, selectors))
   }
   return rules
 }
@@ -833,24 +985,50 @@ function selectorsOf(prelude: string): string[] {
 }
 
 /**
- * The chain a control sits at the end of, with `dark` on `<html>` as the page
- * builds it and the opt-in optionally absent.
+ * Where a dark page puts its marker, `.dark` or the auto-dark attribute: on `<html>`, or on
+ * `<body>` beside the opt-in.
+ */
+interface DarkPlacement {
+  on: "html" | "body"
+  marker: "class" | "attribute"
+}
+
+/** Every placement the `dark` variant matches. */
+const DARK_PLACEMENTS: DarkPlacement[] = [
+  { on: "html", marker: "class" },
+  { on: "html", marker: "attribute" },
+  { on: "body", marker: "class" },
+  { on: "body", marker: "attribute" },
+]
+
+/** What the dark marker adds to the element `on` names, if it sits there. */
+function markerOn(dark: DarkPlacement | false, on: DarkPlacement["on"]): Omit<ChainNode, "tag"> {
+  if (!dark || dark.on !== on) return { classes: [], attributes: {} }
+  return dark.marker === "class"
+    ? { classes: [DARK_CLASS], attributes: {} }
+    : { classes: [], attributes: { [AUTO_DARK_ATTRIBUTE]: "" } }
+}
+
+/**
+ * The chain a control sits at the end of, with the dark marker where `dark`
+ * puts it and the opt-in optionally absent.
  *
  * `wrapper` is the element a host puts between `<body>` and the control: a
  * `div`, or the popup `[role="combobox"]` an app builds. Both are tried, so a
  * selector is judged on either, and neither can stand in for the gate.
  *
- * @param dark Whether `<html>` carries `dark`.
+ * @param dark Where the dark marker sits, or `false` for none.
  * @param themed Whether `<body>` carries theme-base.
  * @param wrapper Whether to include the intermediate wrapper element.
  * @returns The chain, outermost ancestor first, the control's parent last.
  */
 function shippedChain(
-  { dark, themed, wrapper }: { dark: boolean; themed: boolean; wrapper: boolean },
+  { dark, themed, wrapper }: { dark: DarkPlacement | false; themed: boolean; wrapper: boolean },
 ): ChainNode[] {
+  const body = markerOn(dark, "body")
   const chain: ChainNode[] = [
-    { tag: "html", classes: dark ? [DARK_CLASS] : [], attributes: {} },
-    { tag: "body", classes: themed ? [GATE_CLASS] : [], attributes: {} },
+    { tag: "html", ...markerOn(dark, "html") },
+    { tag: "body", ...body, classes: [...(themed ? [GATE_CLASS] : []), ...body.classes] },
   ]
   if (wrapper) {
     chain.push({ tag: "div", classes: [], attributes: {} })
@@ -859,18 +1037,20 @@ function shippedChain(
 }
 
 /**
- * The two chains a host control can sit in: with and without a wrapper element
- * between `<body>` and the control, because a host may or may not have one.
+ * The chains a host control can sit in: with and without a wrapper element
+ * between `<body>` and the control, because a host may or may not have one, and,
+ * on a dark page, with each placement of the dark marker.
  *
- * @param dark Whether `<html>` carries `dark`.
+ * @param dark Whether the page is dark.
  * @param themed Whether `<body>` carries theme-base.
- * @returns Both chains.
+ * @returns The chains.
  */
 function chainsFor(dark: boolean, themed: boolean): ChainNode[][] {
-  return [
-    shippedChain({ dark, themed, wrapper: true }),
-    shippedChain({ dark, themed, wrapper: false }),
-  ]
+  const placements: Array<DarkPlacement | false> = dark ? DARK_PLACEMENTS : [false]
+  return placements.flatMap((placement) => [
+    shippedChain({ dark: placement, themed, wrapper: true }),
+    shippedChain({ dark: placement, themed, wrapper: false }),
+  ])
 }
 
 /**
@@ -1002,27 +1182,32 @@ function chainMatches(
 }
 
 /**
+ * The rules `preset.css` writes inside its gate, read from the file itself: the
+ * child blocks of `:where(.theme-base) { @variant dark { … } }`.
+ *
+ * @returns Each rule's subjects, with the leading `&` dropped, and its body.
+ */
+function gateRulesInSource(): Array<{ subjects: string[]; body: string }> {
+  return gateBlocks(cssBlocks(PRESET_CSS))
+    .flatMap((gate) => gate.children.filter((child) => child.header === "@variant dark"))
+    .flatMap((variant) => variant.children)
+    .map((rule) => ({
+      subjects: selectorsOf(rule.header).map((selector) => selector.replace(/^&\s*/, "")),
+      body: rule.body,
+    }))
+}
+
+/**
  * The elements `preset.css` declares a gate for, read from the file itself.
  *
  * `th, td { … }` in that list is two subjects, not one, so `td` gets its own
  * entry — which is the point: a subject sharing a rule with a gated one has not
  * been covered by it.
  *
- * @returns The subjects of every `:where(.dark) :where(.theme-base) …` list.
+ * @returns The subjects of every rule inside the gate.
  */
 function gatedSubjectsInSource(): string[] {
-  const subjects: string[] = []
-  for (
-    const [, prelude] of PRESET_CSS.matchAll(/(:where\(\.dark\)\s+:where\(\.theme-base\)[^{]*)\{/g)
-  ) {
-    for (const selector of selectorsOf(prelude ?? "")) {
-      const subject = selector.replace(/^:where\(\.dark\)\s+:where\(\.theme-base\)\s*/, "").trim()
-      if (subject) {
-        subjects.push(subject)
-      }
-    }
-  }
-  return subjects
+  return gateRulesInSource().flatMap((rule) => rule.subjects).filter(Boolean)
 }
 
 /**
@@ -1166,7 +1351,7 @@ function analyseGateFindings(css: string): GateAnalysis {
  * say about it.
  */
 const GATE_IN_SCOPE = new RegExp(
-  `(^|[^-\\w.:])\\.${escapeForRegExp(DARK_CLASS)}(?![-\\w:])`,
+  `(^|[^-\\w.:])\\.${escapeForRegExp(DARK_CLASS)}(?![-\\w:])|\\[${AUTO_DARK_ATTRIBUTE}\\]`,
 )
 
 /**
@@ -1204,9 +1389,7 @@ function gatedCovers(selector: string, subject: string): boolean {
  * @returns The bodies, whitespace-normalised.
  */
 function presetGateBodies(): string[] {
-  return [...PRESET_CSS.matchAll(/(:where\(\.dark\)\s+:where\(\.theme-base\)[^{]*)\{([^{}]*)\}/g)]
-    .map(([, , body]) => normalizeDeclarations(body ?? ""))
-    .filter(Boolean)
+  return gateRulesInSource().map((rule) => normalizeDeclarations(rule.body)).filter(Boolean)
 }
 
 /** The declarations of the first rule matching `selector`, for substring asserts. */
@@ -1475,7 +1658,7 @@ describe("theme preset", () => {
     ).toEqual([])
   })
 
-  it("matches the emitted .dark host rules on the shipped html.dark / body.theme-base placement", async () => {
+  it("matches the emitted dark host rules on html.dark or the auto-dark marker over body.theme-base", async () => {
     const shipped = chainsFor(true, true)
     const findings = analyseGate(await preset()).filter((finding) => finding.darkSubject)
 
@@ -1496,6 +1679,21 @@ describe("theme preset", () => {
           matchesChain(selector, controlFor(element), chain)
         )
         expect(stillMatches, `applies without theme-base: ${selector}`).toBe(false)
+      }
+    }
+
+    // `.dark` on `<html>` is the shipped page, and the auto-dark marker sits there too: each gated
+    // subject is painted with either marker there, not only with one on `<body>`.
+    for (const placement of DARK_PLACEMENTS.filter((candidate) => candidate.on === "html")) {
+      const chains = [true, false].map((wrapper) =>
+        shippedChain({ dark: placement, themed: true, wrapper })
+      )
+      for (const subject of gatedSubjectsInSource()) {
+        const painted = findings.some(({ selector }) =>
+          chains.some((chain) => matchesChain(selector, controlFor(subject), chain))
+        )
+        expect(painted, `nothing paints ${subject} under the ${placement.marker} on <html>`)
+          .toBe(true)
       }
     }
   })
@@ -1779,9 +1977,13 @@ describe("theme preset", () => {
     )
     // `.btn`'s dark focus ring reads a token nothing sets without tokens.css or ink.css; with no
     // fallback it would draw the button's own text colour, 1.03:1 on the page (#297's review).
-    expect(declarationsOf(withoutTokens, ":where(.dark) &:focus-visible")).toContain(
-      "outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)))",
-    )
+    for (const marker of DARK_VARIANT_LISTS) {
+      const button = withoutTokens.slice(withoutTokens.indexOf(".btn {"))
+      const block = button.slice(button.indexOf(`&${marker} {\n`))
+      expect(declarationsOf(block, "&:focus-visible")).toContain(
+        "outline-color: var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)))",
+      )
+    }
   })
 
   it("draws the accent utilities from the runtime scale, with the purple step as fallback", async () => {

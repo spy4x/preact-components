@@ -108,8 +108,9 @@ describe("the ink theme", () => {
     // `compiler.build()` emits `.btn`'s nested `&:focus-visible` blocks unflattened (as authored
     // in preset.css), so this reads the declaration directly rather than assuming a flattened
     // `.btn:focus-visible { ... }` selector, which never appears in this output.
-    expect(css).toContain(":where(.dark) &:focus-visible")
-    expect(css).toContain("outline-color: var(--color-focus-ring, var(--color-primary-muted,")
+    expect(css).toMatch(
+      /&:where\(\.dark, \.dark \*\) \{\s*&:focus-visible \{\s*outline-color: var\(--color-focus-ring, var\(--color-primary-muted,/,
+    )
     expect(css).not.toContain("var(--color-focus-ring, currentColor)")
   })
 

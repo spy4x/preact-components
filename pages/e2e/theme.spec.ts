@@ -96,7 +96,25 @@ function readPainted(page: Page): Promise<Painted> {
  * @param page The spec's page, whose URL and browser are reused.
  * @param rootAttributes Attributes added to `<html>`, such as the auto-dark marker.
  */
-async function paintedWithoutScripts(page: Page, rootAttributes: string): Promise<Painted> {
+function paintedWithoutScripts(page: Page, rootAttributes: string): Promise<Painted> {
+  return withoutScripts(page, rootAttributes, VARIANT_PROBE, readPainted)
+}
+
+/**
+ * Open the guide's own page in a context with JavaScript off and the system dark, with the root's
+ * attributes and `probeHtml` at the start of `<body>` written into the served HTML, and `read` it.
+ *
+ * @param page The spec's page, whose URL and browser are reused.
+ * @param rootAttributes Attributes added to `<html>`, such as the auto-dark marker.
+ * @param probeHtml Markup the spec reads, put first in `<body>`.
+ * @param read Reads the page; the context closes after it.
+ */
+async function withoutScripts<T>(
+  page: Page,
+  rootAttributes: string,
+  probeHtml: string,
+  read: (page: Page) => Promise<T>,
+): Promise<T> {
   const browser = page.context().browser()
   if (browser === null) throw new Error("the spec's page has no browser to open a context in")
   const context = await browser.newContext({ colorScheme: "dark", javaScriptEnabled: false })
@@ -110,11 +128,11 @@ async function paintedWithoutScripts(page: Page, rootAttributes: string): Promis
         throw new Error("the guide's HTML has no <html> or <body> to rewrite")
       }
       const body = html.replace("<html", `<html ${rootAttributes}`)
-        .replace(/<body[^>]*>/, (tag) => `${tag}${VARIANT_PROBE}`)
+        .replace(/<body[^>]*>/, (tag) => `${tag}${probeHtml}`)
       await route.fulfill({ response, body })
     })
     await noScript.goto(page.url())
-    return await readPainted(noScript)
+    return await read(noScript)
   } finally {
     await context.close()
   }
@@ -140,6 +158,55 @@ function paintedWithScripts(page: Page, dark: boolean, ink: boolean): Promise<Pa
       variant: getComputedStyle(probe).color,
     }
   }, [dark, ink, VARIANT_PROBE] as const)
+}
+
+/** Markup the no-script dark spec reads: a plain `.btn`, a bare table and a bare `select`. */
+const DARK_CHROME_PROBE = `<div data-e2e="dark-chrome-probe">` +
+  `<button type="button" class="btn">Probe</button>` +
+  `<table><tbody><tr><td>Cell</td></tr></tbody></table>` +
+  `<select aria-label="Probe"><option>One</option></select></div>`
+
+/** What the dark chrome paints, each beside the token it should read. */
+interface DarkChrome {
+  ring: string
+  ringToken: string
+  table: string
+  cellBorder: string
+  select: string
+  surface: string
+  borderControl: string
+}
+
+/** Tab to the probe's `.btn` and read the dark chrome, resolving each token in the same page. */
+async function readDarkChrome(page: Page): Promise<DarkChrome> {
+  const button = page.locator(`[data-e2e="dark-chrome-probe"] .btn`)
+  // Away and back with real key presses, so the focus arrives the way a keyboard user's does.
+  await button.focus()
+  await page.keyboard.press("Shift+Tab")
+  await page.keyboard.press("Tab")
+  await button.and(page.locator(":focus-visible")).waitFor()
+  return await button.evaluate((element): DarkChrome => {
+    const resolve = (value: string) => {
+      const probe = document.createElement("span")
+      probe.style.color = value
+      element.after(probe)
+      const color = getComputedStyle(probe).color
+      probe.remove()
+      return color
+    }
+    const probe = element.parentElement!
+    return {
+      ring: getComputedStyle(element).outlineColor,
+      ringToken: resolve(
+        "var(--color-focus-ring, var(--color-primary-muted, oklch(0.714 0.203 305.504)))",
+      ),
+      table: getComputedStyle(probe.querySelector("table")!).backgroundColor,
+      cellBorder: getComputedStyle(probe.querySelector("td")!).borderTopColor,
+      select: getComputedStyle(probe.querySelector("select")!).backgroundColor,
+      surface: resolve("var(--color-surface)"),
+      borderControl: resolve("var(--color-border-control)"),
+    }
+  })
 }
 
 /** The colours an invalid `.pc-input` draws, and the danger token beside it. */
@@ -249,6 +316,29 @@ export const specs: readonly Spec[] = [
       ).map((key) => `${key}: ${JSON.stringify(seen[key])}, wanted ${JSON.stringify(wanted[key])}`)
       if (wrong.length > 0) throw new Error(wrong.join("; "))
       return `marker ${seen.marker.canvas}, ink ${seen.markerInk.canvas}, none ${seen.none.canvas}`
+    },
+  },
+  {
+    name: `without JavaScript on a dark system, under ${THEME_AUTO_ATTRIBUTE} a focused .btn ` +
+      `draws the preset's focus ring, and a bare table and select paint the dark chrome`,
+    pageId: "theme",
+    colorScheme: "dark",
+    run: async (page) => {
+      const seen = await withoutScripts(
+        page,
+        THEME_AUTO_ATTRIBUTE,
+        DARK_CHROME_PROBE,
+        readDarkChrome,
+      )
+      const wrong = [
+        seen.ring !== seen.ringToken && `the focus ring is ${seen.ring}, not ${seen.ringToken}`,
+        seen.table !== seen.surface && `the table is ${seen.table}, not ${seen.surface}`,
+        seen.cellBorder !== seen.borderControl &&
+        `a cell's border is ${seen.cellBorder}, not ${seen.borderControl}`,
+        seen.select !== seen.surface && `the select is ${seen.select}, not ${seen.surface}`,
+      ].filter(Boolean)
+      if (wrong.length > 0) throw new Error(wrong.join("; "))
+      return `ring ${seen.ring}, table and select ${seen.surface}, cell border ${seen.borderControl}`
     },
   },
   {

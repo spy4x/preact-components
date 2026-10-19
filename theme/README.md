@@ -221,7 +221,8 @@ Only a script adds `.dark`, so a visitor whose browser runs none gets the light 
 dark system. A page built to work without JavaScript renders `data-theme-auto` on `<html>`
 (`THEME_AUTO_ATTRIBUTE` from `@spy4x/preact-signals/theme`). While the marker is there and the
 system asks for dark, three things apply exactly as under `.dark`: the `dark` variant (the preset
-defines it for both, the marker inside `@media (prefers-color-scheme: dark)`), `tokens.css`'s dark
+defines it for both, the marker inside `@media (prefers-color-scheme: dark)`, and writes its own
+dark rules with it: the focus ring of `.btn` and the `theme-base` chrome), `tokens.css`'s dark
 tokens, and ink's, with `data-theme="ink"` beside the marker. `tokens.css`'s copy also sets
 `color-scheme: dark`, which the script sets otherwise, so native controls draw dark too.
 
@@ -250,9 +251,6 @@ the page without scripts shows the library's dark values instead of the app's:
 }
 ```
 
-The preset's own `:where(.dark)` rules (the dark focus colour of `.btn` and the `theme-base` form
-and table chrome) do not follow the marker.
-
 Also put `theme-base` on `<body>`, and note that this is the only thing that
 decides whether the preset's host-level rules apply at all: they do nothing until
 `.theme-base` is present. With it, adding `.dark` paints form controls, the
@@ -260,15 +258,14 @@ OS-rendered `option` list and the table shell; without it, the preset leaves tha
 markup exactly as the app left it, no matter where `.dark` sits. That is the
 guarantee this gate buys — scope, not appearance — and it is why the example above
 is written the way it is. The two are wrapped differently, deliberately: the dark
-chrome is `:where(.dark) :where(.theme-base) …`, while the document rules are a
-plain `.theme-base { … }` — that block sets the light palette too, so it cannot be
-scoped to `.dark`.
+chrome is `:where(.theme-base) { @variant dark { & select … } }`, while the document
+rules are a plain `.theme-base { … }` — that block sets the light palette too, so it
+cannot be scoped to `.dark`.
 
 Which element carries which class is **not** interchangeable. The dark chrome
-needs `.dark` on an **ancestor** — the outer element, `<html>` — and
-`.theme-base` on a **descendant** of it, `<body>`. Put both classes on one
-element, or put them the other way round, and the descendant part of the selector
-has nothing to match.
+needs `.dark` (or the auto-dark marker) on the `theme-base` element or an
+**ancestor** of it — `<html>` — and `.theme-base` on `<body>`. Put them the other
+way round, `theme-base` above `.dark`, and the selector has nothing to match.
 
 Vendored into the app's own tree rather than installed — a copy of `tokens.css`/`preset.css`
 checked into the app's own repository — a bundler reaches them by an ordinary relative `@import`,
@@ -331,10 +328,10 @@ classes keep their names: no app writes them as ordinary words.
   `btn-input-icon`, `btn-disabled`. `btn` carries its own `:disabled` styling.
 - **Forms** — `pc-input`, `pc-select`, `pc-textarea`, `pc-label`, `pc-checkbox`, `pc-radio`. In
   dark mode the OS-rendered `option` list, the popup chrome and the table
-  (`table`, `th`, `td` borders) are repainted by `:where(.dark)
-  :where(.theme-base) …` rules, so they apply only inside `theme-base`, and only
-  while `.dark` is on an ancestor. Components that already carry `.pc-input` /
-  `.pc-select` / `.pc-textarea` are painted by those utilities; these rules are what
+  (`table`, `th`, `td` borders) are repainted by `dark` variant rules nested in
+  `:where(.theme-base)`, so they apply only inside `theme-base`, and only while
+  `.dark` or the auto-dark marker is on it or an ancestor. Components that already carry
+  `.pc-input` / `.pc-select` / `.pc-textarea` are painted by those utilities; these rules are what
   covers the parts a class cannot reach. A `.pc-input`, `.pc-select` or
   `.pc-textarea` marked `aria-invalid="true"` draws its border in
   `--color-danger`, and focused its outline too instead of the focus ring, so a
