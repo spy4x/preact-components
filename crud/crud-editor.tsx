@@ -478,6 +478,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     event.preventDefault()
     if (!readyToSave()) return
     saveError.value = ""
+    // The row this save belongs to. The editor may show another row by the time the store answers.
+    const savedKey = loadedKey.current
 
     const outcome = props.mode === "add"
       ? await submitEditor({ mode: "add", store, value: vm.value })
@@ -489,11 +491,14 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         blocked: blocked.value.length,
       })
 
+    if (outcome.created !== null) onCreated?.(outcome.created)
+    // Another row is on screen now: its form must not take the old row's error or reload, which
+    // would read the old `editId` from this render and put that row's values under the new one.
+    if (loadedKey.current !== savedKey) return
     if (outcome.error !== null) {
       const label = saveErrorLabel ?? "Could not save"
       saveError.value = outcome.error.message ? `${label}: ${outcome.error.message}` : label
     }
-    if (outcome.created !== null) onCreated?.(outcome.created)
     if (outcome.updated) loadFromStore()
   }
 
