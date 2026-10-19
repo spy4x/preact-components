@@ -92,6 +92,23 @@ function placeholder(fill: string, width = 320, height = 200): string {
 }
 
 /**
+ * A placeholder screen, drawn whole or as its top-left corner: the same drawing under two
+ * `viewBox`es, so the crop and the full file `ZoomableImages`' third image opens really match.
+ *
+ * @param crop Draw only the top-left 160x100 of the 480x300 screen, at that size.
+ */
+function placeholderScreen(crop: boolean): string {
+  const [width, height] = crop ? [160, 100] : [480, 300]
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}' ` +
+    `viewBox='0 0 ${width} ${height}'><rect width='480' height='300' fill='#e0e7ff'/>` +
+    `<rect width='480' height='28' fill='#6366f1'/><rect x='12' y='44' width='96' height='240' ` +
+    `fill='#c7d2fe'/><rect x='124' y='44' width='344' height='110' fill='#a5b4fc'/>` +
+    `<rect x='124' y='170' width='166' height='114' fill='#c4b5fd'/><rect x='302' y='170' ` +
+    `width='166' height='114' fill='#c4b5fd'/></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+/**
  * Four described images and one without a description in the middle of them, so the card shows
  * both halves of the contract: the strip and the lightbox page through the four described images,
  * and the middle one is what {@link describedImages} drops before render.
@@ -1075,7 +1092,8 @@ const demoNote = "text-xs text-muted"
  * `showModal()`. Both images are inside the container the component watches, and the second is
  * wrapped in a link on purpose: the component cancels the event it opens on, so the lightbox opens
  * and the link is not followed. Without JavaScript that link is simply a link, which is the whole
- * progressive-enhancement claim in one element.
+ * progressive-enhancement claim in one element. The third is a crop of a screen that names the
+ * whole screen in `data-lightbox-src` and `data-lightbox-alt`, so pressing it opens the full file.
  *
  * A second, separate `[data-lightbox-bare]` container and its own `<ZoomableImages fallbackAlt="">`
  * show the opposite case: one image with an empty `alt`, which says it is decoration and is read
@@ -1092,7 +1110,7 @@ function ZoomableImagesDemo() {
       <div data-lightbox class="flex flex-wrap items-start gap-2">
         <p class={`w-full ${demoNote}`}>
           Click an image, or Tab to it and press Enter. The second sits in a link, which opening the
-          lightbox does not follow.
+          lightbox does not follow. The third is a crop that opens the whole screen.
         </p>
         <img
           data-e2e="lightbox-image"
@@ -1108,6 +1126,16 @@ function ZoomableImagesDemo() {
             class="rounded border border-subtle"
           />
         </a>
+        <img
+          data-e2e="lightbox-crop"
+          src={placeholderScreen(true)}
+          data-lightbox-src={placeholderScreen(false)}
+          data-lightbox-alt="A placeholder screen, in full"
+          alt="The top-left corner of a placeholder screen"
+          width={120}
+          height={75}
+          class="rounded border border-subtle"
+        />
       </div>
       <ZoomableImages />
       <div data-e2e="lightbox-bare" data-lightbox-bare class="flex flex-wrap items-start gap-2">
@@ -1955,7 +1983,10 @@ export const displayDemos = {
   fallbackAlt="Figure"
   zoomLabel="Zoom"
   onOpen={(image) => analytics.track("lightbox", image.src)}
-/>`,
+/>
+<img src="crop.png" alt="The sign-in form"
+  data-lightbox-src="full.png" data-lightbox-webp="full.webp"
+  data-lightbox-alt="The whole sign-in screen" />`,
     render: () => <ZoomableImagesDemo />,
   },
   Timeline: {
