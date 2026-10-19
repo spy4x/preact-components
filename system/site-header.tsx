@@ -43,8 +43,12 @@ export interface SiteHeaderLabels {
 }
 
 export interface SiteHeaderProps {
-  /** The links, in display order. Rendered once inline for large screens and once in the panel. */
-  links: readonly SiteHeaderLink[]
+  /**
+   * The links, in display order. Rendered once inline for large screens and once in the panel.
+   * Empty or left out, the bar draws no `<nav>` and no menu button: just `brand` and `actions`, the
+   * top bar of a single-page tool.
+   */
+  links?: readonly SiteHeaderLink[]
   /** Compared against every link's `href` to mark the current page. No link is current by default. */
   currentPath?: string
   /** The logo/name slot. Rendered exactly as given — this component adds no anchor around it. */
@@ -132,9 +136,14 @@ function SiteHeaderNavLink(
  * `lg` and the `<details>` is `hidden` at `lg` and up, so exactly one is ever `display`ed — the
  * other is removed from the tree entirely rather than merely hidden behind `aria-hidden`, which is
  * what keeps two landmarks sharing one `aria-label` from ever being announced at the same time.
+ *
+ * **No links, no navigation.** With `links` empty or left out, neither `<nav>` nor the menu button
+ * is drawn, since a button that opens an empty panel is a dead control: the bar is `brand` on the
+ * left and `actions` on the right, a single-page tool's top bar.
  */
 export function SiteHeader(props: SiteHeaderProps): JSX.Element {
-  const { links, currentPath, brand, actions, labels, class: className } = props
+  const { links = [], currentPath, brand, actions, labels, class: className } = props
+  const hasLinks = links.length > 0
   const menuLabel = labels?.menu ?? "Menu"
   const navLabel = labels?.nav ?? "Main navigation"
   const panelId = useId()
@@ -152,49 +161,53 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
       <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex items-center gap-2">{brand}</div>
 
-        <nav aria-label={navLabel} class="hidden lg:flex lg:items-center lg:gap-6">
-          {links.map((link, index) => (
-            <SiteHeaderNavLink
-              key={`${index}-${link.href}`}
-              link={link}
-              currentPath={currentPath}
-            />
-          ))}
-        </nav>
+        {hasLinks && (
+          <nav aria-label={navLabel} class="hidden lg:flex lg:items-center lg:gap-6">
+            {links.map((link, index) => (
+              <SiteHeaderNavLink
+                key={`${index}-${link.href}`}
+                link={link}
+                currentPath={currentPath}
+              />
+            ))}
+          </nav>
+        )}
 
         <div class="flex items-center gap-3">
           {actions}
 
-          <details ref={detailsRef} class="group lg:hidden" onToggle={handleToggle}>
-            <summary
-              ref={triggerRef}
-              aria-expanded={open}
-              aria-controls={panelId}
-              aria-label={menuLabel}
-              class="flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-hover [&::-webkit-details-marker]:hidden"
-              data-e2e="site-header-menu-button"
-            >
-              <IconBars3 class="size-6 group-open:hidden" aria-hidden="true" />
-              <IconXMark class="hidden size-6 group-open:block" aria-hidden="true" />
-            </summary>
+          {hasLinks && (
+            <details ref={detailsRef} class="group lg:hidden" onToggle={handleToggle}>
+              <summary
+                ref={triggerRef}
+                aria-expanded={open}
+                aria-controls={panelId}
+                aria-label={menuLabel}
+                class="flex size-10 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-hover [&::-webkit-details-marker]:hidden"
+                data-e2e="site-header-menu-button"
+              >
+                <IconBars3 class="size-6 group-open:hidden" aria-hidden="true" />
+                <IconXMark class="hidden size-6 group-open:block" aria-hidden="true" />
+              </summary>
 
-            <div
-              id={panelId}
-              class="absolute inset-x-0 top-full z-10 border-b border-subtle bg-surface px-4 py-4 shadow-popover dark:bg-canvas sm:px-6"
-              data-e2e="site-header-panel"
-            >
-              <nav aria-label={navLabel} class="flex flex-col gap-3">
-                {links.map((link, index) => (
-                  <SiteHeaderNavLink
-                    key={`${index}-${link.href}`}
-                    link={link}
-                    currentPath={currentPath}
-                    onClick={() => close(false)}
-                  />
-                ))}
-              </nav>
-            </div>
-          </details>
+              <div
+                id={panelId}
+                class="absolute inset-x-0 top-full z-10 border-b border-subtle bg-surface px-4 py-4 shadow-popover dark:bg-canvas sm:px-6"
+                data-e2e="site-header-panel"
+              >
+                <nav aria-label={navLabel} class="flex flex-col gap-3">
+                  {links.map((link, index) => (
+                    <SiteHeaderNavLink
+                      key={`${index}-${link.href}`}
+                      link={link}
+                      currentPath={currentPath}
+                      onClick={() => close(false)}
+                    />
+                  ))}
+                </nav>
+              </div>
+            </details>
+          )}
         </div>
       </div>
     </header>

@@ -180,6 +180,28 @@ describe("SiteHeader", () => {
     ])
   })
 
+  it("draws no nav and no menu button when links is empty", () => {
+    const html = render(
+      <SiteHeader
+        links={[]}
+        brand={<span data-e2e="brand">Acme</span>}
+        actions={<button type="button" data-e2e="cta">Theme</button>}
+      />,
+    )
+    expect(html).not.toContain("<nav")
+    expect(html).not.toContain("<details")
+    expect(html).not.toContain('data-e2e="site-header-menu-button"')
+    expect(html).toMatch(/data-e2e="brand".*data-e2e="cta"/)
+  })
+
+  it("draws no nav and no menu button when links is left out", () => {
+    const html = render(<SiteHeader brand="Acme" actions={<button type="button">Theme</button>} />)
+    expect(html).not.toContain("<nav")
+    expect(html).not.toContain("<details")
+    expect(html).toContain("Acme")
+    expect(html).toContain("Theme")
+  })
+
   it("merges a caller's class onto the header without losing its own", () => {
     const html = render(<SiteHeader links={links} brand="Acme" class="shadow-lg" />)
     const headerTag = html.match(/<header class="[^"]*">/)?.[0] ?? ""
