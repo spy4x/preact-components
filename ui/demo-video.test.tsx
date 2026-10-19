@@ -47,9 +47,9 @@ describe("DemoVideo", () => {
     expect(html).toMatch(/<img [^>]*srcset="\/demo-640\.webp 640w" sizes="100vw"/)
   })
 
-  it("hides the play mark from assistive tech and leaves the poster decorative", () => {
+  it("hides the play mark and the decorative poster from assistive tech", () => {
     const html = render(<DemoVideo {...PROPS} />)
-    expect(html).toMatch(/<img [^>]* alt(?:="")? /)
+    expect(html).toMatch(/<img [^>]* alt(?:="")? aria-hidden="true" /)
     expect(html).toMatch(/<span aria-hidden="true"[^>]*><span [^>]*rounded-full bg-scrim/)
   })
 

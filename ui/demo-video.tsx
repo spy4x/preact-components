@@ -255,6 +255,7 @@ export function DemoVideo(
         width={poster.width}
         height={poster.height}
         alt=""
+        aria-hidden="true"
         loading={eager ? "eager" : "lazy"}
         fetchpriority={eager ? "high" : undefined}
         decoding={eager ? undefined : "async"}

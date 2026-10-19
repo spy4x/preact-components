@@ -5427,7 +5427,8 @@ the press, so the browser requests no video bytes. Under `prefers-reduced-motion
 still plays, since the reader asked for it, but `loop` is ignored.
 
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
-`title`. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
+`title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the
+name. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
 for a clip on the first screen. `class` is joined, not merged, so an island that renders the
 component carries no `tailwind-merge`. Any other attribute, such as `id` or a `data-*` analytics
 attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`.
