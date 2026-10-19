@@ -656,8 +656,12 @@
     border-color: var(--color-danger, oklch(0.505 0.213 27.518));
   }
 
+  /* Twice the border's width: a 1px danger outline would sit on the danger border and look the same
+     as rest. */
   &[aria-invalid="true"]:focus {
     outline-color: var(--color-danger, oklch(0.505 0.213 27.518));
+    outline-width: 2px;
+    outline-offset: -2px;
   }
 }
 
@@ -697,8 +701,12 @@
     border-color: var(--color-danger, oklch(0.505 0.213 27.518));
   }
 
+  /* Twice the border's width: a 1px danger outline would sit on the danger border and look the same
+     as rest. */
   &[aria-invalid="true"]:focus {
     outline-color: var(--color-danger, oklch(0.505 0.213 27.518));
+    outline-width: 2px;
+    outline-offset: -2px;
   }
 }
 

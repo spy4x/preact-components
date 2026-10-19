@@ -147,6 +147,7 @@ interface InvalidField {
   border: string
   outline: string
   outlineStyle: string
+  outlineWidth: string
   danger: string
 }
 
@@ -163,6 +164,7 @@ function readInvalidField(page: Page, selector: string): Promise<InvalidField> {
       border: style.borderTopColor,
       outline: style.outlineColor,
       outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
       danger,
     }
   })
@@ -198,6 +200,8 @@ function invalidFieldSpec(what: string, selector: string, colorScheme: "light" |
         focused.border !== focused.danger && `focused its border is ${focused.border}`,
         (focused.outlineStyle !== "solid" || focused.outline !== focused.danger) &&
         `focused its outline is ${focused.outlineStyle} ${focused.outline}`,
+        focused.outlineWidth !== "2px" &&
+        `focused its outline is ${focused.outlineWidth} wide, so focus looks like rest`,
       ].filter(Boolean)
       if (wrong.length > 0) {
         throw new Error(

@@ -4097,8 +4097,8 @@ tokens, and ink's, with `data-theme="ink"` beside the marker. `tokens.css`'s cop
 <html lang="en" data-theme-auto>
 ```
 
-`themeBootstrapScript` removes the marker as its first statement, and an attached
-`createThemeStore` on every apply, so once a script runs the stored or chosen theme decides alone: a
+`themeBootstrapScript` removes the marker as its first statement, and `createThemeStore`'s default
+`apply` on every apply (a custom `apply` must remove it itself), so once a script runs the stored or chosen theme decides alone: a
 visitor who chose light keeps light on a dark system. A page that does not render the marker sees
 no change.
 

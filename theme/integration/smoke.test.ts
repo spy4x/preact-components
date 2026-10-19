@@ -1331,9 +1331,11 @@ describe("theme preset", () => {
       expect(declarationsOf(rule, '&[aria-invalid="true"]')).toContain(
         "border-color: var(--color-danger, oklch(0.505 0.213 27.518))",
       )
-      expect(declarationsOf(rule, '&[aria-invalid="true"]:focus')).toContain(
-        "outline-color: var(--color-danger, oklch(0.505 0.213 27.518))",
-      )
+      const focus = declarationsOf(rule, '&[aria-invalid="true"]:focus')
+      expect(focus).toContain("outline-color: var(--color-danger, oklch(0.505 0.213 27.518))")
+      // Twice the resting border's width, so focus still shows on a border already in danger.
+      expect(focus).toContain("outline-width: 2px")
+      expect(focus).toContain("outline-offset: -2px")
       // After the focus rule, so on focus the danger colour wins over the focus ring.
       expect(rule.indexOf('&[aria-invalid="true"]')).toBeGreaterThan(rule.indexOf("&:focus {"))
     })
