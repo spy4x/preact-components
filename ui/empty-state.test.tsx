@@ -33,7 +33,7 @@ describe("EmptyState", () => {
     expect(render(<EmptyState title="No invoices yet" />)).toBe(
       '<div role="status" class="mx-auto max-w-[650px] rounded-lg border border-dashed ' +
         'border-subtle bg-surface pc-focus-offset-surface p-4 text-center">' +
-        '<h3 class="text-base font-medium text-foreground">No invoices yet</h3>' +
+        '<h3 class="text-base font-medium text-balance text-foreground">No invoices yet</h3>' +
         "</div>",
     )
   })
@@ -54,7 +54,7 @@ describe("EmptyState", () => {
         '<span aria-hidden="true" class="mx-auto mb-3 inline-flex size-10 items-center ' +
         'justify-center rounded-xl border border-subtle bg-selected-soft text-selected">' +
         '<svg viewBox="0 0 24 24"></svg></span>' +
-        '<h3 class="text-base font-medium text-foreground">No invoices yet</h3>' +
+        '<h3 class="text-base font-medium text-balance text-foreground">No invoices yet</h3>' +
         '<p class="mt-1 text-sm text-muted">' +
         "Invoices you send will appear here.</p>" +
         '<div class="mt-4"><a href="/invoices/new">New invoice</a></div>' +
@@ -65,14 +65,16 @@ describe("EmptyState", () => {
   it("draws the title as an h1 with the h3's look when headingLevel is 1", () => {
     const html = render(<EmptyState title="Page not found" headingLevel={1} />)
 
-    expect(html).toContain('<h1 class="text-base font-medium text-foreground">Page not found</h1>')
+    expect(html).toContain(
+      '<h1 class="text-base font-medium text-balance text-foreground">Page not found</h1>',
+    )
     expect(html).not.toContain("<h3")
     expect(html.toLowerCase()).not.toContain("headinglevel")
   })
 
   it("keeps the title an h3 when headingLevel is not passed", () => {
     expect(render(<EmptyState title="No invoices yet" />)).toContain(
-      '<h3 class="text-base font-medium text-foreground">No invoices yet</h3>',
+      '<h3 class="text-base font-medium text-balance text-foreground">No invoices yet</h3>',
     )
   })
 
@@ -151,7 +153,7 @@ describe("EmptyState inset inside a card", () => {
   it("pads itself like a card body when inset, so it lines up with the card's header", () => {
     expect(render(<EmptyState inset title="No devices yet" />)).toBe(
       '<div role="status" class="px-4 py-6 text-center sm:p-8">' +
-        '<h3 class="text-base font-medium text-foreground">No devices yet</h3>' +
+        '<h3 class="text-base font-medium text-balance text-foreground">No devices yet</h3>' +
         "</div>",
     )
   })

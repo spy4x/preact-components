@@ -74,7 +74,7 @@ export function EmptyState(
         </span>
       )}
       {title && (
-        <Heading class="text-base font-medium text-foreground">
+        <Heading class="text-base font-medium text-balance text-foreground">
           {title}
         </Heading>
       )}
