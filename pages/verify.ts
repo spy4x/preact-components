@@ -661,6 +661,10 @@ async function launchOnce(
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--no-first-run",
+        // Keep every browser's viewport the same height. Chrome for Testing, the build in
+        // Playwright's CI image, shows an info bar that took 56px off the page (780×437 against
+        // 780×493), and a Combobox's last row fell below the fold.
+        "--disable-infobars",
         // Tell the browser it has a mouse. Headless Chromium otherwise answers `(hover: none)` and
         // `(pointer: none)`, and Tailwind compiles every `hover:` and `group-hover:` utility inside
         // `@media (hover: hover)` — so without this flag not one hover style in the library applies
