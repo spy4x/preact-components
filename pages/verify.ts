@@ -27,9 +27,9 @@
  *
  * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
  * renders to an HTML string, so no effect, ref, key press or focus change is executed by any of
- * them; anything that lives behind one is proven here or nowhere. `.github/workflows/pages.yml`
+ * them; anything that lives behind one is proven here or nowhere. `.woodpecker.yml`
  * runs `deno task check`, the build and this script on every pull request into `main` and on every
- * push to `main`, and the deploy job waits for all three. A missing or unusable browser is a failed
+ * push to `main`, and the Pages deploy waits for that push build to pass. A missing or unusable browser is a failed
  * check, not a skip — `--static` is the one explicit way to leave the browser phase out.
  *
  * The checks that need a hydrated page are not written here: each workspace package that has one
@@ -52,7 +52,7 @@
  *
  * **A full run may be split into parts** (#696): `--only=ui`, `--only=e2e` and `--except=ui,e2e`
  * together run every block exactly once, each part with its own browser and its own limits. CI
- * runs those three as three jobs; `--except` names the blocks the other parts took, so a block
+ * runs those three as three steps; `--except` names the blocks the other parts took, so a block
  * added to `PACKAGE_BLOCKS` later lands in the last part without anyone listing it.
  */
 

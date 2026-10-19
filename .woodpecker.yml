@@ -28,6 +28,63 @@ steps:
     commands:
       - deno task publish:dry
 
+  # The browser checks (`pages/README.md`, "Running a full run in parts"). They run in Playwright's
+  # image, which carries Chromium and its system libraries; its tag matches the `playwright-core`
+  # pin in `pages/deno.json`. The image has no Deno, so this step installs one pinned release,
+  # checked against the checksum published beside it (`deno-x86_64-unknown-linux-gnu.zip.sha256sum`),
+  # into `/woodpecker`, which every step of the pipeline shares and which lies outside the checkout.
+  # Change the version and the checksum together. Not on a tag: a tag is on `main`, whose push
+  # build already ran these.
+  pages-build:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - |
+          curl -fsSL -o /woodpecker/deno.zip https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+          echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /woodpecker/deno.zip" | sha256sum -c -
+          python3 -m zipfile -e /woodpecker/deno.zip /woodpecker/bin
+          chmod +x /woodpecker/bin/deno
+      - export PATH="/woodpecker/bin:$${PATH}"
+      - deno --version
+      - deno task --cwd pages build
+
+  # The three parts run one after another, not side by side: three browsers at once would compete
+  # with the other pipelines on the one agent host, and load slows `e2e` most (`pages/README.md`).
+  # A red part skips the parts after it. `CHROME_PATH` names the image's Chromium, so the browser
+  # `verify` drives is the one it reports.
+  verify-ui:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=ui
+
+  verify-e2e:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e
+
+  verify-rest:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --except=ui,e2e
+
   # Guards against an accidental release: a `v*` tag publishes to JSR with the global token, so
   # this step fails the build unless the tagged commit is already on `main` (reviewed, green CI).
   # It is not access control: Woodpecker runs the tagged commit's own `.woodpecker.yml`, so a tag

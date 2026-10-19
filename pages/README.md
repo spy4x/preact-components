@@ -105,7 +105,7 @@ without anyone listing it. An unknown name, an empty list, a list that names eve
 its own limits (see "How long a run may take"), repeats the static phase and the startup checks,
 and ends with its own `FILTERED:` line. All three green is a full run; one or two are not.
 
-CI runs the three as three jobs. On a workstation, use the parts when other browser runs share the
+CI runs the three as three steps, one after another. On a workstation, use the parts when other browser runs share the
 machine: run them one after another, or side by side in three terminals. One command is still fine
 on a quiet machine.
 
@@ -194,11 +194,12 @@ passed, while throttled runs found failures on the first try. A check that fails
 check to fix, not to re-run: poll on the state it asserts, read in the same evaluate as the action,
 or measure a duration with the page's own clock.
 
-This is also the repository's browser test path, and CI runs it. `.github/workflows/pages.yml` runs
+This is also the repository's browser test path, and CI runs it. `.woodpecker.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
-`main` and on every push to `main`, on a runner image that ships Google Chrome. `verify` runs there
-as three jobs, one per part (see "Running a full run in parts"). The deploy job waits for all
-three, so a red check, a red publish dry-run or a red part of `verify` blocks the publish.
+`main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
+Chromium. `verify` runs there as three steps, one per part (see "Running a full run in parts"). The
+Pages deploy waits for the push build to pass, so a red check, a red publish dry-run or a red part
+of `verify` blocks the publish.
 
 ### How long a run may take
 
@@ -496,31 +497,21 @@ is the number to trust, not one typed here.
 
 ## Deploy
 
-`.github/workflows/pages.yml` — a GitHub workflow for two reasons. Pages cannot be deployed by
-Woodpecker, and Woodpecker's image (`denoland/deno:2.9.7`) carries no browser, so it cannot run the
-browser phase of `verify`. Woodpecker still runs `deno task check` on the same pull-request and
-`main` events, and on a `v*` tag it also publishes to JSR (`docs/publishing.md`).
+`.github/workflows/pages.yml` — a GitHub workflow, because Pages can only be deployed by one. It
+deploys and checks nothing: every check, the build and the three parts of `verify` run in
+Woodpecker (`.woodpecker.yml`) on every pull request and every push to `main`.
 
-The workflow triggers on pull requests into `main`, on pushes to `main`, and on manual dispatch.
+The workflow starts on a `status` event. When Woodpecker's push build of `main` ends, Woodpecker
+posts the commit status `ci/woodpecker/push/woodpecker`; only a `success` for a commit on `main`
+runs the `deploy` job, so a red check, a failed build or a failed part of `verify` blocks the
+publish. The job first asks GitHub for the head of `main` and deploys only when it is still that
+commit, so a build that finishes late never replaces a newer site. It then checks the commit out,
+installs Deno 2.9.7, runs `deno task --cwd pages build`, uploads `pages/dist` with
+`actions/upload-pages-artifact`, and runs `actions/configure-pages` and `actions/deploy-pages`. To
+deploy again, re-run that workflow run from the Actions tab.
 
-Three `verify` jobs run on all three, one for each part of the browser run (`ui`, `e2e` and `rest`;
-see "Running a full run in parts"): checkout → Deno 2.9.7 → print the browser version →
-`deno task --cwd pages build` → `deno task --cwd pages verify` with that part's `--only` or
-`--except`, and `CHROME_PATH` naming the runner's Google Chrome so the browser reported in the log
-is the browser that is driven. Only the `rest` job also runs `deno task check` and
-`deno task publish:dry`, before the build. Each job holds `contents: read` and nothing else.
-
-Only on `main`, never on a pull request, the `rest` job then runs `actions/upload-pages-artifact`
-over `pages/dist`, and a separate `deploy` job runs `actions/configure-pages` and
-`actions/deploy-pages`. `deploy` `needs` all three `verify` jobs, so a red check, a failed build or
-a failed part of `verify` blocks the publish. `pages: write` and `id-token: write` exist on `deploy` alone, which is also where
-`configure-pages` lives — it is the step that needs them, and the build never read its outputs,
-because the demo's base path is a constant in `src/site.ts`.
-
-Two concurrency groups, because the two paths want opposite things. Deploys share the group `pages`
-with `cancel-in-progress: false`: a half-published artefact is worse than a slightly stale one.
-Pull-request runs get `pages-pr-<ref>` with `cancel-in-progress: true`, so a review run is never
-queued behind a deploy, and a superseded commit's run is dropped.
+Deploys share the concurrency group `pages` with `cancel-in-progress: false`: a half-published
+artefact is worse than a slightly stale one.
 
 Pages is enabled on the repository with **Source: GitHub Actions** (`build_type: workflow`), which is
 what the workflow needs; a repository where that setting is still "Deploy from a branch" fails at the

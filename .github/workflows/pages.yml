@@ -1,112 +1,30 @@
 name: Pages
 
-# Two things live here, and the second is why this file is no longer deploy-only.
+# Deploys `main` to GitHub Pages, and does nothing else. Every check, the browser run included,
+# lives in Woodpecker (`.woodpecker.yml`); GitHub Pages can only be deployed by a GitHub workflow,
+# which is why this file exists at all.
 #
-# GitHub Pages can only be deployed by a GitHub workflow — Woodpecker cannot reach it. Woodpecker
-# still runs `deno task check` on the same pull-request and push events (and publishes on a `v*`
-# tag, which this workflow ignores), but it runs it in `denoland/deno:2.9.7`, which
-# has no browser, so it cannot run `pages/verify.ts`. That script is where every assertion about
-# keyboard, focus and effects lives, because this repository's unit tests render to a string and can
-# see none of it. GitHub's `ubuntu-latest` image ships Google Chrome, which `verify.ts` already
-# looks for by name, so the browser phase runs here and nowhere else.
-#
-# The deploy therefore waits for all three: a red `check`, a red build or a red `verify` blocks the
-# publish.
+# The deploy waits for Woodpecker: Woodpecker posts a commit status when its push build of `main`
+# ends, and that status event starts this workflow. Only a green `ci/woodpecker/push/woodpecker`
+# status deploys, so a red check, build or browser part never reaches the site. A `status` event
+# runs the workflow file from `main`, whatever commit the status is for.
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-  workflow_dispatch:
+  status:
 
-# A deploy in flight is never cancelled — a half-published artefact is worse than a slightly stale
-# one — so deploys keep the one non-cancelling `pages` group. Pull-request runs get a group of their
-# own, per ref, and do cancel: queueing a review run behind a deploy would make this the slowest
-# check on the pull request, and a superseded commit's run is of no interest.
+# A deploy in flight is never cancelled: a half-published artefact is worse than a slightly stale
+# one.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.ref) || 'pages' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    # The browser run is split into three parts, one job each, because as one job it took 13 of the
-    # 15 minutes `pages/verify.ts` allows its browser phase (#696). Together the parts run every
-    # block once: `--except` names the blocks the other two took, so a block added later lands in
-    # `rest` without an edit here. `pages/README.md`, "Running a full run in parts", has the
-    # timings. One red part does not cancel the others, so a pull request sees every failure.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - part: ui
-            blocks: --only=ui
-          - part: e2e
-            blocks: --only=e2e
-          - part: rest
-            blocks: --except=ui,e2e
-    # `pages/verify.ts` bounds its own browser phase: it stops after 90 seconds without a finished
-    # check and after 15 minutes in all. This is the backstop for everything outside that phase —
-    # the build, the static phase, a hung `deno task check` — so a runner that wedges frees itself
-    # long before the platform's six-hour default. 25 minutes sits above verify's own 15-minute
-    # ceiling plus `check` and the build, which take under two minutes together, so verify's named
-    # failure is always what ends a slow run, never this limit.
-    timeout-minutes: 25
-    # Least privilege: this job reads the repository and nothing else. Writing the deployment and
-    # minting its OIDC token belong to the deploy job below.
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.9.7
-
-      # Printed so a runner image that stopped shipping Chrome is one line in the log rather than a
-      # puzzle further down. `verify` fails on a missing browser either way.
-      - name: Report the browser the verify step will drive
-        run: google-chrome --version
-
-      # `check` and the publish dry-run do not depend on the part, so one part runs them.
-      - name: Check
-        if: matrix.part == 'rest'
-        run: deno task check
-
-      # Not part of `deno task check` — see the task's own comment in `deno.jsonc` for why — so it
-      # is a step of its own. The checkout is clean here, unlike a workstation mid-change, so this
-      # runs the bare task rather than `--allow-dirty`; a missing return type or a `theme/`-style CSS
-      # export fails this step the same way a red `check` does, before the build or the deploy.
-      - name: Dry-run the JSR publish
-        if: matrix.part == 'rest'
-        run: deno task publish:dry
-
-      - name: Build the demo
-        run: deno task --cwd pages build
-
-      # `CHROME_PATH` pins the browser to the one whose version was just printed. Without it
-      # `verify.ts` walks its candidate list and this runner answers `chromium-browser` first, so
-      # the log reported one browser and drove another. Naming it also makes a runner image that
-      # dropped Chrome fail here, loudly, instead of quietly running something else.
-      - name: Verify the demo in a real browser
-        run: deno task --cwd pages verify ${{ matrix.blocks }}
-        env:
-          CHROME_PATH: google-chrome
-
-      # Pages artefacts are for the deploy alone: a pull request neither publishes nor needs one.
-      # Every part builds the same `dist/`, and a run may hold one artefact of this name, so one
-      # part uploads it.
-      - name: Upload the Pages artefact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && matrix.part == 'rest'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: pages/dist
-
   deploy:
-    needs: verify
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event.context == 'ci/woodpecker/push/woodpecker' &&
+      github.event.state == 'success' &&
+      contains(github.event.branches.*.name, 'main')
     runs-on: ubuntu-latest
-    # The two write permissions exist only here, in the one job that publishes.
+    timeout-minutes: 15
     permissions:
       contents: read
       pages: write
@@ -115,9 +33,43 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # Kept, and moved out of the build job: it is the step that needs `pages: write`, and the
-      # build never read its outputs — the demo's base path is a constant in `pages/src/site.ts`.
-      - uses: actions/configure-pages@v5
+      # Two green builds can finish out of order. Only the commit that is still the head of `main`
+      # deploys, so an older build finishing late never replaces a newer site.
+      - name: Check the commit is still the head of main
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.sha }}
+        run: |
+          head="$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)"
+          if [ "${head}" = "${SHA}" ]; then
+            echo "deploy=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::notice::Skipped: ${SHA} is no longer the head of main (${head})"
+          fi
 
-      - id: deployment
+      - if: steps.head.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.sha }}
+
+      - if: steps.head.outputs.deploy == 'true'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.7
+
+      - if: steps.head.outputs.deploy == 'true'
+        name: Build the demo
+        run: deno task --cwd pages build
+
+      - if: steps.head.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages/dist
+
+      - if: steps.head.outputs.deploy == 'true'
+        uses: actions/configure-pages@v5
+
+      - if: steps.head.outputs.deploy == 'true'
+        id: deployment
         uses: actions/deploy-pages@v4
