@@ -79,7 +79,7 @@ export function SettingGroup(
   return (
     <section class="flex flex-col gap-3" aria-labelledby={headingId} data-e2e={dataE2E}>
       <header class="flex flex-col gap-1">
-        <h2 id={headingId} class="text-sm font-semibold text-foreground">{title}</h2>
+        <h2 id={headingId} class="text-sm font-semibold text-balance text-foreground">{title}</h2>
         {description && <p class="text-sm text-muted">{description}</p>}
       </header>
       {children}

@@ -75,3 +75,10 @@ describe("SettingGroup", () => {
     expect(ids[0]).not.toBe(ids[1])
   })
 })
+
+describe("SettingGroup heading", () => {
+  it("balances the group title's lines, so a wrapped title leaves no word alone", () => {
+    const html = render(<SettingGroup title="Security">x</SettingGroup>)
+    expect(html).toMatch(/<h2 id="[^"]*" class="[^"]*\btext-balance\b[^"]*">Security<\/h2>/)
+  })
+})

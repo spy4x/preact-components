@@ -70,7 +70,9 @@ export function Steps(
               class={cn(connectorVertical, horizontal && connectorHorizontal)}
             />
           )}
-          <Heading class="pt-1 text-base font-medium text-foreground">{step.title}</Heading>
+          <Heading class="pt-1 text-base font-medium text-balance text-foreground">
+            {step.title}
+          </Heading>
           {step.text !== undefined && <div class="mt-1 text-sm text-muted">{step.text}</div>}
         </li>
       ))}
