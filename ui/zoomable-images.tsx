@@ -38,6 +38,13 @@
  * cancelled for a lightbox that would have refused to open anyway ({@link collectSequence}, whose
  * own filtering keeps a described image's position correct even when an earlier, undescribed one
  * sits between it and the start of the container).
+ *
+ * **An image can open a different file than the one it shows.** A page that shows a small crop of
+ * a screenshot puts the full screenshot's URL in the crop's `data-lightbox-src`, and pressing the
+ * crop opens that file instead of its own `src`. `data-lightbox-webp` adds a WebP of the full file
+ * and `data-lightbox-alt` describes it; without them the lightbox shows no WebP and the crop's own
+ * `alt`. Both are read only together with a non-blank `data-lightbox-src`, since they describe the
+ * full file; an image without one opens itself exactly as before ({@link resolveImage}).
  */
 
 import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
@@ -57,7 +64,10 @@ export interface ImageElementLike {
   src?: string
   /** `alt` property, when the element has one. */
   alt?: string
-  /** Attribute reader, used when the properties are absent. */
+  /**
+   * Attribute reader, used when the properties are absent, and for the `data-lightbox-src`,
+   * `data-lightbox-webp` and `data-lightbox-alt` attributes that name a full file to open instead.
+   */
   getAttribute?: (name: string) => string | null
 }
 
@@ -78,12 +88,42 @@ export function zoomableAlt(rawAlt: string | null | undefined, fallbackAlt: stri
   return (rawAlt ?? "").trim() || fallbackAlt.trim()
 }
 
+/** Attribute naming the full file an image opens instead of its own `src`. */
+const FULL_SRC = "data-lightbox-src"
+/** Attribute naming a WebP of that full file. */
+const FULL_WEBP = "data-lightbox-webp"
+/** Attribute describing that full file. */
+const FULL_ALT = "data-lightbox-alt"
+
+/** The element's non-blank `data-lightbox-src`, trimmed, or `""` when it has none. */
+function fullSrc(element: ImageElementLike): string {
+  return element.getAttribute?.(FULL_SRC)?.trim() ?? ""
+}
+
+/**
+ * The `alt` the lightbox opens an element with: its `data-lightbox-alt` when it names a full file
+ * and describes it, else its own, else `fallbackAlt` — all through {@link zoomableAlt}, so
+ * {@link resolveImage} and {@link markZoomable} refuse the same images.
+ */
+function openedAlt(
+  element: ImageElementLike,
+  ownAlt: string | null | undefined,
+  fallbackAlt: string,
+): string {
+  const fullAlt = fullSrc(element) ? element.getAttribute?.(FULL_ALT)?.trim() : ""
+  return zoomableAlt(fullAlt || ownAlt, fallbackAlt)
+}
+
 /**
  * Turn an event target into a lightbox image, or `null` when the event missed an image.
  *
  * Only the image itself answers: an event whose target is the link around it, or any other element
  * of the page, is not this component's business. A click that *did* land on a zoomable image is
  * cancelled by the caller, so a wrapping link stays unfollowed.
+ *
+ * An image with a non-blank `data-lightbox-src` resolves to that file instead of its own `src`,
+ * with `data-lightbox-webp` as its `webpSrc` and `data-lightbox-alt` as its `alt` when they are
+ * set; a blank `data-lightbox-alt` keeps the image's own.
  *
  * @param target The event target, or `null`.
  * @param imageSelector Selector an image must match, default `"img"`.
@@ -95,6 +135,13 @@ export function resolveImage(
   fallbackAlt = "Image",
 ): LightboxImage | null {
   if (!target || !target.matches(imageSelector)) return null
+
+  const full = fullSrc(target)
+  if (full) {
+    const alt = openedAlt(target, target.alt ?? target.getAttribute?.("alt"), fallbackAlt)
+    const webpSrc = target.getAttribute?.(FULL_WEBP)?.trim()
+    return webpSrc ? { src: full, alt, webpSrc } : { src: full, alt }
+  }
 
   const src = target.src ?? target.getAttribute?.("src") ?? ""
   if (!src) return null
@@ -139,7 +186,11 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
     const image = element as HTMLElement
     if (image.hasAttribute(MARKER)) continue
 
-    const alt = zoomableAlt(image.getAttribute("alt"), marks.fallbackAlt)
+    const alt = openedAlt(
+      image as unknown as ImageElementLike,
+      image.getAttribute("alt"),
+      marks.fallbackAlt,
+    )
     if (!alt) continue
     image.setAttribute(MARKER, "")
     image.setAttribute("role", "button")
@@ -243,7 +294,10 @@ export interface ZoomableImagesProps {
   previousLabel?: string
   /** Accessible name of the next control. Defaults to `"Next image"`. */
   nextLabel?: string
-  /** Called when an image is opened, with the resolved `src` and `alt`. */
+  /**
+   * Called when an image is opened, with the resolved `src` and `alt` — the full file's, when the
+   * image names one in `data-lightbox-src`.
+   */
   onOpen?: (image: LightboxImage) => void
   /**
    * Utilities for the dialog, appended to `Lightbox`'s own and merged with none of them: mark a

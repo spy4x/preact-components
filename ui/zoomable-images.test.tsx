@@ -19,6 +19,16 @@ function element(overrides: Partial<ImageElementLike> = {}): ImageElementLike {
   }
 }
 
+/** An element stub that also answers `getAttribute` from `attributes`, as a real image would. */
+function crop(attributes: Record<string, string>, overrides: Partial<ImageElementLike> = {}) {
+  return element({
+    src: "https://acme.example/img/crop.png",
+    alt: "The crop",
+    getAttribute: (name) => attributes[name] ?? null,
+    ...overrides,
+  })
+}
+
 describe("resolveImage", () => {
   it("resolves a clicked image", () => {
     expect(resolveImage(element())).toEqual({
@@ -81,6 +91,57 @@ describe("resolveImage", () => {
     // cancelling the event it opens on, which is a browser's business and `pages/checks/system.ts`'s
     // to prove — this function never sees it.
     expect(resolveImage(element({ matches: (selector) => selector === "a" }))).toBeNull()
+  })
+
+  it("opens the full file a crop names in data-lightbox-src, with the crop's own alt", () => {
+    expect(resolveImage(crop({ "data-lightbox-src": "/img/full.png" }))).toEqual({
+      src: "/img/full.png",
+      alt: "The crop",
+    })
+  })
+
+  it("takes the full file's WebP and alt from data-lightbox-webp and data-lightbox-alt", () => {
+    const target = crop({
+      "data-lightbox-src": " /img/full.png ",
+      "data-lightbox-webp": "/img/full.webp",
+      "data-lightbox-alt": "  The whole screen  ",
+    })
+
+    expect(resolveImage(target)).toEqual({
+      src: "/img/full.png",
+      alt: "The whole screen",
+      webpSrc: "/img/full.webp",
+    })
+  })
+
+  it("keeps the crop's own alt, or fallbackAlt, when data-lightbox-alt is blank", () => {
+    const blank = { "data-lightbox-src": "/img/full.png", "data-lightbox-alt": "  " }
+
+    expect(resolveImage(crop(blank))?.alt).toBe("The crop")
+    expect(resolveImage(crop(blank, { alt: "" }))?.alt).toBe("Image")
+    expect(resolveImage(crop(blank, { alt: "" }), "img", "")?.alt).toBe("")
+  })
+
+  it("opens the image itself when data-lightbox-src is blank", () => {
+    expect(resolveImage(crop({ "data-lightbox-src": "  " }))).toEqual({
+      src: "https://acme.example/img/crop.png",
+      alt: "The crop",
+    })
+  })
+
+  it("ignores data-lightbox-webp and data-lightbox-alt without data-lightbox-src", () => {
+    const target = crop({ "data-lightbox-webp": "/img/full.webp", "data-lightbox-alt": "Whole" })
+
+    expect(resolveImage(target)).toEqual({
+      src: "https://acme.example/img/crop.png",
+      alt: "The crop",
+    })
+  })
+
+  it("still refuses a crop that does not match the image selector", () => {
+    const target = crop({ "data-lightbox-src": "/img/full.png" }, { matches: () => false })
+
+    expect(resolveImage(target)).toBeNull()
   })
 })
 
@@ -147,6 +208,30 @@ describe("collectSequence", () => {
   it("reports -1 when the activated element itself did not resolve", () => {
     const broken = element({ src: "", getAttribute: () => null })
     expect(collectSequence([hero, broken], broken).index).toBe(-1)
+  })
+
+  it("pages through each image's own full file, in DOM order, beside plain images", () => {
+    const first = crop({ "data-lightbox-src": "/img/first-full.png" }, { alt: "First" })
+    const second = crop({
+      "data-lightbox-src": "/img/second-full.png",
+      "data-lightbox-webp": "/img/second-full.webp",
+      "data-lightbox-alt": "Second, in full",
+    })
+    const result = collectSequence([first, hero, second], second)
+
+    expect(result.images).toEqual([
+      { src: "/img/first-full.png", alt: "First" },
+      { src: "https://acme.example/img/hero.png", alt: "A hero" },
+      { src: "/img/second-full.png", alt: "Second, in full", webpSrc: "/img/second-full.webp" },
+    ])
+    expect(result.index).toBe(2)
+  })
+
+  it("opens a crop whose own src is missing, because it names a full file", () => {
+    const sourceless = crop({ "data-lightbox-src": "/img/full.png" }, { src: "" })
+    const result = collectSequence([hero, sourceless], sourceless)
+
+    expect(result.images[result.index]).toEqual({ src: "/img/full.png", alt: "The crop" })
   })
 
   it("returns an empty sequence for an empty container", () => {

@@ -821,6 +821,42 @@ function marketingBlockSpecs(): Spec[] {
 }
 
 /**
+ * `ZoomableImages` opens the file an image names in `data-lightbox-src`, and an image without the
+ * attribute still opens its own `src`: both pressed with a real click on the guide's card.
+ */
+const zoomableCropSpec: Spec = {
+  name: "ZoomableImages: a crop with data-lightbox-src is named after its full file, and " +
+    "pressing it opens that file and its alt, while a plain image still opens itself",
+  pageId: "ui",
+  run: async (page) => {
+    const card = page.locator("#demo-ZoomableImages")
+    const dialog = card.locator("dialog").and(page.locator(":modal"))
+    const shown = dialog.locator("img")
+    const crop = card.locator(`[data-e2e="lightbox-crop"]`)
+    const plain = card.locator(`[data-e2e="lightbox-image"]`)
+    const full = await crop.getAttribute("data-lightbox-src")
+    const own = await plain.getAttribute("src")
+    if (!full || !own) throw new Error("the card has no crop with a full file, or no plain image")
+
+    await crop.and(page.getByRole("button", { name: "Zoom: A placeholder screen, in full" }))
+      .waitFor()
+    await crop.click()
+    await shown.and(page.locator(`[alt="A placeholder screen, in full"]`)).waitFor()
+    const opened = await shown.getAttribute("src")
+    if (opened !== full) {
+      throw new Error(`the crop opened ${opened?.slice(0, 60)}, not its full file`)
+    }
+
+    await page.keyboard.press("Escape")
+    await dialog.waitFor({ state: "detached" })
+    await plain.click()
+    await shown.and(page.locator(`[alt="A placeholder image"]`)).waitFor()
+    const plainOpened = await shown.getAttribute("src")
+    if (plainOpened !== own) throw new Error("the plain image did not open its own src")
+  },
+}
+
+/**
  * A highlighted danger `DropdownItem` keeps its text at 4.5:1, in each palette: the row under the
  * pointer, then the row with keyboard focus, each checked by axe's colour-contrast rule.
  */
@@ -1234,6 +1270,7 @@ export const specs: readonly Spec[] = [
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),
   ...escapeInsideModalSpecs(),
+  zoomableCropSpec,
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
     pageId: "ui",
