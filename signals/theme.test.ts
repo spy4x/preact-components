@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
   createThemeStore,
+  THEME_AUTO_ATTRIBUTE,
   type ThemeBootstrapOptions,
   themeBootstrapScript,
   type ThemeMediaQuery,
@@ -604,6 +605,19 @@ function withGlobalDocument(body: (page: ReturnType<typeof fakeDocument>) => voi
 }
 
 describe("createThemeStore default apply", () => {
+  it("removes the auto-dark marker, so a chosen light theme stays light on a dark system", () => {
+    withGlobalDocument((page) => {
+      const store = createThemeStore({
+        storage: fakeStorage({ theme: "light" }),
+        media: fakeMedia(true).source,
+      })
+      store.attach()
+      expect(page.attributes.has(THEME_AUTO_ATTRIBUTE)).toBe(false)
+      expect(page.classes.has("dark")).toBe(false)
+      store.dispose()
+    })
+  })
+
   it("sets color-scheme with the dark class on attach and on every change", () => {
     withGlobalDocument((page) => {
       const media = fakeMedia(false)
@@ -626,21 +640,31 @@ describe("createThemeStore default apply", () => {
 })
 
 /**
- * A stand-in for `document` whose root records its classes and its inline `color-scheme`, the two
- * things the bootstrap script and the store's default `apply` write.
+ * A stand-in for `document` whose root records its classes, its inline `color-scheme` and its
+ * attributes, the things the bootstrap script and the store's default `apply` write. It starts
+ * with the auto-dark marker, as a page that renders it does; `events` lists every write in order.
  */
 function fakeDocument() {
   const classes = new Set<string>()
+  const attributes = new Set<string>([THEME_AUTO_ATTRIBUTE])
+  const events: string[] = []
   const style = { colorScheme: "" }
   const document = {
     documentElement: {
       classList: {
-        toggle: (name: string, on: boolean) => void (on ? classes.add(name) : classes.delete(name)),
+        toggle: (name: string, on: boolean) => {
+          events.push(`toggle ${name}`)
+          on ? classes.add(name) : classes.delete(name)
+        },
+      },
+      removeAttribute: (name: string) => {
+        events.push(`remove ${name}`)
+        attributes.delete(name)
       },
       style,
     },
   }
-  return { document, classes, scheme: () => style.colorScheme }
+  return { document, classes, attributes, events, scheme: () => style.colorScheme }
 }
 
 /** What one run of the bootstrap script did to the page. */
@@ -685,6 +709,53 @@ function runBootstrap(
   )
   return { dark: classes.has("dark"), scheme: scheme(), keysRead, queriesAsked, writes }
 }
+
+describe("themeBootstrapScript auto-dark marker", () => {
+  it("removes the marker before it reads storage or the system", () => {
+    const { document, events } = fakeDocument()
+    const localStorage = {
+      getItem: (key: string) => {
+        events.push(`read ${key}`)
+        return "light"
+      },
+    }
+    const matchMedia = (query: string) => {
+      events.push(`ask ${query}`)
+      return { matches: true }
+    }
+    new Function("localStorage", "matchMedia", "document", themeBootstrapScript())(
+      localStorage,
+      matchMedia,
+      document,
+    )
+    expect(events[0]).toBe(`remove ${THEME_AUTO_ATTRIBUTE}`)
+    expect(events.filter((event) => event.startsWith("remove"))).toHaveLength(1)
+  })
+
+  it("removes the marker even when storage and matchMedia both throw", () => {
+    const { document, attributes } = fakeDocument()
+    const refuse = () => {
+      throw new Error("refused")
+    }
+    new Function("localStorage", "matchMedia", "document", themeBootstrapScript())(
+      { getItem: refuse },
+      refuse,
+      document,
+    )
+    expect(attributes.has(THEME_AUTO_ATTRIBUTE)).toBe(false)
+  })
+
+  it("keeps a stored light choice light on a dark system once the marker is gone", () => {
+    const { document, attributes, classes } = fakeDocument()
+    new Function("localStorage", "matchMedia", "document", themeBootstrapScript())(
+      fakeStorage({ theme: "light" }),
+      () => ({ matches: true }),
+      document,
+    )
+    expect({ marker: attributes.has(THEME_AUTO_ATTRIBUTE), dark: classes.has("dark") })
+      .toEqual({ marker: false, dark: false })
+  })
+})
 
 describe("themeBootstrapScript", () => {
   it("paints a stored dark preference dark on a light system", () => {

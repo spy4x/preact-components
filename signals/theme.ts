@@ -119,6 +119,15 @@ export interface ThemeStore {
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)"
 const DEFAULT_STORAGE_KEY = "theme"
 
+/**
+ * The attribute a server renders on `<html>` so a page is dark on a dark system before any script
+ * runs, and when none runs at all: `@spy4x/preact-theme`'s tokens and `dark` variant apply under
+ * it while the system asks for dark. {@link themeBootstrapScript} removes it as its first
+ * statement, and an attached {@link createThemeStore} on every apply, so from then on the stored or
+ * chosen theme decides alone.
+ */
+export const THEME_AUTO_ATTRIBUTE = "data-theme-auto"
+
 /** Whether a string read back from storage is a preference this version understands. */
 function isThemePreference(value: unknown): value is ThemePreference {
   return value === ThemeValue.LIGHT || value === ThemeValue.DARK || value === ThemeValue.SYSTEM
@@ -127,11 +136,13 @@ function isThemePreference(value: unknown): value is ThemePreference {
 /**
  * Toggle the `dark` class on the document root and set its `color-scheme` to match, when there is a
  * document. The class flips the tokens; `color-scheme` is what the browser paints its own canvas,
- * scrollbars and native controls from, before and after the stylesheet loads.
+ * scrollbars and native controls from, before and after the stylesheet loads. The
+ * {@link THEME_AUTO_ATTRIBUTE} marker goes, so a chosen light theme stays light on a dark system.
  */
 function applyToDocument(theme: Theme): void {
   const root = globalThis.document?.documentElement
   if (!root) return
+  root.removeAttribute(THEME_AUTO_ATTRIBUTE)
   const dark = theme === ThemeValue.DARK
   root.classList.toggle("dark", dark)
   root.style.colorScheme = dark ? ThemeValue.DARK : ThemeValue.LIGHT
@@ -414,7 +425,9 @@ const scriptLiteral = jsonLdText
  * (not a module, not deferred): it reads the same storage key as {@link createThemeStore}, accepts
  * the same values, resolves `"system"` through the same media query, toggles the same `dark`
  * class on `documentElement` and sets the same `style.colorScheme`, so the browser's own canvas
- * matches the theme before the app's stylesheet has loaded. It never writes storage and never throws: a browser that refuses
+ * matches the theme before the app's stylesheet has loaded. Its first statement removes the
+ * {@link THEME_AUTO_ATTRIBUTE} marker, so a page that renders it is dark on a dark system only
+ * until the script runs; from then on the stored preference decides. It never writes storage and never throws: a browser that refuses
  * storage reads gets the default preference.
  *
  * The options are written into the script as string literals, escaped so that none of them can end
@@ -440,7 +453,12 @@ export function themeBootstrapScript(options: ThemeBootstrapOptions = {}): strin
   // `color-scheme` is set next to the class, as the store's default `apply` does.
   const set = `var r=document.documentElement;r.classList.toggle("dark",!!d);` +
     `r.style.colorScheme=d?"dark":"light"`
-  const paint = `(function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
+  // The marker goes first, before anything that could throw, so the stored preference decides.
+  const unmark = `try{document.documentElement.removeAttribute(${
+    scriptLiteral(THEME_AUTO_ATTRIBUTE)
+  })}catch(e){}`
+  const paint =
+    `${unmark};(function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
     `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
     `var d=p==="dark"||(p==="system"&&typeof matchMedia==="function"&&matchMedia(${query}).matches);` +
     `${set}}catch(e){}})()`
