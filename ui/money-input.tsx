@@ -260,15 +260,23 @@ export function MoneyInput(
     mounted.value = true
   }, [])
 
-  if (
-    !focused.current &&
-    (synced.current.value !== value || synced.current.currency !== currency ||
-      synced.current.locale !== locale)
-  ) {
+  // An amount, currency or locale changed from outside re-formats the text, unless the visitor is
+  // editing it. In an effect, not the render body: writing a signal during render re-renders forever
+  // (#300). It skips the mount, which the hydration effect above settles: the amount that one
+  // resolved from pre-hydration text reaches `value` only on the caller's next render.
+  const resyncs = useRef(false)
+  useEffect(() => {
+    if (!resyncs.current) {
+      resyncs.current = true
+      return
+    }
+    const last = synced.current
+    if (focused.current) return
+    if (last.value === value && last.currency === currency && last.locale === locale) return
     draft.value = editableText(value, currency, locale)
     message.value = undefined
     synced.current = { value, currency, locale }
-  }
+  }, [value, currency, locale])
 
   function handleInput(event: JSX.TargetedEvent<HTMLInputElement>) {
     const text = withoutBlankText(event.currentTarget)
