@@ -274,10 +274,11 @@ describe("Calendar", () => {
 
   it("keeps the caller's utilities and lets them win over the frame", () => {
     const html = render(<Calendar {...base} class="rounded-none shadow-none" />)
+    const frame = html.match(/^<div class="([^"]*)"/)?.[1].split(" ") ?? []
 
-    expect(html).toContain("shadow-none")
-    expect(html).toContain("rounded-none")
-    expect(html).not.toContain("rounded-[var(--radius-card")
+    expect(frame).toContain("shadow-none")
+    // The caller's radius is the frame's only one: the frame's own is gone, not left to CSS order.
+    expect(frame.filter((name) => name.startsWith("rounded-"))).toEqual(["rounded-none"])
   })
 
   it("stays server-renderable without a today prop", () => {
