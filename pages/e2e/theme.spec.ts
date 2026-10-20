@@ -425,4 +425,60 @@ export const specs: readonly Spec[] = [
       return await page.locator(probe).evaluate((row) => getComputedStyle(row).backgroundColor)
     },
   },
+  inputIconHoverSpec(),
 ]
+
+/**
+ * `.btn-input-icon`, the icon button inside an input, paints the `--color-hover` fill under the
+ * pointer and keeps its `--color-foreground` text, and has no fill before. Its transition is
+ * switched off on the probe, so the colours read are the end state.
+ */
+function inputIconHoverSpec(): Spec {
+  return {
+    name: "theme: .btn-input-icon paints the hover fill under the pointer, and none before",
+    pageId: "theme",
+    run: async (page) => {
+      await page.evaluate(() => {
+        const button = document.createElement("button")
+        button.type = "button"
+        button.className = "btn-input-icon"
+        button.setAttribute("data-e2e", "input-icon-probe")
+        // Above the page, clear of the sticky header, so the pointer reaches it.
+        button.style.cssText = "transition: none; position: fixed; left: 50%; top: 50%; z-index: 99"
+        button.textContent = "x"
+        document.body.prepend(button)
+      })
+      const probe = page.locator(`[data-e2e="input-icon-probe"]`)
+      const colours = () =>
+        probe.evaluate((button) => {
+          const token = (name: string) => {
+            const span = document.createElement("span")
+            span.style.backgroundColor = `var(${name})`
+            button.after(span)
+            const colour = getComputedStyle(span).backgroundColor
+            span.remove()
+            return colour
+          }
+          const style = getComputedStyle(button)
+          return {
+            background: style.backgroundColor,
+            color: style.color,
+            hover: token("--color-hover"),
+            foreground: token("--color-foreground"),
+          }
+        })
+      const before = await colours()
+      if (before.background === before.hover) {
+        throw new Error(
+          `the fill is drawn before the pointer is over it: ${JSON.stringify(before)}`,
+        )
+      }
+      await probe.hover()
+      await page.locator(`[data-e2e="input-icon-probe"]:hover`).waitFor()
+      const after = await colours()
+      if (after.background !== after.hover || after.color !== after.foreground) {
+        throw new Error(`hovered colours are not the tokens: ${JSON.stringify(after)}`)
+      }
+    },
+  }
+}
