@@ -1031,7 +1031,7 @@ function comparisonTablePhoneSpecs(): Spec[] {
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
       name: `ComparisonTable: at 390px a table too wide to fit shows a shadow at its right edge ` +
-        `until it is scrolled to the end`,
+        `until it is scrolled to the end, ${colorScheme}`,
       pageId: "ui",
       colorScheme,
       run: async (page) => {
@@ -2290,7 +2290,8 @@ export const specs: readonly Spec[] = [
     },
   },
   ...(["light", "dark"] as const).map((colorScheme): Spec => ({
-    name: `ToggleChips: axe finds no violation on the chips, text colour contrast included`,
+    name:
+      `ToggleChips: axe finds no violation on the chips, text colour contrast included, ${colorScheme}`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
@@ -2987,7 +2988,8 @@ async function recordSpoken(page: Page, live: Locator): Promise<() => Promise<st
 /** `QuickAdd` with badges and the empty-title message showing has no axe violation. */
 function quickAddAxe(colorScheme: "light" | "dark"): Spec {
   return {
-    name: `QuickAdd: axe finds no violation with badges and the empty-title message showing`,
+    name:
+      `QuickAdd: axe finds no violation with badges and the empty-title message showing, ${colorScheme}`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
