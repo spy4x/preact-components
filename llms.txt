@@ -353,7 +353,7 @@ AuthFormErrorField	type	@spy4x/preact-system	Which field one `AuthFormError` nam
 AuthFormNames	type	@spy4x/preact-system	The `name` attribute of each input `AuthForm` renders, which is also the key a native post sends and the key the submit handler reads back from `FormData`.
 AuthMode	type	@spy4x/preact-system	Which screen `AuthForm` draws.
 AuthStep	type	@spy4x/preact-system	Which step of a mode `AuthForm` draws.
-Calendar	component	@spy4x/preact-system	
+Calendar	component	@spy4x/preact-system	A month on one page: six weeks of day cells, two month arrows, and a roving keyboard once hydrated.
 CalendarDay	type	@spy4x/preact-system	One cell of the grid, resolved.
 CalendarDayReason	type	@spy4x/preact-system	Why a day cannot be picked.
 ConflictChooser	component	@spy4x/preact-system	A list of conflicts, each explained in plain words, with "Keep mine" and "Use theirs".
