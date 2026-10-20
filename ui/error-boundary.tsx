@@ -15,9 +15,9 @@ export interface ErrorBoundaryProps {
    * What the Reload button does. Defaults to `location.reload()`, which is read only when the button
    * is pressed, so the boundary renders on a server.
    *
-   * The screen stays until the boundary remounts; there is no reset. A port that does not load the
-   * page again recovers the view by changing the boundary's `key`, which mounts a fresh boundary
-   * over fresh children.
+   * After a port runs, the boundary clears its error and renders its children again, so a port
+   * that does not load the page again (refetching data, resetting a store) recovers the view in
+   * place. Children that throw again bring the screen back.
    */
   onReload?: () => void
   /** The screen's headline. Defaults to "Something went wrong." */
@@ -65,14 +65,18 @@ export function ErrorBoundary({
   headingLevel,
   dataE2E,
 }: ErrorBoundaryProps): JSX.Element {
-  const [error] = useErrorBoundary((caught: unknown, errorInfo: ErrorInfo) =>
+  const [error, reset] = useErrorBoundary((caught: unknown, errorInfo: ErrorInfo) =>
     onError?.(caught, errorInfo)
   )
   if (error === undefined) return <>{children}</>
 
   return (
     <ErrorBoundaryScreen
-      onReload={onReload}
+      onReload={onReload &&
+        (() => {
+          onReload()
+          reset()
+        })}
       title={title}
       description={description}
       reloadLabel={reloadLabel}
