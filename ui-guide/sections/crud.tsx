@@ -35,7 +35,7 @@ import type { CrudAssociationStore } from "@spy4x/preact-crud/association-editor
 import type { CrudListStore } from "@spy4x/preact-crud/store"
 import type { CrudEditorStore } from "@spy4x/preact-crud/store"
 import type { OperationState } from "@spy4x/preact-crud"
-import { Button, Dropdown, DropdownItem, Stack } from "@spy4x/preact-ui"
+import { Button, Cluster, Dropdown, DropdownItem, Stack } from "@spy4x/preact-ui"
 import { IconEllipsisVertical } from "@spy4x/preact-icons"
 import { computed, type ReadonlySignal, type Signal, signal, useSignal } from "@preact/signals"
 import { search } from "@spy4x/platform/universal/text"
@@ -481,66 +481,62 @@ function CrudEditorArchiveDemo() {
 
   return (
     <Stack data-e2e="archive-demo">
-      <Button
-        variant="outline"
-        size="sm"
-        class="self-start"
-        aria-pressed={worded.value}
-        data-e2e="word-block"
-        onClick={() => worded.value = !worded.value}
-      >
-        Word the blocked archive as the app would
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        class="self-start"
-        aria-pressed={missing.value}
-        data-e2e="missing-row"
-        onClick={() => missing.value = !missing.value}
-      >
-        Edit a team the store does not hold
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        class="self-start"
-        aria-pressed={other.value}
-        data-e2e="other-row"
-        onClick={() => other.value = !other.value}
-      >
-        Edit the Support team in the same editor
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        class="self-start"
-        aria-pressed={loading.value}
-        data-e2e="hold-list"
-        onClick={() => loading.value = !loading.value}
-      >
-        Keep the list loading
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        class="self-start"
-        aria-pressed={holdingSave.value}
-        data-e2e="hold-save"
-        onClick={() => setHoldingSave(!holdingSave.value)}
-      >
-        Hold the store's answer to updates
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        class="self-start"
-        aria-pressed={readOnly.value}
-        data-e2e="read-only"
-        onClick={() => readOnly.value = !readOnly.value}
-      >
-        View as someone who may not change the team
-      </Button>
+      <Cluster>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={worded.value}
+          data-e2e="word-block"
+          onClick={() => worded.value = !worded.value}
+        >
+          Word the blocked archive as the app would
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={missing.value}
+          data-e2e="missing-row"
+          onClick={() => missing.value = !missing.value}
+        >
+          Edit a team the store does not hold
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={other.value}
+          data-e2e="other-row"
+          onClick={() => other.value = !other.value}
+        >
+          Edit the Support team in the same editor
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={loading.value}
+          data-e2e="hold-list"
+          onClick={() => loading.value = !loading.value}
+        >
+          Keep the list loading
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={holdingSave.value}
+          data-e2e="hold-save"
+          onClick={() => setHoldingSave(!holdingSave.value)}
+        >
+          Hold the store's answer to updates
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={readOnly.value}
+          data-e2e="read-only"
+          onClick={() => readOnly.value = !readOnly.value}
+        >
+          View as someone who may not change the team
+        </Button>
+      </Cluster>
       {
         // Above the editor, so the editor stays the demo's last child: nothing may sit under its form.
       }
