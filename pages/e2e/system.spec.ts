@@ -1645,4 +1645,35 @@ export const specs: readonly Spec[] = [
       return `before: ${before}; after choosing Dark in the sheet: ${after}`
     },
   },
+  ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+    name: `AppShell below md: each theme segment in the sheet takes its own click and shows its ` +
+      `word in ${colorScheme} mode`,
+    pageId: "system",
+    colorScheme,
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tab = page.locator(APP).getByRole("button", { name: "Account, 3 unread" })
+      await tab.scrollIntoViewIfNeeded()
+      await tab.click()
+      const radios = inCard(page, APP, "app-shell-sheet-theme").getByRole("radio")
+      await radios.first().waitFor()
+      // The radio lies over its word, so the word shows only while the radio paints nothing.
+      const seen = await radios.evaluateAll((inputs) =>
+        inputs.map((input) => {
+          const box = input.getBoundingClientRect()
+          const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+          return {
+            word: input.parentElement?.textContent?.trim(),
+            onTop: top === input,
+            fill: getComputedStyle(input).backgroundColor,
+          }
+        })
+      )
+      const wrong = seen.filter(({ onTop, fill }) => !onTop || fill !== "rgba(0, 0, 0, 0)")
+      if (seen.length !== 3 || wrong.length > 0) {
+        throw new Error(`segments: ${JSON.stringify(seen)}`)
+      }
+      return seen.map(({ word }) => word).join(", ") + ": each radio on top, painting nothing"
+    },
+  })),
 ]

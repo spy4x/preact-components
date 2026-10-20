@@ -389,7 +389,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
                         value={value}
                         checked={checked}
                         class={cn(
-                          "absolute inset-0 m-0 cursor-pointer appearance-none rounded-[var(--radius-primary,0.5rem)]",
+                          "absolute inset-0 m-0 cursor-pointer appearance-none rounded-[var(--radius-primary,0.5rem)] bg-transparent",
                           focusRing,
                         )}
                         onChange={() => account.onThemeChange?.(value)}
