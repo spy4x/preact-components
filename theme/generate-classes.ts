@@ -84,7 +84,103 @@ function excludePattern(pattern: string): string {
 }
 
 /**
- * Scan every published package's shipped `.ts`/`.tsx` files.
+ * The characters after which a `/` starts a regular expression rather than a division: an operator
+ * or an opening bracket, or the start of the text.
+ */
+const REGEX_BEFORE = /[(,=:[!&|?{};+\-*%<>~^]$/
+
+/**
+ * A source with every `//` and `/* *\/` comment blanked out, so a class a JSDoc only mentions is
+ * not scanned as one a component renders. Each comment character becomes a space and every line
+ * break is kept, so the scanner sees the code where it was.
+ *
+ * Strings, template literals (with their `${…}` parts) and regular expressions are copied as they
+ * are, so a `//` in a URL survives. A quote or backtick in JSX text is read as starting a string;
+ * a quoted string never crosses a line break, so such a misread ends at the end of its line and
+ * only keeps text, never drops it.
+ *
+ * @param source A `.ts` or `.tsx` module's text.
+ */
+export function stripComments(source: string): string {
+  let out = ""
+  let i = 0
+  /** Template literal depth: each entry counts the open braces inside one `${…}`. */
+  const templates: number[] = []
+  const lastCode = () => out.trimEnd().slice(-1)
+
+  /** Copies a quoted string from `i`, which is at its quote, up to its end or the line's. */
+  const copyString = (quote: string) => {
+    const start = i++
+    while (i < source.length && source[i] !== quote && source[i] !== "\n") {
+      i += source[i] === "\\" ? 2 : 1
+    }
+    if (source[i] === quote) i++
+    out += source.slice(start, i)
+  }
+
+  /** Copies template text from `i` up to the closing backtick or the next `${`. */
+  const copyTemplateText = () => {
+    const start = i
+    while (i < source.length && source[i] !== "`" && !source.startsWith("${", i)) {
+      i += source[i] === "\\" ? 2 : 1
+    }
+    if (source[i] === "`") i++
+    else if (i < source.length) {
+      i += 2
+      templates.push(0)
+    }
+    out += source.slice(start, i)
+  }
+
+  while (i < source.length) {
+    const char = source[i]
+    if (source.startsWith("//", i)) {
+      while (i < source.length && source[i] !== "\n") {
+        out += " "
+        i++
+      }
+    } else if (source.startsWith("/*", i)) {
+      const end = source.indexOf("*/", i + 2)
+      const stop = end === -1 ? source.length : end + 2
+      out += source.slice(i, stop).replace(/[^\n]/g, " ")
+      i = stop
+    } else if (char === '"' || char === "'") {
+      copyString(char)
+    } else if (char === "`") {
+      out += char
+      i++
+      copyTemplateText()
+    } else if (char === "/" && (lastCode() === "" || REGEX_BEFORE.test(lastCode()))) {
+      const start = i++
+      let inClass = false
+      while (i < source.length && source[i] !== "\n" && (inClass || source[i] !== "/")) {
+        if (source[i] === "[") inClass = true
+        else if (source[i] === "]") inClass = false
+        i += source[i] === "\\" ? 2 : 1
+      }
+      i++
+      out += source.slice(start, i)
+    } else if (templates.length > 0 && char === "{") {
+      templates[templates.length - 1]++
+      out += char
+      i++
+    } else if (templates.length > 0 && char === "}") {
+      out += char
+      i++
+      if (templates[templates.length - 1]-- === 0) {
+        templates.pop()
+        copyTemplateText()
+      }
+    } else {
+      out += char
+      i++
+    }
+  }
+  return out
+}
+
+/**
+ * Scan every published package's shipped `.ts`/`.tsx` files, comments left out.
  *
  * @returns Every candidate the scanner reports, unfiltered.
  */
@@ -97,7 +193,13 @@ export async function scanCandidates(): Promise<string[]> {
       sources.push({ base, pattern: excludePattern(pattern), negated: true })
     }
   }
-  return new Scanner({ sources }).scan()
+  const files = new Scanner({ sources }).files
+  if (files.length === 0) throw new Error("the scanner found no published source file")
+  const contents = await Promise.all(files.map(async (file) => ({
+    content: stripComments(await Deno.readTextFile(file)),
+    extension: file.slice(file.lastIndexOf(".") + 1),
+  })))
+  return new Scanner({}).scanFiles(contents)
 }
 
 /**

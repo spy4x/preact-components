@@ -13,7 +13,7 @@ import { Scanner } from "@tailwindcss/oxide"
 import { compile } from "tailwindcss"
 import { fileURLToPath } from "node:url"
 import { COMPONENT_CLASSES } from "./+index.ts"
-import { componentClasses, keepClasses } from "./generate-classes.ts"
+import { componentClasses, keepClasses, stripComments } from "./generate-classes.ts"
 import { stylesheetLoader } from "./integration/load-stylesheet.ts"
 
 const THEME_DIRECTORY = fileURLToPath(new URL("./", import.meta.url))
@@ -173,5 +173,38 @@ describe("keepClasses", () => {
     await expect(keepClasses(["sr-only", `content-["x"]`])).rejects.toThrow(
       `cannot be written inside @source inline`,
     )
+  })
+})
+
+describe("stripComments", () => {
+  it("blanks line and block comments and keeps every line break", () => {
+    const source =
+      `/** Mentions grow. */\nconst a = "p-4" // shrink\n/* top-20\n w-6 */ const b = 1`
+    const stripped = stripComments(source)
+    expect(stripped.length).toBe(source.length)
+    expect(stripped.split("\n").length).toBe(source.split("\n").length)
+    for (const word of ["grow", "shrink", "top-20", "w-6"]) expect(stripped).not.toContain(word)
+    expect(stripped).toContain(`const a = "p-4"`)
+    expect(stripped).toContain("const b = 1")
+  })
+
+  it("keeps a // inside strings, template literals and their ${} parts", () => {
+    const source = [
+      `const url = "https://example.com" // grow`,
+      "const t = `a // b ${x ? `c // d` : { e: 1 }.e} f // g`",
+      `const s = 'h // i'`,
+    ].join("\n")
+    const stripped = stripComments(source)
+    expect(stripped).toContain(`"https://example.com"`)
+    expect(stripped).not.toContain("grow")
+    expect(stripped).toContain("`a // b ${x ? `c // d` : { e: 1 }.e} f // g`")
+    expect(stripped).toContain(`'h // i'`)
+  })
+
+  it("reads a regular expression with a quote in it as one, not as a string", () => {
+    const stripped = stripComments(`const re = /["\\{}]/ // grow\nconst c = "py-16"`)
+    expect(stripped).toContain(`/["\\{}]/`)
+    expect(stripped).not.toContain("grow")
+    expect(stripped).toContain(`"py-16"`)
   })
 })
