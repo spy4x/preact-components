@@ -8,6 +8,7 @@ import {
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "./colors.ts"
+import { stepIndex } from "./keys.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 import { formatDecimal } from "@spy4x/platform/universal/format-number"
 
@@ -211,21 +212,14 @@ export function DonutChart({
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const order = active === null ? -1 : slices.indexOf(active)
-    const last = slices.length - 1
-    const moves: Record<string, () => number | null> = {
-      ArrowRight: () => slices[Math.min(last, order + 1)],
-      ArrowDown: () => slices[Math.min(last, order + 1)],
-      ArrowLeft: () => slices[order < 0 ? last : Math.max(0, order - 1)],
-      ArrowUp: () => slices[order < 0 ? last : Math.max(0, order - 1)],
-      Home: () => slices[0],
-      End: () => slices[last],
-      Escape: () => null,
-    }
-    const move = moves[event.key]
-    if (!move || last < 0) return
+    const order = stepIndex(
+      event.key,
+      active === null ? null : slices.indexOf(active),
+      slices.length,
+    )
+    if (order === undefined) return
     event.preventDefault()
-    setActive(move())
+    setActive(order === null ? null : slices[order])
   }
 
   const label = ariaLabel ?? title ?? `Donut chart of ${data.length} slices`

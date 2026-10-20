@@ -17,6 +17,7 @@ import {
   type TimeStep,
   timeTicks,
 } from "./time-ticks.ts"
+import { stepIndex } from "./keys.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 
 /** A point's place on the X axis: a label, or — on a time axis — an instant. */
@@ -240,20 +241,10 @@ export function LineChart({
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const last = slots.length - 1
-    const moves: Record<string, (current: number | null) => number | null> = {
-      ArrowRight: (current) => Math.min(last, current === null ? 0 : current + 1),
-      ArrowUp: (current) => Math.min(last, current === null ? 0 : current + 1),
-      ArrowLeft: (current) => Math.max(0, current === null ? last : current - 1),
-      ArrowDown: (current) => Math.max(0, current === null ? last : current - 1),
-      Home: () => 0,
-      End: () => last,
-      Escape: () => null,
-    }
-    const move = moves[event.key]
-    if (!move || last < 0) return
+    const next = stepIndex(event.key, active, slots.length)
+    if (next === undefined) return
     event.preventDefault()
-    setActive(move(active))
+    setActive(next)
   }
 
   useLayoutEffect(() => {
