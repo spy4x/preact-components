@@ -797,7 +797,8 @@ function themePreviewSpecs(): Spec[] {
       colorScheme,
       run: async (page) => {
         await radio(page, "Dark", true).waitFor()
-        if (theme === "Light") await radio(page, "Light", false).check()
+        // The radio is visually hidden, so a visitor clicks its chip, the label.
+        if (theme === "Light") await card(page).locator("label", { hasText: "Light" }).click()
         await radio(page, theme, true).waitFor()
         return await axePasses(page, ["#demo-ThemePreview"])
       },
@@ -864,8 +865,7 @@ function radioChipsSpecs(): Spec[] {
       },
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
-      name:
-        `RadioChips: axe finds no violation on the chips, text colour contrast included`,
+      name: `RadioChips: axe finds no violation on the chips, text colour contrast included`,
       pageId: "ui",
       colorScheme,
       run: async (page) => {
@@ -2259,8 +2259,7 @@ export const specs: readonly Spec[] = [
     },
   },
   ...(["light", "dark"] as const).map((colorScheme): Spec => ({
-    name:
-      `ToggleChips: axe finds no violation on the chips, text colour contrast included`,
+    name: `ToggleChips: axe finds no violation on the chips, text colour contrast included`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
@@ -2956,8 +2955,7 @@ async function recordSpoken(page: Page, live: Locator): Promise<() => Promise<st
 /** `QuickAdd` with badges and the empty-title message showing has no axe violation. */
 function quickAddAxe(colorScheme: "light" | "dark"): Spec {
   return {
-    name:
-      `QuickAdd: axe finds no violation with badges and the empty-title message showing`,
+    name: `QuickAdd: axe finds no violation with badges and the empty-title message showing`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
