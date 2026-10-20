@@ -842,6 +842,14 @@ variant reads the frame through `:where()`, so its specificity is unchanged. It 
 compiled dark rule longer: the UI guide's stylesheet grew from 204,309 to 221,333 bytes (27,130 to
 27,565 gzipped), before `theme-preview.css` itself is imported.
 
+Two cases still follow something other than the frame you see:
+
+- `dark:` classes on the frame element itself (through `frameClass`) follow the page, because the
+  variant matches only the frame's descendants. Style the frame with tokens, as its default classes
+  do.
+- A dark frame nested inside a light frame has its `dark:` utilities off: its descendants are inside
+  the outer light frame too, and that exclusion wins. Its tokens are still the dark ones.
+
 The frame shows the library's own palette, not the app's: the copies sit in the tokens' layer, so
 an app that wants its brand inside sets its tokens on `[data-preview-frame]`, unlayered.
 `theme-preview.ts` writes the file from `tokens.css` (`deno task --cwd theme generate`), and
