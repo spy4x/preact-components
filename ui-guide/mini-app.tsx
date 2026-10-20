@@ -10,8 +10,8 @@
  *
  * Rules it keeps, from `pages/README.md`, "Writing a browser check":
  *
- * - **No signal is read and written in one render.** Everything the render reads is `useState`, and
- *   every write happens in an event handler. The toast store's list is a signal, read here and
+ * - **No signal is read and written in one render.** Everything the render reads is a `useSignal`,
+ *   and every write happens in an event handler. The toast store's list is a signal, read here and
  *   written only by its own methods from handlers.
  * - **Server and browser render the same text.** Nothing depends on the clock, the locale or a
  *   browser API; the toast stack and the dialog are empty until a press, so the served markup and
@@ -36,7 +36,8 @@ import { Modal } from "@spy4x/preact-ui/modal"
 import { Toastr } from "@spy4x/preact-ui/toastr"
 import type { SortRule } from "@spy4x/platform/universal/sort"
 import type { JSX } from "preact"
-import { useId, useMemo, useState } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+import { useId, useMemo } from "preact/hooks"
 
 /** A project's state, which the filter column and the status badge read. */
 export type ProjectStatus = "healthy" | "building" | "failing" | "paused"
@@ -94,12 +95,14 @@ const COLUMN_HEADERS = { name: "Project", status: "Status", builds: "Builds" } a
  * @returns The app's frame.
  */
 export function MiniApp(): JSX.Element {
-  const [projects, setProjects] = useState<MiniProject[]>(() => [...MINI_PROJECTS])
-  const [filter, setFilter] = useState<Filter>("all")
-  const [sort, setSort] = useState<SortRule<"name" | "status" | "builds">[]>([])
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [draft, setDraft] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const projectList = useSignal<MiniProject[]>([...MINI_PROJECTS])
+  const filterState = useSignal<Filter>("all")
+  const sortState = useSignal<SortRule<"name" | "status" | "builds">[]>([])
+  const dialogOpen = useSignal(false)
+  const draft = useSignal("")
+  const error = useSignal<string | null>(null)
+  const projects = projectList.value
+  const filter = filterState.value
   // One store for the life of the app; it owns no timer, so nothing needs tearing down.
   const toasts = useMemo(() => createToastStore(), [])
   const formId = useId()
@@ -113,24 +116,24 @@ export function MiniApp(): JSX.Element {
   const totalBuilds = projects.reduce((total, project) => total + project.builds, 0)
 
   const closeDialog = () => {
-    setDialogOpen(false)
-    setDraft("")
-    setError(null)
+    dialogOpen.value = false
+    draft.value = ""
+    error.value = null
   }
   const create = (event: JSX.TargetedSubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const name = draft.trim()
+    const name = draft.value.trim()
     if (name.length === 0) {
-      setError("Give the project a name.")
+      error.value = "Give the project a name."
       return
     }
-    setProjects([...projects, {
-      id: `new-${projects.length}`,
+    projectList.value = [...projectList.value, {
+      id: `new-${projectList.value.length}`,
       name,
       status: "building",
       builds: 0,
-    }])
-    setFilter("all")
+    }]
+    filterState.value = "all"
     closeDialog()
     toasts.success({ body: `Project “${name}” created.`, duration: TOAST_MS })
   }
@@ -161,7 +164,7 @@ export function MiniApp(): JSX.Element {
           >
             Run checks
           </Button>
-          <Button size="sm" data-e2e="mini-app-new" onClick={() => setDialogOpen(true)}>
+          <Button size="sm" data-e2e="mini-app-new" onClick={() => dialogOpen.value = true}>
             <IconPlus class="size-4" />New project
           </Button>
         </Cluster>
@@ -189,7 +192,7 @@ export function MiniApp(): JSX.Element {
               variant="ghost"
               size="sm"
               aria-pressed={filter === entry}
-              onClick={() => setFilter(entry)}
+              onClick={() => filterState.value = entry}
               class="justify-between! aria-pressed:bg-selected-soft aria-pressed:text-selected aria-pressed:hover:bg-selected-soft-hover"
             >
               <span>{entry === "all" ? "All projects" : STATUS[entry].label}</span>
@@ -236,8 +239,8 @@ export function MiniApp(): JSX.Element {
                 ]}
                 rows={shown}
                 rowKey={(row) => row.id}
-                sort={sort}
-                onSortChange={setSort}
+                sort={sortState.value}
+                onSortChange={(next) => sortState.value = next}
                 empty="No project has this status."
                 class="@max-lg:[&_:is(th,td)]:px-3"
               />
@@ -246,7 +249,7 @@ export function MiniApp(): JSX.Element {
         </div>
       </div>
 
-      {dialogOpen && (
+      {dialogOpen.value && (
         <Modal
           open
           onClose={closeDialog}
@@ -266,14 +269,14 @@ export function MiniApp(): JSX.Element {
                 id={inputId}
                 label="Project name"
                 hint="It starts building as soon as it is created."
-                error={error}
+                error={error.value}
                 required
               >
                 <Input
-                  value={draft}
+                  value={draft.value}
                   autoFocus
                   autocomplete="off"
-                  onInput={(event) => setDraft(event.currentTarget.value)}
+                  onInput={(event) => draft.value = event.currentTarget.value}
                   data-e2e="mini-app-name"
                 />
               </Field>
@@ -290,12 +293,13 @@ export const MINI_APP_SNIPPET = `import { Kpi, KpiGrid } from "@spy4x/preact-cha
 import { LineChart } from "@spy4x/preact-charts/line-chart"
 import { createToastStore } from "@spy4x/preact-signals/toast"
 import { Badge, Button, Cluster, DataTable, Field, Input, Modal, Toastr } from "@spy4x/preact-ui"
-import { useMemo, useState } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+import { useMemo } from "preact/hooks"
 
 export function Dashboard({ projects }: { projects: Project[] }) {
   const toasts = useMemo(() => createToastStore(), [])
-  const [sort, setSort] = useState([])
-  const [open, setOpen] = useState(false)
+  const sort = useSignal([])
+  const open = useSignal(false)
 
   return (
     <>
@@ -303,7 +307,7 @@ export function Dashboard({ projects }: { projects: Project[] }) {
         <Button variant="outline" onClick={() => toasts.info({ body: "Checks queued." })}>
           Run checks
         </Button>
-        <Button onClick={() => setOpen(true)}>New project</Button>
+        <Button onClick={() => open.value = true}>New project</Button>
       </Cluster>
       <Toastr toasts={toasts.list.value} onDismiss={toasts.remove} />
 
@@ -316,8 +320,8 @@ export function Dashboard({ projects }: { projects: Project[] }) {
         caption="Projects"
         rows={projects}
         rowKey={(row) => row.id}
-        sort={sort}
-        onSortChange={setSort}
+        sort={sort.value}
+        onSortChange={(next) => sort.value = next}
         columns={[
           { key: "name", header: "Project", sortable: true },
           { key: "status", header: "Status", render: (row) => <Badge text={row.status} /> },
@@ -325,8 +329,8 @@ export function Dashboard({ projects }: { projects: Project[] }) {
         ]}
       />
 
-      {open && (
-        <Modal open title="New project" onClose={() => setOpen(false)}>
+      {open.value && (
+        <Modal open title="New project" onClose={() => open.value = false}>
           <Field id="name" label="Project name" required>
             <Input />
           </Field>
