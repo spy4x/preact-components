@@ -649,10 +649,12 @@ OnboardingStep	type	@spy4x/preact-ui	One step of an `OnboardingChecklist`.
 OnboardingStepAction	type	@spy4x/preact-ui	What a step offers to get it done: a button, or a link.
 OnboardingStepButton	type	@spy4x/preact-ui	A step's action that runs in place, such as opening a dialog.
 OnboardingStepLink	type	@spy4x/preact-ui	A step's action that goes to another page, such as the form that creates a first project.
+PAGE_HERO_LABELS	constant	@spy4x/preact-ui	The English words `PageHero` shows when the caller passes none.
 Page	component	@spy4x/preact-ui	The content column of a page: a readable maximum width, centred, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and the `xl` gap (32 px) between its sections.
 PageAction	component	@spy4x/preact-ui	A page header's primary action: icon and label from `sm` up, the icon alone on a phone.
 PageHeader	component	@spy4x/preact-ui	The header a page starts with: an optional back arrow, the title (and a subtitle) on the left, the primary action and an optional "More actions" menu on the right.
 PageHero	component	@spy4x/preact-ui	The top band of an inner page on a public site: an eyebrow, the page's `<h1>`, a lead and its buttons, in the marketing column (`max-w-6xl`) with a hairline under it.
+PageHeroAuthor	type	@spy4x/preact-ui	The person who wrote a page, named in `PageHero`'s meta line.
 PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control renders: a real page, or a collapsed run of pages.
 PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
