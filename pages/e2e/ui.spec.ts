@@ -790,6 +790,32 @@ function themePreviewSpecs(): Spec[] {
         return `frame ${before.frame} → ${after.frame}; around it ${after.page} both times`
       },
     },
+    {
+      name:
+        `ThemePreview on a ${colorScheme} page: dark: utilities and the preset's dark rules follow the frame, not the page`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        // Save's `dark:bg-accent-600` and the checkbox's `@variant dark { color-scheme: dark }`.
+        const look = () =>
+          frame(page).evaluate((element) => ({
+            save: getComputedStyle(element.querySelector("button")!).backgroundColor,
+            checkbox: getComputedStyle(element.querySelector('input[type="checkbox"]')!)
+              .colorScheme,
+          }))
+        await radio(page, "Dark", true).waitFor()
+        const dark = await look()
+        await card(page).locator("label", { hasText: "Light" }).click()
+        await radio(page, "Light", true).waitFor()
+        const light = await look()
+        if (dark.checkbox !== "dark" || light.checkbox !== "light" || dark.save === light.save) {
+          throw new Error(
+            `dark frame ${JSON.stringify(dark)}, light frame ${JSON.stringify(light)}`,
+          )
+        }
+        return `Save ${dark.save} in the dark frame, ${light.save} in the light one`
+      },
+    },
     ...(["Dark", "Light"] as const).map((theme): Spec => ({
       name:
         `ThemePreview on a ${colorScheme} page: axe finds no violation with ${theme} checked, text colour contrast included`,
