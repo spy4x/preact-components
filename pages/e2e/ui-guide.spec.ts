@@ -94,9 +94,9 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
   theme: { [OBSCURED]: [9, 9] },
   // The header's version pill, and a `LineChart` reference line's label.
   charts: { [OBSCURED]: [1, 1], [OVERLAPPED]: [1, 1] },
-  // The header's version pill; seven pieces of the Map card's text that axe finds another element
-  // over; and the zoom control's minus sign.
-  map: { [OBSCURED]: [1, 1], [OVERLAPPED]: [7, 7], [GLYPH]: [1, 1] },
+  // The header's version pill; eight pieces of the Map card's text that axe finds another element
+  // over, the demo's "Paris warehouse on" button among them (#855); and the zoom control's minus sign.
+  map: { [OBSCURED]: [1, 1], [OVERLAPPED]: [8, 8], [GLYPH]: [1, 1] },
   // The header's version pill, seven lines of the `RailShell` demo's scrolling page and a code
   // block in its scroll region.
   system: { [OBSCURED]: [9, 9] },
@@ -273,6 +273,9 @@ const KNOWN_HOVER_INCOMPLETE: Partial<
 > = {
   // The three disclosure chevrons, as on the page scan.
   ui: { nonBmp: [3, 3, 3] },
+  // The Map demo's "Paris warehouse on" button, which axe finds another element over, as on the
+  // page scan (#855).
+  map: { bgOverlap: [1, 1, 1] },
 }
 
 /** What a pointer can rest on: an element with a hover background, and every table body row. */
