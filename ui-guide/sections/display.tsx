@@ -895,9 +895,11 @@ function PaginationDemo() {
 }
 
 /** One avatar and the caption under it, centred on each other. */
-function Labelled({ caption, children }: { caption: string; children: ComponentChildren }) {
+function Labelled(
+  { caption, e2e, children }: { caption: string; e2e?: string; children: ComponentChildren },
+) {
   return (
-    <Stack gap="sm" class="items-center text-center">
+    <Stack gap="sm" class="items-center text-center" data-e2e={e2e}>
       {children}
       <DemoNote>{caption}</DemoNote>
     </Stack>
@@ -929,7 +931,7 @@ function AvatarDemo() {
         <Labelled caption="initials">
           <Avatar name="Grace Hopper" size="lg" />
         </Labelled>
-        <Labelled caption="broken image: initials">
+        <Labelled caption="broken image: initials" e2e="avatar-broken">
           <Avatar name="Alan Turing" src={brokenAvatar} size="lg" />
         </Labelled>
         <Labelled caption="CJK initials">

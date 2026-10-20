@@ -372,6 +372,12 @@ interface DrawnInBrowser {
  * outlive its reason.
  */
 const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
+  "demo-Avatar": {
+    selector: `[data-e2e="avatar-broken"] > :first-child`,
+    parts: 1,
+    reason: "the broken image's avatar is served as the image and shows the initials only in the " +
+      "browser, which finds on mount that the image already failed",
+  },
   "demo-CrudEditor": {
     selector: `[role="status"][aria-atomic="true"]`,
     parts: 2,
