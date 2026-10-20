@@ -94,7 +94,8 @@ async function readFiles(
  * their files are in the hash whatever the plugin order. A failed app build never reaches
  * `writeBundle`, so it builds no worker and the app build's own error is the one reported. With
  * several environments, the worker goes into the output folder of the environment whose bundle was
- * written (Vite 6+).
+ * written (Vite 6+). A build with `build.write: false` writes nothing, so it calls no
+ * `writeBundle`; the plugin throws for it rather than build no worker.
  *
  * The dev server serves the same worker from memory at `/<fileName>` (under Vite's `base`), built
  * with the same settings, with `__BUILD_ID__` set to `"dev"` and `Cache-Control:
@@ -134,6 +135,15 @@ export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
   return {
     name: "service-worker",
     configResolved: (resolved) => {
+      // `build.write: false` keeps the app build in memory, so Rollup never calls `writeBundle`
+      // and the worker would silently not be built.
+      if (resolved.command === "build" && (resolved.build as { write?: boolean }).write === false) {
+        throw new Error(
+          "serviceWorker builds the worker once Vite writes the app build, and build.write is " +
+            "false, so nothing is written and no worker would be built. Remove build.write: " +
+            "false, or leave serviceWorker out of this build.",
+        )
+      }
       base = resolved.base ?? "/"
       root = resolved.root
       outDir = resolved.build.outDir

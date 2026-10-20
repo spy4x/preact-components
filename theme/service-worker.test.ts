@@ -97,6 +97,23 @@ describe(`serviceWorker`, () => {
     expect(calls).toHaveLength(0)
   })
 
+  it(`refuses a build with build.write false, which would write no worker`, () => {
+    const { plugin } = fixture({})
+    expect(() =>
+      plugin.configResolved!({
+        command: `build`,
+        root: `/app`,
+        build: { outDir: `dist`, write: false } as { outDir: string },
+      })
+    ).toThrow(`build.write is false`)
+    // The dev server builds nothing to disk, so its config is not refused.
+    plugin.configResolved!({
+      command: `serve`,
+      root: `/app`,
+      build: { outDir: `dist`, write: false } as { outDir: string },
+    })
+  })
+
   it(`builds into the output folder of the environment whose bundle was written`, async () => {
     const { calls, plugin } = fixture({ "index.html": `x` })
     // Vite resolves one config per environment; the last one seen is the server's.
