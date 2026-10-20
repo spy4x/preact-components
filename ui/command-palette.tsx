@@ -427,12 +427,14 @@ export function CommandPalette<T extends CommandPaletteOption>(
       role="option"
       aria-selected={index === active}
       onClick={() => choose(option)}
-      onMouseMove={() => index !== active && (activeIndex.value = index)}
+      // No pointer handler moves the highlight, as in `Combobox`: `aria-activedescendant` is where a
+      // screen reader is reading, and a pointer its user is not holding must not drag it around.
+      // The row under the pointer still lights up, in CSS, announcing nothing.
       class={cn(
         "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
         // A touch target on a phone, however short its text.
         "max-sm:min-h-11 max-sm:items-center",
-        index === active && "bg-selected-soft text-selected",
+        index === active ? "bg-selected-soft text-selected" : "hover:bg-hover",
       )}
     >
       <span class="min-w-0">
