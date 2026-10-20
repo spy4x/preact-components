@@ -324,6 +324,7 @@ export {
   type RadioProps,
 } from "./radio.tsx"
 export { type RadioChipOption, RadioChips, type RadioChipsProps } from "./radio-chips.tsx"
+export { ThemePreview, type ThemePreviewLabels, type ThemePreviewProps } from "./theme-preview.tsx"
 export {
   acquireScrollLock,
   applyScrollLock,
