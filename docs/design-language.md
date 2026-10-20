@@ -214,6 +214,13 @@ An app chooses only its brand hue, its destinations and its content.
 | Settings                | `SettingList` and `SettingRow`, grouped by `SettingGroup`; a toggle applies at once, a text value through `InlineEdit`.                                                                               |
 | Create or edit a record | Its editor page at `/<entity>/new` and `/<entity>/:id`, one component for both.                                                                                                                       |
 | Status                  | `Badge` with a word, or `StatusMark` with icon and word. Never a coloured dot alone.                                                                                                                  |
+| A row of chips          | `ToggleChips` for filters an island owns, one or many pressed; `RadioChips` for one choice that must work without JavaScript.                                                                         |
+
+`RadioChips` draws the same chip on native radios in a `<fieldset>` named by its `<legend>`, so it
+renders and switches server-side: the browser keeps the choice, arrow keys move it within one tab
+stop, and page CSS can follow it through `:has(#id:checked)`. Reach for it on a marketing page or
+a demo that works with JavaScript off, and inside a plain form; an island may still pass `value`
+and `onChange`. Never draw a local radio look-alike.
 
 ### Words
 

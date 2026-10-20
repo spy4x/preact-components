@@ -456,7 +456,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1090 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1096 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
@@ -666,6 +666,8 @@ QUICK_ADD_ANNOUNCE_PAUSE_MS	constant	@spy4x/preact-ui	How long the typing must p
 QuickAdd	component	@spy4x/preact-ui	One field that adds an item to a list: type, press Enter.
 QuickAddDueLabel	type	@spy4x/preact-ui	Words a due day for a badge.
 Radio	component	@spy4x/preact-ui	One radio choice.
+RadioChipOption	type	@spy4x/preact-ui	One chip of a `RadioChips` group.
+RadioChips	component	@spy4x/preact-ui	A single choice drawn as `ToggleChips` chips, built on native radios so it works before, or without, any JavaScript.
 RadioGroup	component	@spy4x/preact-ui	Radio set with an accessible group name.
 RadioOption	type	@spy4x/preact-ui	One choice of a `RadioGroup`.
 ResolvedDateTime	type	@spy4x/preact-ui	What `resolveDateTime` found for one wall-clock value in one zone.
