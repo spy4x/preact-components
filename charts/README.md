@@ -8,8 +8,13 @@ the axis and loading helpers behind them.
   tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
-  tooltip with its label, value and share, by pointer and by keyboard. Both tooltips stay inside the
-  chart and the viewport, flipping to the other side of the point near an edge.
+  tooltip with its label, value and share, by pointer and by keyboard. In both, ArrowDown and
+  ArrowRight go to the next item and ArrowUp and ArrowLeft to the previous one. Both tooltips stay
+  inside the chart and the viewport, flipping to the other side of the point near an edge.
+- **Titles fit the page's outline.** `LineChart`, `Bars` and `DonutChart` print `title` as an `<h3>`,
+  with data and without; `headingLevel` picks another level.
+- **A caller's `class` wins.** Every component merges `class` into its own classes with
+  `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
 - **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
   time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
@@ -32,8 +37,9 @@ the axis and loading helpers behind them.
   inside effects and event handlers only. What the server prints, the browser prints too: the time
   axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
   (`timeZone`, `locale`), so hydration never has to replace text.
-- **No sibling package imports.** `charts/` depends on `preact`, `arktype` and `@spy4x/platform`'s
-  axis maths, and nothing else in the workspace, so it stays independent of `ui/` and `signals/`.
+- **No sibling package imports.** `charts/` depends on `preact`, `arktype`, `tailwind-merge` and
+  `@spy4x/platform`'s axis maths, and nothing else in the workspace, so it stays independent of
+  `ui/` and `signals/`.
 
 ## Components
 

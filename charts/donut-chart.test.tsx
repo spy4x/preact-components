@@ -168,4 +168,19 @@ describe("DonutChart", () => {
     expect(html).not.toContain("tabindex")
     expect(html).toContain(`role="img" aria-label="Orders"`)
   })
+
+  it("titles the chart with a heading at the level asked for, with data and without", () => {
+    expect(render(<DonutChart data={data} title="Orders" />)).toContain(">Orders</h3>")
+    expect(render(<DonutChart data={data} title="Orders" headingLevel={4} />))
+      .toMatch(/<h4 class="[^"]*">Orders<\/h4>/)
+    expect(render(<DonutChart data={[]} title="Orders" headingLevel={2} />))
+      .toMatch(/<h2 class="[^"]*">Orders<\/h2>/)
+  })
+
+  it("lets a caller's class replace a default utility instead of adding to it", () => {
+    const html = render(<DonutChart data={data} class="gap-2" />)
+
+    expect(html).toMatch(/^<div class="[^"]*\bgap-2\b/)
+    expect(html).not.toContain("gap-6")
+  })
 })

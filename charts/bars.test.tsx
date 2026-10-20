@@ -50,23 +50,18 @@ describe("Bars", () => {
     expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
   })
 
-  it("leaves the background to a caller whose class sets one", () => {
-    const html = render(<Bars data={data} class="bg-surface mt-2" />)
+  it("puts a caller's background on the wrapper, behind the still transparent table", () => {
+    const html = render(<Bars data={data} class="bg-surface" />)
 
-    expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-surface\b/)
-    expect(html).not.toContain("bg-transparent")
-  })
-
-  it("stays transparent when the caller's background applies only on hover", () => {
-    const html = render(<Bars data={data} class="hover:bg-gray-100" />)
-
+    expect(html).toMatch(/^<div class="[^"]*\bbg-surface\b/)
     expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
   })
 
-  it("stays transparent when the caller's class sets no background", () => {
-    const html = render(<Bars data={data} class="mt-2" />)
+  it("lets a caller's class replace a default utility instead of adding to it", () => {
+    const html = render(<Bars data={data} class="gap-4" />)
 
-    expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
+    expect(html).toMatch(/^<div class="[^"]*\bgap-4\b/)
+    expect(html).not.toMatch(/^<div class="[^"]*\bgap-2\b/)
   })
 
   it("honours a fixed maximum for cross-list comparison", () => {
@@ -143,9 +138,7 @@ describe("Bars", () => {
     const titled = render(<Bars data={data} title="Top products" />)
     const overridden = render(<Bars data={data} ariaLabel="Orders by product" />)
 
-    expect(titled).toContain(
-      '<caption class="mb-2 text-left text-sm font-medium">Top products</caption>',
-    )
+    expect(titled).toContain('<h3 class="text-sm font-medium">Top products</h3>')
     expect(titled).toContain('aria-label="Top products"')
     expect(overridden).toContain('aria-label="Orders by product"')
   })
@@ -163,9 +156,19 @@ describe("Bars", () => {
     expect(html).toContain("var(--color-muted-foreground, oklch(0.551 0.027 264.364))")
   })
 
-  it("puts the palette's custom properties on its table so bar colours follow the theme", () => {
+  it("puts the palette's custom properties on its wrapper so bar colours follow the theme", () => {
     const html = render(<Bars data={data} />)
 
-    expect(html).toMatch(/<table class="[^"]*\[--chart-4:#4a3aa7\][^"]*dark:\[--chart-4:#9085e9\]/)
+    expect(html).toMatch(/^<div class="[^"]*\[--chart-4:#4a3aa7\][^"]*dark:\[--chart-4:#9085e9\]/)
+  })
+
+  it("titles the chart with the same heading with data and without, at the level asked for", () => {
+    const heading = '<h3 class="text-sm font-medium">Top products</h3>'
+    expect(render(<Bars data={data} title="Top products" />)).toContain(heading)
+    expect(render(<Bars data={[]} title="Top products" />)).toContain(heading)
+    expect(render(<Bars data={data} title="Top products" />)).not.toContain("<caption")
+
+    const level = render(<Bars data={data} title="Top products" headingLevel={2} />)
+    expect(level).toContain('<h2 class="text-sm font-medium">Top products</h2>')
   })
 })
