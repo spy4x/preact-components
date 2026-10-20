@@ -10,7 +10,7 @@ import { Tooltip, type TooltipPlacement } from "./tooltip.tsx"
  * may carry a name, where the surface is anchored, and where its bridge to the trigger is. They
  * reach none of the behaviour: the Escape press that dismisses a hint, the pointer that keeps one
  * up, and the same-task race a listener attached only after a render used to lose (`#252`) all
- * need a browser, and are proven in `pages/checks/ui.ts` instead.
+ * need a browser, and are proven in `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` instead.
  */
 
 /** The `id` of the element carrying `role="tooltip"`, read back from rendered markup. */
@@ -156,13 +156,23 @@ describe("Tooltip", () => {
       </Tooltip>,
     )
 
-    // One tab stop for one control, and `role="group"` so the name and the description still land
-    // on an element the accessibility tree keeps.
+    // One tab stop for one control, and `role="group"` so the name still lands on an element the
+    // accessibility tree keeps.
     expect(html.startsWith('<span role="group"')).toBe(true)
     expect(html).not.toContain("tabindex")
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html).toContain('aria-label="Retry"')
-    expect(html).toContain("aria-describedby=")
+  })
+
+  it("leaves the description off the group, for the control inside it to carry", () => {
+    const html = render(
+      <Tooltip label="Retry" content="Retries" focusable={false}>
+        <button type="button">Retry</button>
+      </Tooltip>,
+    )
+
+    // An effect hangs it on the button after hydration; `pages/e2e/ui.spec.ts` proves that part.
+    expect(html).not.toContain("aria-describedby=")
   })
 
   it("anchors above the trigger by default", () => {

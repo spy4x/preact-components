@@ -1,8 +1,8 @@
 import { cn } from "@spy4x/preact-cn"
 import { type Signal, useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId } from "preact/hooks"
-import { hintBubbleClasses } from "./hint-bubble.ts"
+import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
+import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
 
 /** Side of the trigger the tooltip is anchored to. */
 export type TooltipPlacement = "top" | "right" | "bottom" | "left"
@@ -27,7 +27,7 @@ export interface TooltipProps {
    * Defaults to `true`; pass `false` when the trigger children are themselves interactive (a
    * `<button>`, an `<a>`), so a keyboard user does not land on two stops for one control and one
    * interactive element is not nested inside another. The wrapper is then a `role="group"` around
-   * the caller's control; what that costs is on the component's own documentation.
+   * the caller's control, and the first focusable element inside it carries the description.
    */
   focusable?: boolean
   /** Extra utilities for the trigger wrapper. */
@@ -65,6 +65,10 @@ const surfaceBase =
  */
 const bubbleBase = hintBubbleClasses
 
+/** The first focusable element inside a `focusable={false}` wrapper, which takes the description. */
+const controlSelector =
+  "button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])"
+
 /**
  * Where the surface sits, and which of its sides carries the bridge back to the trigger.
  *
@@ -82,9 +86,11 @@ const placementClasses: Record<TooltipPlacement, string> = {
 /**
  * Supplementary hint attached to a trigger, revealed on hover and on keyboard focus.
  *
- * Positioning is CSS-only: the wrapper is `relative`, the surface `absolute` plus one of four
- * static anchor utility sets. There is no measurement, no scroll listener and no resize listener,
- * so the component renders on the server and costs nothing while nobody is on it.
+ * Positioning is CSS first: the wrapper is `relative`, the surface `absolute` plus one of four
+ * static anchor utility sets, so the component renders on the server. When the trigger is hovered
+ * or focused, the bubble is measured once and the surface slides sideways to stay inside the
+ * viewport with an 8 px gutter, the same `shiftIntoView` `ThemeToggle` and `Coachmark` use. There
+ * is no scroll listener and no resize listener, so it costs nothing while nobody is on it.
  *
  * The wrapper is the described element: it carries `aria-describedby`, and the tooltip surface
  * carries that id and `role="tooltip"`. The trigger keeps its own name through `label`, so the
@@ -115,15 +121,14 @@ const placementClasses: Record<TooltipPlacement, string> = {
  *   takes the clicks that would have gone there. It is inert again the moment the hint is hidden.
  *
  * With `focusable={false}` the wrapper is a `role="group"` instead, since the caller's control is
- * the interactive element and nesting one inside another is invalid. The name and the description
- * then belong to that group: a reader that announces a group on entering it reads both, and one
- * that announces only the focused control reads the control's own name. A caller who needs the
- * description on the control itself puts `aria-describedby` there and leaves the layout here.
+ * the interactive element and nesting one inside another is invalid. The group keeps the name,
+ * and after hydration the first focusable element inside it gets `aria-describedby`, added to any
+ * ids it already has, so a reader hears the hint on the control it is focused on. A server render
+ * carries no description until then.
  *
- * Limits, accepted on purpose: anchored placement means the surface can overflow the viewport at
- * an edge, and it does not flip or clamp. Nothing in this repository needs that — every anchored
- * popup here (`Dropdown`, `CopyButton`'s `title`) uses a static anchor too — and a
- * collision pass would cost layout reads on every reveal.
+ * Limits, accepted on purpose: the surface slides sideways only. It does not flip to the other
+ * side, and nothing moves it up or down, so a `top` hint on a trigger at the very top of the page
+ * still runs past it.
  */
 export function Tooltip(
   {
@@ -140,6 +145,12 @@ export function Tooltip(
   const hovered = useSignal(false)
   const focused = useSignal(false)
   const dismissed = useSignal(false)
+  const wrapperRef = useRef<HTMLElement>(null)
+  const surfaceRef = useRef<HTMLSpanElement>(null)
+  const bubbleRef = useRef<HTMLSpanElement>(null)
+  // Counts engagements from nothing; each one measures the bubble again, after the render that may
+  // have just un-hidden a dismissed surface.
+  const engagements = useSignal(0)
 
   // Empty dependency array, deliberately: this attaches once on mount rather than reacting to
   // whether the trigger is engaged, and reads `hovered.value`/`focused.value` straight off the
@@ -166,25 +177,58 @@ export function Tooltip(
    * @param channel The signal for the channel that just engaged.
    */
   const engage = (channel: Signal<boolean>) => {
-    if (!hovered.value && !focused.value) dismissed.value = false
+    if (!hovered.value && !focused.value) {
+      dismissed.value = false
+      engagements.value++
+    }
     channel.value = true
   }
 
+  // Slide the surface sideways so the bubble fits the viewport, before the browser paints it. The
+  // bubble is measured where its anchor puts it, with no slide, so a hint that fits again after a
+  // resize goes back to centre. A `transform` rather than `translate`: the anchor utilities already
+  // set `translate`, and the two properties add up.
+  const engagement = engagements.value
+  useLayoutEffect(() => {
+    const surface = surfaceRef.current
+    const bubble = bubbleRef.current
+    if (engagement === 0 || !surface || !bubble) return
+    surface.style.transform = ""
+    const box = bubble.getBoundingClientRect()
+    const shift = shiftIntoView(box.left, box.right, document.documentElement.clientWidth)
+    if (shift !== 0) surface.style.transform = `translateX(${shift}px)`
+  }, [engagement])
+
   const hidden = dismissed.value
+
+  // With `focusable={false}` the description goes on the caller's control, not on the group. It is
+  // added to the ids the control already has and taken off again when the hint is dismissed.
+  useEffect(() => {
+    if (focusable || hidden) return
+    const control = wrapperRef.current?.querySelector(controlSelector)
+    if (!control) return
+    const own = control.getAttribute("aria-describedby")
+    control.setAttribute("aria-describedby", own ? `${own} ${tooltipId}` : tooltipId)
+    return () => {
+      if (own === null) control.removeAttribute("aria-describedby")
+      else control.setAttribute("aria-describedby", own)
+    }
+  }, [focusable, hidden, tooltipId])
+
   const surface = (
     <span
+      ref={surfaceRef}
       id={tooltipId}
       role="tooltip"
       hidden={hidden}
       class={cn(surfaceBase, placementClasses[placement], contentClass)}
     >
-      <span class={bubbleBase}>{content}</span>
+      <span ref={bubbleRef} class={bubbleBase}>{content}</span>
     </span>
   )
   const wrapper = {
     class: cn(triggerBase, className),
     "aria-label": label,
-    "aria-describedby": hidden ? undefined : tooltipId,
     onPointerEnter: () => engage(hovered),
     onPointerLeave: () => hovered.value = false,
     onFocusIn: () => engage(focused),
@@ -193,7 +237,7 @@ export function Tooltip(
 
   if (!focusable) {
     return (
-      <span role="group" {...wrapper}>
+      <span ref={wrapperRef} role="group" {...wrapper}>
         {children}
         {surface}
       </span>
@@ -201,7 +245,7 @@ export function Tooltip(
   }
 
   return (
-    <button type="button" {...wrapper}>
+    <button type="button" aria-describedby={hidden ? undefined : tooltipId} {...wrapper}>
       {children}
       {surface}
     </button>

@@ -58,8 +58,9 @@ function fits(side: CoachmarkSide, top: number, left: number, width: number, hei
 /**
  * Place a surface of `width` × `height` on `side` of `target`. When it has no room on that side
  * and has room on the opposite one, it flips there. It is then shifted so the whole of it stays
- * inside the viewport with an 8 px gutter, the way `Tooltip`'s hint is: along the target's edge
- * when the target is near a corner, and over the target when neither side has room.
+ * inside the viewport with an 8 px gutter, on both axes (`Tooltip`'s hint shifts only sideways):
+ * along the target's edge when the target is near a corner, and over the target when neither side
+ * has room.
  *
  * @param side The side the app asked for.
  * @param target The target's box, from `getBoundingClientRect()`.
