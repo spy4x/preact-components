@@ -894,21 +894,11 @@ export function IconList(props: IconProps): JSX.Element {
   )
 }
 
-/** Lucide outline (stroke-2) · "loader" from lucide-static@1.47.0 (#233). */
-export function IconLoading(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "2", round: true, spin: true },
-    <path d="M12 2v4" />,
-    <path d="m16.2 7.8 2.9-2.9" />,
-    <path d="M18 12h4" />,
-    <path d="m16.2 16.2 2.9 2.9" />,
-    <path d="M12 18v4" />,
-    <path d="m4.9 19.1 2.9-2.9" />,
-    <path d="M2 12h4" />,
-    <path d="m4.9 4.9 2.9 2.9" />,
-  )
-}
+/**
+ * The same spinner as {@link IconSpinner}, under the name older apps import. It drew Lucide's
+ * eight-spoke "loader" until the library settled on one spinner.
+ */
+export const IconLoading: (props: IconProps) => JSX.Element = IconSpinner
 
 /** Heroicons v1 outline (stroke-2) · from template. */
 export function IconLocationMarker(props: IconProps): JSX.Element {

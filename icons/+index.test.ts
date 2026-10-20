@@ -18,6 +18,9 @@ const iconEntries = Object.entries(icons).filter(([, value]) => typeof value ===
 
 const names = iconEntries.map(([name]) => name)
 
+/** Exports kept under an old name: each is the very function of the export it names. */
+const ALIASES: Record<string, string> = { IconLoading: "IconSpinner" }
+
 /** The size class every icon falls back to when the caller passes no class. */
 const DEFAULT_SIZE = /(?:size-\d+(?:\.\d+)?|h-\d+(?:\.\d+)? w-auto)$/
 
@@ -74,14 +77,22 @@ describe("icon set", () => {
     expect(new Set(names).size).toBe(names.length)
   })
 
+  it("ships each alias, IconLoading among them, as the very component it names", () => {
+    expect(Object.keys(ALIASES)).toContain("IconLoading")
+    const all = icons as Record<string, unknown>
+    for (const [alias, target] of Object.entries(ALIASES)) expect(all[alias]).toBe(all[target])
+  })
+
   it("ships no two exports with the same glyph", () => {
-    const keys = iconEntries.map(([name]) => glyphKey(vnodeOf(name, {})))
+    // An alias is one component under two names, so it is not a second glyph.
+    const glyphs = iconEntries.filter(([name]) => !(name in ALIASES))
+    const keys = glyphs.map(([name]) => glyphKey(vnodeOf(name, {})))
     // Grouped by glyph so a failure names the collision instead of only its count: a duplicate
     // body merged under a second name is the one regression this suite exists to stop.
     const byGlyph = new Map<string, string[]>()
     for (const [index, key] of keys.entries()) {
       const group = byGlyph.get(key) ?? []
-      group.push(iconEntries[index][0])
+      group.push(glyphs[index][0])
       byGlyph.set(key, group)
     }
     const collisions = [...byGlyph.values()].filter((group) => group.length > 1)
