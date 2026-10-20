@@ -439,6 +439,11 @@ export function UIGuide(
   // Set when a navigation closes the drawer, so its `close` handler sends focus to the page that
   // was picked rather than back to the menu button.
   const closedByNavigation = useRef(false)
+  /** Close the drawer because a page was picked, so focus goes to that page. */
+  const closeNavForPage = () => {
+    if (dialog.current?.open) closedByNavigation.current = true
+    closeNav()
+  }
 
   /**
    * Focus the content column, as the skip link does. It is focusable only while it holds focus: a
@@ -457,8 +462,7 @@ export function UIGuide(
 
   useEffect(() => {
     if (hash === undefined) return
-    if (dialog.current?.open) closedByNavigation.current = true
-    closeNav()
+    closeNavForPage()
 
     for (const marked of document.querySelectorAll("[data-deep-link]")) {
       marked.removeAttribute("data-deep-link")
@@ -506,14 +510,14 @@ export function UIGuide(
   }, [hash])
 
   const follow = (href: string, event: JSX.TargetedMouseEvent<HTMLAnchorElement>) => {
-    closeNav()
+    closeNavForPage()
     if (!navigate) return
     event.preventDefault()
     navigate(href)
   }
   // A search result is not a link, so it changes the address itself when no port is given.
   const go = (href: string) => {
-    closeNav()
+    closeNavForPage()
     if (navigate) navigate(href)
     else globalThis.location.hash = href.slice(1)
   }
