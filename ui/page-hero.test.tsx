@@ -90,4 +90,16 @@ describe("PageHero", () => {
       "YYYY-MM-DD",
     )
   })
+
+  it("refuses a calendar day that does not exist, such as 30 February", () => {
+    expect(() => render(<PageHero title="Features" updated="2026-02-30" />)).toThrow("2026-02-30")
+    expect(() => render(<PageHero title="Features" updated="2026-13-01" />)).toThrow("2026-13-01")
+  })
+
+  it("gives the author link the library's focus ring classes, not the browser's outline", () => {
+    const html = render(<PageHero title="Features" author={{ name: "Anton Shubin", href: "/a" }} />)
+    expect(html).toMatch(
+      /<a class="[^"]*\bfocus-visible:outline-hidden\b[^"]*\bfocus-visible:ring-2\b[^"]*\bfocus-visible:ring-focus\b[^"]*\bfocus-visible:ring-offset-2\b/,
+    )
+  })
 })

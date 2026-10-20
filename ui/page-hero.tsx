@@ -23,6 +23,18 @@ export const PAGE_HERO_LABELS: PageHeroLabels = { by: "By", updated: "Updated" }
 
 const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
 
+/** The author link: foreground text, underlined on hover, with the library's focus ring. */
+const AUTHOR_LINK = "font-medium text-foreground underline-offset-4 hover:underline " +
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus " +
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+
+/** Whether `value` is `YYYY-MM-DD` and that day exists: `2026-02-30` and `2026-13-01` do not. */
+function isCalendarDay(value: string): boolean {
+  if (!CALENDAR_DAY.test(value)) return false
+  const day = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(day.getTime()) && day.toISOString().startsWith(value)
+}
+
 /** Props of {@link PageHero}. */
 export interface PageHeroProps {
   /** A short line above the title, in mono accent text, such as "Pricing". */
@@ -38,7 +50,8 @@ export interface PageHeroProps {
   /**
    * The calendar day the page last changed, `YYYY-MM-DD`, in the meta line under the buttons as a
    * `<time datetime>`. Shown in the reader's region format (`FormatContext`), counted in UTC so
-   * the day never shifts with the server's or the reader's zone. Anything else throws.
+   * the day never shifts with the server's or the reader's zone. Any other shape, or a day that
+   * does not exist (`2026-02-30`), throws.
    */
   updated?: string
   /** The meta line's words; see {@link PAGE_HERO_LABELS}. */
@@ -69,7 +82,7 @@ export function PageHero(
   { eyebrow, title, lead, children, author, updated, labels, class: className }: PageHeroProps,
 ): JSX.Element {
   const format = useFormat()
-  if (updated !== undefined && !CALENDAR_DAY.test(updated)) {
+  if (updated !== undefined && !isCalendarDay(updated)) {
     throw new Error(`PageHero: updated must be a calendar day, YYYY-MM-DD, got "${updated}"`)
   }
   const words = { ...PAGE_HERO_LABELS, ...labels }
@@ -89,7 +102,7 @@ export function PageHero(
                 {words.by} {author.href
                   ? (
                     <a
-                      class="font-medium text-foreground underline-offset-4 hover:underline"
+                      class={AUTHOR_LINK}
                       href={author.href}
                     >
                       {author.name}
