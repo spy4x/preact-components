@@ -14,22 +14,11 @@
  * and a card naming a name its package does not export.
  */
 
-import * as charts from "@spy4x/preact-charts"
-import * as cn from "@spy4x/preact-cn"
-import * as crud from "@spy4x/preact-crud"
-import * as map from "@spy4x/preact-map"
-import * as signals from "@spy4x/preact-signals"
-import * as system from "@spy4x/preact-system"
-import * as theme from "@spy4x/preact-theme"
-import * as ui from "@spy4x/preact-ui"
-import { parse } from "@std/jsonc"
+import { memberConfig, readEntryPoints } from "../infra/scripts/workspace.ts"
 import { catalogueSections, coveredPackageIds, type PackageId } from "./registry.ts"
 import { isComponent } from "./component-kind.ts"
 
 export { isComponent, isComponentName } from "./component-kind.ts"
-
-/** Barrel namespace of every covered package, keyed the way the catalogue keys it. */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
 
 /** One package's value exports: each name, and the value it is bound to. */
 export type PackageNamespace = Readonly<Record<string, unknown>>
@@ -105,84 +94,27 @@ export function demoedNamesOf(id: PackageId): string[] {
     .flatMap((section) => section.names)
 }
 
-/** A package's `deno.json`. */
-function configOf(id: PackageId): URL {
-  return new URL(`./${id}/deno.json`, ROOT)
-}
-
 /**
- * The subpath modules a package config publishes, resolved from its `exports` map: everything it
- * publishes besides the barrel. {@link subpathModulesOf} reads a workspace member's; this form takes
- * the config itself so a test can hand it a fixture package no workspace member is.
+ * Every value export a consumer can reach in one package config: its barrel and every subpath
+ * module, since an export only its own subpath carries is otherwise invisible. The modules are read
+ * by `readEntryPoints` in `infra/scripts/workspace.ts`, the repository's one export reader.
  *
- * Every target is imported as it stands. None of the covered packages publishes anything but
- * TypeScript, so a stylesheet or other non-module target would fail the read loudly rather than be
- * skipped quietly — and it should, because a consumer could reach that subpath.
- *
- * @param config URL of the package's config; each target resolves against it.
- * @returns Each subpath key and its module as an importable URL.
- * @throws When a subpath's target is not a string. This cannot fire for a workspace member: Deno
- *   warns about such a config and then will not resolve the member at all, and this module imports
- *   every covered barrel by its member name, so it fails to load before the read runs. The throw is
- *   for a caller that hands in a config directly, as `coverage.test.ts` does with its fixture.
- */
-export async function subpathModules(
-  config: URL,
-): Promise<Array<{ subpath: string; href: string }>> {
-  // `exports` is a string (the barrel alone) or an object. Deno cannot resolve a package's barrel
-  // from any other shape, or from none, and this module imports every covered barrel statically, so
-  // the read never runs for such a package.
-  const { exports } = parse(await Deno.readTextFile(config)) as {
-    exports: string | Record<string, unknown>
-  }
-  if (typeof exports === "string") return []
-
-  const modules: Array<{ subpath: string; href: string }> = []
-  for (const [subpath, target] of Object.entries(exports)) {
-    if (subpath === ".") continue
-    if (typeof target !== "string") {
-      throw new Error(`${config.href} declares ${subpath} with a non-string target`)
-    }
-
-    modules.push({ subpath, href: new URL(target, config).href })
-  }
-
-  return modules
-}
-
-/**
- * A workspace member's subpath modules: {@link subpathModules} over its own `deno.json`.
- *
- * @param id Package to read.
- */
-export function subpathModulesOf(id: PackageId): Promise<Array<{ subpath: string; href: string }>> {
-  return subpathModules(configOf(id))
-}
-
-/**
- * Every value export a consumer can reach in one package config: its barrel, and every subpath
- * module, since an export only its own subpath carries is otherwise invisible.
- *
- * @param barrel The package's barrel namespace.
  * @param config URL of the package's config.
  */
-export async function readExports(barrel: object, config: URL): Promise<PackageNamespace> {
-  const merged: Record<string, unknown> = { ...barrel }
-  for (const { href } of await subpathModules(config)) {
-    Object.assign(merged, await import(href) as object)
-  }
-
+export async function readExports(config: URL): Promise<PackageNamespace> {
+  const merged: Record<string, unknown> = {}
+  for (const { namespace } of await readEntryPoints(config)) Object.assign(merged, namespace)
   return merged
 }
 
 /**
  * Every value export a consumer can reach in one workspace member: {@link readExports} over its
- * barrel and its `deno.json`.
+ * `deno.json`.
  *
  * @param id Package to read.
  */
-export function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
-  return readExports(BARRELS[id], configOf(id))
+export async function valueExportsOf(id: PackageId): Promise<PackageNamespace> {
+  return readExports(await memberConfig(id))
 }
 
 /** Every catalogued package's value exports, keyed by package. */

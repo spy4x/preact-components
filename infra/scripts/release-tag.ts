@@ -12,15 +12,8 @@
  *
  * @module
  */
-import { fromFileUrl, join } from "@std/path"
 import { PUBLISHED_PACKAGES } from "./private-names.ts"
-
-const ROOT = fromFileUrl(new URL("../../", import.meta.url))
-
-/** Reads the `version` field of a package config; some configs carry comments, so no JSON.parse. */
-export function readVersion(configText: string): string | undefined {
-  return configText.match(/^\s*"version"\s*:\s*"([^"]+)"/m)?.[1]
-}
+import { memberConfig, readConfig } from "./workspace.ts"
 
 /**
  * Compares a tag with every package's version.
@@ -48,7 +41,7 @@ export function checkReleaseTag(
 if (import.meta.main) {
   const versions: Record<string, string | undefined> = {}
   for (const pkg of PUBLISHED_PACKAGES) {
-    versions[pkg] = readVersion(Deno.readTextFileSync(join(ROOT, pkg, "deno.json")))
+    versions[pkg] = (await readConfig(await memberConfig(pkg))).version
   }
   const problems = checkReleaseTag(Deno.env.get("CI_COMMIT_TAG"), versions)
   if (problems.length > 0) {

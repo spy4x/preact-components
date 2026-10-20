@@ -1,6 +1,7 @@
-import { fromFileUrl, join } from "@std/path"
+import { fromFileUrl } from "@std/path"
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { memberConfig, packageDirectories, readConfig } from "./workspace.ts"
 import {
   assertFilesFound,
   matchLines,
@@ -196,24 +197,10 @@ describe("readAndMatch", () => {
 })
 
 describe("PUBLISHED_PACKAGES", () => {
-  it("lists every top-level directory whose deno.json names a package", () => {
-    const root = fromFileUrl(new URL("../../", import.meta.url))
+  it("lists every top-level directory whose deno.json names a package", async () => {
     const named: string[] = []
-    for (const entry of Deno.readDirSync(root)) {
-      if (!entry.isDirectory) continue
-      // Deno accepts a package config named either way, so a `deno.jsonc` package counts too.
-      let text: string | undefined
-      for (const file of ["deno.json", "deno.jsonc"]) {
-        try {
-          text = Deno.readTextFileSync(join(root, entry.name, file))
-          break
-        } catch (error) {
-          if (!(error instanceof Deno.errors.NotFound)) throw error
-        }
-      }
-      if (text === undefined) continue
-      // Some package configs carry comments, so this reads the one field instead of parsing JSON.
-      if (/^\s*"name"\s*:/m.test(text)) named.push(entry.name)
+    for (const directory of await packageDirectories()) {
+      if ((await readConfig(await memberConfig(directory))).name) named.push(directory)
     }
     expect(named.length).toBeGreaterThan(0)
     expect([...PUBLISHED_PACKAGES].sort()).toEqual(named.sort())

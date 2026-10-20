@@ -27,7 +27,7 @@
 import { Scanner } from "@tailwindcss/oxide"
 import { __unstable__loadDesignSystem } from "tailwindcss"
 import { fileURLToPath } from "node:url"
-import { stripJsonc } from "../infra/scripts/export-lists.ts"
+import { memberConfig, readConfig, workspaceMembers } from "../infra/scripts/workspace.ts"
 import { stylesheetLoader } from "./integration/load-stylesheet.ts"
 
 /** The Tailwind version the root import map pins; the stylesheets are resolved at it. */
@@ -58,7 +58,7 @@ interface SourceEntry {
 /**
  * The directories of every published package except this one.
  *
- * A published package is a top-level directory whose `deno.json` has a `name` (`pages/` has
+ * A published package is a workspace member whose `deno.json` has a `name` (`pages/` has
  * none). `theme/` itself is left out: its classes are defined in its CSS, and scanning it would
  * scan the generated list too.
  *
@@ -66,18 +66,11 @@ interface SourceEntry {
  */
 export async function publishedPackages(): Promise<{ id: string; exclude: string[] }[]> {
   const packages: { id: string; exclude: string[] }[] = []
-  for await (const entry of Deno.readDir(ROOT)) {
-    if (!entry.isDirectory || entry.name === "theme") continue
-    let text: string
-    try {
-      text = await Deno.readTextFile(new URL(`${entry.name}/deno.json`, ROOT))
-    } catch (error) {
-      if (error instanceof Deno.errors.NotFound) continue
-      throw error
-    }
-    const config = JSON.parse(stripJsonc(text))
+  for (const id of await workspaceMembers()) {
+    if (id === "theme") continue
+    const config = await readConfig(await memberConfig(id))
     if (!config.name) continue
-    packages.push({ id: entry.name, exclude: config.publish?.exclude ?? [] })
+    packages.push({ id, exclude: config.publish?.exclude ?? [] })
   }
   return packages.sort((a, b) => a.id.localeCompare(b.id))
 }
