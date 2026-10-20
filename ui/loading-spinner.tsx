@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconSpinner } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 
 /** Rendered size of a {@link LoadingSpinner}. */
@@ -26,12 +27,6 @@ const sizeClasses: Record<SpinnerSize, string> = {
   lg: "size-12",
 }
 
-const strokeWidths: Record<SpinnerSize, string> = {
-  sm: "3",
-  md: "3",
-  lg: "2.5",
-}
-
 /**
  * Inline spinner with an accessible live region. It stands still when the system asks for reduced
  * motion.
@@ -49,26 +44,7 @@ export function LoadingSpinner(
       role="status"
       aria-live="polite"
     >
-      <svg
-        class={cn("animate-spin text-selected motion-reduce:animate-none", sizeClasses[size])}
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width={strokeWidths[size]}
-        />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
-        />
-      </svg>
+      <IconSpinner class={cn("text-selected", sizeClasses[size])} />
       {label
         ? <p class="text-sm text-muted">{label}</p>
         : <span class="sr-only">{loadingLabel}</span>}

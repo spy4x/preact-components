@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconXMark } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
@@ -14,7 +15,7 @@ import {
 } from "./combobox.tsx"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
-import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
+import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 
 /**
  * The comparison key of a tag: trimmed, composed to NFC and lower-cased, so `" Work"` and `"work"`
@@ -465,7 +466,7 @@ export function TagInput({
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => removeAt(index)}
                 >
-                  <CrossGlyph />
+                  <IconXMark class="size-4" />
                 </button>
               </li>
             ))}

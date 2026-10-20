@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
@@ -463,7 +464,7 @@ export function Modal(
                   title={cancelLabel}
                   onClick={handleHeaderClose}
                 >
-                  <CloseGlyph />
+                  <IconXMark class="size-4" />
                 </Button>
               )
               : null}
@@ -479,23 +480,6 @@ export function Modal(
         )
         : null}
     </dialog>
-  )
-}
-
-/** The line-drawn cross used by the header dismiss control. */
-function CloseGlyph() {
-  return (
-    <svg
-      class="size-4 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
   )
 }
 

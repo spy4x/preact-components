@@ -2,6 +2,7 @@
 // look and read the same without either component exporting its internals.
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
+import { IconXMark } from "@spy4x/preact-icons"
 
 /*
  * `min-h-11` makes every row a 44 px touch target, as tall as the library's other touch targets.
@@ -46,18 +47,9 @@ export function listboxOptionClass({ active, selected, disabled }: ListboxOption
 }
 
 /**
- * The cross glyph of a clear or remove button, inline so `ui`'s "no dependency on `icons/`" rule
- * holds. `aria-hidden`: the button around it carries the name.
+ * The cross of a clear or remove button: `IconXMark` at the listbox's glyph size, hidden from
+ * screen readers because the button around it carries the name.
  */
 export function CrossGlyph(): JSX.Element {
-  return (
-    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M6 18L18 6M6 6l12 12"
-      />
-    </svg>
-  )
+  return <IconXMark class="size-4" />
 }

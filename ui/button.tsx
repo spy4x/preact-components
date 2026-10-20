@@ -1,4 +1,5 @@
 import { join } from "@spy4x/preact-cn/join"
+import { IconSpinner } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, Ref, RefObject, VNode } from "preact"
 import { useCallback } from "preact/hooks"
 import { forwardRef } from "./forward-ref.ts"
@@ -152,21 +153,6 @@ export function buttonClasses(
   )
 }
 
-/** The spinner a busy {@link Button} shows; the button's own text or `aria-label` names it. */
-function BusySpinner(): JSX.Element {
-  return (
-    <svg
-      class="size-4 shrink-0 animate-spin motion-reduce:animate-none"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-    </svg>
-  )
-}
-
 /** Cancels a press on a busy button: its own `onClick` never runs, and a form is not submitted. */
 function ignorePress(event: MouseEvent): void {
   event.preventDefault()
@@ -291,7 +277,7 @@ function renderButton(
       aria-disabled="true"
       onClick={ignorePress}
     >
-      <BusySpinner />
+      <IconSpinner class="size-4" />
       {variant === "icon" ? null : busyLabel ?? children}
       {hint}
     </button>

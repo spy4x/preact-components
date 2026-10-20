@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { TOUCH_TARGET } from "./touch-target.ts"
@@ -489,24 +490,14 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
           onClick={dismissHere}
           aria-label={dismissLabel}
         >
-          <svg
-            class="size-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
+          <IconXMark class="size-4" />
         </button>
       </div>
     </div>
   )
 }
 
-/** Variant glyph, inlined so the package carries no icon dependency. */
+/** The glyph that marks a toast's variant. */
 function ToastGlyph({ variant }: { variant: ToastVariant }) {
   return (
     <svg
