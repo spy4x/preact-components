@@ -76,7 +76,7 @@ export function ThemePreview(
       <div
         data-theme-preview-frame=""
         class={join(
-          "rounded-card border border-subtle bg-canvas p-6 text-foreground transition-colors",
+          "rounded-card border border-subtle bg-canvas p-6 text-foreground",
           frameClass,
         )}
       >
