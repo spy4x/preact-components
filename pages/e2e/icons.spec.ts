@@ -24,4 +24,47 @@ export const specs: readonly Spec[] = [
       return `stopped ${reduced.length} spinning icons`
     },
   },
+  {
+    name:
+      "IconGallery announces a copy only once the clipboard took it, and nothing when it failed",
+    pageId: "icons",
+    run: async (page) => {
+      const gallery = page.locator("#icons")
+      const status = gallery.locator("p[aria-live]")
+      const cell = gallery.locator(`button[data-icon="IconSearch"]`)
+      await cell.waitFor()
+      // The guide's port is `copyToClipboard`: the Async Clipboard API, then `execCommand`. Both
+      // are replaced, so the spec decides whether a copy works and counts the attempts.
+      await page.evaluate(() => {
+        const state = globalThis as { __copyWorks?: boolean; __copyTries?: number }
+        state.__copyWorks = true
+        state.__copyTries = 0
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: {
+            writeText: () => {
+              state.__copyTries = (state.__copyTries ?? 0) + 1
+              return state.__copyWorks ? Promise.resolve() : Promise.reject(new Error("denied"))
+            },
+          },
+        })
+        document.execCommand = () => false
+      })
+
+      await cell.click()
+      await status.filter({ hasText: "copied <IconSearch />" }).waitFor()
+
+      await page.evaluate(() => (globalThis as { __copyWorks?: boolean }).__copyWorks = false)
+      await cell.click()
+      await page.waitForFunction(() => (globalThis as { __copyTries?: number }).__copyTries === 2)
+      // The rejection settles in microtasks after the attempt; one frame covers them and the
+      // render that follows.
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(done)))
+      const text = await status.textContent()
+      if (text?.includes("copied")) {
+        throw new Error(`after a failed copy the status reads "${text}"`)
+      }
+      return `status "${text}"`
+    },
+  },
 ]
