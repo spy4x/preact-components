@@ -125,14 +125,19 @@ function* everyOrder(
 }
 
 describe("createOnboardingState", () => {
-  it("reads the stored dismissed flag on first use, once, and not when it is created", () => {
-    const port = fakePort(true)
-    const state = createOnboardingState({ steps: signal(facts(false)), dismissed: port })
+  it("reads the stored dismissed flag on first use, once, and not when it is created", async () => {
+    let reads = 0
+    const state = createOnboardingState({
+      steps: signal(facts(false)),
+      dismissed: { read: () => (reads++, true), write: () => Promise.reject(new Error("offline")) },
+    })
 
-    expect(port.reads).toBe(0)
+    expect(reads).toBe(0)
     expect(state.visible.value).toBe(false)
+    // A failed write falls back to the stored flag, which is not read again.
+    await expect(state.reset()).rejects.toThrow("offline")
     expect(state.visible.value).toBe(false)
-    expect(port.reads).toBe(1)
+    expect(reads).toBe(1)
   })
 
   it("names the first open step in list order as next, and follows the app's data", () => {

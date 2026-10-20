@@ -161,7 +161,7 @@ describe("createInstallPrompt", () => {
     expect(writes).toEqual([true])
   })
 
-  it("reads the stored flag on first use, once, and not when it is created", () => {
+  it("reads the stored flag on first use, not when it is created", () => {
     let reads = 0
     const store = createInstallPrompt({
       target: null,
