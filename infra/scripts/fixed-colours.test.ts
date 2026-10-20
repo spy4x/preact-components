@@ -8,16 +8,23 @@
  * that converts a file removes it here, the test fails when a listed file no longer has a fixed
  * colour, and it fails on any file that is not listed. Never add a file to the list.
  *
- * It reads every `.ts`, `.tsx` and `.css` file of the covered packages, test files excepted, and
- * skips the generated mirrors of the theme's CSS.
+ * It reads every `.ts`, `.tsx` and `.css` file of every workspace member but the demo app, test
+ * files excepted, and skips the generated mirrors of the theme's CSS.
  */
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { findFixedColours } from "../../theme/fixed-colours.ts"
+import { guardFiles } from "../../theme/spacing-runner.ts"
+import { ROOT, workspaceMembers } from "./workspace.ts"
 
-/** The packages covered. `pages` is the demo app and stays out. */
-const PACKAGES = ["theme", "ui", "system", "crud", "charts", "map", "ui-guide"] as const
+/**
+ * Workspace members left out, each with why. Every other member is covered, so a new package is
+ * checked from the change that adds it.
+ */
+const EXCLUDED: Record<string, string> = {
+  pages: "The demo app: it shows the library and ships no component an app renders.",
+}
 
 /** Generated from other files, or the checker's own text: not source a component reads. */
 const SKIPPED = [
@@ -36,20 +43,21 @@ export const ALLOWED: readonly string[] = [
   "theme/preset.css",
 ]
 
-const ROOT = new URL("../../", import.meta.url)
-
-/** Every checked file under `directory`, relative to the repository root, sorted. */
-async function sourceFiles(directory: string): Promise<string[]> {
-  const files: string[] = []
-  for await (const entry of Deno.readDir(new URL(`${directory}/`, ROOT))) {
-    const path = `${directory}/${entry.name}`
-    if (entry.isDirectory) files.push(...await sourceFiles(path))
-    else if (
-      entry.isFile && /\.(ts|tsx|css)$/.test(path) && !/\.test\.tsx?$/.test(path) &&
-      !SKIPPED.includes(path)
-    ) files.push(path)
-  }
-  return files.sort()
+/**
+ * Every checked file of every covered member, relative to the repository root, sorted.
+ * `workspaceMembers` throws for a package directory the workspace does not list, and `guardFiles`
+ * skips test files and throws for a member that holds no file to check.
+ */
+async function sourceFiles(): Promise<string[]> {
+  const members = await workspaceMembers()
+  const stale = Object.keys(EXCLUDED).filter((id) => !members.includes(id))
+  if (stale.length > 0) throw new Error(`EXCLUDED names ${stale}, which is not a workspace member`)
+  const files = await guardFiles({
+    root: ROOT,
+    directories: members.filter((id) => !(id in EXCLUDED)),
+    extensions: [".ts", ".tsx", ".css"],
+  })
+  return files.filter((path) => !SKIPPED.includes(path))
 }
 
 /**
@@ -66,14 +74,20 @@ describe("fixed colour classes in component source", () => {
 
   it("appear only in files the allow-list names", async () => {
     const offenders: string[] = []
-    for (const directory of PACKAGES) {
-      for (const path of await sourceFiles(directory)) {
-        if (ALLOWED.includes(path)) continue
-        const found = findFixedColours(await Deno.readTextFile(new URL(path, ROOT)))
-        for (const { line, className } of found) offenders.push(`${path}:${line} ${className}`)
-      }
+    for (const path of await sourceFiles()) {
+      if (ALLOWED.includes(path)) continue
+      const found = findFixedColours(await Deno.readTextFile(new URL(path, ROOT)))
+      for (const { line, className } of found) offenders.push(`${path}:${line} ${className}`)
     }
     expect(offenders).toEqual([])
+  })
+
+  it("are looked for in every package, not only the ones that had them", async () => {
+    const files = await sourceFiles()
+    for (const path of ["cn/cn.ts", "icons/+index.tsx", "signals/+index.ts", "ui/button.tsx"]) {
+      expect(files).toContain(path)
+    }
+    expect(files.filter((path) => path.startsWith("pages/"))).toEqual([])
   })
 
   it("are still in every file the allow-list names", async () => {

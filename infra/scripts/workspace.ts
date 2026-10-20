@@ -88,19 +88,27 @@ export async function packageDirectories(root: URL = ROOT): Promise<string[]> {
 export async function workspaceMembers(root: URL = ROOT): Promise<string[]> {
   const config = await readConfig(new URL("deno.jsonc", root))
   const members = (config.workspace ?? []).map((member) => member.replace(/^\.\/|\/$/g, ""))
-  const directories = await packageDirectories(root)
-  const unlisted = directories.filter((directory) => !members.includes(directory))
-  if (unlisted.length > 0) {
-    throw new Error(
-      `${unlisted.map((d) => `${d}/`).join(", ")} carries a deno.json and is not in the ` +
-        `workspace in deno.jsonc: add it there, or remove its deno.json`,
-    )
-  }
-  const missing = members.filter((member) => !directories.includes(member))
-  if (missing.length > 0) {
-    throw new Error(`deno.jsonc lists ${missing.join(", ")}, which has no deno.json`)
-  }
+  const problems = memberProblems(members, await packageDirectories(root))
+  if (problems.length > 0) throw new Error(problems.join("\n"))
   return members
+}
+
+/**
+ * Where the workspace list and the package directories disagree, one sentence per problem.
+ *
+ * @param members The directories `deno.jsonc` lists in `workspace`.
+ * @param directories The top-level directories that carry a package config.
+ */
+export function memberProblems(members: string[], directories: string[]): string[] {
+  return [
+    ...directories.filter((directory) => !members.includes(directory)).map((directory) =>
+      `${directory}/ carries a deno.json and is not in the workspace in deno.jsonc: add it ` +
+      `there, or remove its deno.json`
+    ),
+    ...members.filter((member) => !directories.includes(member)).map((member) =>
+      `deno.jsonc lists ${member} in the workspace, and ${member}/ has no deno.json`
+    ),
+  ]
 }
 
 /**

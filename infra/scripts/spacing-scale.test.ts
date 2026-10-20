@@ -4,7 +4,7 @@
  * arbitrary value. There is no allow-list: a component that needs an off-scale value takes the
  * nearest step. `docs/spacing.md` has the rule; `@spy4x/preact-theme/spacing` has the checker.
  *
- * It reads every `.ts`, `.tsx` and `.css` file of the covered packages, test files excepted: a
+ * It reads every `.ts`, `.tsx` and `.css` file of every workspace member, test files excepted: a
  * test asserts on classes, and the checker's own test has to spell out the classes it must
  * report. What a test asserts still has to match the component, so a test file cannot keep an
  * off-scale class the component no longer renders.
@@ -13,23 +13,8 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { findOffScaleSpacing } from "../../theme/spacing.ts"
-
-/** The packages the scale covers today. */
-export const SPACING_PACKAGES = [
-  "theme",
-  "ui",
-  "system",
-  "crud",
-  "charts",
-  "map",
-  "ui-guide",
-  "pages",
-] as const
-
-/** Build output under a covered directory: generated, not source. */
-const SKIPPED_DIRECTORIES = ["pages/dist"]
-
-const ROOT = new URL("../../", import.meta.url)
+import { guardFiles } from "../../theme/spacing-runner.ts"
+import { ROOT, workspaceMembers } from "./workspace.ts"
 
 /**
  * Files `deno task --cwd theme generate` writes from other files: the CSS mirrors carry the text of
@@ -43,21 +28,20 @@ const GENERATED = [
   "theme/component-classes.ts",
 ]
 
-/** Whether `path` is a source file the check reads. */
-function isChecked(path: string): boolean {
-  return /\.(ts|tsx|css)$/.test(path) && !/\.test\.tsx?$/.test(path) && !GENERATED.includes(path)
-}
-
-/** Every checked file under `directory`, as a path relative to the repository root, sorted. */
-async function sourceFiles(directory: string): Promise<string[]> {
-  const files: string[] = []
-  for await (const entry of Deno.readDir(new URL(`${directory}/`, ROOT))) {
-    const path = `${directory}/${entry.name}`
-    if (entry.isDirectory && SKIPPED_DIRECTORIES.includes(path)) continue
-    if (entry.isDirectory) files.push(...await sourceFiles(path))
-    else if (entry.isFile && isChecked(path)) files.push(path)
-  }
-  return files.sort()
+/**
+ * Every checked file of every workspace member, `pages/` included, as a path relative to the
+ * repository root, sorted. The package list is the workspace itself, so a new package is walked
+ * from the change that adds it, and `workspaceMembers` throws for a package directory the
+ * workspace does not list. `guardFiles` skips test files and build output (`pages/dist`), and
+ * throws for a member that holds no file to check.
+ */
+async function sourceFiles(): Promise<string[]> {
+  const files = await guardFiles({
+    root: ROOT,
+    directories: await workspaceMembers(),
+    extensions: [".ts", ".tsx", ".css"],
+  })
+  return files.filter((path) => !GENERATED.includes(path))
 }
 
 /** Reads a file by its path relative to the repository root. */
@@ -81,13 +65,12 @@ async function offScale(
 }
 
 describe("spacing scale", () => {
-  it("finds no spacing class off the scale in the covered packages", async () => {
-    const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
-    expect(await offScale(files)).toEqual([])
+  it("finds no spacing class off the scale in any workspace member", async () => {
+    expect(await offScale(await sourceFiles())).toEqual([])
   })
 
-  it("reads the components and the preset, and skips test files and generated files", async () => {
-    const files = (await Promise.all(SPACING_PACKAGES.map(sourceFiles))).flat()
+  it("reads every package, the preset and the demo, and skips test files and generated files", async () => {
+    const files = await sourceFiles()
     for (
       const path of [
         "theme/preset.css",
@@ -100,6 +83,9 @@ describe("spacing scale", () => {
         "ui-guide/shell.tsx",
         "ui-guide/card.tsx",
         "pages/src/app.tsx",
+        "cn/cn.ts",
+        "icons/+index.tsx",
+        "signals/+index.ts",
       ]
     ) {
       expect(files).toContain(path)
