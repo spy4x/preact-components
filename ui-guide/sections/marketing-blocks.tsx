@@ -331,7 +331,7 @@ export const marketingBlockDemos: DemoFragment = {
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center gap-3">
             <Button variant="primary">Save</Button>
-            <Button>Cancel</Button>
+            <Button variant="secondary">Cancel</Button>
             <Badge text="Live" color="green" />
           </div>
           <Field id="theme-preview-email" label="Email">
