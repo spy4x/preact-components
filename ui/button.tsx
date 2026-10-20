@@ -102,14 +102,6 @@ const variantClasses: Record<ButtonVariant, string> = {
   danger: "bg-danger-fill text-danger-fill-foreground hover:bg-danger-fill-hover",
 }
 
-/** The gap sits with the size, so `"none"` leaves it out; the other sizes keep the same class list. */
-const gapClasses: Record<ButtonSize | "none", string> = {
-  sm: "gap-2",
-  md: "gap-2",
-  lg: "gap-2",
-  none: "",
-}
-
 const sizeClasses: Record<ButtonSize | "none", string> = {
   none: "",
   sm: "px-2 py-2 text-xs",
@@ -145,7 +137,8 @@ export function buttonClasses(
 ): string {
   return join(
     baseLayout,
-    gapClasses[size],
+    // Every size has the same gap; `"none"` adds none.
+    size !== "none" && "gap-2",
     baseLook,
     variantClasses[variant],
     variant === "icon" ? iconSizeClasses[size] : sizeClasses[size],

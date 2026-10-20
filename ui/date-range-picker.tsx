@@ -515,11 +515,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     closePanel(true)
   }
 
-  const triggerText = !props.range
-    ? text.placeholder
-    : props.withTime
-    ? rangeText(props.range, props.formatRange)
-    : rangeText(props.range, props.formatRange)
+  const triggerText = props.range ? rangeText(props.range, props.formatRange) : text.placeholder
 
   /**
    * Escape pressed from inside the component closes the panel and stops there, so a `Modal` around
