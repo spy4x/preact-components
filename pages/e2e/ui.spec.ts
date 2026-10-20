@@ -4148,6 +4148,118 @@ function kanbanDragSpecs(): Spec[] {
     },
     {
       name:
+        "KanbanBoard: a card held by mouse at the board's right edge scrolls the board to its " +
+        "last column and stops there, the scroll area keeping its size",
+      pageId: "ui",
+      run: async (page) => {
+        const kanban = await kanbanDemo(page)
+        const rest = await kanban.board.evaluate((element) => ({
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+        }))
+        if (rest.scrollWidth <= rest.clientWidth) throw new Error("the board does not scroll")
+        const board = await kanban.board.boundingBox()
+        if (board === null) throw new Error("the board is not drawn")
+        const from = await kanban.middle(kanban.handle("notes"))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(Math.round(board.x + board.width - 8), from.y, { steps: 10 })
+        // The board's real end: its last column fully shown.
+        await page.waitForFunction(
+          (end) => {
+            const element = document.querySelector("#demo-KanbanBoard ul[aria-label]")
+            return element !== null && element.scrollLeft >= end - 1
+          },
+          rest.scrollWidth - rest.clientWidth,
+        )
+        // Held there a while longer: a board that made room for the card would keep growing.
+        for (let frame = 0; frame < 10; frame++) await twoFrames(page)
+        const held = await kanban.board.evaluate((element) => ({
+          scrollWidth: element.scrollWidth,
+          scrollLeft: element.scrollLeft,
+        }))
+        await page.mouse.up()
+        if (held.scrollWidth !== rest.scrollWidth) {
+          throw new Error(
+            `the scroll area grew from ${rest.scrollWidth} to ${held.scrollWidth} px while held`,
+          )
+        }
+        return `scroll area ${held.scrollWidth} px, stopped at ${held.scrollLeft} px`
+      },
+    },
+    {
+      name:
+        "KanbanBoard: a card dragged by mouse past the board's right edge and below the board " +
+        "stays wholly drawn under the pointer, clipped by nothing, and released there goes back",
+      pageId: "ui",
+      run: async (page) => {
+        const kanban = await kanbanDemo(page)
+        const board = await kanban.board.boundingBox()
+        if (board === null) throw new Error("the board is not drawn")
+        const from = await kanban.middle(kanban.handle("notes"))
+        const viewport = page.viewportSize()
+        if (viewport === null) throw new Error("no viewport")
+        const copy = kanban.card.locator("[data-kanban-dragging]")
+        /** How much of the drawn card no ancestor clips, from 0 to 1, and its box. */
+        const shown = () =>
+          copy.evaluate((element) => {
+            const box = element.getBoundingClientRect()
+            let left = box.left, top = box.top, right = box.right, bottom = box.bottom
+            for (let node = element.parentElement; node !== null; node = node.parentElement) {
+              const style = getComputedStyle(node)
+              if (style.overflowX === "visible" && style.overflowY === "visible") continue
+              const clip = node.getBoundingClientRect()
+              left = Math.max(left, clip.left)
+              top = Math.max(top, clip.top)
+              right = Math.min(right, clip.right)
+              bottom = Math.min(bottom, clip.bottom)
+            }
+            const area = Math.max(0, right - left) * Math.max(0, bottom - top)
+            return {
+              fraction: area / (box.width * box.height),
+              box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+            }
+          })
+        // Outside the board on both counts, but clear of the zones that scroll the board or page.
+        const points = [
+          { what: "past the right edge", x: Math.round(board.x + board.width + 40), y: from.y },
+          {
+            what: "below the board",
+            x: from.x,
+            y: Math.round(Math.min(board.y + board.height + 60, viewport.height - 80)),
+          },
+        ]
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const seen: string[] = []
+        try {
+          for (const point of points) {
+            if (point.y <= board.y + board.height && point.x <= board.x + board.width) {
+              throw new Error(`the point ${point.what} is on the board`)
+            }
+            await page.mouse.move(point.x, point.y, { steps: 8 })
+            await copy.waitFor()
+            await twoFrames(page)
+            const { fraction, box } = await shown()
+            const under = box.left <= point.x && point.x <= box.right && box.top <= point.y &&
+              point.y <= box.bottom
+            if (fraction < 0.999 || !under) {
+              throw new Error(
+                `${point.what}: ${Math.round(fraction * 100)}% of the card is drawn, at ` +
+                  `${JSON.stringify(box)}, pointer at ${point.x}, ${point.y}`,
+              )
+            }
+            seen.push(`${point.what}: whole`)
+          }
+        } finally {
+          await page.mouse.up()
+        }
+        await kanban.liveIs("Put back Write the release notes in To do, position 1 of 3.")
+        return seen.join("; ")
+      },
+    },
+    {
+      name:
         "KanbanBoard: a mouse drag released where the card started moves nothing and does not " +
         "open the card, though the release lands on it",
       pageId: "ui",
