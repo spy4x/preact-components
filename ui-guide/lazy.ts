@@ -11,7 +11,8 @@
  * only from an effect, so the first render on either side is the caller's placeholder. The load
  * starts one task after the effect, so a card that hydration mounts and the host's first route read
  * unmounts again never starts it. Once one card has loaded the module, a card mounted later renders
- * with it straight away.
+ * with it straight away. A failed load is not cached: the card shows the failure, and the next card
+ * that mounts loads again.
  */
 
 import { useEffect, useState } from "preact/hooks"
@@ -29,6 +30,11 @@ export interface LazyModule<T> {
    * component calls it, never during a render.
    */
   use(): LazyModuleState<T>
+  /**
+   * Starts the load, or joins the one under way, and resolves with its outcome. A failed load is not
+   * kept: the next call, from the next card that mounts, loads again.
+   */
+  load(): Promise<LazyModuleState<T>>
 }
 
 /**
@@ -45,13 +51,16 @@ export function lazyModule<T>(load: () => Promise<T>): LazyModule<T> {
   const start = (): Promise<LazyModuleState<T>> =>
     pending ??= load().then(
       (module): LazyModuleState<T> => (settled = { status: "loaded", module }),
-      (error: unknown): LazyModuleState<T> => (settled = {
-        status: "failed",
-        message: error instanceof Error ? error.message : String(error),
-      }),
+      (error: unknown): LazyModuleState<T> => {
+        // Forget the failure, so a card mounted later tries again: a dropped connection or a
+        // deploy between two chunk names must not need a reload of the whole page.
+        pending = undefined
+        return { status: "failed", message: error instanceof Error ? error.message : String(error) }
+      },
     )
 
   return {
+    load: start,
     use(): LazyModuleState<T> {
       const [state, setState] = useState<LazyModuleState<T>>(settled ?? { status: "loading" })
 
