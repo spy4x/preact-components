@@ -1,5 +1,6 @@
 import { type ReadonlySignal, signal } from "@preact/signals"
 import { useEffect, useMemo, useRef } from "preact/hooks"
+import { decodeBase64Url } from "@std/encoding/base64url"
 import {
   type InstallPromptMatchMedia,
   type InstallPromptNavigator,
@@ -186,19 +187,6 @@ export interface PushSubscriptionStore {
    * @returns The function that removes the listener.
    */
   start(): () => void
-}
-
-/**
- * Decode base64url, with or without padding, to bytes. `atob` runs in every browser and in Deno,
- * Node and Bun; `Uint8Array.fromBase64` does not yet.
- *
- * @throws When the text is not base64url.
- */
-function decodeBase64Url(text: string): Uint8Array<ArrayBuffer> {
-  const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"))
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index)
-  return bytes
 }
 
 /**

@@ -627,6 +627,7 @@
       "jsr:@spy4x/time@1.79.0",
       "jsr:@spy4x/validation@1.79.0",
       "jsr:@std/assert@1.0.19",
+      "jsr:@std/encoding@1.0.11",
       "jsr:@std/expect@1.0.20",
       "jsr:@std/jsonc@1.0.2",
       "jsr:@std/path@1.1.6",
