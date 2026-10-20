@@ -111,9 +111,24 @@ function ValueMark(
 
 /** The highlight of the caller's own column, header and body alike. */
 const OURS = "bg-selected-soft"
-/** A cell of the first column, held in place while the rest scrolls under it. */
-const STICKY = "sticky left-0 z-10 bg-surface text-left"
-const CELL = "border-b border-subtle px-3 py-3 sm:px-4"
+/**
+ * A cell of the first column, held in place while the rest scrolls under it. Its right edge is
+ * drawn, so a column partly scrolled under it reads as tucked beneath, not as a gap.
+ */
+const STICKY = "sticky left-0 z-10 border-r bg-surface text-left"
+const CELL = "border-b border-subtle px-2 py-3 sm:px-4"
+/**
+ * A soft shadow inside the scrolling box's right edge, telling a reader more of the table lies that
+ * way. It is a box shadow, not a background image, so a contrast checker still reads every cell's
+ * text against a plain ground.
+ */
+const SCROLL_HINT =
+  "shadow-[inset_-1.5rem_0_1rem_-1rem_color-mix(in_oklab,var(--color-foreground)_30%,transparent)]"
+/**
+ * A band of the surface colour at the right end of the last column's cells. It scrolls with them,
+ * so it covers {@link SCROLL_HINT} once the table reaches its end, and at once when it fits.
+ */
+const HINT_COVER = "shadow-[inset_-1.5rem_0_0_0_var(--color-surface)]"
 
 /**
  * A comparison of capabilities across products, for a public page: a legend, a real `<table>`
@@ -123,9 +138,11 @@ const CELL = "border-b border-subtle px-3 py-3 sm:px-4"
  * the table's visually hidden caption. The table has a column header per product (`scope="col"`)
  * and a row header per capability (`scope="row"`). Every cell shows an icon and a visible "Yes",
  * "Partial" or "No", so colour is never the only signal, and the caller's own column says "Ours"
- * under its name besides being tinted. It renders on the server and needs no JavaScript. On a
- * narrow screen the table scrolls sideways inside its own focusable container with the capability
- * column held in place; the page itself never scrolls sideways.
+ * under its name besides being tinted. It renders on the server and needs no JavaScript. Product
+ * names wrap below the `sm` breakpoint, so two products fit beside their capabilities at 390 px.
+ * A table wider than its screen scrolls sideways inside its own focusable container with the
+ * capability column held in place and a shadow at the right edge while more lies that way; the
+ * page itself never scrolls sideways.
  *
  * @throws When a row's `values` and `products` differ in length: a missing value would shift every
  * later cell under the wrong product.
@@ -181,9 +198,12 @@ export function ComparisonTable(
         aria-labelledby={titleId}
         tabIndex={0}
         data-e2e="comparison-scroller"
-        class="max-w-full overflow-x-auto rounded-lg bg-surface ring-1 ring-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+        class={cn(
+          SCROLL_HINT,
+          "max-w-full overflow-x-auto rounded-lg bg-surface ring-1 ring-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus",
+        )}
       >
-        <table class="min-w-full border-separate border-spacing-0 text-sm [&_tbody>tr:last-child>*]:border-b-0">
+        <table class="min-w-full border-separate bg-transparent border-spacing-0 text-sm [&_tbody>tr:last-child>*]:border-b-0">
           <caption class="sr-only">{caption}</caption>
           <thead>
             <tr>
@@ -196,8 +216,8 @@ export function ComparisonTable(
                   scope="col"
                   class={cn(
                     CELL,
-                    "whitespace-nowrap text-left font-semibold text-foreground",
-                    index === 0 && OURS,
+                    "min-w-24 text-left align-top font-semibold text-foreground sm:whitespace-nowrap",
+                    index === 0 ? OURS : index === products.length - 1 && HINT_COVER,
                   )}
                   data-ours={index === 0 ? "" : undefined}
                 >
@@ -214,14 +234,18 @@ export function ComparisonTable(
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={rowIndex}>
-                <th scope="row" class={cn(CELL, STICKY, "min-w-32 font-medium text-foreground")}>
+                <th scope="row" class={cn(CELL, STICKY, "min-w-28 font-medium text-foreground")}>
                   {row.capability}
                   {row.note && <span class="block text-xs font-normal text-muted">{row.note}</span>}
                 </th>
                 {row.values.map((value, index) => (
                   <td
                     key={index}
-                    class={cn(CELL, "whitespace-nowrap", index === 0 && OURS)}
+                    class={cn(
+                      CELL,
+                      "whitespace-nowrap",
+                      index === 0 ? OURS : index === products.length - 1 && HINT_COVER,
+                    )}
                   >
                     <ValueMark value={value} labels={words} />
                   </td>
