@@ -3556,7 +3556,9 @@ function bubbleEdges(page: Page, selector: string) {
 /**
  * `Tooltip`, `Progress`, `ZoomableImages` and `ErrorBoundary` give the feedback they promise
  * (#854): a hint stays on screen, a hint and a bar have their names, every image container zooms,
- * and the error screen goes away after a reload port that does not reload.
+ * and the error screen goes away after a reload port that does not reload. The `focusable={false}`
+ * spec replaces `groupTriggerNameCheck` from `pages/checks/ui.ts`, which read the hint off the
+ * group.
  */
 function feedbackComponentSpecs(): Spec[] {
   return [
@@ -3565,10 +3567,13 @@ function feedbackComponentSpecs(): Spec[] {
       pageId: "ui",
       run: async (page) => {
         await page.setViewportSize({ width: 390, height: 800 })
-        const edge = `#demo-Tooltip [data-e2e="tooltip-edge"]`
-        const trigger = page.locator(`${edge} button`)
-        await trigger.scrollIntoViewIfNeeded()
-        const before = await bubbleEdges(page, edge)
+        const live = `#demo-Tooltip [data-e2e="tooltip-live"]`
+        const trigger = page.locator(`${live} button`)
+        // Pinned to the left edge of the screen, as a trigger in an app's first column would be.
+        await trigger.evaluate((element) =>
+          element.setAttribute("style", "position: fixed; left: 0; top: 200px")
+        )
+        const before = await bubbleEdges(page, live)
         await trigger.focus()
         try {
           await page.waitForFunction(
@@ -3578,18 +3583,18 @@ function feedbackComponentSpecs(): Spec[] {
               const width = document.documentElement.clientWidth
               return box !== undefined && box.left >= 0 && box.right <= width
             },
-            edge,
+            live,
             { timeout: 3_000 },
           )
         } catch {
-          const after = await bubbleEdges(page, edge)
+          const after = await bubbleEdges(page, live)
           throw new Error(
             `the bubble spans ${after.left}…${after.right} px in a ${after.width} px viewport`,
           )
         }
-        const after = await bubbleEdges(page, edge)
+        const after = await bubbleEdges(page, live)
         if (before.left >= 0) {
-          throw new Error(`the demo hint starts at ${before.left} px, so nothing needed clamping`)
+          throw new Error(`the pinned hint starts at ${before.left} px, so nothing needed clamping`)
         }
         return `bubble ${Math.round(before.left)}…${Math.round(before.right)} px moved to ` +
           `${Math.round(after.left)}…${Math.round(after.right)} px of ${after.width}`
@@ -3618,7 +3623,19 @@ function feedbackComponentSpecs(): Spec[] {
           if (description !== "Keeps its own tab stop") {
             throw new Error(`the focused button's description is ${JSON.stringify(description)}`)
           }
-          return `description "${description}"`
+          // The group around it keeps the name and adds no tab stop of its own.
+          const group = await control.evaluate((button) => {
+            const wrapper = button.closest('[role="group"]')
+            return {
+              name: wrapper?.getAttribute("aria-label") ?? null,
+              tabindex: wrapper?.hasAttribute("tabindex") ?? true,
+              buttons: wrapper?.querySelectorAll("button").length ?? 0,
+            }
+          })
+          if (group.name !== "Archive the invoice" || group.tabindex || group.buttons !== 1) {
+            throw new Error(`the group around the control: ${JSON.stringify(group)}`)
+          }
+          return `description "${description}", inside a group named "${group.name}"`
         } finally {
           await cdp.detach()
         }

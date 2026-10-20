@@ -1028,8 +1028,6 @@ function CopyBlockDemo() {
  *
  * The last row, `data-e2e="tooltip-live"`, is the one `pages/checks/ui.ts` hovers, keeps the pointer
  * on and presses Escape over: a hint pinned open could not tell a working reveal from a broken one.
- * Beside it, `data-e2e="tooltip-edge"` starts at the left edge of its cell, so on a phone its long
- * hint would start past the screen's edge; `pages/e2e/ui.spec.ts` proves it slides back inside.
  */
 function TooltipDemo() {
   return (
@@ -1079,16 +1077,6 @@ function TooltipDemo() {
             contentClass="max-w-48"
           >
             <span class="text-sm">Hover me, or tab to me</span>
-          </Tooltip>
-        </Stack>
-        <Stack gap="sm" class="items-start pt-12" data-e2e="tooltip-edge">
-          <Tooltip
-            content="A long hint near the screen's edge slides back inside it"
-            label="Edge of the screen"
-            class="bg-hover px-2 py-1"
-            contentClass="max-w-48"
-          >
-            <span class="text-sm">Edge</span>
           </Tooltip>
         </Stack>
       </Grid>

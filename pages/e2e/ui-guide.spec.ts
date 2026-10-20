@@ -397,12 +397,13 @@ export const specs: readonly Spec[] = [
 
 /**
  * A page picked in the phone navigation drawer takes focus to the content column, as the skip link
- * does, so the next Tab goes into that page instead of back through the header (#854).
+ * does, so the next Tab goes into that page instead of back through the header (#854). It replaces
+ * the followed-link check in `pages/checks/ui-guide.ts`, which expected focus on the menu button.
  */
 function drawerNavigationFocusSpec(): Spec {
   return {
-    name:
-      "Guide shell: picking a page in the phone drawer focuses the content, not the menu button",
+    name: "Guide shell: a page picked in the phone drawer opens, the drawer closes, and focus " +
+      "moves to the content, not the menu button",
     pageId: "overview",
     run: async (page) => {
       await page.setViewportSize({ width: 390, height: 800 })
