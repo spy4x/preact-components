@@ -218,9 +218,21 @@ export function formatTimeFull(time: number, withClock: boolean, options: TimeFo
   return format(time, { day: "numeric", month: "short", year: "numeric", ...clock }, options)
 }
 
+/** Label formats, one per locale, zone and set of parts, built once: building one is slow. */
+const LABEL_FORMATS = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * `time` printed with `parts`. A chart prints a heading for every point on every render, so the
+ * `Intl.DateTimeFormat` is cached per locale, zone and parts rather than built per call.
+ */
 function format(time: number, parts: Intl.DateTimeFormatOptions, options: TimeFormatOptions) {
-  return new Intl.DateTimeFormat(options.locale ?? "en-GB", {
-    timeZone: options.timeZone ?? "UTC",
-    ...parts,
-  }).format(time)
+  const locale = options.locale ?? "en-GB"
+  const timeZone = options.timeZone ?? "UTC"
+  const key = JSON.stringify([locale, timeZone, parts])
+  let formatter = LABEL_FORMATS.get(key)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { timeZone, ...parts })
+    LABEL_FORMATS.set(key, formatter)
+  }
+  return formatter.format(time)
 }
