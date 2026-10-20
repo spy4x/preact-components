@@ -43,6 +43,9 @@
       "accent-scale.ts",
       "auto-dark.ts",
       "theme-preview.ts",
+      // The fixed-colour finder: only this repository's own checks import it, and no `exports`
+      // entry names it, so no app can import it.
+      "fixed-colours.ts",
       "integration/"
     ]
   },
