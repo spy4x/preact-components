@@ -895,6 +895,35 @@ function comparisonTablePhoneSpecs(): Spec[] {
         }
       },
     })),
+    ...(["light", "dark", "ink"] as const).map((palette): Spec => ({
+      name: `ComparisonTable: the last product's header paints one colour to its right end, with ` +
+        `no band cut out of it, ${palette}`,
+      pageId: "ui",
+      colorScheme: palette === "light" ? "light" : "dark",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        if (palette === "ink") {
+          await page.evaluate(() => document.documentElement.setAttribute("data-theme", "ink"))
+          await page.locator(`html.dark[data-theme="ink"]`).waitFor({ state: "attached" })
+        }
+        // The two-product table fits, so no shadow is drawn and the header's ground is all there is.
+        const header = comparisonScroller(page, 1).locator("thead th").last()
+        await header.scrollIntoViewIfNeeded()
+        await header.evaluate((cell) => (cell as HTMLElement).style.color = "transparent")
+        const box = await header.boundingBox()
+        if (box === null) throw new Error("the last product's header has no box")
+        const strip = (x: number) =>
+          page.screenshot({
+            animations: "disabled",
+            clip: { x, y: box.y + box.height / 2 - 4, width: 4, height: 8 },
+          })
+        const start = await strip(box.x + 2)
+        const end = await strip(box.x + box.width - 8)
+        if (!start.equals(end)) {
+          throw new Error("the header's right end is painted another colour than its start")
+        }
+      },
+    })),
     {
       name: "ComparisonTable: at 390px every cell of the held first column draws its right edge",
       pageId: "ui",
