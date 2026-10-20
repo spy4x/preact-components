@@ -7,6 +7,7 @@ import {
 } from "@spy4x/platform/universal/sort"
 import type { ComponentChildren, JSX } from "preact"
 import { EmptyState } from "./empty-state.tsx"
+import { Stack } from "./layout.tsx"
 import { Pagination } from "./pagination.tsx"
 import { Table } from "./table.tsx"
 
@@ -314,10 +315,10 @@ function headerCell<T, K extends Extract<keyof T, string>>(
         ? (
           <button
             type="button"
-            class={sortButtonClasses}
+            class={cn(sortButtonClasses, column.align === "right" && "justify-end")}
             onClick={() => onSortChange(toggleSort([...sort], column.key))}
           >
-            <span class={column.align === "right" ? "ml-auto" : undefined}>{column.header}</span>
+            <span>{column.header}</span>
             <SortGlyph direction={rule?.direction} />
           </button>
         )
@@ -443,7 +444,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     ]
 
   return (
-    <div class={className}>
+    <Stack class={className}>
       <Table
         caption={caption}
         captionClass={captionHidden ? "sr-only" : undefined}
@@ -454,7 +455,6 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
       />
       {paging && (
         <Pagination
-          class="mt-4"
           page={currentPage ?? 1}
           pageCount={pageCount ?? 0}
           onChange={paging.onChange}
@@ -464,6 +464,6 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
           pageLabel={paging.pageLabel}
         />
       )}
-    </div>
+    </Stack>
   )
 }

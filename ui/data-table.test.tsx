@@ -594,6 +594,28 @@ describe("DataTable", () => {
     expect(html).not.toContain('aria-label="Page 4"')
   })
 
+  it("spaces the pager with a Stack gap and renders no margin class", () => {
+    const html = render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        sort={[]}
+        onSortChange={noop}
+        caption="Invoices"
+        class="max-w-xl"
+        paging={{ page: 1, pageSize: 1, onChange: noop, label: "Invoice pages" }}
+      />,
+    )
+
+    expect(html).toMatch(/^<div class="flex flex-col gap-4 max-w-xl">/)
+    expect(html).toContain('aria-label="Invoice pages"')
+    const margins = [...html.matchAll(/class="([^"]*)"/g)]
+      .flatMap((match) => match[1].split(" "))
+      .filter((name) => /^-?m[trblxyse]?-/.test(name.slice(name.lastIndexOf(":") + 1)))
+    expect(margins).toEqual([])
+  })
+
   it("renders the middle page of a paged, sorted set — not just page 1", () => {
     // Sorted ascending by merchant, A…G is already that order: page 2 of size 3 is D, E, F.
     const html = render(

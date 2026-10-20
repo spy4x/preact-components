@@ -8,6 +8,7 @@
 
 import type { ComponentChildren, JSX } from "preact"
 import { cn } from "@spy4x/preact-cn"
+import { Notice } from "@spy4x/preact-ui"
 import type { LazyModuleState } from "./lazy.ts"
 
 /** What {@link LazySlot} needs to show a lazily loaded component, or stand in for it. */
@@ -49,9 +50,9 @@ export function LazySlot<T>(
     content = children(state.module)
   } else if (state.status === "failed") {
     content = (
-      <p role="alert" data-e2e={`${e2e}-failed`} class="text-sm text-red-700 dark:text-red-400">
+      <Notice tone="danger" urgent data-e2e={`${e2e}-failed`}>
         {label}: {module} did not load — {state.message}
-      </p>
+      </Notice>
     )
   } else {
     content = (
