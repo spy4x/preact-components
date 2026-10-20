@@ -18,8 +18,6 @@
 
 import { blockDeclarations } from "./auto-dark.ts"
 
-/** The attribute on the component's root. */
-export const PREVIEW_ATTRIBUTE = "data-theme-preview"
 /** The attribute on each radio, valued `dark` or `light`. */
 export const CHOICE_ATTRIBUTE = "data-theme-preview-choice"
 /** The attribute on the frame the palette is declared on. */
@@ -29,11 +27,12 @@ export const FRAME_ATTRIBUTE = "data-theme-preview-frame"
 export type PreviewTheme = "dark" | "light"
 
 /**
- * The frame while `theme`'s radio is checked. The child combinators keep a preview's radios and
- * rules to its own frame, so a preview nested in another's frame is not switched by the outer one.
+ * The frame while `theme`'s radio is checked: the frame right after the fieldset that holds that
+ * radio. `preset.css`'s `dark` variant writes the same selector, which `theme-preview.test.ts`
+ * checks. It is kept short because the variant repeats it in every `dark:` rule an app compiles.
  */
 export function frameSelector(theme: PreviewTheme): string {
-  return `[${PREVIEW_ATTRIBUTE}]:has(> fieldset [${CHOICE_ATTRIBUTE}="${theme}"]:checked) > [${FRAME_ATTRIBUTE}]`
+  return `:has([${CHOICE_ATTRIBUTE}=${theme}]:checked) + [${FRAME_ATTRIBUTE}]`
 }
 
 /** `tokens.css`'s layer, which the copies sit in too, so an app's unlayered rules still win. */

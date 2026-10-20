@@ -213,7 +213,8 @@ a measured build: forms is not loaded by this repo's demo, so nothing here
 exercises it end to end.
 
 For dark mode, put `dark` on `<html>`. The preset defines the `dark` variant as
-`&:where(.dark, .dark *)`, so no `@custom-variant` is needed in the app.
+`&:where(.dark, .dark *)`, plus a `ThemePreview` frame's arms (see "Theme preview"), so no
+`@custom-variant` is needed in the app.
 
 ### Dark mode without JavaScript
 
@@ -834,11 +835,15 @@ Import it after `tokens.css`, the same way as `ink.css`:
 @import "@spy4x/preact-theme/preset.css";
 ```
 
-Two limits. The frame shows the library's own palette, not the app's: the copies sit in the tokens'
-layer, so an app that wants its brand inside sets its tokens on `[data-theme-preview-frame]`,
-unlayered. And `dark:` utilities still follow the page (`.dark` on `<html>`), not the frame, so a
-component that draws a colour through `dark:` rather than a token keeps the page's choice inside
-it. `theme-preview.ts` writes the file from `tokens.css` (`deno task --cwd theme generate`), and
+The preset's `dark` variant follows the frame as well: it matches inside a dark frame on any page,
+and never inside a light frame, even under `.dark` or the auto-dark marker. So everything in the
+frame, `dark:` utilities and the preset's own dark rules included, takes the frame's palette. The
+variant reads the frame through `:where()`, so its specificity is unchanged; it does make each
+compiled `dark:` rule longer, by about 190 bytes before compression.
+
+The frame shows the library's own palette, not the app's: the copies sit in the tokens' layer, so
+an app that wants its brand inside sets its tokens on `[data-theme-preview-frame]`, unlayered.
+`theme-preview.ts` writes the file from `tokens.css` (`deno task --cwd theme generate`), and
 `theme-preview.test.ts` fails when the two drift.
 
 ## Not carried over from the sources

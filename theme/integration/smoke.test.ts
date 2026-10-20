@@ -530,10 +530,26 @@ function gateBlocks(blocks: CssBlock[]): CssBlock[] {
   )
 }
 
-/** The two selector lists the `dark` variant appends: `.dark`, and the auto-dark marker. */
+/** A `ThemePreview` frame while its Dark or Light radio is checked (`theme/theme-preview.ts`). */
+const PREVIEW_FRAME = (theme: "dark" | "light") =>
+  `:has([data-theme-preview-choice=${theme}]:checked) + [data-theme-preview-frame]`
+
+/** What the `dark` variant appends after each list: never inside a light preview frame. */
+const NOT_IN_LIGHT_FRAME = `:not(:where(${PREVIEW_FRAME("light")} *))`
+
+/**
+ * The two selector lists the `dark` variant appends: `.dark` (or a dark preview frame), and the
+ * auto-dark marker, each outside a light preview frame.
+ *
+ * The chains this suite matches are pages with no `ThemePreview`: no host element sits inside a
+ * frame, so the dark-frame arm never matches one and the light-frame exclusion never excludes one.
+ * {@link expandDarkVariant} therefore expands a list to its first two arms, which is exact for these
+ * chains. What the frame arms do is checked on the compiled selector below ("follows a ThemePreview
+ * frame") and in the browser (`pages/e2e/ui.spec.ts`, ThemePreview).
+ */
 const DARK_VARIANT_LISTS = [
-  ":where(.dark, .dark *)",
-  ":where([data-theme-auto], [data-theme-auto] *)",
+  `:where(.dark, .dark *, ${PREVIEW_FRAME("dark")} *)${NOT_IN_LIGHT_FRAME}`,
+  `:where([data-theme-auto], [data-theme-auto] *)${NOT_IN_LIGHT_FRAME}`,
 ]
 
 /**
@@ -1488,19 +1504,35 @@ describe("theme preset", () => {
   })
 
   it("scopes the dark variant to the .dark class", async () => {
-    expect(await preset()).toContain("&:where(.dark, .dark *)")
+    expect(await preset()).toContain(`&${DARK_VARIANT_LISTS[0]}`)
+  })
+
+  it("follows a ThemePreview frame: on inside a dark frame, off inside a light one under .dark or the auto-dark marker", async () => {
+    const css = await compilePreset(entrypointCss(), ["dark:text-accent-400"])
+    const utility = css.slice(css.indexOf(".dark\\:text-accent-400 {"))
+    const dark = `${PREVIEW_FRAME("dark")} *`
+    const light = `${PREVIEW_FRAME("light")} *`
+
+    expect(utility).toContain(`&:where(.dark, .dark *, ${dark}):not(:where(${light})) {`)
+    expect(utility).toContain(
+      `&:where([data-theme-auto], [data-theme-auto] *):not(:where(${light})) {`,
+    )
   })
 
   it("applies the dark variant under the auto-dark marker while the system asks for dark", async () => {
     const css = await compilePreset(entrypointCss(), ["dark:text-accent-400"])
     const utility = css.slice(css.indexOf(".dark\\:text-accent-400 {"))
     expect(utility).toMatch(
-      /&:where\(\.dark, \.dark \*\) \{\s*color: var\(--color-accent-400, /,
+      new RegExp(
+        String.raw`&${
+          escapeForRegExp(DARK_VARIANT_LISTS[0]!)
+        } \{\s*color: var\(--color-accent-400, `,
+      ),
     )
     expect(utility).toMatch(
       new RegExp(
         String.raw`@media \(prefers-color-scheme: dark\) \{\s*` +
-          String.raw`&:where\(\[data-theme-auto\], \[data-theme-auto\] \*\) \{\s*` +
+          String.raw`&${escapeForRegExp(DARK_VARIANT_LISTS[1]!)} \{\s*` +
           String.raw`color: var\(--color-accent-400, `,
       ),
     )

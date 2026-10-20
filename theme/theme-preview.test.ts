@@ -58,11 +58,17 @@ describe("theme-preview.css", () => {
     for (const [property, value] of dark) expect(valueIn(rule, property), property).toBe(value)
   })
 
-  it("matches only a preview's own frame, while its own radio is checked", () => {
+  it("matches the frame right after the fieldset whose radio is checked", () => {
     expect(frameSelector("light")).toBe(
-      `[data-theme-preview]:has(> fieldset [data-theme-preview-choice="light"]:checked) > ` +
-        `[data-theme-preview-frame]`,
+      `:has([data-theme-preview-choice=light]:checked) + [data-theme-preview-frame]`,
     )
+  })
+
+  it("names the same frames the preset's dark variant follows", async () => {
+    const preset = await read("./preset.css")
+
+    expect(preset).toContain(`&:where(.dark, .dark *, ${frameSelector("dark")} *)`)
+    expect(preset.split(`:not(:where(${frameSelector("light")} *))`).length - 1).toBe(2)
   })
 
   it("redeclares the accent scale on both frames, inside the same support check", async () => {
