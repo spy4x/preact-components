@@ -24,8 +24,9 @@ import { cn } from "@spy4x/preact-cn"
 import { IconBars3, IconGitHub, IconMoon, IconSun, IconXMark } from "@spy4x/preact-icons"
 import { buttonClasses } from "@spy4x/preact-ui/button"
 import { Stack } from "@spy4x/preact-ui/layout"
+import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useMemo, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useMemo, useRef } from "preact/hooks"
 import { DEFAULT_CARD_LABELS, DemoCard, type DemoCardLabels, MissingDemoBanner } from "./card.tsx"
 import { type GuideAuthor, GuideFooter } from "./footer.tsx"
 import { IconGallery } from "./icons.tsx"
@@ -415,7 +416,7 @@ export function UIGuide(
   if (!served) shownPage.current = pageOfRoute(route) ?? pageOfFragment(hash) ?? shownPage.current
   const page = guidePages.find((candidate) => candidate.id === shownPage.current) ?? guidePages[0]
 
-  const [navOpen, setNavOpen] = useState(false)
+  const navOpen = useSignal(false)
   const dialog = useRef<HTMLDialogElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const dialogId = useId()
@@ -433,7 +434,7 @@ export function UIGuide(
   // comes before the close has rendered: false then true in one batch is no change to Preact.
   const openNav = () => {
     dialog.current?.showModal()
-    setNavOpen(true)
+    navOpen.value = true
   }
   const closeNav = () => dialog.current?.close()
   // Set when a navigation closes the drawer, so its `close` handler sends focus to the page that
@@ -554,7 +555,7 @@ export function UIGuide(
               ref={trigger}
               type="button"
               aria-haspopup="dialog"
-              aria-expanded={navOpen}
+              aria-expanded={navOpen.value}
               aria-controls={dialogId}
               onClick={openNav}
               class={buttonClasses("ghost", "sm", "lg:hidden")}
@@ -634,7 +635,7 @@ export function UIGuide(
               // The `close` event is a queued task, so a reopen can land before it; that event is
               // stale, and acting on it would empty a dialog that is open again.
               if (dialog.current?.open) return
-              setNavOpen(false)
+              navOpen.value = false
               // A page picked in the drawer takes focus to that page, so the next Tab goes into it
               // instead of back through the header. The route effect has already scrolled.
               if (closedByNavigation.current) {
@@ -660,7 +661,7 @@ export function UIGuide(
               </button>
             </div>
             <div class="p-4">
-              {navOpen
+              {navOpen.value
                 ? (
                   <GuideNav
                     label={labels.nav}
@@ -771,9 +772,9 @@ function ThemeSwitch({ scheme, labels }: { scheme: ColorSchemePort; labels: Labe
  * @param pageId The page showing.
  */
 function useCardInView(active: boolean, pageId: GuidePageId): string | undefined {
-  const [inView, setInView] = useState<string | undefined>(undefined)
+  const inView = useSignal<string | undefined>(undefined)
   useEffect(() => {
-    setInView(undefined)
+    inView.value = undefined
     if (!active || !("IntersectionObserver" in globalThis)) return
     const cards = [...document.querySelectorAll<HTMLElement>(`article[id^="demo-"]`)]
     const visible = new Set<string>()
@@ -784,12 +785,12 @@ function useCardInView(active: boolean, pageId: GuidePageId): string | undefined
         else visible.delete(change.target.id)
       }
       const first = cards.find((card) => visible.has(card.id))
-      if (first) setInView(first.id.slice("demo-".length))
+      if (first) inView.value = first.id.slice("demo-".length)
     }, { rootMargin: "-64px 0px -50% 0px" })
     for (const card of cards) observer.observe(card)
     return () => observer.disconnect()
   }, [active, pageId])
-  return inView
+  return inView.value
 }
 
 /** Props of {@link GuideNav}. */
