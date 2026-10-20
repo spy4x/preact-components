@@ -4097,8 +4097,13 @@ function kanbanDragSpecs(): Spec[] {
         const { touch } = await asPhone(page)
         const kanban = await kanbanDemo(page)
         const from = await kanban.middle(kanban.handle("icons"))
-        await touch("touchStart", from.x, from.y)
-        for (let step = 1; step <= 8; step++) {
+        // The first move goes out with the touch itself, not a round trip later: on a loaded
+        // machine that round trip alone can outlast the hold, which is not what a swipe is.
+        await Promise.all([
+          touch("touchStart", from.x, from.y),
+          touch("touchMove", from.x - 20, from.y),
+        ])
+        for (let step = 2; step <= 8; step++) {
           await touch("touchMove", from.x - step * 20, from.y)
           await twoFrames(page)
         }
@@ -4136,6 +4141,31 @@ function kanbanDragSpecs(): Spec[] {
           throw new Error(`columns ${JSON.stringify(after.columns)}`)
         }
         if (after.indicator !== null) throw new Error(`a drop line is left in ${after.indicator}`)
+        if (after.opened !== "Last card opened through onOpen: none yet") {
+          throw new Error(`the drag also opened the card: ${after.opened}`)
+        }
+      },
+    },
+    {
+      name:
+        "KanbanBoard: a mouse drag released where the card started moves nothing and does not " +
+        "open the card, though the release lands on it",
+      pageId: "ui",
+      run: async (page) => {
+        const kanban = await kanbanDemo(page)
+        const from = await kanban.middle(kanban.handle("notes"))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(from.x + 30, from.y + 10, { steps: 4 })
+        await kanban.liveIs("Picked up Write the release notes. To do, position 1 of 3.")
+        await page.mouse.move(from.x, from.y, { steps: 4 })
+        await page.mouse.up()
+        await kanban.liveIs("Dropped Write the release notes in To do, position 1 of 3.")
+        await twoFrames(page)
+        const after = await kanban.read()
+        if (after.lastMove !== "Last move through onMove: none yet") {
+          throw new Error(`a drop in place reported a move: ${after.lastMove}`)
+        }
         if (after.opened !== "Last card opened through onOpen: none yet") {
           throw new Error(`the drag also opened the card: ${after.opened}`)
         }
