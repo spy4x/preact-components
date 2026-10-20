@@ -16212,11 +16212,12 @@ async function resetKanban(devtools: Devtools): Promise<void> {
 }
 
 /**
- * `KanbanBoard`, driven by real key presses and a real mouse drag on its catalogue demo.
+ * `KanbanBoard`, driven by real key presses and clicks on its catalogue demo. Its touch and mouse
+ * drags are Playwright specs in `e2e/ui.spec.ts`.
  *
  * A string render shows the board's markup, but none of what the board does: a key press that
  * picks a card up, the arrow keys that move it, the drop that reports it through `onMove`, focus
- * following the card into its new column, Escape putting it back, a mouse drag and the live region
+ * following the card into its new column, Escape putting it back, and the live region
  * that says what happened. Each check here reads those off the page.
  *
  * @param devtools The connected session, on a hydrated page.
@@ -16237,9 +16238,7 @@ async function kanbanBoardChecks(devtools: Devtools): Promise<void> {
     await kanbanRefusedDropFocusCheck(devtools)
     await kanbanRefusedDropBlankClickCheck(devtools)
     await kanbanSameColumnKeyboardCheck(devtools)
-    await kanbanSameColumnMouseCheck(devtools)
     await kanbanOpenChecks(devtools)
-    await kanbanPointerDragCheck(devtools)
     await kanbanPhoneWidthCheck(devtools)
   } finally {
     await resetKanban(devtools)
@@ -16423,121 +16422,6 @@ async function kanbanPoint(devtools: Devtools, element: string): Promise<{ x: nu
 /** A page expression for the board's own scrolling list of columns. */
 const KANBAN_BOARD = `document.querySelector('${KANBAN_CARD} ul[aria-label]')`
 
-/**
- * A real mouse drag of the last Review card into the empty Done column reports the move.
- *
- * Measured in this browser (#381): plain `Input.dispatchMouseEvent` presses and moves start the
- * browser's own drag and deliver `dragover` and `drop` with no drag interception, provided each move
- * is given time to arrive. Ten moves sent back to back delivered four `dragover` events and ended
- * in `dragend` with no `drop`; sent one at a time, every move produced its `dragover` and the release
- * dropped. So each move here waits for the page to see a drag event at that point. The drop target
- * has to be inside the board's visible part too: a point in the scrolled-off column landed on the
- * card's canvas instead. The board is scrolled to its end first, as a reader would scroll it.
- */
-async function kanbanPointerDragCheck(devtools: Devtools): Promise<void> {
-  await resetKanban(devtools)
-  await devtools.evaluate<null>(`(${KANBAN_BOARD}.scrollLeft = ${KANBAN_BOARD}.scrollWidth, null)`)
-  const to = await kanbanPoint(
-    devtools,
-    `document.querySelector('${KANBAN_CARD} [data-kanban-column="done"] [data-kanban-list]')`,
-  )
-  const { over, types } = await kanbanMouseDrag(
-    devtools,
-    "login",
-    to,
-    `.lastMove.endsWith("login to done at 0")`,
-  )
-  const dropped = await devtools.evaluate<KanbanState>(KANBAN_STATE)
-
-  check(
-    "dragging a KanbanBoard card over an empty column shows the drop indicator there",
-    over.indicatorColumn === "done",
-    `indicator in ${over.indicatorColumn}; drag events seen: ${types}`,
-  )
-  check(
-    "a real mouse drag moves a KanbanBoard card into an empty column and reports it through onMove",
-    dropped.lastMove.endsWith("login to done at 0") &&
-      JSON.stringify(dropped.columns.done) === `["login"]` &&
-      dropped.columns.review?.length === 0 && dropped.indicatorColumn === null &&
-      dropped.live === "Dropped Sign in with a passkey in Done, position 1 of 1.",
-    `onMove "${dropped.lastMove}", columns ${JSON.stringify(dropped.columns)}, indicator ` +
-      `${dropped.indicatorColumn}, live "${dropped.live}"; drag events seen: ${types}`,
-  )
-  await devtools.evaluate<null>(`(${KANBAN_BOARD}.scrollLeft = 0, null)`)
-}
-
-/** What {@link kanbanMouseDrag} saw: the board just before the release, and the drag events. */
-interface KanbanDrag {
-  over: KanbanState
-  types: string
-}
-
-/**
- * Drag a card with real mouse events to a point, and release it there.
- *
- * Each move waits until the page has seen a drag event at that point: sent back to back, moves
- * were dropped and the drag ended with no `drop` (measured, see {@link kanbanPointerDragCheck}).
- * The drag events are recorded by `document` listeners that are removed again before returning.
- *
- * @param devtools The connected session.
- * @param itemId The card to drag.
- * @param to Where to release it, in viewport coordinates.
- * @param settled A `KANBAN_STATE` property test that is true once the drop has shown.
- */
-async function kanbanMouseDrag(
-  devtools: Devtools,
-  itemId: string,
-  to: { x: number; y: number },
-  settled: string,
-): Promise<KanbanDrag> {
-  await devtools.evaluate<null>(`(() => {
-    globalThis.__kanbanDrag = []
-    globalThis.__kanbanDragListeners = new AbortController()
-    for (const type of ["dragstart", "dragenter", "dragover", "drop"]) {
-      document.addEventListener(type, (event) => globalThis.__kanbanDrag.push({
-        type,
-        x: event.clientX,
-      }), { capture: true, signal: globalThis.__kanbanDragListeners.signal })
-    }
-    return null
-  })()`)
-  try {
-    const from = await kanbanPoint(devtools, kanbanHandle(itemId))
-    const mouse = (type: string, x: number, y: number, buttons: number) =>
-      devtools.send("Input.dispatchMouseEvent", {
-        type,
-        x,
-        y,
-        button: type === "mouseMoved" && buttons === 0 ? "none" : "left",
-        buttons,
-        clickCount: type === "mouseMoved" ? 0 : 1,
-      })
-
-    await mouse("mouseMoved", from.x, from.y, 0)
-    await mouse("mousePressed", from.x, from.y, 1)
-    const steps = 10
-    for (let step = 1; step <= steps; step++) {
-      const x = Math.round(from.x + ((to.x - from.x) * step) / steps)
-      const y = Math.round(from.y + ((to.y - from.y) * step) / steps)
-      await mouse("mouseMoved", x, y, 1)
-      await poll(
-        () =>
-          devtools.evaluate<boolean>(
-            `globalThis.__kanbanDrag.some((seen) => seen.type !== "dragstart" && seen.x === ${x})`,
-          ),
-        1_000,
-      )
-    }
-    const over = await devtools.evaluate<KanbanState>(KANBAN_STATE)
-    await mouse("mouseReleased", to.x, to.y, 0)
-    await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}${settled}`), 2_000)
-    const events = await devtools.evaluate<{ type: string }[]>(`globalThis.__kanbanDrag`)
-    return { over, types: [...new Set(events.map((seen) => seen.type))].join(", ") }
-  } finally {
-    await devtools.evaluate<null>(`(globalThis.__kanbanDragListeners?.abort(), null)`)
-  }
-}
-
 /** A real mouse click in the middle of an element. */
 async function kanbanClick(devtools: Devtools, element: string): Promise<void> {
   const at = await kanbanPoint(devtools, element)
@@ -16657,33 +16541,6 @@ async function kanbanSameColumnKeyboardCheck(devtools: Devtools): Promise<void> 
     `onMove "${moved.lastMove}", todo ${
       JSON.stringify(moved.columns.todo)
     }, focus ${moved.focused}`,
-  )
-}
-
-/**
- * A mouse drag of the first card to just below the second one's middle lands it second: the index
- * counts the column without the dragged card.
- */
-async function kanbanSameColumnMouseCheck(devtools: Devtools): Promise<void> {
-  await resetKanban(devtools)
-  const to = await devtools.evaluate<{ x: number; y: number }>(`(() => {
-    const box = ${kanbanHandle("icons")}.getBoundingClientRect()
-    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.bottom - box.height / 4) }
-  })()`)
-  const { types } = await kanbanMouseDrag(
-    devtools,
-    "notes",
-    to,
-    `.lastMove.endsWith("none yet") === false`,
-  )
-  const moved = await devtools.evaluate<KanbanState>(KANBAN_STATE)
-  check(
-    "a mouse drag moves a KanbanBoard card one place down its own column, reporting index 1, and does not open it",
-    moved.lastMove.endsWith("notes to todo at 1") &&
-      JSON.stringify(moved.columns.todo) === `["icons","notes","search"]` &&
-      moved.opened.endsWith("none yet"),
-    `onMove "${moved.lastMove}", todo ${JSON.stringify(moved.columns.todo)}, onOpen ` +
-      `"${moved.opened}"; drag events: ${types}`,
   )
 }
 
