@@ -735,6 +735,76 @@ async function axePasses(page: Page, selectors: readonly string[]): Promise<stri
   return `${passes.length} rules pass`
 }
 
+/** `tokens.css`'s `--color-canvas`: the light value on `:root`, the dark one on `.dark`. */
+const CANVAS = { light: "oklch(0.967 0.003 264.542)", dark: "oklch(0.21 0.034 264.665)" }
+
+/**
+ * `ThemePreview`: native radios switch the frame's palette, and the page around it keeps its own.
+ * Each spec runs on the guide in both of its own palettes, so a light frame on a dark page and a
+ * dark frame on a light page are both drawn.
+ */
+function themePreviewSpecs(): Spec[] {
+  const card = (page: Page) => page.locator("#demo-ThemePreview")
+  const radio = (page: Page, name: string, checked: boolean) =>
+    card(page).getByRole("group", { name: "Theme" }).getByRole("radio", { name, checked })
+  const frame = (page: Page) => card(page).locator("[data-theme-preview-frame]")
+  /** The frame's canvas and colour scheme, and the card's own background around it. */
+  const read = (page: Page) =>
+    frame(page).evaluate((element) => ({
+      frame: getComputedStyle(element).backgroundColor,
+      scheme: getComputedStyle(element).colorScheme,
+      page: getComputedStyle(element.closest("#demo-ThemePreview") ?? document.body)
+        .backgroundColor,
+    }))
+  return (["light", "dark"] as const).flatMap((colorScheme): Spec[] => [
+    {
+      name:
+        `ThemePreview on a ${colorScheme} page: starts dark, Tab reaches the checked radio and an arrow key turns only the frame light`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        await radio(page, "Dark", true).waitFor()
+        const before = await read(page)
+        if (before.frame !== CANVAS.dark || before.scheme !== "dark") {
+          throw new Error(`dark frame drew ${JSON.stringify(before)}`)
+        }
+
+        // Clicking the legend puts the start of Tab order there without focusing anything.
+        await card(page).locator("legend").click()
+        await page.keyboard.press("Tab")
+        await radio(page, "Dark", true).and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("ArrowRight")
+        await radio(page, "Light", true).and(page.locator(":focus")).waitFor()
+        const after = await read(page)
+        if (
+          after.frame !== CANVAS.light || after.scheme !== "light" || after.page !== before.page
+        ) {
+          throw new Error(
+            `light frame drew ${JSON.stringify(after)}, before ${JSON.stringify(before)}`,
+          )
+        }
+
+        await page.keyboard.press("Tab")
+        await frame(page).getByRole("button", { name: "Save" }).and(page.locator(":focus"))
+          .waitFor()
+        return `frame ${before.frame} → ${after.frame}; around it ${after.page} both times`
+      },
+    },
+    ...(["Dark", "Light"] as const).map((theme): Spec => ({
+      name:
+        `ThemePreview on a ${colorScheme} page: axe finds no violation with ${theme} checked, text colour contrast included`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        await radio(page, "Dark", true).waitFor()
+        if (theme === "Light") await radio(page, "Light", false).check()
+        await radio(page, theme, true).waitFor()
+        return await axePasses(page, ["#demo-ThemePreview"])
+      },
+    })),
+  ])
+}
+
 /**
  * `RadioChips`: native radios drawn as chips. Arrow keys move the choice within one tab stop and
  * skip the disabled chip, the page's own `:has(#id:checked)` CSS follows the choice, the checked
@@ -795,7 +865,7 @@ function radioChipsSpecs(): Spec[] {
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
       name:
-        `RadioChips: axe finds no violation on the chips, text colour contrast included, ${colorScheme}`,
+        `RadioChips: axe finds no violation on the chips, text colour contrast included`,
       pageId: "ui",
       colorScheme,
       run: async (page) => {
@@ -930,7 +1000,7 @@ function comparisonTablePhoneSpecs(): Spec[] {
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
       name: `ComparisonTable: at 390px a table too wide to fit shows a shadow at its right edge ` +
-        `until it is scrolled to the end, ${colorScheme}`,
+        `until it is scrolled to the end`,
       pageId: "ui",
       colorScheme,
       run: async (page) => {
@@ -2190,7 +2260,7 @@ export const specs: readonly Spec[] = [
   },
   ...(["light", "dark"] as const).map((colorScheme): Spec => ({
     name:
-      `ToggleChips: axe finds no violation on the chips, text colour contrast included, ${colorScheme}`,
+      `ToggleChips: axe finds no violation on the chips, text colour contrast included`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
@@ -2201,6 +2271,7 @@ export const specs: readonly Spec[] = [
     },
   })),
   ...radioChipsSpecs(),
+  ...themePreviewSpecs(),
   ...unsavedHistorySpecs(),
   ...quickAddSpecs(),
   ...confirmDialogNameSpecs(),
@@ -2886,7 +2957,7 @@ async function recordSpoken(page: Page, live: Locator): Promise<() => Promise<st
 function quickAddAxe(colorScheme: "light" | "dark"): Spec {
   return {
     name:
-      `QuickAdd: axe finds no violation with badges and the empty-title message showing, ${colorScheme}`,
+      `QuickAdd: axe finds no violation with badges and the empty-title message showing`,
     pageId: "ui",
     colorScheme,
     run: async (page) => {
