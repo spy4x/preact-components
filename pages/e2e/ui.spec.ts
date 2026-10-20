@@ -4120,8 +4120,8 @@ function kanbanDragSpecs(): Spec[] {
     },
     {
       name:
-        "KanbanBoard: a mouse drag shows the drop line in the empty Done column, moves the card " +
-        "there through onMove, and does not open it",
+        "KanbanBoard: a mouse drag shows the drop line in the empty Done column and moves the card " +
+        "there through onMove",
       pageId: "ui",
       run: async (page) => {
         const kanban = await kanbanDemo(page)
@@ -4174,7 +4174,7 @@ function kanbanDragSpecs(): Spec[] {
     {
       name:
         "KanbanBoard: a mouse drag of the first card to below the second one's middle reports " +
-        "index 1 in its own column, keeps focus on it, and does not open it",
+        "index 1 in its own column and keeps focus on it",
       pageId: "ui",
       run: async (page) => {
         const kanban = await kanbanDemo(page)
