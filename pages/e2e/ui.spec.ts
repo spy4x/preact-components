@@ -4200,23 +4200,29 @@ function kanbanDragSpecs(): Spec[] {
         const viewport = page.viewportSize()
         if (viewport === null) throw new Error("no viewport")
         const copy = kanban.card.locator("[data-kanban-dragging]")
-        /** How much of the drawn card no ancestor clips, from 0 to 1, and its box. */
+        /**
+         * How many of nine points spread over the drawn card the browser's own hit test finds on
+         * it, and its box. The hit test respects clipping, so a clipped part finds something else.
+         * The card ignores the pointer, so it is made to take it for the test and then put back.
+         */
         const shown = () =>
           copy.evaluate((element) => {
-            const box = element.getBoundingClientRect()
-            let left = box.left, top = box.top, right = box.right, bottom = box.bottom
-            for (let node = element.parentElement; node !== null; node = node.parentElement) {
-              const style = getComputedStyle(node)
-              if (style.overflowX === "visible" && style.overflowY === "visible") continue
-              const clip = node.getBoundingClientRect()
-              left = Math.max(left, clip.left)
-              top = Math.max(top, clip.top)
-              right = Math.min(right, clip.right)
-              bottom = Math.min(bottom, clip.bottom)
+            const card = element as HTMLElement
+            const box = card.getBoundingClientRect()
+            card.style.pointerEvents = "auto"
+            let hits = 0
+            for (const fx of [0.05, 0.5, 0.95]) {
+              for (const fy of [0.1, 0.5, 0.9]) {
+                const hit = document.elementFromPoint(
+                  box.left + box.width * fx,
+                  box.top + box.height * fy,
+                )
+                if (hit !== null && card.contains(hit)) hits++
+              }
             }
-            const area = Math.max(0, right - left) * Math.max(0, bottom - top)
+            card.style.pointerEvents = ""
             return {
-              fraction: area / (box.width * box.height),
+              fraction: hits / 9,
               box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
             }
           })
@@ -4243,9 +4249,9 @@ function kanbanDragSpecs(): Spec[] {
             const { fraction, box } = await shown()
             const under = box.left <= point.x && point.x <= box.right && box.top <= point.y &&
               point.y <= box.bottom
-            if (fraction < 0.999 || !under) {
+            if (fraction < 1 || !under) {
               throw new Error(
-                `${point.what}: ${Math.round(fraction * 100)}% of the card is drawn, at ` +
+                `${point.what}: ${Math.round(fraction * 9)} of 9 points on the card hit it, at ` +
                   `${JSON.stringify(box)}, pointer at ${point.x}, ${point.y}`,
               )
             }
