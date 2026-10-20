@@ -1,7 +1,8 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconSearch, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
-import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+import { useEffect, useId, useRef } from "preact/hooks"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
@@ -236,9 +237,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
   // What had focus when the palette opened: where focus goes back to while the trigger is hidden.
   const before = useRef<HTMLElement | null>(null)
   const id = useId()
-  const [query, setQuery] = useState("")
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [remote, setRemote] = useState<Remote<T>>({ status: Status.IDLE, options: [] })
+  const query = useSignal("")
+  const activeIndex = useSignal(0)
+  const remote = useSignal<Remote<T>>({ status: Status.IDLE, options: [] })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const slowTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // Enter was pressed while a search ran: pick the answer's first result when it lands.
@@ -251,11 +252,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const backdrop = useBackdropPress((event) => event.target === dialog.current)
 
   const remoteMode = props.search !== undefined
-  const busy = remoteMode && (remote.status === Status.LOADING || remote.status === Status.SLOW)
+  const busy = remoteMode &&
+    (remote.value.status === Status.LOADING || remote.value.status === Status.SLOW)
   // While an input method composes, the results stay those of the text from before it began.
-  const composedQuery = useComposedQuery(input, query, (text) => onTyped(text))
+  const composedQuery = useComposedQuery(input, query.value, (text) => onTyped(text))
   const results = props.search !== undefined
-    ? remote.options
+    ? remote.value.options
     : (props.filter ?? rankOptions)(props.options, composedQuery)
   const groups = groupOptions(results)
   const flat = groups.flatMap((group) => group.options)
@@ -281,12 +283,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
     if (search === undefined) return
     // The previous query's answer stays listed, so the list does not blink on every keystroke. Enter
     // waits for the new answer instead of picking from it (see `onKeyDown`).
-    setRemote((current) => ({ status: Status.LOADING, options: current.options }))
+    remote.value = { status: Status.LOADING, options: remote.value.options }
     slowTimer.current = setTimeout(() => {
       slowTimer.current = undefined
-      setRemote((current) =>
-        current.status === Status.LOADING ? { ...current, status: Status.SLOW } : current
-      )
+      if (remote.value.status === Status.LOADING) {
+        remote.value = { ...remote.value, status: Status.SLOW }
+      }
     }, SLOW_SEARCH_MS)
     timer.current = setTimeout(() => {
       timer.current = undefined
@@ -297,8 +299,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
         call.current = null
         clearTimeout(slowTimer.current)
         slowTimer.current = undefined
-        setRemote(next)
-        setActiveIndex(0)
+        remote.value = next
+        activeIndex.value = 0
         if (pickWhenAnswered.current) {
           pickWhenAnswered.current = false
           choose(next.options[0])
@@ -330,10 +332,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
 
   const open = () => {
     if (dialog.current?.open) return
-    setQuery("")
-    setActiveIndex(0)
+    query.value = ""
+    activeIndex.value = 0
     if (latest.current.search !== undefined) {
-      setRemote({ status: Status.IDLE, options: [] })
+      remote.value = { status: Status.IDLE, options: [] }
       ask("", 0)
     }
     // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses. The
@@ -363,8 +365,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
 
   /** Follow a finished keystroke: highlight the first result, and ask `search` after the pause. */
   const onTyped = (text: string) => {
-    setQuery(text)
-    setActiveIndex(0)
+    query.value = text
+    activeIndex.value = 0
     if (remoteMode) ask(text, latest.current.debounce ?? 200)
   }
 
@@ -384,17 +386,21 @@ export function CommandPalette<T extends CommandPaletteOption>(
       pickWhenAnswered.current = true
       return
     }
-    const action = comboboxKeyAction(key, { activeIndex, isOpen: true }, flat.length)
+    const action = comboboxKeyAction(
+      key,
+      { activeIndex: activeIndex.value, isOpen: true },
+      flat.length,
+    )
     if (action.preventDefault) event.preventDefault()
     if (action.select >= 0) return choose(flat[action.select])
-    setActiveIndex(action.state.activeIndex)
+    activeIndex.value = action.state.activeIndex
   }
 
   const listbox = `${id}-results`
   // Keyed by the option's own id, not its row: when an answer puts another option in the
   // highlighted row, the active descendant changes and a screen reader announces the new one.
   const optionId = (option: T) => `${id}-result-${encodeURIComponent(option.id)}`
-  const active = flat.length === 0 ? -1 : Math.min(activeIndex, flat.length - 1)
+  const active = flat.length === 0 ? -1 : Math.min(activeIndex.value, flat.length - 1)
 
   // Keep the highlighted result on screen, as `Combobox` does: the list scrolls by just the row
   // that went past its edge, and a row already in view does not move it.
@@ -402,11 +408,11 @@ export function CommandPalette<T extends CommandPaletteOption>(
     if (active < 0 || !dialog.current?.open) return
     document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
   }, [active, flat.length, flat[active]?.id])
-  const status = !remoteMode || remote.status === Status.IDLE
+  const status = !remoteMode || remote.value.status === Status.IDLE
     ? flat.length === 0 ? labels.empty : ""
-    : remote.status === Status.SLOW
+    : remote.value.status === Status.SLOW
     ? labels.loading
-    : remote.status === Status.ERROR
+    : remote.value.status === Status.ERROR
     ? labels.error
     : ""
   const firstHotkey = hotkeys[0]
@@ -421,7 +427,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
       role="option"
       aria-selected={index === active}
       onClick={() => choose(option)}
-      onMouseMove={() => index !== active && setActiveIndex(index)}
+      onMouseMove={() => index !== active && (activeIndex.value = index)}
       class={cn(
         "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
         // A touch target on a phone, however short its text.
@@ -516,12 +522,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
             placeholder={labels.placeholder}
             autocomplete="off"
             spellcheck={false}
-            value={query}
+            value={query.value}
             onInput={(event) => {
               const text = event.currentTarget.value
               // A step of a word an input method is still building is only shown: the results
               // and the search wait for the composition to end.
-              if (isComposingInput(event)) setQuery(text)
+              if (isComposingInput(event)) query.value = text
               else onTyped(text)
             }}
             onKeyDown={onKeyDown}
@@ -531,7 +537,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             /* A slow search over results still listed says so here, beside the field, so the rows
             neither move nor fade. Hidden from screen readers: the status line below tells them. */
           }
-          {remote.status === Status.SLOW && flat.length > 0 && (
+          {remote.value.status === Status.SLOW && flat.length > 0 && (
             <span
               aria-hidden="true"
               data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-searching`}
