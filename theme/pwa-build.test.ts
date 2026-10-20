@@ -1,3 +1,13 @@
+/**
+ * The PWA plugins together, through the hook order of a `vite build`.
+ *
+ * The order is reproduced here rather than run with a real `vite build`, on purpose: this
+ * repository has no Vite dependency (the demo site builds without it), and a real build needs
+ * grants `deno task test` does not give, `--allow-run` for esbuild, `--allow-ffi` for Rollup's
+ * native binding and `--allow-write` for the output folder. The reproduction names the Rollup and
+ * Vite versions it follows, so an upstream change to that order is a change to check here.
+ */
+
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
