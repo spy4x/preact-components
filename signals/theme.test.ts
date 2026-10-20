@@ -604,7 +604,7 @@ function withGlobalDocument(body: (page: ReturnType<typeof fakeDocument>) => voi
   }
 }
 
-describe("createThemeStore default apply", () => {
+describe("createThemeStore on a document", () => {
   it("removes the auto-dark marker, so a chosen light theme stays light on a dark system", () => {
     withGlobalDocument((page) => {
       const store = createThemeStore({
@@ -614,6 +614,21 @@ describe("createThemeStore default apply", () => {
       store.attach()
       expect(page.attributes.has(THEME_AUTO_ATTRIBUTE)).toBe(false)
       expect(page.classes.has("dark")).toBe(false)
+      store.dispose()
+    })
+  })
+
+  it("removes the auto-dark marker on attach with a custom apply too", () => {
+    withGlobalDocument((page) => {
+      const applied: string[] = []
+      const store = createThemeStore({
+        storage: fakeStorage({ theme: "light" }),
+        media: fakeMedia(true).source,
+        apply: (theme) => void applied.push(theme),
+      })
+      store.attach()
+      expect(page.attributes.has(THEME_AUTO_ATTRIBUTE)).toBe(false)
+      expect(applied).toEqual(["light"])
       store.dispose()
     })
   })
