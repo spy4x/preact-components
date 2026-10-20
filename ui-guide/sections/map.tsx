@@ -15,7 +15,7 @@
 
 import type { MapMarker } from "@spy4x/preact-map"
 import { useSignal } from "@preact/signals"
-import { Button, Cluster, Stack } from "@spy4x/preact-ui"
+import { Button, Stack } from "@spy4x/preact-ui"
 import { useContext } from "preact/hooks"
 import { MapTilesContext } from "../map-tiles.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -54,20 +54,19 @@ function MapInteractiveDemo() {
         tileUrl={tiles.url}
         attribution={tiles.attribution}
       />
-      <Cluster>
+      <p class="text-xs text-muted">
+        onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>
+      </p>
+      <div>
         <Button
           variant="outline"
           size="sm"
-          aria-pressed={parisOn ? "true" : "false"}
           data-e2e="map-toggle-paris"
           onClick={() => markers.value = parisOn ? PLACES : PLACES_PARIS_ON}
         >
-          Paris warehouse on
+          {parisOn ? "Turn Paris warehouse off" : "Turn Paris warehouse on"}
         </Button>
-        <p class="text-xs text-muted">
-          onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>
-        </p>
-      </Cluster>
+      </div>
     </Stack>
   )
 }
