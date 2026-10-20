@@ -897,13 +897,13 @@ function FragileView({ broken, onBreak }: FragileViewProps) {
 /**
  * A view that breaks on a click, inside an `ErrorBoundary`.
  *
- * The reload port is the demo's own: it counts the press, then changes the boundary's `key`, which
- * mounts a fresh boundary over a mended view, so the card works again and the catalogue is never
- * really reloaded. `pages/checks/ui.ts` drives this card and reads the readouts below.
+ * The reload port is the demo's own: it counts the press and mends the view, and the boundary then
+ * clears its error and shows the view again, so the card works again and the catalogue is never
+ * really reloaded. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` drive this card and read the
+ * readouts below.
  */
 function ErrorBoundaryDemo() {
   const broken = useSignal(false)
-  const mount = useSignal(0)
   const caught = useSignal(0)
   const last = useSignal("nothing yet")
   const reloads = useSignal(0)
@@ -911,7 +911,6 @@ function ErrorBoundaryDemo() {
   return (
     <Stack gap="sm">
       <ErrorBoundary
-        key={mount.value}
         headingLevel={4}
         dataE2E="error-boundary-screen"
         onError={(error, errorInfo) => {
@@ -921,7 +920,6 @@ function ErrorBoundaryDemo() {
         onReload={() => {
           reloads.value++
           broken.value = false
-          mount.value++
         }}
       >
         <FragileView broken={broken.value} onBreak={() => broken.value = true} />
@@ -929,8 +927,8 @@ function ErrorBoundaryDemo() {
       <DemoNote>
         Errors reported: <span data-e2e="error-boundary-caught">{caught.value}</span>, the last{" "}
         <span data-e2e="error-boundary-last">{last.value}</span>. Reloads asked for:{" "}
-        <span data-e2e="error-boundary-reloads">{reloads.value}</span>. This demo's reload changes
-        the boundary's key instead of reloading the page.
+        <span data-e2e="error-boundary-reloads">{reloads.value}</span>. This demo's reload mends the
+        view instead of reloading the page.
       </DemoNote>
     </Stack>
   )
@@ -1172,8 +1170,7 @@ export const feedbackDemos = {
         name: "onReload",
         type: "() => void",
         default: "location.reload()",
-        description:
-          "What the button does. The screen stays until the boundary remounts: change its `key` to recover.",
+        description: "What the button does. Afterwards the boundary shows its children again.",
       },
       {
         name: "title",

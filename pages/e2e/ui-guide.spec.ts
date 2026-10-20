@@ -392,4 +392,38 @@ export const specs: readonly Spec[] = [
   ...(["light", "dark", "ink"] as const).flatMap((palette) =>
     guidePageIds.map((pageId) => hoverSpec(pageId, palette))
   ),
+  drawerNavigationFocusSpec(),
 ]
+
+/**
+ * A page picked in the phone navigation drawer takes focus to the content column, as the skip link
+ * does, so the next Tab goes into that page instead of back through the header (#854). It replaces
+ * the followed-link check in `pages/checks/ui-guide.ts`, which expected focus on the menu button.
+ */
+function drawerNavigationFocusSpec(): Spec {
+  return {
+    name: "Guide shell: a page picked in the phone drawer opens, the drawer closes, and focus " +
+      "moves to the content, not the menu button",
+    pageId: "overview",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 800 })
+      const contentId = (await page.locator(`[data-e2e="ui-guide-skip"]`).getAttribute("href"))
+        ?.slice(1)
+      if (!contentId) throw new Error("the skip link names no content column")
+      await page.locator(`[data-e2e="ui-guide-nav-open"]`).click()
+      const dialog = page.locator(`dialog[data-e2e="ui-guide-nav-dialog"]`)
+      await dialog.and(page.locator(":modal")).waitFor()
+      await dialog.getByRole("link", { name: "Icons", exact: true }).first().click()
+      await page.locator(`[data-guide-page="icons"]`).waitFor()
+      await dialog.and(page.locator(":modal")).waitFor({ state: "detached" })
+      try {
+        await page.locator(`[id="${contentId}"]:focus`).waitFor({ timeout: 3_000 })
+      } catch {
+        const focused = await page.evaluate(() =>
+          document.activeElement?.outerHTML.slice(0, 120) ?? "nothing"
+        )
+        throw new Error(`after the drawer closed, focus is on ${focused}`)
+      }
+    },
+  }
+}

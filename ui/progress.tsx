@@ -14,6 +14,11 @@ interface ProgressBaseProps {
   showValue?: boolean
   /** Colour of the filled portion. Defaults to `"primary"`. */
   tone?: ProgressTone
+  /**
+   * Accessible name for a bar with no `label`, applied as `aria-label`. A captioned bar is named by
+   * its caption and ignores this.
+   */
+  ariaLabel?: string
   class?: string
 }
 
@@ -22,9 +27,11 @@ interface ProgressBaseProps {
  *
  * ARIA 1.2 requires an accessible name on `role="progressbar"`, so a caption the bar is not linked
  * to is a defect — `aria-progressbar-name` in axe. The two fields are a union rather than two
- * independent optionals, which makes `label` without `id` a compile error: the unnamed combination
- * cannot be written in the first place. The caller still picks the id, which doubles as the bar's
- * DOM id and the prefix of the caption's.
+ * independent optionals, which makes `label` without `id` a compile error. The caller still picks
+ * the id, which doubles as the bar's DOM id and the prefix of the caption's.
+ *
+ * A bar with no `label` is named only by `ariaLabel`. The type does not require one, so a bar with
+ * neither still compiles and has no name; pass `ariaLabel` whenever there is no caption.
  */
 export type ProgressProps =
   & ProgressBaseProps
@@ -138,6 +145,7 @@ export function Progress({
   showValue = true,
   tone = "primary",
   id,
+  ariaLabel,
   class: className,
 }: ProgressProps): JSX.Element {
   const { value: clamped, fraction } = clampProgress(value, max)
@@ -175,6 +183,7 @@ export function Progress({
         class={track}
         role="progressbar"
         aria-labelledby={labelId}
+        aria-label={labelId === undefined ? ariaLabel : undefined}
         aria-valuenow={clamped ?? undefined}
         aria-valuemin={0}
         aria-valuemax={valuemax}

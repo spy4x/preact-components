@@ -436,10 +436,33 @@ export function UIGuide(
     setNavOpen(true)
   }
   const closeNav = () => dialog.current?.close()
+  // Set when a navigation closes the drawer, so its `close` handler sends focus to the page that
+  // was picked rather than back to the menu button.
+  const closedByNavigation = useRef(false)
+  /** Close the drawer because a page was picked, so focus goes to that page. */
+  const closeNavForPage = () => {
+    if (dialog.current?.open) closedByNavigation.current = true
+    closeNav()
+  }
+
+  /**
+   * Focus the content column, as the skip link does. It is focusable only while it holds focus: a
+   * column that stayed focusable would take the focus of every click on a non-focusable spot
+   * inside it, which a menu reads as focus leaving it, and closes.
+   *
+   * @param options Passed to `focus()`.
+   */
+  const focusContent = (options?: FocusOptions) => {
+    const target = content.current
+    if (!target) return
+    target.tabIndex = -1
+    target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true })
+    target.focus(options)
+  }
 
   useEffect(() => {
     if (hash === undefined) return
-    closeNav()
+    closeNavForPage()
 
     for (const marked of document.querySelectorAll("[data-deep-link]")) {
       marked.removeAttribute("data-deep-link")
@@ -487,14 +510,14 @@ export function UIGuide(
   }, [hash])
 
   const follow = (href: string, event: JSX.TargetedMouseEvent<HTMLAnchorElement>) => {
-    closeNav()
+    closeNavForPage()
     if (!navigate) return
     event.preventDefault()
     navigate(href)
   }
   // A search result is not a link, so it changes the address itself when no port is given.
   const go = (href: string) => {
-    closeNav()
+    closeNavForPage()
     if (navigate) navigate(href)
     else globalThis.location.hash = href.slice(1)
   }
@@ -516,17 +539,8 @@ export function UIGuide(
           href={`#${contentId}`}
           onClick={(event) => {
             event.preventDefault()
-            const target = content.current
-            if (!target) return
-            // Focusable only while the skip link has put focus there: a column that stayed focusable
-            // would take the focus of every click on a non-focusable spot inside it, which a menu
-            // reads as focus leaving it, and closes.
-            target.tabIndex = -1
-            target.addEventListener("blur", () => target.removeAttribute("tabindex"), {
-              once: true,
-            })
-            target.focus()
-            target.scrollIntoView({ block: "start" })
+            focusContent()
+            content.current?.scrollIntoView({ block: "start" })
           }}
           class="sr-only rounded-md bg-surface px-3 py-2 text-sm font-medium text-accent-900 shadow focus:not-sr-only focus:absolute focus:z-50 focus:px-3 focus:py-2 dark:text-accent-200"
           data-e2e="ui-guide-skip"
@@ -621,6 +635,13 @@ export function UIGuide(
               // stale, and acting on it would empty a dialog that is open again.
               if (dialog.current?.open) return
               setNavOpen(false)
+              // A page picked in the drawer takes focus to that page, so the next Tab goes into it
+              // instead of back through the header. The route effect has already scrolled.
+              if (closedByNavigation.current) {
+                closedByNavigation.current = false
+                focusContent({ preventScroll: true })
+                return
+              }
               // Chromium already returns focus to the button that opened a modal dialog, so the
               // browser check passes with or without this line; it is here for engines that do not.
               trigger.current?.focus()

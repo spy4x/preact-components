@@ -417,7 +417,8 @@ function CardDemo() {
 
 /**
  * `Progress` in every tone, then the two readings worth knowing: one past `max`, which fills the
- * track rather than overflowing it, and none at all, which draws a bare track.
+ * track rather than overflowing it, and none at all, which draws a bare track. Last, a bar with no
+ * caption, named by `ariaLabel`.
  */
 function ProgressDemo() {
   return (
@@ -427,6 +428,7 @@ function ProgressDemo() {
       ))}
       <Progress id="guide-progress-clamped" label="Past the maximum (140 of 100)" value={140} />
       <Progress id="guide-progress-indeterminate" label="No reading yet" value={null} />
+      <Progress ariaLabel="Uncaptioned upload" value={30} />
     </Stack>
   )
 }
@@ -1059,7 +1061,7 @@ function TooltipDemo() {
             focusable={false}
             contentClass="visible max-w-48 opacity-100"
           >
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" data-e2e="tooltip-group-control">
               <IconTrashBin class="size-4" />
               Archive
             </Button>
@@ -1103,10 +1105,17 @@ const demoNote = "text-xs text-muted"
  * browser's own default action, so the link it sits in still works. The other two images above keep
  * the card's default `fallbackAlt`, unaffected by the second instance: each already carries a real
  * `alt`, which `fallbackAlt` never overrides.
+ *
+ * A second `[data-lightbox]` container below the first gets zoom from the same instance. The demo
+ * counts every focus move into an image and passes `onOpen` as an inline arrow, so focusing an
+ * image re-renders this demo with a new `onOpen`: `pages/e2e/ui.spec.ts` proves the image keeps its
+ * focus through that.
  */
 function ZoomableImagesDemo() {
+  const focusMoves = useSignal(0)
+  const opened = useSignal(0)
   return (
-    <Stack>
+    <Stack onFocusIn={() => focusMoves.value++}>
       <div data-lightbox class="flex flex-wrap items-start gap-2">
         <p class={`w-full ${demoNote}`}>
           Click an image, or Tab to it and press Enter. The second sits in a link, which opening the
@@ -1137,7 +1146,20 @@ function ZoomableImagesDemo() {
           class="rounded border border-subtle"
         />
       </div>
-      <ZoomableImages />
+      <div data-lightbox data-e2e="lightbox-second" class="flex flex-wrap items-start gap-2">
+        <p class={`w-full ${demoNote}`}>
+          A second container with the same attribute zooms too. Focus moves here:{" "}
+          <span data-e2e="lightbox-focus-moves">{focusMoves.value}</span>, images opened:{" "}
+          <span data-e2e="lightbox-opened">{opened.value}</span>.
+        </p>
+        <img
+          data-e2e="lightbox-second-image"
+          src={placeholder("f9a8d4", 120, 80)}
+          alt="A placeholder image in the second container"
+          class="rounded border border-subtle"
+        />
+      </div>
+      <ZoomableImages onOpen={() => opened.value++} />
       <div data-e2e="lightbox-bare" data-lightbox-bare class="flex flex-wrap items-start gap-2">
         <p class={`w-full ${demoNote}`}>
           With{" "}
@@ -1426,9 +1448,14 @@ export const displayDemos = {
         type: "string",
         description: "A caption above the bar; it needs an `id` beside it.",
       },
+      {
+        name: "ariaLabel",
+        type: "string",
+        description: "The bar's name when it has no caption.",
+      },
     ],
     snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
-<Progress value={null} />`,
+<Progress value={null} ariaLabel="Sync" />`,
     render: () => <ProgressDemo />,
   },
   ...comparisonTableDemos,

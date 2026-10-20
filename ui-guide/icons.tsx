@@ -127,9 +127,20 @@ export function IconGallery(
   const copied = useSignal("")
   const matches = filterIconNames(iconNames, query.value)
 
-  const handleCopy = (name: string) => {
-    void (copy ? copy(iconSnippet(name)) : copyToClipboard(iconSnippet(name)))
-    copied.value = name
+  /**
+   * Copy one icon's snippet and announce it only once the copy has worked: a port that rejects or
+   * a clipboard that answers `false` leaves the status without a "copied" line.
+   */
+  const handleCopy = async (name: string) => {
+    copied.value = ""
+    let worked: boolean
+    try {
+      const snippet = iconSnippet(name)
+      worked = (await (copy ? copy(snippet) : copyToClipboard(snippet))) !== false
+    } catch {
+      worked = false
+    }
+    if (worked) copied.value = name
   }
 
   return (
@@ -191,7 +202,7 @@ export function IconGallery(
                     type="button"
                     title={`Copy ${iconSnippet(name)}`}
                     data-icon={name}
-                    onClick={() => handleCopy(name)}
+                    onClick={() => void handleCopy(name)}
                     class="group flex min-w-0 flex-col items-center gap-2 rounded-lg p-3 text-muted hover:bg-surface hover:text-selected hover:shadow-xs focus-visible:outline-2 focus-visible:outline-accent-600"
                   >
                     <Icon class="size-6 transition-transform duration-300 group-hover:scale-125" />
