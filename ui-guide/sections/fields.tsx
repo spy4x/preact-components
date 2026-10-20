@@ -20,6 +20,7 @@ import {
   MoneyInput,
   QuickAdd,
   Radio,
+  RadioChips,
   RadioGroup,
   Select,
   Stack,
@@ -693,6 +694,27 @@ function QuickAddDemo() {
   )
 }
 
+/** A server-rendered single choice: page CSS reads the checked radio, no script needed. */
+function RadioChipsDemo() {
+  return (
+    <div class="flex flex-col gap-3 [&:has(#radio-chips-read-only:checked)_[data-tool=delete]]:hidden">
+      <RadioChips
+        legend="Which tools the server offers"
+        name="demo-radio-chips-mode"
+        defaultValue="all"
+        options={[
+          { value: "all", label: "All tools", id: "radio-chips-all" },
+          { value: "read-only", label: "Read only", id: "radio-chips-read-only" },
+          { value: "none", label: "None", disabled: true },
+        ]}
+      />
+      <p class="text-xs text-muted" data-e2e="radio-chips-tools">
+        <span>list_events</span> <span data-tool="delete">· delete_event</span>
+      </p>
+    </div>
+  )
+}
+
 /** A multi-select tag filter and a single-select status filter, each echoing its value. */
 function ToggleChipsDemo() {
   const tags = useSignal<string[]>(["work"])
@@ -1112,6 +1134,60 @@ export const fieldDemos = {
   onAdd={addExpense}
 />`,
     render: () => <QuickAddDemo />,
+  },
+  RadioChips: {
+    summary:
+      "One choice drawn as `ToggleChips` chips, on native radios, so it works with JavaScript off.",
+    wide: false,
+    props: [
+      {
+        name: "legend",
+        type: "ComponentChildren",
+        description: "The group's accessible name, rendered as the `<legend>`.",
+      },
+      {
+        name: "hideLegend / legendClass",
+        type: "boolean / string",
+        default: `false / "pc-label mb-2"`,
+        description: "Keep the legend for screen readers only, or replace its classes.",
+      },
+      {
+        name: "name",
+        type: "string",
+        description: "Shared by every radio: one tab stop, arrow keys, and the submitted field.",
+      },
+      {
+        name: "options",
+        type: "{ value, label, disabled?, id?, inputAttributes? }[]",
+        description:
+          "One chip per option. `id` lets page CSS read `:has(#id:checked)`; `inputAttributes` go on the radio.",
+      },
+      {
+        name: "defaultValue",
+        type: "string",
+        description: "The option checked in the server markup; the browser keeps the choice after.",
+      },
+      {
+        name: "value / onChange",
+        type: "string | null / (value, event) => void",
+        description: "Optional: control the choice from an island.",
+      },
+      {
+        name: "class / optionsClass",
+        type: "string",
+        description: "Utilities on the fieldset, and added to the chips' row.",
+      },
+    ],
+    snippet: `<RadioChips
+  legend="Which tools the server offers"
+  name="mode"
+  defaultValue="all"
+  options={[
+    { value: "all", label: "All tools", id: "mode-all" },
+    { value: "read-only", label: "Read only", id: "mode-read-only" },
+  ]}
+/>`,
+    render: () => <RadioChipsDemo />,
   },
   ToggleChips: {
     summary:
