@@ -43,4 +43,10 @@ describe("honeypotField", () => {
 
     expect(html).toContain('autocomplete="off"')
   })
+
+  it("names the field HONEYPOT_FIELD_NAME and labels it in English when given nothing", () => {
+    expect(render(honeypotField())).toBe(
+      render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank")),
+    )
+  })
 })

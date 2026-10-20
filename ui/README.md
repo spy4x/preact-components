@@ -1039,12 +1039,12 @@ string for a key of `labels` makes the region say nothing in that status, and
 — the server's error, say — is the only message. The region still renders, empty, and still takes
 focus when the visitor's submit button is disabled under them.
 
-A form built on this can carry a honeypot from `honeypot`: `honeypotField` renders an off-screen
-field simple bots fill in. Its server half comes from `@spy4x/platform/universal/honeypot`:
-`HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a browser's own autofill heuristics reach
-for) names the field, and `honeypotFilled(formData)` reads it back, in the page or in the handler a
-no-JavaScript post reaches. A submit
-whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
+A form built on this can carry a honeypot from `honeypot`: `honeypotField(name?, label?)` renders
+an off-screen field simple bots fill in. Its server half comes from
+`@spy4x/platform/universal/honeypot`: `HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a
+browser's own autofill heuristics reach for) names the field and is `name`'s default, and
+`honeypotFilled(formData)` reads it back, in the page or in the handler a no-JavaScript post
+reaches. A submit whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
 caught only teaches it which field to leave alone next time.
 
 ## Lightbox
