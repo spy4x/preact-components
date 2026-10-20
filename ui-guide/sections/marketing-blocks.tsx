@@ -400,19 +400,37 @@ export const marketingBlockDemos: DemoFragment = {
 export const pageHeroDemo: DemoFragment = {
   PageHero: {
     summary:
-      "The top band of a public site's inner page: an eyebrow, the page's heading, a lead and its buttons, in the marketing column.",
+      "The top band of a public site's inner page: an eyebrow, the page's heading, a lead, its buttons and a quiet byline with the updated day, in the marketing column.",
     wide: true,
     props: [
       { name: "title", type: "ComponentChildren", description: "The page's `<h1>`." },
       { name: "eyebrow", type: "ComponentChildren", description: "A short line above the title." },
       { name: "lead", type: "ComponentChildren", description: "One or two sentences under it." },
       { name: "children", type: "ComponentChildren", description: "The page's buttons." },
+      {
+        name: "author",
+        type: "{ name: string; href?: string }",
+        description: "Who wrote the page, linked when `href` is given, in the meta line.",
+      },
+      {
+        name: "updated",
+        type: "string",
+        description:
+          "The day the page last changed, `YYYY-MM-DD`, as a `<time datetime>` in the meta line.",
+      },
+      {
+        name: "labels",
+        type: "Partial<PageHeroLabels>",
+        description: "The meta line's words: `by` (`By`) and `updated` (`Updated`).",
+      },
       { name: "class", type: "string", description: "The band's background, such as a glow." },
     ],
     snippet: `<PageHero
   eyebrow="Pricing"
   title="One price per seat"
   lead="Every feature on every plan. Pay monthly, cancel any time."
+  author={{ name: "Anton Shubin", href: "/about" }}
+  updated="2026-10-19"
 >
   <Button href="/sign-up">Start free</Button>
 </PageHero>`,
@@ -421,6 +439,8 @@ export const pageHeroDemo: DemoFragment = {
         eyebrow="Pricing"
         title="One price per seat"
         lead="Every feature on every plan. Pay monthly, cancel any time."
+        author={{ name: "Anton Shubin", href: "#demo-PageHero" }}
+        updated="2026-10-19"
       >
         <div>
           <Button href="#demo-PageHero">Start free</Button>

@@ -20,14 +20,17 @@ describe("LazySlot", () => {
     expect(html).not.toContain("<svg")
   })
 
-  it("shows an alert naming what did not load and why when the load failed", () => {
+  it("shows a danger-toned alert naming what did not load and why when the load failed", () => {
     const html = render(
       <LazySlot state={{ status: "failed", message: "offline" }} boxClass="" {...SLOT}>
         {() => <svg />}
       </LazySlot>,
     )
 
-    expect(html).toContain(`<div data-e2e="demo-slot"><p role="alert" data-e2e="demo-failed"`)
+    expect(html).toMatch(/^<div data-e2e="demo-slot"><div data-e2e="demo-failed" role="alert"/)
+    // The theme's danger tokens, so an app's repainted danger colour and the ink palette apply.
+    expect(html).toContain("border-danger bg-danger-soft")
+    expect(html).not.toMatch(/red-\d/)
     expect(html.replace(/<[^>]+>/g, "")).toBe("Revenue: the chart module did not load — offline")
   })
 

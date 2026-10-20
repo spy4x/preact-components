@@ -28,8 +28,8 @@ import {
   type AccountMenuLabels,
   type AccountMenuTheme,
   type AccountMenuUser,
-  AccountTag,
 } from "./account-menu.tsx"
+import { type AccountControlProps, AccountEntry, AccountIdentity } from "./account-parts.tsx"
 import { Rail, type RailItem, type RailPlace } from "./rail.tsx"
 import {
   currentStates,
@@ -205,31 +205,13 @@ function PendingAvatar({ size }: { size: "size-6" | "size-8" }): JSX.Element {
 }
 
 /**
- * One choice of the sheet's account section, in the shape `AccountMenu` draws it: a form post, a
- * link through the router, or a button. Every one but a link closes the sheet through
- * `data-rail-close`; `Rail` closes it on a link's plain click itself.
+ * The control of one row of the sheet's account section, for `AccountEntry`: a link through the
+ * router, or a button. A button closes the sheet through `data-rail-close`; `Rail` closes it on a
+ * link's plain click itself, and leaves it open on a modified one.
  */
-function SheetAction(
-  { item, navigate }: { item: AccountMenuItem; navigate?: (href: string) => void },
+function SheetControl(
+  { href, navigate, onClick, type = "button", dataE2E, children }: AccountControlProps,
 ): JSX.Element {
-  const { label, href, action, method = "post", onClick, dataE2E } = item
-  if (action !== undefined) {
-    return (
-      <form
-        method={method}
-        action={action}
-        onSubmit={(event) => {
-          if (!onClick) return
-          event.preventDefault()
-          onClick()
-        }}
-      >
-        <button type="submit" class={sheetRow} data-rail-close="" data-e2e={dataE2E}>
-          {label}
-        </button>
-      </form>
-    )
-  }
   if (href !== undefined) {
     return (
       <a
@@ -241,13 +223,13 @@ function SheetAction(
           followLinkClick(event, { href, navigate })
         }}
       >
-        {label}
+        {children}
       </a>
     )
   }
   return (
-    <button type="button" class={sheetRow} data-rail-close="" data-e2e={dataE2E} onClick={onClick}>
-      {label}
+    <button type={type} class={sheetRow} data-rail-close="" data-e2e={dataE2E} onClick={onClick}>
+      {children}
     </button>
   )
 }
@@ -272,8 +254,9 @@ function SheetAction(
  * **On a phone** the last tab is the account: the 24 px avatar, the unread count, and "Account"
  * (the `tag`, such as "Admin", in its place). Its sheet, headed the same, holds the switcher, the
  * destinations that did not fit, Notifications, then the account: a header row, the menu's items,
- * the theme as three pressed-or-not buttons, and the sign-out last. Every row is at least 44 px;
- * choosing one closes the sheet, and closing returns focus to the tab.
+ * the theme as a radio group of three segments, and the sign-out last. Every row is at least 44 px.
+ * Choosing a row closes the sheet, unless the click opens it elsewhere (a modifier held) or picks a
+ * theme, and closing returns focus to the tab.
  */
 export function AppShell(props: AppShellProps): JSX.Element {
   const {
@@ -372,47 +355,56 @@ export function AppShell(props: AppShellProps): JSX.Element {
       {user && (
         <div class="flex flex-col gap-1 py-2 first:pt-0" data-e2e="app-shell-sheet-account">
           <div class="flex items-center gap-3 px-3 py-2" data-e2e="app-shell-sheet-account-header">
-            <Avatar name={user.name} src={user.avatarUrl} size="sm" alt="" />
-            <span class="flex min-w-0 flex-1 flex-col">
-              <span class="flex min-w-0 items-center gap-2">
-                <span class="truncate text-sm font-medium text-foreground">{user.name}</span>
-                {tag && <AccountTag tag={tag} />}
-              </span>
-              {user.email && <span class="truncate text-xs text-muted">{user.email}</span>}
-            </span>
+            <AccountIdentity user={user} tag={tag} />
           </div>
           {(account.items ?? []).map((item, index) => (
-            <SheetAction key={`${index}-${item.label}`} item={item} navigate={navigate} />
+            <AccountEntry
+              key={`${index}-${item.label}`}
+              item={item}
+              navigate={navigate}
+              Control={SheetControl}
+            />
           ))}
           {account.onThemeChange && (
-            <div role="group" aria-labelledby={themeId} data-e2e="app-shell-sheet-theme">
+            <div role="radiogroup" aria-labelledby={themeId} data-e2e="app-shell-sheet-theme">
               <div id={themeId} class="px-3 pt-2 pb-1 text-xs font-medium text-muted">
                 {labels?.accountMenu?.theme ?? "Theme"}
               </div>
               <div class="flex gap-1 px-3">
                 {themes.map(([value, label]) => {
-                  const pressed = (account.theme ?? "system") === value
+                  const checked = (account.theme ?? "system") === value
+                  // The radio covers its segment, invisible, so it takes the click and draws the
+                  // focus ring; the label's text names it. The sheet stays open on a choice.
                   return (
-                    <button
+                    <label
                       key={value}
-                      type="button"
-                      aria-pressed={pressed}
                       class={cn(
-                        "flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-[var(--radius-primary,0.5rem)] px-2 text-sm font-medium",
-                        focusRing,
-                        pressed ? entryCurrent : entryIdle,
+                        "relative flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-[var(--radius-primary,0.5rem)] px-2 text-sm font-medium",
+                        checked ? entryCurrent : entryIdle,
                       )}
-                      onClick={() => account.onThemeChange?.(value)}
-                      data-e2e={`app-shell-theme-${value}`}
                     >
+                      <input
+                        type="radio"
+                        name={`${themeId}-choice`}
+                        value={value}
+                        checked={checked}
+                        class={cn(
+                          "absolute inset-0 m-0 cursor-pointer appearance-none rounded-[var(--radius-primary,0.5rem)] bg-transparent",
+                          focusRing,
+                        )}
+                        onChange={() => account.onThemeChange?.(value)}
+                        data-e2e={`app-shell-theme-${value}`}
+                      />
                       {label}
-                    </button>
+                    </label>
                   )
                 })}
               </div>
             </div>
           )}
-          {account.signOut && <SheetAction item={account.signOut} navigate={navigate} />}
+          {account.signOut && (
+            <AccountEntry item={account.signOut} navigate={navigate} Control={SheetControl} />
+          )}
         </div>
       )}
     </div>
