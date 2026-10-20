@@ -134,10 +134,13 @@ describe("AppShell", () => {
     expect(sheet.indexOf(">Sign out<")).toBeGreaterThan(sheet.indexOf("app-shell-sheet-theme"))
   })
 
-  it("offers the theme in the sheet as pressed buttons, and closes the sheet on sign out", () => {
+  it("offers the theme in the sheet as a radio group, and closes the sheet on sign out", () => {
     const sheet = whole(shell(), "app-shell-sheet-account", "dialog")
-    expect(sheet).toMatch(/aria-pressed="true"[^>]*data-e2e="app-shell-theme-system"/)
-    expect(sheet).toMatch(/aria-pressed="false"[^>]*data-e2e="app-shell-theme-dark"/)
+    expect(sheet).toMatch(/role="radiogroup"[^>]*data-e2e="app-shell-sheet-theme"/)
+    expect(sheet).toMatch(/<input type="radio"[^>]* checked[^>]*data-e2e="app-shell-theme-system"/)
+    expect(sheet).toMatch(
+      /<input type="radio"(?![^>]* checked)[^>]*data-e2e="app-shell-theme-dark"/,
+    )
     expect(sheet).toMatch(/<button type="submit"[^>]*data-rail-close[^>]*>Sign out</)
   })
 

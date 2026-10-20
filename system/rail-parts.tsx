@@ -14,7 +14,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { ariaKeyShortcuts, useApplePlatform } from "@spy4x/preact-ui/hotkeys"
 import { KBD_LABELS, type KbdLabels, keyFaces } from "@spy4x/preact-ui/kbd"
-import { followLinkClick } from "@spy4x/preact-ui/link"
+import { followLinkClick, isPlainClick } from "@spy4x/preact-ui/link"
 import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext } from "preact/hooks"
 import type { RailCurrent, RailItem, RailVariant } from "./rail.tsx"
@@ -281,7 +281,10 @@ export interface EntryProps {
   primary: boolean
   navigate?: (key: string) => void
   navigateLink?: (key: string, href: string) => void
-  /** Runs after the entry is chosen; the sheet closes itself through this. */
+  /**
+   * Runs after the entry is chosen, and for a link only on a plain click; the sheet closes itself
+   * through this.
+   */
   onChoose?: () => void
   counterWords: (count: number) => string
   /** The words a key shortcut's hint shows, as {@link RailLabels.kbd}. */
@@ -361,7 +364,9 @@ export function Entry(props: EntryProps): JSX.Element {
             href: event.currentTarget.href,
             navigate: navigateLink && (() => navigateLink(key, href)),
           })
-          onChoose?.()
+          // A modified click opens the page elsewhere, so the sheet stays open, as `Rail`'s own
+          // handler and `Shell` decide.
+          if (isPlainClick(event)) onChoose?.()
         }}
         data-e2e="rail-shell-entry"
       >
