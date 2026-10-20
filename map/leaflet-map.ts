@@ -19,7 +19,12 @@
  * created (`marker.getElement()`), that calls `onMarkerClick` on a real Enter or Space press. `title`
  * gives a mouse user a native hover tooltip; `aria-label`, set on the same element, is what actually
  * names the pin to a screen reader — `title` alone is a weaker, overridable name source Chromium's
- * accessible-name computation prefers `aria-label` over.
+ * accessible-name computation prefers `aria-label` over. The name carries the status word too, so
+ * the status never reaches anyone as a colour alone.
+ *
+ * **Pins survive a marker update.** `setMarkers` matches pins by `id`: a marker that stays keeps its
+ * pin and DOM element, updated in place, and only the markers that came or went are added or
+ * removed. A keyboard user whose focused pin stays on the map keeps focus on it.
  */
 
 import type * as Leaflet from "leaflet"
@@ -63,6 +68,18 @@ export const STATUS_WRAPPER_CLASS: Record<MapMarkerStatus, string> = {
   unknown: "status-unknown",
 }
 
+/** The status words a pin's name and a list row say after the label, by default. */
+export const DEFAULT_STATUS_LABELS: Record<MapMarkerStatus, string> = {
+  on: "on",
+  off: "off",
+  unknown: "status unknown",
+}
+
+/** What a screen reader hears for a pin: the place, then its status, e.g. `"London depot, on"`. */
+export function markerName(marker: MapMarker, statusLabels: Record<MapMarkerStatus, string>) {
+  return `${marker.label}, ${statusLabels[marker.status ?? "unknown"]}`
+}
+
 /**
  * Utility classes the marker's own dot carries, alongside the theme's `map-marker` class: shape and
  * size come from here, colour from the `status-*` ancestor {@link STATUS_WRAPPER_CLASS} names.
@@ -76,10 +93,13 @@ export const MARKER_DOT_CLASSES =
 export interface LeafletMapHandle {
   /** Move the view without recreating the map or its tile layer. */
   setView(center: MapCenter, zoom: number): void
-  /** Replace every marker with the given list — the whole layer is cleared and rebuilt each call,
-   * which is simple and correct for the marker counts this component is for; nothing here claims to
-   * diff efficiently for a marker set large enough to make that matter. */
-  setMarkers(markers: readonly MapMarker[], onMarkerClick: (id: string) => void): void
+  /** Show exactly `markers`: pins are matched by `id`, a staying one is updated in place, and only
+   * the markers that came or went are added or removed — so a focused pin keeps focus. */
+  setMarkers(
+    markers: readonly MapMarker[],
+    onMarkerClick: (id: string) => void,
+    statusLabels: Record<MapMarkerStatus, string>,
+  ): void
   /** Tear the map down — removes every DOM node and listener Leaflet attached. Idempotent. */
   remove(): void
 }
@@ -114,7 +134,7 @@ export function buildMarkerIconElement(status: MapMarkerStatus): HTMLElement {
 const ICON_SIZE: [number, number] = [20, 20]
 
 /**
- * Add one marker to a layer group.
+ * Add one marker to a layer group, and return its Leaflet marker so a later update can change it.
  *
  * `keyboard: true` is Leaflet's own option, and it is what puts the marker in the Tab order with
  * `role="button"` (see this file's own doc). `click` is wired through Leaflet's own event, for a
@@ -130,13 +150,15 @@ const ICON_SIZE: [number, number] = [20, 20]
  * @param layer The layer group markers are added to.
  * @param marker The marker to add.
  * @param onMarkerClick Called with the marker's `id` on a pointer click, or a real Enter/Space press.
+ * @param name The pin's accessible name, from {@link markerName}.
  */
 function addMarker(
   L: LeafletModule,
   layer: Leaflet.LayerGroup,
   marker: MapMarker,
   onMarkerClick: (id: string) => void,
-): void {
+  name: string,
+): Leaflet.Marker {
   const icon = L.divIcon({
     html: buildMarkerIconElement(marker.status ?? "unknown"),
     className: "",
@@ -153,7 +175,7 @@ function addMarker(
 
   const element = leafletMarker.getElement()
   if (element) {
-    element.setAttribute("aria-label", marker.label)
+    element.setAttribute("aria-label", name)
     // A stable hook for a browser check to identify which pin is which — never read by anything in
     // this package itself, and irrelevant to any accessibility API.
     element.setAttribute("data-marker-id", marker.id)
@@ -163,6 +185,25 @@ function addMarker(
       onMarkerClick(marker.id)
     })
   }
+  return leafletMarker
+}
+
+/**
+ * Bring a pin that stays on the map up to date with its marker, without replacing its DOM element:
+ * its place, its tooltip, its name and its status colour.
+ */
+function updateMarker(leafletMarker: Leaflet.Marker, marker: MapMarker, name: string): void {
+  const position = leafletMarker.getLatLng()
+  if (position.lat !== marker.lat || position.lng !== marker.lng) {
+    leafletMarker.setLatLng([marker.lat, marker.lng])
+  }
+  leafletMarker.options.title = marker.label
+  const element = leafletMarker.getElement()
+  if (!element) return
+  element.title = marker.label
+  element.setAttribute("aria-label", name)
+  const wrapper = element.firstElementChild
+  if (wrapper) wrapper.className = STATUS_WRAPPER_CLASS[marker.status ?? "unknown"]
 }
 
 /** The two zoom-control tooltips {@link createLeafletMap} takes — see `Map`'s `zoomInLabel`/
@@ -211,14 +252,30 @@ export function createLeafletMap(
   }).addTo(map)
   L.tileLayer(tileUrl, { attribution: "" }).addTo(map)
   const markerLayer = L.layerGroup().addTo(map)
+  const pins = new Map<string, Leaflet.Marker>()
+  // Every pin's listeners call the latest callback through this, so a pin that stays never needs
+  // new listeners.
+  let onClick: (id: string) => void = () => {}
+  const click = (id: string) => onClick(id)
 
   return {
     setView(nextCenter, nextZoom) {
       map.setView([nextCenter.lat, nextCenter.lng], nextZoom)
     },
-    setMarkers(markers, onMarkerClick) {
-      markerLayer.clearLayers()
-      for (const marker of markers) addMarker(L, markerLayer, marker, onMarkerClick)
+    setMarkers(markers, onMarkerClick, statusLabels) {
+      onClick = onMarkerClick
+      const next = new Set(markers.map((marker) => marker.id))
+      for (const [id, pin] of pins) {
+        if (next.has(id)) continue
+        markerLayer.removeLayer(pin)
+        pins.delete(id)
+      }
+      for (const marker of markers) {
+        const name = markerName(marker, statusLabels)
+        const pin = pins.get(marker.id)
+        if (pin) updateMarker(pin, marker, name)
+        else pins.set(marker.id, addMarker(L, markerLayer, marker, click, name))
+      }
     },
     remove() {
       map.remove()

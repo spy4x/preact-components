@@ -26,12 +26,10 @@
  * **Changing `center`, `zoom` or `markers` after mount updates the live map** — issue #143's own
  * words — rather than tearing it down and remounting: two effects below call `setView`/`setMarkers`
  * on the handle the mount effect produced, gated on `ready` so they do nothing until that handle
- * exists. The marker effect depends on `markers` alone, not on `onMarkerClick`'s identity — see
- * `onMarkerClickRef` below — so a caller passing a fresh inline arrow on every render (the catalogue's
- * own demo does) does not rebuild every pin on every render. It *does* rebuild the whole layer
- * whenever `markers` itself is a new array, whether or not its contents actually changed — `markers`
- * is expected to be referentially stable across renders that do not change what is plotted; see
- * `map/README.md` → "What a new `markers` identity costs".
+ * exists. The marker effect depends on `markers` and the status words, not on `onMarkerClick`'s
+ * identity — see `onMarkerClickRef` below. `setMarkers` matches pins by `id`, so a marker that stays
+ * keeps its pin, and a focused pin keeps focus; a new `markers` array still costs one pass over every
+ * marker — see `map/README.md` → "What a new `markers` identity costs".
  *
  * **Keyboard and screen readers.** See `leaflet-map.ts`'s own doc and `map/README.md` → "Keyboard and
  * screen readers": the map's own pins are the operable, named form of every marker (real Tab stops,
@@ -55,13 +53,14 @@ import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import {
+  DEFAULT_STATUS_LABELS,
   leafletFromImport,
   type LeafletMapHandle,
   mountLeafletMap,
   type ZoomLabels,
 } from "./leaflet-map.ts"
 import { MarkerList } from "./marker-list.tsx"
-import type { MapCenter, MapMarker } from "./types.ts"
+import type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 
 export type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 
@@ -96,6 +95,14 @@ export interface MapProps {
   label?: string
   /** Heading over the plain-text list of markers. Defaults to `"Places"`. */
   listLabel?: string
+  /** That heading's level, so it fits the page's outline. Defaults to `3`. */
+  listHeadingLevel?: 2 | 3 | 4 | 5 | 6
+  /**
+   * The status word each pin's accessible name and each list row say after the label, so the
+   * status never reaches anyone as a colour alone. Defaults to `"on"`, `"off"` and
+   * `"status unknown"`.
+   */
+  statusLabels?: Partial<Record<MapMarkerStatus, string>>
   /** Leaflet's zoom-in control's tooltip and accessible name. Defaults to `"Zoom in"`. */
   zoomInLabel?: string
   /** Leaflet's zoom-out control's tooltip and accessible name. Defaults to `"Zoom out"`. */
@@ -179,6 +186,8 @@ export function Map(
     class: className,
     label = "Map",
     listLabel = "Places",
+    listHeadingLevel = 3,
+    statusLabels,
     zoomInLabel = "Zoom in",
     zoomOutLabel = "Zoom out",
     onLoadError = logLoadError,
@@ -243,12 +252,13 @@ export function Map(
     handleRef.current?.setView(center, zoom)
   }, [ready, center.lat, center.lng, zoom])
 
+  const words = { ...DEFAULT_STATUS_LABELS, ...statusLabels }
   useEffect(() => {
     if (!ready) return
-    handleRef.current?.setMarkers(markers, (id) => onMarkerClickRef.current(id))
-    // `onMarkerClick` deliberately absent: `onMarkerClickRef` always holds the latest one, so rebuilding
-    // the whole marker layer over an identity change that carries no new places would be wasted work.
-  }, [ready, markers])
+    handleRef.current?.setMarkers(markers, (id) => onMarkerClickRef.current(id), words)
+    // `onMarkerClick` deliberately absent: `onMarkerClickRef` always holds the latest one. The status
+    // words are listed one by one, so an inline `statusLabels` object does not rerun this per render.
+  }, [ready, markers, words.on, words.off, words.unknown])
 
   return (
     <div class="space-y-4">
@@ -261,7 +271,12 @@ export function Map(
           {attribution}
         </p>
       </div>
-      <MarkerList markers={markers} label={listLabel} />
+      <MarkerList
+        markers={markers}
+        label={listLabel}
+        headingLevel={listHeadingLevel}
+        statusLabels={words}
+      />
     </div>
   )
 }
