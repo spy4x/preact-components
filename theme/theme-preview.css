@@ -7,7 +7,7 @@
  */
 
 @layer theme.preact-tokens {
-  :has([data-theme-preview-choice=light]:checked) + [data-theme-preview-frame] {
+  :has([data-preview-theme=light]:checked) + [data-preview-frame] {
     color-scheme: light;
     --color-primary: oklch(0.381 0.176 304.987);
     --color-primary-foreground: oklch(0.977 0.014 308.299);
@@ -61,7 +61,7 @@
     --shadow-popover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
-  :has([data-theme-preview-choice=dark]:checked) + [data-theme-preview-frame] {
+  :has([data-preview-theme=dark]:checked) + [data-preview-frame] {
     color-scheme: dark;
     --color-primary: oklch(0.381 0.176 304.987);
     --color-primary-foreground: oklch(0.977 0.014 308.299);
@@ -150,8 +150,8 @@
   }
 
   @supports (color: oklch(from red calc(pow(l, 2)) max(0, c * cos(h * 1deg)) calc(h + alpha))) {
-    :has([data-theme-preview-choice=dark]:checked) + [data-theme-preview-frame],
-    :has([data-theme-preview-choice=light]:checked) + [data-theme-preview-frame] {
+    :has([data-preview-theme=dark]:checked) + [data-preview-frame],
+    :has([data-preview-theme=light]:checked) + [data-preview-frame] {
       --accent-label-probe: color(from var(--color-accent) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1) / clamp(0, calc((0.2126 * pow((clamp(0, r, 1) + 0.055) / 1.055, 2.4) + 0.7152 * pow((clamp(0, g, 1) + 0.055) / 1.055, 2.4) + 0.0722 * pow((clamp(0, b, 1) + 0.055) / 1.055, 2.4) - 0.18) * 1000000), 1));
       --color-accent-foreground: oklch( from var(--accent-label-probe) calc(1 - alpha * 0.9) 0 0 / 1 );
       --color-accent-50: oklch( from var(--color-accent) 0.977 min( c * 0.014 / 0.176, (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(0.977 / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - 0.977) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.004 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50) ) calc(h + 3.312) );

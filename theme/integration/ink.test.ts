@@ -110,7 +110,7 @@ describe("the ink theme", () => {
     // `.btn:focus-visible { ... }` selector, which never appears in this output.
     // The `dark` variant's `.dark` list, with a `ThemePreview` frame's arms (preset.css).
     const frame = (theme: string) =>
-      `:has([data-theme-preview-choice=${theme}]:checked) + [data-theme-preview-frame] *`
+      `:has([data-preview-theme=${theme}]:checked) + [data-preview-frame] *`
     const dark = `&:where(.dark, .dark *, ${frame("dark")}):not(:where(${frame("light")}))`
     const escaped = dark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     expect(css).toMatch(

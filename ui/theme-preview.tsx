@@ -42,7 +42,7 @@ export interface ThemePreviewProps {
  * and the arrow keys switch it.
  *
  * The frame shows the library's own palette, not the app's: an app that wants its brand inside sets
- * its tokens on `[data-theme-preview-frame]` itself.
+ * its tokens on `[data-preview-frame]` itself.
  */
 export function ThemePreview(
   {
@@ -66,16 +66,16 @@ export function ThemePreview(
         name={name ?? `theme-preview-${generated}`}
         defaultValue={defaultTheme}
         options={[
-          { value: "dark", label: dark, inputAttributes: { "data-theme-preview-choice": "dark" } },
+          { value: "dark", label: dark, inputAttributes: { "data-preview-theme": "dark" } },
           {
             value: "light",
             label: light,
-            inputAttributes: { "data-theme-preview-choice": "light" },
+            inputAttributes: { "data-preview-theme": "light" },
           },
         ]}
       />
       <div
-        data-theme-preview-frame=""
+        data-preview-frame=""
         class={join(
           "rounded-card border border-subtle bg-canvas p-6 text-foreground",
           frameClass,

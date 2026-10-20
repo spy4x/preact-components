@@ -30,11 +30,11 @@
  * even under `.dark`. `:where()` keeps the variant's specificity flat.
  */
 @custom-variant dark {
-  &:where(.dark, .dark *, :has([data-theme-preview-choice=dark]:checked) + [data-theme-preview-frame] *):not(:where(:has([data-theme-preview-choice=light]:checked) + [data-theme-preview-frame] *)) {
+  &:where(.dark, .dark *, :has([data-preview-theme=dark]:checked) + [data-preview-frame] *):not(:where(:has([data-preview-theme=light]:checked) + [data-preview-frame] *)) {
     @slot;
   }
   @media (prefers-color-scheme: dark) {
-    &:where([data-theme-auto], [data-theme-auto] *):not(:where(:has([data-theme-preview-choice=light]:checked) + [data-theme-preview-frame] *)) {
+    &:where([data-theme-auto], [data-theme-auto] *):not(:where(:has([data-preview-theme=light]:checked) + [data-preview-frame] *)) {
       @slot;
     }
   }

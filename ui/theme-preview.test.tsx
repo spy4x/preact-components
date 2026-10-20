@@ -24,7 +24,7 @@ describe("ThemePreview", () => {
     expect(html).toMatch(/<legend[^>]*>Theme<\/legend>/)
     expect(html).toMatch(/>Dark<\/label>.*>Light<\/label>/)
     expect(html).toMatch(
-      /<div data-theme-preview-frame[^>]*><button type="button">Save<\/button><\/div><\/div>$/,
+      /<div data-preview-frame[^>]*><button type="button">Save<\/button><\/div><\/div>$/,
     )
     expect(html).not.toContain("<script")
   })
@@ -61,19 +61,19 @@ describe("ThemePreview", () => {
     const html = render(<ThemePreview name="look">x</ThemePreview>)
 
     expect(html).toMatch(/^<div class="[^"]*"><fieldset/)
-    expect(radios(html)[0]).toContain(`data-theme-preview-choice="dark"`)
-    expect(radios(html)[1]).toContain(`data-theme-preview-choice="light"`)
-    expect(html).toMatch(/<\/fieldset><div data-theme-preview-frame /)
+    expect(radios(html)[0]).toContain(`data-preview-theme="dark"`)
+    expect(radios(html)[1]).toContain(`data-preview-theme="light"`)
+    expect(html).toMatch(/<\/fieldset><div data-preview-frame /)
     for (const theme of ["dark", "light"]) {
       expect(THEME_PREVIEW_CSS).toContain(
-        `:has([data-theme-preview-choice=${theme}]:checked) + [data-theme-preview-frame]`,
+        `:has([data-preview-theme=${theme}]:checked) + [data-preview-frame]`,
       )
     }
   })
 
   it("draws the frame on its palette's canvas, border and text colour", () => {
     const frame = render(<ThemePreview name="look">x</ThemePreview>)
-      .match(/<div data-theme-preview-frame class="([^"]*)"/)?.[1].split(" ") ?? []
+      .match(/<div data-preview-frame class="([^"]*)"/)?.[1].split(" ") ?? []
 
     expect(frame).toEqual(
       expect.arrayContaining(["bg-canvas", "text-foreground", "border", "border-subtle"]),

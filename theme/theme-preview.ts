@@ -19,9 +19,9 @@
 import { blockDeclarations } from "./auto-dark.ts"
 
 /** The attribute on each radio, valued `dark` or `light`. */
-export const CHOICE_ATTRIBUTE = "data-theme-preview-choice"
+export const CHOICE_ATTRIBUTE = "data-preview-theme"
 /** The attribute on the frame the palette is declared on. */
-export const FRAME_ATTRIBUTE = "data-theme-preview-frame"
+export const FRAME_ATTRIBUTE = "data-preview-frame"
 
 /** The palettes a preview offers. */
 export type PreviewTheme = "dark" | "light"

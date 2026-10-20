@@ -60,7 +60,7 @@ describe("theme-preview.css", () => {
 
   it("matches the frame right after the fieldset whose radio is checked", () => {
     expect(frameSelector("light")).toBe(
-      `:has([data-theme-preview-choice=light]:checked) + [data-theme-preview-frame]`,
+      `:has([data-preview-theme=light]:checked) + [data-preview-frame]`,
     )
   })
 

@@ -532,7 +532,7 @@ function gateBlocks(blocks: CssBlock[]): CssBlock[] {
 
 /** A `ThemePreview` frame while its Dark or Light radio is checked (`theme/theme-preview.ts`). */
 const PREVIEW_FRAME = (theme: "dark" | "light") =>
-  `:has([data-theme-preview-choice=${theme}]:checked) + [data-theme-preview-frame]`
+  `:has([data-preview-theme=${theme}]:checked) + [data-preview-frame]`
 
 /** What the `dark` variant appends after each list: never inside a light preview frame. */
 const NOT_IN_LIGHT_FRAME = `:not(:where(${PREVIEW_FRAME("light")} *))`

@@ -838,11 +838,12 @@ Import it after `tokens.css`, the same way as `ink.css`:
 The preset's `dark` variant follows the frame as well: it matches inside a dark frame on any page,
 and never inside a light frame, even under `.dark` or the auto-dark marker. So everything in the
 frame, `dark:` utilities and the preset's own dark rules included, takes the frame's palette. The
-variant reads the frame through `:where()`, so its specificity is unchanged; it does make each
-compiled `dark:` rule longer, by about 190 bytes before compression.
+variant reads the frame through `:where()`, so its specificity is unchanged. It does make every
+compiled dark rule longer: the UI guide's stylesheet grew from 204,309 to 221,333 bytes (27,130 to
+27,565 gzipped), before `theme-preview.css` itself is imported.
 
 The frame shows the library's own palette, not the app's: the copies sit in the tokens' layer, so
-an app that wants its brand inside sets its tokens on `[data-theme-preview-frame]`, unlayered.
+an app that wants its brand inside sets its tokens on `[data-preview-frame]`, unlayered.
 `theme-preview.ts` writes the file from `tokens.css` (`deno task --cwd theme generate`), and
 `theme-preview.test.ts` fails when the two drift.
 

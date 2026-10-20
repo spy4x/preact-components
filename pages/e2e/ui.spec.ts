@@ -747,7 +747,7 @@ function themePreviewSpecs(): Spec[] {
   const card = (page: Page) => page.locator("#demo-ThemePreview")
   const radio = (page: Page, name: string, checked: boolean) =>
     card(page).getByRole("group", { name: "Theme" }).getByRole("radio", { name, checked })
-  const frame = (page: Page) => card(page).locator("[data-theme-preview-frame]")
+  const frame = (page: Page) => card(page).locator("[data-preview-frame]")
   /** The frame's canvas and colour scheme, and the card's own background around it. */
   const read = (page: Page) =>
     frame(page).evaluate((element) => ({
