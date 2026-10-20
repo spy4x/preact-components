@@ -36,7 +36,8 @@ export interface ThemePreviewProps {
  *
  * The palette lives in `@spy4x/preact-theme`'s opt-in `theme-preview.css`: while a radio is
  * checked, `:has()` declares that palette's tokens on the frame alone, so the page around it keeps
- * its own, and the preset's `dark` variant follows the frame too. The frame draws the canvas, a
+ * its own. `dark:` utilities still follow the page (`.dark` on `<html>`), not the frame, so a
+ * component styled through `dark:` shows the page's palette inside it. The frame draws the canvas, a
  * border and the text colour of its palette. The radios are native, so Tab reaches the checked one
  * and the arrow keys switch it.
  *
