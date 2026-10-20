@@ -323,7 +323,7 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
  *
  * @example
  * ```ts
- * const stop = syncThemeWithSettings(theme, settings, `theme`)
+ * const stop = syncThemeWithSettings(theme, settings, "theme")
  * ```
  */
 export function syncThemeWithSettings<K extends string, T extends Record<K, `${ThemePreference}`>>(
@@ -348,7 +348,7 @@ export function syncThemeWithSettings<K extends string, T extends Record<K, `${T
     settings.save(patch).then(
       (outcome) => {
         // A conflict needs nothing here: the record that won reaches the effect below.
-        if (sentIn === session) unsynced = !outcome.ok && outcome.reason === `failed`
+        if (sentIn === session) unsynced = !outcome.ok && outcome.reason === "failed"
       },
       () => {
         if (sentIn === session) unsynced = true
@@ -464,12 +464,11 @@ export function themeBootstrapScript(options: ThemeBootstrapOptions = {}): strin
     `var d=p==="dark"||(p==="system"&&typeof matchMedia==="function"&&matchMedia(${query}).matches);` +
     `${set}}catch(e){}})()`
   if (options.followSystem !== true) return paint
-  // Older Safari has only `addListener` on a media query list.
   return paint +
     `;(function(){try{var m=matchMedia(${query});` +
     `var f=function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
     `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
     `if(p==="system"){var d=m.matches;${set}}}catch(e){}};` +
-    `if(m.addEventListener)m.addEventListener("change",f);else if(m.addListener)m.addListener(f)` +
+    `m.addEventListener("change",f)` +
     `}catch(e){}})()`
 }

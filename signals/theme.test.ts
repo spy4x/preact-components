@@ -979,28 +979,6 @@ describe("themeBootstrapScript followSystem", () => {
     expect(themeBootstrapScript({ followSystem: false })).toBe(themeBootstrapScript())
   })
 
-  it("falls back to addListener on a media query list without addEventListener", () => {
-    const listeners: Array<() => void> = []
-    const query = {
-      matches: false,
-      addListener: (listener: () => void) => void listeners.push(listener),
-    }
-    const { document, classes } = fakeDocument()
-    new Function(
-      "localStorage",
-      "matchMedia",
-      "document",
-      themeBootstrapScript({ followSystem: true }),
-    )(
-      fakeStorage({ theme: "system" }),
-      () => query,
-      document,
-    )
-    query.matches = true
-    for (const listener of listeners) listener()
-    expect(classes.has("dark")).toBe(true)
-  })
-
   it("does nothing and does not throw when the browser has no matchMedia", () => {
     const { document, classes } = fakeDocument()
     expect(() =>
