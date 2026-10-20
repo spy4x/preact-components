@@ -110,7 +110,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                           |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                             |
 | `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                                                                                                                        |
-| `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                                                                                                                                                                       |
+| `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`), `ariaLabel?` (the name when there is no caption)                                                                                                                                                                                                                                     |
 | `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood                                                                                                    |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                                                                                                                      |
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                              |
@@ -388,7 +388,9 @@ the panel and its 8px gap do not fit below and there is more room above than bel
 
 ## Tooltip
 
-A supplementary hint on a trigger, revealed by hover and by keyboard focus, anchored with CSS only.
+A supplementary hint on a trigger, revealed by hover and by keyboard focus, anchored with CSS. When
+it is revealed, a hint that would run past the left or right edge of the screen slides back inside
+it with an 8 px gutter.
 Two rules go together and the component holds both: **a hint can be dismissed**, and **a hint can be
 pointed at**. Escape hides it and drops `aria-describedby` without moving focus, and it comes back on
 the next hover or focus; the surface takes pointer events and the gap between trigger and hint is the
@@ -400,7 +402,9 @@ read at all by anyone magnifying the screen.
 the trigger is a `<button>`, because `aria-label` on an element with no role is not guaranteed to
 reach the accessibility tree at all. `focusable={false}` is for a trigger whose children are already
 interactive: the wrapper becomes a `role="group"` around that control, which keeps one tab stop for
-one control and still gives the name and the description an element the tree keeps.
+one control and gives the name an element the tree keeps. After hydration the first focusable
+element inside the group carries `aria-describedby`, so a screen reader hears the hint on the
+control it is focused on.
 
 ```tsx
 <Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
@@ -1123,7 +1127,8 @@ zero, and clears a 47px notch on a phone turned sideways on a page whose viewpor
 
 ## ZoomableImages
 
-`ZoomableImages` makes the images inside a container zoomable, opening the shared `Lightbox` — the
+`ZoomableImages` makes the images inside every container `containerSelector` matches zoomable,
+opening the shared `Lightbox` — the
 same dialog `ImageGallery` opens on a thumbnail (see the `Lightbox` section above). It was
 `system/`'s `ImageLightbox` until #355 moved it here, next to the dialog it opens. It renders
 nothing but that empty dialog, so a reader without JavaScript loses only the zoom. The layer is
@@ -1783,9 +1788,9 @@ page it takes:
 
 - **`ErrorBoundary`** wraps a whole view or app and catches what nobody expected: a render that
   throws. It replaces the broken view with a reload screen (`role="alert"`), and hands the error to
-  `onError` once, with Preact's `errorInfo`, for your reporter. The screen stays until the
-  boundary remounts: the default Reload button loads the page again, and an `onReload` that does
-  not must change the boundary's `key` to bring the view back. It catches only in the browser:
+  `onError` once, with Preact's `errorInfo`, for your reporter. The default Reload button
+  loads the page again; after an `onReload` port runs, the boundary clears its error and renders
+  the view again, so a port that refetches or resets state recovers it in place. It catches only in the browser:
   Preact's server renderer runs no error boundary, so a throw during a server render still throws.
 - **`ErrorState`** shows an expected failure where its result would have been: the request behind a
   list or a report failed, and you have a message to say so. It renders nothing for an empty

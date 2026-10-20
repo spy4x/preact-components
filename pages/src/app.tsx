@@ -52,10 +52,14 @@ const theme = createThemeStore({ storageKey: THEME_KEY })
  * Clipboard port handed to the catalogue.
  *
  * The shared helper from spy4x/ts-libs, so the legacy `execCommand` path is not reimplemented here.
+ * A copy that reached neither path rejects, so the catalogue's copy controls report the failure
+ * instead of a copy that never happened.
  *
  * @param text Text to place on the clipboard.
  */
-const copyText = (text: string): void => void copyToClipboard(text)
+const copyText = async (text: string): Promise<void> => {
+  if (!(await copyToClipboard(text))) throw new Error("The text did not reach the clipboard.")
+}
 
 /**
  * The Map card's tiles during `verify`'s browser checks: one tiny local image, requested unchanged

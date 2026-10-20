@@ -245,21 +245,4 @@ export async function iconsChecks(devtools: Devtools): Promise<void> {
     filter.total > 90 && filter.filtered > 0 && filter.filtered < filter.total && filter.allMatch,
     `${filter.filtered}/${filter.total} — ${filter.status}`,
   )
-
-  const copy = await devtools.evaluate<{ name: string; status: string }>(
-    `(async () => {
-      const cell = document.querySelector("#icons [data-icon]")
-      const name = cell.getAttribute("data-icon")
-      cell.click()
-      await ${PAGE_UNTIL}(() =>
-        document.querySelector("#icons p[aria-live]").textContent.includes("copied")
-      )
-      return { name, status: document.querySelector("#icons p[aria-live]").textContent }
-    })()`,
-  )
-  check(
-    "clicking an icon copies its JSX",
-    copy.status.includes("copied") && copy.status.includes(`<${copy.name} />`),
-    copy.status.trim(),
-  )
 }

@@ -49,7 +49,7 @@
 
 import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
 import type { JSX } from "preact"
-import { useEffect, useState } from "preact/hooks"
+import { useEffect, useRef, useState } from "preact/hooks"
 
 /**
  * The view of a clicked element this component needs.
@@ -274,8 +274,10 @@ export function collectSequence(
 
 export interface ZoomableImagesProps {
   /**
-   * Container whose images become zoomable. Defaults to `"[data-lightbox]"` — an attribute the
-   * host puts on the element holding the images, which names no particular kind of page.
+   * Containers whose images become zoomable; every element it matches gets zoom, and previous and
+   * next page through the opened image's own container. Defaults to `"[data-lightbox]"` — an
+   * attribute the host puts on the element holding the images, which names no particular kind of
+   * page. Containers are found once, after hydration; nest none inside another.
    */
   containerSelector?: string
   /** Selector an image must match. Defaults to `"img"`. */
@@ -332,11 +334,27 @@ export function ZoomableImages(
   const [sequence, setSequence] = useState<LightboxImage[]>([])
   const [index, setIndex] = useState(0)
   const [open, setOpen] = useState(false)
+  // Read at open time rather than listed as a dependency: an inline arrow is a new function on
+  // every parent render, and the effect below would otherwise unmark and re-mark every image each
+  // time, taking focus off the image a keyboard reader is on.
+  const latestOnOpen = useRef(onOpen)
+  latestOnOpen.current = onOpen
 
   useEffect(() => {
-    const container = document.querySelector(containerSelector)
-    if (!container) return
+    const cleanups = [...document.querySelectorAll(containerSelector)].map(wire)
+    return () => {
+      for (const cleanup of cleanups) cleanup()
+    }
+  }, [containerSelector, imageSelector, fallbackAlt, zoomCursor, zoomLabel])
 
+  /**
+   * Make one container's images zoomable: mark them, keep marking new ones, and open the lightbox
+   * on a click or an Enter or Space press, paging through that container's images only.
+   *
+   * @param container One element the container selector matched.
+   * @returns What undoes all of it.
+   */
+  function wire(container: Element): () => void {
     const mark = () =>
       markZoomable(container, { imageSelector, fallbackAlt, zoomLabel, zoomCursor })
     mark()
@@ -374,7 +392,7 @@ export function ZoomableImages(
       setSequence(collected.images)
       setIndex(collected.index)
       setOpen(true)
-      onOpen?.(resolved)
+      latestOnOpen.current?.(resolved)
       return true
     }
 
@@ -393,7 +411,7 @@ export function ZoomableImages(
       container.removeEventListener("keydown", onKeyDown)
       unmarkZoomable(container)
     }
-  }, [containerSelector, imageSelector, fallbackAlt, zoomCursor, zoomLabel, onOpen])
+  }
 
   return (
     <Lightbox

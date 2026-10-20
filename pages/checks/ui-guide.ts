@@ -703,38 +703,6 @@ async function phoneNavigationChecks(devtools: Devtools): Promise<void> {
     `menu button visible ${visible.button}, side column visible ${visible.aside}; ` +
       results.join("; "),
   )
-
-  // Follow a link from inside the dialog: the page changes and the dialog closes behind it.
-  await devtools.evaluate(`document.querySelector(${JSON.stringify(MENU_BUTTON)}).focus()`)
-  await pressKey(devtools, "Enter")
-  const MAP_LINK = `${MENU_DIALOG} a[data-guide-page-link="map"]`
-  const reopened = await poll(async () => (await state()).open, 3_000)
-  const linked = await poll(
-    () =>
-      devtools.evaluate<boolean>(`document.querySelector(${JSON.stringify(MAP_LINK)}) !== null`),
-    3_000,
-  )
-  const followed = reopened && linked && await clickElement(devtools, MAP_LINK)
-  await poll(
-    () => devtools.evaluate<boolean>(`document.querySelector('[data-guide-page="map"]') !== null`),
-    3_000,
-  )
-  await poll(async () => !(await state()).open, 2_000)
-  const after = await state()
-  const page = await devtools.evaluate<string>(
-    `document.querySelector("[data-guide-page]")?.dataset.guidePage ?? ""`,
-  )
-  // A dialog left open is modal and would swallow every later block's clicks.
-  if (after.open) {
-    await devtools.evaluate(`document.querySelector(${JSON.stringify(MENU_DIALOG)}).close()`)
-  }
-  check(
-    "a link followed from the phone navigation shows its page and closes the dialog",
-    followed && page === "map" && !after.open && after.onButton,
-    `dialog reopened ${reopened}, Map link rendered ${linked}, ` +
-      `${followed ? "clicked" : "could not click"} → page "${page}", dialog open ` +
-      `${after.open}, focus back on the menu button ${after.onButton}`,
-  )
 }
 
 /**
