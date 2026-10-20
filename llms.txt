@@ -841,6 +841,7 @@ toggleChipSelection	helper	@spy4x/preact-ui	The selection after one chip is pres
 typingState	helper	@spy4x/preact-ui	The state a keystroke leaves behind after the caller has re-filtered for the new query.
 useApplePlatform	hook	@spy4x/preact-ui	Whether this browser is an Apple platform, for drawing or announcing `mod` as Command.
 useFocusAfterRemoval	hook	@spy4x/preact-ui	Keeps focus on the page when a row leaves a list because its own removal went through.
+useFocusFallback	hook	@spy4x/preact-ui	Keeps focus on the page when the focused control inside `container` leaves it, or when the whole container leaves.
 useFocusOnChange	hook	@spy4x/preact-ui	Moves focus to an element when a value, such as the step of a flow, differs from the one the component mounted with.
 useFocusOnError	hook	@spy4x/preact-ui	Moves focus to an element each time a new error arrives, so a failed submit lands on it.
 useFormat	hook	@spy4x/preact-ui	The formatter of the person whose screen this is: the nearest `FormatContext` value.
