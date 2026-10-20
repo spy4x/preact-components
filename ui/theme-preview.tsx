@@ -36,8 +36,8 @@ export interface ThemePreviewProps {
  *
  * The palette lives in `@spy4x/preact-theme`'s opt-in `theme-preview.css`: while a radio is
  * checked, `:has()` declares that palette's tokens on the frame alone, so the page around it keeps
- * its own. `dark:` utilities still follow the page (`.dark` on `<html>`), not the frame, so a
- * component styled through `dark:` shows the page's palette inside it. The frame draws the canvas, a
+ * its own. `preact-theme`'s `dark` variant follows the frame too, so `dark:` utilities inside it
+ * match the frame's palette, not the page's. The frame draws the canvas, a
  * border and the text colour of its palette. The radios are native, so Tab reaches the checked one
  * and the arrow keys switch it.
  *
@@ -59,7 +59,7 @@ export function ThemePreview(
   const dark = labels?.dark ?? "Dark"
   const light = labels?.light ?? "Light"
   return (
-    <div data-theme-preview="" class={join("flex flex-col gap-3", className)}>
+    <div class={join("flex flex-col gap-3", className)}>
       <RadioChips
         legend={labels?.legend ?? "Theme"}
         hideLegend={hideLegend}

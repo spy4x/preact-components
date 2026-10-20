@@ -57,17 +57,16 @@ describe("ThemePreview", () => {
     expect(light).toContain(`name="${name}"`)
   })
 
-  it("renders the markup theme-preview.css selects: the root, its fieldset, each radio's choice and the frame", () => {
+  it("renders the markup theme-preview.css selects: each radio's choice, and the frame right after their fieldset", () => {
     const html = render(<ThemePreview name="look">x</ThemePreview>)
 
-    expect(html).toMatch(/^<div data-theme-preview class="[^"]*"><fieldset/)
+    expect(html).toMatch(/^<div class="[^"]*"><fieldset/)
     expect(radios(html)[0]).toContain(`data-theme-preview-choice="dark"`)
     expect(radios(html)[1]).toContain(`data-theme-preview-choice="light"`)
     expect(html).toMatch(/<\/fieldset><div data-theme-preview-frame /)
     for (const theme of ["dark", "light"]) {
       expect(THEME_PREVIEW_CSS).toContain(
-        `[data-theme-preview]:has(> fieldset [data-theme-preview-choice="${theme}"]:checked) > ` +
-          `[data-theme-preview-frame]`,
+        `:has([data-theme-preview-choice=${theme}]:checked) + [data-theme-preview-frame]`,
       )
     }
   })
