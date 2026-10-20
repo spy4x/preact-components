@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui",
-  "version": "8.8.1",
+  "version": "8.9.0",
   "exports": {
     ".": "./+index.ts",
     "./avatar": "./avatar.tsx",
