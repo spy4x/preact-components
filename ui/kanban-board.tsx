@@ -211,15 +211,21 @@ interface Lifted {
   at: KanbanSlot
 }
 
-/** A card being dragged by a pointer: where it follows the pointer to, and where it would land. */
+/**
+ * A card being dragged by a pointer: where its floating copy is drawn, and where it would land.
+ *
+ * The copy is `position: fixed`, outside the board's scrolling list, so the board neither clips it
+ * nor grows its scroll area to make room for it.
+ */
 interface Dragged {
   itemId: string
   from: KanbanSlot
   /** The slot the drop indicator marks, or `null` while the pointer is off the board. */
   over: KanbanSlot | null
-  /** How far the card is drawn from its place, in pixels. */
-  dx: number
-  dy: number
+  /** The floating copy's top-left corner and width, in viewport pixels. */
+  left: number
+  top: number
+  width: number
   /** Where the pointer holds the card, from the card's top-left corner. */
   grabX: number
   grabY: number
@@ -237,8 +243,11 @@ const countClass = "text-xs font-normal text-muted"
 const listClass = "flex min-h-16 flex-col gap-2"
 const cardClass =
   "cursor-grab select-none rounded-md border border-subtle bg-surface p-3 text-sm text-foreground shadow-raised transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-const cardLiftedClass = "shadow-popover ring-2 ring-(--color-selected-text)"
-const cardDraggedClass = "relative z-10 cursor-grabbing"
+// An outline, not a ring: `shadow-popover` sets the whole box-shadow, which would drop a ring.
+const cardLiftedClass = "shadow-popover outline-2 outline-(--color-selected-text)"
+/** The card left in place while its copy is dragged: it marks where the card came from. */
+const cardDraggedClass = "opacity-50"
+const cardCopyClass = "pointer-events-none fixed z-50 cursor-grabbing"
 const indicatorClass = "h-0.5 shrink-0 rounded-full bg-(--color-selected-text)"
 
 /**
@@ -442,17 +451,14 @@ export function KanbanBoard<Item extends KanbanItem>(
   /** Follow the pointer at viewport (`x`, `y`): where the card is drawn and where it would land. */
   const follow = (x: number, y: number) => {
     const now = draggedRef.current
-    const card = now === null ? null : cardOf(now.itemId)
-    if (now === null || card === null) return
-    // Where the card sits without its offset, so a scroll under it keeps it under the pointer.
-    const box = card.getBoundingClientRect()
-    const dx = Math.round(x - now.grabX - (box.left - now.dx))
-    const dy = Math.round(y - now.grabY - (box.top - now.dy))
+    if (now === null) return
+    const left = Math.round(x - now.grabX)
+    const top = Math.round(y - now.grabY)
     const over = slotAt(x, y, now.itemId)
     const moved = over?.column !== now.over?.column || over?.index !== now.over?.index
-    if (!moved && dx === now.dx && dy === now.dy) return
+    if (!moved && left === now.left && top === now.top) return
     if (moved && over !== null) setAnnouncement(text.moved(placeOf(now.itemId, over)))
-    setDragged({ ...now, over, dx, dy })
+    setDragged({ ...now, over, left, top })
   }
 
   /** End a drag: a card released over the board lands there, anywhere else it goes back. */
@@ -478,8 +484,9 @@ export function KanbanBoard<Item extends KanbanItem>(
         itemId,
         from: slot,
         over: slot,
-        dx: 0,
-        dy: 0,
+        left: box.left,
+        top: box.top,
+        width: box.width,
         grabX: x - box.left,
         grabY: y - box.top,
       })
@@ -513,6 +520,7 @@ export function KanbanBoard<Item extends KanbanItem>(
   }
 
   const Heading = `h${headingLevel}` as "h3"
+  const draggedItem = dragged === null ? undefined : byId.get(dragged.itemId)
 
   return (
     <div ref={rootRef} class={cn(rootClass, dragged !== null && "select-none", className)}>
@@ -542,12 +550,9 @@ export function KanbanBoard<Item extends KanbanItem>(
                   aria-describedby={instructionsId}
                   class={cn(
                     cardClass,
-                    (isLifted || isDragged) && cardLiftedClass,
+                    isLifted && cardLiftedClass,
                     isDragged && cardDraggedClass,
                   )}
-                  style={isDragged
-                    ? { transform: `translate(${dragged.dx}px, ${dragged.dy}px)` }
-                    : undefined}
                   onKeyDown={(event) => onCardKeyDown(event, item.id)}
                   onClick={() => {
                     // A click on the card being held does not open it; a drag's own click is
@@ -584,6 +589,16 @@ export function KanbanBoard<Item extends KanbanItem>(
           )
         })}
       </ul>
+      {draggedItem !== undefined && dragged !== null && (
+        <div
+          aria-hidden="true"
+          data-kanban-dragging=""
+          class={cn(cardClass, cardLiftedClass, cardCopyClass)}
+          style={{ left: dragged.left, top: dragged.top, width: dragged.width }}
+        >
+          {renderItem(draggedItem)}
+        </div>
+      )}
       <span id={instructionsId} class="sr-only">
         {onOpen === undefined ? text.instructions : text.instructionsWithOpen}
       </span>
