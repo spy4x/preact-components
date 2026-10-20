@@ -323,6 +323,7 @@ export {
   type RadioOption,
   type RadioProps,
 } from "./radio.tsx"
+export { type RadioChipOption, RadioChips, type RadioChipsProps } from "./radio-chips.tsx"
 export {
   acquireScrollLock,
   applyScrollLock,

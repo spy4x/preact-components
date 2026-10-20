@@ -113,6 +113,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`)                                                                                                                                                                                                                                                                                       |
 | `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood                                                                                                    |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                                                                                                                      |
+| `RadioChips`          | `radio-chips`          | `legend`, `name`, `options` (`id?`, `inputAttributes?` each), `defaultValue?` or `value?`, `onChange?`, `hideLegend?` — `ToggleChips`' look on native radios; works without JavaScript                                                                                                                                                        |
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                              |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                 |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                |
@@ -1632,6 +1633,15 @@ Inside `Field`, leave `label` and `error` out: `Field` renders both, and its wir
 `requiredMessage` (`"Add at least one tag"`), and the field says `aria-required`. It is not the
 native `required` attribute: that looks at the text field, which is empty whenever the tags are
 chips, so it would block a form that has tags.
+
+## RadioChips
+
+One choice drawn as `ToggleChips` chips, on native radios: a `<fieldset>` named by its `<legend>`,
+and per option a `<label>` around a visually hidden `<input type="radio">`. The checked chip takes
+the pressed chip's accent fill and check from `:checked`, and the focus ring from `:focus-visible`,
+so the markup works server-rendered with JavaScript off. `defaultValue` checks an option in that
+markup; an island can pass `value` and `onChange` instead. An option's `id` lets page CSS read
+`:has(#id:checked)`, and its `inputAttributes` (analytics `data-*`, say) go on the radio.
 
 ## ToggleChips
 
