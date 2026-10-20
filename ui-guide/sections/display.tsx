@@ -904,10 +904,13 @@ function Labelled({ caption, children }: { caption: string; children: ComponentC
   )
 }
 
+/** An image that fails to decode at once, before the bundle runs, so the initials show instead. */
+const brokenAvatar = "data:image/png;base64,AAAA"
+
 /**
- * Every size, then the faces an avatar can take: the image, the initials, and the icon when the
- * name gives no usable initial. Which face a pair of props selects is `avatarFace`, a pure function
- * the component calls; what the card adds is the picture.
+ * Every size, then the faces an avatar can take: the image, the initials (also for an image that
+ * fails to load), and the icon when the name gives no usable initial. Which face a pair of props
+ * selects is `avatarFace`, a pure function the component calls; what the card adds is the picture.
  */
 function AvatarDemo() {
   return (
@@ -925,6 +928,9 @@ function AvatarDemo() {
         </Labelled>
         <Labelled caption="initials">
           <Avatar name="Grace Hopper" size="lg" />
+        </Labelled>
+        <Labelled caption="broken image: initials">
+          <Avatar name="Alan Turing" src={brokenAvatar} size="lg" />
         </Labelled>
         <Labelled caption="CJK initials">
           <Avatar name="王小明" size="lg" />
