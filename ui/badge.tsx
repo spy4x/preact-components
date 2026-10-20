@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { Link } from "./link.tsx"
+import { BADGE_BASE, BADGE_FILLED_ACCENT, BADGE_OUTLINE_GRAY } from "./plain-classes.ts"
 
 /**
  * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
@@ -53,7 +54,7 @@ const outlineClasses: Record<BadgeColor, string> = {
   red: "border-red-700 text-red-700 dark:border-red-400 dark:text-red-400",
   orange: "border-orange-700 text-orange-700 dark:border-orange-400 dark:text-orange-400",
   green: "border-green-800 text-green-800 dark:border-green-400 dark:text-green-400",
-  gray: "border-control text-muted",
+  gray: BADGE_OUTLINE_GRAY,
   blue: "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400",
   purple: "border-accent-600 text-accent-600 dark:border-accent-400 dark:text-accent-400",
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
@@ -71,12 +72,9 @@ const filledClasses: Record<BadgeColor, string> = {
   green: "border-transparent bg-success text-(--color-success-foreground)",
   gray: "border-subtle bg-track text-foreground",
   blue: "border-blue-600 bg-blue-600 text-blue-50",
-  purple: "border-transparent bg-selected text-selected-foreground",
+  purple: BADGE_FILLED_ACCENT,
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
-
-const base =
-  "inline-flex items-center border rounded-md px-2 py-1 text-xs whitespace-nowrap font-medium"
 
 /**
  * Compose a badge's class list without rendering one, so a pill that is not a {@link Badge} — a
@@ -93,7 +91,7 @@ export function badgeClasses(
   className?: string,
 ): string {
   const palette = type === "outline" ? outlineClasses : filledClasses
-  return cn(base, palette[color], className)
+  return cn(BADGE_BASE, palette[color], className)
 }
 
 /**
