@@ -125,10 +125,11 @@ function* everyOrder(
 }
 
 describe("createOnboardingState", () => {
-  it("reads the stored dismissed flag once, when it is created", () => {
+  it("reads the stored dismissed flag on first use, once, and not when it is created", () => {
     const port = fakePort(true)
     const state = createOnboardingState({ steps: signal(facts(false)), dismissed: port })
 
+    expect(port.reads).toBe(0)
     expect(state.visible.value).toBe(false)
     expect(state.visible.value).toBe(false)
     expect(port.reads).toBe(1)

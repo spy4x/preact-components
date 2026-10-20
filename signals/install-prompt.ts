@@ -177,7 +177,11 @@ export function createInstallPrompt(ports: InstallPromptPorts = {}): InstallProm
     ? "ios"
     : "unavailable"
   const mode = signal<InstallPromptMode>(initial)
-  const dismissed = signal(port.read())
+  // The port is read on first use, not here, so a store created at module level on a server reads
+  // no storage until something asks for the flag.
+  let stored: boolean | undefined
+  const changed = signal<boolean | undefined>(undefined)
+  const dismissed = computed(() => changed.value ?? (stored ??= port.read()))
   let deferred: InstallPromptEvent | null = null
 
   function watch(override?: InstallPromptTarget | null): () => void {
@@ -223,10 +227,10 @@ export function createInstallPrompt(ports: InstallPromptPorts = {}): InstallProm
   function dismiss(): void | Promise<void> {
     // Written first, as `createOnboardingState` does: a write that throws changes nothing here.
     const saving = port.write(true)
-    dismissed.value = true
+    changed.value = true
     if (saving === undefined) return
     return saving.catch((error: unknown) => {
-      dismissed.value = false
+      changed.value = false
       throw error
     })
   }

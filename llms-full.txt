@@ -1852,8 +1852,10 @@ steps as a signal of `{ id, done }` (the checklist's own steps fit) and a `dismi
 - `progress`: `{ done, total }`.
 - `dismiss()` and `reset()`: write `true` or `false` through the port and change `visible`.
 
-The port's `read()` is synchronous: an app that keeps the flag on the server loads it before it
-creates the store. Its `write()` may be either:
+The port's `read()` is synchronous: an app that keeps the flag on the server loads it before the
+store first needs it. The store calls it once, on first use rather than when it is created, so a
+store created at module level reads nothing on a server until a render asks for `visible`. Its
+`write()` may be either:
 
 - **Synchronous**, such as `localStorage`. The write runs first and `visible` changes after it, so a
   write that throws leaves `visible` as it was, and the error reaches the caller of `dismiss()`.
@@ -1888,7 +1890,7 @@ info bar), so `install()` can open the browser's dialog later from a button. Its
 person installs through Share, then Add to Home Screen, `installed` when the app already runs
 standalone or `appinstalled` fired, and `unavailable` otherwise. `visible` is `true` for `prompt`
 and `ios` until `dismiss()` stores the flag through `dismissed`, the same `{ read, write }` port
-`createOnboardingState` takes; left out, the flag lives in memory. Call `watch()` early in the
+`createOnboardingState` takes, read once on first use; left out, the flag lives in memory. Call `watch()` early in the
 client entry point: the event can fire before the app renders. `isIosDevice(navigator)` and
 `isStandalone(navigator, matchMedia)` are the two checks it starts from. `InstallPrompt` in
 `@spy4x/preact-system` draws it.
