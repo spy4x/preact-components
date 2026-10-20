@@ -56,11 +56,8 @@ export interface ServiceWorkerHost {
  * The service-worker container of a host, or `undefined` when there is none.
  *
  * The default host is `globalThis.navigator`, because that is where a browser keeps the container:
- * a page has no `globalThis.serviceWorker`, only a worker's own scope does. Reading it off
- * `globalThis` is the bug this function shipped with, and no test could see it — Deno and a server
- * render have no container either way, so the component quietly did nothing in every browser.
- * Going through `globalThis.navigator` keeps the lookup a property read rather than a `typeof
- * navigator` dance, so a server render still gets `undefined` instead of a `ReferenceError`.
+ * a page has no `globalThis.serviceWorker`, only a worker's own scope does. Reading it as a
+ * property of `globalThis` lets a server render get `undefined` instead of a `ReferenceError`.
  *
  * @param host Where to look; defaults to `globalThis.navigator`.
  * @returns The container, or `undefined` off a browser.
@@ -297,12 +294,10 @@ const dismissButtonClass =
 /**
  * Register the service worker and offer a reload when a new version is waiting.
  *
- * **The live region is in the document at all times, including before anything has happened**,
- * which is a change from the version that returned `null` until an update existed. That empty
- * region is what makes the message announceable: assistive technology announces a *change* to a
- * region it is already watching, and commonly says nothing at all about a region that arrives with
- * its text already inside it. A `role="status"` added to a bar that only appears with its own
- * message would therefore have announced nothing, which is precisely the defect this replaces.
+ * **The live region is in the document at all times, including before anything has happened.**
+ * That empty region is what makes the message announceable: assistive technology announces a
+ * *change* to a region it is already watching, and commonly says nothing about a region that
+ * arrives with its text already inside it.
  *
  * What is always there is only the region: no class, no padding, no border, no minimum height, so
  * an empty one paints nothing and is zero pixels tall. It is an ordinary in-flow element, which is
@@ -323,8 +318,8 @@ const dismissButtonClass =
  * be able to put it away.
  *
  * A dismissal puts *that* update away rather than the component: the next update to be reported
- * clears it, so the message leaves the region and later arrives in it again as a fresh change.
- * Without that, a visitor who dismissed one version was never told about any version after it.
+ * clears it, so the message leaves the region and later arrives in it again as a fresh change, and
+ * a visitor who dismissed one version is still told about the next.
  */
 export function SWUpdater(
   {
