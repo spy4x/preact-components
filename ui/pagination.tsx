@@ -106,10 +106,8 @@ export function pageRange(page: number, pageCount: number, size = fullListLimit)
  * Derived rather than searched. Centre {@link sideWidth} pages on each side of the current page,
  * slide the window back inside the range if it hangs off an end, then let each edge swallow a page
  * it would otherwise have hidden behind a `…` on its own. Both adjustments only ever widen the
- * window, so the neighbours the first step granted are never taken away again — which is the
- * property the old scoring search did not have: it rejected the centred window outright when a mark
- * beside it would have hidden one page, and answered with an off-centre one instead, so page 5 of
- * 10 was shown as `1 2 3 4 5 … 10` with no neighbour after it.
+ * window, so the neighbours the first step granted are never taken away again: page 5 of 10 keeps
+ * a neighbour on each side.
  *
  * Called only for `pageCount > budget`, and `budget` is at least `5`, so the range is always long
  * enough to hold the window.

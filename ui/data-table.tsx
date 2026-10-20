@@ -20,10 +20,10 @@ export type DataTableColumnAlign = "left" | "center" | "right"
  * `key` is the identity `toggleSort`/`sortRows` sort by, so it has to be one of `T`'s own string
  * keys, and it is also this column's Preact key. `sortable` and `aria-sort` both live only on this
  * shape — see {@link DataTableDisplayColumn} for the column that has neither. `id?: never` is what
- * makes the two shapes exclusive rather than merely different: without it, a column carrying both
- * `key` and `id` type-checked, was read as a data column by {@link isDataColumn}'s `"key" in
- * column`, and reported `aria-sort` under an `id` a caller had migrated to. `id` itself is never a
- * property this shape uses; the type only exists to reject one a caller left behind.
+ * makes the two shapes exclusive rather than merely different: a column carrying both `key` and
+ * `id` is a type error, rather than a data column (by {@link isDataColumn}'s `"key" in column`)
+ * reporting `aria-sort` under an `id` a caller migrated to. `id` itself is never a property this
+ * shape uses; the type only exists to reject one a caller left behind.
  */
 export interface DataTableDataColumn<T, K extends Extract<keyof T, string>> {
   /** Row field this column reads, and the sort key it toggles when `sortable`. */
@@ -46,11 +46,9 @@ export interface DataTableDataColumn<T, K extends Extract<keyof T, string>> {
  *
  * It is never sortable and never carries `aria-sort`: there is no row field for `sort` to name, so
  * there is nothing for a header press to toggle — `sortable?: never` and `key?: never` make both
- * a compile error rather than a value `DataTable` would have to notice and ignore at runtime. Before
- * they were added, `{ id, header, render, sortable: true }` type-checked and rendered as plain,
- * unclickable text with no error anywhere, and `{ key, id, header, render }` type-checked, was read
- * as a data column, and reported `aria-sort` on an `id` a caller had migrated to — the exact bug
- * this split exists to rule out, still reachable through the types alone.
+ * a compile error rather than a value `DataTable` would have to notice and ignore at runtime. So
+ * `{ id, header, render, sortable: true }` does not type-check, rather than rendering a plain header
+ * that ignores `sortable`, and neither does `{ key, id, header, render }`.
  *
  * `id` is this column's own Preact key, in a namespace the type system now keeps separate from
  * every data column's `key`. What the types do not check, and cannot — both are ordinary runtime
