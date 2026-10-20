@@ -52,4 +52,42 @@ function labelsApartSpec(width: number): Spec {
   }
 }
 
-export const specs: readonly Spec[] = [labelsApartSpec(320), labelsApartSpec(1280)]
+/**
+ * #855: in `card`'s first chart, focusing `plot` shows the first item, ArrowDown moves to the same
+ * next item ArrowRight does, and ArrowUp comes back.
+ */
+function arrowDownSpec(component: string, plot: string): Spec {
+  return {
+    name: `${component}: ArrowDown moves to the next item, as ArrowRight does, and ArrowUp back`,
+    pageId: "charts",
+    run: async (page) => {
+      const card = page.locator(`#demo-${component}`)
+      const target = card.locator(plot).first()
+      const heading = card.locator("[data-chart-tooltip]").first().locator("strong")
+      const read = async () => (await heading.textContent())?.trim() ?? ""
+      const exactly = (text: string) =>
+        new RegExp(`^\\s*${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`)
+      await target.and(page.locator("[tabindex]")).waitFor()
+      await target.focus()
+      await heading.waitFor()
+      const first = await read()
+      await target.press("ArrowDown")
+      await heading.filter({ hasNotText: exactly(first) }).waitFor()
+      const down = await read()
+      await target.press("ArrowUp")
+      await heading.filter({ hasText: exactly(first) }).waitFor()
+      await target.press("ArrowRight")
+      await heading.filter({ hasNotText: exactly(first) }).waitFor()
+      const right = await read()
+      if (down !== right) throw new Error(`ArrowDown went to "${down}", ArrowRight to "${right}"`)
+      return `${first} → ArrowDown ${down} → ArrowUp ${first} → ArrowRight ${right}`
+    },
+  }
+}
+
+export const specs: readonly Spec[] = [
+  labelsApartSpec(320),
+  labelsApartSpec(1280),
+  arrowDownSpec("LineChart", "[data-chart-plot]"),
+  arrowDownSpec("DonutChart", "[data-chart-ring]"),
+]
