@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { compile } from "tailwindcss"
 import { fileURLToPath } from "node:url"
+import { AUTO_DARK_ATTRIBUTE } from "../auto-dark.ts"
 import { stylesheetLoader } from "./load-stylesheet.ts"
 
 /** Must stay in step with the `tailwindcss` pin in the repo root `deno.jsonc`. */
@@ -137,8 +138,6 @@ const CANDIDATES = [
 /** The classes the gate and the dark scope select, in the order they appear. */
 const GATE_CLASS = "theme-base"
 const DARK_CLASS = "dark"
-/** The attribute that makes a page dark without JavaScript while the system asks for dark. */
-const AUTO_DARK_ATTRIBUTE = "data-theme-auto"
 
 /**
  * The host elements a page can put under these rules: the subjects the gate
