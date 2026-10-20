@@ -440,9 +440,9 @@ interface EmittedRule {
 function emittedRules(css: string): EmittedRule[] {
   const rules: EmittedRule[] = []
   let rest = css
-  for (const gate of gateBlocks(cssBlocks(css)).reverse()) {
-    rules.unshift(...flattenGate(gate, [GATE_ROOT]))
-    rest = rest.slice(0, gate.start) + rest.slice(gate.end)
+  for (const { block, selectors } of gateBlocks(cssBlocks(css)).reverse()) {
+    rules.unshift(...flattenGate(block, selectors))
+    rest = rest.slice(0, block.start) + rest.slice(block.end)
   }
   // An at-rule's own block (`@media (hover: hover) { … }` inside a nested `&:hover`) has no
   // selector: `selectorsOf` drops its `@` prelude, as it drops a `&` rule's.
@@ -513,20 +513,45 @@ function cssBlocks(css: string): CssBlock[] {
   return root.children
 }
 
+/** A gate block, with the selectors it stands for once its parents are resolved. */
+interface GateBlock {
+  block: CssBlock
+  selectors: string[]
+}
+
 /**
- * The gate blocks: every `:where(.theme-base) { … }` block with no style rule around it.
+ * A nested block's selectors resolved against its parents' (`&` replaced, else a descendant).
  *
- * @param blocks Top-level blocks.
+ * @param header The block's header.
+ * @param parents The parents' resolved selectors; empty at the top level.
+ */
+function resolveSelectors(header: string, parents: string[]): string[] {
+  const own = selectorsOf(header)
+  if (parents.length === 0) return own
+  return own.flatMap((selector) =>
+    parents.map((parent) =>
+      selector.includes("&") ? selector.replaceAll("&", parent) : `${parent} ${selector}`
+    )
+  )
+}
+
+/**
+ * The gate blocks: every block whose resolved selector starts with `:where(.theme-base)`, at any
+ * depth — top level, inside an at-rule, or nested in a style rule (`.x { :where(.theme-base) & {
+ * … } }`) — with the selectors it stands for. A block inside a gate is part of that gate.
+ *
+ * @param blocks Blocks to search.
+ * @param parents The resolved selectors of the style rule around them; empty at the top level.
  * @returns The gate blocks, in source order.
  */
-function gateBlocks(blocks: CssBlock[]): CssBlock[] {
-  return blocks.flatMap((block) =>
-    block.header === GATE_ROOT
-      ? [block]
-      : block.header.startsWith("@")
-      ? gateBlocks(block.children)
-      : []
-  )
+function gateBlocks(blocks: CssBlock[], parents: string[] = []): GateBlock[] {
+  return blocks.flatMap((block) => {
+    if (block.header.startsWith("@")) return gateBlocks(block.children, parents)
+    const selectors = resolveSelectors(block.header, parents)
+    return selectors.some((selector) => selector.startsWith(GATE_ROOT))
+      ? [{ block, selectors }]
+      : gateBlocks(block.children, selectors)
+  })
 }
 
 /** A `ThemePreview` frame while its Dark or Light radio is checked (`theme/theme-preview.ts`). */
@@ -596,12 +621,9 @@ function flattenGate(block: CssBlock, parents: string[]): EmittedRule[] {
     rules.push({ selectors: parents.flatMap(expandDarkVariant), body })
   }
   for (const child of block.children) {
-    const selectors = child.header.startsWith("@") ? parents : selectorsOf(child.header).flatMap(
-      (selector) =>
-        parents.map((parent) =>
-          selector.includes("&") ? selector.replaceAll("&", parent) : `${parent} ${selector}`
-        ),
-    )
+    const selectors = child.header.startsWith("@")
+      ? parents
+      : resolveSelectors(child.header, parents)
     rules.push(...flattenGate(child, selectors))
   }
   return rules
@@ -1204,7 +1226,7 @@ function chainMatches(
  */
 function gateRulesInSource(): Array<{ subjects: string[]; body: string }> {
   return gateBlocks(cssBlocks(PRESET_CSS))
-    .flatMap((gate) => gate.children.filter((child) => child.header === "@variant dark"))
+    .flatMap(({ block }) => block.children.filter((child) => child.header === "@variant dark"))
     .flatMap((variant) => variant.children)
     .map((rule) => ({
       subjects: selectorsOf(rule.header).map((selector) => selector.replace(/^&\s*/, "")),
@@ -2097,5 +2119,20 @@ describe("theme preset", () => {
 
   it("does not ship a utility with no declarations", async () => {
     expect(/\.[a-z][a-z0-9-]* \{\s*\}/.test(await preset())).toBe(false)
+  })
+})
+
+describe("the gate reader", () => {
+  it("unfolds a gate nested in a style rule and one under a compound header", () => {
+    const css = `.x { color: green; :where(.theme-base) & { color: red; } }
+:where(.theme-base) .y { & .z { color: blue; } }
+.w { color: black; }`
+    const rules = emittedRules(css)
+    const selectorsWith = (colour: string) =>
+      rules.filter((rule) => rule.body.includes(colour)).flatMap((rule) => rule.selectors)
+    expect(selectorsWith("red")).toEqual([":where(.theme-base) .x"])
+    expect(selectorsWith("blue")).toEqual([":where(.theme-base) .y .z"])
+    expect(selectorsWith("green")).toEqual([".x"])
+    expect(selectorsWith("black")).toEqual([".w"])
   })
 })
