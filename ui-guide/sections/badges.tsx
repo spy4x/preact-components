@@ -1,3 +1,4 @@
+import { useSignal } from "@preact/signals"
 import {
   Badge,
   type BadgeColor,
@@ -52,23 +53,43 @@ function BadgeMatrix() {
 
 /**
  * Element content: a whole-pill link holding a word and a `StatusMark`, and a static pill with a
- * link inside it. The link points at this repository's public CI runs.
+ * link inside it. The link points at this repository's public CI runs. Then a linked badge with a
+ * `navigate` port that only records where it was asked to go, so a plain click shows its href below
+ * instead of leaving the page.
  */
 function BadgeContentRow() {
+  const navigated = useSignal<string | null>(null)
   return (
-    <Cluster align="baseline" class="flex-nowrap">
-      <span class="w-16 shrink-0 text-xs text-muted">content</span>
-      <Cluster>
-        <Badge color="gray" href={CI_RUNS}>
-          <span>CI</span>
-          <StatusMark status="ready" label="Passing" />
-        </Badge>
-        <Badge color="gray" type="outline">
-          <StatusMark status="beta" />
-          <a href={CI_RUNS} class="underline underline-offset-4">notes</a>
-        </Badge>
+    <Stack gap="sm">
+      <Cluster align="baseline" class="flex-nowrap">
+        <span class="w-16 shrink-0 text-xs text-muted">content</span>
+        <Cluster>
+          <Badge color="gray" href={CI_RUNS}>
+            <span>CI</span>
+            <StatusMark status="ready" label="Passing" />
+          </Badge>
+          <Badge color="gray" type="outline">
+            <StatusMark status="beta" />
+            <a href={CI_RUNS} class="underline underline-offset-4">notes</a>
+          </Badge>
+        </Cluster>
       </Cluster>
-    </Cluster>
+      <Cluster align="baseline" class="flex-nowrap">
+        <span class="w-16 shrink-0 text-xs text-muted">routed</span>
+        <Cluster>
+          <Badge
+            text="system page"
+            color="blue"
+            type="outline"
+            href="#/system"
+            navigate={(href) => navigated.value = href}
+          />
+          <span class="text-sm text-muted" data-e2e="badge-navigated">
+            {navigated.value === null ? "navigate not called yet" : `navigate(${navigated.value})`}
+          </span>
+        </Cluster>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -127,6 +148,13 @@ export const badgeDemos = {
           "link's name.",
       },
       {
+        name: "navigate",
+        type: "(href: string) => void",
+        description: "With `href`: called on a plain click instead of the browser following the " +
+          "link, as on `Link` and `Button`. A modified click, or a link to another site, stays " +
+          "the browser's.",
+      },
+      {
         name: "color",
         type: "BadgeColor",
         default: `"purple"`,
@@ -145,7 +173,8 @@ export const badgeDemos = {
 <Badge color="gray" href="https://ci.example.com/my-repo">
   <span>CI</span>
   <StatusMark status="ready" label="Passing" />
-</Badge>`,
+</Badge>
+<Badge text="system page" href="/system" navigate={router.navigate} />`,
     render: () => (
       <Stack gap="sm">
         <BadgeMatrix />

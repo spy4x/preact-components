@@ -1,5 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
+import { Link } from "./link.tsx"
 
 /**
  * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
@@ -21,11 +22,14 @@ export interface BadgeProps {
   class?: string
   /**
    * Makes the whole badge a link: it renders an `<a>` with a keyboard focus ring, and its content is
-   * the link's accessible name. Leave it out for a static `<span>`. A plain `href`, with no
-   * navigation port: an app that routes on the client intercepts the click the way it does for any
-   * other link.
+   * the link's accessible name. Leave it out for a static `<span>`.
    */
   href?: string
+  /**
+   * Called with `href` on a plain click instead of the browser following the link, as `Link` and
+   * `Button` do: the app's router, passed in. Ignored without `href`.
+   */
+  navigate?: (href: string) => void
 }
 
 /**
@@ -102,10 +106,11 @@ const linkClasses = "hover:underline underline-offset-4 focus-visible:outline-hi
 
 /**
  * Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in
- * an `<a>` when `href` is given, so the whole pill is the link.
+ * an `<a>` when `href` is given, so the whole pill is the link, which hands plain clicks to
+ * `navigate` when one is given.
  */
 export function Badge(props: BadgeProps | BadgeElementProps): JSX.Element {
-  const { text, color = "purple", type = "filled", class: className, href } = props
+  const { text, color = "purple", type = "filled", class: className, href, navigate } = props
   const children = "children" in props ? props.children : undefined
   // Element content usually means a shape beside a word, which needs a gap a single label does not.
   const classes = badgeClasses(
@@ -116,5 +121,5 @@ export function Badge(props: BadgeProps | BadgeElementProps): JSX.Element {
   const content = children ?? text
   return href === undefined
     ? <span class={classes}>{content}</span>
-    : <a href={href} class={classes}>{content}</a>
+    : <Link href={href} navigate={navigate} class={classes}>{content}</Link>
 }
