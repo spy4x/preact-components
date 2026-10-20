@@ -594,7 +594,7 @@ describe("DataTable", () => {
     expect(html).not.toContain('aria-label="Page 4"')
   })
 
-  it("spaces the pager from the table with a Stack gap, never a margin", () => {
+  it("spaces the pager with a Stack gap and renders no margin class", () => {
     const html = render(
       <DataTable
         columns={columns}
