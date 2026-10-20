@@ -129,6 +129,12 @@ const SCROLL_HINT =
  * so it covers {@link SCROLL_HINT} once the table reaches its end, and at once when it fits.
  */
 const HINT_COVER = "shadow-[inset_-1.5rem_0_0_0_var(--color-surface)]"
+/**
+ * {@link HINT_COVER} for the last product's header. In dark the preset paints the header row its
+ * own opaque colour, which already hides the shadow there, and a surface-coloured band would cut a
+ * darker notch out of it; so the band is left off in dark.
+ */
+const HEADER_HINT_COVER = `${HINT_COVER} dark:shadow-none`
 
 /**
  * A comparison of capabilities across products, for a public page: a legend, a real `<table>`
@@ -217,7 +223,7 @@ export function ComparisonTable(
                   class={cn(
                     CELL,
                     "min-w-24 text-left align-top font-semibold text-foreground sm:whitespace-nowrap",
-                    index === 0 ? OURS : index === products.length - 1 && HINT_COVER,
+                    index === 0 ? OURS : index === products.length - 1 && HEADER_HINT_COVER,
                   )}
                   data-ours={index === 0 ? "" : undefined}
                 >
