@@ -3,7 +3,9 @@
  *
  * What only a browser shows — at 375 px the page does not scroll sideways while the table does,
  * with its first column held in place, and the highlight and the three value labels read in light
- * and dark — is driven by `pages/checks/ui.ts`.
+ * and dark — is driven by `pages/checks/ui.ts`. That at 390 px the two-product table fits whole,
+ * and the four-product one shows a shadow at its right edge until it is scrolled to the end, is
+ * driven by `pages/e2e/ui.spec.ts`.
  */
 
 import { type ComparisonRow, ComparisonTable } from "@spy4x/preact-ui"
@@ -26,16 +28,45 @@ const ROWS: ComparisonRow[] = [
   { capability: "Self-hosting", values: ["no", "no", "partial", "no"] },
 ]
 
+/**
+ * Two products, one with a long name, beside long capabilities and a note: the shape of a page that
+ * compares one offer with doing it yourself. At 390 px both columns must fit without scrolling.
+ */
+const PAIR = ["Our app", "A spreadsheet you keep on your own"] as const
+
+const PAIR_ROWS: ComparisonRow[] = [
+  { capability: "Adds up every account", values: ["yes", "yes"] },
+  {
+    capability: "Imports bank statements and sorts every line into a category",
+    note: "Rules you write once apply to every later import.",
+    values: ["yes", "partial"],
+  },
+  {
+    capability: "Reminds you before a bill is due, and again on the day",
+    values: ["yes", "no"],
+  },
+  { capability: "Costs nothing", values: ["no", "yes"] },
+]
+
 function ComparisonTableDemo() {
   return (
-    <ComparisonTable
-      caption="How our app compares with three other budgeting apps for families"
-      products={PRODUCTS}
-      rows={ROWS}
-      checkedOn={new Date("2026-10-01T00:00:00Z")}
-      method="We read each product's official feature, pricing and help pages. Yes means it is built in on the cheapest paid plan; Partial means a limit, an add-on or a higher plan."
-      fit="Our app is not for teams over fifty people, or for anyone who needs payroll."
-    />
+    <div class="flex flex-col gap-12">
+      <ComparisonTable
+        caption="How our app compares with three other budgeting apps for families"
+        products={PRODUCTS}
+        rows={ROWS}
+        checkedOn={new Date("2026-10-01T00:00:00Z")}
+        method="We read each product's official feature, pricing and help pages. Yes means it is built in on the cheapest paid plan; Partial means a limit, an add-on or a higher plan."
+        fit="Our app is not for teams over fifty people, or for anyone who needs payroll."
+      />
+      <ComparisonTable
+        caption="Our app or a spreadsheet"
+        products={PAIR}
+        rows={PAIR_ROWS}
+        checkedOn={new Date("2026-10-01T00:00:00Z")}
+        method="We compared our app with a spreadsheet kept by hand."
+      />
+    </div>
   )
 }
 
