@@ -228,6 +228,22 @@ describe("Progress", () => {
     expect(html).toContain('class="pc-kpi-label truncate"')
   })
 
+  it("names an uncaptioned progressbar from ariaLabel", () => {
+    const html = render(<Progress value={50} ariaLabel="Storage used" />)
+
+    expect(html).toContain('aria-label="Storage used"')
+    expect(html).not.toContain("aria-labelledby")
+  })
+
+  it("lets the caption name a captioned bar instead of ariaLabel", () => {
+    const html = render(
+      <Progress value={50} label="Storage used" id="storage" ariaLabel="Ignored name" />,
+    )
+
+    expect(html).toContain('aria-labelledby="storage-label"')
+    expect(html).not.toContain("aria-label=")
+  })
+
   it("renders the label's span id as the bar id plus a suffix", () => {
     const html = render(<Progress value={50} label="Storage used" id="storage" />)
 
