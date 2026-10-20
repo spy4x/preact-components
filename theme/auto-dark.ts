@@ -142,6 +142,25 @@ export function declarationsOf(body: string): string[] {
 }
 
 /**
+ * The declarations of the one block of `css` with this `header` inside exactly these `ancestors`
+ * (outermost first), as {@link declarationsOf} lists them. `theme-preview.ts` reads the token
+ * blocks through it.
+ *
+ * @throws When no block, or more than one, matches.
+ */
+export function blockDeclarations(css: string, header: string, ancestors: string[]): string[] {
+  const matches = parse(css, 0).blocks.filter((block) =>
+    block.header === header && block.ancestors.join("\n") === ancestors.join("\n")
+  )
+  if (matches.length !== 1) {
+    throw new Error(
+      `expected one ${header} block in ${ancestors.join(" > ")}, found ${matches.length}`,
+    )
+  }
+  return declarationsOf(matches[0].body)
+}
+
+/**
  * The region's text for `css`: one media block per `darkSelector` block, wrapped in whichever of
  * that block's layers the region does not already sit in, without the indent of the marker.
  *

@@ -34,5 +34,6 @@ if (import.meta.main) {
   await generate("./tokens.css", "./tokens-css.ts", "TOKENS_CSS")
   await generate("./preset.css", "./preset-css.ts", "PRESET_CSS")
   await generate("./ink.css", "./ink-css.ts", "INK_CSS")
-  console.log("generated tokens-css.ts, preset-css.ts and ink-css.ts")
+  await generate("./theme-preview.css", "./theme-preview-css.ts", "THEME_PREVIEW_CSS")
+  console.log("generated tokens-css.ts, preset-css.ts, ink-css.ts and theme-preview-css.ts")
 }

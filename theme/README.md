@@ -283,11 +283,12 @@ under "Install" instead.
 
 ## What it ships
 
-| File         | Contents                                                                   |
-| ------------ | -------------------------------------------------------------------------- |
-| `tokens.css` | every design token as a custom property: light in `:root`, dark in `.dark` |
-| `preset.css` | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
-| `ink.css`    | additional, opt-in dark palette (#257): `.dark[data-theme="ink"]`          |
+| File                | Contents                                                                   |
+| ------------------- | -------------------------------------------------------------------------- |
+| `tokens.css`        | every design token as a custom property: light in `:root`, dark in `.dark` |
+| `preset.css`        | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
+| `ink.css`           | additional, opt-in dark palette (#257): `.dark[data-theme="ink"]`          |
+| `theme-preview.css` | opt-in: both palettes declared on a `ThemePreview` frame alone             |
 
 ### Classes
 
@@ -817,6 +818,28 @@ Two consequences of the design worth knowing:
   fallbacks, so an app that imports only `preset.css` still renders in the
   library palette. Import `tokens.css` to get the palette, to use
   `var(--color-primary)` in the app's own CSS, and to have one place to restyle.
+
+### Theme preview
+
+`THEME_PREVIEW_CSS` (`theme-preview.css`) is what `ThemePreview` from `@spy4x/preact-ui` needs: a
+frame that shows components in the library's dark or light palette, switched by a native radio with
+no script. While a radio is checked, `:has()` declares that palette on the frame alone: the light
+frame gets every `:root` token, the dark frame the same followed by the `.dark` block, and both
+redeclare the accent scale and set `color-scheme`. The page around the frame is never repainted.
+Import it after `tokens.css`, the same way as `ink.css`:
+
+```css
+@import "@spy4x/preact-theme/tokens.css";
+@import "@spy4x/preact-theme/theme-preview.css";
+@import "@spy4x/preact-theme/preset.css";
+```
+
+Two limits. The frame shows the library's own palette, not the app's: the copies sit in the tokens'
+layer, so an app that wants its brand inside sets its tokens on `[data-theme-preview-frame]`,
+unlayered. And `dark:` utilities still follow the page (`.dark` on `<html>`), not the frame, so a
+component that draws a colour through `dark:` rather than a token keeps the page's choice inside
+it. `theme-preview.ts` writes the file from `tokens.css` (`deno task --cwd theme generate`), and
+`theme-preview.test.ts` fails when the two drift.
 
 ## Not carried over from the sources
 

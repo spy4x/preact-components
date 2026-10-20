@@ -42,6 +42,7 @@
       "generate-classes.ts",
       "accent-scale.ts",
       "auto-dark.ts",
+      "theme-preview.ts",
       "integration/"
     ]
   },
@@ -63,11 +64,12 @@
     //
     // It first writes the accent scale into tokens.css with accent-scale.ts; see
     // accent-scale.test.ts. Then auto-dark.ts copies the dark token blocks of tokens.css and
-    // ink.css into their auto-dark regions; see auto-dark.test.ts.
+    // ink.css into their auto-dark regions; see auto-dark.test.ts. theme-preview.ts then writes
+    // theme-preview.css from tokens.css's blocks; see theme-preview.test.ts.
     //
     // It also rewrites component-classes.ts from every published package's sources with
     // generate-classes.ts (`--allow-ffi` loads Tailwind's native class scanner). Run after changing
     // a class in any package; see component-classes.test.ts.
-    "generate": "deno run --allow-read --allow-write accent-scale.ts && deno run --allow-read --allow-write auto-dark.ts && deno fmt tokens.css ink.css && deno run --allow-read --allow-write generate.ts && deno run --allow-read --allow-write --allow-env --allow-ffi generate-classes.ts && deno fmt tokens-css.ts preset-css.ts ink-css.ts component-classes.ts"
+    "generate": "deno run --allow-read --allow-write accent-scale.ts && deno run --allow-read --allow-write auto-dark.ts && deno fmt tokens.css ink.css && deno run --allow-read --allow-write theme-preview.ts && deno fmt theme-preview.css && deno run --allow-read --allow-write generate.ts && deno run --allow-read --allow-write --allow-env --allow-ffi generate-classes.ts && deno fmt tokens-css.ts preset-css.ts ink-css.ts theme-preview-css.ts component-classes.ts"
   }
 }
