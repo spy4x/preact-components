@@ -17,6 +17,9 @@
       "**/*.test.ts",
       "**/*.test.tsx",
       "coverage.ts",
+      // `registry-props.test.ts`'s reader of `deno doc` output: a check of this repository, like
+      // `coverage.ts`, importing the repository's scripts outside this package.
+      "registry-props.ts",
       // `coverage.test.ts`'s fixture package: a barrel, a subpath component and three configs.
       "testdata/"
     ]
