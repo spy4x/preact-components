@@ -4846,7 +4846,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                              |
 | `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                                                                                                                |
 | `InlineEdit`          | `inline-edit`          | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`                                                                                                                                                                        |
-| `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; mouse drag and keyboard moves                                                                                                                                                                                                    |
+| `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; touch or mouse drag, and keyboard moves                                                                                                                                                                                          |
 | `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                                                                                                                      |
 | `Link`                | `link`                 | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                                                                                                                                                                         |
 | `LoadingSkeleton`     | `loading-skeleton`     | `rows`; the pulse stops under reduced motion                                                                                                                                                                                                                                                                                                  |
@@ -6436,16 +6436,21 @@ top and the column's remaining length is the bottom. Within a column, cards show
 />
 ```
 
-- **Mouse**: the browser's own drag and drop. A line marks where the card will land, and an empty
-  column takes a drop. Touch is not proven: whether a phone starts a native drag depends on its
-  browser, so on touch screens treat the keyboard path and your own "move to" control as the way
-  to move a card.
+- **Touch and mouse**: pointer events, no drag library, on the same mechanism as `SortableList`. A
+  mouse drag starts once the pointer moves a few pixels. A finger rests on a card for a quarter of
+  a second first, so a finger that moves at once still scrolls the page and the board; once the
+  card lifts, the page stays still under it and a long press opens no browser menu. The dragged
+  card follows the pointer, a line marks where it will land, and an empty column takes a drop.
+  Near the board's left or right edge the board scrolls sideways, and near the top or bottom of the
+  scrolling area the area scrolls. Released off the board, or on Escape or a touch the browser
+  cancels, the card goes back. The click that ends a drag does not open the card.
 - **Keyboard**: every card is a tab stop. Space or Enter picks it up; the arrow keys move it (Left
   and Right between columns, Up and Down within one); Space or Enter drops it, and Escape puts it
   back. Moving focus away while holding a card, with Tab or a click elsewhere, also
   puts it back. Focus stays on the card after the drop, once
   the caller's `items` show it in its new column.
-- **Announcements**: a live region says when a card is picked up, each move, the drop and a cancel.
+- **Announcements**: a polite live region (`role="status"`, as `SortableList` uses) says when a
+  card is picked up, each move, the drop and a cancel, by any input.
   `labels` overrides any of them and the visible strings; `itemLabel` names a card in them and is
   required, because only the caller knows what a card is called.
 - The columns are a list named by `labels.board`, each column a list named by its heading; the

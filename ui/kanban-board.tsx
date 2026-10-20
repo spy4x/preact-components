@@ -1,18 +1,24 @@
 /**
- * A board of columns whose cards move between and within the columns, by mouse and by keyboard.
+ * A board of columns whose cards move between and within the columns, by touch, by mouse and by
+ * keyboard.
  *
  * The board is controlled: it renders `items` in the order the caller gives, reports every move
  * through the one `onMove` port, and never reorders the caller's data. `moveKanbanItem` applies a
  * reported move to an array of items for a caller that keeps its items in one.
  *
- * Pointer moves use the browser's own drag and drop, so no drag library is involved. The keyboard
- * path is a card that is picked up with Space or Enter, moved with the arrow keys and dropped with
- * Space or Enter again; Escape puts it back. A live region says what happened at every step.
+ * Pointer events cover mouse, pen and touch, so no drag library is involved: the same mechanism as
+ * `SortableList`. A mouse drag starts once the pointer moves; a finger rests on a card for a
+ * moment first, so a finger that moves at once still scrolls the page and the board. The dragged
+ * card follows the pointer, a line marks where it would land, and near the board's edges the board
+ * scrolls. The keyboard path is a card that is picked up with Space or Enter, moved with the arrow
+ * keys and dropped with Space or Enter again; Escape puts it back. A polite live region says what
+ * happened at every step.
  */
 
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { useId, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { edgeScrollStep, scrollPageNearEdge, useKeptFocus, usePointerDrag } from "./pointer-drag.ts"
 
 /** One column of the board. */
 export interface KanbanColumn {
@@ -205,12 +211,22 @@ interface Lifted {
   at: KanbanSlot
 }
 
-/** A card being dragged by mouse, and the slot its drop indicator marks, if any. */
+/** A card being dragged by a pointer: where it follows the pointer to, and where it would land. */
 interface Dragged {
   itemId: string
   from: KanbanSlot
+  /** The slot the drop indicator marks, or `null` while the pointer is off the board. */
   over: KanbanSlot | null
+  /** How far the card is drawn from its place, in pixels. */
+  dx: number
+  dy: number
+  /** Where the pointer holds the card, from the card's top-left corner. */
+  grabX: number
+  grabY: number
 }
+
+/** How long a finger rests on a card before it lifts, in milliseconds. Moving sooner scrolls. */
+const TOUCH_HOLD = 250
 
 const rootClass = "relative"
 const boardClass = "flex items-start gap-4 overflow-x-auto p-1"
@@ -220,9 +236,9 @@ const headingClass =
 const countClass = "text-xs font-normal text-muted"
 const listClass = "flex min-h-16 flex-col gap-2"
 const cardClass =
-  "cursor-grab rounded-md border border-subtle bg-surface p-3 text-sm text-foreground shadow-raised transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+  "cursor-grab select-none rounded-md border border-subtle bg-surface p-3 text-sm text-foreground shadow-raised transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
 const cardLiftedClass = "shadow-popover ring-2 ring-(--color-selected-text)"
-const cardDraggedClass = "opacity-50"
+const cardDraggedClass = "relative z-10 cursor-grabbing"
 const indicatorClass = "h-0.5 shrink-0 rounded-full bg-(--color-selected-text)"
 
 /**
@@ -252,8 +268,8 @@ function slotOf(lists: readonly KanbanItem[][], itemId: string): KanbanSlot | un
  * Markup: a list of columns named by `labels.board`, each column a list named by its heading.
  * Every card is focusable, carries `aria-roledescription` and is described by the instructions.
  * While a card is picked up by keyboard, the board shows it at its new place before any `onMove`;
- * once dropped, it shows the caller's `items` again and keeps focus on the card when the card
- * reappears in the column it was dropped in.
+ * while one is dragged, it follows the pointer and a line marks where it would land. Once dropped,
+ * the board shows the caller's `items` again and keeps focus on the card wherever they put it.
  */
 export function KanbanBoard<Item extends KanbanItem>(
   {
@@ -273,16 +289,14 @@ export function KanbanBoard<Item extends KanbanItem>(
   const instructionsId = `kanban-${id}-instructions`
   const rootRef = useRef<HTMLDivElement>(null)
   const [lifted, setLifted] = useState<Lifted | null>(null)
-  const [dragged, setDragged] = useState<Dragged | null>(null)
+  const [dragged, setDraggedState] = useState<Dragged | null>(null)
   const [announcement, setAnnouncement] = useState("")
-  /**
-   * The card to keep focused after a drop, until it shows up in the column it was dropped in or
-   * focus moves somewhere else. A caller may refuse a move or apply it late, so this must end.
-   */
-  const pendingFocus = useRef<{ itemId: string; column: string } | null>(null)
-  /** The pending deferred blur decision, cleared on unmount. */
-  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(() => () => clearTimeout(blurTimer.current), [])
+  /** The latest dragged card, for window listeners that outlive a render. */
+  const draggedRef = useRef<Dragged | null>(null)
+  const setDragged = (next: Dragged | null) => {
+    draggedRef.current = next
+    setDraggedState(next)
+  }
 
   const lists = itemsByColumn(columns, items)
   const byId = new Map(items.map((item) => [item.id, item]))
@@ -314,41 +328,20 @@ export function KanbanBoard<Item extends KanbanItem>(
     setAnnouncement(text.dropped(placeOf(itemId, to)))
   }
 
-  // A remounted card loses focus: a card moved to another column is a new element there. Put focus
-  // back on the picked-up card, or on the dropped one once it is where it was dropped.
-  useLayoutEffect(() => {
-    const root = rootRef.current
-    if (root === null) return
-    const find = (itemId: string, column?: string) =>
-      root.querySelector<HTMLElement>(
-        `${column === undefined ? "" : `[data-kanban-column="${CSS.escape(column)}"] `}` +
-          `[data-kanban-item="${CSS.escape(itemId)}"] [data-kanban-handle]`,
-      )
-    const focus = (element: HTMLElement | null) => {
-      if (element !== null && document.activeElement !== element) element.focus()
-    }
-    if (lifted !== null) {
-      focus(find(lifted.itemId))
-      return
-    }
-    const pending = pendingFocus.current
-    if (pending === null) return
-    // Focus the reader moved elsewhere wins: forget the card rather than pull focus back to it.
-    const active = document.activeElement
-    const onPending = active?.closest("[data-kanban-item]")?.getAttribute("data-kanban-item")
-    if (active !== null && active !== document.body && onPending !== pending.itemId) {
-      pendingFocus.current = null
-      return
-    }
-    const arrived = find(pending.itemId, pending.column)
-    if (arrived !== null) {
-      pendingFocus.current = null
-      focus(arrived)
-      return
-    }
-    // Not there yet (the caller has not applied the move): keep it focused where it is shown.
-    focus(find(pending.itemId))
-  })
+  /** The board's own scrolling list of columns. */
+  const boardOf = () => (rootRef.current?.firstElementChild as HTMLElement | null) ?? null
+  /** A card's focusable control, wherever the board shows it. */
+  const cardOf = (itemId: string) =>
+    rootRef.current?.querySelector<HTMLElement>(
+      `[data-kanban-item="${CSS.escape(itemId)}"] [data-kanban-handle]`,
+    ) ?? null
+
+  /**
+   * The card to keep focused while it is picked up and after a drop, until focus moves somewhere
+   * else. A card moved to another column is a new element there, so focus is put back on it.
+   */
+  const focus = useKeptFocus(cardOf)
+  useLayoutEffect(() => focus.restore())
 
   /** Put a picked-up card back where it came from. */
   const cancel = (from: Lifted) => {
@@ -362,28 +355,19 @@ export function KanbanBoard<Item extends KanbanItem>(
 
   /**
    * Focus leaving a card: a picked-up card is put back (Tab, or a click anywhere else), and a card
-   * waiting to be refocused after a drop is forgotten.
-   *
-   * Decided a task later, not in the event: a card moved to another column is a new element, and
-   * Chromium fires `blur` on the old one as it leaves the document (measured: acting on that blur
-   * cancelled every keyboard move). By the next task the board has focused the card's new element,
-   * so a blur the reader did not ask for finds the card focused again and is ignored.
+   * waiting to be refocused after a drop is forgotten. `useKeptFocus` says why a task later.
    */
   const onCardBlur = (itemId: string) => {
     const held = lifted !== null && lifted.itemId === itemId
-    if (!held && pendingFocus.current?.itemId !== itemId) return
-    clearTimeout(blurTimer.current)
-    blurTimer.current = setTimeout(() => {
-      const active = document.activeElement
-      const onCard = active?.closest("[data-kanban-item]")?.getAttribute("data-kanban-item")
-      if (onCard === itemId && rootRef.current?.contains(active)) return
-      if (pendingFocus.current?.itemId === itemId) pendingFocus.current = null
+    if (!held && !focus.isKept(itemId)) return
+    focus.blurred(itemId, () => {
       const { lifted: now, cancel: putBack } = latest.current
       if (now !== null && now.itemId === itemId) putBack(now)
-    }, 0)
+    })
   }
 
   const onCardKeyDown = (event: KeyboardEvent, itemId: string) => {
+    if (draggedRef.current !== null) return
     const pick = event.key === " " || event.key === "Enter"
     if (lifted === null || lifted.itemId !== itemId) {
       if (!pick || event.repeat) return
@@ -396,7 +380,7 @@ export function KanbanBoard<Item extends KanbanItem>(
       event.preventDefault()
       const slot = slotOf(lists, itemId)
       if (slot === undefined) return
-      pendingFocus.current = null
+      focus.keep(itemId)
       setLifted({ itemId, from: slot, at: slot })
       setAnnouncement(text.pickedUp(placeOf(itemId, slot)))
       return
@@ -404,7 +388,7 @@ export function KanbanBoard<Item extends KanbanItem>(
     if (pick) {
       event.preventDefault()
       if (event.repeat) return
-      pendingFocus.current = { itemId, column: columns[lifted.at.column].id }
+      focus.keep(itemId)
       setLifted(null)
       finish(itemId, lifted.from, lifted.at)
       return
@@ -413,7 +397,7 @@ export function KanbanBoard<Item extends KanbanItem>(
       // Escape stays with the board, so a dialog around it does not close too.
       event.preventDefault()
       event.stopPropagation()
-      pendingFocus.current = { itemId, column: columns[lifted.from.column].id }
+      focus.keep(itemId)
       cancel(lifted)
       return
     }
@@ -425,53 +409,98 @@ export function KanbanBoard<Item extends KanbanItem>(
     setAnnouncement(text.moved(placeOf(itemId, next)))
   }
 
-  const onDragStart = (event: DragEvent, itemId: string) => {
-    const slot = slotOf(lists, itemId)
-    if (slot === undefined || event.dataTransfer === null) return
-    // Some browsers start no drag without data; the board itself reads its own state.
-    event.dataTransfer.setData("text/plain", itemId)
-    event.dataTransfer.effectAllowed = "move"
-    pendingFocus.current = null
-    setLifted(null)
-    setDragged({ itemId, from: slot, over: null })
-  }
-
-  /** The slot under the pointer in column `column`: before the first card whose middle is below. */
-  const slotAt = (event: DragEvent, column: number, itemId: string): KanbanSlot => {
-    const list = (event.currentTarget as HTMLElement).querySelector("[data-kanban-list]")
-    const cards = [...(list?.querySelectorAll<HTMLElement>("[data-kanban-item]") ?? [])]
+  /**
+   * The slot under viewport point (`x`, `y`): the column nearest across, and in it the place
+   * before the first card whose middle is below. `null` when the point is off the board.
+   */
+  const slotAt = (x: number, y: number, itemId: string): KanbanSlot | null => {
+    const board = boardOf()
+    if (board === null) return null
+    const area = board.getBoundingClientRect()
+    if (x < area.left || x > area.right || y < area.top || y > area.bottom) return null
+    const columnElements = [...board.querySelectorAll<HTMLElement>(":scope > [data-kanban-column]")]
+    let column = -1
+    let nearest = Infinity
+    columnElements.forEach((element, index) => {
+      const box = element.getBoundingClientRect()
+      const distance = x < box.left ? box.left - x : x > box.right ? x - box.right : 0
+      if (distance < nearest) {
+        nearest = distance
+        column = index
+      }
+    })
+    if (column === -1) return null
+    const cards = [...columnElements[column].querySelectorAll<HTMLElement>("[data-kanban-item]")]
       .filter((card) => card.dataset.kanbanItem !== itemId)
     const index = cards.filter((card) => {
       const box = card.getBoundingClientRect()
-      return box.top + box.height / 2 < event.clientY
+      return box.top + box.height / 2 < y
     }).length
     return { column, index }
   }
 
-  const onColumnDragOver = (event: DragEvent, column: number) => {
-    if (dragged === null) return
-    event.preventDefault()
-    if (event.dataTransfer !== null) event.dataTransfer.dropEffect = "move"
-    const over = slotAt(event, column, dragged.itemId)
-    if (dragged.over?.column !== over.column || dragged.over.index !== over.index) {
-      setDragged({ ...dragged, over })
-    }
+  /** Follow the pointer at viewport (`x`, `y`): where the card is drawn and where it would land. */
+  const follow = (x: number, y: number) => {
+    const now = draggedRef.current
+    const card = now === null ? null : cardOf(now.itemId)
+    if (now === null || card === null) return
+    // Where the card sits without its offset, so a scroll under it keeps it under the pointer.
+    const box = card.getBoundingClientRect()
+    const dx = Math.round(x - now.grabX - (box.left - now.dx))
+    const dy = Math.round(y - now.grabY - (box.top - now.dy))
+    const over = slotAt(x, y, now.itemId)
+    const moved = over?.column !== now.over?.column || over?.index !== now.over?.index
+    if (!moved && dx === now.dx && dy === now.dy) return
+    if (moved && over !== null) setAnnouncement(text.moved(placeOf(now.itemId, over)))
+    setDragged({ ...now, over, dx, dy })
   }
 
-  const onColumnDragLeave = (event: DragEvent, column: number) => {
-    const into = event.relatedTarget as Node | null
-    if (dragged === null || dragged.over?.column !== column) return
-    if (into !== null && (event.currentTarget as HTMLElement).contains(into)) return
-    setDragged({ ...dragged, over: null })
-  }
-
-  const onColumnDrop = (event: DragEvent, column: number) => {
-    if (dragged === null) return
-    event.preventDefault()
-    const to = slotAt(event, column, dragged.itemId)
+  /** End a drag: a card released over the board lands there, anywhere else it goes back. */
+  const release = (itemId: string, land: boolean) => {
+    const now = draggedRef.current
     setDragged(null)
-    finish(dragged.itemId, dragged.from, to)
+    focus.keep(itemId)
+    if (now === null) return
+    if (land && now.over !== null) finish(itemId, now.from, now.over)
+    else setAnnouncement(text.cancelled(placeOf(itemId, now.from)))
   }
+
+  const drag = usePointerDrag({
+    start: (itemId, x, y) => {
+      const slot = slotOf(lists, itemId)
+      const card = cardOf(itemId)
+      if (slot === undefined || card === null || lifted !== null) return false
+      const box = card.getBoundingClientRect()
+      focus.forget()
+      // A touch never focuses the card it drags; the drop keeps focus on it.
+      card.focus({ preventScroll: true })
+      setDragged({
+        itemId,
+        from: slot,
+        over: slot,
+        dx: 0,
+        dy: 0,
+        grabX: x - box.left,
+        grabY: y - box.top,
+      })
+      setAnnouncement(text.pickedUp(placeOf(itemId, slot)))
+      return true
+    },
+    move: follow,
+    drop: (itemId) => release(itemId, true),
+    cancel: (itemId) => release(itemId, false),
+    // Scroll the board sideways near its left and right edges, and the page near its top and bottom.
+    frame: (x, y) => {
+      const board = boardOf()
+      if (board === null) return
+      const area = board.getBoundingClientRect()
+      const step = board.scrollWidth > board.clientWidth
+        ? edgeScrollStep(x, area.left, area.right)
+        : 0
+      if (step !== 0) board.scrollBy({ left: step, behavior: "instant" })
+      if (scrollPageNearEdge(board, y) || step !== 0) follow(x, y)
+    },
+  }, { hold: TOUCH_HOLD, area: rootRef })
 
   // What each column shows: the caller's order, with a keyboard-lifted card moved to where it is.
   const shown: Item[][] = lists.map((list) => [...list])
@@ -486,7 +515,7 @@ export function KanbanBoard<Item extends KanbanItem>(
   const Heading = `h${headingLevel}` as "h3"
 
   return (
-    <div ref={rootRef} class={cn(rootClass, className)}>
+    <div ref={rootRef} class={cn(rootClass, dragged !== null && "select-none", className)}>
       <ul aria-label={text.board} class={boardClass}>
         {columns.map((column, columnIndex) => {
           const titleId = `kanban-${id}-column-${columnIndex}`
@@ -502,6 +531,7 @@ export function KanbanBoard<Item extends KanbanItem>(
               beforeIndicator++
             }
             const isLifted = lifted?.itemId === item.id
+            const isDragged = dragged?.itemId === item.id
             rows.push(
               <li key={item.id} data-kanban-item={item.id}>
                 <div
@@ -510,20 +540,28 @@ export function KanbanBoard<Item extends KanbanItem>(
                   tabIndex={0}
                   aria-roledescription={text.roleDescription}
                   aria-describedby={instructionsId}
-                  draggable
                   class={cn(
                     cardClass,
-                    isLifted && cardLiftedClass,
-                    dragged?.itemId === item.id && cardDraggedClass,
+                    (isLifted || isDragged) && cardLiftedClass,
+                    isDragged && cardDraggedClass,
                   )}
+                  style={isDragged
+                    ? { transform: `translate(${dragged.dx}px, ${dragged.dy}px)` }
+                    : undefined}
                   onKeyDown={(event) => onCardKeyDown(event, item.id)}
                   onClick={() => {
-                    // A drag ends without a click; a click on the card being held does not open it.
+                    // A click on the card being held does not open it; a drag's own click is
+                    // swallowed by `usePointerDrag`.
                     if (onOpen !== undefined && lifted?.itemId !== item.id) onOpen(item)
                   }}
                   onBlur={() => onCardBlur(item.id)}
-                  onDragStart={(event) => onDragStart(event, item.id)}
-                  onDragEnd={() => setDragged(null)}
+                  onPointerDown={(event) => {
+                    if (lifted === null) drag.onPointerDown(event, item.id)
+                  }}
+                  // A long press on a touch screen would otherwise open the browser's menu.
+                  onContextMenu={(event) => {
+                    if (drag.pressing()) event.preventDefault()
+                  }}
                 >
                   {renderItem(item)}
                 </div>
@@ -534,14 +572,7 @@ export function KanbanBoard<Item extends KanbanItem>(
             rows.push(<Indicator key="indicator" />)
           }
           return (
-            <li
-              key={column.id}
-              data-kanban-column={column.id}
-              class={columnClass}
-              onDragOver={(event) => onColumnDragOver(event, columnIndex)}
-              onDragLeave={(event) => onColumnDragLeave(event, columnIndex)}
-              onDrop={(event) => onColumnDrop(event, columnIndex)}
-            >
+            <li key={column.id} data-kanban-column={column.id} class={columnClass}>
               <Heading class={headingClass}>
                 <span id={titleId}>{column.title}</span>
                 <span class={countClass}>{lists[columnIndex].length}</span>
@@ -556,7 +587,13 @@ export function KanbanBoard<Item extends KanbanItem>(
       <span id={instructionsId} class="sr-only">
         {onOpen === undefined ? text.instructions : text.instructionsWithOpen}
       </span>
-      <div aria-live="assertive" aria-atomic="true" data-kanban-live="" class="sr-only">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-kanban-live=""
+        class="sr-only"
+      >
         {announcement}
       </div>
     </div>

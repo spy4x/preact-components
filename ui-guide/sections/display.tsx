@@ -2111,7 +2111,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   },
   KanbanBoard: {
     summary:
-      "Columns of cards a reader moves by mouse or keyboard; the board reports each move through `onMove` and never reorders the data itself.",
+      "Columns of cards a reader moves by touch, mouse or keyboard; the board reports each move through `onMove` and never reorders the data itself.",
     wide: true,
     props: [
       {

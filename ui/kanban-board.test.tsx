@@ -82,7 +82,7 @@ describe("KanbanBoard", () => {
     expect(columnHtml(html, "done")).toMatch(/Done<\/span><span[^>]*>0<\/span>/)
   })
 
-  it("makes every card a focusable, draggable control described by the instructions", () => {
+  it("makes every card a focusable control described by the instructions, with no native drag", () => {
     const html = board()
     const handles = html.match(/<div data-kanban-handle[^>]*>/g) ?? []
     const instructions = html.match(/<span id="([^"]+)" class="sr-only">Press Space or Enter/)
@@ -92,15 +92,16 @@ describe("KanbanBoard", () => {
     for (const handle of handles) {
       expect(handle).toContain('role="button"')
       expect(handle).toContain('tabindex="0"')
-      expect(handle).toContain('draggable="true"')
+      // Native drag and drop does not start from a touch on most phones; pointer events do.
+      expect(handle).not.toContain("draggable")
       expect(handle).toContain('aria-roledescription="movable card"')
       expect(handle).toContain(`aria-describedby="${instructions?.[1]}"`)
     }
   })
 
-  it("renders an empty live region for the announcements", () => {
+  it("renders an empty polite live region for the announcements, as SortableList does", () => {
     expect(board()).toContain(
-      '<div aria-live="assertive" aria-atomic="true" data-kanban-live class="sr-only"></div>',
+      '<div role="status" aria-live="polite" aria-atomic="true" data-kanban-live class="sr-only"></div>',
     )
   })
 
