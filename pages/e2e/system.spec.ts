@@ -1559,4 +1559,121 @@ export const specs: readonly Spec[] = [
       return `asking: ${asking}; offline: ${waiting}`
     },
   })),
+  // #857: the phone sheet leaves a modified click to the browser, and its theme choice is the
+  // desktop menu's radio set.
+  {
+    name: "Rail and AppShell below md: a Ctrl-click on a link row in the sheet opens it in a new " +
+      "tab and leaves the sheet open",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const rows = [
+        [RAIL_CARD, "More", "Home"],
+        [APP, "Account, 3 unread", "Profile"],
+      ] as const
+      const results: string[] = []
+      for (const [card, tabName, rowName] of rows) {
+        const tab = page.locator(card).getByRole("button", { name: tabName, exact: true })
+        const dialog = inCard(page, card, "rail-shell-dialog")
+        await tab.scrollIntoViewIfNeeded()
+        await tab.click()
+        await dialog.waitFor({ state: "visible" })
+        const opened = page.context().waitForEvent("page")
+        await dialog.getByRole("link", { name: rowName, exact: true }).click({
+          modifiers: ["ControlOrMeta"],
+        })
+        const popup = await opened
+        const url = popup.url()
+        await popup.close()
+        if (!await dialog.evaluate((element: HTMLDialogElement) => element.open)) {
+          throw new Error(`the ${card} sheet closed on a Ctrl-click on "${rowName}"`)
+        }
+        await inCard(page, card, "rail-shell-close").click()
+        await dialog.waitFor({ state: "hidden" })
+        results.push(`${card} "${rowName}": new tab ${url}, sheet still open`)
+      }
+      return results.join("; ")
+    },
+  },
+  {
+    name: "AppShell: the theme choice in the phone sheet and in the desktop menu are the same " +
+      "radio set with the same checked item, before and after a choice",
+    pageId: "system",
+    run: async (page) => {
+      const sheetTheme = inCard(page, APP, "app-shell-sheet-theme")
+      const menuTheme = inCard(page, APP, "account-menu-theme")
+      // The roles differ only as a menu's radio items differ from a dialog's radios.
+      const shape = (snapshot: string) =>
+        snapshot.replace(/menuitemradio/g, "radio").replace(/- group /, "- radiogroup ")
+          .split("\n").filter((line) => !line.trim().startsWith("- text:")).join("\n")
+      const tab = page.locator(APP).getByRole("button", { name: "Account, 3 unread" })
+      const openSheet = async () => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await tab.scrollIntoViewIfNeeded()
+        await tab.click()
+      }
+      const closeSheet = async () => {
+        await page.keyboard.press("Escape")
+        await inCard(page, APP, "rail-shell-dialog").waitFor({ state: "hidden" })
+      }
+      const read = async (checked: "System" | "Dark") => {
+        await openSheet()
+        await sheetTheme.getByRole("radio", { name: checked, checked: true }).waitFor()
+        const sheet = await sheetTheme.ariaSnapshot()
+        await closeSheet()
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const trigger = inCard(page, APP, "rail-shell-column")
+          .getByRole("button", { name: "Account: Uma Lee", exact: true })
+        await trigger.scrollIntoViewIfNeeded()
+        await trigger.click()
+        await menuTheme.getByRole("menuitemradio", { name: checked, checked: true }).waitFor()
+        const menu = await menuTheme.ariaSnapshot()
+        await page.keyboard.press("Escape")
+        if (!/^- radiogroup "Theme"/.test(sheet) || !/^- group "Theme"/.test(menu)) {
+          throw new Error(`unexpected containers:\n${sheet}\n---\n${menu}`)
+        }
+        if (shape(sheet) !== shape(menu)) {
+          throw new Error(`the sheet and the menu differ:\n${sheet}\n---\n${menu}`)
+        }
+        return shape(sheet).replace(/\n\s*/g, " ")
+      }
+      const before = await read("System")
+      await openSheet()
+      await sheetTheme.getByRole("radio", { name: "Dark" }).click()
+      await closeSheet()
+      const after = await read("Dark")
+      return `before: ${before}; after choosing Dark in the sheet: ${after}`
+    },
+  },
+  ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+    name: `AppShell below md: each theme segment in the sheet takes its own click and shows its ` +
+      `word in ${colorScheme} mode`,
+    pageId: "system",
+    colorScheme,
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tab = page.locator(APP).getByRole("button", { name: "Account, 3 unread" })
+      await tab.scrollIntoViewIfNeeded()
+      await tab.click()
+      const radios = inCard(page, APP, "app-shell-sheet-theme").getByRole("radio")
+      await radios.first().waitFor()
+      // The radio lies over its word, so the word shows only while the radio paints nothing.
+      const seen = await radios.evaluateAll((inputs) =>
+        inputs.map((input) => {
+          const box = input.getBoundingClientRect()
+          const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+          return {
+            word: input.parentElement?.textContent?.trim(),
+            onTop: top === input,
+            fill: getComputedStyle(input).backgroundColor,
+          }
+        })
+      )
+      const wrong = seen.filter(({ onTop, fill }) => !onTop || fill !== "rgba(0, 0, 0, 0)")
+      if (seen.length !== 3 || wrong.length > 0) {
+        throw new Error(`segments: ${JSON.stringify(seen)}`)
+      }
+      return seen.map(({ word }) => word).join(", ") + ": each radio on top, painting nothing"
+    },
+  })),
 ]

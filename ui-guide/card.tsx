@@ -7,7 +7,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { IconChevronRight } from "@spy4x/preact-icons"
-import { CopyButton } from "@spy4x/preact-ui"
+import { CopyButton, Notice } from "@spy4x/preact-ui"
 import { type ComponentChildren, Fragment, type JSX } from "preact"
 import { InlineMarkdown } from "./markdown.tsx"
 import type { DemoProp } from "./registry.ts"
@@ -289,20 +289,20 @@ function NameWithBreaks({ name }: { name: string }): JSX.Element {
  */
 export function MissingDemoBanner({ names }: { names: string[] }) {
   return (
-    <div
-      role="alert"
+    <Notice
+      tone="danger"
+      urgent
       data-e2e="ui-guide-missing-demos"
-      class="rounded-lg border border-red-500 bg-red-50 p-4 text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
+      title={`${names.length} ${
+        names.length === 1 ? "card is" : "cards are"
+      } missing from this registry`}
     >
-      <p class="font-medium">
-        {names.length} {names.length === 1 ? "card is" : "cards are"} missing from this registry
-      </p>
-      <p class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+      <p class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         The catalogue lists {names.length === 1 ? "it" : "them"}{" "}
         and the registry this guide was rendered with does not carry{" "}
         {names.length === 1 ? "it" : "them"}:{" "}
         {names.map((name) => <code key={name} class="font-mono">{name}</code>)}
       </p>
-    </div>
+    </Notice>
   )
 }

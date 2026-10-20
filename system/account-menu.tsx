@@ -14,9 +14,11 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconChevronDown } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
-import { Badge } from "@spy4x/preact-ui/badge"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import type { JSX } from "preact"
+import { AccountEntry, AccountIdentity, AccountTag } from "./account-parts.tsx"
+
+export { AccountTag }
 
 /** The signed-in person {@link AccountMenu} names and draws. */
 export interface AccountMenuUser {
@@ -128,53 +130,6 @@ export interface AccountMenuProps {
   labels?: AccountMenuLabels
 }
 
-/** The neutral role badge {@link AccountMenuProps.tag} draws. */
-export function AccountTag({ tag }: { tag: string }): JSX.Element {
-  return (
-    <Badge
-      text={tag}
-      color="gray"
-      class="rounded-[var(--radius-control,0.375rem)] px-1 py-0 leading-4"
-    />
-  )
-}
-
-/**
- * One menu item: a form post when it has an `action`, `DropdownItem`'s link or button otherwise.
- *
- * The form carries `role="none"`, so the accessibility tree keeps the submit button as the menu's
- * own item, the way `Dropdown` expects its items to sit in a wrapper with no role of its own. The
- * button is a `DropdownItem` with `type="submit"`, so it follows its `Dropdown` like every other
- * item: a plain submit button in the tab order before hydration, a `role="menuitem"` out of the tab
- * order after, which `Dropdown` finds for the arrow keys and closes on its click (#535, #537).
- */
-function AccountMenuEntry(
-  { item, navigate }: { item: AccountMenuItem; navigate?: (href: string) => void },
-): JSX.Element {
-  const { label, href, action, method = "post", onClick, dataE2E } = item
-  if (action === undefined) {
-    return (
-      <DropdownItem href={href} navigate={navigate} onClick={onClick} dataE2E={dataE2E}>
-        {label}
-      </DropdownItem>
-    )
-  }
-  return (
-    <form
-      method={method}
-      action={action}
-      role="none"
-      onSubmit={(event) => {
-        if (!onClick) return
-        event.preventDefault()
-        onClick()
-      }}
-    >
-      <DropdownItem type="submit" dataE2E={dataE2E}>{label}</DropdownItem>
-    </form>
-  )
-}
-
 const fullTriggerClasses =
   "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
 
@@ -225,14 +180,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
   const trigger = full
     ? (
       <>
-        <Avatar name={user.name} src={user.avatarUrl} size="sm" alt="" />
-        <span class="flex min-w-0 flex-1 flex-col">
-          <span class="flex min-w-0 items-center gap-2">
-            <span class="truncate font-medium text-foreground">{user.name}</span>
-            {tag && <AccountTag tag={tag} />}
-          </span>
-          {user.email && <span class="truncate text-xs text-muted">{user.email}</span>}
-        </span>
+        <AccountIdentity user={user} tag={tag} />
         <IconChevronDown
           class={cn("size-4 shrink-0 text-muted", vertical === "up" && "rotate-180")}
           aria-hidden="true"
@@ -270,18 +218,16 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
           class="mb-1 flex items-center gap-3 border-b border-subtle px-4 py-2"
           data-e2e="account-menu-header"
         >
-          <Avatar name={user.name} src={user.avatarUrl} size="sm" alt="" />
-          <span class="flex min-w-0 flex-1 flex-col">
-            <span class="flex min-w-0 items-center gap-2">
-              <span class="truncate text-sm font-medium text-foreground">{user.name}</span>
-              {tag && <AccountTag tag={tag} />}
-            </span>
-            {user.email && <span class="truncate text-xs text-muted">{user.email}</span>}
-          </span>
+          <AccountIdentity user={user} tag={tag} />
         </div>
       )}
       {items.map((item, index) => (
-        <AccountMenuEntry key={`${index}-${item.label}`} item={item} navigate={navigate} />
+        <AccountEntry
+          key={`${index}-${item.label}`}
+          item={item}
+          navigate={navigate}
+          Control={DropdownItem}
+        />
       ))}
       {onThemeChange && (
         <div role="group" aria-label={themeHeading} data-e2e="account-menu-theme">
@@ -303,7 +249,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
       {signOut && (
         <>
           <div role="separator" class="my-1 border-t border-subtle" />
-          <AccountMenuEntry item={signOut} navigate={navigate} />
+          <AccountEntry item={signOut} navigate={navigate} Control={DropdownItem} />
         </>
       )}
     </Dropdown>

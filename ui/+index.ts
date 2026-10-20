@@ -305,7 +305,13 @@ export {
   type PageHeaderProps,
   TOUCH_TARGET,
 } from "./page-header.tsx"
-export { PageHero, type PageHeroProps } from "./page-hero.tsx"
+export {
+  PAGE_HERO_LABELS,
+  PageHero,
+  type PageHeroAuthor,
+  type PageHeroLabels,
+  type PageHeroProps,
+} from "./page-hero.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {

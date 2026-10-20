@@ -4862,7 +4862,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                                                                                           |
 | `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                                                                                     |
 | `PageHeader`          | `page-header`          | `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`                                                                                               |
-| `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `class?` (the band's background) — the top band of a public inner page, no JavaScript                                                                                                                                                                                |
+| `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript                |
 | `PageTitle`           | `page-title`           | `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                                                                                              |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                           |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                             |
@@ -7023,6 +7023,10 @@ components and tests means exactly that: nothing outside this package should bui
 - `TOUCH_TARGET` is the class list that gives a small button a 44 px touch target on a phone and
   the library's own 36 px from `sm` up. `PageHeader`, `PageAction` and `MoreMenu` use it; add it to
   the `class` of any other small button a thumb has to hit, such as a settings row's Edit.
+
+### PageHero (`./page-hero`)
+
+- `PAGE_HERO_LABELS` holds the English words of `PageHero`'s meta line: `by` and `updated`.
 
 ### Pagination (`./pagination`)
 
