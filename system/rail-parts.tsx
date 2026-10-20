@@ -4,9 +4,8 @@
  * package's exports; import `Rail` or `AppShell` instead. `rail.tsx` re-exports `RailCell` and the
  * focus ring (as `railFocusRing`) for content in `Rail`'s slots.
  *
- * Every colour is a theme token read through `var()` with the default palette's value as its
- * fallback, the pattern `theme/preset.css` uses, so the rail follows whichever palette the page
- * sets and still draws without the preset.
+ * Every colour is a theme token: a preset class such as `bg-surface` where one exists, else the
+ * token itself, so the rail follows whichever palette the page sets.
  *
  * @module
  */
@@ -28,17 +27,16 @@ export type EntryPlace = "rail" | "tab" | "sheet"
  * sets no colour, so without it the browser draws its own ring, near-black on a dark rail.
  */
 export const focusRing =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-ring)"
 
 /** The column's and the tab bar's surface. */
-export const surface = "bg-[var(--color-surface,oklch(1_0_0))]"
+export const surface = "bg-surface"
 
 /** The hairline between the column or the tab bar and the page. */
-export const rule = "border-[color:var(--color-border-subtle,oklch(0.928_0.006_264.531))]"
+export const rule = "border-subtle"
 
 /** The hairline between the sheet's sections. */
-export const sectionRule =
-  "divide-y divide-[color:var(--color-border-subtle,oklch(0.928_0.006_264.531))]"
+export const sectionRule = "divide-y divide-(--color-border-subtle)"
 
 /**
  * An entry at rest: a muted icon, the canvas step and the foreground under the pointer. Ink's hover
@@ -46,7 +44,7 @@ export const sectionRule =
  * current cell keeps a fill of its own.
  */
 export const entryIdle =
-  "text-[color:var(--color-muted-foreground,oklch(0.551_0.027_264.364))] hover:bg-[var(--color-hover,oklch(0.967_0.003_264.542))] [[data-theme=ink]_&]:hover:bg-[var(--color-surface-card)] hover:text-[color:var(--color-foreground,oklch(0.13_0.028_261.692))]"
+  "text-muted hover:bg-hover [[data-theme=ink]_&]:hover:bg-(--color-surface-card) hover:text-foreground"
 
 /**
  * The current entry: a tint of the accent (step 100 in light, the selected tint in dark) with its
@@ -55,18 +53,18 @@ export const entryIdle =
  * Forced colours drop every fill, so there a 2 px outline in the text colour marks it instead.
  */
 export const entryCurrent =
-  "bg-[var(--color-surface-active,var(--color-accent-100,oklch(0.946_0.033_307.174)))] dark:bg-[var(--color-surface-active,var(--color-selected-soft,color-mix(in_oklab,oklch(0.381_0.176_304.987)_30%,transparent)))] text-[color:var(--color-nav-active,var(--color-selected-text,var(--color-accent-900,oklch(0.381_0.176_304.987))))] font-semibold forced-colors:outline-2 forced-colors:outline-solid forced-colors:outline-[CanvasText]"
+  "bg-[var(--color-surface-active,var(--color-accent-100))] dark:bg-[var(--color-surface-active,var(--color-selected-soft))] text-[color:var(--color-nav-active,var(--color-selected-text))] font-semibold forced-colors:outline-2 forced-colors:outline-solid forced-colors:outline-[CanvasText]"
 
 /**
  * The primary action: `Button`'s primary fill. In the dark palettes that fill, step 600, is about
  * 2.7:1 against the rail's surface, so a border in step 400 draws its edge at 3:1 or more.
  */
 export const entryPrimary =
-  "border border-transparent bg-[var(--color-accent-900,oklch(0.381_0.176_304.987))] text-[color:var(--color-accent-foreground,oklch(1_0_0))] hover:bg-[var(--color-accent-800,oklch(0.438_0.218_303.724))] dark:border-[color:var(--color-accent-400,oklch(0.714_0.203_305.504))] dark:bg-[var(--color-accent-600,oklch(0.558_0.288_302.321))] dark:hover:bg-[var(--color-accent-700,oklch(0.496_0.265_301.924))]"
+  "border border-transparent bg-accent-900 text-accent-foreground hover:bg-accent-800 dark:border-accent-400 dark:bg-accent-600 dark:hover:bg-accent-700"
 
 /** What every entry shares: a rounded, focusable cell whose colours ease under motion-safe. */
 const entryBase = cn(
-  "relative flex min-w-0 cursor-pointer items-center rounded-[var(--radius-primary,0.5rem)] text-xs font-medium motion-safe:transition-colors motion-safe:duration-150",
+  "relative flex min-w-0 cursor-pointer items-center rounded-primary text-xs font-medium motion-safe:transition-colors motion-safe:duration-150",
   focusRing,
 )
 
@@ -123,8 +121,8 @@ function labelClasses(place: EntryPlace, variant: RailVariant, hasIcon: boolean)
  * the surface colour makes it read as cut out of the icon it sits on.
  */
 const badge =
-  "h-5 min-w-5 shrink-0 rounded-full bg-[var(--color-accent-900,oklch(0.381_0.176_304.987))] px-1 text-center text-xs leading-5 font-semibold text-[color:var(--color-accent-foreground,oklch(1_0_0))] dark:bg-[var(--color-accent-400,oklch(0.714_0.203_305.504))] dark:text-[color:var(--color-canvas,oklch(0.21_0.034_264.665))]"
-const badgeRing = "ring-2 ring-[color:var(--color-surface,oklch(1_0_0))]"
+  "h-5 min-w-5 shrink-0 rounded-full bg-accent-900 px-1 text-center text-xs leading-5 font-semibold text-accent-foreground dark:bg-accent-400 dark:text-canvas"
+const badgeRing = "ring-2 ring-surface"
 
 /** Where the badge sits: on the icon's top-right corner, or at the end of a sheet row. */
 function badgeClasses(place: EntryPlace, variant: RailVariant): string {
@@ -150,7 +148,7 @@ function badgeClasses(place: EntryPlace, variant: RailVariant): string {
 export const tooltip =
   "fixed top-[var(--rail-tip-y)] left-[var(--rail-tip-x)] z-40 block -translate-y-1/2 invisible opacity-0 transition-[visibility] duration-0 motion-safe:transition-[opacity,visibility] motion-safe:duration-150 group-hover/cell:visible group-hover/cell:opacity-100 group-hover/cell:delay-300 group-has-[:focus-visible]/cell:visible group-has-[:focus-visible]/cell:opacity-100 group-has-[:focus-visible]/cell:delay-0 not-data-[placed]:hidden group-has-[[aria-expanded=true]]/cell:hidden group-data-[tips-hidden]/rail:hidden [@media(hover:none)]:hidden before:absolute before:inset-y-0 before:right-full before:w-6"
 const tooltipBubble =
-  "block max-w-xs rounded-[var(--radius-control,0.375rem)] bg-[var(--color-foreground,oklch(0.13_0.028_261.692))] px-2 py-1 text-xs font-medium text-[color:var(--color-canvas,oklch(0.967_0.003_264.542))] shadow-[var(--shadow-popover,0_10px_15px_-3px_rgb(0_0_0/0.1))]"
+  "block max-w-xs rounded-control bg-foreground px-2 py-1 text-xs font-medium text-canvas shadow-popover"
 
 /** The wrapper every desktop cell sits in: the hover group its tooltip reads. */
 export const cellGroup = "group/cell relative flex flex-col items-center"
