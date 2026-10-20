@@ -3628,7 +3628,8 @@ function feedbackComponentSpecs(): Spec[] {
       name: "Progress: a bar with ariaLabel and no caption passes axe's aria-progressbar-name",
       pageId: "ui",
       run: async (page) => {
-        const selector = `#demo-Progress [role="progressbar"][aria-label="Uncaptioned upload"]`
+        // The one bar in the card with no caption to point at.
+        const selector = `#demo-Progress [role="progressbar"]:not([aria-labelledby])`
         await page.locator(selector).waitFor()
         const { violations, passes } = await new AxeBuilder({ page })
           .include(selector)
