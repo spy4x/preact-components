@@ -59,9 +59,11 @@ export function barPercent(value: number, top: number): number {
  * narrow screen with no JavaScript at all. Bars are coloured by rank unless a datum sets its own
  * colour. The title is the same heading with data or without, and names the table.
  *
- * The table is always `bg-transparent`: a dark `theme-base` page gives every table the surface
- * colour, which would box the chart in whatever card holds it. A background passed in `class` lands
- * on the wrapper, behind the table, so it still shows.
+ * The root is a wrapper `<div>` holding the heading and the table, and `class` goes on that wrapper,
+ * not on the `<table>` (8.8.0 and earlier put it on the table), so table-only utilities such as
+ * `table-fixed` no longer reach it. The table is always `bg-transparent`: a dark `theme-base` page gives every
+ * table the surface colour, which would box the chart in whatever card holds it. A background passed
+ * in `class` lands on the wrapper, behind the table, so it still shows.
  */
 export function Bars({
   data,

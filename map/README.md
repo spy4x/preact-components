@@ -129,6 +129,129 @@ costs one pass over every marker, so keep `markers` referentially stable (a `use
 state that is only replaced when it really changes, or a module-level constant for fixture data, as
 the catalogue's own card does) rather than writing a literal array in JSX.
 
+## Leaflet's stylesheet
+
+Leaflet's tiles and pins are positioned by CSS it ships (`leaflet/dist/leaflet.css`); without it,
+tiles render at the wrong size and in the wrong place. This package does not inject that stylesheet
+for you — a component that silently mutated `<head>` would be surprising, and this library's other
+CSS-bearing package (`theme/`) does not do that either.
+
+**The one route: add `leaflet` as your own dependency, at the version this package pins
+(`leaflet@1.9.4`), and include its stylesheet in your own build.** Concretely, that is:
+
+```bash
+deno add npm:leaflet@1.9.4   # or: npm i leaflet@1.9.4
+```
+
+then, in whatever your build treats as CSS entry points:
+
+```ts
+import "leaflet/dist/leaflet.css"
+```
+
+For a bundler that resolves CSS imports itself (Vite, webpack, and anything Node-based), that single
+import is the whole of it. For a Deno build that compiles its own stylesheet the way this repository's `pages/build.ts`
+does — reading a stylesheet's bytes directly with `Deno.readTextFile` rather than handing the import
+to a bundler — you need `import.meta.resolve("leaflet/dist/leaflet.css")` to resolve at all, which
+needs **your own** `deno.json` to declare Leaflet twice, the same way `map/deno.json` does for its
+own reasons:
+
+```jsonc
+"imports": {
+  "leaflet": "npm:leaflet@1.9.4",
+  "leaflet/": "npm:/leaflet@1.9.4/"
+}
+```
+
+and a lockfile that has actually resolved it — run any task that imports `leaflet` once, or
+`deno install`, before the first build that reads the stylesheet this way — plus `--allow-read` on
+whatever reads the file (Deno's own npm cache, unless you vendor `node_modules` with
+`"nodeModulesDir": "auto"`). None of this is `@spy4x/preact-map`'s to provide: it is exactly
+what installing Leaflet yourself, for your own build, requires — this package neither re-exports
+Leaflet's CSS nor gives you a shortcut around declaring the dependency you are, in substance, already
+taking on the moment you render tiles.
+
+`pages/build.ts` reads `map/leaflet-css.ts` directly, by a relative import — that file is not part of
+this package's published surface (see `map/deno.json`'s `publish.exclude`) precisely because it only
+works inside this workspace, where the pins above already exist in the root repository's own
+resolution. It is not a route available to, or intended for, an external consumer.
+
+## Security
+
+Leaflet accepts HTML strings in several places — a `DivIcon`'s `html`, popups, tooltips, the built-in
+attribution control — and this component never lets caller data reach any of them as markup.
+
+- **`MapMarker.label`** is rendered as text everywhere it appears: as the matching list row's own
+  text content (a JSX child, escaped the way Preact escapes any text node), as a pin's `aria-label`
+  and `title` attributes (element property/attribute assignment, never parsed as HTML), and read back
+  only as `event.key`/`.id` inside the pin's own `keydown` listener — nothing about that listener
+  turns any string into markup either. `label` is never passed to Leaflet's `DivIcon` `html` option
+  or built into an HTML string. A marker's icon DOM is built with `document.createElement`/
+  `appendChild` in `leaflet-map.ts`, and the resulting `Element` — never a string — is what `DivIcon`
+  receives; Leaflet appends an `Element` it is given rather than parsing it with `innerHTML` (only a
+  string `html` option is parsed that way), so there is no HTML-string step for a label to reach even
+  indirectly. `map/map.test.tsx` and `map/marker-list.test.tsx` both render a marker whose `label` is
+  `<img src=x onerror="alert(1)">` and assert the output contains no `<img` tag — only the escaped
+  text.
+- **`attribution`** is **plain text, always** — not an HTML prop, and there is no second prop that
+  accepts markup. Leaflet's own attribution control is switched off entirely
+  (`attributionControl: false`); this component renders `attribution` itself, as a JSX text child of
+  a `<p>` that is a sibling of Leaflet's container, never handed to Leaflet's control or any other
+  HTML-string sink. If a tile provider's terms ask for a clickable link in the credit line, this prop
+  cannot carry one — that is deliberate, not an oversight: naming a second, HTML-accepting prop
+  (`attributionHtml`, say) would be the honest way to add that later, so a caller could never mistake
+  one for the other. `map/map.test.tsx` covers the same injection case as `label` above.
+- **`tileUrl`** is a URL template, handed to Leaflet's `L.tileLayer` unmodified. It is not treated as
+  markup anywhere, but it is still caller-controlled: nothing in this component fetches it during a
+  server render (the tile layer is created only inside the mount effect, in a browser), so an SSR
+  request is never made to a `tileUrl` an application computed from a request the server saw.
+
+## Accessible name of the map region
+
+The element Leaflet mounts into carries `role="group"` and `aria-label={label}` (default `"Map"`),
+set once in this component's own JSX rather than in an effect, so it is present from the first
+render. Leaflet's own keyboard panning (`L.Map`'s `keyboard` option, default `true`, left untouched)
+makes that same element focusable and gives arrow-key/`+`/`-` navigation over the tiles — a different
+feature from marker selection, and one Leaflet already implements reasonably, so this package neither
+disables nor reimplements it. From a freshly focused map, Tab therefore visits every marker pin, in
+order, and only then the zoom control (labelled by `zoomInLabel`/`zoomOutLabel`) — measured, not
+assumed. The reason is fixed at map construction, before this package's own code runs at all:
+`L.Map`'s `initialize` calls `_initPanes()`, which appends the pane that eventually holds every
+marker directly to the map's container, and only afterwards calls `_initControlPos()`, which appends
+a _second_, later sibling — `.leaflet-control-container`, the zoom buttons' real parent — to that
+same container. Markers added later land inside the pane, earlier in the container's children; the
+control the map already carries lands after it. Neither the order this package calls `addTo` in, nor
+`zoomControl: false` plus a hand-built control, changes that structural fact.
+
+The default zoom control is switched off and rebuilt by hand in `createLeafletMap` purely to reach
+its `zoomInTitle`/`zoomOutTitle` options — there is no way to pass those through `L.Map`'s own
+constructor options or to change them on the control after it is built.
+
+## The credit line's own pointer behaviour
+
+A plain Leaflet map's own, built-in attribution control sits _inside_ the map's container, in the
+region Leaflet's wheel-zoom handler watches. Leaflet applies `disableClickPropagation` to that
+control, which stops a click from reaching the map underneath — but not a wheel event, so scrolling
+the wheel over a plain map's own credit line still zooms the map underneath it. This component's
+credit line is a sibling of Leaflet's container instead, never a descendant of it — the same
+placement that keeps it from ever being collapsed, hidden or scrolled by anything Leaflet does to its
+own panes, and that makes it a real hit-test target `document.elementFromPoint` can find. Sitting
+outside the container, it is also outside the region Leaflet's own wheel handler watches at all, so a
+wheel over it scrolls the _page_, the way a wheel over any other piece of chrome next to the map
+already would — not the leaky zoom-through a plain Leaflet map has. A drag started on the credit line
+selects its text rather than panning the map, for the same reason: it is ordinary page text, not part
+of what Leaflet's own drag handling watches. Neither is treated as a defect needing map-specific
+pointer handling of its own; both are what a normal piece of page chrome next to the map already
+does.
+
+## Do I need Leaflet?
+
+Only if you import `@spy4x/preact-map`. `leaflet`/`leaflet/` and `@types/leaflet` are pinned in
+`map/deno.json` alone: the root import map is ambient for every consumer of every package, and
+only this one needs Leaflet.
+Neither `ui/` nor `charts/` imports `map/`, and the root import map carries no Leaflet entry, so
+neither of them can pick it up by accident. Checked with `deno info` against each package's own entry
+point (`ui/+index.ts`, `charts/+index.ts`) rather than by reading their source for a `leaflet` import
 — see the pull request that added this package for the exact commands and their output.
 
 ## The list heading's level

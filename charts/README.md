@@ -15,6 +15,8 @@ the axis and loading helpers behind them.
   with data and without; `headingLevel` picks another level.
 - **A caller's `class` wins.** Every component merges `class` into its own classes with
   `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
+  `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
+  not on the `<table>`.
 - **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
   time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
