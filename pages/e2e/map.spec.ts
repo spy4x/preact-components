@@ -122,12 +122,15 @@ export const specs: readonly Spec[] = [
 ]
 
 /**
- * The rows of the marker list under `scope` as the accessibility tree reads them, so a row hidden
- * from assistive tech is missing here.
+ * The rows of the marker list under `scope` as the accessibility tree reads them, so a row, or the
+ * status text in it, hidden from assistive tech is missing here.
  */
 async function listRows(page: Page, scope: string): Promise<string[]> {
   const list = page.locator(`${scope} [data-e2e="map-marker-list"] ul`)
   await list.waitFor()
   const snapshot = await list.ariaSnapshot()
-  return [...snapshot.matchAll(/^\s*- listitem: (.+)$/gm)].map(([, text]) => text.trim())
+  // The snapshot puts a space between the label's text node and the status span's: "depot , on".
+  return [...snapshot.matchAll(/^\s*- listitem: (.+)$/gm)].map(([, text]) =>
+    text.trim().replace(/\s+,/g, ",")
+  )
 }
