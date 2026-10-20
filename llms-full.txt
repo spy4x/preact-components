@@ -34,8 +34,15 @@ the axis and loading helpers behind them.
   tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
-  tooltip with its label, value and share, by pointer and by keyboard. Both tooltips stay inside the
-  chart and the viewport, flipping to the other side of the point near an edge.
+  tooltip with its label, value and share, by pointer and by keyboard. In both, ArrowDown and
+  ArrowRight go to the next item and ArrowUp and ArrowLeft to the previous one. Both tooltips stay
+  inside the chart and the viewport, flipping to the other side of the point near an edge.
+- **Titles fit the page's outline.** `LineChart`, `Bars` and `DonutChart` print `title` as an `<h3>`,
+  with data and without; `headingLevel` picks another level.
+- **A caller's `class` wins.** Every component merges `class` into its own classes with
+  `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
+  `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
+  not on the `<table>`.
 - **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
   time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
@@ -58,8 +65,9 @@ the axis and loading helpers behind them.
   inside effects and event handlers only. What the server prints, the browser prints too: the time
   axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
   (`timeZone`, `locale`), so hydration never has to replace text.
-- **No sibling package imports.** `charts/` depends on `preact`, `arktype` and `@spy4x/platform`'s
-  axis maths, and nothing else in the workspace, so it stays independent of `ui/` and `signals/`.
+- **No sibling package imports.** `charts/` depends on `preact`, `arktype`, `tailwind-merge` and
+  `@spy4x/platform`'s axis maths, and nothing else in the workspace, so it stays independent of
+  `ui/` and `signals/`.
 
 ## Components
 
@@ -1137,20 +1145,22 @@ separate step from importing the component.
 
 ## Props
 
-| Prop            | Type                           | Default             | Notes                                                                                                                      |
-| --------------- | ------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `center`        | `{ lat: number; lng: number }` | required            | View centre.                                                                                                               |
-| `zoom`          | `number`                       | required            | Leaflet zoom level.                                                                                                        |
-| `markers`       | `MapMarker[]`                  | required            | `{ id, lat, lng, label, status? }` — see below. See "What a new `markers` identity costs".                                 |
-| `onMarkerClick` | `(id: string) => void`         | required            | Called from a pin's pointer click, or a real Enter or Space press while the pin has focus.                                 |
-| `tileUrl`       | `string`                       | required            | Tile URL template, e.g. `"https://tile.example.com/{z}/{x}/{y}.png"`. No default — the application picks its own provider. |
-| `attribution`   | `string`                       | required            | The tile provider's required credit line, rendered as **plain text** — see "Security".                                     |
-| `class`         | `string`                       | —                   | Extra classes on the map's own box; this is what sizes it (default `h-80 w-full`).                                         |
-| `label`         | `string`                       | `"Map"`             | Accessible name of the map region.                                                                                         |
-| `listLabel`     | `string`                       | `"Places"`          | Heading over the plain-text list.                                                                                          |
-| `zoomInLabel`   | `string`                       | `"Zoom in"`         | Leaflet's zoom-in control's tooltip and accessible name.                                                                   |
-| `zoomOutLabel`  | `string`                       | `"Zoom out"`        | Leaflet's zoom-out control's tooltip and accessible name.                                                                  |
-| `onLoadError`   | `(error: unknown) => void`     | logs to the console | Called if `import("leaflet")` fails. See "A failed Leaflet load" below.                                                    |
+| Prop               | Type                           | Default                             | Notes                                                                                                                      |
+| ------------------ | ------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `center`           | `{ lat: number; lng: number }` | required                            | View centre.                                                                                                               |
+| `zoom`             | `number`                       | required                            | Leaflet zoom level.                                                                                                        |
+| `markers`          | `MapMarker[]`                  | required                            | `{ id, lat, lng, label, status? }` — see below. See "What a new `markers` identity costs".                                 |
+| `onMarkerClick`    | `(id: string) => void`         | required                            | Called from a pin's pointer click, or a real Enter or Space press while the pin has focus.                                 |
+| `tileUrl`          | `string`                       | required                            | Tile URL template, e.g. `"https://tile.example.com/{z}/{x}/{y}.png"`. No default — the application picks its own provider. |
+| `attribution`      | `string`                       | required                            | The tile provider's required credit line, rendered as **plain text** — see "Security".                                     |
+| `class`            | `string`                       | —                                   | Extra classes on the map's own box; this is what sizes it (default `h-80 w-full`).                                         |
+| `label`            | `string`                       | `"Map"`                             | Accessible name of the map region.                                                                                         |
+| `listLabel`        | `string`                       | `"Places"`                          | Heading over the plain-text list.                                                                                          |
+| `listHeadingLevel` | `2 \| 3 \| 4 \| 5 \| 6`        | `3`                                 | That heading's level, so it fits the page's outline.                                                                       |
+| `statusLabels`     | `{ on?, off?, unknown? }`      | `"on"`, `"off"`, `"status unknown"` | The status word each pin's name and each list row say after the label. See "Keyboard and screen readers".                  |
+| `zoomInLabel`      | `string`                       | `"Zoom in"`                         | Leaflet's zoom-in control's tooltip and accessible name.                                                                   |
+| `zoomOutLabel`     | `string`                       | `"Zoom out"`                        | Leaflet's zoom-out control's tooltip and accessible name.                                                                  |
+| `onLoadError`      | `(error: unknown) => void`     | logs to the console                 | Called if `import("leaflet")` fails. See "A failed Leaflet load" below.                                                    |
 
 `MapMarker.status` is `"on" | "off" | "unknown"`, optional; a marker with no `status` is treated as
 `"unknown"` — the same colour `theme/preset.css` already gives that state.
@@ -1166,7 +1176,7 @@ because the size comes from that one class and nothing else touches it.
 
 Once Leaflet has loaded, the mount effect creates the map, its tile layer, its zoom control and an
 empty marker layer group, and two more effects keep it live: one calls `setView` when `center` or
-`zoom` change, the other rebuilds the marker layer when `markers` changes. The map is torn down on
+`zoom` change, the other brings the pins in line with `markers` when it changes. The map is torn down on
 unmount — the mount effect's cleanup calls the handle's `remove()`, Leaflet's own teardown of every
 DOM node and listener it attached.
 
@@ -1188,12 +1198,15 @@ list keeps listing every place, since it is plain data this component already ha
 
 **The map's own pins are the keyboard and screen-reader path.** Every pin is a real Tab stop
 (`role="button"`, `tabindex="0"`, both set by Leaflet's own `keyboard: true` option on the marker),
-named by the marker's `label` through an explicit `aria-label` this package sets, and a real Enter or
+named by the marker's `label` and its status word (`"London depot, on"`) through an explicit
+`aria-label` this package sets, and a real Enter or
 Space press on a focused pin calls `onMarkerClick` — Space calls `preventDefault` first so the page
 does not scroll. The plain list beside the map is **not** interactive: no row is a button, none has a
 click handler, and none is in the Tab order. It exists because the issue asks for "a plain list of
 the same places" as a second, always-visible overview — the same information the pins carry, laid
-out as ordinary text rather than as controls.
+out as ordinary text rather than as controls. Each row says its status in words too, as visually
+hidden text after the label, so neither path leaves the status to colour alone. `statusLabels`
+replaces the English words.
 
 Two things worth being precise about, because an earlier version of this package got both wrong:
 
@@ -1210,26 +1223,26 @@ Two things worth being precise about, because an earlier version of this package
    computation prefers over `title` when both are present. `title` stays for what it is actually for:
    a native tooltip on mouse hover. The pin's name a screen reader announces comes from `aria-label`.
 
-`pages/checks/map.ts` proves this in a real browser: Tab from the focused map reaches every pin, in
-marker order, each with the accessible name equal to its `label` (read through the DevTools
-`Accessibility` domain, not the DOM, because that domain is what actually computes the name the way a
-screen reader would); a real Space press and a real Enter press each call `onMarkerClick` with the
-focused pin's `id`.
+`pages/checks/map.ts` proves in a real browser that Tab from the focused map reaches every pin, in
+marker order, that each pin's name comes from `aria-label` (read through the DevTools
+`Accessibility` domain, which computes the name the way a screen reader would), and that a real
+Space press and a real Enter press each call `onMarkerClick` with the focused pin's `id`.
+`pages/e2e/map.spec.ts` proves that each pin's name and each list row say the label and the status
+word, and that a focused pin keeps focus when `markers` changes.
 
 ## What a new `markers` identity costs
 
-The marker-sync effect depends on `markers` alone, not on `onMarkerClick`'s identity — the callback
+The marker-sync effect depends on `markers` and the status words, not on `onMarkerClick`'s identity — the callback
 is read through a ref (`onMarkerClickRef` in `map.tsx`) that is always kept current, so a caller
 passing a fresh inline arrow function on every render (the catalogue's own demo card does exactly
 that) never causes a rebuild by itself.
 
-`markers` is a different matter: the effect clears and rebuilds the **whole** marker layer whenever
-`markers` is a new array, whether or not the places it lists actually changed. Passing a literal
-array in JSX (`markers={[...]}`) or otherwise creating a new array on every render therefore rebuilds
-every pin on every render — every DOM node, every listener, every `aria-label` — even when nothing
-about the data moved. Keep `markers` referentially stable (a `useMemo`, a value from state that is
-only replaced when it really changes, or a module-level constant for fixture data, as the catalogue's
-own card does) unless a rebuild on every render is genuinely acceptable.
+`markers` is matched by `id`: a marker that stays keeps its pin and DOM element, updated in place
+(position, tooltip, name, status colour), and only markers that came or went are added or removed.
+A focused pin that stays therefore keeps focus while the data around it changes. A new array still
+costs one pass over every marker, so keep `markers` referentially stable (a `useMemo`, a value from
+state that is only replaced when it really changes, or a module-level constant for fixture data, as
+the catalogue's own card does) rather than writing a literal array in JSX.
 
 ## Leaflet's stylesheet
 
@@ -1356,15 +1369,10 @@ neither of them can pick it up by accident. Checked with `deno info` against eac
 point (`ui/+index.ts`, `charts/+index.ts`) rather than by reading their source for a `leaflet` import
 — see the pull request that added this package for the exact commands and their output.
 
-## The list heading's level is fixed
+## The list heading's level
 
-`MarkerList` renders its heading as an `<h3>`, unconditionally. This mirrors the level `ui-guide/`'s
-own catalogue happens to nest a card's content at today, but it is not something this component can
-verify about a caller's own page: a `Map` placed directly under an `<h1>` gets a heading that skips
-`<h2>`. Left this way deliberately rather than adding a `headingLevel` prop no other component in
-this library has needed yet — see `docs/no-third-party-components.md` for the general bias against
-adding a knob before a real caller needs it. A future consumer whose page structure needs a different
-level is a reason to add one; this package having only one caller today is not.
+`MarkerList` renders its heading as an `<h3>` by default; `listHeadingLevel` picks another level, so
+a `Map` placed directly under an `<h1>` does not skip `<h2>`.
 
 ## Tests
 
