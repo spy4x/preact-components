@@ -798,11 +798,16 @@ function themePreviewSpecs(): Spec[] {
       run: async (page) => {
         // Save's `dark:bg-accent-600` and the checkbox's `@variant dark { color-scheme: dark }`.
         const look = () =>
-          frame(page).evaluate((element) => ({
-            save: getComputedStyle(element.querySelector("button")!).backgroundColor,
-            checkbox: getComputedStyle(element.querySelector('input[type="checkbox"]')!)
-              .colorScheme,
-          }))
+          frame(page).evaluate(async (element) => {
+            // Button fades its colours; read them once the fade has ended.
+            const save = element.querySelector("button")!
+            await Promise.all(save.getAnimations().map((animation) => animation.finished))
+            return {
+              save: getComputedStyle(save).backgroundColor,
+              checkbox: getComputedStyle(element.querySelector('input[type="checkbox"]')!)
+                .colorScheme,
+            }
+          })
         await radio(page, "Dark", true).waitFor()
         const dark = await look()
         await card(page).locator("label", { hasText: "Light" }).click()
