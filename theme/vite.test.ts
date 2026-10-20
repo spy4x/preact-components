@@ -5,7 +5,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { COMPONENT_CLASSES, INK_CSS, PRESET_CSS, TOKENS_CSS } from "./+index.ts"
+import { COMPONENT_CLASSES, INK_CSS, PRESET_CSS, THEME_PREVIEW_CSS, TOKENS_CSS } from "./+index.ts"
 import {
   denoModuleIds,
   npmSpecifiers,
@@ -60,6 +60,18 @@ describe("preactThemeCss", () => {
     expect(css).toBe(
       `@import "tailwindcss";\n${TOKENS_CSS}\n${INK_CSS}\n${PRESET_CSS}\n.app { color: red; }` +
         SOURCE_LINE,
+    )
+  })
+
+  it("replaces the theme-preview import when the stylesheet has one", () => {
+    const code = THEME_IMPORTS.replace(
+      `@import "@spy4x/preact-theme/preset.css";`,
+      `@import "@spy4x/preact-theme/theme-preview.css";\n@import "@spy4x/preact-theme/preset.css";`,
+    )
+    const css = transform(code, "/work/app/src/app.css")!
+    expect(css).toBe(
+      `@import "tailwindcss";\n${TOKENS_CSS}\n${THEME_PREVIEW_CSS}\n${PRESET_CSS}\n` +
+        `.app { color: red; }` + SOURCE_LINE,
     )
   })
 
