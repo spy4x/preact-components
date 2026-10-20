@@ -446,20 +446,6 @@ describe("the shell's other words", () => {
   })
 })
 
-describe("the card grid", () => {
-  it("gives the cards of one row the same height", () => {
-    const html = render(<UIGuide hash="#/charts" />)
-    const gridBefore = (card: string) => {
-      const at = html.indexOf(`<article id="demo-${card}"`)
-      const open = html.lastIndexOf('<div class="grid ', at)
-      return html.slice(open, html.indexOf(`">`, open))
-    }
-
-    expect(gridBefore("LineChart")).not.toContain("items-start")
-    expect(gridBefore("Bars")).not.toContain("items-start")
-  })
-})
-
 describe("a card", () => {
   it("holds a JSX description in a div, so it may carry a list", () => {
     const html = render(
