@@ -4160,11 +4160,12 @@ under "Install" instead.
 
 ## What it ships
 
-| File         | Contents                                                                   |
-| ------------ | -------------------------------------------------------------------------- |
-| `tokens.css` | every design token as a custom property: light in `:root`, dark in `.dark` |
-| `preset.css` | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
-| `ink.css`    | additional, opt-in dark palette (#257): `.dark[data-theme="ink"]`          |
+| File                | Contents                                                                   |
+| ------------------- | -------------------------------------------------------------------------- |
+| `tokens.css`        | every design token as a custom property: light in `:root`, dark in `.dark` |
+| `preset.css`        | base type, colour atoms, buttons, forms, surfaces, data display, map atoms |
+| `ink.css`           | additional, opt-in dark palette (#257): `.dark[data-theme="ink"]`          |
+| `theme-preview.css` | opt-in: both palettes declared on a `ThemePreview` frame alone             |
 
 ### Classes
 
@@ -4695,6 +4696,28 @@ Two consequences of the design worth knowing:
   library palette. Import `tokens.css` to get the palette, to use
   `var(--color-primary)` in the app's own CSS, and to have one place to restyle.
 
+### Theme preview
+
+`THEME_PREVIEW_CSS` (`theme-preview.css`) is what `ThemePreview` from `@spy4x/preact-ui` needs: a
+frame that shows components in the library's dark or light palette, switched by a native radio with
+no script. While a radio is checked, `:has()` declares that palette on the frame alone: the light
+frame gets every `:root` token, the dark frame the same followed by the `.dark` block, and both
+redeclare the accent scale and set `color-scheme`. The page around the frame is never repainted.
+Import it after `tokens.css`, the same way as `ink.css`:
+
+```css
+@import "@spy4x/preact-theme/tokens.css";
+@import "@spy4x/preact-theme/theme-preview.css";
+@import "@spy4x/preact-theme/preset.css";
+```
+
+Two limits. The frame shows the library's own palette, not the app's: the copies sit in the tokens'
+layer, so an app that wants its brand inside sets its tokens on `[data-theme-preview-frame]`,
+unlayered. And `dark:` utilities still follow the page (`.dark` on `<html>`), not the frame, so a
+component that draws a colour through `dark:` rather than a token keeps the page's choice inside
+it. `theme-preview.ts` writes the file from `tokens.css` (`deno task --cwd theme generate`), and
+`theme-preview.test.ts` fails when the two drift.
+
 ## Not carried over from the sources
 
 Both classes had zero usages in the product they were extracted from — only its
@@ -4886,6 +4909,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                           |
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                   |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                |
+| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `frameClass?` — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                                                    |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                        |
 | `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                                                                                         |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                                                                                      |
@@ -6399,6 +6423,14 @@ the pressed chip's accent fill and check from `:checked`, and the focus ring fro
 so the markup works server-rendered with JavaScript off. `defaultValue` checks an option in that
 markup; an island can pass `value` and `onChange` instead. An option's `id` lets page CSS read
 `:has(#id:checked)`, and its `inputAttributes` (analytics `data-*`, say) go on the radio.
+
+## ThemePreview
+
+A Dark / Light `RadioChips` pair, dark by default, over a frame whose children are a slot. The app
+imports `@spy4x/preact-theme`'s `theme-preview.css`, which declares the checked palette's tokens on
+the frame alone through `:has()`, so it switches with JavaScript off and the page around it keeps
+its own palette. `dark:` utilities follow the page, not the frame; see the theme README, "Theme
+preview".
 
 ## ToggleChips
 
