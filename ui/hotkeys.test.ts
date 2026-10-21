@@ -94,6 +94,7 @@ describe("useHotkeys", () => {
 /** A press for {@link createHotkeyListener}, with what it ran and whether it was cancelled. */
 interface ListenerPress {
   key: string
+  isComposing?: boolean
   ctrlKey?: boolean
   target?: unknown
   timeStamp?: number
@@ -109,7 +110,14 @@ function listen(bindings: HotkeyBinding[]) {
   let current = bindings.map((b) => ({ ...b, handler: () => void ran.push(b.keys) }))
   const listener = createHotkeyListener(() => current, false)
   const send = (
-    { key, ctrlKey = false, target = null, timeStamp = 0, defaultPrevented = false }: ListenerPress,
+    {
+      key,
+      ctrlKey = false,
+      target = null,
+      timeStamp = 0,
+      defaultPrevented = false,
+      isComposing = false,
+    }: ListenerPress,
   ): boolean => {
     let cancelled = false
     listener({
@@ -119,7 +127,7 @@ function listen(bindings: HotkeyBinding[]) {
       metaKey: false,
       altKey: false,
       shiftKey: false,
-      isComposing: false,
+      isComposing,
       keyCode: 0,
       target,
       timeStamp,
@@ -223,6 +231,37 @@ describe("createHotkeyListener", () => {
     expect(ran).toEqual([])
   })
 
+  it("runs the sequence's own handler when a single key is added in front of it between presses", () => {
+    const { ran, send, replace } = listen([binding("g i")])
+    send({ key: "g", timeStamp: 0 })
+    replace([binding("?"), binding("g i")])
+    send({ key: "i", timeStamp: 100 })
+    expect(ran).toEqual(["g i"])
+  })
+
+  it("still runs the sequence when a single key in front of it is removed between presses", () => {
+    const { ran, send, replace } = listen([binding("?"), binding("g i")])
+    send({ key: "g", timeStamp: 0 })
+    replace([binding("g i")])
+    send({ key: "i", timeStamp: 100 })
+    expect(ran).toEqual(["g i"])
+  })
+
+  it("drops a waiting first key on a press an input method takes", () => {
+    const { ran, send } = listen([binding("g i")])
+    send({ key: "g", timeStamp: 0 })
+    send({ key: "i", timeStamp: 50, isComposing: true })
+    send({ key: "i", timeStamp: 100 })
+    expect(ran).toEqual([])
+  })
+
+  it("lets a single key win over a sequence it starts, which then never fires", () => {
+    const { ran, send } = listen([binding("g"), binding("g i")])
+    send({ key: "g", timeStamp: 0 })
+    send({ key: "i", timeStamp: 100 })
+    expect(ran).toEqual(["g"])
+  })
+
   it("reads the latest bindings on each press, sequences included", () => {
     const { ran, send, replace } = listen([binding("g i")])
     send({ key: "x", timeStamp: 0 })
@@ -237,14 +276,20 @@ describe("createHotkeyListener", () => {
 })
 
 describe("isSingleKey", () => {
-  it("is true for plain keys and sequences of them", () => {
-    expect(["?", "/", "n", "shift+n", "g i"].map(isSingleKey)).toEqual([
+  it("is true for keys that type a character, and sequences of them", () => {
+    expect(["?", "/", "n", "shift+n", "space", "g i"].map(isSingleKey)).toEqual([
+      true,
       true,
       true,
       true,
       true,
       true,
     ])
+  })
+
+  it("is false for named keys, which type nothing: Tab, an arrow, F1, Delete, Home", () => {
+    expect(["tab", "up", "f1", "delete", "home", "g up"].map(isSingleKey))
+      .toEqual([false, false, false, false, false, false])
   })
 
   it("is false for Control, Command, mod or Alt, and for Escape and Enter", () => {

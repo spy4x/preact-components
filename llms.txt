@@ -800,7 +800,7 @@ inlineEditCommit	helper	@spy4x/preact-ui	What an edit saves: the trimmed draft, 
 isBackdropClick	helper	@spy4x/preact-ui	Whether a click landed on the dialog's backdrop rather than on the dialog's content.
 isDismissKey	helper	@spy4x/preact-ui	Whether a keyboard event is a request to dismiss the dialog.
 isPlainClick	helper	@spy4x/preact-ui	Whether a click is one the page may take over: the primary button with no modifier.
-isSingleKey	helper	@spy4x/preact-ui	Whether a switch for single-key shortcuts turns these keys off: every press is a plain key, with no Control, Command, Alt or `mod`, such as `"?"`, `"n"` or `"g i"`.
+isSingleKey	helper	@spy4x/preact-ui	Whether a switch for single-key shortcuts turns these keys off: every press types a character, such as `"?"`, `"n"`, `"shift+n"`, `"space"` or `"g i"`.
 isValidDateTimeRange	helper	@spy4x/preact-ui	Whether a `DateTimeRange` is two well-formed wall-clock values, in order — not necessarily two real ones: nothing here checks whether a named local time actually occurs in any zone, since this function is not handed one.
 keyFaces	helper	@spy4x/preact-ui	The faces of every key in a combination, modifiers first, in the order the platform writes them: ⌃ ⌥ ⇧ ⌘ on Apple platforms, Ctrl Alt Shift Meta elsewhere.
 labelOr	helper	@spy4x/preact-ui	The caller's label, or the library's English default.

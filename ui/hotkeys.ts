@@ -8,6 +8,7 @@ import {
   parseHotkey,
 } from "@spy4x/platform/browser/hotkeys"
 import { isImeKeyPress } from "./ime.ts"
+import { listenToKeydown } from "./keydown.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
 
 /**
@@ -112,9 +113,11 @@ function presses(keys: string): string[] {
  * press, runs the first that matches and cancels the press's default action. Single presses go
  * through {@link pickHotkey}: one without `inDialogs` is skipped inside a dialog or a menu and while
  * a modal dialog is open. Sequences go through ts-libs' `createHotkeyMatcher`, which keeps the first
- * key for a second; a press in a field, while composing, inside a dialog or a menu or under a modal
- * dialog matches no sequence and drops a waiting key. The matcher is rebuilt only when the
- * sequences change. A completed sequence wins over a single press of its last key.
+ * key for a second; a press in a field, one an input method takes, one inside a dialog or a menu or
+ * one under a modal dialog matches no sequence and drops a waiting key. The matcher is rebuilt only
+ * when the sequences change. A completed sequence wins over a single press of its last key. A
+ * single press that runs a binding drops a waiting key too, so when `g` and `g i` are both bound,
+ * `g` wins and `g i` never fires, as ts-libs' matcher has it: give a sequence its own first key.
  *
  * @param bindings Reads the bindings, in priority order, when a key is pressed.
  * @param apple Whether `mod` means Command.
@@ -123,14 +126,30 @@ export function createHotkeyListener(
   bindings: () => readonly HotkeyBinding[],
   apple: boolean,
 ): (event: KeyboardEvent) => void {
-  return keydownListener(bindings, apple, sequenceMatcher(apple))
+  const sequences = sequenceMatcher(apple)
+  const listener = keydownListener(bindings, apple, (current, press, isApple, event) => {
+    const sequence = sequences(event, current, press.inDialog)
+    if (sequence) return sequence
+    const single = pickHotkey(current, press, isApple)
+    // A single press that runs drops a sequence it may have started.
+    if (single) sequences(event, current, true)
+    return single
+  })
+  return (event) => {
+    // A press an input method takes runs nothing, and drops a waiting key.
+    if (isImeKeyPress(event) && !event.defaultPrevented) sequences(event, bindings(), true)
+    listener(event)
+  }
 }
 
-/** Finds the sequence a press completes, given the bindings and whether the press is in scope. */
+/**
+ * Finds the sequence a press completes, given the bindings and whether the press is skipped (in a
+ * dialog, a menu, under a modal or taken by an input method). A skipped press drops a waiting key.
+ */
 type SequenceMatch = (
   event: KeyboardEvent,
   bindings: readonly HotkeyBinding[],
-  inDialog: boolean,
+  skipped: boolean,
 ) => HotkeyBinding | undefined
 
 /**
@@ -141,52 +160,65 @@ function sequenceMatcher(apple: boolean): SequenceMatch {
   let matcher: { signature: string; match: (event: KeyboardEvent) => number | undefined } | null =
     null
   let scoped = false
-  return (event, bindings, inDialog) => {
+  return (event, bindings, skipped) => {
     const sequences = bindings.flatMap((binding, index) => isSequence(binding.keys) ? [index] : [])
     const signature = sequences.map((index) => bindings[index].keys).join("\n")
     if (matcher?.signature !== signature) {
+      // An id is a position among the sequences, which stays put while the single-press bindings
+      // around them come and go.
       matcher = {
         signature,
         match: createHotkeyMatcher<number, KeyboardEvent>(
-          sequences.map((index) => ({ id: index, keys: presses(bindings[index].keys) })),
+          sequences.map((index, position) => ({
+            id: position,
+            keys: presses(bindings[index].keys),
+          })),
           { apple, ignore: () => scoped },
         ),
       }
     }
-    scoped = inDialog
+    scoped = skipped
     const done = matcher.match(event)
-    return done === undefined ? undefined : bindings[done]
+    return done === undefined ? undefined : bindings[sequences[done]]
   }
 }
 
 /**
- * A `keydown` listener over single presses, plus sequences when `sequences` is given. Kept apart
- * so `useHotkeyClick`, which every `Button` with a `hotkey` uses, does not bundle the sequence
- * matcher.
+ * A `keydown` listener that runs the binding `pick` chooses, {@link pickHotkey} by default. Kept
+ * apart so `useHotkeyClick`, which every `Button` with a `hotkey` uses, does not bundle the
+ * sequence matcher.
  */
 function keydownListener(
   bindings: () => readonly HotkeyBinding[],
   apple: boolean,
-  sequences?: SequenceMatch,
+  pick: (
+    bindings: readonly HotkeyBinding[],
+    press: HotkeyPress,
+    apple: boolean,
+    event: KeyboardEvent,
+  ) => HotkeyBinding | undefined = pickHotkey,
 ): (event: KeyboardEvent) => void {
   return (event) => {
     if (event.defaultPrevented || isImeKeyPress(event)) return
     // The target can be the document or a text node, which have no `closest`.
     const target = event.target as Partial<Element> | null
-    const inDialog = (target?.closest?.(SCOPE_SELECTOR) ?? null) !== null || openModal() !== null
-    const current = bindings()
-    const binding = sequences?.(event, current, inDialog) ?? pickHotkey(current, {
-      key: event.key,
-      code: event.code,
-      ctrlKey: event.ctrlKey,
-      metaKey: event.metaKey,
-      altKey: event.altKey,
-      shiftKey: event.shiftKey,
-      // A plain `Event`, which some browsers send on autofill, has no `getModifierState`.
-      getModifierState: event.getModifierState?.bind(event),
-      typing: isTypingTarget(target as HTMLElement | null),
-      inDialog,
-    }, apple)
+    const binding = pick(
+      bindings(),
+      {
+        key: event.key,
+        code: event.code,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+        // A plain `Event`, which some browsers send on autofill, has no `getModifierState`.
+        getModifierState: event.getModifierState?.bind(event),
+        typing: isTypingTarget(target as HTMLElement | null),
+        inDialog: (target?.closest?.(SCOPE_SELECTOR) ?? null) !== null || openModal() !== null,
+      },
+      apple,
+      event,
+    )
     if (binding === undefined) return
     if (binding.preventDefault !== false) event.preventDefault()
     binding.handler(event)
@@ -205,9 +237,7 @@ function useKeydown(
 
   useEffect(() => {
     if (!enabled) return
-    const listener = create(() => latest.current, apple ?? isApplePlatform())
-    document.addEventListener("keydown", listener)
-    return () => document.removeEventListener("keydown", listener)
+    return listenToKeydown(document, create(() => latest.current, apple ?? isApplePlatform()))
   }, [enabled, apple])
 }
 
@@ -238,10 +268,11 @@ export function useHotkeys(
 }
 
 /**
- * Whether a switch for single-key shortcuts turns these keys off: every press is a plain key, with
- * no Control, Command, Alt or `mod`, such as `"?"`, `"n"` or `"g i"`. Escape and Enter are not,
- * because they type nothing, and a reader who turns single keys off (WCAG 2.1.4, a page must let
- * them) still needs them.
+ * Whether a switch for single-key shortcuts turns these keys off: every press types a character,
+ * such as `"?"`, `"n"`, `"shift+n"`, `"space"` or `"g i"`. That is the shortcut WCAG 2.1.4 says a
+ * reader must be able to turn off, because typing or speech input can press it by accident. A press
+ * with Control, Command, Alt or `mod` types no character, and neither does a named key (Escape,
+ * Enter, Tab, an arrow, F1, Delete, Home), so those stay on.
  *
  * @param keys A combination or a sequence, as {@link HotkeyBinding.keys} takes it.
  * @throws {Error} When a press cannot be read.
@@ -249,8 +280,9 @@ export function useHotkeys(
 export function isSingleKey(keys: string): boolean {
   return presses(keys).every((press) => {
     const hotkey = parseHotkey(press)
+    // A named key is a word (`"escape"`, `"f1"`); a character is one code point.
     return !hotkey.mod && !hotkey.ctrl && !hotkey.meta && !hotkey.alt &&
-      hotkey.key !== "escape" && hotkey.key !== "enter"
+      [...hotkey.key].length === 1
   })
 }
 

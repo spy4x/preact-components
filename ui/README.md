@@ -1399,12 +1399,14 @@ It does not upload — sending the chosen files is the caller's own form post or
 
 `useHotkeys(bindings, options)` (subpath `hotkeys`) listens for `keydown` on `document` while the
 component that calls it is mounted. A binding is `{ keys, handler }`, with an optional
-`description` and `group` for `ShortcutsDialog`. `keys` takes one key press: a single key (`"?"`,
-`"/"`), a key with modifiers (`"shift+n"`, `"mod+k"`) or a named key (`"esc"`, `"up"`). `mod` is
-Command on Apple platforms and Control elsewhere; the platform is read when the listener is
-attached, or given as `options.apple`. A sequence of presses is written with spaces, `"g i"`: the
-second key must follow within a second, and a sequence never fires in a field, inside a dialog or
-a menu, or while a modal dialog is open. A completed sequence wins over a binding of its last key.
+`description` and `group` for `ShortcutsDialog`. `keys` takes one key press or a sequence of them.
+A press is a single key (`"?"`, `"/"`), a key with modifiers (`"shift+n"`, `"mod+k"`) or a named
+key (`"esc"`, `"up"`). `mod` is Command on Apple platforms and Control elsewhere; the platform is
+read when the listener is attached, or given as `options.apple`. A sequence is written with spaces
+between its presses, `"g i"`: the second key must follow within a second, and a sequence never
+fires in a field, inside a dialog or a menu, or while a modal dialog is open. A completed sequence
+wins over a binding of its last key. A single key that is also a sequence's first key wins over
+that sequence, which then never fires (`g` beside `g i`): give each sequence its own first key.
 
 A symbol typed with AltGr, such as `@` on a German keyboard, still runs a binding for that
 symbol: the hook asks the browser whether AltGr is held, so a real Control+Alt chord on a keyboard
@@ -1412,10 +1414,9 @@ without AltGr runs only a binding that names Control and Alt.
 
 Key presses in a text field, a select or editable content are left alone, and so are presses
 inside a dialog or a menu and while a modal dialog is open, unless a binding sets `inFields` or
-`inDialogs`. A matched press has its default
-action cancelled unless the binding sets `preventDefault: false`. `options.enabled` switches every
-binding off at once. A key press an input method has taken, such as the Enter that confirms a word
-typed in Japanese, runs no binding.
+`inDialogs`. A matched press has its default action cancelled unless the binding sets
+`preventDefault: false`. `options.enabled` switches every binding off at once. A key press an input
+method has taken, such as the Enter that confirms a word typed in Japanese, runs no binding.
 
 ```tsx
 const [open, setOpen] = useState(false)
@@ -1434,7 +1435,8 @@ combination matches a key press and that may fire where the press landed. It ski
 sequences included, for a caller that attaches it elsewhere.
 
 A page must let a reader turn single-key shortcuts off (WCAG 2.1.4). `isSingleKey(keys)` says
-whether a combination or sequence is one: plain keys only, not Escape or Enter.
+whether a combination or sequence is one: every press types a character, so Control, Command, Alt
+and named keys such as Escape, Enter, Tab or the arrows are not.
 `activeShortcuts(shortcuts, singleKeys)` drops those while the switch is off; pass the result to
 both `useHotkeys` and `ShortcutsDialog`, so the dialog lists only keys that work.
 
