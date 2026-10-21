@@ -10,13 +10,17 @@
  */
 
 /**
- * The five series colours, light and dark, in draw order: blue, orange, green, violet, magenta.
+ * The eight series colours, light and dark, in draw order: blue, orange, green, violet, magenta,
+ * amber, teal, olive.
  *
  * Each pair was chosen with a palette validator, not by eye. Every colour reaches 3:1 against its
  * page — white and gray-50 for the light steps; gray-800, gray-900 and the ink palette's card and
- * page for the dark steps — and neighbours in this order stay apart under the common kinds of colour
- * blindness (worst neighbouring pair ΔE 8.9 light, 9.4 dark, on a scale where 8 is the target).
- * The order matters: green next to magenta was the pair colour-blind readers could not tell apart.
+ * page for the dark steps — and neighbours in this order, the last one next to the first, stay apart
+ * under the common kinds of colour blindness: the smaller OKLab distance ×100 under simulated
+ * protanopia and deuteranopia is at least 8, the target. The worst neighbouring pair is still
+ * orange and green (ΔE 8.9 light, 9.4 dark); the worst pair the last three added is magenta and
+ * amber (10.7 light, 13.3 dark). The order matters: green next to magenta was the pair colour-blind
+ * readers could not tell apart.
  */
 const SERIES_STEPS: readonly (readonly [light: string, dark: string])[] = [
   ["#2a78d6", "#3987e5"],
@@ -24,6 +28,9 @@ const SERIES_STEPS: readonly (readonly [light: string, dark: string])[] = [
   ["#15935f", "#199e70"],
   ["#4a3aa7", "#9085e9"],
   ["#c93f75", "#d55181"],
+  ["#9a5b00", "#cc8300"],
+  ["#0b8aa0", "#1a9fb5"],
+  ["#6b7a00", "#8a9a1e"],
 ]
 
 /**
@@ -35,12 +42,12 @@ const SERIES_STEPS: readonly (readonly [light: string, dark: string])[] = [
  * Only the `./colors` subpath exports it: an app needs it only around chart markup of its own.
  */
 export const CHART_PALETTE_CLASS =
-  "[--chart-1:#2a78d6] [--chart-2:#d95926] [--chart-3:#15935f] [--chart-4:#4a3aa7] [--chart-5:#c93f75] dark:[--chart-1:#3987e5] dark:[--chart-3:#199e70] dark:[--chart-4:#9085e9] dark:[--chart-5:#d55181]"
+  "[--chart-1:#2a78d6] [--chart-2:#d95926] [--chart-3:#15935f] [--chart-4:#4a3aa7] [--chart-5:#c93f75] [--chart-6:#9a5b00] [--chart-7:#0b8aa0] [--chart-8:#6b7a00] dark:[--chart-1:#3987e5] dark:[--chart-3:#199e70] dark:[--chart-4:#9085e9] dark:[--chart-5:#d55181] dark:[--chart-6:#cc8300] dark:[--chart-7:#1a9fb5] dark:[--chart-8:#8a9a1e]"
 
 /**
  * Series colours, in draw order. Consumed through {@link seriesColor}.
  *
- * An app recolours a slot by setting `--color-chart-1` … `--color-chart-5`, in both of its palettes.
+ * An app recolours a slot by setting `--color-chart-1` … `--color-chart-8`, in both of its palettes.
  * Without that, a chart's root sets `--chart-N` ({@link CHART_PALETTE_CLASS}); outside a chart the
  * light step is the last fallback.
  */

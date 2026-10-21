@@ -55,12 +55,12 @@ the axis and loading helpers behind them.
   with an inline fallback, so a chart picks up `theme/` when it is loaded and still renders
   standalone. They are applied through `style`, because `var()` does not resolve inside SVG
   presentation attributes such as `fill="…"`.
-- **A series palette for both themes.** `DEFAULT_CHART_PALETTE` is five colours — blue, orange,
-  green, violet, magenta — with a light and a dark step each. A chart's root sets them as `--chart-1`
-  … `--chart-5`, switching to the dark steps under a `.dark` ancestor. Every step reaches 3:1
-  against its page (white and gray-50 light; gray-800, gray-900 and the ink palette's card and page
-  dark), and neighbours stay apart for colour-blind readers. An app recolours a slot with
-  `--color-chart-1` … `--color-chart-5`, or passes `colors`.
+- **A series palette for both themes.** `DEFAULT_CHART_PALETTE` is eight colours — blue, orange,
+  green, violet, magenta, amber, teal, olive — with a light and a dark step each. A chart's root sets
+  them as `--chart-1` … `--chart-8`, switching to the dark steps under a `.dark` ancestor. Every
+  step reaches 3:1 against its page (white and gray-50 light; gray-800, gray-900 and the ink
+  palette's card and page dark), and neighbours stay apart for colour-blind readers. An app recolours a slot with
+  `--color-chart-1` … `--color-chart-8`, or passes `colors`.
 - **Server-renderable.** `document`, `window`, `IntersectionObserver` and `ResizeObserver` are touched
   inside effects and event handlers only. What the server prints, the browser prints too: the time
   axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
@@ -118,6 +118,15 @@ const shifted = previous.data.map((p) => ({ x: +new Date(p.timeGroup) + span, y:
   referenceLabel="Contracted"
 />
 ```
+
+A point marked `hollow: true` keeps its place, line and tooltip but draws as an unfilled ring in
+the series colour, to set it apart — a period with too little data, say:
+
+```tsx
+points: weeks.map((w) => ({ x: w.label, y: w.average, hollow: w.samples < 5 }))
+```
+
+A dashed series gets a 24 px legend swatch, wide enough to show the dash; a solid one gets 12 px.
 
 A comparison is the caller's data: load the earlier window with `loadChartPayload` and
 `previousPeriod`, move its instants forward by the window's length, and pass it as a dashed series.
