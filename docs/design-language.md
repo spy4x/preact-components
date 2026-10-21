@@ -223,6 +223,7 @@ An app chooses only its brand hue, its destinations and its content.
 | Status                           | `Badge` with a word, or `StatusMark` with icon and word. Never a coloured dot alone.                                                                                                                   |
 | Search and filter a list         | `FilterBar` under the `PageHeader`: search, filter menus, toggles, sort; active filters as removable chips and a count. Every value in the URL (`useUrlFilters`).                                      |
 | A row of chips                   | `ToggleChips` for filters an island owns, one or many pressed; `RadioChips` for one choice that must work without JavaScript.                                                                          |
+| A colour                         | `ColorField`: the 16 `COLOR_PRESETS`, Custom last with a hex field, and a live sample. Text on a colour is black or white by `readableTextColor`.                                                      |
 
 `RadioChips` draws the same chip on native radios in a `<fieldset>` named by its `<legend>`, so it
 renders and switches server-side: the browser keeps the choice, arrow keys move it within one tab
