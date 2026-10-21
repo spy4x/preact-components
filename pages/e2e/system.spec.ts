@@ -1118,8 +1118,8 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "AppShell: the first hover on a cell waits 300 ms too — its tooltip is still hidden " +
-      "100 ms in and shown 500 ms in",
+    name: "AppShell: the first hover on a cell waits 300 ms too — its tooltip shows no sooner " +
+      "than 250 ms after the pointer enters",
     pageId: "system",
     run: async (page) => {
       await page.setViewportSize({ width: 1440, height: 900 })
@@ -1129,7 +1129,9 @@ export const specs: readonly Spec[] = [
       // Never hovered before in this page: the tooltip has not been shown once.
       const delay = await firstHoverDelay(page, projects, tipOf(projects))
       if (delay === null) throw new Error("the first hover never showed the tooltip")
-      if (delay < 250) throw new Error(`the first hover showed the tooltip after ${delay} ms`)
+      if (delay < 250) {
+        throw new Error(`the first hover showed the tooltip after ${Math.round(delay)} ms`)
+      }
       return `shown ${Math.round(delay)} ms after the pointer entered`
     },
   },
@@ -1148,7 +1150,9 @@ export const specs: readonly Spec[] = [
       const delay = await firstHoverDelay(page, trigger, tip)
       if (delay === null) throw new Error("the switcher's first hover never showed its tooltip")
       if (delay < 250) {
-        throw new Error(`the switcher's first hover showed its tooltip after ${delay} ms`)
+        throw new Error(
+          `the switcher's first hover showed its tooltip after ${Math.round(delay)} ms`,
+        )
       }
       await page.keyboard.press("Escape")
       await tip.waitFor({ state: "hidden" })
