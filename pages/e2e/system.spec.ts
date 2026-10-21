@@ -39,6 +39,44 @@ const rail = (page: Page, e2e: string) => page.locator(`${RAIL} [data-e2e="${e2e
 /** The tooltip `Rail` draws beside `entry`, inside the entry's cell. */
 const tipOf = (entry: Locator) => entry.locator(`xpath=../*[@data-e2e="rail-shell-tooltip"]`)
 
+/**
+ * Hover `trigger` and measure, inside the page, how long `tip` took to show after the pointer
+ * entered. Both times come from the page's own clock, so a slow round trip between Playwright and
+ * the browser on a loaded host cannot make the delay look shorter than it was.
+ *
+ * @returns Milliseconds from the pointer entering to the tooltip first showing, or `null` when it
+ *   had not shown 3 seconds after the hover.
+ */
+async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Promise<number | null> {
+  await tip.evaluate((element, target) => {
+    const state = { enteredAt: -1, shownAt: -1 }
+    ;(globalThis as Record<string, unknown>).__e2eHover = state
+    target.addEventListener("pointerenter", () => {
+      if (state.enteredAt < 0) state.enteredAt = performance.now()
+    }, { once: true })
+    const watch = () => {
+      const shown = getComputedStyle(element).visibility === "visible" &&
+        element.checkVisibility()
+      if (shown && state.enteredAt >= 0) state.shownAt = performance.now()
+      else requestAnimationFrame(watch)
+    }
+    requestAnimationFrame(watch)
+  }, await trigger.elementHandle())
+  await trigger.hover()
+  await page.waitForFunction(
+    () => ((globalThis as Record<string, unknown>).__e2eHover as { shownAt: number }).shownAt >= 0,
+    undefined,
+    { timeout: 3_000 },
+  ).catch(() => undefined)
+  return await page.evaluate(() => {
+    const state = (globalThis as Record<string, unknown>).__e2eHover as {
+      enteredAt: number
+      shownAt: number
+    }
+    return state.shownAt < 0 ? null : state.shownAt - state.enteredAt
+  })
+}
+
 /** Throw unless `locator` is drawn, or unless it is not, naming it by `what`. */
 async function expectVisible(locator: Locator, visible: boolean, what: string): Promise<void> {
   if (await locator.isVisible() !== visible) {
@@ -1089,17 +1127,10 @@ export const specs: readonly Spec[] = [
       await column.scrollIntoViewIfNeeded()
       const projects = column.getByRole("link", { name: "Projects", exact: true })
       // Never hovered before in this page: the tooltip has not been shown once.
-      await projects.hover()
-      const [early, late] = await tipOf(projects).evaluate(async (tip) => {
-        const shown = () => getComputedStyle(tip).visibility === "visible" && tip.checkVisibility()
-        await new Promise((resolve) => setTimeout(resolve, 100))
-        const early = shown()
-        await new Promise((resolve) => setTimeout(resolve, 400))
-        return [early, shown()]
-      })
-      if (early) throw new Error("the first hover showed the tooltip within 100 ms")
-      if (!late) throw new Error("the first hover had not shown the tooltip after 500 ms")
-      return "hidden at 100 ms, shown at 500 ms"
+      const delay = await firstHoverDelay(page, projects, tipOf(projects))
+      if (delay === null) throw new Error("the first hover never showed the tooltip")
+      if (delay < 250) throw new Error(`the first hover showed the tooltip after ${delay} ms`)
+      return `shown ${Math.round(delay)} ms after the pointer entered`
     },
   },
   {
@@ -1114,17 +1145,11 @@ export const specs: readonly Spec[] = [
       const trigger = rail(page, "rail-shell-demo-switcher-rail")
       const tip = cell.locator(`[data-e2e="rail-shell-tooltip"]`)
       // Never hovered before in this page: the tooltip has not been shown once.
-      await trigger.hover()
-      const [early, late] = await tip.evaluate(async (element) => {
-        const shown = () =>
-          getComputedStyle(element).visibility === "visible" && element.checkVisibility()
-        await new Promise((resolve) => setTimeout(resolve, 100))
-        const early = shown()
-        await new Promise((resolve) => setTimeout(resolve, 400))
-        return [early, shown()]
-      })
-      if (early) throw new Error("the switcher's first hover showed its tooltip within 100 ms")
-      if (!late) throw new Error("the switcher's first hover had not shown its tooltip at 500 ms")
+      const delay = await firstHoverDelay(page, trigger, tip)
+      if (delay === null) throw new Error("the switcher's first hover never showed its tooltip")
+      if (delay < 250) {
+        throw new Error(`the switcher's first hover showed its tooltip after ${delay} ms`)
+      }
       await page.keyboard.press("Escape")
       await tip.waitFor({ state: "hidden" })
       await page.mouse.move(1400, 10)
