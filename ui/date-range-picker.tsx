@@ -132,8 +132,12 @@ export interface DateRangePickerProps extends DateRangePickerSharedProps {
   withTime?: false
   /** Controlled value; `null` until the caller has a range. */
   range: DateRange | null
-  /** Called with the new inclusive range when a preset or the custom panel commits. */
-  onChange: (range: DateRange) => void
+  /**
+   * Called with the new inclusive range when a preset or the custom panel commits, and the preset
+   * that produced it (`"custom"` from the panel), so a caller can keep the person's choice without
+   * deriving it from the range.
+   */
+  onChange: (range: DateRange, preset: DateRangePreset) => void
   /** Preset list in render order, each with the caller's label. Include `"custom"` to show the fields. */
   presets: readonly DateRangePresetOption[]
   /** Preset to highlight, e.g. from {@link presetForRange}. */
@@ -482,7 +486,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
       return
     }
     usingCustom.value = false
-    props.onChange(rangeForPreset(preset, { now: instant(), timeZone }))
+    props.onChange(rangeForPreset(preset, { now: instant(), timeZone }), preset)
     closePanel(true)
   }
 
@@ -504,7 +508,10 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     if (props.withTime) {
       if (exactDraft !== null) props.onChange(exactDraft)
     } else {
-      props.onChange(rangeForPreset("custom", { now: instant(), timeZone, custom: draft }))
+      props.onChange(
+        rangeForPreset("custom", { now: instant(), timeZone, custom: draft }),
+        "custom",
+      )
     }
     closePanel(true)
   }

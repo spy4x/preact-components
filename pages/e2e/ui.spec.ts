@@ -2283,6 +2283,88 @@ function demoVideoSpecs(): Spec[] {
   ]
 }
 
+/** Specs of the dashboard cards: `WidgetCard`, `LayoutCustomiser`, and the picker's preset. */
+const dashboardSpecs: Spec[] = [
+  {
+    name:
+      "WidgetCard: a load shows its skeleton after the delay; Try again calls the retry and keeps focus on the card",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-WidgetCard")
+      const widget = card.locator(`[data-e2e="widget-card-demo"]`)
+      await card.locator(`[data-e2e="widget-status-loading"]`).click()
+      await widget.and(page.locator(`[aria-busy="true"]`)).waitFor()
+      await widget.locator("[data-widget-skeleton]").waitFor()
+
+      await card.locator(`[data-e2e="widget-status-error"]`).click()
+      await widget.getByRole("alert").filter({ hasText: "We could not load the note count." })
+        .waitFor()
+      const retry = widget.getByRole("button", { name: "Try again", exact: true })
+      await retry.focus()
+      await page.keyboard.press("Enter")
+      await card.locator(`[data-e2e="widget-retries"]`).getByText("Retries: 1", { exact: true })
+        .waitFor()
+      // The button is gone; focus is on the card, not the page, and stays there once data arrives.
+      await widget.and(page.locator(":focus")).waitFor()
+      await widget.and(page.locator(`[data-widget-status="ready"]`)).waitFor()
+      await widget.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name: "LayoutCustomiser: a switch hides a widget from the page at once, Reset brings it back",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-LayoutCustomiser")
+      const order = card.locator(`[data-e2e="layout-order"]`)
+      await card.locator(`[data-e2e="layout-open"]`).click()
+      const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
+      await dialog.waitFor()
+      const toggle = dialog.getByRole("switch", { name: "Show Notes", exact: true })
+      await toggle.click()
+      await toggle.and(page.locator(`[aria-checked="false"]`)).waitFor()
+      await order.getByText("Shown: Notes changed, Notes over time", { exact: true }).waitFor()
+      await card.locator(`#demo-LayoutCustomiser [role="region"] h2`).filter({ hasText: /^Notes$/ })
+        .waitFor({ state: "detached" })
+
+      await dialog.getByRole("button", { name: "Reset to default", exact: true }).click()
+      await order.getByText("Shown: Notes, Notes changed, Notes over time", { exact: true })
+        .waitFor()
+      await dialog.getByRole("button", { name: "Done", exact: true }).click()
+      await dialog.waitFor({ state: "hidden" })
+    },
+  },
+  {
+    name: "LayoutCustomiser: the keyboard moves a widget and the page follows",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-LayoutCustomiser")
+      await card.locator(`[data-e2e="layout-open"]`).click()
+      const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
+      const handle = dialog.getByRole("button", { name: "Reorder Notes over time", exact: true })
+      await handle.focus()
+      await page.keyboard.press("Space")
+      await page.keyboard.press("ArrowUp")
+      await page.keyboard.press("ArrowUp")
+      await page.keyboard.press("Space")
+      await card.locator(`[data-e2e="layout-order"]`)
+        .getByText("Shown: Notes over time, Notes, Notes changed", { exact: true }).waitFor()
+      await card.locator(`[data-e2e="layout-changes"]`).getByText("Changes: 1", { exact: true })
+        .waitFor()
+    },
+  },
+  {
+    name: "DateRangePicker: onChange reports the preset the person chose",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-DateRangePicker")
+      await card.locator("button[aria-controls]").first().click()
+      await card.getByRole("button", { name: "This month", exact: true }).click()
+      await card.locator(`[data-e2e="controlled-preset"]`)
+        .getByText("preset: this-month", { exact: true }).waitFor()
+    },
+  },
+]
+
 /** The parts of the `FilterBar` card a spec drives. */
 function filterBarCard(page: Page) {
   const card = page.locator("#demo-FilterBar")
@@ -2521,6 +2603,7 @@ function filterBarSpecs(): Spec[] {
 
 export const specs: readonly Spec[] = [
   ...filterBarSpecs(),
+  ...dashboardSpecs,
   ...demoVideoSpecs(),
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),
@@ -2528,6 +2611,35 @@ export const specs: readonly Spec[] = [
   ...lostInputSpecs(),
   zoomableCropSpec,
   ...comparisonTablePhoneSpecs(),
+  {
+    name: "Notice with onDismiss: at 390 px the close button is a named 44 px target in the " +
+      "top corner, passes axe, and pressing it calls the caller, which hides the notice",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 800 })
+      const notice = page.locator(`[data-e2e="notice-dismissible"]`)
+      const close = notice.getByRole("button", { name: "Hide this message", exact: true })
+      await close.scrollIntoViewIfNeeded()
+      const box = await close.boundingBox()
+      const root = await notice.boundingBox()
+      if (box === null || root === null) {
+        throw new Error("the notice or its close button is not drawn")
+      }
+      if (box.width < 44 || box.height < 44) {
+        throw new Error(`the close button is ${box.width}x${box.height} px, under 44 px`)
+      }
+      if (box.y - root.y > 8) throw new Error(`the close button sits ${box.y - root.y} px down`)
+      const { violations } = await new AxeBuilder({ page })
+        .include(`[data-e2e="notice-dismissible"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(violations.map((v) => `${v.id}: ${v.help}`).join("; "))
+      }
+      await close.click()
+      await notice.waitFor({ state: "detached" })
+      await page.locator(`[data-e2e="notice-show-again"]`).click()
+      await notice.waitFor()
+    },
+  },
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
     pageId: "ui",

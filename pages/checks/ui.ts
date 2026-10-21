@@ -1880,6 +1880,10 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-PageHeader": 2,
   "demo-MoreMenu": 1,
   "demo-DropdownItem": 2,
+  // The widget's "Actions for …" menu.
+  "demo-WidgetCard": 1,
+  // One "Actions for …" menu per widget of the demo dashboard behind the dialog.
+  "demo-LayoutCustomiser": 3,
   // Its Tags and Author menus and the sort.
   "demo-FilterBar": 3,
 }

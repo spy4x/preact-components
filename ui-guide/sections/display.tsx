@@ -61,6 +61,7 @@ import { useId, useRef } from "preact/hooks"
 import { IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
+import { dashboardDemos } from "./dashboard.tsx"
 import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
@@ -2307,6 +2308,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
 />`,
     render: () => <CommandPaletteDemo />,
   },
+  ...dashboardDemos,
 } satisfies DemoFragment
 
 /** One card of the `KanbanBoard` demo. */
