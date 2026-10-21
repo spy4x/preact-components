@@ -53,9 +53,6 @@ export function iconSnippet(name: string): string {
  * Split out of the gallery so the filter can be tested without a DOM: the gallery only wires it to
  * an input.
  *
- * A name also matches through a deprecated old name that points to it, so searching `spinner` finds
- * `IconLoading`.
- *
  * @param names Names to filter, normally {@link iconNames}.
  * @param query Raw search text; an empty or whitespace-only query keeps every name.
  * @returns The matching names, in the order they were given.
@@ -63,10 +60,7 @@ export function iconSnippet(name: string): string {
 export function filterIconNames(names: string[], query: string): string[] {
   const needle = query.trim().toLowerCase()
   if (!needle) return names
-  const viaOldName = Object.entries(DEPRECATED_ICON_NAMES)
-    .filter(([old]) => old.toLowerCase().includes(needle))
-    .map(([, current]) => current)
-  return names.filter((name) => name.toLowerCase().includes(needle) || viaOldName.includes(name))
+  return names.filter((name) => name.toLowerCase().includes(needle))
 }
 
 /**

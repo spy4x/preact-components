@@ -94,11 +94,6 @@ describe("IconGallery", () => {
     }
   })
 
-  it("finds the glyph to use when searched by its deprecated old name", () => {
-    expect(filterIconNames(iconNames, "spinner")).toEqual(["IconLoading"])
-    expect(filterIconNames(iconNames, "arrowdowntray")).toEqual(["IconDownload"])
-  })
-
   it("renders every exported glyph without a maintenance list", () => {
     const rendered = renderedIconNames(render(<IconGallery />))
 
