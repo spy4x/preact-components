@@ -104,7 +104,7 @@ export type CrudSubmitInput<M extends CrudRow> =
   | { mode: "add"; store: CrudSubmitStore<M>; value: M }
   | {
     mode: "edit"
-    id: number
+    id: string | number
     store: CrudSubmitStore<M>
     value: M
     /** How many entities block the archive. A blocked edit is not submitted at all. */
@@ -184,7 +184,7 @@ export interface CrudEditorSlot<M extends CrudRow> {
 /** Which mode the editor is in. `editId` is required exactly when the mode is `"edit"`. */
 export type CrudEditorMode =
   | { mode: "add"; editId?: undefined }
-  | { mode: "edit"; editId: number }
+  | { mode: "edit"; editId: string | number }
 
 /**
  * Everything a CRUD editor needs, whatever it is editing.
@@ -393,7 +393,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   // when only `editId` changes): drop the form and load again, so Save never writes the previous
   // row's values into this one. A layout effect, so the previous row is never painted under the new
   // id.
-  const rowKey = props.mode === "add" ? "add" : `edit:${props.editId}`
+  const rowKey = props.mode === "add" ? "add" : `edit:${typeof props.editId}:${props.editId}`
   const loadedKey = useRef(rowKey)
   useLayoutEffect(() => {
     if (loadedKey.current === rowKey) return

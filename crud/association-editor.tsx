@@ -57,24 +57,24 @@ export interface CrudAssociationStore<M extends CrudRow, T = M> extends CrudEdit
   }
   op: {
     create: ReadonlySignal<OperationState>
-    update: (id: number) => ReadonlySignal<OperationState | undefined>
+    update: (id: string | number) => ReadonlySignal<OperationState | undefined>
     /** Per-row removal status, for the Delete button. */
-    delete: (id: number) => ReadonlySignal<OperationState | undefined>
+    delete: (id: string | number) => ReadonlySignal<OperationState | undefined>
     /** Per-row restore status, for the Restore button. */
-    undelete: (id: number) => ReadonlySignal<OperationState | undefined>
+    undelete: (id: string | number) => ReadonlySignal<OperationState | undefined>
   }
   /** End the row. A junction row is removed, not archived. */
-  delete: (id: number) => Promise<OperationResult<M>>
+  delete: (id: string | number) => Promise<OperationResult<M>>
   /** Bring a removed row back, so a duplicate can be repaired instead of created. */
-  undelete: (id: number) => Promise<OperationResult<M>>
+  undelete: (id: string | number) => Promise<OperationResult<M>>
 }
 
 /** The two writes an association editor performs outside the form's own submit. */
 export interface AssociationActions<M extends CrudRow> {
   /** End the row for good. */
-  remove: (id: number) => Promise<OperationResult<M>>
+  remove: (id: string | number) => Promise<OperationResult<M>>
   /** Bring a removed row back. */
-  restore: (id: number) => Promise<OperationResult<M>>
+  restore: (id: string | number) => Promise<OperationResult<M>>
 }
 
 /**
@@ -117,8 +117,9 @@ export interface ConflictInput<M extends CrudRow> {
  *
  * The conflict is reported as an issue on one field rather than as a dependency list, so it lands
  * beside the control the user has to change (where the source editors put it) and disables Save
- * through the same rule every other invalid field uses. The id of the duplicate travels as the
- * issue's payload, so a field row can link straight at it.
+ * through the same rule every other invalid field uses. A numeric id of the duplicate travels as
+ * the issue's payload, so a field row can link straight at it; a string id does not yet, because
+ * `@spy4x/validation` types the payload as a number.
  */
 export function conflictIssue<M extends CrudRow>(
   value: M,
@@ -135,7 +136,9 @@ export function conflictIssue<M extends CrudRow>(
     input.field,
     CONFLICT,
     isRestorable(conflicting) ? input.removedMessage : input.message,
-    conflicting.id,
+    // `@spy4x/validation` types an issue's payload as a number, so a string id cannot travel yet
+    // and the issue carries no payload. It moves unchanged once that type widens (ts-libs#678).
+    typeof conflicting.id === "number" ? conflicting.id : undefined,
   )
 }
 

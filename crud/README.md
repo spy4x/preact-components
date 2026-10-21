@@ -97,14 +97,14 @@ interface CrudListStore<M extends CrudModel> {
 }
 
 interface CrudEditorStore<M extends CrudRow, T = M> {
-  one: { byId: (id: number) => ReadonlySignal<M | undefined> }
+  one: { byId: (id: string | number) => ReadonlySignal<M | undefined> }
   op: {
     create: ReadonlySignal<OperationState>
-    update: (id: number) => ReadonlySignal<OperationState | undefined>
+    update: (id: string | number) => ReadonlySignal<OperationState | undefined>
     list?: ReadonlySignal<OperationState> // optional: holds "not found" back until it settles
   }
   create: (data: T) => Promise<OperationResult<M>>
-  update: (id: number, data: T) => Promise<OperationResult<M>>
+  update: (id: string | number, data: T) => Promise<OperationResult<M>>
 }
 ```
 
@@ -198,7 +198,7 @@ the wrapper only picked the three-dots icon and a label, and an item's red tone 
 ```tsx
 <CrudEditor
   mode="edit"                               // or mode="add"
-  editId={Number(params.id)}
+  editId={params.id}                        // a UUID string; a numeric-id app passes Number(params.id)
   store={regionStore}
   blank={blankRegion}
   schema={regionBaseSchema}
@@ -419,7 +419,7 @@ The route files are 100% mechanical and deliberately not shipped. The convention
 ```
 routes/<area>/x/index.tsx     → <XList />
 routes/<area>/x/add.tsx       → <XEditor mode="add" />
-routes/<area>/x/[id]/edit.tsx → <XEditor mode="edit" editId={Number(params.id)} />
+routes/<area>/x/[id]/edit.tsx → <XEditor mode="edit" editId={params.id} />
 ```
 
 `CrudEditor`'s props are a discriminated pair, so the `add` route cannot forget an id and the `edit`

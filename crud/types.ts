@@ -14,7 +14,8 @@
  * without an open index signature.
  */
 export interface CrudModel {
-  id: number
+  /** A version 7 UUID string or a number, compared with `===` and never converted. */
+  id: string | number
 }
 
 /**

@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
 import type { ValidationModel } from "@spy4x/validation/model"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import {
   associationActions,
   AssociationEditor,
@@ -37,14 +38,14 @@ const idle: OperationState = { inProgress: false, result: null, error: null }
 
 interface FakeStore {
   store: CrudAssociationStore<ZoneSite>
-  removed: number[]
-  restored: number[]
+  removed: (string | number)[]
+  restored: (string | number)[]
 }
 
 /** A junction store with no network behind it: it records removals and restores. */
 function fakeStore(rows: ZoneSite[] = []): FakeStore {
-  const removed: number[] = []
-  const restored: number[] = []
+  const removed: (string | number)[] = []
+  const restored: (string | number)[] = []
 
   return {
     removed,
@@ -93,6 +94,15 @@ describe("conflictIssue", () => {
 
     expect(vl.zoneId?.[CONFLICT]?.message).toContain("already associated")
     expect(vl.zoneId?.[CONFLICT]?.payload).toBe(5)
+  })
+
+  it("reports a duplicate keyed by a UUID string, without a payload validation cannot type", () => {
+    const duplicate = uuidV7()
+    const rows = [row({ id: duplicate, zoneId: 3 })]
+    const vl = conflictIssue(row({ id: uuidV7(), zoneId: 3 }), clean, { ...conflictInput, rows })
+
+    expect(vl.zoneId?.[CONFLICT]?.message).toContain("already associated")
+    expect(vl.zoneId?.[CONFLICT]?.payload).toBeUndefined()
   })
 
   it("says a duplicate was removed rather than that it exists", () => {

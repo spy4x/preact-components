@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
 import type { ValidationModel } from "@spy4x/validation/model"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import type { CrudEditorStore } from "./store.ts"
 import { editorState, submitEditor, toggleArchiveState } from "./crud-editor.tsx"
 import type { CrudRow, DeletionDependency } from "./types.ts"
@@ -20,7 +21,7 @@ const region = (patch: Partial<Region> = {}): Region => ({
 interface FakeStore {
   store: CrudEditorStore<Region>
   created: Region[]
-  updated: [number, Region][]
+  updated: [string | number, Region][]
 }
 
 /**
@@ -30,7 +31,7 @@ interface FakeStore {
  */
 function fakeStore(failure?: { message: string }): FakeStore {
   const created: Region[] = []
-  const updated: [number, Region][] = []
+  const updated: [string | number, Region][] = []
   const idle = { inProgress: false, result: null, error: null }
 
   return {
@@ -91,6 +92,20 @@ describe("submitEditor", () => {
     expect(fake.created).toHaveLength(0)
     expect(outcome.updated).toBe(true)
     expect(outcome.created).toBeNull()
+  })
+
+  it("patches a row keyed by a UUID string under that same string", async () => {
+    const fake = fakeStore()
+    const id = uuidV7()
+    const outcome = await submitEditor({
+      mode: "edit",
+      id,
+      store: fake.store,
+      value: region({ id }),
+    })
+
+    expect(fake.updated).toEqual([[id, region({ id })]])
+    expect(outcome.updated).toBe(true)
   })
 
   it("writes nothing when the archive is blocked", async () => {

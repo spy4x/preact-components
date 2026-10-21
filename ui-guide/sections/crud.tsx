@@ -47,7 +47,7 @@ import type { DemoFragment, DemoProp } from "../registry.ts"
 
 /** The row every editor in this section edits. */
 interface Team extends CrudRow {
-  id: number
+  id: string | number
   name: string
   members: number
   notes: string
@@ -119,7 +119,7 @@ function makeTeamStore() {
       deleted: computed(() => rows.value.filter((row) => Boolean(row.deletedAt))),
     },
     one: {
-      byId: (id: number) => computed(() => rows.value.find((row) => row.id === id)),
+      byId: (id: string | number) => computed(() => rows.value.find((row) => row.id === id)),
     },
     op: {
       list: listOp,
@@ -202,7 +202,7 @@ function makeAssociationStore() {
     list: {
       all: rows,
     },
-    one: { byId: (id: number) => computed(() => rows.value.find((row) => row.id === id)) },
+    one: { byId: (id: string | number) => computed(() => rows.value.find((row) => row.id === id)) },
     op: {
       create: settledOp,
       update: () => idle,

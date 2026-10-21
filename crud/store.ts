@@ -58,13 +58,13 @@ export interface CrudListStore<M extends CrudModel> {
 export interface CrudEditorStore<M extends CrudRow, T = M> {
   one: {
     /** The row being edited, or `undefined` while the collection has not loaded it yet. */
-    byId: (id: number) => ReadonlySignal<M | undefined>
+    byId: (id: string | number) => ReadonlySignal<M | undefined>
   }
   op: {
     /** Status of the last create; `inProgress` disables the form. */
     create: ReadonlySignal<OperationState>
     /** Per-row update status; `inProgress` disables the form. */
-    update: (id: number) => ReadonlySignal<OperationState | undefined>
+    update: (id: string | number) => ReadonlySignal<OperationState | undefined>
     /**
      * Status of the collection load, as on {@link CrudListStore}. While it has not settled, a row
      * `one.byId` cannot find is still loading, not missing, so the editor holds back "not found".
@@ -75,5 +75,5 @@ export interface CrudEditorStore<M extends CrudRow, T = M> {
   /** Validate, `POST`, carry the created row back. */
   create: (data: T) => Promise<OperationResult<M>>
   /** Validate, `PATCH`, carry the updated row back. */
-  update: (id: number, data: T) => Promise<OperationResult<M, StoreErrorLike>>
+  update: (id: string | number, data: T) => Promise<OperationResult<M, StoreErrorLike>>
 }
