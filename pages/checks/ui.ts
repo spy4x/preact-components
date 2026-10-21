@@ -1880,6 +1880,8 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-PageHeader": 2,
   "demo-MoreMenu": 1,
   "demo-DropdownItem": 2,
+  // Its Tags and Author menus and the sort.
+  "demo-FilterBar": 3,
 }
 
 /** The part of a Chromium accessibility node the trigger check reads. */

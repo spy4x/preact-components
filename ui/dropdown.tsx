@@ -215,6 +215,19 @@ export interface DropdownItemProps extends HotkeyProps {
    * the item is a plain `menuitem` with no space before its text.
    */
   checked?: boolean
+  /**
+   * Makes a `checked` item one of a set where any number can be on, such as the tags a list is
+   * filtered by. The item is a `menuitemcheckbox`, draws a box before its text (filled with a check
+   * when `true`), and choosing it leaves the menu open, so several can be chosen in one visit.
+   * Ignored without `checked`.
+   */
+  multiple?: boolean
+  /**
+   * Leaves the menu open when the item is chosen, for a choice that changes what the rest of the
+   * menu means, such as "Any of these tags" above a list of tags. `multiple` items stay open
+   * without it.
+   */
+  keepOpen?: boolean
   children: ComponentChildren
 }
 
@@ -260,6 +273,8 @@ export function DropdownItem(
     kbdLabels,
     keyshortcuts = [],
     checked,
+    multiple = false,
+    keepOpen = false,
     children,
   }: DropdownItemProps,
 ): JSX.Element {
@@ -285,15 +300,21 @@ export function DropdownItem(
   const classes = cn(itemClasses, danger && !disabledButton && dangerClasses, className)
   const enhanced = useContext(DropdownEnhanced)
   const choice = checked !== undefined
-  const role = enhanced ? (choice ? "menuitemradio" : "menuitem") : undefined
+  const box = choice && multiple
+  const choiceRole = box ? "menuitemcheckbox" : "menuitemradio"
+  const role = enhanced ? (choice ? choiceRole : "menuitem") : undefined
   const tabindex = enhanced ? -1 : undefined
   // The no-JavaScript fallback is a plain link or button, where `aria-checked` means nothing, so a
-  // checked item there says it is the current one instead.
+  // checked item there says it is the current one instead, and a box says it is pressed.
   const ariaChecked = enhanced && choice ? checked : undefined
-  const ariaCurrent = !enhanced && checked === true ? "true" : undefined
-  const mark = choice
+  const ariaCurrent = !enhanced && checked === true && !box ? "true" : undefined
+  const ariaPressed = !enhanced && box ? checked : undefined
+  const mark = box
+    ? <CheckBoxMark checked={checked === true} />
+    : choice
     ? checked ? <IconCheck class="size-4" /> : <span class="size-4 shrink-0" aria-hidden="true" />
     : null
+  const stayOpen = keepOpen || box ? "" : undefined
 
   return href !== undefined
     ? (
@@ -305,8 +326,10 @@ export function DropdownItem(
         tabindex={tabindex}
         aria-checked={ariaChecked}
         aria-current={ariaCurrent}
+        aria-pressed={ariaPressed}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
+        data-keep-open={stayOpen}
         onClick={(event) => {
           onClick?.()
           followLinkClick(event, { href, navigate })
@@ -327,8 +350,10 @@ export function DropdownItem(
         disabled={disabled}
         aria-checked={ariaChecked}
         aria-current={ariaCurrent}
+        aria-pressed={ariaPressed}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
+        data-keep-open={stayOpen}
         onClick={onClick}
       >
         {mark}
@@ -338,8 +363,29 @@ export function DropdownItem(
     )
 }
 
-/** The roles {@link DropdownItem} renders: the arrow keys move between them, a click closes. */
-const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"]`
+/**
+ * The box a {@link DropdownItemProps.multiple} item draws before its text: empty, or filled with
+ * the selection colour and a check. Hidden from screen readers, which hear `aria-checked`.
+ */
+function CheckBoxMark({ checked }: { checked: boolean }): JSX.Element {
+  return (
+    <span
+      aria-hidden="true"
+      class={cn(
+        "flex size-4 shrink-0 items-center justify-center rounded-sm border",
+        checked ? "border-selected bg-selected text-selected-foreground" : "border-control",
+      )}
+    >
+      {checked ? <IconCheck class="size-3" /> : null}
+    </span>
+  )
+}
+
+/**
+ * The roles {@link DropdownItem} renders: the arrow keys move between them, and a click closes the
+ * menu unless the item carries `data-keep-open`.
+ */
+const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]`
 
 /**
  * The menu's focusable items, in DOM order.
@@ -347,6 +393,9 @@ const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"]`
  * Read out of the DOM rather than counted from props, because the panel takes arbitrary children:
  * a caller may wrap its items in a divider row or a `role="none"` group, and only the rendered
  * tree knows where the items ended up. {@link DropdownItem} is what marks them.
+ *
+ * An item that is not drawn (`display: none` at this width) is left out too: `focus()` on it does
+ * nothing, so the arrow keys would stall on it.
  *
  * A disabled item is left out rather than focused-but-inert. ARIA allows either, and this is the
  * half a native `<button disabled>` can actually do: it is not focusable at all, so landing on it
@@ -360,7 +409,9 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
 
   return Array.from(panel.querySelectorAll<HTMLElement>(MENU_ITEM))
     .filter((item) =>
-      !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true"
+      !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true" &&
+      // An item hidden at this width, such as one shown on a phone only, takes no focus.
+      item.getClientRects().length > 0
     )
 }
 
@@ -523,9 +574,11 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   // Activating an item ends the interaction, so the menu closes and hands focus back. The click
   // lands on whatever is inside the item — an icon, a span — hence `closest` rather than `target`.
   // An item's hotkey clicks it while the menu is closed too; focus then stays where the reader is.
+  // An item that keeps the menu open (a box among many, a mode switch) leaves focus on itself.
   const handlePanelClick = (event: MouseEvent) => {
     if (!isOpen.value) return
-    if (!(event.target as HTMLElement | null)?.closest(MENU_ITEM)) return
+    const item = (event.target as HTMLElement | null)?.closest(MENU_ITEM)
+    if (!item || item.hasAttribute("data-keep-open")) return
     close(true)
   }
 

@@ -4844,7 +4844,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                                            |
 | `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link                       |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                                                                                                                                                                                                 |
-| `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before                                                                                                                  |
+| `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?`, `checked?`, `multiple?`, `keepOpen?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before                                                                            |
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)                                                                                                                                                                      |
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                                       |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                                               |
@@ -4853,6 +4853,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                                               |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                                                 |
 | `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                                                                                                                                              |
+| `FilterBar`           | `filter-bar`           | `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips                                                                                 |
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                                                  |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                                        |
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                                       |
@@ -5159,6 +5160,71 @@ and scrolling while the menu is open does not flip it.
 `dropdownOpensUp(trigger, panelHeight, viewportHeight)` is that decision on its own, a pure function
 of the trigger's `top` and `bottom`, the panel's height and the viewport's height. It opens up when
 the panel and its 8px gap do not fit below and there is more room above than below.
+
+`DropdownItem` given `checked` is one choice of a set: a `menuitemradio` with a check, and choosing
+it closes the menu. Add `multiple` for a set where any number can be on, such as tags: the item is
+a `menuitemcheckbox`, draws a box (filled, with a check, when on) and leaves the menu open, so the
+reader can pick several in one visit. `keepOpen` leaves the menu open for any other item, such as a
+mode switch drawn above the choices. The arrow keys reach all three kinds, and skip an item that is
+not drawn at the current width. Before hydration a
+`multiple` item is a plain button with `aria-pressed`.
+
+## FilterBar
+
+Search, filter menus, one-tap toggles and a sort over a list, with the active filters as removable
+chips and a result count. It is controlled and pure: every value is a prop and every change goes
+out through that control's `onChange`, so the caller keeps the values where it likes, usually in
+the URL with `useUrlFilters` from `@spy4x/preact-signals`.
+
+- The bar is a `search` landmark named by `label`. The search field is a labelled
+  `type="search"` input; while it holds text a "Clear search" button empties it and hands focus
+  back to the field. `hotkeyHint` shows a key the app already binds (such as `/`) while the field
+  is empty, and announces it in `aria-keyshortcuts`; the bar binds no key itself.
+- Each menu is a `Dropdown` with a chip trigger that names the choice: "Tags", "Tags: Design",
+  "Tags: 3". An active trigger takes the accent fill. A `multiple` menu draws boxes and stays
+  open; a single one closes on a choice, and `anyLabel` adds a first item that clears it. `header`
+  is drawn above the choices and a divider: give it `DropdownItem`s with `checked` and `keepOpen`,
+  so the arrow keys reach them, inside a `role="group"`; or give `headerLabel` (such as "Show
+  notes with"), and the bar draws it as a visible heading over the items and wraps them in the
+  group it names. On a phone a `multiple` menu ends with a "Done" item (`doneLabel`) that closes
+  the sheet; from `sm` up it is not drawn and the arrow keys skip it.
+- Toggles are one `ToggleChips` group named by `togglesLabel`. The sort menu sits at the end,
+  pushed right from `sm` up, with its `label` ("Sort by") shown from `sm` up and always in its name.
+- Under the bar, every active filter is a chip ("Tag: Design") whose remove button ("Remove the
+  Design filter") takes that one filter away and moves focus to the chip that took its place, or to
+  the search field when it was the last. "Clear filters" clears every menu and toggle (through
+  `onClear` when given, else through each one's `onChange`) and moves focus the same way. Search
+  and sort are not filters, so it leaves them. `count` sits at the end of that row, in a polite
+  live region.
+- From `sm` up the search field and every control share one row that wraps, with the search field
+  first. On a phone the field has its own row, the controls scroll sideways on theirs, every
+  control is 44 px tall, and a menu opens as a sheet fixed to the bottom of the screen, with a
+  visible title and 44 px items, because a panel hanging from a scrolling row would be clipped.
+
+`activeFilterChips(filters, toggles)` returns the chips the bar draws, each with its `label`,
+`valueLabel` and a `remove()` that calls the right `onChange`. `filterTriggerLabel(menu)` returns
+a menu trigger's text.
+
+```tsx
+const { filters: f } = useUrlFilters({
+  q: { signal: useSignal(""), urlParam: "q", initialValue: "" },
+  tags: { signal: useSignal(""), urlParam: "tags", initialValue: "" },
+})
+
+<FilterBar
+  search={{ value: f.q.value, onChange: (q) => f.q.value = q, label: "Search notes" }}
+  filters={[{
+    id: "tags",
+    label: "Tags",
+    chipLabel: "Tag",
+    multiple: true,
+    options: tagOptions,
+    value: f.tags.value === "" ? [] : f.tags.value.split(","),
+    onChange: (next) => f.tags.value = next.join(","),
+  }]}
+  count={`${shown.length} notes`}
+/>
+```
 
 ## Tooltip
 
