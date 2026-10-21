@@ -7,6 +7,7 @@ import {
   MARKER_DOT_CLASSES,
   markerName,
   mountLeafletMap,
+  type MountOptions,
   STATUS_WRAPPER_CLASS,
 } from "./leaflet-map.ts"
 import type { MapMarkerStatus } from "./types.ts"
@@ -85,23 +86,28 @@ describe("leafletFromImport", () => {
   })
 })
 
+/** The arguments every test below shares; each test overrides only what it is about. `container`
+ * is never touched on the paths these tests drive — `createLeafletMap`, the one call that would
+ * touch it, either never runs or runs against a fake `L.map`. */
+const BASE: Omit<MountOptions, "load" | "onLoadError" | "isCancelled"> = {
+  container: {} as HTMLElement,
+  tileUrl: "https://tiles.example.com/{z}/{x}/{y}.png",
+  center: { lat: 0, lng: 0 },
+  zoom: 3,
+  zoomLabels: { zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" },
+}
+
 describe("mountLeafletMap", () => {
   it("reports a failed load through onLoadError instead of throwing", async () => {
     const error = new Error("network blip")
     const errors: unknown[] = []
 
-    const handle = await mountLeafletMap(
-      () => Promise.reject(error),
-      // Never reached on the failure path — createLeafletMap, the one call that would touch it, is
-      // never called when `load` rejects.
-      {} as HTMLElement,
-      "https://tiles.example.com/{z}/{x}/{y}.png",
-      { lat: 0, lng: 0 },
-      3,
-      { zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" },
-      (reportedError) => errors.push(reportedError),
-      () => false,
-    )
+    const handle = await mountLeafletMap({
+      ...BASE,
+      load: () => Promise.reject(error),
+      onLoadError: (reportedError) => errors.push(reportedError),
+      isCancelled: () => false,
+    })
 
     expect(handle).toBeUndefined()
     expect(errors).toEqual([error])
@@ -110,16 +116,12 @@ describe("mountLeafletMap", () => {
   it("calls onLoadError exactly once for one failed load", async () => {
     const errors: unknown[] = []
 
-    await mountLeafletMap(
-      () => Promise.reject(new Error("fails once")),
-      {} as HTMLElement,
-      "https://tiles.example.com/{z}/{x}/{y}.png",
-      { lat: 0, lng: 0 },
-      3,
-      { zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" },
-      (reportedError) => errors.push(reportedError),
-      () => false,
-    )
+    await mountLeafletMap({
+      ...BASE,
+      load: () => Promise.reject(new Error("fails once")),
+      onLoadError: (reportedError) => errors.push(reportedError),
+      isCancelled: () => false,
+    })
 
     expect(errors.length).toBe(1)
   })
@@ -135,20 +137,16 @@ describe("mountLeafletMap", () => {
       return { setView() {}, remove() {} }
     })
 
-    const handle = await mountLeafletMap(
-      () => Promise.resolve(L),
-      {} as HTMLElement,
-      "https://tiles.example.com/{z}/{x}/{y}.png",
-      { lat: 0, lng: 0 },
-      3,
-      { zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" },
-      () => {
+    const handle = await mountLeafletMap({
+      ...BASE,
+      load: () => Promise.resolve(L),
+      onLoadError: () => {
         throw new Error("onLoadError must not be called for a load that succeeded")
       },
       // Already cancelled by the time load() resolves — the exact shape of a component that
       // unmounted while the dynamic import was still in flight.
-      () => true,
-    )
+      isCancelled: () => true,
+    })
 
     expect(handle).toBeUndefined()
     expect(mapCalls.length).toBe(0)
@@ -157,16 +155,12 @@ describe("mountLeafletMap", () => {
   it("does not call onLoadError for a load that rejects after the caller has cancelled", async () => {
     const errors: unknown[] = []
 
-    const handle = await mountLeafletMap(
-      () => Promise.reject(new Error("rejects after unmount")),
-      {} as HTMLElement,
-      "https://tiles.example.com/{z}/{x}/{y}.png",
-      { lat: 0, lng: 0 },
-      3,
-      { zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" },
-      (reportedError) => errors.push(reportedError),
-      () => true,
-    )
+    const handle = await mountLeafletMap({
+      ...BASE,
+      load: () => Promise.reject(new Error("rejects after unmount")),
+      onLoadError: (reportedError) => errors.push(reportedError),
+      isCancelled: () => true,
+    })
 
     expect(handle).toBeUndefined()
     expect(errors).toEqual([])
@@ -179,16 +173,12 @@ describe("mountLeafletMap", () => {
       throw thrown
     })
 
-    const handle = await mountLeafletMap(
-      () => Promise.resolve(L),
-      {} as HTMLElement,
-      "https://tiles.example.com/{z}/{x}/{y}.png",
-      { lat: 0, lng: 0 },
-      3,
-      { zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" },
-      (reportedError) => errors.push(reportedError),
-      () => false,
-    )
+    const handle = await mountLeafletMap({
+      ...BASE,
+      load: () => Promise.resolve(L),
+      onLoadError: (reportedError) => errors.push(reportedError),
+      isCancelled: () => false,
+    })
 
     expect(handle).toBeUndefined()
     expect(errors).toEqual([thrown])

@@ -57,7 +57,6 @@ import {
   leafletFromImport,
   type LeafletMapHandle,
   mountLeafletMap,
-  type ZoomLabels,
 } from "./leaflet-map.ts"
 import { MarkerList } from "./marker-list.tsx"
 import type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
@@ -115,7 +114,7 @@ export interface MapProps {
    * container either. The box and the list both stay exactly as usable as before the failure; this
    * port is where the application decides whether that becomes a toast, a logged event, a retry, or
    * nothing a visitor ever sees. Defaults to logging the error to the console, so a failure is never
-   * silent even for a caller that supplies nothing. Read once, at mount — see `mountArgsFrom`.
+   * silent even for a caller that supplies nothing. Read once, at mount.
    */
   onLoadError?: (error: unknown) => void
 }
@@ -123,48 +122,6 @@ export interface MapProps {
 /** {@link MapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
 function logLoadError(error: unknown): void {
   console.error("@spy4x/preact-map: Leaflet failed to load", error)
-}
-
-/** Everything the mount effect passes to `mountLeafletMap` that comes from this component's props,
- * resolved in one place. */
-export interface MountArgs {
-  tileUrl: string
-  center: MapCenter
-  zoom: number
-  zoomLabels: ZoomLabels
-  onLoadError: (error: unknown) => void
-}
-
-/**
- * Resolve {@link MountArgs} from `Map`'s own (already-defaulted) props.
- *
- * Exported and tested directly, on its own: nothing inside the mount effect below is observable
- * from a test, since effects never run under `preact-render-to-string` (see `AGENTS.md`). The tests
- * prove what this function returns. They do not prove that the effect hands that result to
- * `mountLeafletMap`: a no-op swapped in for `args.onLoadError` inside the effect would pass every
- * test, so that one line is covered by reading it.
- *
- * It also doubles as the one place that states `tileUrl`, `zoomInLabel` and `zoomOutLabel` — and now
- * `onLoadError` alongside them — are read once, at mount: the effect closes over whatever this
- * returned on the render that created it, and never reads a later one.
- */
-export function mountArgsFrom(
-  { tileUrl, center, zoom, zoomInLabel, zoomOutLabel, onLoadError }: {
-    tileUrl: string
-    center: MapCenter
-    zoom: number
-    zoomInLabel: string
-    zoomOutLabel: string
-    onLoadError: (error: unknown) => void
-  },
-): MountArgs {
-  return {
-    tileUrl,
-    center,
-    zoom,
-    zoomLabels: { zoomInLabel, zoomOutLabel },
-    onLoadError,
-  }
 }
 
 /** The box's size when `class` does not override it — roomy enough to be useful in a demo, and
@@ -204,8 +161,8 @@ export function Map(
   const onMarkerClickRef = useRef(onMarkerClick)
   onMarkerClickRef.current = onMarkerClick
 
-  // Mounts once. `tileUrl`, the zoom labels and `onLoadError` are read only here, at mount, via
-  // `mountArgsFrom` — see that function's own doc. `center`, `zoom` and `markers` are the props the
+  // Mounts once. `tileUrl`, the zoom labels and `onLoadError` are read only here, at mount: the
+  // effect closes over the render that created it. `center`, `zoom` and `markers` are the props the
   // issue names as ones that update a live map; swapping the tile provider, relabelling the zoom
   // control or changing what a load failure reports to after mount is not a behaviour this component
   // promises, so all three are deliberately left out of the dependency list below.
@@ -220,18 +177,16 @@ export function Map(
     let cancelled = false
     if (!containerRef.current) return
 
-    const args = mountArgsFrom({ tileUrl, center, zoom, zoomInLabel, zoomOutLabel, onLoadError })
-
-    mountLeafletMap(
-      () => import("leaflet").then(leafletFromImport),
-      containerRef.current,
-      args.tileUrl,
-      args.center,
-      args.zoom,
-      args.zoomLabels,
-      args.onLoadError,
-      () => cancelled,
-    ).then((handle) => {
+    mountLeafletMap({
+      load: () => import("leaflet").then(leafletFromImport),
+      container: containerRef.current,
+      tileUrl,
+      center,
+      zoom,
+      zoomLabels: { zoomInLabel, zoomOutLabel },
+      onLoadError,
+      isCancelled: () => cancelled,
+    }).then((handle) => {
       if (cancelled || !handle) {
         handle?.remove()
         return

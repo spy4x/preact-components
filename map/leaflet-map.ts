@@ -283,6 +283,29 @@ export function createLeafletMap(
   }
 }
 
+/** What {@link mountLeafletMap} needs to load Leaflet and build one map. */
+export interface MountOptions {
+  /** Loads the Leaflet module — `() => import("leaflet").then(leafletFromImport)` in production. */
+  load: () => Promise<LeafletModule>
+  /** The element to mount into. */
+  container: HTMLElement
+  /** Tile URL template. */
+  tileUrl: string
+  /** Initial view centre. */
+  center: MapCenter
+  /** Initial zoom. */
+  zoom: number
+  /** The zoom control's two tooltip/accessible-name strings. */
+  zoomLabels: ZoomLabels
+  /** Called, never thrown, if `load` rejects or `createLeafletMap` throws — unless `isCancelled`
+   * already reads true by then, in which case it is not called at all. */
+  onLoadError: (error: unknown) => void
+  /** Checked once `load()` settles (whether it resolved or rejected) and again after a successful
+   * load, before `createLeafletMap` runs. `true` skips building the map (and skips `onLoadError` on
+   * a rejection), and the function returns `undefined`. */
+  isCancelled: () => boolean
+}
+
 /**
  * Load Leaflet and mount the map, or report the failure without throwing.
  *
@@ -312,30 +335,12 @@ export function createLeafletMap(
  * and calling a port after the component that owns it is gone is the kind of surprise a caller has
  * to guard against defensively if this function does not.
  *
- * @param load Loads the Leaflet module — `() => import("leaflet").then(leafletFromImport)` in
- *   production.
- * @param container The element to mount into.
- * @param tileUrl Tile URL template.
- * @param center Initial view centre.
- * @param zoom Initial zoom.
- * @param zoomLabels The zoom control's two tooltip/accessible-name strings.
- * @param onLoadError Called, never thrown, if `load` rejects or `createLeafletMap` throws — unless
- * `isCancelled` already reads true by then, in which case it is not called at all.
- * @param isCancelled Checked once `load()` settles (whether it resolved or rejected) and again after
- * a successful load, before `createLeafletMap` runs. `true` skips building the map (and skips
- * `onLoadError` on a rejection) and returns `undefined`.
+ * @param options See {@link MountOptions}.
  * @returns The live handle, or `undefined` if `load` rejected, `createLeafletMap` threw, or
  * `isCancelled` read true before the map was built.
  */
 export async function mountLeafletMap(
-  load: () => Promise<LeafletModule>,
-  container: HTMLElement,
-  tileUrl: string,
-  center: MapCenter,
-  zoom: number,
-  zoomLabels: ZoomLabels,
-  onLoadError: (error: unknown) => void,
-  isCancelled: () => boolean,
+  { load, container, tileUrl, center, zoom, zoomLabels, onLoadError, isCancelled }: MountOptions,
 ): Promise<LeafletMapHandle | undefined> {
   let L: LeafletModule
   try {
