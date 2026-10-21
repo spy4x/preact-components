@@ -394,6 +394,9 @@ const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"], [role="menuitemche
  * a caller may wrap its items in a divider row or a `role="none"` group, and only the rendered
  * tree knows where the items ended up. {@link DropdownItem} is what marks them.
  *
+ * An item that is not drawn (`display: none` at this width) is left out too: `focus()` on it does
+ * nothing, so the arrow keys would stall on it.
+ *
  * A disabled item is left out rather than focused-but-inert. ARIA allows either, and this is the
  * half a native `<button disabled>` can actually do: it is not focusable at all, so landing on it
  * would silently leave focus where it already was.
@@ -406,7 +409,9 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
 
   return Array.from(panel.querySelectorAll<HTMLElement>(MENU_ITEM))
     .filter((item) =>
-      !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true"
+      !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true" &&
+      // An item hidden at this width, such as one shown on a phone only, takes no focus.
+      item.getClientRects().length > 0
     )
 }
 
