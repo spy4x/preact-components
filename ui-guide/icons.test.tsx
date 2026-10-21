@@ -3,11 +3,20 @@ import { describe, it } from "@std/testing/bdd"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
 import * as icons from "@spy4x/preact-icons"
-import { filterIconNames, IconGallery, iconNames, iconSnippet } from "./icons.tsx"
+import {
+  DEPRECATED_ICON_NAMES,
+  filterIconNames,
+  IconGallery,
+  iconNames,
+  iconSnippet,
+} from "./icons.tsx"
 
 /** Function exports of the icon module — the gallery's source of truth, read the same way. */
-const exportedIcons = Object.entries(icons)
-  .filter(([, value]) => typeof value === "function")
+const iconEntries = Object.entries(icons).filter(([, value]) => typeof value === "function")
+
+/** The names a reader should use: every function export, less the deprecated old names. */
+const exportedIcons = iconEntries
+  .filter(([name]) => !(name in DEPRECATED_ICON_NAMES))
   .map(([name]) => name)
 
 /** Every `data-icon` the gallery rendered, in render order. */
@@ -53,9 +62,41 @@ describe("IconGallery", () => {
     expect(copied).toEqual([iconSnippet(name)])
   })
 
-  it("exposes every function the icon package exports", () => {
+  it("exposes every function the icon package exports, less the deprecated old names", () => {
     expect(iconNames.length).toBeGreaterThan(0)
     expect(iconNames).toEqual(exportedIcons)
+  })
+
+  it("lists as deprecated exactly the exports that are a second name of another export", () => {
+    for (const [old, current] of Object.entries(DEPRECATED_ICON_NAMES)) {
+      expect(icons[old as keyof typeof icons], old).toBe(icons[current as keyof typeof icons])
+      expect(iconNames, current).toContain(current)
+    }
+    // Every two exports sharing one component, as a sorted pair, against the listed pairs: an alias
+    // added to the icon package without an entry here fails.
+    const sharedPairs = iconEntries
+      .flatMap(([name, value]) =>
+        iconEntries.filter(([other, icon]) => other !== name && icon === value).map(([other]) =>
+          [name, other].sort().join("=")
+        )
+      )
+    const listedPairs = Object.entries(DEPRECATED_ICON_NAMES).map((pair) => pair.sort().join("="))
+    expect([...new Set(sharedPairs)].sort()).toEqual(listedPairs.sort())
+  })
+
+  it("names each deprecated old name next to the name to use", () => {
+    const html = render(<IconGallery labels={{ deprecated: "Alte Namen:" }} />)
+
+    expect(html).toContain("Alte Namen:")
+    for (const [old, current] of Object.entries(DEPRECATED_ICON_NAMES)) {
+      expect(html).toContain(`>${old}</code> → <code class="text-xs">${current}</code>`)
+      expect(renderedIconNames(html)).not.toContain(old)
+    }
+  })
+
+  it("finds the glyph to use when searched by its deprecated old name", () => {
+    expect(filterIconNames(iconNames, "spinner")).toEqual(["IconLoading"])
+    expect(filterIconNames(iconNames, "arrowdowntray")).toEqual(["IconDownload"])
   })
 
   it("renders every exported glyph without a maintenance list", () => {
@@ -78,7 +119,7 @@ describe("IconGallery", () => {
   it("lets a long name wrap between its words instead of cutting it off", () => {
     const html = render(<IconGallery />)
 
-    expect(html).toContain(">Arrow<wbr/>Down<wbr/>Tray</span>")
+    expect(html).toContain(">Arrow<wbr/>Uturn<wbr/>Left</span>")
     expect(html).toContain(">Search</span>")
     expect(html).not.toContain("truncate")
   })

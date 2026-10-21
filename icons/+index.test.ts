@@ -18,8 +18,19 @@ const iconEntries = Object.entries(icons).filter(([, value]) => typeof value ===
 
 const names = iconEntries.map(([name]) => name)
 
-/** Exports kept under an old name: each is the very function of the export it names. */
-const ALIASES: Record<string, string> = { IconLoading: "IconSpinner" }
+/** Each deprecated old name and the name whose drawing it now renders (README "Deprecated names"). */
+const DEPRECATED_ALIASES: Record<string, string> = {
+  IconVideo: "IconVideoCamera",
+  IconExternal: "IconExternalLink",
+  IconCheckCircle: "IconSuccess",
+  IconArrowPath: "IconRefresh",
+  IconArrowDownTray: "IconDownload",
+  IconCpuChip: "IconChip",
+  IconLoading: "IconSpinner",
+}
+
+/** One entry per drawing: every export but the deprecated aliases. */
+const glyphEntries = iconEntries.filter(([name]) => !(name in DEPRECATED_ALIASES))
 
 /** The size class every icon falls back to when the caller passes no class. */
 const DEFAULT_SIZE = /(?:size-\d+(?:\.\d+)?|h-\d+(?:\.\d+)? w-auto)$/
@@ -74,25 +85,33 @@ describe("icon set", () => {
     // Deliberately a literal, never `Object.keys(icons).length`: a guard derived from the
     // module would shrink with the thing it polices and catch nothing.
     expect(names.length).toBe(124)
+    expect(glyphEntries.length).toBe(117)
     expect(new Set(names).size).toBe(names.length)
   })
 
-  it("ships each alias, IconLoading among them, as the very component it names", () => {
-    expect(Object.keys(ALIASES)).toContain("IconLoading")
-    const all = icons as Record<string, unknown>
-    for (const [alias, target] of Object.entries(ALIASES)) expect(all[alias]).toBe(all[target])
+  it("keeps each deprecated name as the very component of the name it points to", () => {
+    for (const [old, kept] of Object.entries(DEPRECATED_ALIASES)) {
+      expect(icons[old as keyof typeof icons], old).toBe(icons[kept as keyof typeof icons])
+    }
+    // The other way round too: two exports sharing one function are listed here, so an alias added
+    // without a README row is caught.
+    const shared = iconEntries
+      .filter(([name, icon]) =>
+        iconEntries.some(([other, value]) => other !== name && value === icon)
+      )
+      .map(([name]) => name)
+      .filter((name) => !Object.values(DEPRECATED_ALIASES).includes(name))
+    expect(shared.sort()).toEqual(Object.keys(DEPRECATED_ALIASES).sort())
   })
 
-  it("ships no two exports with the same glyph", () => {
-    // An alias is one component under two names, so it is not a second glyph.
-    const glyphs = iconEntries.filter(([name]) => !(name in ALIASES))
-    const keys = glyphs.map(([name]) => glyphKey(vnodeOf(name, {})))
+  it("ships no two drawings with the same glyph", () => {
+    const keys = glyphEntries.map(([name]) => glyphKey(vnodeOf(name, {})))
     // Grouped by glyph so a failure names the collision instead of only its count: a duplicate
     // body merged under a second name is the one regression this suite exists to stop.
     const byGlyph = new Map<string, string[]>()
     for (const [index, key] of keys.entries()) {
       const group = byGlyph.get(key) ?? []
-      group.push(glyphs[index][0])
+      group.push(glyphEntries[index][0])
       byGlyph.set(key, group)
     }
     const collisions = [...byGlyph.values()].filter((group) => group.length > 1)
@@ -226,7 +245,7 @@ describe("icon set", () => {
   })
 
   it("keeps animated icons spinning whatever class the caller passes", () => {
-    for (const name of ["IconLoading", "IconSpinner"]) {
+    for (const name of ["IconSpinner"]) {
       const className = vnodeOf(name, { class: "size-8" }).props.class as string
       expect(className).toContain("animate-spin")
       expect(className).toContain("size-8")

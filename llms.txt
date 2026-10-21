@@ -109,9 +109,9 @@ typedNumber	helper	@spy4x/preact-crud	The number a keystroke may commit, or `und
 IconAlertTriangle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArchive	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons.
 IconArrowDown	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
-IconArrowDownTray	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconArrowDownTray	component	@spy4x/preact-icons	Deprecated: Use `IconDownload`. Old name of `IconDownload`, kept as the same component: the two drew one idea twice.
 IconArrowLeft	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
-IconArrowPath	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconArrowPath	component	@spy4x/preact-icons	Deprecated: Use `IconRefresh`. Old name of `IconRefresh`, kept as the same component: the two drew one idea twice.
 IconArrowRight	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconArrowUp	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconArrowUpRight	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "arrow-up-right" exactly.
@@ -131,7 +131,7 @@ IconCalendarDays	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5)
 IconChartPie	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconChatBubble	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "chat-alt" from heroicons@1.0.6 (#233).
 IconCheck	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
-IconCheckCircle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconCheckCircle	component	@spy4x/preact-icons	Deprecated: Use `IconSuccess`. Old name of `IconSuccess`, kept as the same component: the two drew one idea twice.
 IconChevronDown	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconChevronLeft	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "chevron-left" exactly, not Heroicons.
 IconChevronRight	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "chevron-right" exactly, not Heroicons.
@@ -144,7 +144,7 @@ IconCloudArrowUp	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) �
 IconCode	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "code" exactly, not Heroicons.
 IconCog6Tooth	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconCopy	component	@spy4x/preact-icons	Feather outline (stroke-2); Feather's "copy" (4.29.2), added in #495.
-IconCpuChip	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconCpuChip	component	@spy4x/preact-icons	Deprecated: Use `IconChip`. Old name of `IconChip`, kept as the same component: the two drew one idea twice.
 IconCreditCard	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "credit-card" from heroicons@1.0.6 (#233).
 IconCursorArrowRays	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconDocument	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "document" from heroicons@2.2.0 (#233).
@@ -154,7 +154,7 @@ IconDollar	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-2); matche
 IconDownload	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconEllipsisVertical	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconExclamationCircle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5); Heroicons v2's "exclamation-circle" (2.2.0), added for the danger tone of `Notice` (#552).
-IconExternal	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "external-link" exactly.
+IconExternal	component	@spy4x/preact-icons	Deprecated: Use `IconExternalLink`. Old name of `IconExternalLink`, kept as the same component: the two drew one idea twice.
 IconExternalLink	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application, redrawn as "external-link" from heroicons@1.0.6 (#233).
 IconEye	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconEyeOff	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
@@ -206,7 +206,7 @@ IconShare	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches
 IconShieldCheck	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconSmile	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconSparkle	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "sparkles" from heroicons@1.0.6 (#233).
-IconSpinner	component	@spy4x/preact-icons	Lucide outline (stroke 2.5); matches Lucide's "loader-circle"/"loader-2" exactly.
+IconSpinner	component	@spy4x/preact-icons	Deprecated: Use `IconLoading`. Old name of `IconLoading`, kept as the same component: the two drew one idea twice.
 IconSprout	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "sprout" (lucide-static@1.47.0) exactly.
 IconStar	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons; `filled` for solid.
 IconStopCircle	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
@@ -223,7 +223,7 @@ IconTwitter	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "x
 IconUpwork	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "upwork" from simple-icons@16.33.0 (#233).
 IconUser	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconUsers	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
-IconVideo	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "video-camera" from heroicons@2.2.0 (#233).
+IconVideo	component	@spy4x/preact-icons	Deprecated: Use `IconVideoCamera`. Old name of `IconVideoCamera`, kept as the same component: the two drew one idea twice.
 IconVideoCamera	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconViewColumns	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5); matches Heroicons v2's "view-columns" exactly, not v1.
 IconWallet	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "wallet" exactly, not Heroicons.
@@ -923,7 +923,7 @@ demoRegistry	helper	@spy4x/preact-ui-guide	The flat registry the catalogue rende
 guidePageIds	helper	@spy4x/preact-ui-guide	The guide's pages, in navigation order: the overview, then one page per package.
 guidePages	helper	@spy4x/preact-ui-guide	Every page of the guide, resolved, in `guidePageIds` order.
 helperPackageIds	helper	@spy4x/preact-ui-guide	Packages that export no component: helpers only, so the guide shows none of their exports and no stylesheet needs to scan them.
-iconNames	helper	@spy4x/preact-ui-guide	Every glyph the icon package exports, in module order.
+iconNames	helper	@spy4x/preact-ui-guide	Every glyph the icon package exports, under the name to use, in module order.
 missingDemos	helper	@spy4x/preact-ui-guide	Cards the sections mean to render that this registry does not carry.
 packageIds	helper	@spy4x/preact-ui-guide	Every package whose components the catalogue renders, in reading order.
 packageSpecifier	helper	@spy4x/preact-ui-guide	`@spy4x/preact-<id>` — the specifier a reader copies out of the guide.

@@ -4,7 +4,7 @@
  * It reads the whole `@spy4x/preact-icons` namespace instead of a hand-written list, so a new
  * glyph appears here, is searchable and is copyable the moment it is exported. There is no registry
  * entry for it and no count to bump: `icons.test.ts` asserts that the gallery renders exactly the
- * module's exports.
+ * module's exports, less the deprecated old names in {@link DEPRECATED_ICON_NAMES}.
  */
 
 import * as icons from "@spy4x/preact-icons"
@@ -18,9 +18,23 @@ import { DemoCard } from "./card.tsx"
 /** One glyph, with the prop surface every icon in the package shares. */
 type IconComponent = ComponentType<{ class?: string }>
 
-/** Every glyph the icon package exports, in module order. */
+/**
+ * Each deprecated old name the icon package still exports, and the name to use instead. Both render
+ * the same component, so the gallery shows the glyph once, under the name to use.
+ */
+export const DEPRECATED_ICON_NAMES: Readonly<Record<string, string>> = {
+  IconArrowDownTray: "IconDownload",
+  IconArrowPath: "IconRefresh",
+  IconCheckCircle: "IconSuccess",
+  IconCpuChip: "IconChip",
+  IconExternal: "IconExternalLink",
+  IconSpinner: "IconLoading",
+  IconVideo: "IconVideoCamera",
+}
+
+/** Every glyph the icon package exports, under the name to use, in module order. */
 export const iconNames: string[] = Object.entries(icons)
-  .filter(([, value]) => typeof value === "function")
+  .filter(([name, value]) => typeof value === "function" && !(name in DEPRECATED_ICON_NAMES))
   .map(([name]) => name)
 
 /**
@@ -39,6 +53,9 @@ export function iconSnippet(name: string): string {
  * Split out of the gallery so the filter can be tested without a DOM: the gallery only wires it to
  * an input.
  *
+ * A name also matches through a deprecated old name that points to it, so searching `spinner` finds
+ * `IconLoading`.
+ *
  * @param names Names to filter, normally {@link iconNames}.
  * @param query Raw search text; an empty or whitespace-only query keeps every name.
  * @returns The matching names, in the order they were given.
@@ -46,15 +63,18 @@ export function iconSnippet(name: string): string {
 export function filterIconNames(names: string[], query: string): string[] {
   const needle = query.trim().toLowerCase()
   if (!needle) return names
-  return names.filter((name) => name.toLowerCase().includes(needle))
+  const viaOldName = Object.entries(DEPRECATED_ICON_NAMES)
+    .filter(([old]) => old.toLowerCase().includes(needle))
+    .map(([, current]) => current)
+  return names.filter((name) => name.toLowerCase().includes(needle) || viaOldName.includes(name))
 }
 
 /**
  * A cell's caption: the glyph's name without its `Icon` prefix, with a line-break opportunity before
- * each inner capital, so a long name wraps between its words (`ArrowDown` / `Tray`) rather than being
+ * each inner capital, so a long name wraps between its words (`ArrowUturn` / `Left`) rather than being
  * cut off. A single word too long for the cell still wraps, through the caption's `overflow-wrap`.
  *
- * @param name Export name of the glyph, e.g. `"IconArrowDownTray"`.
+ * @param name Export name of the glyph, e.g. `"IconArrowUturnLeft"`.
  * @returns The caption's children: the words, with a `<wbr>` between them.
  */
 export function glyphLabel(name: string): ComponentChildren[] {
@@ -76,6 +96,8 @@ export interface IconGalleryLabels {
   noMatch: (query: string) => string
   /** The code row's copy control. Defaults to `"Copy the icon example"`. */
   copyCode: string
+  /** Leads the list of deprecated old names. Defaults to `"Old names, removed in the next major:"`. */
+  deprecated: string
 }
 
 /** The gallery's English words. */
@@ -88,6 +110,7 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
     `${shown} of ${total} shown${copied ? ` · copied ${copied}` : ""}`,
   noMatch: (query) => `No glyph matches “${query}”.`,
   copyCode: "Copy the icon example",
+  deprecated: "Old names, removed in the next major:",
 }
 
 /** The code row of the gallery's card: how an app uses one glyph. */
@@ -214,6 +237,17 @@ export function IconGallery(
               })}
             </Grid>
           )}
+
+        <p class="text-sm text-muted" data-deprecated-icons>
+          {labels.deprecated}{" "}
+          {Object.entries(DEPRECATED_ICON_NAMES).flatMap(([old, current], index) => [
+            index > 0 ? ", " : "",
+            <span key={old} class="whitespace-nowrap">
+              <code class="text-xs line-through">{old}</code> →{" "}
+              <code class="text-xs">{current}</code>
+            </span>,
+          ])}
+        </p>
       </Stack>
     </DemoCard>
   )

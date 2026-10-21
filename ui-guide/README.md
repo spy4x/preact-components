@@ -366,6 +366,11 @@ entry — and renders every glyph with a live name filter and click-to-copy of `
 icon is in the catalogue the moment it is exported. `icons.test.tsx` matches the rendered
 `data-icon` attributes against the icon module's own exports, so the gallery cannot fall behind it.
 
+The one list is `DEPRECATED_ICON_NAMES`: the old names the icon package still exports as second
+names of a kept glyph. The gallery shows each glyph once, under the name to use, lists the old names
+under the grid (`labels.deprecated` leads that line), and a search for an old name finds the glyph
+to use. `icons.test.tsx` fails when two exports share a component and the pair is not listed.
+
 The clipboard goes through the `copy` port, which falls back to `copyToClipboard` from
 `@spy4x/platform/browser/clipboard` so the legacy `execCommand` path is not reimplemented here.
 

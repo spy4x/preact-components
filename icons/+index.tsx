@@ -123,18 +123,12 @@ export function IconArrowDown(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconArrowDownTray(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "1.5", size: "size-6" },
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-    />,
-  )
-}
+/**
+ * Old name of {@link IconDownload}, kept as the same component: the two drew one idea twice.
+ *
+ * @deprecated Use `IconDownload`. Removed in the next major.
+ */
+export const IconArrowDownTray: typeof IconDownload = IconDownload
 
 /** Heroicons v1 outline (stroke-2) · from template. */
 export function IconArrowLeft(props: IconProps): JSX.Element {
@@ -149,18 +143,12 @@ export function IconArrowLeft(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconArrowPath(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "1.5", size: "size-6" },
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-    />,
-  )
-}
+/**
+ * Old name of {@link IconRefresh}, kept as the same component: the two drew one idea twice.
+ *
+ * @deprecated Use `IconRefresh`. Removed in the next major.
+ */
+export const IconArrowPath: typeof IconRefresh = IconRefresh
 
 /** Heroicons v1 outline (stroke-2) · from template. */
 export function IconArrowRight(props: IconProps): JSX.Element {
@@ -386,18 +374,12 @@ export function IconCheck(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCheckCircle(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "1.5", size: "size-6" },
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-    />,
-  )
-}
+/**
+ * Old name of {@link IconSuccess}, kept as the same component: the two drew one idea twice.
+ *
+ * @deprecated Use `IconSuccess`. Removed in the next major.
+ */
+export const IconCheckCircle: typeof IconSuccess = IconSuccess
 
 /** Heroicons v2 outline (stroke-1.5) · from template. */
 export function IconChevronDown(props: IconProps): JSX.Element {
@@ -518,18 +500,12 @@ export function IconCopy(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-1.5) · from template. */
-export function IconCpuChip(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "1.5", size: "size-6" },
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z"
-    />,
-  )
-}
+/**
+ * Old name of {@link IconChip}, kept as the same component: the two drew one idea twice.
+ *
+ * @deprecated Use `IconChip`. Removed in the next major.
+ */
+export const IconCpuChip: typeof IconChip = IconChip
 
 /** Heroicons v1 outline (stroke-2) · "credit-card" from heroicons@1.0.6 (#233). */
 export function IconCreditCard(props: IconProps): JSX.Element {
@@ -608,16 +584,12 @@ export function IconExclamationCircle(props: IconProps): JSX.Element {
   )
 }
 
-/** Feather outline (stroke 1.75) · matches Feather's "external-link" exactly. */
-export function IconExternal(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "1.75", round: true },
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />,
-    <polyline points="15 3 21 3 21 9" />,
-    <line x1="10" y1="14" x2="21" y2="3" />,
-  )
-}
+/**
+ * Old name of {@link IconExternalLink}, kept as the same component: the two drew one idea twice.
+ *
+ * @deprecated Use `IconExternalLink`. Removed in the next major.
+ */
+export const IconExternal: typeof IconExternalLink = IconExternalLink
 
 /** Heroicons v1 outline (stroke-2) · from template. */
 export function IconEye(props: IconProps): JSX.Element {
@@ -895,8 +867,10 @@ export function IconList(props: IconProps): JSX.Element {
 }
 
 /**
- * The same spinner as {@link IconSpinner}, under the name older apps import. It drew Lucide's
- * eight-spoke "loader" until the library settled on one spinner.
+ * Old name of {@link IconSpinner}, kept as the same component: the two drew one idea twice. It drew
+ * Lucide's eight-spoke "loader" until the library settled on one spinner.
+ *
+ * @deprecated Use `IconSpinner`. Removed in the next major.
  */
 export const IconLoading: (props: IconProps) => JSX.Element = IconSpinner
 
@@ -1293,18 +1267,12 @@ export function IconUsers(props: IconProps): JSX.Element {
   )
 }
 
-/** Heroicons v2 outline (stroke-1.5) · "video-camera" from heroicons@2.2.0 (#233). */
-export function IconVideo(props: IconProps): JSX.Element {
-  return svgIcon(
-    props,
-    { stroke: "1.5" },
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
-    />,
-  )
-}
+/**
+ * Old name of {@link IconVideoCamera}, kept as the same component: the two drew one idea twice.
+ *
+ * @deprecated Use `IconVideoCamera`. Removed in the next major.
+ */
+export const IconVideo: typeof IconVideoCamera = IconVideoCamera
 
 /** Heroicons v2 outline (stroke-1.5); matches Heroicons v2's "view-columns" exactly, not v1. */
 export function IconViewColumns(props: IconProps): JSX.Element {

@@ -75,7 +75,7 @@ the axis and loading helpers behind them.
 | ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
 | `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`       |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`                    |
 | `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
 | `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
 
@@ -227,10 +227,6 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   calls `onChange(isIntersecting)` on every change, preloading `200px` early by default. It
   returns a handle with `disconnect()`, or `null` where `IntersectionObserver` does not exist, such
   as on the server. `useInView` is built on it; call it directly outside a component.
-- `useInView({ rootMargin, threshold, once })` returns `{ ref, inView }`: attach `ref` to an
-  element and `inView` turns `true` once it comes within `rootMargin` of the viewport. `ref` is a
-  callback ref that also keeps the element in `ref.current`, so an element rendered later, after a
-  loading state, is observed too.
 
 ## Tests
 
@@ -543,9 +539,7 @@ The harness is the six parts, once:
    A row that has not arrived yet re-runs the effect when it does. A new `editId` or `mode` on the
    same mounted editor drops the form and loads again, so a router that keeps the component between
    rows needs no `key`. "Not found" waits until the store's `op.list` has settled, so a cold edit
-   link shows no error while the list is still loading. While the row is on its way, the form is
-   `aria-busy` and its fields give way to a `LoadingSkeleton` with one field bar per field row and no card of its own, shown after 300 ms; a row that is not
-   found leaves the fields disabled. Either way nothing typed into a blank form is lost.
+   link shows no error while the list is still loading.
 2. **Validate on every change** with arktype, plus the caller's own checks through `validate`, which
    runs after the schema and may read signals — that is how a check against a not-yet-loaded
    collection fixes itself. A rule that compares two fields, or a value arktype rejects before it
@@ -896,8 +890,8 @@ actions column, empty state (on the real `buildModelStore` too) and paging (`cru
 
 # `@spy4x/preact-icons`
 
-Merged icon set. 124 exports: 123 glyphs, one named export each, plus `IconLoading`, an alias of
-`IconSpinner`. No runtime dependencies beyond Preact.
+Merged icon set. 117 glyphs, one named export per glyph plus seven deprecated old names (see
+"Deprecated names"), no runtime dependencies beyond Preact.
 
 ```tsx
 import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
@@ -921,14 +915,14 @@ export interface IconProps {
 - The root is always an `<svg xmlns="…" viewBox="…">`; sizing comes from the class, not from
   `width`/`height` attributes.
 - Colour comes from `currentColor`, so an icon inherits the text colour of its container.
-- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (83 glyphs) unless
-  the glyph already shipped elsewhere as `size-6` (39 glyphs). One glyph, `IconUpwork`, defaults to
-  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 122
+- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (81 glyphs) unless
+  the glyph already shipped elsewhere as `size-6` (35 glyphs). One glyph, `IconUpwork`, defaults to
+  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 116
   draw on a 24-unit `viewBox`, `IconLockClosedFilled` on Heroicons v1 solid's 20-unit one — so
   `IconUpwork` renders 20 × 20 at its default.
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
   the right of the `||` in `shrink-0 ${props.class || "<default size>"}`.
-  `IconLoading` and `IconSpinner` additionally hard-code `animate-spin`, and stand still under
+  `IconLoading` additionally hard-codes `animate-spin`, and stands still under
   reduced motion (`motion-reduce:animate-none`).
 - `IconStar` alone takes one more prop, `filled`. `<IconStar filled />` paints the same Feather
   drawing solid in the text colour and keeps its stroke, so it covers the outline's footprint
@@ -958,12 +952,12 @@ surface; mixing them is visible at small sizes.
 
 | Family                         | Count | Notes                                                                                                                                                                        |
 | ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Heroicons (v1 or v2)           | 73    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
-| Feather and/or Lucide outlines | 26    | round caps and joins; 17 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
+| Heroicons (v1 or v2)           | 68    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
+| Feather and/or Lucide outlines | 25    | round caps and joins; 18 are rendered at `stroke-2` and 7 at `stroke 1.75`; which pack is on each glyph's own JSDoc line                                                     |
 | Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
 | Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-The table is a partition of all 123 glyphs: every row above is disjoint from every other, the
+The table is a partition of all 117 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
@@ -983,9 +977,25 @@ drawn from — so the exact family of any one glyph is one grep away:
 grep -B1 'export function IconSearch' +index.tsx
 ```
 
-There is one spinner, `IconSpinner` (Lucide's `loader-circle` arc). `IconLoading` is the same
-component under the name older apps import; it drew Lucide's eight-spoke `loader` until the library
-settled on one spinner, which `Button` and `LoadingSpinner` draw too.
+## Deprecated names
+
+Seven ideas were drawn twice, from two packs, under names that did not say which to use. Each now
+has one drawing; the other name is a deprecated alias that renders the very same component, so an
+app that imports it keeps working and gets the kept drawing. Both old names go in the next major.
+
+| Old name (deprecated) | Use                | Why this drawing                                      |
+| --------------------- | ------------------ | ----------------------------------------------------- |
+| `IconVideo`           | `IconVideoCamera`  | `stroke-2`, like most of the set                      |
+| `IconExternal`        | `IconExternalLink` | `stroke-2`; also the more used name                   |
+| `IconCheckCircle`     | `IconSuccess`      | `stroke-2`, like most of the set                      |
+| `IconArrowPath`       | `IconRefresh`      | `stroke-2`, like most of the set                      |
+| `IconArrowDownTray`   | `IconDownload`     | `stroke-2`; also the more used name                   |
+| `IconCpuChip`         | `IconChip`         | `stroke-2`, like most of the set                      |
+| `IconSpinner`         | `IconLoading`      | `stroke-2`, where the old arc was the set's one `2.5` |
+
+The kept drawings default to `size-5`, so `IconCheckCircle`, `IconArrowPath`, `IconArrowDownTray`
+and `IconCpuChip` without a `class` now render at `size-5` instead of `size-6`. The guide's gallery
+shows the kept names only and lists the old ones under it.
 
 ## Provenance
 
@@ -1011,10 +1021,10 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 123 glyphs, **all 123 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Of the 117 glyphs, **all 117 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
-or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 31
-replaced in #233 also the upstream file name and version.
+or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack and, for the 31 still
+shipped of those replaced in #233, also the upstream file name and version.
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
 
 Five glyphs were added after the merge, straight from a pack rather than from a source app:
@@ -1065,6 +1075,7 @@ matched no pack ("none") or matched one only nearly ("near": same shape, differe
 | `IconImage`        | none   | Heroicons v1 `photograph`                        |
 | `IconLens`         | none   | Heroicons v1 `zoom-in`                           |
 | `IconLinkedIn`     | none   | Feather `linkedin`                               |
+| `IconLoading`      | none   | Lucide `loader`                                  |
 | `IconMoon`         | near   | Heroicons v2 `moon`                              |
 | `IconPackage`      | none   | Heroicons v1 `cube`                              |
 | `IconQuote`        | none   | Lucide `quote`                                   |
@@ -1076,7 +1087,6 @@ matched no pack ("none") or matched one only nearly ("near": same shape, differe
 | `IconThemeAuto`    | none   | Lucide `contrast`                                |
 | `IconTwitter`      | exact  | Simple Icons `x` (was Feather's `twitter` bird)  |
 | `IconUpwork`       | none   | Simple Icons `upwork`                            |
-| `IconVideo`        | none   | Heroicons v2 `video-camera`                      |
 | `IconWrench`       | none   | Heroicons v2 `wrench`                            |
 | `IconYouTube`      | exact  | Simple Icons `youtube` (was Feather's `youtube`) |
 
@@ -1094,7 +1104,8 @@ the ported set.
 
 `+index.test.ts` calls each export directly and inspects the returned vnode — no DOM, no renderer,
 no extra dependency. It asserts that every export renders, that no two exports ship the same
-glyph except a listed alias, that the export count matches the total documented above, that a `class` prop replaces the
+glyph except each deprecated name, which is the very component of the name it points to, that the
+export and glyph counts match the totals documented above, that a `class` prop replaces the
 default size rather than adding to it, that the animated icons stay animated, and that every icon
 is hidden from screen readers without a name and a labelled image with `aria-label` or `title`.
 
@@ -1104,7 +1115,7 @@ polices. The duplicate-glyph assertion groups exports by glyph key so a failure 
 exports instead of only reporting a count:
 
 ```
-AssertionError: duplicate glyph bodies: [["IconArrowPath","IconRefresh"]]
+AssertionError: duplicate glyph bodies: [["IconLens","IconSearch"]]
 ```
 
 No test pins a glyph's path data or which default size it has: changing either leaves
@@ -1852,10 +1863,8 @@ steps as a signal of `{ id, done }` (the checklist's own steps fit) and a `dismi
 - `progress`: `{ done, total }`.
 - `dismiss()` and `reset()`: write `true` or `false` through the port and change `visible`.
 
-The port's `read()` is synchronous: an app that keeps the flag on the server loads it before the
-store first needs it. The store calls it once, on first use rather than when it is created, so a
-store created at module level reads nothing on a server until a render asks for `visible`. Its
-`write()` may be either:
+The port's `read()` is synchronous: an app that keeps the flag on the server loads it before it
+creates the store. Its `write()` may be either:
 
 - **Synchronous**, such as `localStorage`. The write runs first and `visible` changes after it, so a
   write that throws leaves `visible` as it was, and the error reaches the caller of `dismiss()`.
@@ -1890,7 +1899,7 @@ info bar), so `install()` can open the browser's dialog later from a button. Its
 person installs through Share, then Add to Home Screen, `installed` when the app already runs
 standalone or `appinstalled` fired, and `unavailable` otherwise. `visible` is `true` for `prompt`
 and `ios` until `dismiss()` stores the flag through `dismissed`, the same `{ read, write }` port
-`createOnboardingState` takes, read once on first use; left out, the flag lives in memory. Call `watch()` early in the
+`createOnboardingState` takes; left out, the flag lives in memory. Call `watch()` early in the
 client entry point: the event can fire before the app renders. `isIosDevice(navigator)` and
 `isStandalone(navigator, matchMedia)` are the two checks it starts from. `InstallPrompt` in
 `@spy4x/preact-system` draws it.
@@ -2336,7 +2345,8 @@ Extracted from earlier source applications.
   `IconShare`) rather than duplicating SVG.
 - **`ui/` is a sibling dependency.** `Shell` and `AuthForm` already import individual `ui/`
   components (`Avatar`, `Dropdown`; `Button`, `Field`, `Input`). `crud/` imports `ui/` the same
-  way. Zoomable images are `ui/`'s `ZoomableImages`: content, not application chrome.
+  way. The zoom layer over a container's images that used to live here as `ImageLightbox` is
+  `ui/`'s `ZoomableImages` now: it is content, not application chrome.
 
 ## Components
 
@@ -2437,8 +2447,9 @@ path and the query — and drops the rest:
 | `https://ACME.Example:443/a?page=2` | `https://acme.example/a?page=2` |
 | `https://acme.example`              | `https://acme.example/`         |
 
-A fragment names a position inside a page rather than a page. Credentials in an address that a
-search engine indexes are credentials published.
+A fragment names a position inside a page rather than a page, and it used to produce a
+`BreadcrumbList` identifier of `…#frag#breadcrumb`, which nothing could ever match. Credentials in
+an address that a search engine indexes are credentials published.
 
 **An address that is not an `http`/`https` page throws**, and so does a relative one:
 `javascript:alert(1)`, `data:…` and `/products/widgets` are all refused before a single tag
@@ -2456,12 +2467,15 @@ The JSON-LD `@graph` ends with a `BreadcrumbList` built from the `crumbs` prop: 
 current page last with no `href`. Every `item` is absolute, so a crumb `href` may be relative to
 the page and is normalised exactly as the canonical address is.
 
-No crumb is derived from the path: a path segment is not always a page with a readable name. A
-page that states fewer than two crumbs
+Nothing derives a crumb from the path any more. Deriving one assumed every path segment is a page
+with a readable name, so `/section/24/title` published a crumb named `24` linking to
+`/section/24`, and a route had no way to say otherwise. A page that states fewer than two crumbs
 gets no `BreadcrumbList` at all — a one-item trail is noise in a rich result — and the whole
 script tag is skipped when the graph is empty.
 
-The page title is not part of the structured data; it appears only where a caller puts it.
+One consequence worth knowing: the page title is no longer part of the structured data. It used to
+arrive there as the name of the last derived crumb, and now it appears only where a caller puts
+it.
 
 ## The head store is per request
 
@@ -2573,6 +2587,11 @@ navigable with Enter.
 
 ## The calendar's keyboard
 
+`Calendar`'s props, its reason value and its default labels were renamed before the first publish,
+which is a breaking change: `availableByDate`, `lowAvailabilityThreshold`,
+`CalendarDay.availableCount` and the reason `none-left` replace the earlier names, and
+[#295](https://github.com/spy4x/preact-components/pull/295) has the old-to-new table.
+
 The whole grid is one Tab stop, and the focus moves inside it:
 
 | Key                 | What it does                                                       |
@@ -2582,57 +2601,111 @@ The whole grid is one Tab stop, and the focus moves inside it:
 | Home / End          | the first and last day of the week on screen, clipped to the month |
 | Page Up / Page Down | the neighbouring month, through `onSelectMonth`, same day number   |
 
-Every key the grid answers is cancelled, so paging a month does not scroll the page. Without
-`onSelectMonth`, Page Up and Page Down do nothing: in link mode the month lives in the URL, and the
-arrows are links that Tab reaches.
+Every key the grid answers is cancelled with it, so paging a month does not scroll the page
+underneath. A key it does not answer keeps the page's own behaviour: Page Up and Page Down do
+nothing without `onSelectMonth`, because in link mode the month lives in the URL and a key press
+that navigated the page is not something the dual-mode contract promises — the arrows are links
+there, and Tab reaches them.
 
 **A month is asked for, never taken.** `onSelectMonth` is a request, and the reader keeps their
-place whatever the owner answers:
+place in the grid whatever the owner answers. Page Up and Page Down are the only two keys this can
+happen to: the arrows refuse to leave the month they are in and Home and End are clipped to it, so
+neither ever asks for a month.
+
+Two rules cover every answer there is:
 
 | What the owner does to `monthAnchor`       | Where the reader ends up                       |
 | ------------------------------------------ | ---------------------------------------------- |
 | draws a new month, in that render or later | the same day number in the month now on screen |
 | leaves it where it was                     | the day the press started from                 |
 
-A press refused that way costs nothing: the focus goes back to the day it started from, so the next
-arrow press moves a day. A late answer is read as a refusal first; when the month is drawn after
-that, whichever month it is, the focus goes to the same day number in it, instead of falling to
-the body with the cells it was on.
+The second rule is the one to design a caller around, because a calendar clamping the month to a
+range the reader may not leave does it on purpose. A press refused that way costs the reader
+nothing: the month on screen does not change, and the focus goes back to the day it started from
+instead of staying on the grid container, so their next arrow press moves a day rather than being
+spent walking back to where they already were.
 
 The month arrows above the grid ask through the same `onSelectMonth`, and the same two rules hold
-for the grid's Tab stop. The day an arrow left it on is forgotten once another month or another
-selection is on screen. The focus stays on the arrow.
+for the grid's one Tab stop: a month the owner draws puts it on the same day number there, and a
+month the owner leaves where it was leaves it on the day it was on, rather than on the grid's own
+fallback of the selection, today or the first of the month. That day belongs to the one request:
+it is forgotten as soon as another month or another selection is on screen, so an owner that later
+moves the month or the selection itself gets the ordinary fallback. The focus does not move for
+any of this; the reader clicked the arrow and stays on it.
+
+The first rule needs no cooperation from the caller and does not care why the month changed. An
+owner that checks or fetches before it answers gets it, and so does an owner that changes the month
+for reasons of its own while the reader happens to be standing in the grid. A refusal can only be
+judged by the render that follows the call, so a late answer is read as a refusal first and the
+reader is put back on their day; when a month is drawn afterwards, whichever month it is, the focus
+goes to the same day number in it. Without that the new cells would replace the one the focus was on
+and the focus would fall to the document body, which no key can recover from.
 
 **It never takes the focus from somewhere the reader chose.** A month arriving moves the focus only
-when nothing in the document holds it and this grid is where it was. That move passes
-`preventScroll`, because it is the one focus change the calendar makes on its own.
+when nothing in the document holds it and this grid is where it was; a reader who has blurred,
+tabbed away or moved to another control keeps their place, and the month changes under a calendar
+they are no longer in. That move is also the one focus change the calendar makes on its own
+initiative rather than in answer to a key pressed inside the grid, so it passes `preventScroll`:
+scrolling the page to a calendar nobody is looking at is not something to do unasked.
 
-**A burst of presses travels further at a fast owner than at a slow one.** Each press asks for the
-month after the one the cursor is in. An owner that answers before the next key arrives (in the
-same render, or on a microtask) lets presses add up: two Page Downs move two months. An owner that
-answers later has had the first press read as a refusal, so two Page Downs move one month, and
-Page Down then Page Up leaves the reader one month before where they started. The calendar cannot
-tell a slow yes from a no; rewinding keeps the cursor and the focus on the same day, which is the
-cheaper mistake.
+**A burst of presses travels further at a fast owner than at a slow one, and this is a trade.**
+Every press asks for the month after the one the _cursor_ is in, and the cursor is wherever the
+last press left the reader. What a burst does therefore depends on whether the owner has answered
+by the time the next key arrives, and both of the catalogue's late owners are reachable from the
+card:
 
-`pages/checks/system.ts` holds every rule above against two catalogue cards: an owner that refuses
-every month change, and one that answers late, on a timer or on a microtask.
+- **An owner that answers before the next key is delivered** — in the render the call triggers, or on a
+  microtask — has moved the reader before the next key is delivered, so the presses accumulate:
+  two Page Downs move two months, three move three, and Page Down then Page Up brings the reader
+  back to the month they started on.
+- **An owner that answers later than that** has not, so its press has already been read as a
+  refusal and the cursor rewound to the day on screen. The next press is asked from there and asks
+  for the same month again: two Page Downs move **one** month and so do three, and Page Down then
+  Page Up leaves the reader **one month before** the month they started on, because the calendar
+  asked for the month after and then for the month before, in that order, and the owner drew both.
 
-**The roving tabindex is applied by an effect, not rendered.** A page that has not hydrated keeps
-the natural tab order, since nothing would answer the arrow keys.
+Every press is delivered and every press is answered either way; what changes is how far the burst
+travels, and the focus always lands on the same day number in whatever month ends up on screen.
 
-A day that cannot be picked is still focusable, and its accessible name is the reason:
+**Why it is that way.** The rewind is what the refusal handling _is_: the calendar cannot tell a
+slow yes from a no, so it assumes a no and puts the reader back where they were, cursor and focus
+together. Keeping the cursor in the month the press asked for would make a burst travel a month per
+press again, at the cost of a cursor sitting in a month nothing is drawing while the focus is on a
+day of the month that is — the two disagreeing about where the reader is, which is the defect this
+whole section exists to remove. A burst that travels less far is the cheaper mistake, and it is the
+one that was chosen.
+
+**What holds all of this.** Every rule above is held by browser checks in `pages/checks/system.ts`,
+driven against two catalogue cards — one whose owner refuses every month change, one whose owner
+answers late, either on a timer or on a microtask as a reader picks. Removing any part of the
+handling turns at least one of them red. One case is measured rather than checked, and is written
+here for that reason: an owner that answers late with a month _nobody asked for_ — measured with a
+disposable owner that replies September to every request — lands the reader on 19 September when
+they pressed from the 19th, which is the first rule doing its job.
+
+**The roving tabindex is applied by an effect, not rendered.** Taking Tab away from twenty-eight
+cells is only safe once a key handler is there to give the movement back, so a page that has not
+hydrated — no JavaScript, or an embedded render — keeps the natural tab order it always had.
+
+A day that cannot be picked is still focusable and its accessible name is the reason it cannot be:
 `19 August 2026 — not available`. The reason is one of `past` (before `minDate`), `after` (after
-`maxDate`), `none-left` (`availableByDate` holds `0`; the cell is also struck through) and
-`unavailable` (the day is not in `availableByDate`). The cells before the 1st and after the last
-day are blank, and a week with no day of the month, such as the sixth week of most Februaries, is
-hidden as a whole row, since a `row` with no cell breaks the grid. The day number is written as the
-label writes it, `9` and not `09`. The same sentence shows under the grid while it has focus. The
-grid is a `grid` of `row`s and `gridcell`s named after its month.
+`maxDate`), `none-left` (`availableByDate` holds `0` for the day; the cell is also struck through)
+and `unavailable` (the day is not in `availableByDate`). The cells before the 1st and after the
+last day of the month are blank: a month shows no date of a neighbouring month, which would read
+as a day of this month that cannot be picked. A week with no day of the month at all, such as the
+sixth week of every February, is hidden as a whole row, since a
+`row` with no cell left in the accessibility tree breaks the grid. The day number is written as the
+label writes it, `9` and not `09`, so the name a reader hears contains the text they see. The
+same sentence is shown under the grid while it has focus, for the reader who has no screen reader
+to read the cell out and no mouse to hover a `title` with. The grid itself is a `grid` of `row`s
+and `gridcell`s named after the month it shows.
 
-These accessibility claims are read back from the DOM in headless Chromium; no screen reader has
-been run against them. The blank cells are kept out of the accessibility tree, so a row exposes
-fewer cells than `aria-colcount` says; `aria-colindex` keeps the columns numbered.
+**What that evidence is, and is not.** Every accessibility claim in this file is a claim about
+markup and focus order, read back from the DOM in headless Chromium by `pages/checks/system.ts`.
+No screen reader has been run against any of it. The one place where the markup and what a reader
+would actually hear can plausibly come apart is the decision below to keep the blank cells out of the
+accessibility tree: a row then exposes fewer cells than `aria-colcount` promises, and `aria-colindex`
+is there to keep the columns numbered, unverified by ear.
 
 ## The locale decides the week
 
@@ -2785,7 +2858,10 @@ the password in the address bar, in browser history and in every access log the 
 through, and the risk is not only a caller spelling `method="get"` on purpose: a card with
 callbacks and no `action` — the ordinary shape of a hydrated app, and the catalogue's own
 interactive card below — has no `method` attribute at all without an unconditional default, and a
-browser reads a form with no `method` as GET. `pages/checks/system.ts` disables script execution, loads the page fresh and presses Submit on exactly that card to prove the password stays out of the URL.
+browser reads a form with no `method` as GET. A visitor who submits in the gap between the page
+painting and hydration finishing, or with JavaScript off, sent the password into the URL under an
+earlier version of this component; `pages/checks/system.ts` disables script execution, loads the
+page fresh and presses Submit on exactly that card to prove it no longer does.
 
 **A busy submit calls no callback, including one started with `form.requestSubmit()`.** The submit
 handler checks `busy` before it picks a callback or reads a single field, and `requestSubmit()`
@@ -2912,7 +2988,10 @@ signal. None of the three is needed to open the panel or reach a link inside it.
 
 **The panel overlays the page instead of pushing it down.** Its content is positioned `absolute`
 against the `<header>` (`position: relative`), spanning the header's own width and left edge, rather
-than sitting in normal flow beside the menu button. A panel in flow would grow the header and shove `brand` and `actions` down when it opens; `pages/checks/system.ts` reads the header's own height and the brand's vertical position before the panel opens and asserts neither one moves once it does.
+than sitting in normal flow beside the menu button. A panel back in flow grows the header and shoves
+`brand` and `actions` down when it opens — the bug `pages/checks/system.ts`'s layout checks were
+written against, reading the header's own height and the brand's vertical position before the panel
+opens and asserting neither one moves once it does.
 
 **Closing for a click and closing for Escape return focus differently, on purpose.** Escape is the
 visitor asking the panel to close, so focus returns to the button that opened it. A link inside the
@@ -3215,17 +3294,25 @@ reads the same as one whose `id` was mistyped, rather than throwing either way.
   search engine nothing, and there is no origin this package could fall back to without inventing
   one. Credentials and a fragment are dropped rather than refused, because both are meaningless on
   a published address and the page behind them is perfectly real.
-- **Structured data cannot close its script tag.** `jsonLdText` escapes `<`, so a `</script>` in
-  the page title, in the caller's own JSON-LD entities or in a crumb name stays text.
-- **Timezone-free grid arithmetic.** An ISO date carries no zone, so day steps in UTC cannot drift across a
+- **The structured-data escaping was left exactly as it was.** `jsonLdText` escapes `<` to
+  `<`, and it was attacked with `</script>` payloads in the page title, in the caller's own
+  JSON-LD entities and in a crumb name. The rendered markup kept exactly one opening and one
+  closing script tag every time. There was nothing to fix, so nothing was changed.
+- **Timezone-free grid arithmetic.** A source application did its day maths and weekday lookups
+  through a host timezone module. An ISO date carries no zone, so day steps in UTC cannot drift across a
   DST boundary and a weekday computed in UTC is the same weekday everywhere. A `timeZone` prop
-  exists for the one question that genuinely needs it — which date is _today_ — plus an
+  survives for the one question that genuinely needs it — which date is _today_ — plus an
   injectable `today` for deterministic renders.
 - **No `Nav`, `Auth`, `Menu`, `Header`, `ProfileDropdown`, `LeadForm` or `NewsletterForm`.** Each
-  one is in the table below with a reason. `ImageGallery` is in `ui/`.
-- **A month anchor the calendar does not have is refused, not clipped.** `2026-02-30` throws
-  rather than drawing March, as the helpers refuse `10/08/2026`: a caller who computed an
-  impossible date is better told than quietly agreed with. A time zone the platform cannot resolve is the opposite case and gets
+  one is in the table below with a reason. `Shell` (#135) and `StateInit` are built as of this
+  package's own commit — see their sections above — and are no longer in that table.
+  `ImageGallery` was in it too, and is no longer: it is built, in `ui/` rather than here — see
+  `ui/README.md`'s `ImageGallery` section.
+- **A month anchor the calendar does not have is refused, not clipped.** `Date.parse` rolled
+  `2026-02-30` over into 2 March and said nothing, so the grid drew a month its caller never asked
+  for. Clipping to 28 February would have been the other defensible answer; refusing is what the
+  helpers already do for `10/08/2026`, and a caller who computed an impossible date is better told
+  than quietly agreed with. A time zone the platform cannot resolve is the opposite case and gets
   the opposite answer: which zones exist is a property of the build's `Intl` data rather than of the
   caller's code, so an unknown one falls back to UTC instead of throwing out of the render.
 
@@ -3338,11 +3425,17 @@ The module imports nothing, `@playwright/test` included, so this package pins no
 
 ## Not in this package
 
-| Left out                            | Why                                                                                                                                                                          |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. Their dual-mode contract and accessibility fixes are in `Calendar`. |
-| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                            |
-| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                        |
+| Left out                            | Why                                                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Menu`, `Header`, `ProfileDropdown` | Two source implementations of the same responsive header, both shaped around one app's markup and brand. The pieces worth keeping are the dual-mode contract and the a11y fixes, which landed in `Calendar`. |
+| `LeadForm`, `NewsletterForm`        | Form chrome whose anti-bot fields (honeypot, page-load timestamp) and success states the host must render itself.                                                                                            |
+| `themeBootstrapScript()`            | The FOUC-free inline `<head>` script belongs with `ts-libs`, next to the other head-platform helpers.                                                                                                        |
+
+The source applications' own `Shell`/`Nav` and `StateInit` used to be in this table too: each read
+straight out of a global app store, hardcoded a brand string or an env key, and one ran an `effect()`
+at import time. Props-and-ports conversion for those was a redesign, not a port — `AuthForm` needed
+the same redesign and got it first. `Shell` (#135) and `StateInit` are that redesign, and their own
+sections above describe what changed.
 
 ## Offline sync and install
 
@@ -3533,8 +3626,8 @@ replace: `SWUpdater`'s listeners are driven by a fake registration, its registra
 container through `startUpdates`, and `resolveImage` by an element stub. No jsdom, and no request
 that a test not exist for a branch that only a browser reaches.
 
-What a fake cannot prove is that the component finds a real browser's container at all. The proof
-lives in `pages/checks/system.ts` and
+What a fake cannot prove is that the component finds a real browser's container at all — which is
+exactly the bug every fake here was blind to. The proof lives in `pages/checks/system.ts` and
 runs under `deno task --cwd pages verify`: headless Chromium registers the demo worker, a second
 script at the same scope leaves a worker waiting, and the bar has to appear.
 
@@ -3790,12 +3883,18 @@ order, the theme buttons, the placeholder, the absence of a top bar, and every l
 ## `RailShell`, kept for the move
 
 `RailShell` is `<Rail variant="icons">` under its earlier name: `sidebarTop` and `sidebarBottom` are
-`top` and `bottom`, and their place, `RailShellSidebarPlace`, is `"rail"` or `"overlay"` (the
-sheet). It keeps the `rail-shell-*` test hooks, which `Rail` draws too, so an app's page objects
-keep working; it has no `header` slot and no `rail-shell-header` hook, and its height is
-`--rail-height`. `tabBarSlots` keeps the primary action in the tab bar's centre slot, and the items
-give way when they overflow. App code draws `AppShell`; the boundary rule fails a
+`top` and `bottom`, and their place is `"rail"` or `"overlay"` (the sheet). It keeps the
+`rail-shell-*` test hooks, which `Rail` draws too, so an app's page objects keep working. The
+240 px labelled sidebar from `lg`, the current entry's left bar and the `header` slot are gone, and
+`--rail-shell-height` is now `--rail-height`. App code draws `AppShell`; the boundary rule fails a
 test that imports `RailShell` (see "The screen boundary rule").
+
+Three more breaking changes since 6.x:
+
+- `RailShellSidebarPlace` loses `"sidebar"` with the 240 px sidebar: it is `"rail" | "overlay"`.
+- `tabBarSlots` puts the primary action in the bar's centre slot. In 6.x it went first under More
+  whenever the entries overflowed the bar; now it always keeps a tab, and the items give way.
+- The `rail-shell-header` test hook is gone with the `header` slot.
 
 ---
 
@@ -4773,7 +4872,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                                                                                                                                                  |
 | `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                                                                                                                                                |
-| `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`                                                                                                                                                                                                                                                   |
+| `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link)                                                                                                                                                                                                                                                                |
 | `BrandMark`           | `brand-mark`           | `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header                                                                                                                                                                                                |
 | `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                  |
 | `Card`                | `card`                 | `children`, `class` — a bordered surface; forwards `ref` to its `<div>`                                                                                                                                                                                                                                                                       |
@@ -4812,7 +4911,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; touch or mouse drag, and keyboard moves                                                                                                                                                                                          |
 | `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                                                                                                                      |
 | `Link`                | `link`                 | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                                                                                                                                                                         |
-| `LoadingSkeleton`     | `loading-skeleton`     | `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion                                                                                                                                                                                                                         |
+| `LoadingSkeleton`     | `loading-skeleton`     | `rows`; the pulse stops under reduced motion                                                                                                                                                                                                                                                                                                  |
 | `LoadingSpinner`      | `loading-spinner`      | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion                                                                                                                                                                                                                      |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                                                                                                                                                                        |
 | `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                                                                                   |
@@ -5759,12 +5858,12 @@ string for a key of `labels` makes the region say nothing in that status, and
 — the server's error, say — is the only message. The region still renders, empty, and still takes
 focus when the visitor's submit button is disabled under them.
 
-A form built on this can carry a honeypot from `honeypot`: `honeypotField(name?, label?)` renders
-an off-screen field simple bots fill in. Its server half comes from
-`@spy4x/platform/universal/honeypot`: `HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a
-browser's own autofill heuristics reach for) names the field and is `name`'s default, and
-`honeypotFilled(formData)` reads it back, in the page or in the handler a no-JavaScript post
-reaches. A submit whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
+A form built on this can carry a honeypot from `honeypot`: `honeypotField` renders an off-screen
+field simple bots fill in. Its server half comes from `@spy4x/platform/universal/honeypot`:
+`HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a browser's own autofill heuristics reach
+for) names the field, and `honeypotFilled(formData)` reads it back, in the page or in the handler a
+no-JavaScript post reaches. A submit
+whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
 caught only teaches it which field to leave alone next time.
 
 ## Lightbox
@@ -7091,12 +7190,6 @@ The `Button` card's "Save" demo uses it.
   removal still runs; never later. When `removingId` clears first and the list is loaded again a
   render afterwards, the hook has stopped waiting and focus falls to the body. A row that leaves
   early moves focus once, when it leaves, and the end of its request moves nothing more.
-- `useFocusFallback(container, fallback)` keeps focus on the page when the focused control inside
-  `container` leaves it, or the whole container leaves: when focus was inside before a render and
-  is on the body after it, it focuses `fallback()`, in a layout effect so focus never rests on the
-  body. Focus the person moved elsewhere is left alone, and `fallback()` may return `null` to move
-  nothing. On unmount with focus inside, it focuses `fallback()` unless that is inside the leaving container, also when the container was first drawn after the mount. `InstallPrompt`, `PushSettings`, `SyncStatus` and `ConflictChooser` in
-  `@spy4x/preact-system` use it.
 
 A row that confirms its removal in a dialog uses all three with `ConfirmDialog` and `ErrorState`:
 
@@ -7575,6 +7668,11 @@ where a later position utility wins).
 entry — and renders every glyph with a live name filter and click-to-copy of `<IconName />`. A new
 icon is in the catalogue the moment it is exported. `icons.test.tsx` matches the rendered
 `data-icon` attributes against the icon module's own exports, so the gallery cannot fall behind it.
+
+The one list is `DEPRECATED_ICON_NAMES`: the old names the icon package still exports as second
+names of a kept glyph. The gallery shows each glyph once, under the name to use, lists the old names
+under the grid (`labels.deprecated` leads that line), and a search for an old name finds the glyph
+to use. `icons.test.tsx` fails when two exports share a component and the pair is not listed.
 
 The clipboard goes through the `copy` port, which falls back to `copyToClipboard` from
 `@spy4x/platform/browser/clipboard` so the legacy `execCommand` path is not reimplemented here.
