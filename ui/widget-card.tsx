@@ -105,7 +105,8 @@ export function WidgetCard(
   }
 
   return (
-    <section
+    <div
+      role="group"
       aria-labelledby={headingId}
       aria-busy={status === "loading" ? "true" : undefined}
       data-e2e={dataE2E}
@@ -155,7 +156,7 @@ export function WidgetCard(
           ? <p class="flex flex-1 items-center text-sm text-muted">{emptyLabel}</p>
           : children}
       </div>
-    </section>
+    </div>
   )
 }
 

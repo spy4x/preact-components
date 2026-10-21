@@ -19,10 +19,10 @@ const card = (props: Partial<Parameters<typeof WidgetCard>[0]> = {}) =>
   )
 
 describe("WidgetCard", () => {
-  it("names its region by its heading and draws the widget when ready", () => {
+  it("names its card by its heading and draws the widget when ready", () => {
     const html = card({ caption: "Last 30 days" })
     expect(html).toMatch(
-      /<section aria-labelledby="(widget-[^"]+)"[^>]*><div[^>]*><div[^>]*><h2 id="\1"/,
+      /<div role="group" aria-labelledby="(widget-[^"]+)"[^>]*><div[^>]*><div[^>]*><h2 id="\1"/,
     )
     expect(html).toContain(">31</p>")
     expect(html).toContain('<p class="text-sm text-muted">Last 30 days</p>')
