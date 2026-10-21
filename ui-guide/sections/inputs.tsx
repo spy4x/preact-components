@@ -1368,6 +1368,12 @@ export const inputDemos = {
         description: "The words the hint shows for a key; see `KBD_LABELS`.",
       },
       {
+        name: "keyshortcuts",
+        type: "string[]",
+        description:
+          "Keys the app binds itself to the same action, such as `?`: announced in `aria-keyshortcuts`, the first shown as the hint, none bound by the item.",
+      },
+      {
         name: "checked",
         type: "boolean",
         description:

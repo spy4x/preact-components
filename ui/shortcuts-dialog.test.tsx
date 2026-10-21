@@ -51,6 +51,22 @@ describe("ShortcutsDialog", () => {
     expect(html).toContain(">Allgemein</h3>")
   })
 
+  it("draws the footer below the list, in the dialog's footer", () => {
+    const html = render(
+      <ShortcutsDialog
+        open
+        onClose={() => {}}
+        shortcuts={shortcuts}
+        footer={<p>Shortcuts don't work while you type.</p>}
+      />,
+    )
+    expect(html).toMatch(
+      /<\/dl>.*<footer[^>]*><p>Shortcuts don(&#39;|')t work while you type.<\/p><\/footer>/s,
+    )
+    expect(render(<ShortcutsDialog open onClose={() => {}} shortcuts={shortcuts} />))
+      .not.toContain("<footer")
+  })
+
   it("lists each described shortcut as a term and its keys", () => {
     const html = render(
       <ShortcutsDialog open onClose={() => {}} shortcuts={shortcuts} apple={false} />,
