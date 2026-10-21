@@ -1,10 +1,10 @@
 /**
- * A page that renders `Map` on the server and hydrates it in the browser, outside the catalogue.
+ * A page that renders `LeafletMap` on the server and hydrates it in the browser, outside the catalogue.
  *
- * `Map` is published as server-renderable: its box, credit line and list of places are in the
+ * `LeafletMap` is published as server-renderable: its box, credit line and list of places are in the
  * served markup, and Leaflet mounts into that box once the component hydrates. The catalogue cannot
- * show this any more, because it reaches `Map` through a lazy loader (`ui-guide/sections/
- * map-leaflet.tsx`) and so renders only a placeholder on the server. This page imports `Map`
+ * show this any more, because it reaches `LeafletMap` through a lazy loader (`ui-guide/sections/
+ * map-leaflet.tsx`) and so renders only a placeholder on the server. This page imports `LeafletMap`
  * directly: `pages/build.ts` prerenders {@link MapPage} into `map-demo/index.html` and bundles
  * `./+main.tsx`, which hydrates the same component, and `pages/checks/map.ts` proves Leaflet mounts
  * into the very box the server rendered.
@@ -13,7 +13,7 @@
  * nothing from past the preview server either.
  */
 
-import { Map } from "@spy4x/preact-map"
+import { LeafletMap } from "@spy4x/preact-map"
 import type { MapMarker } from "@spy4x/preact-map"
 import { useEffect } from "preact/hooks"
 import type { JSX } from "preact"
@@ -33,14 +33,14 @@ export const MAP_PAGE_MARKERS: MapMarker[] = [
  */
 export const SERVED_BOX_GLOBAL = "servedMapBox"
 
-/** The hydrated part of the page: one `Map`, and the boot marker the check waits for. */
+/** The hydrated part of the page: one `LeafletMap`, and the boot marker the check waits for. */
 export function MapPage(): JSX.Element {
   useEffect(() => {
     document.documentElement.dataset.hydrated = "true"
   }, [])
 
   return (
-    <Map
+    <LeafletMap
       center={{ lat: 51, lng: 10 }}
       zoom={5}
       markers={MAP_PAGE_MARKERS}

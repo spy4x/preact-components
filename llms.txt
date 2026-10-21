@@ -222,7 +222,8 @@ IconWrench	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "w
 IconXMark	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconYouTube	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "youtube" from simple-icons@16.33.0 (#233).
 IconZap	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "zap" exactly.
-Map	component	@spy4x/preact-map	See this file's own doc.
+LeafletMap	component	@spy4x/preact-map	See this file's own doc.
+Map	component	@spy4x/preact-map	Deprecated: Use `LeafletMap`; `Map` shadows the built-in `Map` in every file that imports it. The former name of `LeafletMap`, the same component.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.

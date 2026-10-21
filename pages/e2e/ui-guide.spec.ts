@@ -129,7 +129,7 @@ const READY: Partial<Record<GuidePageId, (page: Page) => Promise<unknown>>> = {
   // tile on the preview server, so the tiles load with no network.
   map: (page) =>
     page.waitForFunction(() => {
-      const tiles = [...document.querySelectorAll("#demo-Map img.leaflet-tile")]
+      const tiles = [...document.querySelectorAll("#demo-LeafletMap img.leaflet-tile")]
       return tiles.length > 0 && tiles.every((tile) =>
         tile.classList.contains("leaflet-tile-loaded") && getComputedStyle(tile).opacity === "1"
       )
@@ -144,7 +144,7 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
   // The Map's credit line is opaque and lies over tiles Leaflet blends with `plus-lighter`. axe
   // 4.13 has no formula for that blend mode: it throws on this one element and then reports no
   // contrast for the whole page. `map.spec.ts` measures the line with the tiles kept away.
-  map: '#demo-Map [data-e2e="map-attribution"]',
+  map: '#demo-LeafletMap [data-e2e="map-attribution"]',
 }
 
 /** The rule a page's scan is split on: it takes about half the time of the whole scan. */

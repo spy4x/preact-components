@@ -134,7 +134,7 @@ function findRootMargins(
 const NOT_RENDERED_ON_THE_SERVER: Record<string, string> = {
   "ui/Modal": "its demo mounts the dialog only after a click opens it",
   "ui/ConfirmDialog": "its demo mounts the dialog only after a click opens it",
-  "map/Map": "the guide loads the Leaflet island only in the browser",
+  "map/LeafletMap": "the guide loads the Leaflet island only in the browser",
   "system/SEOHead": "its card prints the tag data instead of rendering a second <title>",
   "system/UnsentChangesDialog": "its demo mounts the dialog only after a click opens it",
 }

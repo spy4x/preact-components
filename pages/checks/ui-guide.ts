@@ -387,7 +387,7 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "for a phone's 280 px axis, and the browser measures the real axis and picks again, so a " +
       "wider card shows more dates; each of the card's three charts has one such label row",
   },
-  "demo-Map": {
+  "demo-LeafletMap": {
     selector: `[data-e2e="map-slot"]`,
     parts: 1,
     reason: "@spy4x/preact-map, and Leaflet with it, loads when the map page opens: the served " +

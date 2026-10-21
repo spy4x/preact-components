@@ -1,5 +1,5 @@
 /**
- * `Map` — markers on a Leaflet tile layer, with a plain-text list of the same places beside it.
+ * `LeafletMap` — markers on a Leaflet tile layer, with a plain-text list of the same places beside it.
  *
  * **Server-renderable.** Leaflet touches `window` the moment it is imported (issue #143), so nothing
  * here imports it at module scope: the mount effect below loads it with a dynamic `import()`, which
@@ -63,7 +63,7 @@ import type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 
 export type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 
-export interface MapProps {
+export interface LeafletMapProps {
   /** Point the map centres on. */
   center: MapCenter
   /** Leaflet zoom level. */
@@ -119,7 +119,7 @@ export interface MapProps {
   onLoadError?: (error: unknown) => void
 }
 
-/** {@link MapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
+/** {@link LeafletMapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
 function logLoadError(error: unknown): void {
   console.error("@spy4x/preact-map: Leaflet failed to load", error)
 }
@@ -132,7 +132,7 @@ const BOX_BASE =
   "relative overflow-hidden rounded-primary border border-subtle bg-canvas dark:bg-surface"
 
 /** See this file's own doc. */
-export function Map(
+export function LeafletMap(
   {
     center,
     zoom,
@@ -148,7 +148,7 @@ export function Map(
     zoomInLabel = "Zoom in",
     zoomOutLabel = "Zoom out",
     onLoadError = logLoadError,
-  }: MapProps,
+  }: LeafletMapProps,
 ): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<LeafletMapHandle | null>(null)
@@ -235,3 +235,18 @@ export function Map(
     </div>
   )
 }
+
+/**
+ * The former name of {@link LeafletMap}, the same component.
+ *
+ * @deprecated Use `LeafletMap`; `Map` shadows the built-in `Map` in every file that imports it.
+ * Removed in the next major.
+ */
+export const Map: typeof LeafletMap = LeafletMap
+
+/**
+ * The former name of {@link LeafletMapProps}.
+ *
+ * @deprecated Use `LeafletMapProps`. Removed in the next major.
+ */
+export type MapProps = LeafletMapProps
