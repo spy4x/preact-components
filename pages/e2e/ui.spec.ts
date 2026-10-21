@@ -838,8 +838,9 @@ function themePreviewSpecs(): Spec[] {
 }
 /**
  * `ColorField`: round swatches on native radios. Arrow keys move the choice within one tab stop,
- * "Custom" shows a colour input and a hex field that Tab reaches, a valid hex reaches the caller and
- * an invalid one shows the error instead, and axe passes in both palettes.
+ * "Custom" shows a colour input and a hex field that Tab reaches, a valid hex reaches the caller in
+ * lower case and an invalid one shows the error instead, a value changed from outside moves the
+ * choice off Custom, and axe passes in both palettes.
  */
 function colorFieldSpecs(): Spec[] {
   const card = (page: Page) => page.locator("#demo-ColorField")
@@ -857,9 +858,12 @@ function colorFieldSpecs(): Spec[] {
     )
   /** Clicks the Custom swatch, as a person does, and waits for its radio to be checked. */
   const openCustom = async (page: Page) => {
-    await card(page).getByTitle("Pick a custom colour").click()
+    await group(page).getByTitle("Pick a custom colour").click()
     await radio(page, "Pick a custom colour", true).waitFor()
   }
+  /** Waits for the demo to show this as the value `onChange` last handed it. */
+  const storedIs = (page: Page, text: string) =>
+    card(page).locator(`[data-e2e="color-field-value"]`).getByText(text, { exact: true }).waitFor()
   return [
     {
       name:
@@ -874,13 +878,13 @@ function colorFieldSpecs(): Spec[] {
         await radio(page, "Sky", false).waitFor()
         await chipIs(page, "rgb(29, 78, 216)")
 
-        const hex = card(page).getByRole("textbox", { name: "Hex code" })
+        const hex = group(page).getByRole("textbox", { name: "Hex code" })
         if (await hex.count() !== 0) throw new Error("the hex field shows before Custom is chosen")
         await radio(page, "Gray").focus()
         await page.keyboard.press("ArrowLeft")
         await radio(page, "Pick a custom colour", true).and(focused).waitFor()
         await page.keyboard.press("Tab")
-        await card(page).getByLabel("Colour picker").and(focused).waitFor()
+        await group(page).getByLabel("Colour picker").and(focused).waitFor()
         await page.keyboard.press("Tab")
         await hex.and(focused).waitFor()
         const shown = await hex.inputValue()
@@ -890,35 +894,53 @@ function colorFieldSpecs(): Spec[] {
     },
     {
       name:
-        "ColorField: a typed or picked hex reaches onChange; an invalid one shows the error on blur and does not",
+        "ColorField: a typed or picked hex reaches onChange in lower case; an invalid one shows the error on blur and does not",
       pageId: "ui",
       run: async (page) => {
         await openCustom(page)
-        const hex = card(page).getByRole("textbox", { name: "Hex code" })
+        const hex = group(page).getByRole("textbox", { name: "Hex code" })
         await hex.fill("#59168B")
         await chipIs(page, "rgb(89, 22, 139)")
+        await storedIs(page, "#59168b")
 
         await hex.fill("#12")
         await hex.blur()
-        const error = card(page).getByText("Enter # and 6 characters, such as #59168b.")
+        const error = group(page).getByText("Enter # and 6 characters, such as #59168b.")
         await error.waitFor()
         await hex.and(page.locator(`[aria-invalid="true"]`)).waitFor()
         await chipIs(page, "rgb(89, 22, 139)")
 
-        await card(page).getByLabel("Colour picker").fill("#123456")
+        await group(page).getByLabel("Colour picker").fill("#123456")
         await chipIs(page, "rgb(18, 52, 86)")
         await error.waitFor({ state: "detached" })
         const shown = await hex.inputValue()
         if (shown !== "#123456") throw new Error(`the hex field shows ${shown} after a pick`)
       },
     },
+    {
+      name:
+        "ColorField: a value the caller changes from outside to a preset checks that preset, unchecks Custom and hides the hex field",
+      pageId: "ui",
+      run: async (page) => {
+        await openCustom(page)
+        await group(page).getByRole("textbox", { name: "Hex code" }).fill("#59168b")
+        await storedIs(page, "#59168b")
+        await card(page).getByRole("button", { name: "Reset to Sky" }).click()
+        await storedIs(page, "#0369a1")
+        await radio(page, "Sky", true).waitFor()
+        await radio(page, "Pick a custom colour", false).waitFor()
+        await group(page).getByRole("textbox", { name: "Hex code" }).waitFor({ state: "detached" })
+      },
+    },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
-      name: `ColorField: axe finds no violation on the swatches and the hex field, ${colorScheme}`,
+      name:
+        `ColorField: axe finds no violation on the swatches, the hex field and the None swatch, ${colorScheme}`,
       pageId: "ui",
       colorScheme,
       run: async (page) => {
         await openCustom(page)
-        await card(page).getByRole("textbox", { name: "Hex code" }).waitFor()
+        await group(page).getByRole("textbox", { name: "Hex code" }).waitFor()
+        await card(page).getByRole("radio", { name: "No group colour", checked: true }).waitFor()
         return await axePasses(page, ["#demo-ColorField"])
       },
     })),
