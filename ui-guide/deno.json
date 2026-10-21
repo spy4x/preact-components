@@ -6,20 +6,9 @@
     "./registry": "./registry.ts",
     "./routes": "./routes.ts"
   },
-  "imports": {
-    // `coverage.ts` reads each package's `exports` out of its `deno.json`, and Deno writes those
-    // configs with comments. Declared here rather than in the root map because nothing else in the
-    // workspace parses a config, and `coverage.ts` is not one of this package's published exports —
-    // `publish.exclude` below drops both it and its test, so this specifier serves no module the
-    // published package ships, only `coverage.ts`/`coverage.test.ts` running locally out of this
-    // repository. It stays in the shipped `deno.json` anyway: Deno resolves `coverage.ts`'s import
-    // through this file at test time, and `deno.json`'s `imports` block cannot be excluded on its
-    // own the way a file can — the manifest ships whole, or not at all.
-    "@std/jsonc": "jsr:@std/jsonc@1.0.2"
-  },
   "publish": {
-    // `coverage.ts` is this repository's own consistency check (see the `imports` comment above: it
-    // is "not one of this package's published exports") and its dynamic `import(href)` — needed to
+    // `coverage.ts` is this repository's own consistency check, not one of this package's published
+    // exports, and its dynamic `import(href)` — needed to
     // read a sibling package's subpath modules by a computed URL — is exactly what
     // `unanalyzable-dynamic-import` warns about; a published consumer never reaches it. The rest are
     // this package's own `*.test.*` suites, none reachable from `exports`, matched by glob so a new
@@ -28,6 +17,9 @@
       "**/*.test.ts",
       "**/*.test.tsx",
       "coverage.ts",
+      // `registry-props.test.ts`'s reader of `deno doc` output: a check of this repository, like
+      // `coverage.ts`, importing the repository's scripts outside this package.
+      "registry-props.ts",
       // `coverage.test.ts`'s fixture package: a barrel, a subpath component and three configs.
       "testdata/"
     ]

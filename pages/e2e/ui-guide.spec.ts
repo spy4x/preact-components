@@ -393,6 +393,7 @@ export const specs: readonly Spec[] = [
     guidePageIds.map((pageId) => hoverSpec(pageId, palette))
   ),
   drawerNavigationFocusSpec(),
+  cardRowHeightsSpec(),
 ]
 
 /**
@@ -423,6 +424,39 @@ function drawerNavigationFocusSpec(): Spec {
           document.activeElement?.outerHTML.slice(0, 120) ?? "nothing"
         )
         throw new Error(`after the drawer closed, focus is on ${focused}`)
+      }
+    },
+  }
+}
+
+/**
+ * Two cards side by side in the guide's grid are drawn at one height, so a short demo next to a
+ * tall one leaves no ragged edge. It replaces the string check in `ui-guide/shell.test.tsx`, which
+ * only proved the grid had no `items-start` class.
+ */
+function cardRowHeightsSpec(): Spec {
+  return {
+    name: "Guide shell: the cards of one grid row are drawn at the same height",
+    pageId: "charts",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const boxes = await page.locator(`article[id^="demo-"]`)
+        .evaluateAll((cards) =>
+          cards.map((card) => {
+            const { top, height } = card.getBoundingClientRect()
+            return { id: card.id, top: Math.round(top), height: Math.round(height) }
+          })
+        )
+      const rows = new Map<number, typeof boxes>()
+      for (const box of boxes) rows.set(box.top, [...(rows.get(box.top) ?? []), box])
+      const shared = [...rows.values()].filter((row) => row.length > 1)
+      if (shared.length === 0) {
+        throw new Error(`no two cards share a row at 1440 px: ${JSON.stringify(boxes)}`)
+      }
+      for (const row of shared) {
+        if (new Set(row.map((box) => box.height)).size > 1) {
+          throw new Error(`cards in one row differ in height: ${JSON.stringify(row)}`)
+        }
       }
     },
   }

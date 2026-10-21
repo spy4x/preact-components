@@ -27,7 +27,7 @@
 import { Scanner } from "@tailwindcss/oxide"
 import { __unstable__loadDesignSystem } from "tailwindcss"
 import { fileURLToPath } from "node:url"
-import { stripJsonc } from "../infra/scripts/export-lists.ts"
+import { memberConfig, readConfig, workspaceMembers } from "../infra/scripts/workspace.ts"
 import { stylesheetLoader } from "./integration/load-stylesheet.ts"
 
 /** The Tailwind version the root import map pins; the stylesheets are resolved at it. */
@@ -58,7 +58,7 @@ interface SourceEntry {
 /**
  * The directories of every published package except this one.
  *
- * A published package is a top-level directory whose `deno.json` has a `name` (`pages/` has
+ * A published package is a workspace member whose `deno.json` has a `name` (`pages/` has
  * none). `theme/` itself is left out: its classes are defined in its CSS, and scanning it would
  * scan the generated list too.
  *
@@ -66,18 +66,11 @@ interface SourceEntry {
  */
 export async function publishedPackages(): Promise<{ id: string; exclude: string[] }[]> {
   const packages: { id: string; exclude: string[] }[] = []
-  for await (const entry of Deno.readDir(ROOT)) {
-    if (!entry.isDirectory || entry.name === "theme") continue
-    let text: string
-    try {
-      text = await Deno.readTextFile(new URL(`${entry.name}/deno.json`, ROOT))
-    } catch (error) {
-      if (error instanceof Deno.errors.NotFound) continue
-      throw error
-    }
-    const config = JSON.parse(stripJsonc(text))
+  for (const id of await workspaceMembers()) {
+    if (id === "theme") continue
+    const config = await readConfig(await memberConfig(id))
     if (!config.name) continue
-    packages.push({ id: entry.name, exclude: config.publish?.exclude ?? [] })
+    packages.push({ id, exclude: config.publish?.exclude ?? [] })
   }
   return packages.sort((a, b) => a.id.localeCompare(b.id))
 }
@@ -90,8 +83,29 @@ function excludePattern(pattern: string): string {
   return pattern.endsWith("/") ? `${pattern}**/*` : pattern
 }
 
+/** A `//` comment that opens its line, or a `/* *\/` block whose `/*` opens its line (after `{` in JSX). */
+const LEADING_COMMENT = /^([ \t]*)(\/\/[^\n]*|\{?\/\*[\s\S]*?\*\/)/gm
+
 /**
- * Scan every published package's shipped `.ts`/`.tsx` files.
+ * A source with every comment that opens its line blanked out, so a class a JSDoc only mentions is
+ * not scanned as one a component renders. Each comment character becomes a space and every line
+ * break is kept, so the scanner sees the code where it was.
+ *
+ * It fails closed: a comment after code on its line (`f() // grow`) is kept, so text is never lost
+ * to a misread string, template literal or regular expression. The one way it drops text is a line
+ * inside a multi-line string or template literal that itself starts with `//` or `/*`.
+ *
+ * @param source A `.ts` or `.tsx` module's text.
+ */
+export function stripComments(source: string): string {
+  return source.replace(
+    LEADING_COMMENT,
+    (_, indent: string, comment: string) => indent + comment.replace(/[^\n]/g, " "),
+  )
+}
+
+/**
+ * Scan every published package's shipped `.ts`/`.tsx` files, comments left out.
  *
  * @returns Every candidate the scanner reports, unfiltered.
  */
@@ -104,7 +118,13 @@ export async function scanCandidates(): Promise<string[]> {
       sources.push({ base, pattern: excludePattern(pattern), negated: true })
     }
   }
-  return new Scanner({ sources }).scan()
+  const files = new Scanner({ sources }).files
+  if (files.length === 0) throw new Error("the scanner found no published source file")
+  const contents = await Promise.all(files.map(async (file) => ({
+    content: stripComments(await Deno.readTextFile(file)),
+    extension: file.slice(file.lastIndexOf(".") + 1),
+  })))
+  return new Scanner({}).scanFiles(contents)
 }
 
 /**

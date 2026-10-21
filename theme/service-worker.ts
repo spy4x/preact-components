@@ -24,7 +24,7 @@ export async function buildIdOf(files: ReadonlyMap<string, Uint8Array>): Promise
   const encoder = new TextEncoder()
   const parts: Uint8Array[] = []
   for (const path of [...files.keys()].sort()) {
-    parts.push(encoder.encode(`${path}\0`), files.get(path)!, encoder.encode(`\0`))
+    parts.push(encoder.encode(`${path}\0`), files.get(path)!, encoder.encode("\0"))
   }
   const joined = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0))
   let offset = 0
@@ -32,8 +32,8 @@ export async function buildIdOf(files: ReadonlyMap<string, Uint8Array>): Promise
     joined.set(part, offset)
     offset += part.length
   }
-  const digest = new Uint8Array(await crypto.subtle.digest(`SHA-256`, joined))
-  return [...digest.slice(0, 6)].map((byte) => byte.toString(16).padStart(2, `0`)).join(``)
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", joined))
+  return [...digest.slice(0, 6)].map((byte) => byte.toString(16).padStart(2, "0")).join("")
 }
 
 /** The part of a directory entry {@link ServiceWorkerOptions.readDir} yields. */
@@ -68,7 +68,7 @@ export interface ServiceWorkerOptions {
 }
 
 /** The build id the worker gets from the dev server, where there is no build to hash. */
-const DEV_BUILD_ID = `dev`
+const DEV_BUILD_ID = "dev"
 
 /** Every file below `dir` except `skip`, keyed by its path relative to `base`. */
 async function readFiles(
@@ -94,7 +94,8 @@ async function readFiles(
  * their files are in the hash whatever the plugin order. A failed app build never reaches
  * `writeBundle`, so it builds no worker and the app build's own error is the one reported. With
  * several environments, the worker goes into the output folder of the environment whose bundle was
- * written (Vite 6+).
+ * written (Vite 6+). A build with `build.write: false` writes nothing, so it calls no
+ * `writeBundle`; the plugin throws for it rather than build no worker.
  *
  * The dev server serves the same worker from memory at `/<fileName>` (under Vite's `base`), built
  * with the same settings, with `__BUILD_ID__` set to `"dev"` and `Cache-Control:
@@ -104,21 +105,21 @@ async function readFiles(
  * @param options See {@link ServiceWorkerOptions}.
  */
 export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
-  const fileName = options.fileName ?? `sw.js`
-  const buildIdName = options.buildIdName ?? `__BUILD_ID__`
-  let base = `/`
-  let root = ``
-  let outDir = ``
+  const fileName = options.fileName ?? "sw.js"
+  const buildIdName = options.buildIdName ?? "__BUILD_ID__"
+  let base = "/"
+  let root = ""
+  let outDir = ""
   /** The worker build's config: `out` adds output settings to the shared ones. */
   const config = (buildId: string, out: Record<string, unknown>) => ({
     configFile: false,
     publicDir: false,
-    logLevel: `warn`,
+    logLevel: "warn",
     plugins: options.plugins ?? [],
     define: { [buildIdName]: JSON.stringify(buildId) },
     build: {
       ...out,
-      lib: { entry: options.entry, formats: [`iife`], name: `sw`, fileName: () => fileName },
+      lib: { entry: options.entry, formats: ["iife"], name: "sw", fileName: () => fileName },
     },
   })
   /** Builds the worker in memory and returns its code. */
@@ -127,31 +128,40 @@ export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
     const outputs = (Array.isArray(result) ? result : [result]) as Array<{
       output?: Array<{ type: string; code?: string }>
     }>
-    const chunk = outputs[0]?.output?.find((file) => file.type === `chunk`)
-    if (!chunk?.code) throw new Error(`The worker build produced no script`)
+    const chunk = outputs[0]?.output?.find((file) => file.type === "chunk")
+    if (!chunk?.code) throw new Error("The worker build produced no script")
     return chunk.code
   }
   return {
-    name: `service-worker`,
+    name: "service-worker",
     configResolved: (resolved) => {
-      base = resolved.base ?? `/`
+      // `build.write: false` keeps the app build in memory, so Rollup never calls `writeBundle`
+      // and the worker would silently not be built.
+      if (resolved.command === "build" && (resolved.build as { write?: boolean }).write === false) {
+        throw new Error(
+          "serviceWorker builds the worker once Vite writes the app build, and build.write is " +
+            "false, so nothing is written and no worker would be built. Remove build.write: " +
+            "false, or leave serviceWorker out of this build.",
+        )
+      }
+      base = resolved.base ?? "/"
       root = resolved.root
       outDir = resolved.build.outDir
     },
     configureServer(server) {
       if (options.dev === false) return
-      const path = `${base.endsWith(`/`) ? base : `${base}/`}${fileName}`
+      const path = `${base.endsWith("/") ? base : `${base}/`}${fileName}`
       server.middlewares.use((request, response, next) => {
-        if (request.url?.split(`?`)[0] !== path) return next()
+        if (request.url?.split("?")[0] !== path) return next()
         bundle().then((code) => {
           response.statusCode = 200
-          response.setHeader(`Content-Type`, `text/javascript`)
-          response.setHeader(`Cache-Control`, `no-cache`)
+          response.setHeader("Content-Type", "text/javascript")
+          response.setHeader("Cache-Control", "no-cache")
           response.end(code)
         }, (error: unknown) => {
           response.statusCode = 500
-          response.setHeader(`Content-Type`, `text/plain`)
-          response.setHeader(`Cache-Control`, `no-cache`)
+          response.setHeader("Content-Type", "text/plain")
+          response.setHeader("Cache-Control", "no-cache")
           response.end(error instanceof Error ? error.message : String(error))
         })
       })
@@ -159,13 +169,13 @@ export function serviceWorker(options: ServiceWorkerOptions): VitePlugin {
     // `post` and `sequential`: Rollup runs `writeBundle` hooks in parallel, so this one waits for
     // every other plugin's to finish writing before it hashes the folder.
     writeBundle: {
-      order: `post`,
+      order: "post",
       sequential: true,
       async handler() {
         // With several environments (client and server, as in Fresh), `configResolved` runs once
         // per environment, so its last output folder may not be this one's. Vite 6+ names this one.
         const dir = this?.environment?.config.build.outDir ?? outDir
-        const out = dir.startsWith(`/`) ? dir : `${root}/${dir.replace(/^\.\//, ``)}`
+        const out = dir.startsWith("/") ? dir : `${root}/${dir.replace(/^\.\//, "")}`
         const files = await readFiles(options, out, out, `${out}/${fileName}`)
         await options.build(config(await buildIdOf(files), { outDir: out, emptyOutDir: false }))
       },

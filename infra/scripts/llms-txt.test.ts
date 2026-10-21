@@ -237,17 +237,29 @@ describe("readmeSummary", () => {
 
 describe("kindOf", () => {
   it("names the five kinds", () => {
-    expect(kindOf("Props", "interface")).toBe("type")
-    expect(kindOf("Alias", "typeAlias")).toBe("type")
-    expect(kindOf("useThing", "function")).toBe("hook")
-    expect(kindOf("Button", "function")).toBe("component")
-    expect(kindOf("DEFAULT_COLOR", "variable")).toBe("constant")
-    expect(kindOf("clamp", "function")).toBe("helper")
-    expect(kindOf("VersionError", "class")).toBe("helper")
+    expect(kindOf("Props", "interface", false)).toBe("type")
+    expect(kindOf("Alias", "typeAlias", false)).toBe("type")
+    expect(kindOf("useThing", "function", false)).toBe("hook")
+    expect(kindOf("Button", "function", true)).toBe("component")
+    expect(kindOf("DEFAULT_COLOR", "variable", false)).toBe("constant")
+    expect(kindOf("clamp", "function", false)).toBe("helper")
+    expect(kindOf("VersionError", "class", false)).toBe("helper")
+  })
+
+  it("takes the component rule from isComponent, not from the name", () => {
+    // A PascalCase class and a PascalCase object are not components by `isComponent`.
+    expect(kindOf("Tracker", "class", false)).toBe("helper")
+    expect(kindOf("Presets", "variable", false)).toBe("constant")
   })
 })
 
 describe("buildEntries", () => {
+  /** A package surface with these value exports, the PascalCase ones as components. */
+  const surface = (...names: string[]) => ({
+    names,
+    components: names.filter((name) => /^[A-Z]/.test(name)),
+  })
+
   const TARGET = "file:///other/input.tsx"
 
   /** This package: re-exports a type another package declares, and declares two names itself. */
@@ -291,7 +303,7 @@ describe("buildEntries", () => {
     }]])
 
   it("lists a re-exported type with the kind and JSDoc of its declaration", () => {
-    const entries = buildEntries(fixture(), ["niceStep", "Thing"], "", "@spy4x/pkg", index())
+    const entries = buildEntries(fixture(), surface("niceStep", "Thing"), "", "@spy4x/pkg", index())
     expect(entries.find((entry) => entry.name === "SelectOption")).toEqual({
       name: "SelectOption",
       kind: "type",
@@ -302,7 +314,7 @@ describe("buildEntries", () => {
   })
 
   it("starts the summary of an export tagged @deprecated with the tag's text", () => {
-    const entries = buildEntries(fixture(), [], "", "@spy4x/pkg", index())
+    const entries = buildEntries(fixture(), surface(), "", "@spy4x/pkg", index())
     expect(entries.find((entry) => entry.name === "oldStep")?.summary).toBe(
       "Deprecated: Use `niceStep`. Rounds a step.",
     )
@@ -310,12 +322,20 @@ describe("buildEntries", () => {
 
   it("leaves the summary empty rather than take a wrong README line", () => {
     const readme = "| Before | Now |\n| --- | --- |\n| `Thing` | `a`, `b` |"
-    const entries = buildEntries(fixture(), ["Thing"], readme, "@spy4x/pkg", index())
+    const entries = buildEntries(fixture(), surface("Thing"), readme, "@spy4x/pkg", index())
     expect(entries.find((entry) => entry.name === "Thing")?.summary).toBe("")
   })
 
+  it("calls a PascalCase function a component only when the surface says it is one", () => {
+    const kind = (components: string[]) =>
+      buildEntries(fixture(), { names: ["Thing"], components }, "", "@spy4x/pkg", index())
+        .find((entry) => entry.name === "Thing")?.kind
+    expect(kind(["Thing"])).toBe("component")
+    expect(kind([])).toBe("helper")
+  })
+
   it("throws for a value export that has no declaration", () => {
-    expect(() => buildEntries(fixture(), ["Missing"], "", "@spy4x/pkg", index())).toThrow(
+    expect(() => buildEntries(fixture(), surface("Missing"), "", "@spy4x/pkg", index())).toThrow(
       /exports `Missing`/,
     )
   })

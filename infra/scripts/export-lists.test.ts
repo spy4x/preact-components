@@ -7,7 +7,6 @@ import {
   type PackageSurface,
   readDocs,
   readPackages,
-  stripJsonc,
 } from "./export-lists.ts"
 
 /** One package per catalogued id plus `cn`, each exporting one component from its own subpath. */
@@ -220,12 +219,5 @@ describe("export lists", () => {
     expect(exportListProblems(input, packages())).toEqual([
       `crud/README.md has no "## Components" table`,
     ])
-  })
-})
-
-describe("stripJsonc", () => {
-  it("drops comments and trailing commas and keeps // inside a string", () => {
-    const text = `{\n  // a comment\n  "url": "https://x.example/", /* block */\n  "list": [1,],\n}`
-    expect(JSON.parse(stripJsonc(text))).toEqual({ url: "https://x.example/", list: [1] })
   })
 })

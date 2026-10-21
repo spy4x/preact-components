@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { checkReleaseTag, readVersion } from "./release-tag.ts"
+import { checkReleaseTag } from "./release-tag.ts"
 
 describe("checkReleaseTag", () => {
   it("accepts a tag that is v plus every package's version", () => {
@@ -29,15 +29,5 @@ describe("checkReleaseTag", () => {
   it("refuses a package with no version, and an empty package list", () => {
     expect(checkReleaseTag("v0.1.0", { cn: undefined })).toEqual(["cn declares no version."])
     expect(checkReleaseTag("v0.1.0", {})).toEqual(["No published package was found."])
-  })
-})
-
-describe("readVersion", () => {
-  it("reads the version from a config with comments", () => {
-    expect(readVersion(`{\n  // note\n  "name": "@x/y",\n  "version": "1.2.3"\n}`)).toBe("1.2.3")
-  })
-
-  it("returns undefined when there is no version field", () => {
-    expect(readVersion(`{ "name": "@x/y" }`)).toBeUndefined()
   })
 })

@@ -5,15 +5,21 @@
  * which carries it on `#root` for the island, so the header never shows a version typed by hand.
  */
 
+import { type DenoConfig, memberConfig, readConfig } from "../../infra/scripts/workspace.ts"
+
 /**
- * The `"version"` of a `deno.json`'s text. The file may carry comments, so it is read with a
- * pattern rather than `JSON.parse`.
+ * The `"version"` of a package config, as `readConfig` parsed it.
  *
- * @param config The text of a `deno.json`.
+ * @param config A parsed `deno.json`.
  * @returns The version, e.g. `"0.1.2"`.
+ * @throws When the config declares no version.
  */
-export function packageVersion(config: string): string {
-  const version = /^\s*"version"\s*:\s*"([^"]+)"/m.exec(config)?.[1]
-  if (version === undefined) throw new Error(`no "version" in the package config`)
-  return version
+export function packageVersion(config: DenoConfig): string {
+  if (typeof config.version !== "string") throw new Error(`no "version" in the package config`)
+  return config.version
+}
+
+/** The version `ui-guide/deno.json` declares, read through the one config reader. */
+export async function guideVersion(): Promise<string> {
+  return packageVersion(await readConfig(await memberConfig("ui-guide")))
 }

@@ -35,11 +35,14 @@
  */
 
 import { isComponent } from "../../ui-guide/component-kind.ts"
+import { packageIds } from "../../ui-guide/registry-ids.ts"
+import { memberConfig, readConfig, readEntryPoints, ROOT, workspaceMembers } from "./workspace.ts"
 
-const ROOT = new URL("../../", import.meta.url)
-
-/** Packages whose README must carry a complete "Components" table. */
-export const CATALOGUED = ["charts", "crud", "map", "system", "ui"] as const
+/**
+ * Packages whose README must carry a complete "Components" table: the ones the guide gives cards
+ * to, `packageIds` in `ui-guide/registry-ids.ts`.
+ */
+export const CATALOGUED = packageIds
 
 /**
  * Packages whose summary row must name every value export: small enough to list in full, so a new
@@ -75,22 +78,6 @@ export interface Docs {
   maintaining: string
   /** Each package's `README.md`, keyed by package directory. */
   packageReadmes: Record<string, string>
-}
-
-/**
- * Removes `//` and `/* *\/` comments and trailing commas from a `deno.json`, so `JSON.parse`
- * reads it.
- *
- * Strings are kept whole, so a `//` inside one survives. This covers the JSONC every config in this
- * repository uses; it is not a general parser.
- *
- * @param text JSONC source.
- * @returns Plain JSON.
- */
-export function stripJsonc(text: string): string {
-  return text
-    .replace(/("(?:\\.|[^"\\])*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (_match, str) => str ?? "")
-    .replace(/,(\s*[}\]])/g, "$1")
 }
 
 /**
@@ -252,31 +239,25 @@ export function exportListProblems(
  * A published package is a workspace member whose `deno.json` has a `name`; `pages/` has none.
  *
  * @returns Each published package's surface, keyed by package directory.
- * @throws When a package declares no `exports` object.
+ * @throws When a package declares no exports, or a top-level package directory is not a workspace
+ *   member.
  */
 export async function readPackages(): Promise<Record<string, PackageSurface>> {
-  const root = JSON.parse(stripJsonc(await Deno.readTextFile(new URL("deno.jsonc", ROOT))))
   const packages: Record<string, PackageSurface> = {}
-  for (const member of root.workspace as string[]) {
-    const id = member.replace(/^\.\//, "")
-    const config = JSON.parse(stripJsonc(await Deno.readTextFile(new URL(`${id}/deno.json`, ROOT))))
-    if (!config.name) continue
-    if (typeof config.exports !== "object" || config.exports === null) {
-      throw new Error(`${id}/deno.json declares no exports object`)
-    }
+  for (const id of await workspaceMembers()) {
+    const config = await memberConfig(id)
+    if (!(await readConfig(config)).name) continue
 
     const names = new Set<string>()
     const components = new Set<string>()
     const subpaths: Record<string, string[]> = {}
-    for (const [key, target] of Object.entries(config.exports as Record<string, string>)) {
-      if (!/\.tsx?$/.test(target)) continue
-      const module = await import(new URL(`${id}/${target}`, ROOT).href)
-      const exported = Object.keys(module)
+    for (const { subpath, namespace } of await readEntryPoints(config)) {
+      const exported = Object.keys(namespace)
       for (const name of exported) {
         names.add(name)
-        if (isComponent(name, module[name])) components.add(name)
+        if (isComponent(name, namespace[name])) components.add(name)
       }
-      if (key !== ".") subpaths[key.replace(/^\.\//, "")] = exported
+      if (subpath !== ".") subpaths[subpath.replace(/^\.\//, "")] = exported
     }
     packages[id] = { names: [...names], components: [...components], subpaths }
   }

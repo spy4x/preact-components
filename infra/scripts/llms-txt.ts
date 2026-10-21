@@ -36,8 +36,9 @@
  *   and JSDoc come from `deno doc --json` over the entry points ({@linkcode denoDoc}), which
  *   follows every re-export, across packages too.
  * - The kind is the declaration's own kind plus the name: an `interface`, type alias or `enum` is a
- *   `type`; a name starting `use` and a capital is a `hook`; an initial capital followed by a
- *   lower-case letter is a `component` (an `Error` class is a `helper`); an `UPPER_SNAKE` name or a
+ *   `type`; a name starting `use` and a capital is a `hook`; a component by the catalogue's rule
+ *   (`isComponent` in `ui-guide/component-kind.ts`: a function named in PascalCase, never a class)
+ *   is a `component`; an `UPPER_SNAKE` name or a
  *   non-function variable is a `constant`; anything else is a `helper`. Those five words are the
  *   second field of a line.
  * - The summary is the first sentence of the declaration's JSDoc. With none, the sentence in the
@@ -54,9 +55,8 @@
  * @module
  */
 
-import { readPackages, stripJsonc } from "./export-lists.ts"
-
-const ROOT = new URL("../../", import.meta.url)
+import { type PackageSurface, readPackages } from "./export-lists.ts"
+import { type EntryPoint, entryPoints, memberConfig, readConfig, ROOT } from "./workspace.ts"
 
 /** Public address of the demo site, which serves both files at its root. */
 export const SITE = `https://spy4x.github.io/preact-components`
@@ -223,19 +223,18 @@ export function readmeSummary(readme: string, name: string): string {
 }
 
 /**
- * The kind of an export, from its declaration keyword and its name.
+ * The kind of an export, from its declaration keyword, its name, and whether it is a component.
  *
  * @param name Exported name.
  * @param keyword Declaration keyword.
+ * @param component Whether the export is a component by the catalogue's own rule, `isComponent` in
+ *   `ui-guide/component-kind.ts`, as `readPackages()` reports it.
  * @returns One of the five kinds the files use.
  */
-export function kindOf(name: string, keyword: string): Entry["kind"] {
+export function kindOf(name: string, keyword: string, component: boolean): Entry["kind"] {
   if (["interface", "typeAlias", "enum"].includes(keyword)) return "type"
   if (/^use[A-Z]/.test(name)) return "hook"
-  if (keyword === "class" && /Error$/.test(name)) return "helper"
-  if (/^[A-Z][a-z]/.test(name) || /^[A-Z][a-zA-Z0-9]*$/.test(name) && /[a-z]/.test(name)) {
-    return "component"
-  }
+  if (component) return "component"
   if (/^[A-Z][A-Z0-9_]*$/.test(name)) return "constant"
   if (keyword === "variable" && !/^[a-z]/.test(name)) return "constant"
   return "helper"
@@ -277,7 +276,8 @@ export function declarationIndex(
  * to "Props of `Foo`."; otherwise it is empty.
  *
  * @param entryPoints The package's entry points, barrel first, with their `deno doc` symbols.
- * @param valueNames Every value export the package really has, from `readPackages()`.
+ * @param surface The package's value exports and which of them are components, from
+ *   `readPackages()`.
  * @param readme The package README.
  * @param pkg The package name, for the error message.
  * @param index {@linkcode declarationIndex} over every package's symbols.
@@ -286,7 +286,7 @@ export function declarationIndex(
  */
 export function buildEntries(
   entryPoints: DocEntryPoint[],
-  valueNames: string[],
+  surface: Pick<PackageSurface, "names" | "components">,
   readme: string,
   pkg: string,
   index: Map<string, DocDeclaration>,
@@ -312,7 +312,7 @@ export function buildEntries(
       }
       entries.set(name, {
         name,
-        kind: kindOf(name, declaration.kind),
+        kind: kindOf(name, declaration.kind, surface.components.includes(name)),
         summary: deprecatedSummary(summary, declaration.jsDoc?.tags),
         specifier,
         keyword: declaration.kind,
@@ -320,7 +320,7 @@ export function buildEntries(
     }
   }
 
-  for (const name of valueNames) {
+  for (const name of surface.names) {
     if (!entries.has(name)) {
       throw new Error(`${pkg} exports \`${name}\` but no declaration was found for it`)
     }
@@ -430,29 +430,24 @@ export async function generate(): Promise<Generated> {
   const readmes: string[] = []
   const missingSummaries: string[] = []
 
-  const configs: Record<string, { name: string; exports: Record<string, string> }> = {}
-  const files: URL[] = []
+  const configs: Record<string, { name: string; points: EntryPoint[] }> = {}
   for (const id of Object.keys(packages)) {
-    configs[id] = JSON.parse(stripJsonc(await Deno.readTextFile(new URL(`${id}/deno.json`, ROOT))))
-    for (const target of Object.values(configs[id].exports)) {
-      if (/\.tsx?$/.test(target)) files.push(new URL(`${id}/${target}`, ROOT))
-    }
+    const url = await memberConfig(id)
+    configs[id] = { name: (await readConfig(url)).name ?? id, points: await entryPoints(url) }
   }
-  const symbols = await denoDoc(files)
+  const symbols = await denoDoc(
+    Object.values(configs).flatMap(({ points }) => points.map(({ href }) => new URL(href))),
+  )
   const index = declarationIndex(symbols.values())
 
   for (const [id, surface] of Object.entries(packages)) {
     const config = configs[id]
     const readme = await Deno.readTextFile(new URL(`${id}/README.md`, ROOT)).catch(() => "")
-    const entryPoints: DocEntryPoint[] = []
-    for (const [key, target] of Object.entries(config.exports)) {
-      if (!/\.tsx?$/.test(target)) continue
-      entryPoints.push({
-        specifier: key === "." ? config.name : `${config.name}/${key.replace(/^\.\//, "")}`,
-        symbols: symbols.get(new URL(`${id}/${target}`, ROOT).href) ?? [],
-      })
-    }
-    const entries = buildEntries(entryPoints, surface.names, readme, config.name, index)
+    const points: DocEntryPoint[] = config.points.map(({ subpath, href }) => ({
+      specifier: subpath === "." ? config.name : `${config.name}/${subpath.replace(/^\.\//, "")}`,
+      symbols: symbols.get(href) ?? [],
+    }))
+    const entries = buildEntries(points, surface, readme, config.name, index)
     const listed = exportLines(entries)
     lines.push(...listed.lines)
     dropped.push(...listed.dropped)

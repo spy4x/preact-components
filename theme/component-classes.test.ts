@@ -13,7 +13,7 @@ import { Scanner } from "@tailwindcss/oxide"
 import { compile } from "tailwindcss"
 import { fileURLToPath } from "node:url"
 import { COMPONENT_CLASSES } from "./+index.ts"
-import { componentClasses, keepClasses } from "./generate-classes.ts"
+import { componentClasses, keepClasses, stripComments } from "./generate-classes.ts"
 import { stylesheetLoader } from "./integration/load-stylesheet.ts"
 
 const THEME_DIRECTORY = fileURLToPath(new URL("./", import.meta.url))
@@ -173,5 +173,42 @@ describe("keepClasses", () => {
     await expect(keepClasses(["sr-only", `content-["x"]`])).rejects.toThrow(
       `cannot be written inside @source inline`,
     )
+  })
+})
+
+describe("stripComments", () => {
+  it("blanks comments that open their line and keeps every line break", () => {
+    const source = [
+      `/** Mentions grow. */`,
+      `const a = "p-4"`,
+      `  // shrink`,
+      `/* top-20`,
+      ` w-6 */ const b = 1`,
+      `  {/* text-5xl */}`,
+    ].join("\n")
+    const stripped = stripComments(source)
+    expect(stripped.length).toBe(source.length)
+    expect(stripped.split("\n").length).toBe(source.split("\n").length)
+    for (const word of ["grow", "shrink", "top-20", "w-6", "text-5xl"]) {
+      expect(stripped).not.toContain(word)
+    }
+    expect(stripped).toContain(`const a = "p-4"`)
+    expect(stripped).toContain("const b = 1")
+  })
+
+  it("keeps a comment that follows code on its line", () => {
+    const source = `const url = "https://example.com" // grow`
+    expect(stripComments(source)).toBe(source)
+  })
+
+  it("keeps a class after a backtick in JSX text and a URL in a template", () => {
+    const source =
+      "<p>Press ` to open the menu</p>\nconst link = `https://example.com`, cls = `px-9`\n"
+    expect(stripComments(source)).toBe(source)
+  })
+
+  it("keeps a class after a self-closing tag and a URL in a template", () => {
+    const source = "<Icon size={4} /><p>{`a\nb`}</p>\nconst u = `https://x.y px-9`\n"
+    expect(stripComments(source)).toBe(source)
   })
 })

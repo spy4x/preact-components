@@ -44,7 +44,7 @@ import { catalogueNames } from "@spy4x/preact-ui-guide/registry"
 import { routeTable, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { DEFAULT_BASE, DEFAULT_ORIGIN, normalizeBase } from "./src/site.ts"
 import { normalizeSources } from "./src/tailwind-sources.ts"
-import { packageVersion } from "./src/version.ts"
+import { guideVersion } from "./src/version.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -338,7 +338,7 @@ async function main(): Promise<void> {
   const [stylesheet, island] = [await compileStylesheet(), await bundleIsland(CATALOGUE_ENTRY)]
   const mapIsland = await bundleIsland(MAP_PAGE_ENTRY)
   // The header's version is the one the packages declare; every package publishes at one version.
-  const version = packageVersion(await Deno.readTextFile(join(REPO_ROOT, "ui-guide", "deno.json")))
+  const version = await guideVersion()
   const appHtml = renderApp(undefined, version)
   // Every route the guide can be opened at, derived from the catalogue's registry rather than kept
   // here: the echo further down is this value, read back out of the document that ships it.

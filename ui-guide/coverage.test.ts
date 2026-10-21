@@ -4,7 +4,6 @@
  */
 
 import { expect } from "@std/expect"
-import { parse } from "@std/jsonc"
 import { describe, it } from "@std/testing/bdd"
 import * as charts from "@spy4x/preact-charts"
 import * as cn from "@spy4x/preact-cn"
@@ -27,10 +26,14 @@ import {
   packageReadmes,
   readExports,
   readmeNames,
-  subpathModules,
-  subpathModulesOf,
   valueExportsOf,
 } from "./coverage.ts"
+import {
+  entryPoints,
+  memberConfig,
+  packageDirectories,
+  readConfig,
+} from "../infra/scripts/workspace.ts"
 import { coveredPackageIds, type PackageId, packageIds } from "./registry.ts"
 import * as fixtureBarrel from "./testdata/fixture-package/mod.ts"
 
@@ -61,6 +64,11 @@ function uiWith(name: string, value: unknown): Record<PackageId, PackageNamespac
 function without(id: PackageId, name: string): Record<PackageId, PackageNamespace> {
   const { [name]: _dropped, ...rest } = EXPORTS[id]
   return { ...EXPORTS, [id]: rest }
+}
+
+/** A workspace member's subpath modules: every entry point but the barrel. */
+async function subpathModulesOf(id: PackageId): Promise<Array<{ subpath: string; href: string }>> {
+  return (await entryPoints(await memberConfig(id))).filter(({ subpath }) => subpath !== ".")
 }
 
 /**
@@ -96,8 +104,8 @@ const SUBPATH_ONLY_NAMES = await subpathOnlyNames()
  * string `exports` is Deno's short form for the barrel alone, so it declares `"."` and nothing else.
  */
 async function declaredExportKeys(id: PackageId): Promise<string[]> {
-  const config = parse(await Deno.readTextFile(new URL(`./${id}/deno.json`, ROOT)))
-  const { exports } = config as { exports: string | Record<string, unknown> }
+  const { exports } = await readConfig(new URL(`./${id}/deno.json`, ROOT))
+  if (exports === undefined) throw new Error(`${id}/deno.json declares no exports`)
   return typeof exports === "string" ? ["."] : Object.keys(exports)
 }
 
@@ -131,24 +139,6 @@ const NAMED_HELPER = Object.entries(EXPORTS.signals)
   .map(([name, value]) => ({ name, value }))
   .find(({ name, value }) => !isComponent(name, value) && readmeNames(READMES.signals, name))
   ?.name ?? ""
-
-/** Top-level directories that carry a `deno.json`, read from the tree, not the workspace list. */
-async function packageDirectories(): Promise<string[]> {
-  const root = new URL("../", import.meta.url)
-  const directories: string[] = []
-
-  for await (const entry of Deno.readDir(root)) {
-    if (!entry.isDirectory) continue
-    try {
-      const config = await Deno.stat(new URL(`${entry.name}/deno.json`, root))
-      if (config.isFile) directories.push(entry.name)
-    } catch {
-      // No package config: not a package.
-    }
-  }
-
-  return directories.sort()
-}
 
 describe("the coverage rule", () => {
   it("accounts for every value every catalogued package exports", () => {
@@ -347,7 +337,7 @@ describe("the coverage read, on a fixture package", () => {
     expect(Object.keys(fixtureBarrel), "the component is not in the barrel").not
       .toContain("FixtureWidget")
 
-    const read = await readExports(fixtureBarrel, new URL("subpath-only.json", FIXTURE))
+    const read = await readExports(new URL("subpath-only.json", FIXTURE))
     const problems = injectedBy(
       coverageProblems(
         { ...EXPORTS, ui: { ...EXPORTS.ui, ...read } },
@@ -359,12 +349,15 @@ describe("the coverage read, on a fixture package", () => {
     expect(problems[0]).toContain("the component FixtureWidget and no section demonstrates it")
   })
 
-  it("reads no subpath from a config whose exports is the barrel alone", async () => {
-    expect(await subpathModules(new URL("barrel-only.json", FIXTURE))).toEqual([])
+  it("reads the barrel alone from a config whose exports is a string", async () => {
+    const points = await entryPoints(new URL("barrel-only.json", FIXTURE))
+    expect(points.map(({ subpath }) => subpath)).toEqual(["."])
+    expect(Object.keys(await readExports(new URL("barrel-only.json", FIXTURE))))
+      .toEqual(["fixtureVersion"])
   })
 
   it("refuses a non-string target in a config handed in directly, which no workspace member can reach", async () => {
-    await expect(subpathModules(new URL("bad-target.json", FIXTURE))).rejects.toThrow(
+    await expect(entryPoints(new URL("bad-target.json", FIXTURE))).rejects.toThrow(
       "declares ./widget with a non-string target",
     )
   })

@@ -8,7 +8,8 @@
  * among them fails, naming the component and the class. `auto` and `0` are not outer margins —
  * `mx-auto` centres, `mx-0` clears — so both are allowed. A margin a parent component passes to a
  * child it renders is the parent's inner spacing, which the rule allows; it is subtracted the same
- * way, because it arrives in the child's `class`.
+ * way, because it arrives in the child's `class`. A root that is a component no package exports
+ * belongs to the exported one that renders it, so its own root is checked under that name.
  */
 
 import { expect } from "@std/expect"
@@ -40,6 +41,15 @@ function rootClassLists(out: ComponentChildren): string[][] {
   return [classesOf(vnode.props)]
 }
 
+/** The top-level vnodes of a component's output that are function components, through fragments. */
+function rootComponents(out: ComponentChildren): VNode[] {
+  if (out === null || out === undefined || typeof out !== "object") return []
+  if (Array.isArray(out)) return out.flatMap(rootComponents)
+  const vnode = out as VNode<Record<string, unknown>>
+  if (vnode.type === Fragment) return rootComponents(vnode.props.children as ComponentChildren)
+  return typeof vnode.type === "function" && !vnode.type.prototype?.render ? [vnode] : []
+}
+
 /** One component that rendered a margin on its root. */
 interface RootMargin {
   component: string
@@ -64,6 +74,7 @@ function observe(
   const found: RootMargin[] = []
   const rendered = new Set<string>()
   const wrappers = new Map<unknown, unknown>()
+  const observers = new Set<unknown>()
   const wrap = (original: (props: Record<string, unknown>) => ComponentChildren, name: string) => {
     function Observed(this: unknown, props: Record<string, unknown>): ComponentChildren {
       const out = original.call(this, props)
@@ -76,8 +87,15 @@ function observe(
           }
         }
       }
+      // A root that is a component no package exports is part of this one: its root is this
+      // component's root too, so it is observed under this component's name.
+      for (const root of rootComponents(out)) {
+        if (components.has(root.type) || observers.has(root.type)) continue
+        ;(root as { type: unknown }).type = wrap(root.type as never, name)
+      }
       return out
     }
+    observers.add(Observed)
     // Keeps the markers other `options` hooks look for, such as `forwardRef`'s symbol.
     return Object.assign(Observed, original)
   }
@@ -174,6 +192,10 @@ describe("findRootMargins", () => {
     </div>
   )
   const Wrapping = () => <Inner class="mb-6" />
+  /** Not exported: in no map below, so only its exported caller can be blamed. */
+  const Hidden = (props: { class?: string }) => <div class={`mt-4 ${props.class ?? ""}`} />
+  const Deeper = () => <Hidden class="p-2" />
+  const Shows = () => <Deeper />
   const components = new Map<unknown, string>([
     [Spaced, "Spaced"],
     [Centred, "Centred"],
@@ -181,6 +203,7 @@ describe("findRootMargins", () => {
     [Inner, "Inner"],
     [Outer, "Outer"],
     [Wrapping, "Wrapping"],
+    [Shows, "Shows"],
   ] as [ComponentType<never>, string][])
 
   it("reports a margin a component puts on its own root", () => {
@@ -209,6 +232,12 @@ describe("findRootMargins", () => {
   it("blames a component whose root is another component given a margin", () => {
     expect(findRootMargins(() => <Wrapping />, components)).toEqual([
       { component: "Wrapping", className: "mb-6" },
+    ])
+  })
+
+  it("blames an exported component for a margin on the root of an unexported one it renders", () => {
+    expect(findRootMargins(() => <Shows />, components)).toEqual([
+      { component: "Shows", className: "mt-4" },
     ])
   })
 })
