@@ -1,4 +1,5 @@
 import type { ComponentChildren, JSX } from "preact"
+import { twMerge } from "tailwind-merge"
 
 /** Colour role of a {@link Kpi} value. */
 export type KpiTone = "accent" | "positive" | "warning" | "negative" | "neutral"
@@ -41,10 +42,10 @@ export function Kpi(
 ): JSX.Element {
   return (
     <div
-      class={[
+      class={twMerge(
         "flex flex-col gap-1 rounded-lg border border-subtle px-4 py-3 dark:bg-surface",
         className,
-      ].filter(Boolean).join(" ")}
+      )}
     >
       <div class="text-xs tracking-wide uppercase text-muted">{label}</div>
       <div class={`text-2xl font-bold tabular-nums ${toneClasses[tone]}`}>{value}</div>
@@ -64,7 +65,7 @@ export function KpiGrid(
 ): JSX.Element {
   return (
     <div
-      class={className ? `grid gap-3 ${className}` : "grid gap-3"}
+      class={twMerge("grid gap-3", className)}
       style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))` }}
     >
       {children}

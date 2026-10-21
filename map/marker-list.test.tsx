@@ -75,6 +75,30 @@ describe("MarkerList", () => {
     expect(html.match(/aria-hidden="true"/g)?.length).toBe(places.length)
   })
 
+  it("says each row's status in words after its label, not by colour alone", () => {
+    const html = render(<MarkerList markers={places} />)
+
+    expect(html).toContain(`Alpha site<span class="sr-only">, on</span>`)
+    expect(html).toContain(`Beta site<span class="sr-only">, off</span>`)
+    expect(html).toContain(`Gamma site<span class="sr-only">, status unknown</span>`)
+  })
+
+  it("takes the caller's status words in place of the English ones", () => {
+    const html = render(
+      <MarkerList markers={places} statusLabels={{ on: "online", unknown: "no signal" }} />,
+    )
+
+    expect(html).toContain(`Alpha site<span class="sr-only">, online</span>`)
+    expect(html).toContain(`Beta site<span class="sr-only">, off</span>`)
+    expect(html).toContain(`Gamma site<span class="sr-only">, no signal</span>`)
+  })
+
+  it("renders its heading at the level asked for, h3 by default", () => {
+    expect(render(<MarkerList markers={places} />)).toMatch(/<h3 class="[^"]*">Places<\/h3>/)
+    expect(render(<MarkerList markers={places} headingLevel={4} />))
+      .toMatch(/<h4 class="[^"]*">Places<\/h4>/)
+  })
+
   it("renders no markers as an empty, still-labelled list rather than throwing", () => {
     const html = render(<MarkerList markers={[]} />)
 

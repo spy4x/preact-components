@@ -40,17 +40,14 @@ interface HydratedMapState {
   leafletInServedBox: boolean
   /** How many Leaflet pins are inside that same box. */
   pins: number
-  /** Text of the plain list's rows. */
-  listNames: string[]
 }
 
 /** The card these checks drive, and the pieces of it they read. */
 const CARD = "#demo-Map"
 
-/** `ui-guide/sections/map.tsx`'s `PLACES`, in the order the card renders them — both by `id` (what a
- * pin's `data-marker-id` carries) and by `label` (what its accessible name and the list's text read). */
+/** `ui-guide/sections/map.tsx`'s `PLACES` ids, in the order the card renders them: what a pin's
+ * `data-marker-id` carries. What the pins and the list say is proven in `e2e/map.spec.ts`. */
 const PLACE_IDS = ["depot", "warehouse", "outpost"]
-const PLACE_LABELS = ["London depot", "Paris warehouse", "Berlin outpost"]
 
 /** What one round trip reads off the page. */
 interface MapState {
@@ -87,13 +84,6 @@ interface MapState {
    * descendant of it) is genuinely what `document.elementFromPoint` finds at its own centre, which a
    * transparent or covered element would fail even with every other property reading "visible". */
   attributionVisible: boolean
-  /** Text of every plain-list row, in DOM order. */
-  listNames: string[]
-  /** `""` when nothing hides the list from assistive tech. Otherwise, which element carries the
-   * `aria-hidden="true"` that does: `"the list's own wrapper"`, `"an ancestor of the list"`,
-   * `"the <ul>"`, or the hidden row's own text — named rather than a bare boolean so a failing
-   * check says what to go and look at, instead of just that something, somewhere, was hidden. */
-  listHiddenBy: string
   /** The echo element's text. */
   lastClicked: string
 }
@@ -107,7 +97,7 @@ function readState(devtools: Devtools): Promise<MapState> {
         ok: false, box: { width: 0, height: 0 }, boxCarriesSizeClass: false,
         leafletMounted: false, leafletContainerOverflow: "", pinCount: 0, loadedTiles: 0,
         oneTileSrc: "", allTilesLocal: false, tilesOverlapBox: false, attributionText: "",
-        attributionVisible: false, listNames: [], listHiddenBy: "", lastClicked: "",
+        attributionVisible: false, lastClicked: "",
       }
     }
 
@@ -119,8 +109,6 @@ function readState(devtools: Devtools): Promise<MapState> {
     const attribution = card.querySelector('[data-e2e="map-attribution"]')
     const attrRect = attribution ? attribution.getBoundingClientRect() : null
     const attrStyle = attribution ? getComputedStyle(attribution) : null
-    const list = card.querySelector('[data-e2e="map-marker-list"]')
-    const listRows = list ? [...list.querySelectorAll("li")] : []
     const lastClicked = card.querySelector('[data-e2e="map-last-clicked"]')
 
     const within = (inner, outer) =>
@@ -148,27 +136,6 @@ function readState(devtools: Devtools): Promise<MapState> {
         (atPoint === attribution || attribution.contains(atPoint))
     }
 
-    // Both directions: an ancestor of the wrapper (walking up) hides the whole list from assistive
-    // tech; aria-hidden on the ul itself, or on one row, hides only what is inside it — neither is
-    // "an ancestor of the wrapper", so a check that only walked up never saw either. Named, not just
-    // detected, so a failing check says which element it was rather than merely that one was.
-    const ariaHiddenTrue = (el) => Boolean(el && el.getAttribute && el.getAttribute("aria-hidden") === "true")
-    let listHiddenBy = ""
-    for (let el = list; el; el = el.parentElement) {
-      if (ariaHiddenTrue(el)) {
-        listHiddenBy = el === list ? "the list's own wrapper" : "an ancestor of the list"
-        break
-      }
-    }
-    const ul = list ? list.querySelector("ul") : null
-    if (!listHiddenBy && ariaHiddenTrue(ul)) {
-      listHiddenBy = "the <ul>"
-    }
-    if (!listHiddenBy) {
-      const hiddenRow = listRows.find((row) => ariaHiddenTrue(row))
-      if (hiddenRow) listHiddenBy = 'row "' + hiddenRow.textContent.trim() + '"'
-    }
-
     return {
       ok: true,
       box: boxRect ? { width: boxRect.width, height: boxRect.height } : { width: 0, height: 0 },
@@ -184,8 +151,6 @@ function readState(devtools: Devtools): Promise<MapState> {
         tiles.every((tile) => overlaps(tile.getBoundingClientRect(), boxRect)),
       attributionText: attribution ? attribution.textContent.trim() : "",
       attributionVisible,
-      listNames: listRows.map((row) => row.textContent.trim()),
-      listHiddenBy,
       lastClicked: lastClicked ? lastClicked.textContent.trim() : "",
     }
   })()`)
@@ -249,14 +214,12 @@ async function serverRenderedMapChecks(devtools: Devtools, frame: string): Promi
     state = await devtools.evaluate<HydratedMapState>(`(() => {
       const doc = ${frame}?.contentDocument
       const box = ${frame}?.contentWindow?.${SERVED_BOX_GLOBAL}
-      const list = doc?.querySelector('[data-e2e="map-marker-list"]')
       return {
         hydrated: doc?.documentElement.dataset.hydrated === "true",
         boxes: doc ? doc.querySelectorAll('[data-e2e="map-box"]').length : 0,
         servedBoxConnected: Boolean(box?.isConnected),
         leafletInServedBox: Boolean(box?.querySelector(".leaflet-container")),
         pins: box ? box.querySelectorAll(".leaflet-marker-icon").length : 0,
-        listNames: list ? [...list.querySelectorAll("li")].map((row) => row.textContent.trim()) : [],
       }
     })()`)
     return state.hydrated && state.leafletInServedBox && state.pins === labels.length
@@ -269,11 +232,6 @@ async function serverRenderedMapChecks(devtools: Devtools, frame: string): Promi
         `${state.servedBoxConnected}; Leaflet in it ${state.leafletInServedBox}; ` +
         `${state.pins} of ${labels.length} pins`
       : "the frame was never read",
-  )
-  check(
-    "the hydrated server-rendered Map lists the same places the server rendered",
-    state !== undefined && JSON.stringify(state.listNames) === JSON.stringify(labels),
-    state ? state.listNames.join(", ") || "no rows" : "",
   )
 }
 
@@ -412,15 +370,6 @@ async function mapCardChecks(devtools: Devtools): Promise<void> {
       "what a click at its own centre would hit",
     withTiles.attributionVisible && withTiles.attributionText.length > 0,
     `text "${withTiles.attributionText}", visible=${withTiles.attributionVisible}`,
-  )
-
-  check(
-    "the plain list names the same places, in order, and is not hidden from assistive tech",
-    !withTiles.listHiddenBy &&
-      withTiles.listNames.length === PLACE_LABELS.length &&
-      withTiles.listNames.every((name, index) => name === PLACE_LABELS[index]),
-    `list reads: ${withTiles.listNames.join(", ") || "(empty)"}` +
-      (withTiles.listHiddenBy ? `, hidden by: ${withTiles.listHiddenBy}` : ", not hidden"),
   )
 
   await pinKeyboardChecks(devtools)
@@ -606,11 +555,6 @@ async function pinKeyboardChecks(devtools: Devtools): Promise<void> {
   for (const id of PLACE_IDS) {
     names.push(await accessibleName(devtools, rootNodeId, `[data-marker-id="${id}"]`))
   }
-  check(
-    "every pin's real, screen-reader-computed accessible name equals its label",
-    names.every((name, index) => name.value === PLACE_LABELS[index]),
-    PLACE_IDS.map((id, index) => `${id}: "${names[index].value ?? "(none)"}"`).join(", "),
-  )
   check(
     "that name comes from aria-label specifically, not merely from title reading the same text",
     names.every((name) => name.fromAriaLabel),

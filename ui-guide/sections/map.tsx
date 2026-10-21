@@ -4,7 +4,7 @@
  * One card, one component. The card reaches `Map` only through `LazyMap` (`map-leaflet.tsx`), so the
  * package, and Leaflet with it, loads only when the map page is shown (#315); the card's
  * server-rendered form is a sized placeholder box. Confirming the map loads, the tiles draw and the markers become live pins needs a browser,
- * which `pages/checks/map.ts` is; `map/map.test.tsx` proves the box, the list and the escaping of
+ * which `pages/checks/map.ts` and `pages/e2e/map.spec.ts` are; `map/map.test.tsx` proves the box, the list and the escaping of
  * caller data.
  *
  * The tiles come from the shell (`../map-tiles.ts`): OpenStreetMap's by default, so the published
@@ -15,7 +15,7 @@
 
 import type { MapMarker } from "@spy4x/preact-map"
 import { useSignal } from "@preact/signals"
-import { Stack } from "@spy4x/preact-ui"
+import { Button, Stack } from "@spy4x/preact-ui"
 import { useContext } from "preact/hooks"
 import { MapTilesContext } from "../map-tiles.ts"
 import type { DemoFragment } from "../registry.ts"
@@ -28,20 +28,28 @@ const PLACES: MapMarker[] = [
   { id: "outpost", lat: 52.5200, lng: 13.4050, label: "Berlin outpost" },
 ]
 
+/** `PLACES` with the Paris warehouse switched on: the second state the demo's button swaps in. */
+const PLACES_PARIS_ON: MapMarker[] = PLACES.map((place) =>
+  place.id === "warehouse" ? { ...place, status: "on" } : place
+)
+
 /**
- * `Map` wired to a signal, so `onMarkerClick` — from a pin's click, or Enter or Space while a pin
- * has focus — has something visible to echo.
+ * `Map` wired to signals, so `onMarkerClick` — from a pin's click, or Enter or Space while a pin
+ * has focus — has something visible to echo, and a button can swap in new markers to show that a
+ * pin that stays keeps its place, and its focus.
  */
 function MapInteractiveDemo() {
   const lastClicked = useSignal("none yet")
+  const markers = useSignal(PLACES)
   const tiles = useContext(MapTilesContext)
+  const parisOn = markers.value === PLACES_PARIS_ON
 
   return (
     <Stack gap="sm" data-e2e="map-interactive">
       <LazyMap
         center={{ lat: 50, lng: 5 }}
         zoom={4}
-        markers={PLACES}
+        markers={markers.value}
         onMarkerClick={(id) => lastClicked.value = id}
         tileUrl={tiles.url}
         attribution={tiles.attribution}
@@ -49,6 +57,16 @@ function MapInteractiveDemo() {
       <p class="text-xs text-muted">
         onMarkerClick: <span data-e2e="map-last-clicked">{lastClicked.value}</span>
       </p>
+      <div>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="map-toggle-paris"
+          onClick={() => markers.value = parisOn ? PLACES : PLACES_PARIS_ON}
+        >
+          {parisOn ? "Turn Paris warehouse off" : "Turn Paris warehouse on"}
+        </Button>
+      </div>
     </Stack>
   )
 }
@@ -64,7 +82,8 @@ export const mapDemos = {
       {
         name: "markers",
         type: "MapMarker[]",
-        description: "The places: an `id`, `lat`, `lng`, a `label` and an optional `status`.",
+        description:
+          "The places: an `id`, `lat`, `lng`, a `label` and an optional `status`. Pins are matched by `id`, so one that stays keeps its focus.",
       },
       {
         name: "onMarkerClick",
@@ -81,11 +100,26 @@ export const mapDemos = {
         type: "string",
         description: "The credit line the tile provider requires.",
       },
+      {
+        name: "statusLabels",
+        type: "{ on?, off?, unknown? }",
+        description:
+          "The status word each pin's name and list row say after the label. Defaults to on, off and status unknown.",
+      },
+      {
+        name: "listHeadingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        description: "The level of the list's heading. Defaults to 3.",
+      },
     ],
-    snippet: `<Map
+    snippet:
+      `// A constant, or state replaced only when the places change: not a new array per render.
+const PLACES = [{ id: "depot", lat: 51.5, lng: -0.13, label: "London depot", status: "on" }]
+
+<Map
   center={{ lat: 50, lng: 5 }}
   zoom={4}
-  markers={[{ id: "depot", lat: 51.5, lng: -0.13, label: "London depot", status: "on" }]}
+  markers={PLACES}
   onMarkerClick={(id) => select(id)}
   tileUrl="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
   attribution="© OpenStreetMap contributors"

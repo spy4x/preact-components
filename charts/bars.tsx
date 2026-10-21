@@ -1,4 +1,5 @@
 import type { JSX } from "preact"
+import { twMerge } from "tailwind-merge"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_TEXT_COLOR,
@@ -30,6 +31,8 @@ export interface BarsProps {
   trackColor?: string
   textColor?: string
   title?: string
+  /** The title's heading level, so it fits the page's outline. Defaults to `3`. */
+  headingLevel?: 2 | 3 | 4 | 5 | 6
   /** Overrides the accessible table name. Defaults to `title`. */
   ariaLabel?: string
   emptyLabel?: string
@@ -50,24 +53,17 @@ export function barPercent(value: number, top: number): number {
 }
 
 /**
- * `bg-transparent`, unless the caller's `class` sets a background of its own.
- *
- * A dark `theme-base` page gives every table the surface colour, which would box the chart in
- * whatever card holds it. A plain class-string join cannot let a caller's `bg-*` win back, because
- * the stylesheet's rule order decides between two background utilities, so the default steps aside.
- * Only an unprefixed `bg-*` counts: a `hover:` or `md:` background applies only some of the time, and
- * the default has to hold the rest of it.
- */
-function tableBackground(className: string | undefined): string {
-  return className && /(^|\s)bg-/.test(className) ? "" : "bg-transparent"
-}
-
-/**
  * Server-rendered horizontal bar list — the "Top N" chart.
  *
  * HTML rather than SVG, so the labels wrap, the links stay links and the whole list reflows on a
  * narrow screen with no JavaScript at all. Bars are coloured by rank unless a datum sets its own
- * colour.
+ * colour. The title is the same heading with data or without, and names the table.
+ *
+ * The root is a wrapper `<div>` holding the heading and the table, and `class` goes on that wrapper,
+ * not on the `<table>` (8.8.0 and earlier put it on the table), so table-only utilities such as
+ * `table-fixed` no longer reach it. The table is always `bg-transparent`: a dark `theme-base` page gives every
+ * table the surface colour, which would box the chart in whatever card holds it. A background passed
+ * in `class` lands on the wrapper, behind the table, so it still shows.
  */
 export function Bars({
   data,
@@ -78,14 +74,17 @@ export function Bars({
   trackColor = DEFAULT_TRACK_COLOR,
   textColor = DEFAULT_TEXT_COLOR,
   title,
+  headingLevel = 3,
   ariaLabel,
   emptyLabel = "No data",
   class: className,
 }: BarsProps): JSX.Element {
+  const Heading = `h${headingLevel}` as "h3"
+  const heading = title ? <Heading class="text-sm font-medium">{title}</Heading> : null
   if (data.length === 0) {
     return (
-      <div class={className}>
-        {title ? <h3 class="mb-2 text-sm font-medium">{title}</h3> : null}
+      <div class={twMerge("flex flex-col gap-2", className)}>
+        {heading}
         <p class="text-sm" style={{ color: textColor }}>{emptyLabel}</p>
       </div>
     )
@@ -97,50 +96,48 @@ export function Bars({
   )
 
   return (
-    <table
-      class={["w-full text-sm", CHART_PALETTE_CLASS, tableBackground(className), className]
-        .filter(Boolean).join(" ")}
-      aria-label={ariaLabel ?? title}
-    >
-      {title ? <caption class="mb-2 text-left text-sm font-medium">{title}</caption> : null}
-      <tbody>
-        {data.map((datum, index) => (
-          <tr
-            key={`${datum.label}-${index}`}
-            data-low-sample={datum.lowSample ? "true" : undefined}
-          >
-            <th scope="row" class="py-1 pr-3 font-normal" style={{ width: labelWidth }}>
-              {datum.href
-                ? (
-                  <a href={datum.href} class="hover:underline" style={{ color: textColor }}>
-                    {datum.label}
-                  </a>
-                )
-                : datum.label}
-            </th>
-            <td class="w-full py-1">
-              <div class="flex items-center justify-end gap-2">
-                <span
-                  class="h-2 flex-1 overflow-hidden rounded-sm"
-                  style={{ background: trackColor }}
-                >
+    <div class={twMerge("flex flex-col gap-2", CHART_PALETTE_CLASS, className)}>
+      {heading}
+      <table class="w-full bg-transparent text-sm" aria-label={ariaLabel ?? title}>
+        <tbody>
+          {data.map((datum, index) => (
+            <tr
+              key={`${datum.label}-${index}`}
+              data-low-sample={datum.lowSample ? "true" : undefined}
+            >
+              <th scope="row" class="py-1 pr-3 font-normal" style={{ width: labelWidth }}>
+                {datum.href
+                  ? (
+                    <a href={datum.href} class="hover:underline" style={{ color: textColor }}>
+                      {datum.label}
+                    </a>
+                  )
+                  : datum.label}
+              </th>
+              <td class="w-full py-1">
+                <div class="flex items-center justify-end gap-2">
                   <span
-                    class="block h-full rounded-sm"
-                    style={{
-                      width: `${barPercent(datum.value, top)}%`,
-                      background: datum.color ?? seriesColor(index, colors),
-                    }}
+                    class="h-2 flex-1 overflow-hidden rounded-sm"
+                    style={{ background: trackColor }}
                   >
+                    <span
+                      class="block h-full rounded-sm"
+                      style={{
+                        width: `${barPercent(datum.value, top)}%`,
+                        background: datum.color ?? seriesColor(index, colors),
+                      }}
+                    >
+                    </span>
                   </span>
-                </span>
-                <span class="min-w-[4.5rem] text-right tabular-nums" style={{ color: textColor }}>
-                  {format(datum.value)}
-                </span>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+                  <span class="min-w-[4.5rem] text-right tabular-nums" style={{ color: textColor }}>
+                    {format(datum.value)}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

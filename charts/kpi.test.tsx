@@ -69,6 +69,13 @@ describe("Kpi", () => {
     expect(html).toContain("col-span-2")
     expect(html).toContain("rounded-lg")
   })
+
+  it("lets the caller's padding replace the default instead of competing with it", () => {
+    const html = render(<Kpi label="a" value={1} class="px-6" />)
+
+    expect(html).toContain("px-6")
+    expect(html).not.toContain("px-4")
+  })
 })
 
 describe("KpiGrid", () => {
@@ -96,5 +103,9 @@ describe("KpiGrid", () => {
 
   it("keeps the caller's class", () => {
     expect(render(<KpiGrid class="mt-4">{null}</KpiGrid>)).toContain("grid gap-3 mt-4")
+  })
+
+  it("lets the caller's gap replace the default", () => {
+    expect(render(<KpiGrid class="gap-6">{null}</KpiGrid>)).toContain(`class="grid gap-6"`)
   })
 })

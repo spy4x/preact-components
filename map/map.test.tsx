@@ -149,6 +149,25 @@ describe("Map", () => {
 
     expect(html).toContain(">Sites<")
   })
+
+  it("passes listHeadingLevel and statusLabels through to the list", () => {
+    const html = render(
+      <Map
+        center={{ lat: 0, lng: 0 }}
+        zoom={3}
+        markers={markers}
+        onMarkerClick={() => {}}
+        tileUrl="https://tiles.example.com/{z}/{x}/{y}.png"
+        attribution="© Example"
+        listHeadingLevel={2}
+        statusLabels={{ on: "open" }}
+      />,
+    )
+
+    expect(html).toMatch(/<h2 class="[^"]*">Places<\/h2>/)
+    expect(html).toContain(`London office<span class="sr-only">, open</span>`)
+    expect(html).toContain(`Paris office<span class="sr-only">, status unknown</span>`)
+  })
 })
 
 /**

@@ -1,5 +1,6 @@
 import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { twMerge } from "tailwind-merge"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_AXIS_COLOR,
@@ -8,6 +9,7 @@ import {
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "./colors.ts"
+import { stepIndex } from "./keys.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 import { formatDecimal } from "@spy4x/platform/universal/format-number"
 
@@ -112,6 +114,8 @@ export interface DonutChartProps {
   centerLabel?: string
   centerValue?: string | number
   title?: string
+  /** The title's heading level, so it fits the page's outline. Defaults to `3`. */
+  headingLevel?: 2 | 3 | 4 | 5 | 6
   /** Slice colours, in order. Defaults to the shared chart palette. */
   colors?: readonly string[]
   trackColor?: string
@@ -146,6 +150,7 @@ export function DonutChart({
   centerLabel,
   centerValue,
   title,
+  headingLevel = 3,
   colors,
   trackColor = DEFAULT_TRACK_COLOR,
   textColor = DEFAULT_TEXT_COLOR,
@@ -164,6 +169,7 @@ export function DonutChart({
   const [chosen, setActive] = useState<number | null>(null)
   useEffect(() => setInteractive(true), [])
 
+  const Heading = `h${headingLevel}` as "h3"
   const geometry = donutGeometry(data, { colors, emptyColor: trackColor })
   // Only a slice with a share can be pointed at; an empty ring has none.
   const slices = geometry.segments.flatMap((segment, index) => segment.share > 0 ? [index] : [])
@@ -187,8 +193,8 @@ export function DonutChart({
 
   if (data.length === 0) {
     return (
-      <div class={className}>
-        {title ? <h3 class="mb-2 text-sm font-medium">{title}</h3> : null}
+      <div class={twMerge("flex flex-col gap-2", className)}>
+        {title ? <Heading class="text-sm font-medium">{title}</Heading> : null}
         <p class="text-sm" style={{ color: textColor }}>{emptyLabel}</p>
       </div>
     )
@@ -211,21 +217,14 @@ export function DonutChart({
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const order = active === null ? -1 : slices.indexOf(active)
-    const last = slices.length - 1
-    const moves: Record<string, () => number | null> = {
-      ArrowRight: () => slices[Math.min(last, order + 1)],
-      ArrowDown: () => slices[Math.min(last, order + 1)],
-      ArrowLeft: () => slices[order < 0 ? last : Math.max(0, order - 1)],
-      ArrowUp: () => slices[order < 0 ? last : Math.max(0, order - 1)],
-      Home: () => slices[0],
-      End: () => slices[last],
-      Escape: () => null,
-    }
-    const move = moves[event.key]
-    if (!move || last < 0) return
+    const order = stepIndex(
+      event.key,
+      active === null ? null : slices.indexOf(active),
+      slices.length,
+    )
+    if (order === undefined) return
     event.preventDefault()
-    setActive(move())
+    setActive(order === null ? null : slices[order])
   }
 
   const label = ariaLabel ?? title ?? `Donut chart of ${data.length} slices`
@@ -234,12 +233,10 @@ export function DonutChart({
   return (
     <div
       ref={rootRef}
-      class={className
-        ? `relative flex flex-wrap items-center gap-6 ${CHART_PALETTE_CLASS} ${className}`
-        : `relative flex flex-wrap items-center gap-6 ${CHART_PALETTE_CLASS}`}
+      class={twMerge("relative flex flex-wrap items-center gap-6", CHART_PALETTE_CLASS, className)}
       data-chart="donut"
     >
-      {title ? <h3 class="w-full text-sm font-medium">{title}</h3> : null}
+      {title ? <Heading class="w-full text-sm font-medium">{title}</Heading> : null}
       <div
         ref={ringRef}
         class="relative size-40 shrink-0 rounded-full outline-offset-4"

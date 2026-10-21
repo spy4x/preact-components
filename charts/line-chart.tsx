@@ -1,5 +1,6 @@
 import type { JSX } from "preact"
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks"
+import { twMerge } from "tailwind-merge"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_AXIS_COLOR,
@@ -17,6 +18,7 @@ import {
   type TimeStep,
   timeTicks,
 } from "./time-ticks.ts"
+import { stepIndex } from "./keys.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 
 /** A point's place on the X axis: a label, or — on a time axis — an instant. */
@@ -71,6 +73,8 @@ export interface LineChartProps {
   /** Time axis only: the locale labels are printed in. Defaults to `"en-GB"`. */
   locale?: string
   title?: string
+  /** The title's heading level, so it fits the page's outline. Defaults to `3`. */
+  headingLevel?: 2 | 3 | 4 | 5 | 6
   /** Overrides the accessible name. Defaults to `title`, then to a series count. */
   ariaLabel?: string
   /** Series colours, in draw order. Defaults to the shared chart palette. */
@@ -107,6 +111,10 @@ const SPAN = 1000
  * axis, so a chart seen with no JavaScript never draws two labels on top of each other there.
  */
 const ASSUMED_LABEL_WIDTH = 280
+
+/** The tooltip box; hidden with `invisible` while no point is active. */
+const TOOLTIP_CLASSES =
+  "pointer-events-none absolute top-0 left-0 z-10 flex max-w-64 flex-col gap-1 rounded-md border px-2 py-1 text-xs shadow-sm"
 
 /** One X position: its key, where it sits (`0…1`), and how it is printed. */
 interface Slot {
@@ -149,6 +157,7 @@ export function LineChart({
   timeZone,
   locale,
   title,
+  headingLevel = 3,
   ariaLabel,
   colors,
   axisColor = DEFAULT_AXIS_COLOR,
@@ -192,7 +201,13 @@ export function LineChart({
   const isDefined = (value: number | null | undefined): value is number =>
     typeof value === "number" && Number.isFinite(value) && !(ignoreZeroes && value === 0)
 
-  const { slots, step } = buildSlots(series, xAxis, { xFormat, timeZone, locale })
+  // Slots carry a formatted heading per point; they change only with the data and its format, not
+  // with each pointer step that re-renders the chart.
+  const { slots, step } = useMemo(
+    () => buildSlots(series, xAxis, { xFormat, timeZone, locale }),
+    [series, xAxis, xFormat, timeZone, locale],
+  )
+  const Heading = `h${headingLevel}` as "h3"
   const lines: Line[] = series.map((entry, index) => {
     const values: Line["values"] = slots.map(() => undefined)
     const at = new Map(slots.map((slot, slotIndex) => [slot.key, slotIndex]))
@@ -240,20 +255,10 @@ export function LineChart({
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const last = slots.length - 1
-    const moves: Record<string, (current: number | null) => number | null> = {
-      ArrowRight: (current) => Math.min(last, current === null ? 0 : current + 1),
-      ArrowUp: (current) => Math.min(last, current === null ? 0 : current + 1),
-      ArrowLeft: (current) => Math.max(0, current === null ? last : current - 1),
-      ArrowDown: (current) => Math.max(0, current === null ? last : current - 1),
-      Home: () => 0,
-      End: () => last,
-      Escape: () => null,
-    }
-    const move = moves[event.key]
-    if (!move || last < 0) return
+    const next = stepIndex(event.key, active, slots.length)
+    if (next === undefined) return
     event.preventDefault()
-    setActive(move(active))
+    setActive(next)
   }
 
   useLayoutEffect(() => {
@@ -272,8 +277,8 @@ export function LineChart({
 
   if ((!bounds || plotted.length === 0) && !isLoading) {
     return (
-      <div class={className}>
-        {title ? <h3 class="mb-2 text-sm font-medium">{title}</h3> : null}
+      <div class={twMerge("flex flex-col gap-2", className)}>
+        {title ? <Heading class="text-sm font-medium">{title}</Heading> : null}
         <p class="text-sm" style={{ color: textColor }}>{emptyLabel}</p>
       </div>
     )
@@ -284,11 +289,11 @@ export function LineChart({
   return (
     <div
       ref={rootRef}
-      class={join("relative flex flex-col gap-2", CHART_PALETTE_CLASS, className)}
+      class={twMerge("relative flex flex-col gap-2", CHART_PALETTE_CLASS, className)}
       data-chart="line"
       aria-busy={isLoading ? "true" : undefined}
     >
-      {title ? <h3 class="text-sm font-medium">{title}</h3> : null}
+      {title ? <Heading class="text-sm font-medium">{title}</Heading> : null}
       <div class="flex gap-2 pt-2">
         <div
           class="relative shrink-0 text-xs"
@@ -396,10 +401,9 @@ export function LineChart({
                     ? (
                       <span
                         key={`dot-${lineIndex}-${slotIndex}`}
-                        class={join(
-                          "absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full",
-                          interactive && "pointer-events-none",
-                        )}
+                        class={interactive
+                          ? "pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                          : "absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"}
                         style={{
                           left: percent(slots[slotIndex].position),
                           top: percent(toFraction(value)),
@@ -460,14 +464,11 @@ export function LineChart({
             {xLabels.map((tick) => (
               <span
                 key={`x-${tick.position}`}
-                class={join(
-                  "absolute top-0 whitespace-nowrap",
-                  tick.position < 0.05
-                    ? undefined
-                    : tick.position > 0.95
-                    ? "-translate-x-full"
-                    : "-translate-x-1/2",
-                )}
+                class={tick.position < 0.05
+                  ? "absolute top-0 whitespace-nowrap"
+                  : tick.position > 0.95
+                  ? "absolute top-0 -translate-x-full whitespace-nowrap"
+                  : "absolute top-0 -translate-x-1/2 whitespace-nowrap"}
                 style={{ left: percent(tick.position) }}
               >
                 {tick.label}
@@ -483,7 +484,9 @@ export function LineChart({
               ? lines.map((line, lineIndex) => (
                 <span key={`legend-${lineIndex}`} class="inline-flex items-center gap-1">
                   <span
-                    class={join("inline-block w-3 border-t-2", line.dashed && "border-dashed")}
+                    class={line.dashed
+                      ? "inline-block w-3 border-t-2 border-dashed"
+                      : "inline-block w-3 border-t-2"}
                     style={{ borderColor: line.color }}
                   />
                   {line.name}
@@ -506,10 +509,7 @@ export function LineChart({
         : null}
       <div
         ref={tooltipRef}
-        class={join(
-          "pointer-events-none absolute top-0 left-0 z-10 flex max-w-64 flex-col gap-1 rounded-md border px-2 py-1 text-xs shadow-sm",
-          activeSlot === undefined && "invisible",
-        )}
+        class={activeSlot === undefined ? `invisible ${TOOLTIP_CLASSES}` : TOOLTIP_CLASSES}
         style={{ background: surfaceColor, borderColor: axisColor, color: TOOLTIP_TEXT_COLOR }}
         role="status"
         data-chart-tooltip=""
@@ -539,11 +539,6 @@ export function LineChart({
 /** At most two decimals, and none on a whole number: `12`, `12.5`, `0.33`. */
 function formatNumber(value: number): string {
   return String(Math.round(value * 100) / 100)
-}
-
-/** `a b c`, skipping the parts that are `false` or missing. */
-function join(...parts: (string | false | null | undefined)[]): string {
-  return parts.filter(Boolean).join(" ")
 }
 
 /** A `0…1` fraction as a CSS percentage, rounded so the markup stays stable. */

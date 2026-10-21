@@ -9,7 +9,7 @@
 /** The bucket granularities a series can be aggregated at. */
 export const TIME_FRAMES = ["minutes", "hours", "days"] as const
 
-/** Bucket granularity of a series, which decides the X tick format. */
+/** Bucket granularity of a series. A `LineChart` picks its X ticks from the data, not from this. */
 export type TimeFrame = typeof TIME_FRAMES[number]
 
 export interface TimeSeriesPoint {

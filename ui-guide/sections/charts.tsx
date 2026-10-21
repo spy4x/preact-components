@@ -130,6 +130,12 @@ export const chartsDemos = {
         description: "How the trailing number is printed.",
       },
       { name: "title", type: "string", description: "The heading, and the table's name." },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        default: "3",
+        description: "The level of the title's heading, so it fits the page's outline.",
+      },
     ],
     snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />`,
     render: () => <Bars data={bars} title="Orders by plan" />,
@@ -150,6 +156,12 @@ export const chartsDemos = {
         name: "centerValue",
         type: "string | number",
         description: "The figure in the hole, usually the total.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        default: "3",
+        description: "The level of the title's heading, so it fits the page's outline.",
       },
     ],
     snippet: `<DonutChart
@@ -196,6 +208,12 @@ export const chartsDemos = {
         type: "boolean",
         default: "false",
         description: "Treat a zero as missing: the line breaks and a dashed bridge spans the gap.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        default: "3",
+        description: "The level of the title's heading, so it fits the page's outline.",
       },
     ],
     snippet: `<LineChart

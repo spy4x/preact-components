@@ -1,9 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
+  DEFAULT_STATUS_LABELS,
   leafletFromImport,
   type LeafletModule,
   MARKER_DOT_CLASSES,
+  markerName,
   mountLeafletMap,
   STATUS_WRAPPER_CLASS,
 } from "./leaflet-map.ts"
@@ -31,6 +33,16 @@ describe("STATUS_WRAPPER_CLASS", () => {
     for (const className of Object.values(STATUS_WRAPPER_CLASS)) {
       expect(preset, `.${className} is not defined in theme/preset.css`).toContain(`.${className} `)
     }
+  })
+})
+
+describe("markerName", () => {
+  it("names a pin by its label and its status word, unknown when it has none", () => {
+    const base = { id: "a", lat: 0, lng: 0, label: "London depot" }
+    expect(markerName({ ...base, status: "on" }, DEFAULT_STATUS_LABELS)).toBe("London depot, on")
+    expect(markerName({ ...base, status: "off" }, DEFAULT_STATUS_LABELS)).toBe("London depot, off")
+    expect(markerName(base, DEFAULT_STATUS_LABELS)).toBe("London depot, status unknown")
+    expect(markerName(base, { ...DEFAULT_STATUS_LABELS, unknown: "?" })).toBe("London depot, ?")
   })
 })
 

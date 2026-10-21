@@ -269,4 +269,19 @@ describe("LineChart", () => {
     expect(html).toContain("dark:[--chart-1:#3987e5]")
     expect(html).toContain("var(--color-chart-1, var(--chart-1, #2a78d6))")
   })
+
+  it("titles the chart with a heading at the level asked for, with data and without", () => {
+    expect(render(<LineChart series={twoPoints} title="Runs" />)).toContain(">Runs</h3>")
+    expect(render(<LineChart series={twoPoints} title="Runs" headingLevel={2} />))
+      .toMatch(/<h2 class="[^"]*">Runs<\/h2>/)
+    expect(render(<LineChart series={[]} title="Runs" headingLevel={5} />))
+      .toMatch(/<h5 class="[^"]*">Runs<\/h5>/)
+  })
+
+  it("lets a caller's class replace a default utility instead of adding to it", () => {
+    const html = render(<LineChart series={twoPoints} class="gap-4" />)
+
+    expect(html).toMatch(/^<div class="[^"]*\bgap-4\b/)
+    expect(html).not.toMatch(/^<div class="[^"]*\bgap-2\b/)
+  })
 })

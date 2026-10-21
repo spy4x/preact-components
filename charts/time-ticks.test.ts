@@ -127,3 +127,37 @@ describe("formatTimeFull", () => {
     expect(formatTimeFull(time, false)).toBe("1 Mar 2026")
   })
 })
+
+describe("time label formats", () => {
+  it("builds one Intl.DateTimeFormat for many labels in the same locale, zone and parts", () => {
+    const Original = Intl.DateTimeFormat
+    let built = 0
+    const Counting = function (...args: ConstructorParameters<typeof Original>) {
+      built++
+      return new Original(...args)
+    } as unknown as typeof Original
+    Intl.DateTimeFormat = Counting
+    try {
+      // A locale and zone no other test uses, so nothing is cached before this loop.
+      const options = { locale: "fr-CA", timeZone: "Asia/Kathmandu" }
+      const labels = Array.from(
+        { length: 200 },
+        (_, index) => formatTimeFull(at("2026-03-01T00:00:00Z") + index * 3_600_000, true, options),
+      )
+      expect(new Set(labels).size).toBe(200)
+      expect(built).toBe(1)
+    } finally {
+      Intl.DateTimeFormat = Original
+    }
+  })
+
+  it("keeps formats apart by locale and zone", () => {
+    const time = at("2026-03-01T06:00:00Z")
+
+    expect(formatTimeFull(time, true, { locale: "en-GB", timeZone: "Asia/Tokyo" }))
+      .toBe("1 Mar 2026, 15:00")
+    expect(formatTimeFull(time, true, { locale: "en-GB", timeZone: "UTC" }))
+      .toBe("1 Mar 2026, 06:00")
+    expect(formatTimeFull(time, false, { locale: "de-DE" })).toBe("1. März 2026")
+  })
+})
