@@ -59,6 +59,13 @@ export {
 } from "./button.tsx"
 export { Checkbox, type CheckboxProps, type CheckboxShape } from "./checkbox.tsx"
 export {
+  COLOR_PRESETS,
+  ColorField,
+  type ColorFieldLabels,
+  type ColorFieldProps,
+  type ColorPreset,
+} from "./color-field.tsx"
+export {
   Coachmark,
   type CoachmarkCloseReason,
   type CoachmarkPlacement,
