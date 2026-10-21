@@ -508,7 +508,11 @@ function CrudUuidDemo() {
             <td class="text-foreground">{row.name}</td>
             <td class="tabular-nums">{row.members}</td>
             <td>
-              <code class="text-xs">{row.id}</code>
+              {/* Eight characters fit a phone; the full id is the tooltip and what is read out. */}
+              <code class="text-xs" title={row.id}>
+                <span aria-hidden="true">{row.id.slice(0, 8)}…</span>
+                <span class="sr-only">{row.id}</span>
+              </code>
             </td>
           </>
         )}
