@@ -20,10 +20,8 @@ import {
   routeHref,
   type RouteMatch,
   routeSlug,
-  type RouteTable,
-  routeTable,
-  routeTableDrift,
 } from "./routes.ts"
+import { type RouteTable, routeTable, routeTableDrift } from "./routes-internals.ts"
 
 /** One hash and the match it must produce, echoed in the assertion message. */
 interface RouteCase {

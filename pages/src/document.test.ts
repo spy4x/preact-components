@@ -6,7 +6,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import type { RouteTable } from "@spy4x/preact-ui-guide/routes"
+import type { RouteTable } from "../../ui-guide/routes-internals.ts"
 import { PAGE_DESCRIPTION, PAGE_TITLE } from "./site.ts"
 import { renderDocument } from "./document.tsx"
 

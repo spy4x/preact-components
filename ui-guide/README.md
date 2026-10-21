@@ -181,8 +181,8 @@ Decisions worth stating, because a later wave will build on them:
 - **A page is not a card's address.** Pages are routes a reader navigates by; a card is still
   addressed by its section, so every link written before pages existed still opens its card.
 
-`routeTable()` is the route table a host can echo into its single document, and `routeTableDrift()`
-is the build guard over it: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
+`routeTable()` and `routeTableDrift()`, in `routes-internals.ts` and not exported by the package,
+are this repository's build guard: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
 and fails when a page, section or demo entry is missing, duplicated, non-canonical, or one the
 resolver would not accept.
 

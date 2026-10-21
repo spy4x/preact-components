@@ -65,7 +65,8 @@ import {
   type GuidePageId,
   guidePages,
 } from "@spy4x/preact-ui-guide/registry"
-import { pageHref, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
+import { pageHref } from "@spy4x/preact-ui-guide/routes"
+import { routeTableDrift } from "../ui-guide/routes-internals.ts"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
