@@ -99,7 +99,7 @@ describe("SiteHeader", () => {
     const tags = linksTo(html, "https://me.example")
     expect(tags.length).toBe(2)
     for (const tag of tags) {
-      expect(tag).toMatch(/<\/svg><span class="sr-only">\(opens me\.example\)<\/span><\/a>$/)
+      expect(tag).toMatch(/<\/svg><span class="sr-only"> \(opens me\.example\)<\/span><\/a>$/)
     }
     for (const tag of linksTo(html, "/docs")) expect(tag).not.toContain("sr-only")
   })

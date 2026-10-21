@@ -111,7 +111,7 @@ function SiteHeaderNavLink(
       {Icon && <Icon class="size-5" />}
       {label}
       {external && <IconExternalLink class="size-4" aria-hidden="true" />}
-      {external && externalHint && <span class="sr-only">{externalHint}</span>}
+      {external && externalHint && <span class="sr-only">{` ${externalHint}`}</span>}
     </a>
   )
 }

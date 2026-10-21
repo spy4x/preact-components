@@ -2991,6 +2991,8 @@ server-only page and with scripts off.
 **Each group is its own landmark.** A group is `{ title, links }` and renders as
 `<nav aria-label={title}>` holding an `<h2>` with the title and a `<ul>` of plain `<a href>` links.
 A link with `external: true` gets an `IconExternalLink`, hidden from assistive tech, after its label.
+Its `externalHint` ("(opens example.com)") follows as screen-reader-only text, since the icon says
+nothing to a screen reader.
 It still opens in the same tab: leaving the page is the visitor's choice.
 
 **Layout.** On a phone the groups sit two to a row and `aside` takes the full width below them;

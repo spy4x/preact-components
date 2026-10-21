@@ -82,7 +82,7 @@ describe("SiteFooter", () => {
       />,
     )
     expect(linkTo(html, "https://me.example")).toMatch(
-      /Blog<svg.*?<\/svg><span class="sr-only">\(opens me\.example\)<\/span><\/a>/,
+      /Blog<svg.*?<\/svg><span class="sr-only"> \(opens me\.example\)<\/span><\/a>/,
     )
     expect(linkTo(html, "/docs")).not.toContain("sr-only")
   })

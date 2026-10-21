@@ -98,7 +98,7 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
                         {link.label}
                         {link.external && <IconExternalLink class="size-4" aria-hidden="true" />}
                         {link.external && link.externalHint && (
-                          <span class="sr-only">{link.externalHint}</span>
+                          <span class="sr-only">{` ${link.externalHint}`}</span>
                         )}
                       </a>
                     </li>
