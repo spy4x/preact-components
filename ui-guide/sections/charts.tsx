@@ -102,9 +102,12 @@ const lastWeek = [5.2, 4.9, 6.1, 8.4, 9.9, 11.1, 11.8, 10.9, 9.6, 8.1, 6.8, 6.0]
 /** Two-hourly instants from midnight, in `Z`, so every build and every browser agree. */
 const hours = today.map((_, index) => `2026-03-01T${String(index * 2).padStart(2, "0")}:00:00Z`)
 
-/** Today against the week before, on a time axis. */
+/** Today against the week before, on a time axis. The last two hours are still open: hollow dots. */
 const revenue: LineSeries[] = [
-  { name: "Today", points: hours.map((x, index) => ({ x, y: today[index] })) },
+  {
+    name: "Today",
+    points: hours.map((x, index) => ({ x, y: today[index], hollow: index === today.length - 1 })),
+  },
   {
     name: "A week earlier",
     dashed: true,
@@ -271,7 +274,7 @@ export const chartsDemos = {
   title="Revenue, k€"
   xAxis="time"
   series={[
-    { name: "Today", points: today.map((p) => ({ x: p.time, y: p.value })) },
+    { name: "Today", points: today.map((p) => ({ x: p.time, y: p.value, hollow: p.partial })) },
     { name: "A week earlier", dashed: true, points: lastWeek.map((p) => ({ x: p.time, y: p.value })) },
   ]}
   referenceValue={12}

@@ -24,11 +24,18 @@ import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 /** A point's place on the X axis: a label, or — on a time axis — an instant. */
 export type LineX = string | number | Date
 
+/** One reading of a {@link LineSeries}: where it sits on the X axis and its value. */
 export interface LinePoint {
   /** A label on a category axis (repeated across series to line them up), an instant on a time axis. */
   x: LineX
   /** `null` or a non-finite number is a missing value: the line breaks there. */
   y: number | null
+  /**
+   * Draw this point's dot as a hollow ring in the series colour instead of a filled dot, to set it
+   * apart: a partial period, an estimate, a reading on thin data. Its line, tooltip and value stay
+   * the same. Defaults to `false`; it shows only where the series draws its dots.
+   */
+  hollow?: boolean
 }
 
 export interface LineSeries {
@@ -130,6 +137,8 @@ interface Line {
   dashed: boolean
   showPoints: boolean
   values: (number | null | undefined)[]
+  /** Per {@link Slot}: whether that point's dot is drawn hollow. */
+  hollow: boolean[]
 }
 
 /**
@@ -210,10 +219,13 @@ export function LineChart({
   const Heading = `h${headingLevel}` as "h3"
   const lines: Line[] = series.map((entry, index) => {
     const values: Line["values"] = slots.map(() => undefined)
+    const hollow = slots.map(() => false)
     const at = new Map(slots.map((slot, slotIndex) => [slot.key, slotIndex]))
     for (const point of entry.points) {
       const slotIndex = at.get(slotKey(point.x, xAxis))
-      if (slotIndex !== undefined) values[slotIndex] = point.y
+      if (slotIndex === undefined) continue
+      values[slotIndex] = point.y
+      hollow[slotIndex] = point.hollow ?? false
     }
     return {
       name: entry.name,
@@ -221,6 +233,7 @@ export function LineChart({
       dashed: entry.dashed ?? false,
       showPoints: entry.showPoints ?? true,
       values,
+      hollow,
     }
   })
 
@@ -401,15 +414,21 @@ export function LineChart({
                     ? (
                       <span
                         key={`dot-${lineIndex}-${slotIndex}`}
-                        class={interactive
-                          ? "pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                          : "absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"}
+                        class={[
+                          "absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full",
+                          interactive ? "pointer-events-none" : "",
+                          line.hollow[slotIndex] ? "border-2" : "",
+                        ].filter(Boolean).join(" ")}
                         style={{
                           left: percent(slots[slotIndex].position),
                           top: percent(toFraction(value)),
-                          background: line.color,
+                          // A hollow dot is a ring: the series colour on its border, nothing inside.
+                          ...(line.hollow[slotIndex]
+                            ? { borderColor: line.color, background: "none" }
+                            : { background: line.color }),
                         }}
                         title={`${line.name} ${slots[slotIndex].label}: ${yFormat(value)}`}
+                        data-chart-hollow={line.hollow[slotIndex] ? "" : undefined}
                       />
                     )
                     : null
@@ -485,7 +504,7 @@ export function LineChart({
                 <span key={`legend-${lineIndex}`} class="inline-flex items-center gap-1">
                   <span
                     class={line.dashed
-                      ? "inline-block w-3 border-t-2 border-dashed"
+                      ? "inline-block w-6 border-t-2 border-dashed"
                       : "inline-block w-3 border-t-2"}
                     style={{ borderColor: line.color }}
                   />
