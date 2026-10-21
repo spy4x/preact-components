@@ -225,11 +225,13 @@ describe("createHotkeyListener", () => {
 
   it("reads the latest bindings on each press, sequences included", () => {
     const { ran, send, replace } = listen([binding("g i")])
+    send({ key: "x", timeStamp: 0 })
     replace([binding("g t")])
-    send({ key: "g", timeStamp: 0 })
-    send({ key: "i", timeStamp: 100 })
-    send({ key: "g", timeStamp: 200 })
-    send({ key: "t", timeStamp: 300 })
+    send({ key: "g", timeStamp: 100 })
+    send({ key: "i", timeStamp: 200 })
+    expect(ran).toEqual([])
+    send({ key: "g", timeStamp: 300 })
+    send({ key: "t", timeStamp: 400 })
     expect(ran).toEqual(["g t"])
   })
 })
