@@ -49,7 +49,7 @@ the axis and loading helpers behind them.
 | ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
 | `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`                    |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`       |
 | `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
 | `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
 

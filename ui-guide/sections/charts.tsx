@@ -189,6 +189,12 @@ export const chartsDemos = {
         description: "The figure in the hole, usually the total.",
       },
       {
+        name: "axisColor",
+        type: "string",
+        default: "the control border token",
+        description: "The tooltip's border colour, as LineChart's axisColor.",
+      },
+      {
         name: "headingLevel",
         type: "2 | 3 | 4 | 5 | 6",
         default: "3",

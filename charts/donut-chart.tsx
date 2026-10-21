@@ -121,6 +121,9 @@ export interface DonutChartProps {
   trackColor?: string
   textColor?: string
   surfaceColor?: string
+  /** The tooltip's border, as `LineChart`'s `axisColor` borders its own. Defaults to the control
+   * border token, so it follows the theme. */
+  axisColor?: string
   /** Defaults to `true`. */
   showLegend?: boolean
   emptyLabel?: string
@@ -155,6 +158,7 @@ export function DonutChart({
   trackColor = DEFAULT_TRACK_COLOR,
   textColor = DEFAULT_TEXT_COLOR,
   surfaceColor = DEFAULT_SURFACE_COLOR,
+  axisColor = DEFAULT_AXIS_COLOR,
   showLegend = true,
   emptyLabel = "No data",
   ariaLabel,
@@ -306,7 +310,7 @@ export function DonutChart({
           : "pointer-events-none invisible absolute top-0 left-0 z-10 flex max-w-64 flex-col gap-1 rounded-md border px-2 py-1 text-xs shadow-sm"}
         style={{
           background: surfaceColor,
-          borderColor: DEFAULT_AXIS_COLOR,
+          borderColor: axisColor,
           color: TOOLTIP_TEXT_COLOR,
         }}
         role="status"
