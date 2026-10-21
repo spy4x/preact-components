@@ -1337,10 +1337,26 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
   },
   LoadingSkeleton: {
     summary:
-      "Grey placeholder cards that hold a page's shape while its content loads, and stop pulsing when the system asks for reduced motion.",
+      "Grey placeholder cards that hold a page's shape while its content loads, or a form's fields inside a card, and stop pulsing when the system asks for reduced motion.",
     wide: false,
-    snippet: `<LoadingSkeleton rows={1} />`,
-    render: () => <LoadingSkeleton rows={1} />,
+    snippet: `<LoadingSkeleton rows={1} />
+
+// Inside a card, in place of a form's fields: no card of its own.
+<LoadingSkeleton fields={2} />`,
+    render: () => (
+      <Stack gap="lg">
+        <LoadingSkeleton rows={1} />
+        <div class="pc-card">
+          <div class="pc-card-body">
+            <LoadingSkeleton fields={2} />
+          </div>
+        </div>
+        <DemoNote>
+          With fields, a form's shape and no card of its own, for a card body whose form is on its
+          way.
+        </DemoNote>
+      </Stack>
+    ),
   },
   Modal: {
     summary: "A dialog that holds focus until it is closed, on the browser's own `<dialog>`.",

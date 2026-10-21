@@ -513,9 +513,15 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   showClearButton?: boolean
   /** Accessible name of the clear button. English default, `"Clear selection"`; override at will. */
   clearLabel?: string
-  /** Query owned by the caller. Pass with `onQueryChange` for a controlled search box. */
+  /**
+   * Query owned by the caller. Pass with `onQueryChange` for a controlled search box. Closing the
+   * list leaves it as it is; only the clear button asks for `""`.
+   */
   query?: string
-  /** Called on every keystroke with the raw input value. */
+  /**
+   * Called on every keystroke with the raw input value, and with `""` when the clear button empties
+   * the field or, without `query`, when closing drops the typed text.
+   */
   onQueryChange?: (query: string) => void
   /**
    * An item must be chosen: with none, the browser refuses the form's submit and shows
@@ -828,10 +834,13 @@ export function Combobox<T>({
    *
    * Closing drops the query with the list, whichever way it closes (a key, a blur, an outside
    * click, a pick): a closed combobox displays its selection, so a kept-but-invisible draft would
-   * only be a trap, and the status region would go on answering it with "No matches".
+   * only be a trap, and the status region would go on answering it with "No matches". A controlled
+   * query belongs to the caller and is left where it is, as `openList` leaves it: telling a
+   * server-search caller `""` on every blur made it fetch the whole list again.
    */
   const apply = (state: ComboboxState) => {
-    if (!state.isOpen && isOpen.value) setQuery("")
+    const drops = controlledQuery === undefined && draftQuery.peek() !== ""
+    if (!state.isOpen && isOpen.value && drops) setQuery("")
     isOpen.value = state.isOpen
     activeIndex.value = state.activeIndex
   }
@@ -961,9 +970,9 @@ export function Combobox<T>({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 onChange(null)
-                // Closing drops the query; a closed field may still hold a controlled one.
+                // Clearing is asked for, so it empties a controlled query too; closing would not.
+                setQuery("")
                 if (isOpen.value) close()
-                else setQuery("")
               }}
             >
               <CrossGlyph />

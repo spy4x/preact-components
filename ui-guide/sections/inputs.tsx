@@ -727,11 +727,15 @@ function FetchingCombobox() {
   const coin = useSignal<string | null>(null)
   const options = useSignal<readonly string[]>(coins)
   const loading = useSignal(false)
+  // Every call the field makes, on the wrapper's `data-query-calls`, so a check can tell a call that
+  // changed nothing from no call without a line of developer wording on the card.
+  const calls = useSignal(0)
   const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => () => clearTimeout(pending.current), [])
 
   const search = (text: string) => {
+    calls.value++
     query.value = text
     clearTimeout(pending.current)
     options.value = noItemsYet
@@ -743,7 +747,7 @@ function FetchingCombobox() {
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-e2e="combobox-fetch-card" data-query-calls={calls.value}>
       <Combobox
         items={options.value}
         value={coin.value}
@@ -1415,7 +1419,8 @@ export const inputDemos = {
       {
         name: "query / onQueryChange",
         type: "string / (query: string) => void",
-        description: "Hands the typed text to the caller, as a server-side search needs.",
+        description:
+          "Hands the typed text to the caller, as a server-side search needs. Closing the list leaves a controlled query alone.",
       },
       {
         name: "emptyMessage",

@@ -4,6 +4,14 @@ import type { JSX } from "preact"
 export interface LoadingSkeletonProps {
   /** Number of placeholder cards below the header card. Defaults to 3. */
   rows?: number
+  /**
+   * Draw a form instead: this many fields, each a label bar over a field-height bar, on a six-column
+   * grid where each takes half the row from `sm` up, as `crud/` field rows do. No card, border or
+   * icon, so it sits inside a card's body; `rows` is ignored. Each field takes the room of a `pc-label`
+   * line over a `pc-input`, and at least a default text input's width, so the form does not jump
+   * when it arrives.
+   */
+  fields?: number
   class?: string
 }
 
@@ -17,7 +25,28 @@ const bar = "animate-pulse rounded bg-track motion-reduce:animate-none"
  * `aria-hidden` on the whole tree: a screen reader should hear the caller's single polite
  * status message, not a stack of empty boxes.
  */
-export function LoadingSkeleton({ rows = 3, class: className }: LoadingSkeletonProps): JSX.Element {
+export function LoadingSkeleton(
+  { rows = 3, fields, class: className }: LoadingSkeletonProps,
+): JSX.Element {
+  if (fields !== undefined) {
+    return (
+      <div
+        class={cn("grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6", className)}
+        aria-hidden="true"
+      >
+        {Array.from(
+          { length: Math.max(0, fields) },
+          (_, index) => (
+            <div key={index} class="sm:col-span-3 sm:min-w-64">
+              <div class={cn(bar, "my-1 h-4 w-24")} />
+              <div class={cn(bar, "mt-2 h-12 w-full rounded-md")} />
+            </div>
+          ),
+        )}
+      </div>
+    )
+  }
+
   return (
     <div class={cn("space-y-3", className)} aria-hidden="true">
       <div class={cn(card, "flex items-center gap-4")}>

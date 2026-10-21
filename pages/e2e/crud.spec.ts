@@ -805,8 +805,9 @@ export const specs: readonly Spec[] = [
       await waitForValue(page, name, "Design")
       await demo.locator(`[data-e2e="hold-list"]`).click()
       await demo.locator(`[data-e2e="other-row"]`).click()
-      // The form drops row 1 in the same render that would say "not found".
-      await waitForValue(page, name, "")
+      // The form drops row 1 in the same render that would say "not found"; its fields give way to
+      // the loading skeleton.
+      await name.waitFor({ state: "detached" })
       const shown = await notFound.count()
       if (shown !== 0) throw new Error(`"Team not found" shown while the list loads (${shown})`)
 
@@ -815,4 +816,111 @@ export const specs: readonly Spec[] = [
       if (await notFound.count() !== 0) throw new Error(`"Team not found" shown after the load`)
     },
   },
+  ...loadingAndNarrowSpecs(),
 ]
+
+/**
+ * A `CrudEditor` whose list is still loading shows a skeleton and takes no input, one whose row is
+ * missing takes no input either, and a `CrudList` toolbar rendered without JavaScript on a 390 px
+ * screen keeps its Status select readable (#874).
+ */
+function loadingAndNarrowSpecs(): Spec[] {
+  return [
+    {
+      name:
+        "CrudEditor: while the list loads, a card-less skeleton with one bar per field stands " +
+        "in for the fields, the form is busy and takes no input, and the loaded row's fields take " +
+        "input",
+      pageId: "crud",
+      run: async (page) => {
+        const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+        const form = demo.locator("form").first()
+        const name = demo.getByLabel("Name", { exact: true })
+        const skeleton = form.locator(`[aria-hidden="true"]:has(.animate-pulse)`)
+
+        await waitForValue(page, name, "Design")
+        await demo.locator(`[data-e2e="hold-list"]`).click()
+        await demo.locator(`[data-e2e="other-row"]`).click()
+        await name.waitFor({ state: "detached" })
+        await skeleton.first().waitFor()
+        await form.locator("fieldset[disabled]").first().waitFor()
+        await form.and(page.locator(`[aria-busy="true"]`)).waitFor()
+        const fields = await form.locator("input:not([type=checkbox]), select, textarea").count()
+        if (fields !== 0) throw new Error(`${fields} fields are on the loading form`)
+        // Shaped like the form it stands in for: one field bar per field row (Name and Members),
+        // and no card of its own inside the form's card.
+        const bars = await skeleton.first().locator(".h-12").count()
+        if (bars !== 2) throw new Error(`the skeleton draws ${bars} field bars for 2 fields`)
+        const boxes = await skeleton.first().locator("[class*=border]").count()
+        if (boxes !== 0) {
+          throw new Error(`the skeleton draws ${boxes} bordered boxes inside the card`)
+        }
+
+        await demo.locator(`[data-e2e="hold-list"]`).click()
+        await waitForValue(page, name, "Support")
+        await skeleton.first().waitFor({ state: "detached" })
+        await form.and(page.locator(":not([aria-busy])")).waitFor()
+        if (!await name.isEditable()) throw new Error("the loaded form's Name field takes no input")
+      },
+    },
+    {
+      name: "CrudEditor: a row the store does not hold shows its fields disabled, not busy",
+      pageId: "crud",
+      run: async (page) => {
+        const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
+        const form = demo.locator("form").first()
+        const name = demo.getByLabel("Name", { exact: true })
+
+        await waitForValue(page, name, "Design")
+        await demo.locator(`[data-e2e="missing-row"]`).click()
+        // The demo words "not found" through `notFoundLabel`.
+        await demo.getByText("That team is no longer here").waitFor()
+        await form.locator("fieldset[disabled]").first().waitFor()
+        if (await name.isEditable()) throw new Error("the missing row's Name field takes input")
+        const busy = await form.getAttribute("aria-busy")
+        if (busy !== null) throw new Error(`the settled form is aria-busy="${busy}"`)
+      },
+    },
+    {
+      name:
+        "CrudList without JavaScript at 390 px: the Status select is wide enough for its options",
+      pageId: "crud",
+      run: async (page) => {
+        const browser = page.context().browser()
+        if (browser === null) throw new Error("the spec's page has no browser to open a context in")
+        const context = await browser.newContext({
+          javaScriptEnabled: false,
+          viewport: { width: 390, height: 844 },
+        })
+        try {
+          const noScript = await context.newPage()
+          await noScript.goto(page.url().split("#")[0])
+          const select = noScript.locator("#demo-CrudList select").first()
+          const room = await select.evaluate((element) => {
+            const field = element as HTMLSelectElement
+            // The widest option's text, set in the select's own font, plus its arrow's padding.
+            const probe = document.createElement("span")
+            probe.style.font = getComputedStyle(field).font
+            probe.style.position = "absolute"
+            probe.style.whiteSpace = "nowrap"
+            document.body.append(probe)
+            const widest = Math.max(...[...field.options].map((option) => {
+              probe.textContent = option.text
+              return probe.getBoundingClientRect().width
+            }))
+            probe.remove()
+            return { box: field.getBoundingClientRect().width, widest }
+          })
+          if (room.box < room.widest) {
+            throw new Error(
+              `the select is ${room.box} px wide, its widest option ${room.widest} px`,
+            )
+          }
+          return `select ${Math.round(room.box)} px, widest option ${Math.round(room.widest)} px`
+        } finally {
+          await context.close()
+        }
+      },
+    },
+  ]
+}
