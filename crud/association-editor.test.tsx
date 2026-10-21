@@ -267,8 +267,8 @@ describe("AssociationEditor", () => {
         </AssociationEditor>,
       )
 
-    expect(at()).toMatch(/<h1[^>]*>Add association<\/h1>/)
-    expect(at(2)).toMatch(/<h2[^>]*>Add association<\/h2>/)
+    expect(at()).toMatch(/<h1[^>]*><span class="block truncate">Add association<\/span><\/h1>/)
+    expect(at(2)).toMatch(/<h2[^>]*><span class="block truncate">Add association<\/span><\/h2>/)
     expect(at(2)).not.toContain("<h1")
   })
 

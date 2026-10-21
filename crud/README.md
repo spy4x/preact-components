@@ -137,12 +137,12 @@ The interfaces here describe the slice actually consumed, and nothing else.
 | `rows`                                   | —                               | a plain signal instead — nested, or a read-only collection           |
 | `error`                                  | `store.op.list`                 | the banner source for a signal-backed list                           |
 | `loading`                                | —                               | with `rows`: true while they are on their way; holds the empty state |
-| `title` / `titleSlot`                    | —                               | the page title, or a slot for a back button or a parent entity       |
+| `title` / `titleSlot`                    | —                               | the `PageHeader` title, or a slot drawn as its heading               |
 | `badge`                                  | non-deleted count               | badge after the title; `false` hides it                              |
 | `match`                                  | —                               | whether one word matches a row; words are ANDed                      |
 | `header`, `row`                          | —                               | the table's cells, excluding the actions column                      |
 | `actions`                                | —                               | right-aligned actions cell; adds its own header cell                 |
-| `addHref`, `addLabel`, `canAdd`          | —                               | the add action, hidden when there is nowhere to go                   |
+| `addHref`, `addLabel`, `canAdd`          | —                               | the header's primary action; hidden when there is nowhere to go      |
 | `statusFilter`                           | on                              | `false`, or `{ label, active, archived }` for a different wording    |
 | `query`, `status`                        | local signals                   | hand over the signals to own them (URL filters, a parent page)       |
 | `searchDelay`                            | `300`                           | debounce of the search box                                           |
@@ -258,7 +258,7 @@ The harness is the six parts, once:
 | `blank`          | —                    | the add-mode row; the row type is inferred from it                |
 | `schema`         | —                    | arktype schema validated on every change; omit if there is none   |
 | `entity`         | —                    | "Add **Region**", "Region not found", dependency sentence         |
-| `title`          | `Add/Edit <entity>`  | full title override                                               |
+| `title`          | `Add/Edit <entity>`  | the `PageHeader` title; a non-string is drawn as its heading      |
 | `canChange`      | `true`               | a port, because the library has no auth; `false` leaves Cancel    |
 | `archive`        | no toggle            | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
 | `onCreated`      | —                    | navigate where the created row belongs                            |
@@ -503,7 +503,7 @@ unreachable. Here the removed duplicate renders a Restore offer beside the confl
   rather than by a second resource ported into `examples/`.
 - **A DOM-level test of the harness.** Effects do not run under `preact-render-to-string`, so the
   load, validate, submit and archive loops are covered against a fake store at the function level
-  (`crud-editor.test.ts`), and the markup is covered by a server render. Wiring a real browser to the
+  (`crud-editor.test.tsx`), and the markup is covered by a server render. Wiring a real browser to the
   scaffold is the app's test to write, the same way `signals/` leaves `useUrlFilters` to the app
   that renders it.
 
@@ -560,7 +560,7 @@ deno test crud/       # from the repository root
 ```
 
 Every module has a colocated suite: the save-enabled
-rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
+rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.tsx`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
 actions column, empty state (on the real `buildModelStore` too) and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
 `buildModelStore` (`store.test.ts`), and the ported regions resource

@@ -1,11 +1,13 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
+import { render } from "preact-render-to-string"
 import type { ValidationModel } from "@spy4x/validation/model"
 import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import type { CrudEditorStore } from "./store.ts"
-import { editorState, submitEditor, toggleArchiveState } from "./crud-editor.tsx"
+import { CrudEditor, editorState, submitEditor, toggleArchiveState } from "./crud-editor.tsx"
 import type { CrudRow, DeletionDependency } from "./types.ts"
+import type { JSX } from "preact"
 
 interface Region extends CrudRow {
   name: string
@@ -224,5 +226,42 @@ describe("editorState", () => {
     expect(editorState({ ...base, validation: invalid }).saveEnabled).toBe(false)
     expect(editorState({ ...base, inProgress: true }).saveEnabled).toBe(false)
     expect(editorState({ ...base, blocked: 1 }).saveEnabled).toBe(false)
+  })
+})
+
+describe("CrudEditor header", () => {
+  const editor = (title?: string | JSX.Element) =>
+    render(
+      <CrudEditor
+        store={fakeStore().store}
+        mode="add"
+        blank={region()}
+        entity="Region"
+        title={title}
+        cancelHref="/regions"
+      >
+        {() => null}
+      </CrudEditor>,
+    )
+
+  it("starts with a PageHeader titled after the mode and entity", () => {
+    const html = editor()
+
+    expect(html.indexOf(`data-e2e="page-header"`)).toBeLessThan(html.indexOf("<form"))
+    expect(html).toMatch(
+      /<h1[^>]*title="Add Region"><span class="block truncate">Add Region<\/span>/,
+    )
+  })
+
+  it("puts a string title in the header as its title", () => {
+    expect(editor("New region")).toMatch(
+      /<h1[^>]*title="New region"><span class="block truncate">New region<\/span>/,
+    )
+  })
+
+  it("draws a non-string title as the heading, with the default text as its tooltip", () => {
+    expect(editor(<em>Region for site ABC</em>)).toMatch(
+      /<h1[^>]*title="Add Region"><em>Region for site ABC<\/em><\/h1>/,
+    )
   })
 })

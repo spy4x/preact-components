@@ -3,7 +3,7 @@ import { cn } from "@spy4x/preact-cn"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { LoadingSkeleton } from "@spy4x/preact-ui/loading-skeleton"
 import { Stack } from "@spy4x/preact-ui/layout"
-import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
+import { PageHeader, type PageHeaderProps } from "@spy4x/preact-ui/page-header"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
 import { type ComponentChildren, Fragment, type JSX, toChildArray } from "preact"
@@ -212,13 +212,16 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   schema?: Type
   /** Entity name in the page title and the "not found" message, for example `"Region"`. */
   entity: string
-  /** Full page title. Defaults to `Add <entity>` or `Edit <entity>`. */
+  /**
+   * Full page title. Defaults to `Add <entity>` or `Edit <entity>`. A string is the `PageHeader`
+   * title; anything else is drawn as its `heading`, with the default text as the tooltip.
+   */
   title?: ComponentChildren
   /**
    * Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page
    * already has its `<h1>`; the look stays the same.
    */
-  headingLevel?: PageTitleProps["headingLevel"]
+  headingLevel?: PageHeaderProps["headingLevel"]
   /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
   notFoundLabel?: string
   /** Where Cancel points. */
@@ -537,11 +540,15 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     if (outcome.updated) loadFromStore()
   }
 
+  const defaultTitle = props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`
+
   return (
     <Stack as="section" gap="lg" class={cn("mx-auto max-w-6xl", className)}>
-      <PageTitle headingLevel={headingLevel}>
-        {title ?? (props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`)}
-      </PageTitle>
+      <PageHeader
+        title={typeof title === "string" ? title : defaultTitle}
+        heading={title === undefined || typeof title === "string" ? undefined : title}
+        headingLevel={headingLevel}
+      />
       {error.value !== "" && <p class="text-danger">{error.value}</p>}
 
       <form

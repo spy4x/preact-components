@@ -450,10 +450,12 @@ describe("CrudList", () => {
   })
 
   it("heads the list with an h1, or with the level the page asks for", () => {
-    expect(storeList({ store: fakeStore() })).toMatch(/<h1[^>]*><span>Regions<\/span>/)
+    expect(storeList({ store: fakeStore() })).toMatch(
+      /<h1[^>]*><span[^>]*><span class="truncate">Regions<\/span>/,
+    )
 
     const nested = storeList({ store: fakeStore([], []), headingLevel: 2 })
-    expect(nested).toMatch(/<h2[^>]*><span>Regions<\/span>/)
+    expect(nested).toMatch(/<h2[^>]*><span[^>]*><span class="truncate">Regions<\/span>/)
     expect(nested).not.toContain("<h1")
     expect(nested).toContain(">Nothing here yet</h3>")
   })
@@ -461,7 +463,7 @@ describe("CrudList", () => {
   it("heads the empty state no deeper than h4, under a title at any level", () => {
     const html = storeList({ store: fakeStore([], []), headingLevel: 5 })
 
-    expect(html).toMatch(/<h5[^>]*><span>Regions<\/span>/)
+    expect(html).toMatch(/<h5[^>]*><span[^>]*><span class="truncate">Regions<\/span>/)
     expect(html).toContain(">Nothing here yet</h4>")
   })
 
@@ -472,6 +474,17 @@ describe("CrudList", () => {
     })
 
     expect(html).toContain("Regions for site ABC")
-    expect(html).not.toContain("<span>Regions</span>")
+    expect(html).not.toContain(`class="truncate">Regions<`)
+  })
+
+  it("starts with a PageHeader whose primary action is the add link", () => {
+    const html = storeList({ store: fakeStore(), addHref: "/regions/add", addLabel: "Add region" })
+    const header = html.slice(html.indexOf("<header"), html.indexOf("</header>"))
+
+    expect(html.indexOf(`data-e2e="page-header"`)).toBeLessThan(html.indexOf("<form"))
+    expect(header).toContain(`href="/regions/add"`)
+    // The label hides on a phone, where the plus icon is all a person sees, and names the link.
+    expect(header).toContain(`<span class="sr-only sm:not-sr-only">Add region</span>`)
+    expect(html.slice(html.indexOf("</header>"))).not.toContain("Add region")
   })
 })

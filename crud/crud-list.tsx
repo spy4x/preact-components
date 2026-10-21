@@ -3,7 +3,7 @@ import { cn } from "@spy4x/preact-cn"
 import { Badge } from "@spy4x/preact-ui/badge"
 import { EmptyState } from "@spy4x/preact-ui/empty-state"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
-import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
+import { PageAction, PageHeader, type PageHeaderProps } from "@spy4x/preact-ui/page-header"
 import { Pagination, type PaginationProps } from "@spy4x/preact-ui/pagination"
 import { Stack } from "@spy4x/preact-ui/layout"
 import { Table } from "@spy4x/preact-ui/table"
@@ -47,15 +47,18 @@ export type CrudListSource<M extends CrudModel> =
  * component as one with a single name column.
  */
 export interface CrudListBaseProps<M extends CrudModel> {
-  /** Page title text. */
+  /** Page title text: the `PageHeader` title, and its tooltip when `titleSlot` replaces it. */
   title: string
-  /** Replaces the default `<span>{title}</span>` — for a back button, or the parent entity. */
+  /**
+   * Drawn inside the heading in place of the title and its badge — for the parent entity, say.
+   * Give it `min-w-0` and truncate inside, as `PageHeader`'s `heading` asks.
+   */
   titleSlot?: ComponentChildren
   /**
    * Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page
    * already has its `<h1>`, such as a list nested under a parent's page; the look stays the same.
    */
-  headingLevel?: PageTitleProps["headingLevel"]
+  headingLevel?: PageHeaderProps["headingLevel"]
   /** Badge after the title. Defaults to the non-deleted row count; `false` hides it. */
   badge?: ComponentChildren | false
   /** Whether one search word matches a row. Words are ANDed; an empty query matches every row. */
@@ -68,9 +71,12 @@ export interface CrudListBaseProps<M extends CrudModel> {
   actions?: (row: M) => ComponentChildren
   /** Header text of the actions column. Defaults to `"Actions"`. */
   actionsLabel?: string
-  /** Where the add action points. Omit to hide it. */
+  /** Where the add action points: the page header's primary action. Omit to hide it. */
   addHref?: string
-  /** Label of the add action. Defaults to `"Add new"`. */
+  /**
+   * Label of the add action. Defaults to `"Add new"`. Shown from `sm` up and always its
+   * accessible name; a phone shows the plus icon alone.
+   */
   addLabel?: string
   /** Whether the current user may add. Defaults to `true`. */
   canAdd?: () => boolean
@@ -259,11 +265,20 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
 
   return (
     <Stack gap="lg" class={cn("mx-auto max-w-6xl", props.class)}>
-      <PageTitle headingLevel={props.headingLevel}>
-        {props.titleSlot ?? <span>{props.title}</span>}
-        {props.badge !== false &&
-          (props.badge ?? <Badge color="gray" class="translate-y-0.5" text={String(count)} />)}
-      </PageTitle>
+      <PageHeader
+        title={props.title}
+        headingLevel={props.headingLevel}
+        heading={props.titleSlot ?? (
+          <span class="flex min-w-0 items-center gap-2">
+            <span class="truncate">{props.title}</span>
+            {props.badge !== false &&
+              (props.badge ?? <Badge color="gray" class="shrink-0" text={String(count)} />)}
+          </span>
+        )}
+        action={showAdd && (
+          <PageAction label={props.addLabel ?? "Add new"} Icon={IconPlus} href={props.addHref} />
+        )}
+      />
 
       <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-left" />
 
@@ -282,14 +297,6 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
         />
         {showStatus && (
           <StatusSelect status={status} labels={props.statusFilter} onChange={toFirstPage} />
-        )}
-        {showAdd && (
-          <div class="ml-auto">
-            <a href={props.addHref} class="btn btn-primary">
-              <IconPlus class="size-5 -ml-1 hidden md:block" />
-              {props.addLabel ?? "Add new"}
-            </a>
-          </div>
         )}
       </div>
 

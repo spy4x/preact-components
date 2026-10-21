@@ -14,7 +14,7 @@ import { canChange, type Region, RegionEditor, RegionList, regionStore } from ".
  *
  * The editor's effects do not run under a server render, so this suite covers the markup and the
  * harness's rules; the load, validate and submit loops are covered against a fake store in
- * `crud-editor.test.ts`.
+ * `crud-editor.test.tsx`.
  */
 
 const at = new Date("2025-03-04T12:00:00Z")
