@@ -7,6 +7,7 @@ import {
   type JSX,
   type VNode,
 } from "preact"
+import { fieldErrorClass, fieldHintClass } from "./field-internals.ts"
 
 /**
  * The DOM attributes of one {@link Field}, handed to the control.
@@ -109,9 +110,6 @@ export interface FieldProps {
   /** Extra utilities on the wrapper, typically the grid span of the row. */
   class?: string
 }
-
-const errorText = "mt-2 text-sm text-danger"
-const hintText = "mt-2 text-sm text-muted"
 
 /**
  * Label, control and messages of one field row — the id/`for` wiring every consumer hand-rolls.
@@ -254,8 +252,10 @@ export function Field(
       {!suffix && labelElement}
       <div class="mt-2">{control}</div>
       {suffix && labelElement}
-      {message !== undefined && <p id={errorId} class={errorText} aria-live="polite">{message}</p>}
-      {hintId !== undefined && <p id={hintId} class={hintText}>{hint as ComponentChild}</p>}
+      {message !== undefined && (
+        <p id={errorId} class={fieldErrorClass} aria-live="polite">{message}</p>
+      )}
+      {hintId !== undefined && <p id={hintId} class={fieldHintClass}>{hint as ComponentChild}</p>}
     </div>
   )
 }

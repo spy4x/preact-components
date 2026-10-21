@@ -4,6 +4,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
 import { classifyFiles, matchesAccept, resolveLabels } from "./file-input-internals.ts"
+import { fieldErrorClass, fieldHintClass } from "./field-internals.ts"
 
 export { matchesAccept }
 
@@ -74,12 +75,22 @@ export interface FileInputProps {
    * Visible label text, above the drop zone. Nested inside `Field`, `Field` supplies the
    * association and this may be left out. Standalone, it is the input's only accessible name —
    * pass one, or the control reaches assistive tech with none.
+   *
+   * @deprecated Wrap `FileInput` in `Field` and pass `label` to `Field`. Removed in the next major.
    */
   label?: ComponentChildren
-  /** Helper text under the file list. */
+  /**
+   * Helper text under the file list.
+   *
+   * @deprecated Wrap `FileInput` in `Field` and pass `hint` to `Field`. Removed in the next major.
+   */
   hint?: ComponentChildren
-  /** Message to show under the control. Empty, `null` or `undefined` renders nothing and wires nothing —
-   * the same rule `Field` and `ToggleField` use. */
+  /**
+   * Message to show under the control. Empty, `null` or `undefined` renders nothing and wires
+   * nothing — the same rule `Field` and `ToggleField` use.
+   *
+   * @deprecated Wrap `FileInput` in `Field` and pass `error` to `Field`. Removed in the next major.
+   */
   error?: string | null
   /** Adds `required` on the input and a `*` after the label. */
   required?: boolean
@@ -132,8 +143,6 @@ const dropZoneBase = cn(
 const dropZoneInteractive = "cursor-pointer hover:border-strong"
 const dropZoneDragging = "border-info bg-info-soft"
 const dropZoneDisabled = "cursor-not-allowed opacity-50"
-const errorText = "mt-2 text-sm text-danger"
-const hintText = "mt-2 text-sm text-muted"
 
 /**
  * File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader
@@ -434,11 +443,13 @@ export function FileInput(
           ))}
         </ul>
       )}
-      <p id={rejectionId} role="status" aria-live="polite" class={errorText}>
+      <p id={rejectionId} role="status" aria-live="polite" class={fieldErrorClass}>
         {rejectionMessage}
       </p>
-      {message !== undefined && <p id={errorId} class={errorText} aria-live="polite">{message}</p>}
-      {hintId !== undefined && <p id={hintId} class={hintText}>{hint}</p>}
+      {message !== undefined && (
+        <p id={errorId} class={fieldErrorClass} aria-live="polite">{message}</p>
+      )}
+      {hintId !== undefined && <p id={hintId} class={fieldHintClass}>{hint}</p>}
     </div>
   )
 }
