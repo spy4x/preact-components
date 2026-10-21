@@ -30,7 +30,7 @@ function tooltipSurface(html: string): string {
 describe("Tooltip", () => {
   it("describes the trigger with the tooltip it renders", () => {
     const html = render(
-      <Tooltip label="Copy API key" content="Copies it to the clipboard">key</Tooltip>,
+      <Tooltip ariaLabel="Copy API key" content="Copies it to the clipboard">key</Tooltip>,
     )
     const id = tooltipId(html)
 
@@ -39,7 +39,7 @@ describe("Tooltip", () => {
   })
 
   it("carries the tooltip id on exactly one element", () => {
-    const html = render(<Tooltip label="Copy API key" content="Copies it">key</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Copy API key" content="Copies it">key</Tooltip>)
     const id = tooltipId(html)
 
     expect(html.split(`id="${id}"`)).toHaveLength(2)
@@ -47,7 +47,7 @@ describe("Tooltip", () => {
   })
 
   it("hangs the name and the description on a button, an element that may carry both", () => {
-    const html = render(<Tooltip label="Copy API key" content="Copies it">key</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Copy API key" content="Copies it">key</Tooltip>)
 
     // The defect this pins: the name and the description used to sit on a `<span tabindex="0">`
     // with no role, and `aria-label` on a role-less element is not guaranteed to reach the
@@ -59,7 +59,7 @@ describe("Tooltip", () => {
   })
 
   it("keeps its own accessible name, so the tooltip stays supplementary", () => {
-    const html = render(<Tooltip label="Copy API key" content="Copies it">key</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Copy API key" content="Copies it">key</Tooltip>)
 
     expect(html).toContain('aria-label="Copy API key"')
     expect(html).not.toContain("aria-labelledby")
@@ -68,9 +68,21 @@ describe("Tooltip", () => {
     expect(html).toContain(">key<span id=")
   })
 
+  it("still takes the trigger's name from the deprecated label", () => {
+    const html = render(<Tooltip label="Copy API key" content="Copies it">key</Tooltip>)
+
+    expect(html).toContain('aria-label="Copy API key"')
+  })
+
+  it("does not type-check without a name for the trigger", () => {
+    // @ts-expect-error: a trigger needs `ariaLabel` (or the deprecated `label`).
+    const nameless = <Tooltip content="Copies it">key</Tooltip>
+    expect(nameless).toBeDefined()
+  })
+
   it("renders the tooltip text outside the trigger's own content", () => {
     const html = render(
-      <Tooltip label="Retry" content="Retries the last sync">
+      <Tooltip ariaLabel="Retry" content="Retries the last sync">
         <span data-e2e="icon">x</span>
       </Tooltip>,
     )
@@ -80,7 +92,7 @@ describe("Tooltip", () => {
   })
 
   it("reveals on keyboard focus, not only hover", () => {
-    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Retry" content="Retries">x</Tooltip>)
 
     expect(html).toContain("group-focus-within:opacity-100")
     expect(html).toContain("group-hover:opacity-100")
@@ -89,7 +101,7 @@ describe("Tooltip", () => {
   })
 
   it("starts with the surface hidden, and marks no hint as dismissed", () => {
-    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Retry" content="Retries">x</Tooltip>)
     const surface = tooltipSurface(html)
 
     expect(surface).toContain("opacity-0")
@@ -102,7 +114,7 @@ describe("Tooltip", () => {
   })
 
   it("lets the pointer rest on the surface, so the hint can be read", () => {
-    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Retry" content="Retries">x</Tooltip>)
 
     // `pointer-events-none` made the hint vanish the moment the pointer reached it, and reading a
     // hint by pointing at it is how anyone magnifying the screen reads one at all.
@@ -120,7 +132,7 @@ describe("Tooltip", () => {
     }
     for (const [placement, bridge] of Object.entries(bridges)) {
       const html = render(
-        <Tooltip label="a" content="c" placement={placement as TooltipPlacement}>x</Tooltip>,
+        <Tooltip ariaLabel="a" content="c" placement={placement as TooltipPlacement}>x</Tooltip>,
       )
       const surface = tooltipSurface(html)
 
@@ -130,7 +142,7 @@ describe("Tooltip", () => {
   })
 
   it("paints the hint on a bubble inside the surface, not on the surface itself", () => {
-    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Retry" content="Retries">x</Tooltip>)
     const surface = tooltipSurface(html)
     const surfaceClasses = surface.match(/class="([^"]*)"/)?.[1] ?? ""
 
@@ -143,7 +155,7 @@ describe("Tooltip", () => {
   })
 
   it("never traps focus: the surface is not focusable", () => {
-    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Retry" content="Retries">x</Tooltip>)
     const surface = html.slice(html.indexOf('role="tooltip"'))
 
     expect(surface).not.toContain("tabindex")
@@ -151,7 +163,7 @@ describe("Tooltip", () => {
 
   it("groups an interactive trigger instead of nesting a button inside a button", () => {
     const html = render(
-      <Tooltip label="Retry" content="Retries" focusable={false}>
+      <Tooltip ariaLabel="Retry" content="Retries" focusable={false}>
         <button type="button">Retry</button>
       </Tooltip>,
     )
@@ -166,7 +178,7 @@ describe("Tooltip", () => {
 
   it("leaves the description off the group, for the control inside it to carry", () => {
     const html = render(
-      <Tooltip label="Retry" content="Retries" focusable={false}>
+      <Tooltip ariaLabel="Retry" content="Retries" focusable={false}>
         <button type="button">Retry</button>
       </Tooltip>,
     )
@@ -176,23 +188,23 @@ describe("Tooltip", () => {
   })
 
   it("anchors above the trigger by default", () => {
-    const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="Retry" content="Retries">x</Tooltip>)
 
     expect(html).toContain("bottom-full left-1/2")
     expect(html).toContain("-translate-x-1/2")
   })
 
   it("anchors to each requested side", () => {
-    expect(render(<Tooltip label="a" content="c" placement="right">x</Tooltip>))
+    expect(render(<Tooltip ariaLabel="a" content="c" placement="right">x</Tooltip>))
       .toContain("top-1/2 left-full -translate-y-1/2 pl-2")
-    expect(render(<Tooltip label="a" content="c" placement="bottom">x</Tooltip>))
+    expect(render(<Tooltip ariaLabel="a" content="c" placement="bottom">x</Tooltip>))
       .toContain("top-full left-1/2 -translate-x-1/2 pt-2")
-    expect(render(<Tooltip label="a" content="c" placement="left">x</Tooltip>))
+    expect(render(<Tooltip ariaLabel="a" content="c" placement="left">x</Tooltip>))
       .toContain("top-1/2 right-full -translate-y-1/2 pr-2")
   })
 
   it("positions the wrapper so the surface has an anchor", () => {
-    const html = render(<Tooltip label="a" content="c">x</Tooltip>)
+    const html = render(<Tooltip ariaLabel="a" content="c">x</Tooltip>)
 
     expect(html).toContain("relative inline-flex")
     expect(html).toContain("absolute z-50")
@@ -200,7 +212,7 @@ describe("Tooltip", () => {
 
   it("appends caller classes to wrapper and surface", () => {
     const html = render(
-      <Tooltip label="a" content="c" class="ml-2" contentClass="max-w-sm">x</Tooltip>,
+      <Tooltip ariaLabel="a" content="c" class="ml-2" contentClass="max-w-sm">x</Tooltip>,
     )
 
     expect(html).toContain("ml-2")

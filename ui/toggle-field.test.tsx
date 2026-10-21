@@ -3,13 +3,14 @@ import { describe, it } from "@std/testing/bdd"
 import { type VNode } from "preact"
 import { render } from "preact-render-to-string"
 import { ToggleField, type ToggleFieldProps } from "./toggle-field.tsx"
+import { ToggleSwitch } from "./toggle-switch.tsx"
 
-const onToggle = (_value: boolean) => {}
+const onChange = (_value: boolean) => {}
 
 describe("ToggleField", () => {
   it("names the switch from the label element, since a button takes no for", () => {
     const html = render(
-      <ToggleField id="archive" label="Archive projects" value onToggle={onToggle} />,
+      <ToggleField id="archive" label="Archive projects" value onChange={onChange} />,
     )
 
     // The pair that makes the association real: the label carries an id, the button points at it.
@@ -24,7 +25,7 @@ describe("ToggleField", () => {
     // not labelable, so nothing activates and some engines log the dangling reference. Issue #67 is
     // the same defect for `Field` + `Checkbox`. The assertion is what stops a later "consistency"
     // pass from reintroducing it.
-    const html = render(<ToggleField id="archive" label="Archive" value onToggle={onToggle} />)
+    const html = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
 
     expect(html).not.toContain("for=")
     expect(html).toContain('aria-labelledby="archive-label"')
@@ -36,7 +37,7 @@ describe("ToggleField", () => {
     // so the click is performed here instead, on the vnode the component actually returned. That
     // covers the part a browser cannot: `preventDefault` is what stops a second toggle where an
     // engine does activate the button through the label. The click itself stays browser-only.
-    const click = clickLabel(field({ id: "archive", label: "Archive", value: true, onToggle }))
+    const click = clickLabel(field({ id: "archive", label: "Archive", value: true, onChange }))
 
     expect(click.labelId).toBe("archive-label")
     expect(click.defaultPrevented).toBe(true)
@@ -45,7 +46,7 @@ describe("ToggleField", () => {
   it("refuses to toggle a disabled switch from the label", () => {
     // The native attribute keeps a browser from dispatching the click, but nothing keeps a dispatcher
     // from calling the handler: a programmatic click, an assistive tool, or a wrapper that composed
-    // the vnode. A disabled control has to be a constraint, not a hint — `onToggle` writing through
+    // the vnode. A disabled control has to be a constraint, not a hint — `onChange` writing through
     // to a store would flip the value behind the user's back. {@link clickLabel}'s fake event refuses
     // a second `preventDefault` and swallows the default action, so this passes only when the handler
     // returns before it reports.
@@ -53,7 +54,7 @@ describe("ToggleField", () => {
     const push = (next: boolean) => seen.push(next)
 
     clickLabel(
-      field({ id: "archive", label: "Archive", value: true, disabled: true, onToggle: push }),
+      field({ id: "archive", label: "Archive", value: true, disabled: true, onChange: push }),
     )
 
     expect(seen).toEqual([])
@@ -63,14 +64,39 @@ describe("ToggleField", () => {
     const seen: boolean[] = []
     const push = (next: boolean) => seen.push(next)
 
-    clickLabel(field({ id: "archive", label: "Archive", value: true, onToggle: push }))
-    clickLabel(field({ id: "archive", label: "Archive", value: false, onToggle: push }))
+    clickLabel(field({ id: "archive", label: "Archive", value: true, onChange: push }))
+    clickLabel(field({ id: "archive", label: "Archive", value: false, onChange: push }))
 
     expect(seen).toEqual([false, true])
   })
 
+  it("still reports through the deprecated onToggle, from the label and from the switch", () => {
+    const seen: boolean[] = []
+    const vnode = field({
+      id: "archive",
+      label: "Archive",
+      value: true,
+      onToggle: (next) => seen.push(next),
+    })
+
+    clickLabel(vnode)
+    // The switch is the row's second child; the field hands it the same port.
+    const control = childrenOf(childrenOf(vnode)[0])[1]
+    if (control.type !== ToggleSwitch) {
+      throw new TypeError("the row's second child is not the switch")
+    }
+    const props = control.props as { onChange?: (v: boolean) => void } | [string, unknown][]
+    const port = Array.isArray(props)
+      ? props.find(([key]) => key === "onChange")?.[1] as (v: boolean) => void
+      : props.onChange
+    if (port === undefined) throw new TypeError("the switch got no onChange")
+    port(false)
+
+    expect(seen).toEqual([false, false])
+  })
+
   it("puts the label id and the switch id on different elements", () => {
-    const html = render(<ToggleField id="archive" label="Archive" value onToggle={onToggle} />)
+    const html = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
 
     expect(html.match(/id="archive"/g)?.length).toBe(1)
     expect(html.match(/id="archive-label"/g)?.length).toBe(1)
@@ -82,7 +108,7 @@ describe("ToggleField", () => {
         id="archive"
         label="Archive"
         value
-        onToggle={onToggle}
+        onChange={onChange}
         description="Hidden from the active list"
       />,
     )
@@ -94,7 +120,7 @@ describe("ToggleField", () => {
   })
 
   it("renders no description paragraph and no wiring when description is absent", () => {
-    const html = render(<ToggleField id="archive" label="Archive" value onToggle={onToggle} />)
+    const html = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
 
     expect(html).not.toContain("archive-hint")
     expect(html).not.toContain('aria-describedby="')
@@ -102,7 +128,7 @@ describe("ToggleField", () => {
 
   it("renders no description paragraph for an empty description", () => {
     const html = render(
-      <ToggleField id="archive" label="Archive" value onToggle={onToggle} description="" />,
+      <ToggleField id="archive" label="Archive" value onChange={onChange} description="" />,
     )
 
     expect(html).not.toContain("archive-hint")
@@ -111,7 +137,7 @@ describe("ToggleField", () => {
 
   it("wires nothing for a description of whitespace, which describes nothing", () => {
     const html = render(
-      <ToggleField id="archive" label="Archive" value onToggle={onToggle} description="  " />,
+      <ToggleField id="archive" label="Archive" value onChange={onChange} description="  " />,
     )
 
     expect(html).not.toContain('aria-describedby="')
@@ -124,7 +150,7 @@ describe("ToggleField", () => {
         id="archive"
         label="Archive"
         value
-        onToggle={onToggle}
+        onChange={onChange}
         description="Hidden from the active list"
         error="The plan does not include archiving"
       />,
@@ -143,7 +169,7 @@ describe("ToggleField", () => {
 
   it("renders no error paragraph for an empty error", () => {
     const html = render(
-      <ToggleField id="archive" label="Archive" value onToggle={onToggle} error="" />,
+      <ToggleField id="archive" label="Archive" value onChange={onChange} error="" />,
     )
 
     expect(html).not.toContain("archive-error")
@@ -153,14 +179,14 @@ describe("ToggleField", () => {
   it("says nothing about describing the switch when neither message is set", () => {
     // `aria-describedby=""` is not harmless: it points the control at an element that does not
     // exist, which loses the `aria-labelledby` name in some screen readers.
-    const html = render(<ToggleField id="archive" label="Archive" value onToggle={onToggle} />)
+    const html = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
 
     expect(html).not.toContain('aria-describedby="')
   })
 
   it("disables the switch itself and dims the label", () => {
     const html = render(
-      <ToggleField id="archive" label="Archive" value onToggle={onToggle} disabled />,
+      <ToggleField id="archive" label="Archive" value onChange={onChange} disabled />,
     )
 
     // The native attribute, read off the button's own tag: a bare `disabled` substring proves
@@ -177,7 +203,7 @@ describe("ToggleField", () => {
   })
 
   it("leaves the switch enabled and the label undimmed by default", () => {
-    const html = render(<ToggleField id="archive" label="Archive" value onToggle={onToggle} />)
+    const html = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
 
     expect(buttonTags(html).some((tag) => /\sdisabled(\s|>|$)/.test(tag))).toBe(false)
     expect(labelClasses(html)).not.toContain("opacity-50")
@@ -185,9 +211,9 @@ describe("ToggleField", () => {
   })
 
   it("reports its state as a switch", () => {
-    const on = render(<ToggleField id="archive" label="Archive" value onToggle={onToggle} />)
+    const on = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
     const off = render(
-      <ToggleField id="archive" label="Archive" value={false} onToggle={onToggle} />,
+      <ToggleField id="archive" label="Archive" value={false} onChange={onChange} />,
     )
 
     expect(on).toContain('role="switch"')
@@ -197,7 +223,7 @@ describe("ToggleField", () => {
 
   it("marks a required switch on the label only, in the danger colour", () => {
     const html = render(
-      <ToggleField id="archive" label="Archive" value onToggle={onToggle} required />,
+      <ToggleField id="archive" label="Archive" value onChange={onChange} required />,
     )
 
     expect(html).toContain('aria-hidden="true"')
@@ -216,7 +242,7 @@ describe("ToggleField", () => {
         id="archive"
         label="Archive"
         value
-        onToggle={onToggle}
+        onChange={onChange}
         class="sm:col-span-3"
       />,
     )
@@ -231,7 +257,7 @@ describe("ToggleField", () => {
         id="archive"
         label="Archive"
         value
-        onToggle={onToggle}
+        onChange={onChange}
         description="Hidden from the active list"
       />,
     )
