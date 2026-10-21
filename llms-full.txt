@@ -2340,29 +2340,29 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component             | Subpath                 | Ports / key props                                                                                                                                                                           |
-| --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
-| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                  |
-| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                          |
-| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
-| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
-| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
-| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                    |
-| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
-| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
-| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`    |
-| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                       |
-| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                        |
-| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                              |
-| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
-| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
-| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
-| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                               |
-| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
-| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
+| Component             | Subpath                 | Ports / key props                                                                                                                                                                                                  |
+| --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?`                        |
+| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                                         |
+| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                                 |
+| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                                            |
+| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                                   |
+| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `labels?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                    |
+| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                            |
+| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                                           |
+| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                                                  |
+| `Shell` (deprecated)  | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?`                        |
+| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                                          |
+| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `onSelect?`, `navigateLink?` (deprecated), `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?` |
+| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                                              |
+| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `onSelect?`, `navigateLink?` (deprecated), `counterWords?` — a slot's link drawn exactly as a rail entry                                                     |
+| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `onSelect?`, `navigateLink?` (deprecated), `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                           |
+| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                                        |
+| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                                            |
+| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                                                      |
+| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                                                      |
+| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                                              |
+| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                                                     |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -2525,8 +2525,7 @@ function Layout({ store, children }: { store: HeadStore; children: ComponentChil
 }
 ```
 
-In a single-page app the two make one route change: `navigate` (or `Rail`'s `navigateLink`) hands
-a plain click on a shell link to the router instead of loading a new page, the router's new `path`
+In a single-page app the two make one route change: `navigate` hands a plain click on a shell link to the router instead of loading a new page, the router's new `path`
 reaches the hook, and the hook moves focus and sets the title the way the page load it replaced
 would have.
 
@@ -2710,7 +2709,9 @@ by finding a region that arrived carrying text.
 ## The service-worker contract
 
 `SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
-Dismiss. Four things about it are the host's business rather than this package's.
+Dismiss. Its words are `labels` (`message`, `reload`, `dismiss`) over `DEFAULT_SW_UPDATER_LABELS`,
+as every other system component takes them; the props `message`, `reloadLabel` and `dismissLabel`
+are deprecated aliases that win over the matching label until the next major. Four things about it are the host's business rather than this package's.
 
 **The live region is always there; the bar is not.** The component renders one unstyled
 `role="status"` element with `aria-live="polite"` and `aria-atomic="true"` on every render, on the
@@ -3002,6 +3003,9 @@ and `py-1` from `lg` up. Colours are the theme's tokens, the same as `SiteHeader
 
 ## The `Shell` contract
 
+**Deprecated:** draw `AppShell`. `Shell` is removed in the next major, and the boundary rule fails
+a test that imports it (see "The screen boundary rule").
+
 `Shell` (#135) is the signed-in app's own frame: a sticky header (menu button, `brand`, `status`,
 user menu), a side navigation that is a plain sidebar from `lg` up and a `<details>`-built drawer
 below it, and a content area with a skip link in front of everything. It is the app-shell sibling of
@@ -3076,7 +3080,7 @@ links do.** `ShellNavLink` wires the identical `onNavigate={() => close(false)}`
 `close(false)`-not-`close(true)` reasoning: a navigating link, like the scrim, is not the menu button
 asking to close, so it must not fight wherever the click actually sends focus next.
 
-**`navigate` is the client-router port, shaped like `Rail`'s `navigateLink`.** Without it, every link is an
+**`navigate` is the client-router port, `navigate(href)` as on `Rail` and `AppShell`.** Without it, every link is an
 ordinary link. With it, a plain left click on a nav link, on an action that has an `href`, or on a
 link item of the user menu (passed on to `AccountMenu`), calls `navigate(href)` and cancels the
 browser's own navigation. A click with Ctrl, Meta, Shift or Alt held, or with another button, is
@@ -3260,9 +3264,9 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   into) default to none, because only the app knows them.
 - `forbiddenNames` lists exports an app must not import by name, each with the package it comes
   from and the reason the message prints. It defaults to `DEFAULT_FORBIDDEN_NAMES`, which holds
-  `RailShell` from `@spy4x/preact-system`, any subpath of it included: an app draws `AppShell`, and
-  `RailShell` stays only so an app can move in its own time. An `import { RailShell }` and an
-  `export { RailShell } from` both fail; a dynamic `import()` is not checked by name. Pass `[]` to
+  `RailShell` and the deprecated `Shell` from `@spy4x/preact-system`, any subpath of it included:
+  an app draws `AppShell`, and the two stay only so an app can move in its own time. An
+  `import { RailShell }` and an `export { RailShell } from` both fail, and the same for `Shell`; a dynamic `import()` is not checked by name. Pass `[]` to
   turn it off. `forbiddenName(source, names, options)` is that half on its own: the message for one
   imported name, or `null`.
 
@@ -3723,11 +3727,20 @@ above it. `tabBarNotice` is drawn right above the bar, such as an offline strip.
 scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and that
 container becomes what both stick to.
 
-**Links reach a client router through `navigateLink`.** An entry with an `href` is a real link.
-With `navigateLink`, a plain left click on a same-origin link calls `navigateLink(key, href)` and
-cancels the browser's navigation; every other click is left to the browser. The rule is
-`followLinkClick` from `ui/`'s `link`. `navigate` is the port for an entry with no `href`, which is
-a button. `RailItem.attributes` passes `data-*` attributes to an entry's link or button, for
+**Links reach a client router through `navigate(href)`; `onSelect(key)` says which entry was
+chosen.** An entry with an `href` is a real link. With `navigate`, a plain left click on a
+same-origin link calls `navigate(href)` and cancels the browser's navigation; every other click is
+left to the browser. The rule is `followLinkClick` from `ui/`'s `link`. `onSelect(key)` runs for
+every click of an entry with no `href`, which is a button, and for a plain left click of a link of
+any origin, after `navigate`; a modified click reports nothing. `RailEntry` takes the same ports.
+
+The ports before these stay, deprecated, and do exactly what they did, until the next major:
+`navigateLink(key, href)`, when passed, takes a link's plain click and `navigate` then reaches no
+link; and with no `onSelect`, a button entry calls `navigate` with its key, which is what
+`navigate` meant before it took an `href`. Move to `navigate(href)` for links and `onSelect(key)`
+for the key. The one change an old caller can see: one that passed `navigate(key)` for its buttons
+and no `navigateLink` now has its links' plain clicks routed through that same `navigate`, with
+the `href`. `RailItem.attributes` passes `data-*` attributes to an entry's link or button, for
 analytics or a test hook.
 
 **Colours are theme tokens read through `var()`,** each with the default palette's value as its
