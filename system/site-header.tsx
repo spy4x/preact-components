@@ -30,6 +30,11 @@ export interface SiteHeaderLink {
    * tab; whether to leave the page is the visitor's choice, not this component's.
    */
   external?: boolean
+  /**
+   * Words a screen reader hears after the label of an `external` link, such as
+   * `"(opens example.com)"`, since the icon is hidden from it. Printed only with `external`.
+   */
+  externalHint?: string
 }
 
 /** Every user-visible or accessible string this component prints that is not `links`/`brand`. */
@@ -93,7 +98,7 @@ function SiteHeaderNavLink(
     onClick?: () => void
   },
 ): JSX.Element {
-  const { label, href, Icon, external } = link
+  const { label, href, Icon, external, externalHint } = link
   const current = isCurrentLink(href, currentPath)
 
   return (
@@ -106,6 +111,7 @@ function SiteHeaderNavLink(
       {Icon && <Icon class="size-5" />}
       {label}
       {external && <IconExternalLink class="size-4" aria-hidden="true" />}
+      {external && externalHint && <span class="sr-only">{externalHint}</span>}
     </a>
   )
 }
