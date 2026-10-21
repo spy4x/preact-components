@@ -260,11 +260,28 @@ describe("LineChart", () => {
     expect(html).toContain("color:plum")
   })
 
-  it("prints Y values through yFormat, and by default with no trailing zeros", () => {
-    expect(render(<LineChart series={twoPoints} yFormat={(value) => `${value} km`} />))
+  it("prints Y values through valueFormat, and by default with no trailing zeros", () => {
+    expect(render(<LineChart series={twoPoints} valueFormat={(value) => `${value} km`} />))
       .toContain(`title="Runs Feb: 10 km"`)
     const html = render(<LineChart series={[{ name: "R", points: [{ x: "a", y: 1 / 3 }] }]} />)
     expect(html).toContain(`title="R a: 0.33"`)
+  })
+
+  it("still prints Y values through the deprecated yFormat prop", () => {
+    expect(render(<LineChart series={twoPoints} yFormat={(value) => `${value} km`} />))
+      .toContain(`title="Runs Feb: 10 km"`)
+  })
+
+  it("prefers valueFormat when yFormat is passed too", () => {
+    const html = render(
+      <LineChart
+        series={twoPoints}
+        valueFormat={(value) => `${value} km`}
+        yFormat={(value) => `${value} miles`}
+      />,
+    )
+    expect(html).toContain(`title="Runs Feb: 10 km"`)
+    expect(html).not.toContain("miles")
   })
 
   it("draws a single point in the middle without NaN", () => {

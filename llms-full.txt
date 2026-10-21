@@ -71,13 +71,17 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                              |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`       |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                  |
+| ------------ | ------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `valueFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
+| `Bars`       | `bars`        | no                                     | `data`, `max`, `valueFormat`, `labelWidth`, `colors`                                               |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`           |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                    |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                             |
+
+Every chart prints its values through `valueFormat`. The older names, `Bars`' `format` and
+`LineChart`'s `yFormat`, still work the same way and are deprecated; when both are passed,
+`valueFormat` wins. They are removed in the next major.
 
 Hooks and helpers: `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
 `chartPayloadSchema` (`payload`), the `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary
@@ -96,7 +100,7 @@ Series over categories:
 <LineChart
   title="Runs per month"
   series={[{ name: "Runs", points: months.map((m) => ({ x: m.label, y: m.runs })) }]}
-  yFormat={(value) => `${value} km`}
+  valueFormat={(value) => `${value} km`}
 />
 ```
 
@@ -129,9 +133,9 @@ Both were removed in favour of the one `LineChart` (#356), and `MetricPanel` wit
 | Before                                             | Now                                                                                                                 |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `<D3LineChart data timeFrame />`                   | `<LineChart xAxis="time" series={[{ name, points }]} />`, `points` mapped from `{ timeGroup, value }` to `{ x, y }` |
-| `ticks`, `tickFormat`                              | `yTicks`, `yFormat`                                                                                                 |
-| `tickValues` (labels for a numeric index)          | `yFormat={(value) => labels[value]}`                                                                                |
-| `timeTickFormat`, `tooltipFormat`                  | `xFormat` (axis and tooltip heading), `yFormat` (tooltip value)                                                     |
+| `ticks`, `tickFormat`                              | `yTicks`, `valueFormat`                                                                                             |
+| `tickValues` (labels for a numeric index)          | `valueFormat={(value) => labels[value]}`                                                                            |
+| `timeTickFormat`, `tooltipFormat`                  | `xFormat` (axis and tooltip heading), `valueFormat` (tooltip value)                                                 |
 | `referenceValue`, `ignoreZeroes`, `isLoading`      | the same names                                                                                                      |
 | `missingValuesLabel`, `loadingLabel`, `emptyLabel` | the same names                                                                                                      |
 | `colors.line`, `.axis`, `.text`, `.surface`        | a series' `color`, `axisColor`, `textColor`, `surfaceColor`                                                         |

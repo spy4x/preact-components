@@ -163,7 +163,7 @@ export const chartsDemos = {
         description: "The value the longest bar stands for, to compare two lists.",
       },
       {
-        name: "format",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "String",
         description: "How the trailing number is printed.",
@@ -244,7 +244,7 @@ export const chartsDemos = {
         description: "Evenly spaced labels, or instants placed by time with round ticks.",
       },
       {
-        name: "yFormat",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "at most two decimals",
         description: "How a Y tick and a tooltip value are printed.",
@@ -285,21 +285,21 @@ export const chartsDemos = {
           title="Revenue, k€"
           referenceValue={12}
           referenceLabel="Target"
-          yFormat={(value) => value.toFixed(1)}
+          valueFormat={(value) => value.toFixed(1)}
         />
         <LineChart
           series={orders}
           title="Orders per month"
           height={180}
           yDomain={[0, 60]}
-          yFormat={(value) => value.toFixed(0)}
+          valueFormat={(value) => value.toFixed(0)}
         />
         <div data-e2e="chart-30-days">
           <LineChart
             series={signups}
             title="Sign-ups per day"
             height={160}
-            yFormat={(value) => value.toFixed(0)}
+            valueFormat={(value) => value.toFixed(0)}
           />
         </div>
       </div>
