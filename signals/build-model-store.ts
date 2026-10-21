@@ -294,13 +294,18 @@ export interface ModelStoreBase<F extends Type<Model>, C extends Type, U extends
   op: {
     list: ReadonlySignal<OperationState<SchemaOutput<F>[], RequestError>>
     create: ReadonlySignal<OperationState<SchemaOutput<F>, InputError>>
+    /**
+     * Per-row update status. Asking twice for the same id returns the same signal, until the row
+     * leaves the store (`remove`, a `"list"` event without it, `reset()`).
+     */
     update: (
       id: string | number,
     ) => ReadonlySignal<OperationState<SchemaOutput<F>, InputError> | undefined>
+    /** Per-row delete status, cached per id like `update`. */
     delete: (
       id: string | number,
     ) => ReadonlySignal<OperationState<SchemaOutput<F>, RequestError> | undefined>
-    /** Same slot as `update`: an undelete is an update of the row. */
+    /** Same slot, and the same signal, as `update`: an undelete is an update of the row. */
     undelete: (
       id: string | number,
     ) => ReadonlySignal<OperationState<SchemaOutput<F>, InputError> | undefined>
@@ -449,6 +454,34 @@ export function buildModelStore<
     const made = computed(() => index.value.get(id))
     byIdSignals.set(id, made)
     return made
+  }
+
+  /**
+   * One pair of operation-slot signals per id asked for, for the reason {@link byIdSignals} exists:
+   * `crud` asks for `op.update(id)` on every render, and a fresh `computed` each time would be a
+   * fresh subscription each time. `op.undelete` shares the update slot, so it shares its signal.
+   *
+   * Unlike `byIdSignals`, an entry goes when its row leaves the store — `remove(id)`, a `"list"`
+   * event that no longer names it, or `reset()` — so the cache never holds more ids than the store
+   * has rows plus the ones asked for since. A signal handed out before its entry went keeps
+   * reading the slot; it is just no longer the one the next call returns.
+   */
+  const opSignals = new Map<string | number, RowOpSignals<Row>>()
+
+  const opsOf = (id: string | number): RowOpSignals<Row> => {
+    const cached = opSignals.get(id)
+    if (cached) return cached
+    const made: RowOpSignals<Row> = {
+      update: computed(() => state.value.updateOps.get(id)),
+      delete: computed(() => state.value.deleteOps.get(id)),
+    }
+    opSignals.set(id, made)
+    return made
+  }
+
+  /** Drop the cached slot signals of every id `keep` does not hold. */
+  const pruneOpSignals = (keep: ReadonlyMap<string | number, unknown>): void => {
+    for (const id of opSignals.keys()) if (!keep.has(id)) opSignals.delete(id)
   }
 
   const setUpdateOp = (id: string | number, op: OperationState<Row, InputError>): void => {
@@ -788,6 +821,7 @@ export function buildModelStore<
     switch (event) {
       case RemoteEvent.LIST:
         patch({ list: incoming, listOp: { inProgress: false, error: null, result: incoming } })
+        pruneOpSignals(index.value)
         return
       case RemoteEvent.CREATED: {
         const held = index.value
@@ -817,6 +851,7 @@ export function buildModelStore<
   }
 
   function remove(id: string | number): void {
+    opSignals.delete(id)
     patch({
       list: state.value.list.filter((row) => row.id !== id),
       updateOps: deleteMapEntry(state.value.updateOps, id),
@@ -835,6 +870,7 @@ export function buildModelStore<
     // `buildModelStore across a reset` hold the order.
     generation += 1
     byIdSignals.clear()
+    opSignals.clear()
     patch({
       list: [],
       listOp: idle(),
@@ -906,9 +942,9 @@ export function buildModelStore<
     op: {
       list: computed(() => state.value.listOp),
       create: computed(() => state.value.createOp),
-      update: (id: string | number) => computed(() => state.value.updateOps.get(id)),
-      delete: (id: string | number) => computed(() => state.value.deleteOps.get(id)),
-      undelete: (id: string | number) => computed(() => state.value.updateOps.get(id)),
+      update: (id: string | number) => opsOf(id).update,
+      delete: (id: string | number) => opsOf(id).delete,
+      undelete: (id: string | number) => opsOf(id).update,
     },
     create,
     update,
@@ -987,6 +1023,12 @@ function indexById<M extends Model>(rows: readonly M[]): ReadonlyMap<string | nu
   const index = new Map<string | number, M>()
   for (const row of rows) if (!index.has(row.id)) index.set(row.id, row)
   return index
+}
+
+/** The cached signals over one row's two operation slots. */
+interface RowOpSignals<M extends Model> {
+  update: ReadonlySignal<OperationState<M, InputError> | undefined>
+  delete: ReadonlySignal<OperationState<M, RequestError> | undefined>
 }
 
 /** A settled, empty operation slot. */

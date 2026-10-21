@@ -3291,3 +3291,64 @@ describe("buildModelStore with UUID v7 string ids", () => {
     ])
   })
 })
+
+describe("buildModelStore op signals per id", () => {
+  it("returns the same signal when asked twice for one id", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+
+    expect(store.op.update(1)).toBe(store.op.update(1))
+    expect(store.op.delete(1)).toBe(store.op.delete(1))
+    // An undelete is an update of the row, so it reads the same slot through the same signal.
+    expect(store.op.undelete(1)).toBe(store.op.update(1))
+    expect(store.op.update(1)).not.toBe(store.op.update(2))
+    expect(store.op.update(1)).not.toBe(store.op.delete(1))
+  })
+
+  it("keeps a cached signal reading its slot as requests settle", async () => {
+    const store = buildStore({ fetch: queueFetch(Response.json(row(1, "Nörth"))).impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const slot = store.op.update(1)
+    expect(slot.value).toBeUndefined()
+
+    await store.update(1, { name: "Nörth" })
+
+    expect(slot.value?.result?.name).toBe("Nörth")
+  })
+
+  it("drops a row's cached signals when remove takes the row out", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    const update = store.op.update(1)
+    const remove = store.op.delete(1)
+    const other = store.op.update(2)
+
+    store.remove(1)
+
+    expect(store.op.update(1)).not.toBe(update)
+    expect(store.op.delete(1)).not.toBe(remove)
+    expect(store.op.update(2)).toBe(other)
+  })
+
+  it("drops the cached signals of rows a list event leaves out and keeps the rest", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    const north = store.op.update(1)
+    const south = store.op.delete(2)
+
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    expect(store.op.update(1)).toBe(north)
+    expect(store.op.delete(2)).not.toBe(south)
+  })
+
+  it("drops every cached signal on reset", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const before = store.op.update(1)
+
+    store.reset()
+
+    expect(store.op.update(1)).not.toBe(before)
+  })
+})
