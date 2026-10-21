@@ -512,6 +512,20 @@ export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { type StepItem, Steps, type StepsProps } from "./steps.tsx"
 export { WindowFrame, type WindowFrameProps, type WindowFrameVariant } from "./window-frame.tsx"
 export {
+  activeFilterChips,
+  FilterBar,
+  type FilterBarChip,
+  type FilterBarMenu,
+  type FilterBarMultipleMenu,
+  type FilterBarOption,
+  type FilterBarProps,
+  type FilterBarSearch,
+  type FilterBarSingleMenu,
+  type FilterBarSort,
+  type FilterBarToggle,
+  filterTriggerLabel,
+} from "./filter-bar.tsx"
+export {
   ScreenTour,
   type ScreenTourImage,
   type ScreenTourProps,

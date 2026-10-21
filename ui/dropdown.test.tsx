@@ -328,6 +328,58 @@ describe("DropdownItem", () => {
     expect(html.match(/aria-current/g)?.length).toBe(1)
   })
 
+  it("renders a multiple item as a menuitemcheckbox with a box, filled only when checked", () => {
+    const on = render(<DropdownItem checked multiple onClick={() => {}}>Design</DropdownItem>)
+    const off = render(
+      <DropdownItem checked={false} multiple onClick={() => {}}>Plans</DropdownItem>,
+    )
+
+    expect(attrOf(on, /<button[^>]*>/, "role")).toBe("menuitemcheckbox")
+    expect(attrOf(on, /<button[^>]*>/, "aria-checked")).toBe("true")
+    expect(on).toMatch(/<span aria-hidden="true" class="[^"]*\bbg-selected\b[^"]*"><svg/)
+    expect(attrOf(off, /<button[^>]*>/, "role")).toBe("menuitemcheckbox")
+    expect(attrOf(off, /<button[^>]*>/, "aria-checked")).toBe("false")
+    expect(off).toMatch(
+      /<span aria-hidden="true" class="[^"]*\bborder-control\b[^"]*"><\/span>Plans/,
+    )
+  })
+
+  it("marks multiple and keepOpen items to keep the menu open, and leaves other items unmarked", () => {
+    const box = render(<DropdownItem checked multiple>Design</DropdownItem>)
+    const mode = render(<DropdownItem checked={false} keepOpen>All of these tags</DropdownItem>)
+    const radio = render(<DropdownItem checked>Family</DropdownItem>)
+    const plain = render(<DropdownItem multiple>Open</DropdownItem>)
+
+    expect(box).toContain("data-keep-open")
+    expect(mode).toContain("data-keep-open")
+    expect(attrOf(mode, /<button[^>]*>/, "role")).toBe("menuitemradio")
+    expect(radio).not.toContain("data-keep-open")
+    // `multiple` without `checked` is no choice at all: a plain item that closes the menu.
+    expect(attrOf(plain, /<button[^>]*>/, "role")).toBe("menuitem")
+    expect(plain).not.toContain("data-keep-open")
+  })
+
+  it("marks a server-rendered multiple item as pressed rather than current", () => {
+    const html = render(
+      <Dropdown trigger="Tags" triggerNamedByContent>
+        <DropdownItem checked multiple onClick={() => {}}>Design</DropdownItem>
+        <DropdownItem checked={false} multiple onClick={() => {}}>Plans</DropdownItem>
+      </Dropdown>,
+    )
+
+    expect(html).not.toContain("role=")
+    expect(html).not.toContain("aria-current")
+    expect(
+      attrOf(
+        html,
+        /<button[^>]*>(?=<span aria-hidden="true" class="[^"]*bg-selected)/,
+        "aria-pressed",
+      ),
+    )
+      .toBe("true")
+    expect(html.match(/aria-pressed="false"/g)?.length).toBe(1)
+  })
+
   it("announces keyshortcuts and shows the first as the hint, after its own hotkey", () => {
     const listed = render(<DropdownItem keyshortcuts={["?", "mod+/"]}>Shortcuts</DropdownItem>)
     expect(attrOf(listed, /<button\b[^>]*>/, "aria-keyshortcuts")).toBe("? Control+/")
