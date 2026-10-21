@@ -92,7 +92,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
-import { Button, buttonClasses } from "@spy4x/preact-ui/button"
+import { Button, buttonClasses, type ButtonVariant } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
 import { followLinkClick } from "@spy4x/preact-ui/link"
@@ -245,6 +245,13 @@ export interface AuthFormProps {
    */
   passkeyAutofill?: boolean
   /**
+   * The variant of the credentials step's submit button. Defaults to `"primary"`. Pass
+   * `"secondary"` when the page already has its one primary action outside the form, such as a
+   * "Try it now" button above a sign-up form. The one-time-code step's submit stays primary: it is
+   * the only action on that step.
+   */
+  submitVariant?: ButtonVariant
+  /**
    * Caller content drawn below everything else, inside the form — a "Back to sign in" or "Forgot
    * your password?" link, for instance — so it sits in whatever card holds the form. Wrapped in an
    * element carrying `data-e2e="auth-form-footer"`; nothing is rendered for it when this is absent.
@@ -286,6 +293,7 @@ export function AuthForm(
     names,
     action,
     passkeyAutofill = false,
+    submitVariant = "primary",
     footer,
     class: className,
   }: AuthFormProps,
@@ -427,7 +435,12 @@ export function AuthForm(
               )}
             </Field>
             <div class="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={busy} data-e2e="auth-form-submit">
+              <Button
+                type="submit"
+                variant={submitVariant}
+                disabled={busy}
+                data-e2e="auth-form-submit"
+              >
                 {mode === "sign-in" ? copy.signIn : copy.signUp}
               </Button>
               {modeHrefs
