@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { effect, signal } from "@preact/signals"
 import { type } from "arktype"
 import { ErrType } from "@spy4x/platform/universal/errors"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import { buildModelStore } from "./build-model-store.ts"
 import { RemoteEvent, type ToastMessage } from "./types.ts"
 
@@ -3188,5 +3189,166 @@ describe("buildModelStore messages", () => {
 
     expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: /)
     expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
+  })
+})
+
+describe("buildModelStore with UUID v7 string ids", () => {
+  const uuidRowSchema = type({
+    id: "string.uuid.v7",
+    name: "string",
+    createdAt: dateSchema,
+    deletedAt: dateSchema.or("null"),
+  })
+  type UuidRow = typeof uuidRowSchema.infer
+  const uuidRow = (id: string, name: string, deletedAt: Date | null = null): UuidRow => ({
+    id,
+    name,
+    createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    deletedAt,
+  })
+  const buildUuidStore = (fetchImpl: typeof fetch) =>
+    buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: uuidRowSchema, create: createSchema, update: updateSchema },
+      fetch: fetchImpl,
+    })
+
+  it("lists, creates, updates, deletes and restores rows keyed by UUID strings", async () => {
+    const north = uuidV7()
+    const south = uuidV7()
+    const created = uuidV7()
+    const archived = new Date("2024-02-01T00:00:00.000Z")
+    const { impl, calls } = queueFetch(
+      Response.json(uuidRow(created, "East"), { status: 201 }),
+      Response.json(uuidRow(south, "Süd")),
+      Response.json(uuidRow(north, "North", archived)),
+      Response.json(uuidRow(north, "North")),
+    )
+    const store = buildUuidStore(impl)
+    await store.onWs([uuidRow(north, "North"), uuidRow(south, "South")], RemoteEvent.LIST)
+    expect(store.one.byId(south).value?.name).toBe("South")
+
+    await store.create({ name: "East" })
+    await store.update(south, { name: "Süd" })
+    await store.delete(north)
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([north])
+    await store.undelete(north)
+
+    expect(calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      "POST /api/zones",
+      `PATCH /api/zones/${south}`,
+      `DELETE /api/zones/${north}`,
+      `POST /api/zones/${north}/undelete`,
+    ])
+    expect(store.list.all.value.map((r) => [r.id, r.name, r.deletedAt])).toEqual([
+      [north, "North", null],
+      [south, "Süd", null],
+      [created, "East", null],
+    ])
+    expect(store.op.update(south).value?.result?.name).toBe("Süd")
+
+    store.remove(south)
+    expect(store.one.byId(south).value).toBeUndefined()
+    expect(store.list.all.value.map((r) => r.id)).toEqual([north, created])
+  })
+
+  it("keeps the string 7 and the number 7 as two different rows", async () => {
+    const looseSchema = type({ id: "string | number", name: "string" })
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
+      fetch: queueFetch().impl,
+    })
+    await store.onWs([{ id: 7, name: "Number" }, { id: "7", name: "String" }], RemoteEvent.LIST)
+
+    expect(store.one.byId(7).value?.name).toBe("Number")
+    expect(store.one.byId("7").value?.name).toBe("String")
+    store.remove("7")
+    expect(store.list.all.value).toEqual([{ id: 7, name: "Number" }])
+  })
+
+  it("encodes a string id into one path segment of the default row URLs", async () => {
+    const { impl, calls } = queueFetch(
+      Response.json({ id: "a/b?c", name: "x" }),
+      Response.json({ id: "a/b?c", name: "x" }),
+    )
+    const looseSchema = type({ id: "string", name: "string" })
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
+      fetch: impl,
+    })
+
+    await store.update("a/b?c", { id: "a/b?c", name: "x" })
+    await store.undelete("a/b?c")
+
+    expect(calls.map((c) => c.url)).toEqual([
+      "/api/zones/a%2Fb%3Fc",
+      "/api/zones/a%2Fb%3Fc/undelete",
+    ])
+  })
+})
+
+describe("buildModelStore op signals per id", () => {
+  it("returns the same signal when asked twice for one id", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+
+    expect(store.op.update(1)).toBe(store.op.update(1))
+    expect(store.op.delete(1)).toBe(store.op.delete(1))
+    // An undelete is an update of the row, so it reads the same slot through the same signal.
+    expect(store.op.undelete(1)).toBe(store.op.update(1))
+    expect(store.op.update(1)).not.toBe(store.op.update(2))
+    expect(store.op.update(1)).not.toBe(store.op.delete(1))
+  })
+
+  it("keeps a cached signal reading its slot as requests settle", async () => {
+    const store = buildStore({ fetch: queueFetch(Response.json(row(1, "Nörth"))).impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const slot = store.op.update(1)
+    expect(slot.value).toBeUndefined()
+
+    await store.update(1, { name: "Nörth" })
+
+    expect(slot.value?.result?.name).toBe("Nörth")
+  })
+
+  it("drops a row's cached signals when remove takes the row out", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    const update = store.op.update(1)
+    const remove = store.op.delete(1)
+    const other = store.op.update(2)
+
+    store.remove(1)
+
+    expect(store.op.update(1)).not.toBe(update)
+    expect(store.op.delete(1)).not.toBe(remove)
+    expect(store.op.update(2)).toBe(other)
+  })
+
+  it("drops the cached signals of rows a list event leaves out and keeps the rest", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North"), row(2, "South")], RemoteEvent.LIST)
+    const north = store.op.update(1)
+    const south = store.op.delete(2)
+
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+
+    expect(store.op.update(1)).toBe(north)
+    expect(store.op.delete(2)).not.toBe(south)
+  })
+
+  it("drops every cached signal on reset", async () => {
+    const store = buildStore({ fetch: queueFetch().impl })
+    await store.onWs([row(1, "North")], RemoteEvent.LIST)
+    const before = store.op.update(1)
+
+    store.reset()
+
+    expect(store.op.update(1)).not.toBe(before)
   })
 })

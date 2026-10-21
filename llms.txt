@@ -94,7 +94,7 @@ StoreErrorLike	type	@spy4x/preact-crud	An error a store operation settles with.
 TextField	component	@spy4x/preact-crud	One labelled text input.
 TextareaField	component	@spy4x/preact-crud	One labelled multi-line text input.
 associationActions	helper	@spy4x/preact-crud	Bind the two module-level writes to a store.
-commitNumber	helper	@spy4x/preact-crud	Parse a numeric input's value, tolerating the empty and half-typed boxes a browser reports.
+commitNumber	helper	@spy4x/preact-crud	Parse a numeric input's value: the number it holds, or `null` for the empty and half-typed boxes a browser reports.
 conflictIssue	helper	@spy4x/preact-crud	Fold the duplicate into the validation model.
 editorState	helper	@spy4x/preact-crud	Derive the form's chrome from the store's state.
 fieldText	helper	@spy4x/preact-crud	A model value as the text a control shows.
@@ -457,7 +457,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1083 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1082 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -658,7 +658,7 @@ PageHeader	component	@spy4x/preact-ui	The header a page starts with: an optional
 PageHero	component	@spy4x/preact-ui	The top band of an inner page on a public site: an eyebrow, the page's `<h1>`, a lead and its buttons, in the marketing column (`max-w-6xl`) with a hairline under it.
 PageHeroAuthor	type	@spy4x/preact-ui	The person who wrote a page, named in `PageHero`'s meta line.
 PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control renders: a real page, or a collapsed run of pages.
-PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
+PageTitle	component	@spy4x/preact-ui	Deprecated: Use `PageHeader` from `./page-header`: every page starts with it, and `CrudList` and `CrudEditor` draw it now. Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
 PlanCard	component	@spy4x/preact-ui	The current plan: its name, status, price and the date it renews or ends, with a "Manage billing" form that posts to the app's billing-portal route.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.

@@ -95,9 +95,9 @@ export interface ModelStoreState<
   /** Status of the last create. */
   createOp: OperationState<M, CreateError>
   /** Per-row update status, keyed by row id. */
-  updateOps: ReadonlyMap<number, OperationState<M, ItemError>>
+  updateOps: ReadonlyMap<string | number, OperationState<M, ItemError>>
   /** Per-row delete status, keyed by row id. */
-  deleteOps: ReadonlyMap<number, OperationState<M, RequestError>>
+  deleteOps: ReadonlyMap<string | number, OperationState<M, RequestError>>
 }
 
 /** State of a store built for a given row schema. */
@@ -133,9 +133,9 @@ export interface ModelStoreContext<F extends Type<Model>> {
   /** Immutably merge a patch into the state. */
   patch: (patch: Partial<StoreStateOf<F>>) => void
   /** Write one row's update slot. Copies the `Map` rather than mutating it in place. */
-  setUpdateOp: (id: number, state: OperationState<SchemaOutput<F>, InputError>) => void
+  setUpdateOp: (id: string | number, state: OperationState<SchemaOutput<F>, InputError>) => void
   /** Write one row's delete slot. Copies the `Map` rather than mutating it in place. */
-  setDeleteOp: (id: number, state: OperationState<SchemaOutput<F>, RequestError>) => void
+  setDeleteOp: (id: string | number, state: OperationState<SchemaOutput<F>, RequestError>) => void
   /** Fetch, parse and normalise; returns an error object instead of throwing. */
   request: ModelStoreRequest
   /**
@@ -162,7 +162,7 @@ export interface ModelStoreContext<F extends Type<Model>> {
   /** Collection endpoint. */
   endpoint: string
   /** URL of one row. */
-  pathFor: (id: number) => string
+  pathFor: (id: string | number) => string
 }
 
 /**
@@ -229,10 +229,10 @@ export interface BuildModelStoreConfig<
   fetch?: typeof fetch
   /** Row URLs, when they differ from the collection convention. */
   paths?: {
-    /** Defaults to `` `${endpoint}/${id}` ``. */
-    one?: (id: number) => string
-    /** Defaults to `` `${endpoint}/${id}/undelete` ``. */
-    undelete?: (id: number) => string
+    /** Defaults to `` `${endpoint}/${id}` ``, with the id URI-encoded. */
+    one?: (id: string | number) => string
+    /** Defaults to `` `${endpoint}/${id}/undelete` ``, with the id URI-encoded. */
+    undelete?: (id: string | number) => string
   }
   /**
    * Freshness check between a row arriving and the row the list holds; the older one is ignored.
@@ -289,33 +289,40 @@ export interface ModelStoreBase<F extends Type<Model>, C extends Type, U extends
      * `undefined` when no such row is loaded — the honest result of a lookup. Asking twice for the
      * same id returns the same signal, until `reset()` starts a new session.
      */
-    byId: (id: number) => ReadonlySignal<SchemaOutput<F> | undefined>
+    byId: (id: string | number) => ReadonlySignal<SchemaOutput<F> | undefined>
   }
   op: {
     list: ReadonlySignal<OperationState<SchemaOutput<F>[], RequestError>>
     create: ReadonlySignal<OperationState<SchemaOutput<F>, InputError>>
-    update: (id: number) => ReadonlySignal<OperationState<SchemaOutput<F>, InputError> | undefined>
+    /**
+     * Per-row update status. Asking twice for the same id returns the same signal, until the row
+     * leaves the store (`remove`, a `"list"` event without it, `reset()`).
+     */
+    update: (
+      id: string | number,
+    ) => ReadonlySignal<OperationState<SchemaOutput<F>, InputError> | undefined>
+    /** Per-row delete status, cached per id like `update`. */
     delete: (
-      id: number,
+      id: string | number,
     ) => ReadonlySignal<OperationState<SchemaOutput<F>, RequestError> | undefined>
-    /** Same slot as `update`: an undelete is an update of the row. */
+    /** Same slot, and the same signal, as `update`: an undelete is an update of the row. */
     undelete: (
-      id: number,
+      id: string | number,
     ) => ReadonlySignal<OperationState<SchemaOutput<F>, InputError> | undefined>
   }
   /** Validate, `POST`, and append the created row. */
   create: (data: SchemaInput<C>) => Promise<OperationResult<SchemaOutput<F>, InputError>>
   /** Validate, `PATCH`, and replace the row in place. */
   update: (
-    id: number,
+    id: string | number,
     data: SchemaInput<U>,
   ) => Promise<OperationResult<SchemaOutput<F>, InputError>>
   /** `DELETE` one row. The server soft-deletes, so the row stays in the list. */
-  delete: (id: number) => Promise<OperationResult<SchemaOutput<F>, RequestError>>
+  delete: (id: string | number) => Promise<OperationResult<SchemaOutput<F>, RequestError>>
   /** `POST` to the undelete path and replace the row in place. */
-  undelete: (id: number) => Promise<OperationResult<SchemaOutput<F>, InputError>>
+  undelete: (id: string | number) => Promise<OperationResult<SchemaOutput<F>, InputError>>
   /** Drop a row from the local list and clear its operation slots. Sends no request. */
-  remove: (id: number) => void
+  remove: (id: string | number) => void
   /** Apply a remote feed event. A batch that fails to parse is rejected whole. */
   onWs: (items: unknown[], event: RemoteEvent) => Promise<void>
   /**
@@ -364,7 +371,7 @@ const silentToast: ToastPort = { success: () => {}, error: () => {} }
  *   sort: (a, b) => a.name.localeCompare(b.name),
  *   session: () => auth.user.value,
  *   extraOps: ({ request, setUpdateOp }) => ({
- *     turn: async (id: number, isOn: boolean) => { … },
+ *     turn: async (id: string | number, isOn: boolean) => { … },
  *   }),
  * })
  * ```
@@ -386,8 +393,11 @@ export function buildModelStore<
   const words: ModelStoreMessages = { ...DEFAULT_MODEL_STORE_MESSAGES, ...config.messages }
   const isNewer = config.isNewer ?? defaultIsNewer
   const request = createRequest(model, config.fetch ?? globalThis.fetch, words.malformedResponse)
-  const pathFor = paths?.one ?? ((id: number) => `${endpoint}/${id}`)
-  const undeletePathFor = paths?.undelete ?? ((id: number) => `${endpoint}/${id}/undelete`)
+  // Encoded, so a string id holding `/`, `?` or `#` stays one path segment. A number or a UUID
+  // reads the same either way.
+  const pathFor = paths?.one ?? ((id: string | number) => `${endpoint}/${encodeURIComponent(id)}`)
+  const undeletePathFor = paths?.undelete ??
+    ((id: string | number) => `${endpoint}/${encodeURIComponent(id)}/undelete`)
 
   const state = signal<State>({
     list: [],
@@ -436,9 +446,9 @@ export function buildModelStore<
    * for in the current session; a signal handed out earlier keeps working, it is just no longer the
    * one the next call returns.
    */
-  const byIdSignals = new Map<number, ReadonlySignal<Row | undefined>>()
+  const byIdSignals = new Map<string | number, ReadonlySignal<Row | undefined>>()
 
-  const byId = (id: number): ReadonlySignal<Row | undefined> => {
+  const byId = (id: string | number): ReadonlySignal<Row | undefined> => {
     const cached = byIdSignals.get(id)
     if (cached) return cached
     const made = computed(() => index.value.get(id))
@@ -446,11 +456,39 @@ export function buildModelStore<
     return made
   }
 
-  const setUpdateOp = (id: number, op: OperationState<Row, InputError>): void => {
+  /**
+   * One pair of operation-slot signals per id asked for, for the reason {@link byIdSignals} exists:
+   * `crud` asks for `op.update(id)` on every render, and a fresh `computed` each time would be a
+   * fresh subscription each time. `op.undelete` shares the update slot, so it shares its signal.
+   *
+   * Unlike `byIdSignals`, an entry goes when its row leaves the store — `remove(id)`, a `"list"`
+   * event that no longer names it, or `reset()` — so the cache never holds more ids than the store
+   * has rows plus the ones asked for since. A signal handed out before its entry went keeps
+   * reading the slot; it is just no longer the one the next call returns.
+   */
+  const opSignals = new Map<string | number, RowOpSignals<Row>>()
+
+  const opsOf = (id: string | number): RowOpSignals<Row> => {
+    const cached = opSignals.get(id)
+    if (cached) return cached
+    const made: RowOpSignals<Row> = {
+      update: computed(() => state.value.updateOps.get(id)),
+      delete: computed(() => state.value.deleteOps.get(id)),
+    }
+    opSignals.set(id, made)
+    return made
+  }
+
+  /** Drop the cached slot signals of every id `keep` does not hold. */
+  const pruneOpSignals = (keep: ReadonlyMap<string | number, unknown>): void => {
+    for (const id of opSignals.keys()) if (!keep.has(id)) opSignals.delete(id)
+  }
+
+  const setUpdateOp = (id: string | number, op: OperationState<Row, InputError>): void => {
     patch({ updateOps: setMapEntry(state.value.updateOps, id, op) })
   }
 
-  const setDeleteOp = (id: number, op: OperationState<Row, RequestError>): void => {
+  const setDeleteOp = (id: string | number, op: OperationState<Row, RequestError>): void => {
     patch({ deleteOps: setMapEntry(state.value.deleteOps, id, op) })
   }
 
@@ -468,7 +506,7 @@ export function buildModelStore<
    * costs one small object per row the store has ever written to and it still holds if a request
    * path is ever written that forgets to compare generations. See {@link generation}.
    */
-  const rowRequests = new Map<number, RequestSequence>()
+  const rowRequests = new Map<string | number, RequestSequence>()
 
   /**
    * How many times this store has been reset.
@@ -502,7 +540,7 @@ export function buildModelStore<
    */
   const createRequests: RequestSequence = { issued: 0, applied: 0 }
 
-  const sequenceOf = (id: number): RequestSequence => {
+  const sequenceOf = (id: string | number): RequestSequence => {
     const existing = rowRequests.get(id)
     if (existing) return existing
     const started: RequestSequence = { issued: 0, applied: 0 }
@@ -517,7 +555,7 @@ export function buildModelStore<
    * outstanding. A delete slot still flagged in progress at that moment belongs to a request whose
    * answer will be dropped as stale, and nothing else would ever lower its flag.
    */
-  const settleUpdateOp = (id: number, op: OperationState<Row, InputError>): void => {
+  const settleUpdateOp = (id: string | number, op: OperationState<Row, InputError>): void => {
     patch({
       updateOps: setMapEntry(state.value.updateOps, id, op),
       deleteOps: released(state.value.deleteOps, id),
@@ -525,7 +563,7 @@ export function buildModelStore<
   }
 
   /** Write a row's delete slot, and release its update slot. See {@link settleUpdateOp}. */
-  const settleDeleteOp = (id: number, op: OperationState<Row, RequestError>): void => {
+  const settleDeleteOp = (id: string | number, op: OperationState<Row, RequestError>): void => {
     patch({
       deleteOps: setMapEntry(state.value.deleteOps, id, op),
       updateOps: released(state.value.updateOps, id),
@@ -642,7 +680,7 @@ export function buildModelStore<
   }
 
   async function update(
-    id: number,
+    id: string | number,
     data: SchemaInput<U>,
   ): Promise<OperationResult<Row, InputError>> {
     const { error, data: payload } = validate(schemas.update, data)
@@ -684,7 +722,7 @@ export function buildModelStore<
     return { error: null, result: outcome.result }
   }
 
-  async function removeRow(id: number): Promise<OperationResult<Row, RequestError>> {
+  async function removeRow(id: string | number): Promise<OperationResult<Row, RequestError>> {
     const sequence = sequenceOf(id)
     const seq = beginRequest(sequence)
     const issuedIn = generationNow()
@@ -714,7 +752,7 @@ export function buildModelStore<
     return { error: null, result: outcome.result }
   }
 
-  async function undelete(id: number): Promise<OperationResult<Row, InputError>> {
+  async function undelete(id: string | number): Promise<OperationResult<Row, InputError>> {
     const sequence = sequenceOf(id)
     const seq = beginRequest(sequence)
     const issuedIn = generationNow()
@@ -783,6 +821,7 @@ export function buildModelStore<
     switch (event) {
       case RemoteEvent.LIST:
         patch({ list: incoming, listOp: { inProgress: false, error: null, result: incoming } })
+        pruneOpSignals(index.value)
         return
       case RemoteEvent.CREATED: {
         const held = index.value
@@ -811,7 +850,8 @@ export function buildModelStore<
     }
   }
 
-  function remove(id: number): void {
+  function remove(id: string | number): void {
+    opSignals.delete(id)
     patch({
       list: state.value.list.filter((row) => row.id !== id),
       updateOps: deleteMapEntry(state.value.updateOps, id),
@@ -830,6 +870,7 @@ export function buildModelStore<
     // `buildModelStore across a reset` hold the order.
     generation += 1
     byIdSignals.clear()
+    opSignals.clear()
     patch({
       list: [],
       listOp: idle(),
@@ -901,9 +942,9 @@ export function buildModelStore<
     op: {
       list: computed(() => state.value.listOp),
       create: computed(() => state.value.createOp),
-      update: (id: number) => computed(() => state.value.updateOps.get(id)),
-      delete: (id: number) => computed(() => state.value.deleteOps.get(id)),
-      undelete: (id: number) => computed(() => state.value.updateOps.get(id)),
+      update: (id: string | number) => opsOf(id).update,
+      delete: (id: string | number) => opsOf(id).delete,
+      undelete: (id: string | number) => opsOf(id).update,
     },
     create,
     update,
@@ -978,10 +1019,16 @@ function jsonRequest(method: string, body: unknown): RequestInit {
  * Rows keyed by id. Where `rows` holds an id twice the first one wins, which is what `find` returned
  * before the store kept an index.
  */
-function indexById<M extends Model>(rows: readonly M[]): ReadonlyMap<number, M> {
-  const index = new Map<number, M>()
+function indexById<M extends Model>(rows: readonly M[]): ReadonlyMap<string | number, M> {
+  const index = new Map<string | number, M>()
   for (const row of rows) if (!index.has(row.id)) index.set(row.id, row)
   return index
+}
+
+/** The cached signals over one row's two operation slots. */
+interface RowOpSignals<M extends Model> {
+  update: ReadonlySignal<OperationState<M, InputError> | undefined>
+  delete: ReadonlySignal<OperationState<M, RequestError> | undefined>
 }
 
 /** A settled, empty operation slot. */
@@ -1051,9 +1098,9 @@ function answerRights(sequence: RequestSequence, seq: number): AnswerRights {
  * churn the signal's identity.
  */
 function released<T, E>(
-  ops: ReadonlyMap<number, OperationState<T, E>>,
-  id: number,
-): ReadonlyMap<number, OperationState<T, E>> {
+  ops: ReadonlyMap<string | number, OperationState<T, E>>,
+  id: string | number,
+): ReadonlyMap<string | number, OperationState<T, E>> {
   const op = ops.get(id)
   return op?.inProgress ? setMapEntry(ops, id, { ...op, inProgress: false }) : ops
 }

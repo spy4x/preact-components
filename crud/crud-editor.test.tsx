@@ -1,10 +1,13 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
+import { render } from "preact-render-to-string"
 import type { ValidationModel } from "@spy4x/validation/model"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import type { CrudEditorStore } from "./store.ts"
-import { editorState, submitEditor, toggleArchiveState } from "./crud-editor.tsx"
+import { CrudEditor, editorState, submitEditor, toggleArchiveState } from "./crud-editor.tsx"
 import type { CrudRow, DeletionDependency } from "./types.ts"
+import type { JSX } from "preact"
 
 interface Region extends CrudRow {
   name: string
@@ -20,7 +23,7 @@ const region = (patch: Partial<Region> = {}): Region => ({
 interface FakeStore {
   store: CrudEditorStore<Region>
   created: Region[]
-  updated: [number, Region][]
+  updated: [string | number, Region][]
 }
 
 /**
@@ -30,7 +33,7 @@ interface FakeStore {
  */
 function fakeStore(failure?: { message: string }): FakeStore {
   const created: Region[] = []
-  const updated: [number, Region][] = []
+  const updated: [string | number, Region][] = []
   const idle = { inProgress: false, result: null, error: null }
 
   return {
@@ -91,6 +94,20 @@ describe("submitEditor", () => {
     expect(fake.created).toHaveLength(0)
     expect(outcome.updated).toBe(true)
     expect(outcome.created).toBeNull()
+  })
+
+  it("patches a row keyed by a UUID string under that same string", async () => {
+    const fake = fakeStore()
+    const id = uuidV7()
+    const outcome = await submitEditor({
+      mode: "edit",
+      id,
+      store: fake.store,
+      value: region({ id }),
+    })
+
+    expect(fake.updated).toEqual([[id, region({ id })]])
+    expect(outcome.updated).toBe(true)
   })
 
   it("writes nothing when the archive is blocked", async () => {
@@ -209,5 +226,97 @@ describe("editorState", () => {
     expect(editorState({ ...base, validation: invalid }).saveEnabled).toBe(false)
     expect(editorState({ ...base, inProgress: true }).saveEnabled).toBe(false)
     expect(editorState({ ...base, blocked: 1 }).saveEnabled).toBe(false)
+  })
+})
+
+describe("CrudEditor header", () => {
+  const editor = (title?: string | JSX.Element) =>
+    render(
+      <CrudEditor
+        store={fakeStore().store}
+        mode="add"
+        blank={region()}
+        entity="Region"
+        title={title}
+        cancelHref="/regions"
+      >
+        {() => null}
+      </CrudEditor>,
+    )
+
+  it("starts with a PageHeader titled after the mode and entity", () => {
+    const html = editor()
+
+    expect(html.indexOf(`data-e2e="page-header"`)).toBeLessThan(html.indexOf("<form"))
+    expect(html).toMatch(
+      /<h1[^>]*title="Add region"><span class="block truncate">Add region<\/span>/,
+    )
+  })
+
+  it("words the default title in sentence case, keeping an acronym's capitals", () => {
+    const titled = (entity: string, mode: "add" | "edit") =>
+      render(
+        mode === "add"
+          ? (
+            <CrudEditor
+              store={fakeStore().store}
+              mode="add"
+              blank={region()}
+              entity={entity}
+              cancelHref="/x"
+            >
+              {() => null}
+            </CrudEditor>
+          )
+          : (
+            <CrudEditor
+              store={fakeStore().store}
+              mode="edit"
+              editId={3}
+              blank={region()}
+              entity={entity}
+              cancelHref="/x"
+            >
+              {() => null}
+            </CrudEditor>
+          ),
+      )
+
+    expect(titled("Team", "edit")).toContain(`title="Edit team"`)
+    expect(titled("API key", "add")).toContain(`title="Add API key"`)
+    expect(titled("X", "add")).toContain(`title="Add X"`)
+  })
+
+  it("labels the archive checkbox in sentence case unless the app words it", () => {
+    const archived = (label?: string) =>
+      render(
+        <CrudEditor
+          store={fakeStore().store}
+          mode="edit"
+          editId={3}
+          blank={region()}
+          entity="Region"
+          cancelHref="/x"
+          archive={{ label }}
+        >
+          {() => null}
+        </CrudEditor>,
+      )
+
+    expect(archived()).toContain("Is archived?")
+    expect(archived("Retired")).toContain("Retired")
+    expect(archived("Retired")).not.toContain("Is archived?")
+  })
+
+  it("puts a string title in the header as its title", () => {
+    expect(editor("New region")).toMatch(
+      /<h1[^>]*title="New region"><span class="block truncate">New region<\/span>/,
+    )
+  })
+
+  it("draws a non-string title as the heading, with the default text as its tooltip", () => {
+    expect(editor(<em>Region for site ABC</em>)).toMatch(
+      /<h1[^>]*title="Add region"><em>Region for site ABC<\/em><\/h1>/,
+    )
   })
 })

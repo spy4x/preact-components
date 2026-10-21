@@ -3,6 +3,7 @@ import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DeletionDependency } from "./types.ts"
 
+/** What {@link DeletionValidation} takes: what blocks an archive, and how to word it. */
 export interface DeletionValidationProps {
   /** Entities blocking the archive. An empty list renders nothing visible. */
   dependencies: DeletionDependency[]

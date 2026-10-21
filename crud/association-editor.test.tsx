@@ -3,6 +3,8 @@ import { describe, it } from "@std/testing/bdd"
 import { computed, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
 import type { ValidationModel } from "@spy4x/validation/model"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
+import { formatTime } from "@spy4x/platform/universal/time"
 import {
   associationActions,
   AssociationEditor,
@@ -37,14 +39,14 @@ const idle: OperationState = { inProgress: false, result: null, error: null }
 
 interface FakeStore {
   store: CrudAssociationStore<ZoneSite>
-  removed: number[]
-  restored: number[]
+  removed: (string | number)[]
+  restored: (string | number)[]
 }
 
 /** A junction store with no network behind it: it records removals and restores. */
 function fakeStore(rows: ZoneSite[] = []): FakeStore {
-  const removed: number[] = []
-  const restored: number[] = []
+  const removed: (string | number)[] = []
+  const restored: (string | number)[] = []
 
   return {
     removed,
@@ -93,6 +95,15 @@ describe("conflictIssue", () => {
 
     expect(vl.zoneId?.[CONFLICT]?.message).toContain("already associated")
     expect(vl.zoneId?.[CONFLICT]?.payload).toBe(5)
+  })
+
+  it("reports a duplicate keyed by a UUID string, without a payload validation cannot type", () => {
+    const duplicate = uuidV7()
+    const rows = [row({ id: duplicate, zoneId: 3 })]
+    const vl = conflictIssue(row({ id: uuidV7(), zoneId: 3 }), clean, { ...conflictInput, rows })
+
+    expect(vl.zoneId?.[CONFLICT]?.message).toContain("already associated")
+    expect(vl.zoneId?.[CONFLICT]?.payload).toBeUndefined()
   })
 
   it("says a duplicate was removed rather than that it exists", () => {
@@ -186,6 +197,38 @@ describe("AssociationEditor", () => {
     expect(html).toContain("Removed")
   })
 
+  it("titles the removal time the way CrudEditor does, not with Date.toString", () => {
+    const at = new Date("2025-01-01T00:00:00Z")
+    const html = render(
+      <AssociationEditor
+        {...shared}
+        mode="edit"
+        editId={1}
+        store={fakeStore().store}
+        blank={row({ id: 1, deletedAt: at })}
+      >
+        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+      </AssociationEditor>,
+    )
+
+    expect(html).toContain(`title="${formatTime(at, { full: true })}"`)
+    expect(html).not.toContain(at.toString())
+  })
+
+  it("keeps the Restore offer from a viewer canChange refuses", () => {
+    const store = fakeStore([row({ id: 5, zoneId: 0, deletedAt: new Date() })]).store
+    const offer = (canChange: () => boolean) =>
+      render(
+        <AssociationEditor {...shared} mode="add" store={store} canChange={canChange}>
+          {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+        </AssociationEditor>,
+      )
+
+    expect(offer(() => true)).toContain(">Restore</button>")
+    expect(offer(() => false)).not.toContain(">Restore</button>")
+    expect(offer(() => false)).not.toContain("Restoring it keeps the record")
+  })
+
   it("offers to restore the duplicate when the row it collides with was removed", () => {
     const store = fakeStore([row({ id: 5, zoneId: 0, deletedAt: new Date() })]).store
     const html = render(
@@ -257,8 +300,8 @@ describe("AssociationEditor", () => {
         </AssociationEditor>,
       )
 
-    expect(at()).toMatch(/<h1[^>]*>Add association<\/h1>/)
-    expect(at(2)).toMatch(/<h2[^>]*>Add association<\/h2>/)
+    expect(at()).toMatch(/<h1[^>]*><span class="block truncate">Add association<\/span><\/h1>/)
+    expect(at(2)).toMatch(/<h2[^>]*><span class="block truncate">Add association<\/span><\/h2>/)
     expect(at(2)).not.toContain("<h1")
   })
 

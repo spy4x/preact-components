@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 
+/** @deprecated Use `PageHeaderProps`. Removed in the next major. */
 export interface PageTitleProps {
   children: ComponentChildren
   /**
@@ -22,6 +23,9 @@ const defaultClasses =
 
 /**
  * Page heading with the library's `pc-h1` typography inlined.
+ *
+ * @deprecated Use `PageHeader` from `./page-header`: every page starts with it, and `CrudList` and
+ * `CrudEditor` draw it now. Removed in the next major.
  *
  * The source component used the app's `h1` component class (the preset's `pc-h1` today); the
  * utilities are inlined here so this package does not depend on the design-token layer for its

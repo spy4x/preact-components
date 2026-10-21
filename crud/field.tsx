@@ -200,10 +200,11 @@ export function TextField<M extends object, K extends keyof M & string>(
  * One labelled numeric input.
  *
  * A number input reports `""` for anything the browser cannot parse — and for the intermediate
- * states of typing `-`, `1e` or `1.` — so an empty or unparsable box commits `0` rather than
- * `NaN`, which is what the arktype schema would otherwise reject on every keystroke. A keystroke
- * commits only a number the box already shows as typed ({@link typedNumber}); the rest waits for
- * blur.
+ * states of typing `-`, `1e` or `1.` — so an emptied or unparsable box commits `null` ("no value"),
+ * never `NaN` or a made-up `0`: a `number | null` column can be cleared, and a required one shows
+ * its schema's issue. A keystroke commits only a number the box already shows as typed
+ * ({@link typedNumber}); the rest (`1e3`, `007`) is committed on blur, and on Enter before the form
+ * submits, so the saved number is the one typed.
  */
 export function NumberField<M extends object, K extends keyof M & string>(
   props: FieldProps<M, K>,
@@ -229,6 +230,11 @@ export function NumberField<M extends object, K extends keyof M & string>(
             const value = typedNumber(event.currentTarget.value)
             if (value !== undefined) setField(props.vm, props.name, value)
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              setField(props.vm, props.name, commitNumber(event.currentTarget.value))
+            }
+          }}
           onBlur={(event) =>
             setField(props.vm, props.name, commitNumber(event.currentTarget.value))}
         />
@@ -237,10 +243,14 @@ export function NumberField<M extends object, K extends keyof M & string>(
   )
 }
 
-/** Parse a numeric input's value, tolerating the empty and half-typed boxes a browser reports. */
-export function commitNumber(raw: string): number {
-  const parsed = Number(raw.trim())
-  return Number.isFinite(parsed) ? parsed : 0
+/**
+ * Parse a numeric input's value: the number it holds, or `null` for the empty and half-typed boxes
+ * a browser reports.
+ */
+export function commitNumber(raw: string): number | null {
+  const text = raw.trim()
+  const parsed = Number(text)
+  return text !== "" && Number.isFinite(parsed) ? parsed : null
 }
 
 /**

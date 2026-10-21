@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
 import { RemoteEvent } from "@spy4x/preact-signals/types"
 import { type } from "arktype"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import type { CrudEditorStore, CrudListStore } from "./store.ts"
 import type { CrudRow } from "./types.ts"
 
@@ -131,5 +132,51 @@ describe("the scaffold's row contract", () => {
 
     const rows: CrudRow[] = store.list.all.value
     expect(rows[0].id).toBe(1)
+  })
+})
+
+describe("a real ModelStore keyed by UUID v7 strings", () => {
+  const uuidRegionSchema = type({
+    id: "string.uuid.v7",
+    name: "1 <= string <= 255",
+    createdAt: date,
+    updatedAt: date,
+    deletedAt: date.or("null"),
+  })
+  type UuidRegion = typeof uuidRegionSchema.infer
+  const uuidRow = (id: string, name: string, deletedAt: Date | null = null): UuidRegion => ({
+    id,
+    name,
+    createdAt: at,
+    updatedAt: at,
+    deletedAt,
+  })
+
+  it("serves the list and the editor through the scaffold's interfaces", async () => {
+    const south = uuidV7()
+    const archived = uuidV7()
+    const store = buildModelStore({
+      model: "region",
+      endpoint: "/api/regions",
+      schemas: {
+        full: uuidRegionSchema,
+        create: uuidRegionSchema.omit("id", "createdAt", "updatedAt", "deletedAt"),
+        update: uuidRegionSchema.omit("id", "createdAt", "updatedAt", "deletedAt").partial(),
+      },
+      fetch: respondWith(uuidRow(south, "South renamed")),
+    })
+    const list: CrudListStore<UuidRegion> = store
+    const editor: CrudEditorStore<UuidRegion> = store
+
+    await store.onWs([uuidRow(south, "South"), uuidRow(archived, "Old", at)], RemoteEvent.LIST)
+    expect(list.list.nonDeleted.value.map((region) => region.id)).toEqual([south])
+    expect(list.list.deleted.value.map((region) => region.id)).toEqual([archived])
+    expect(editor.one.byId(south).value?.name).toBe("South")
+
+    const outcome = await editor.update(south, uuidRow(south, "South renamed"))
+
+    expect(outcome.error).toBeNull()
+    expect(editor.op.update(south).value?.inProgress).toBe(false)
+    expect(editor.one.byId(south).value?.name).toBe("South renamed")
   })
 })

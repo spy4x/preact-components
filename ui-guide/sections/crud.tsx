@@ -41,13 +41,15 @@ import { computed, type ReadonlySignal, type Signal, signal, useSignal } from "@
 import { search } from "@spy4x/platform/universal/text"
 import type { FieldIssue, ValidationModel } from "@spy4x/validation/model"
 import { type } from "arktype"
+import { buildModelStore } from "@spy4x/preact-signals/build-model-store"
+import { RemoteEvent } from "@spy4x/preact-signals/types"
 import type { ComponentChildren, JSX } from "preact"
 import { useMemo } from "preact/hooks"
 import type { DemoFragment, DemoProp } from "../registry.ts"
 
 /** The row every editor in this section edits. */
 interface Team extends CrudRow {
-  id: number
+  id: string | number
   name: string
   members: number
   notes: string
@@ -119,7 +121,7 @@ function makeTeamStore() {
       deleted: computed(() => rows.value.filter((row) => Boolean(row.deletedAt))),
     },
     one: {
-      byId: (id: number) => computed(() => rows.value.find((row) => row.id === id)),
+      byId: (id: string | number) => computed(() => rows.value.find((row) => row.id === id)),
     },
     op: {
       list: listOp,
@@ -202,7 +204,7 @@ function makeAssociationStore() {
     list: {
       all: rows,
     },
-    one: { byId: (id: number) => computed(() => rows.value.find((row) => row.id === id)) },
+    one: { byId: (id: string | number) => computed(() => rows.value.find((row) => row.id === id)) },
     op: {
       create: settledOp,
       update: () => idle,
@@ -437,6 +439,118 @@ function CrudEditorDemo() {
         </p>
         <p>rows in the store: {rows.value.length} (4 before the first save)</p>
       </Stack>
+    </Stack>
+  )
+}
+
+/** A row keyed the way the house rules key every row: by a version 7 UUID string. */
+const uuidTeamSchema = type({
+  id: "string.uuid.v7",
+  name: "1 <= string <= 60",
+  members: "number.integer >= 0",
+  deletedAt: "null",
+})
+
+type UuidTeam = typeof uuidTeamSchema.infer
+
+/** Fixed ids rather than fresh ones, so every render and every screenshot shows the same rows. */
+const uuidTeams: UuidTeam[] = [
+  { id: "019a1f2e-6c00-7a10-8b2c-3d4e5f607181", name: "Billing", members: 3, deletedAt: null },
+  { id: "019a1f2e-6c01-7b20-9c3d-4e5f60718292", name: "Payroll", members: 5, deletedAt: null },
+]
+
+/**
+ * A real `buildModelStore` over UUID-keyed rows, with a `fetch` that answers a `PATCH` the way a
+ * server would: the row it holds, with the body merged in.
+ */
+function makeUuidTeamStore() {
+  const held = new Map(uuidTeams.map((team) => [team.id, team]))
+  const answer: typeof fetch = (input, init) => {
+    const id = decodeURIComponent(String(input).split("/").pop() ?? "")
+    const row = { ...held.get(id), ...JSON.parse(String(init?.body ?? "{}")), id }
+    held.set(id, row)
+    return Promise.resolve(Response.json(row))
+  }
+  const editable = uuidTeamSchema.omit("id", "deletedAt")
+  const store = buildModelStore({
+    model: "team",
+    endpoint: "/api/teams",
+    schemas: { full: uuidTeamSchema, create: editable, update: editable },
+    fetch: answer,
+  })
+  void store.onWs(uuidTeams, RemoteEvent.LIST)
+  return store
+}
+
+/** `CrudList` and `CrudEditor` over the same store, both keyed by UUID strings end to end. */
+function CrudUuidDemo() {
+  const store = useMemo(() => makeUuidTeamStore(), [])
+  const editing = useSignal<string>(uuidTeams[0].id)
+
+  return (
+    <Stack data-e2e="uuid-demo">
+      <CrudList
+        store={store}
+        title="Teams keyed by UUID"
+        headingLevel={4}
+        match={(row, word) => search(row.name, word)}
+        statusFilter={false}
+        class="w-full"
+        header={
+          <>
+            <th scope="col" class="text-left">Name</th>
+            <th scope="col" class="text-left">Members</th>
+            <th scope="col" class="hidden text-left sm:table-cell">Id</th>
+          </>
+        }
+        row={(row) => (
+          <>
+            <td class="text-foreground">{row.name}</td>
+            <td class="tabular-nums">{row.members}</td>
+            {/* A phone has room for the name, the count and the button; the id joins from `sm`. */}
+            <td class="hidden sm:table-cell">
+              {/* Last eight characters: a version 7 UUID starts with its timestamp. */}
+              <code class="text-xs" title={row.id}>
+                <span aria-hidden="true">…{row.id.slice(-8)}</span>
+                <span class="sr-only">{row.id}</span>
+              </code>
+            </td>
+          </>
+        )}
+        actions={(row) => (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={editing.value === row.id}
+            onClick={() => editing.value = row.id}
+          >
+            Edit {row.name}
+          </Button>
+        )}
+      />
+      <CrudEditor
+        store={store}
+        mode="edit"
+        editId={editing.value}
+        blank={uuidTeams[0]}
+        schema={uuidTeamSchema}
+        entity="Team"
+        headingLevel={4}
+        cancelHref="#crud"
+      >
+        {({ vm, vl }) => (
+          <>
+            <TextField vm={vm} vl={vl} name="name" label="Name" />
+            <NumberField
+              vm={vm}
+              vl={vl}
+              name="members"
+              label="Members"
+              hint="Type 1e3 and press Enter: the list shows 1000"
+            />
+          </>
+        )}
+      </CrudEditor>
     </Stack>
   )
 }
@@ -839,9 +953,9 @@ function NumberFieldDemo() {
         vl={vl}
         name="members"
         label="Members"
-        hint="Clear the box or type 1e, then click away"
+        hint="Clear the box, then click away: the model holds null"
       />
-      <Caption e2e="model">members in the model: {fieldText(vm.value.members)}</Caption>
+      <Caption e2e="model">members in the model: {JSON.stringify(vm.value.members)}</Caption>
     </Stack>
   )
 }
@@ -1123,6 +1237,7 @@ export const crudDemos = {
       <Stack gap="lg">
         <CrudEditorDemo />
         <CrudEditorArchiveDemo />
+        <CrudUuidDemo />
       </Stack>
     ),
   },

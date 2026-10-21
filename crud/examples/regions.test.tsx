@@ -14,7 +14,7 @@ import { canChange, type Region, RegionEditor, RegionList, regionStore } from ".
  *
  * The editor's effects do not run under a server render, so this suite covers the markup and the
  * harness's rules; the load, validate and submit loops are covered against a fake store in
- * `crud-editor.test.ts`.
+ * `crud-editor.test.tsx`.
  */
 
 const at = new Date("2025-03-04T12:00:00Z")
@@ -71,13 +71,13 @@ describe("RegionList", () => {
 
 describe("RegionEditor", () => {
   it("titles the add form for a new region", () => {
-    expect(render(<RegionEditor mode="add" />)).toContain("Add Region")
+    expect(render(<RegionEditor mode="add" />)).toContain("Add region")
   })
 
   it("titles the edit form for an existing region and links back to the list", () => {
     const html = render(<RegionEditor mode="edit" editId={1} />)
 
-    expect(html).toContain("Edit Region")
+    expect(html).toContain("Edit region")
     expect(html).toContain(`href="/regions"`)
   })
 

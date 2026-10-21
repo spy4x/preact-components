@@ -1,9 +1,10 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
+import { Checkbox } from "@spy4x/preact-ui/checkbox"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { LoadingSkeleton } from "@spy4x/preact-ui/loading-skeleton"
 import { Stack } from "@spy4x/preact-ui/layout"
-import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
+import { PageHeader, type PageHeaderProps } from "@spy4x/preact-ui/page-header"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
 import { type ComponentChildren, Fragment, type JSX, toChildArray } from "preact"
@@ -104,7 +105,7 @@ export type CrudSubmitInput<M extends CrudRow> =
   | { mode: "add"; store: CrudSubmitStore<M>; value: M }
   | {
     mode: "edit"
-    id: number
+    id: string | number
     store: CrudSubmitStore<M>
     value: M
     /** How many entities block the archive. A blocked edit is not submitted at all. */
@@ -184,7 +185,7 @@ export interface CrudEditorSlot<M extends CrudRow> {
 /** Which mode the editor is in. `editId` is required exactly when the mode is `"edit"`. */
 export type CrudEditorMode =
   | { mode: "add"; editId?: undefined }
-  | { mode: "edit"; editId: number }
+  | { mode: "edit"; editId: string | number }
 
 /**
  * Everything a CRUD editor needs, whatever it is editing.
@@ -212,13 +213,17 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   schema?: Type
   /** Entity name in the page title and the "not found" message, for example `"Region"`. */
   entity: string
-  /** Full page title. Defaults to `Add <entity>` or `Edit <entity>`. */
+  /**
+   * Full page title. Defaults to `Add <entity>` or `Edit <entity>` in sentence case (`Edit team`;
+   * an acronym such as `API key` keeps its capitals). A string is the `PageHeader`
+   * title; anything else is drawn as its `heading`, with the default text as the tooltip.
+   */
   title?: ComponentChildren
   /**
    * Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page
    * already has its `<h1>`; the look stays the same.
    */
-  headingLevel?: PageTitleProps["headingLevel"]
+  headingLevel?: PageHeaderProps["headingLevel"]
   /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
   notFoundLabel?: string
   /** Where Cancel points. */
@@ -290,7 +295,7 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
  * already submits, plus whatever has to be archived first for it to be allowed.
  */
 export interface ArchiveConfig<M extends CrudRow> {
-  /** Label of the checkbox. Defaults to `"Is Archived?"`. */
+  /** Label of the checkbox. Defaults to `"Is archived?"`. */
   label?: string
   /**
    * Heading of the list of what blocks the archive. Defaults to
@@ -355,7 +360,6 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   const error = useSignal("")
   const saveError = useSignal("")
   const blocked = useSignal<DeletionDependency[]>([])
-  const archiveId = useId()
   const formIssueId = useId()
 
   /** Copy the row out of the store into the form. Runs once, and again after a successful update. */
@@ -393,7 +397,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   // when only `editId` changes): drop the form and load again, so Save never writes the previous
   // row's values into this one. A layout effect, so the previous row is never painted under the new
   // id.
-  const rowKey = props.mode === "add" ? "add" : `edit:${props.editId}`
+  const rowKey = props.mode === "add" ? "add" : `edit:${typeof props.editId}:${props.editId}`
   const loadedKey = useRef(rowKey)
   useLayoutEffect(() => {
     if (loadedKey.current === rowKey) return
@@ -526,10 +530,11 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         blocked: blocked.value.length,
       })
 
-    if (outcome.created !== null) onCreated?.(outcome.created)
-    // Another row is on screen now: its form must not take the old row's error or reload, which
-    // would read the old `editId` from this render and put that row's values under the new one.
+    // Another row is on screen now: `onCreated` must not pull the person away from it, and its form
+    // must not take the old row's error or reload, which would read the old `editId` from this
+    // render and put that row's values under the new one.
     if (loadedKey.current !== savedKey) return
+    if (outcome.created !== null) onCreated?.(outcome.created)
     if (outcome.error !== null) {
       const label = saveErrorLabel ?? "Could not save"
       saveError.value = outcome.error.message ? `${label}: ${outcome.error.message}` : label
@@ -537,11 +542,15 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     if (outcome.updated) loadFromStore()
   }
 
+  const defaultTitle = `${props.mode === "add" ? "Add" : "Edit"} ${midSentence(entity)}`
+
   return (
     <Stack as="section" gap="lg" class={cn("mx-auto max-w-6xl", className)}>
-      <PageTitle headingLevel={headingLevel}>
-        {title ?? (props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`)}
-      </PageTitle>
+      <PageHeader
+        title={typeof title === "string" ? title : defaultTitle}
+        heading={title === undefined || typeof title === "string" ? undefined : title}
+        headingLevel={headingLevel}
+      />
       {error.value !== "" && <p class="text-danger">{error.value}</p>}
 
       <form
@@ -596,16 +605,12 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
           <div class="pc-card-footer">
             {editable && props.footerSlot?.({ vm, vl })}
             {editable && props.mode === "edit" && archive !== undefined && (
-              <div class="flex gap-2 items-center">
-                <input
-                  type="checkbox"
-                  id={archiveId}
-                  class="pc-checkbox"
-                  checked={Boolean(vm.value.deletedAt)}
-                  onChange={toggleArchive}
-                />
-                <label for={archiveId} class="pc-label">
-                  {archive.label ?? "Is Archived?"} {vm.value.deletedAt
+              <Checkbox
+                checked={Boolean(vm.value.deletedAt)}
+                onChange={toggleArchive}
+              >
+                <span>
+                  {archive.label ?? "Is archived?"} {vm.value.deletedAt
                     ? (
                       <span
                         title={formatTime(vm.value.deletedAt, { full: true })}
@@ -615,8 +620,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                       </span>
                     )
                     : ""}
-                </label>
-              </div>
+                </span>
+              </Checkbox>
             )}
 
             <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
@@ -654,4 +659,14 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       </div>
     </Stack>
   )
+}
+
+/**
+ * An entity name as it reads after a verb in a sentence-case title: `Team` becomes `team`, while a
+ * name whose second letter is a capital (`API key`) is taken for an acronym and kept.
+ */
+function midSentence(entity: string): string {
+  const [first = "", second = ""] = entity
+  // Only a lowercase letter changes when upper-cased, so this is "the second letter is lowercase".
+  return second !== second.toUpperCase() ? first.toLowerCase() + entity.slice(1) : entity
 }

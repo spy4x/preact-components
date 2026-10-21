@@ -97,14 +97,14 @@ interface CrudListStore<M extends CrudModel> {
 }
 
 interface CrudEditorStore<M extends CrudRow, T = M> {
-  one: { byId: (id: number) => ReadonlySignal<M | undefined> }
+  one: { byId: (id: string | number) => ReadonlySignal<M | undefined> }
   op: {
     create: ReadonlySignal<OperationState>
-    update: (id: number) => ReadonlySignal<OperationState | undefined>
+    update: (id: string | number) => ReadonlySignal<OperationState | undefined>
     list?: ReadonlySignal<OperationState> // optional: holds "not found" back until it settles
   }
   create: (data: T) => Promise<OperationResult<M>>
-  update: (id: number, data: T) => Promise<OperationResult<M>>
+  update: (id: string | number, data: T) => Promise<OperationResult<M>>
 }
 ```
 
@@ -137,12 +137,12 @@ The interfaces here describe the slice actually consumed, and nothing else.
 | `rows`                                   | —                               | a plain signal instead — nested, or a read-only collection           |
 | `error`                                  | `store.op.list`                 | the banner source for a signal-backed list                           |
 | `loading`                                | —                               | with `rows`: true while they are on their way; holds the empty state |
-| `title` / `titleSlot`                    | —                               | the page title, or a slot for a back button or a parent entity       |
+| `title` / `titleSlot`                    | —                               | the `PageHeader` title, or a slot in its place before the badge      |
 | `badge`                                  | non-deleted count               | badge after the title; `false` hides it                              |
 | `match`                                  | —                               | whether one word matches a row; words are ANDed                      |
 | `header`, `row`                          | —                               | the table's cells, excluding the actions column                      |
 | `actions`                                | —                               | right-aligned actions cell; adds its own header cell                 |
-| `addHref`, `addLabel`, `canAdd`          | —                               | the add action, hidden when there is nowhere to go                   |
+| `addHref`, `addLabel`, `canAdd`          | —                               | the header's primary action; hidden when there is nowhere to go      |
 | `statusFilter`                           | on                              | `false`, or `{ label, active, archived }` for a different wording    |
 | `query`, `status`                        | local signals                   | hand over the signals to own them (URL filters, a parent page)       |
 | `searchDelay`                            | `300`                           | debounce of the search box                                           |
@@ -198,7 +198,7 @@ the wrapper only picked the three-dots icon and a label, and an item's red tone 
 ```tsx
 <CrudEditor
   mode="edit"                               // or mode="add"
-  editId={Number(params.id)}
+  editId={params.id}                        // a UUID string; a numeric-id app passes Number(params.id)
   store={regionStore}
   blank={blankRegion}
   schema={regionBaseSchema}
@@ -253,23 +253,23 @@ The harness is the six parts, once:
    This package no longer re-exports them (#359): `formatTimestamp` was `formatTime` under this
    package's name.
 
-| Prop             | Default              | Notes                                                             |
-| ---------------- | -------------------- | ----------------------------------------------------------------- |
-| `blank`          | —                    | the add-mode row; the row type is inferred from it                |
-| `schema`         | —                    | arktype schema validated on every change; omit if there is none   |
-| `entity`         | —                    | "Add **Region**", "Region not found", dependency sentence         |
-| `title`          | `Add/Edit <entity>`  | full title override                                               |
-| `canChange`      | `true`               | a port, because the library has no auth; `false` leaves Cancel    |
-| `archive`        | no toggle            | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
-| `onCreated`      | —                    | navigate where the created row belongs                            |
-| `validate`       | —                    | extra checks after the schema                                     |
-| `cancelHref`     | —                    | where Cancel points                                               |
-| `saveErrorLabel` | `"Could not save"`   | what a failed save is introduced with                             |
-| `saveLabel`      | `"Save"`             | label of the Save button; `cancelLabel` is Cancel's               |
-| `notFoundLabel`  | `<entity> not found` | shown when `editId` names a row the store does not hold           |
-| `headingLevel`   | `1`                  | level of the title's heading, for a page that has its `<h1>`      |
-| `notice`         | —                    | slot between the field grid and the footer                        |
-| `footerSlot`     | —                    | slot at the start of the footer                                   |
+| Prop             | Default                            | Notes                                                             |
+| ---------------- | ---------------------------------- | ----------------------------------------------------------------- |
+| `blank`          | —                                  | the add-mode row; the row type is inferred from it                |
+| `schema`         | —                                  | arktype schema validated on every change; omit if there is none   |
+| `entity`         | —                                  | "Add **region**", "Region not found", dependency sentence         |
+| `title`          | `Add/Edit <entity>`, sentence case | the `PageHeader` title; a non-string is drawn as its heading      |
+| `canChange`      | `true`                             | a port, because the library has no auth; `false` leaves Cancel    |
+| `archive`        | no toggle                          | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
+| `onCreated`      | —                                  | navigate where the created row belongs                            |
+| `validate`       | —                                  | extra checks after the schema                                     |
+| `cancelHref`     | —                                  | where Cancel points                                               |
+| `saveErrorLabel` | `"Could not save"`                 | what a failed save is introduced with                             |
+| `saveLabel`      | `"Save"`                           | label of the Save button; `cancelLabel` is Cancel's               |
+| `notFoundLabel`  | `<entity> not found`               | shown when `editId` names a row the store does not hold           |
+| `headingLevel`   | `1`                                | level of the title's heading, for a page that has its `<h1>`      |
+| `notice`         | —                                  | slot between the field grid and the footer                        |
+| `footerSlot`     | —                                  | slot at the start of the footer                                   |
 
 ## Field rows
 
@@ -419,7 +419,7 @@ The route files are 100% mechanical and deliberately not shipped. The convention
 ```
 routes/<area>/x/index.tsx     → <XList />
 routes/<area>/x/add.tsx       → <XEditor mode="add" />
-routes/<area>/x/[id]/edit.tsx → <XEditor mode="edit" editId={Number(params.id)} />
+routes/<area>/x/[id]/edit.tsx → <XEditor mode="edit" editId={params.id} />
 ```
 
 `CrudEditor`'s props are a discriminated pair, so the `add` route cannot forget an id and the `edit`
@@ -503,7 +503,7 @@ unreachable. Here the removed duplicate renders a Restore offer beside the confl
   rather than by a second resource ported into `examples/`.
 - **A DOM-level test of the harness.** Effects do not run under `preact-render-to-string`, so the
   load, validate, submit and archive loops are covered against a fake store at the function level
-  (`crud-editor.test.ts`), and the markup is covered by a server render. Wiring a real browser to the
+  (`crud-editor.test.tsx`), and the markup is covered by a server render. Wiring a real browser to the
   scaffold is the app's test to write, the same way `signals/` leaves `useUrlFilters` to the app
   that renders it.
 
@@ -544,7 +544,7 @@ the same rules.
   `deletedAt` with now and lists what `dependencies` says still points at the row in `blocked`;
   un-archiving clears both.
 - `fieldText(value)` is a model value as the text a control shows, with `null` and `undefined` as
-  `""`. `commitNumber(raw)` parses a number box's text, reading an empty or half-typed value as `0`.
+  `""`. `commitNumber(raw)` parses a number box's text, reading an empty or half-typed value as `null`.
   `typedNumber(raw)` is the number a keystroke may commit, or `undefined` while the text would not
   read back unchanged (`-`, `1.`, `1.0`).
 - `CONFLICT` (`"CONFLICT"`) is the issue type an association editor reports a duplicate under, on
@@ -560,7 +560,7 @@ deno test crud/       # from the repository root
 ```
 
 Every module has a colocated suite: the save-enabled
-rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.ts`), the field rows
+rule, the submit routing, the archive toggle and editor chrome (`crud-editor.test.tsx`), the field rows
 rendered to real markup (`field.test.tsx`), the list's status switch, count, error, search binding
 actions column, empty state (on the real `buildModelStore` too) and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
 `buildModelStore` (`store.test.ts`), and the ported regions resource
