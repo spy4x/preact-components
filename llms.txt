@@ -30,10 +30,12 @@ LineSeries	type	@spy4x/preact-charts
 LineX	type	@spy4x/preact-charts	A point's place on the X axis: a label, or — on a time axis — an instant.
 LoadPayloadResult	type	@spy4x/preact-charts	
 NiceScale	type	@spy4x/preact-charts	
+PeriodChange	type	@spy4x/preact-charts	A number in the current period and the same number in the period before it.
 TIME_FRAMES	constant	@spy4x/preact-charts	The bucket granularities a series can be aggregated at.
 TimeFrame	type	@spy4x/preact-charts	Bucket granularity of a series.
 TimeSeriesPoint	type	@spy4x/preact-charts	
 barPercent	helper	@spy4x/preact-charts	Percentage of the longest bar, clamped to `[0, 100]`.
+changeText	helper	@spy4x/preact-charts	A change as one neutral line of text: `+3 vs previous 7 days`, `−1 vs yesterday`, or `No change vs previous 7 days`.
 chartPayloadSchema	helper	@spy4x/preact-charts	Payload of a stats loader: the points plus the granularity they were bucketed at.
 createInViewObserver	helper	@spy4x/preact-charts	Observe one element and report intersection changes.
 donutGeometry	helper	@spy4x/preact-charts	Slice maths for `DonutChart`: cumulative shares plus the `conic-gradient` string.

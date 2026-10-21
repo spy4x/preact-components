@@ -4,6 +4,7 @@
   "exports": {
     ".": "./+index.ts",
     "./bars": "./bars.tsx",
+    "./change": "./change.ts",
     "./colors": "./colors.ts",
     "./donut-chart": "./donut-chart.tsx",
     "./kpi": "./kpi.tsx",

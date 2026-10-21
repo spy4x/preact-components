@@ -43,6 +43,10 @@ the axis and loading helpers behind them.
   `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
   `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
   not on the `<table>`.
+- **Every value is readable without the picture.** `LineChart` prints its points in a visually
+  hidden table after the plot, one row per X position and one column per series, captioned with
+  the chart's accessible name; `xLabel` names the first column and `dataTable={false}` leaves it
+  out.
 - **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
   time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
@@ -71,15 +75,17 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                              |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`       |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                     |
+| ------------ | ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel` |
+| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                                       |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                              |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                                       |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                |
 
-Hooks and helpers: `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
+Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
+period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a
+percentage; `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
 `chartPayloadSchema` (`payload`), the `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary
 (`time-series`), and the axis maths in `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`,
 `linearScale`, `extent`, `xLabelStride`.
