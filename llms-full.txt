@@ -4827,6 +4827,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                                                                                                                                     |
 | `Coachmark`           | `coachmark`            | `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                                                                    |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                                                                                                       |
+| `ColorField`          | `color-field`          | `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field                                                                                        |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                                                                                                       |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                                                                                                       |
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                                                                                                          |
@@ -5186,6 +5187,22 @@ hint is reached by focus only, which is the right behaviour on a touch screen. T
 drive both paths: one moves a real pointer onto the trigger and asserts the hint appears and then
 goes away again, and another asserts the hit testing that lets the pointer travel onto the hint and
 rest there.
+
+## ColorField
+
+A colour choice for things a person tells apart by colour, such as tags and groups. Round 32 px
+swatches with a 44 px touch area sit on native radios in a `<fieldset>`, so the group is one tab
+stop, the arrow keys move the choice and Space checks it. The checked swatch shows a check in the
+text colour that reads on it. `COLOR_PRESETS` are the 16 default swatches, a gray and 15 hues, each
+at 4.5:1 or more with its readable text colour. `allowNone` adds a first "No colour" swatch that
+sends `null`.
+
+The last swatch, "Pick a custom colour", shows a native colour input and a "Hex code" field. A
+picked colour reaches `onChange` at once, a typed one once it is a full `#rrggbb` (sent in lower
+case); anything else shows "Enter # and 6 characters, such as #59168b." when the field loses focus.
+`preview(color, textColor)` draws the caller's own sample under the swatches, given the colour and
+black or white from `readableTextColor` in `@spy4x/platform/universal/color`, which also has the
+`isHexColor` check and the arktype `hexColor` a server validator uses.
 
 ## Combobox
 
