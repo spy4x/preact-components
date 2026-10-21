@@ -58,9 +58,12 @@ export interface ScreenTourStep {
 export interface ScreenTourProps {
   /** The steps, in order; at least one. */
   steps: readonly ScreenTourStep[]
-  /** The device drawn around the screenshot. */
-  frame: "browser" | "phone"
-  /** The address in the browser frame's bar. Decorative. */
+  /**
+   * The frame drawn around the screenshot: `plain` (the border and surface alone) for most product
+   * screens, `browser` when the address matters, or `phone`.
+   */
+  frame: "plain" | "browser" | "phone"
+  /** The address in the browser frame's bar. Decorative; the plain and phone frames show none. */
   browserUrl?: string
   /** Number the tabs 1, 2, 3, for a sequence a person follows in order. */
   numbered?: boolean
@@ -149,8 +152,8 @@ export function nextStepIndex(key: string, current: number, count: number): numb
 }
 
 /**
- * A product walkthrough: named steps as tabs, beside one browser or phone frame whose screenshot
- * swaps when a step is picked, with the step's caption and line of text under it.
+ * A product walkthrough: named steps as tabs, beside one plain, browser or phone frame whose
+ * screenshot swaps when a step is picked, with the step's caption and line of text under it.
  *
  * The tabs are a column from 1024 px and a row that scrolls inside itself below. The tab list is one
  * Tab stop; the arrow keys move and select, Home and End jump. The server renders the first step
