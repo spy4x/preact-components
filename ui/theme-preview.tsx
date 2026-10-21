@@ -28,6 +28,12 @@ export interface ThemePreviewProps {
   class?: string
   /** Utilities added to the frame. */
   frameClass?: string
+  /**
+   * Extra attributes on each radio, by its value, such as an analytics event:
+   * `{ light: { "data-umami-event": "theme-light" } }`. The radio's own `data-preview-theme`, which
+   * the palette is chosen by, wins over an attribute of the same name.
+   */
+  inputAttributes?: Partial<Record<"dark" | "light", Record<string, string>>>
 }
 
 /**
@@ -53,6 +59,7 @@ export function ThemePreview(
     hideLegend = false,
     class: className,
     frameClass,
+    inputAttributes,
   }: ThemePreviewProps,
 ): JSX.Element {
   const generated = useId()
@@ -66,11 +73,15 @@ export function ThemePreview(
         name={name ?? `theme-preview-${generated}`}
         defaultValue={defaultTheme}
         options={[
-          { value: "dark", label: dark, inputAttributes: { "data-preview-theme": "dark" } },
+          {
+            value: "dark",
+            label: dark,
+            inputAttributes: { ...inputAttributes?.dark, "data-preview-theme": "dark" },
+          },
           {
             value: "light",
             label: light,
-            inputAttributes: { "data-preview-theme": "light" },
+            inputAttributes: { ...inputAttributes?.light, "data-preview-theme": "light" },
           },
         ]}
       />

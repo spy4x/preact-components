@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
@@ -126,7 +126,11 @@ export interface ModalProps {
   closeOnBackdrop?: boolean
   /** Stamps `data-e2e` on the dialog element. */
   dataE2E?: string
-  /** Extra utilities for the dialog element. */
+  /**
+   * Extra utilities for the dialog element, appended after its own and not merged into them, so
+   * `tailwind-merge` stays out of the bundle. To replace one of the dialog's own utilities, mark the
+   * replacement important with a trailing `!`, such as `max-w-2xl!`.
+   */
   class?: string
 }
 
@@ -443,9 +447,9 @@ export function Modal(
       aria-modal="true"
       aria-describedby={ariaDescribedBy}
       {...labelAttributes}
-      class={cn(
-        "m-auto w-full max-w-md rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
-        tone === "danger" ? "border-red-300 dark:border-red-800" : "",
+      class={join(
+        "m-auto w-full max-w-md rounded-lg border bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
+        tone === "danger" ? "border-red-300 dark:border-red-800" : "border-subtle",
         className,
       )}
       onPointerDown={backdrop.onPointerDown}

@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
@@ -137,6 +137,11 @@ export interface ToastrProps {
    * consumer's markup carries a test hook only when that consumer asked for one.
    */
   dataE2E?: string
+  /**
+   * Utilities for the stack, appended after its own and not merged into them, so `tailwind-merge`
+   * stays out of the bundle. To replace one of the stack's offsets or widths, mark the replacement
+   * important with a trailing `!`, such as `top-20!`.
+   */
   class?: string
 }
 
@@ -147,8 +152,8 @@ export interface ToastrProps {
  * (`auto`), and the width is capped at 20rem, 24rem from `md`.
  *
  * The values switch, not the classes: every offset and width class below is unprefixed, so a
- * caller's own unprefixed `top-*`, `left-*`, `right-*`, `w-*` or `max-w-*` in `class` replaces it
- * at every window width. A `sm:top-8` here would win over a caller's `top-20` from `sm` up.
+ * caller's own important `top-20!`, `left-4!`, `w-auto!` or `max-w-sm!` in `class` wins over it at
+ * every window width.
  */
 const stackSizing = "[--toastr-gap:1rem] [--toastr-far:1rem] [--toastr-width:auto] " +
   "[--toastr-max:none] sm:[--toastr-gap:2rem] sm:[--toastr-far:auto] sm:[--toastr-width:100%] " +
@@ -306,7 +311,7 @@ export function Toastr(
   return (
     <div
       data-e2e={dataE2E}
-      class={cn(
+      class={join(
         "fixed z-50 space-y-4",
         stackSizing,
         cornerClasses[corner],
@@ -447,7 +452,7 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
       ref={root}
       role={variant === "error" ? "alert" : "status"}
       data-e2e={toast.dataE2E}
-      class={cn(
+      class={join(
         "space-y-4 rounded-lg px-6 py-4",
         enterClasses[enterFrom],
         variantClasses[variant],

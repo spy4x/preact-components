@@ -1120,7 +1120,8 @@ plain values and callbacks, so they work with any outbox and ship on their own.
 - **`UnsentChangesDialog`** asks before a person signs out while changes wait to reach the
   server: "Send, then sign out" (the one primary action, focused on open), "Sign out anyway", or
   "Cancel" (also Escape, the close control and the backdrop). Mount it to open it, as
-  `ConfirmDialog`. The caller owns the waiting: on `onSend` it starts sending and passes `state`
+  `ConfirmDialog`. Its `class` goes to `Modal`, which appends it after its own classes instead of
+  merging it, so a replacement must be marked important (`max-w-lg!`). The caller owns the waiting: on `onSend` it starts sending and passes `state`
   (`sending`, `offline` or `retrying`) and the counts as they drop, then signs out itself once
   nothing sendable is left. The same dialog shows the wait: the primary stays focused and busy, and
   one polite `role="status"` line with a progress bar ("1 of 3 sent") changes only when the state

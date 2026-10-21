@@ -216,6 +216,14 @@ describe("Modal", () => {
     expect(html.match(/closedby=/g)?.length).toBe(1)
   })
 
+  it("draws one border colour: red in the danger register, the subtle one otherwise", () => {
+    const borders = (html: string) =>
+      (html.match(/<dialog[^>]*class="([^"]*)"/)?.[1].split(" ") ?? [])
+        .filter((name) => /^border-(?!0$)[a-z]/.test(name))
+    expect(borders(render(<Modal open title="Delete" tone="danger" />))).toEqual(["border-red-300"])
+    expect(borders(render(<Modal open title="Edit" />))).toEqual(["border-subtle"])
+  })
+
   it("tints the surface in the danger register", () => {
     expect(render(<Modal open title="Delete" tone="danger" />)).toContain("border-red-300")
   })
