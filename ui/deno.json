@@ -30,6 +30,7 @@
     "./feature-card": "./feature-card.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
+    "./filter-bar": "./filter-bar.tsx",
     "./format": "./format.tsx",
     "./honeypot": "./honeypot.tsx",
     "./image-gallery": "./image-gallery.tsx",

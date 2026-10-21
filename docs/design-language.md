@@ -215,6 +215,7 @@ An app chooses only its brand hue, its destinations and its content.
 | Create or edit a record          | Its editor page at `/<entity>/new` and `/<entity>/:id`, one component for both.                                                                                                                        |
 | Author and date on a public page | `PageHero`'s `author` and `updated`: one muted `text-sm` line under the buttons, "By" with the name linked to the author's page, "Updated" with the day as a `<time datetime>`. Never above the title. |
 | Status                           | `Badge` with a word, or `StatusMark` with icon and word. Never a coloured dot alone.                                                                                                                   |
+| Search and filter a list         | `FilterBar` under the `PageHeader`: search, filter menus, toggles, sort; active filters as removable chips and a count. Every value in the URL (`useUrlFilters`).                                      |
 | A row of chips                   | `ToggleChips` for filters an island owns, one or many pressed; `RadioChips` for one choice that must work without JavaScript.                                                                          |
 
 `RadioChips` draws the same chip on native radios in a `<fieldset>` named by its `<legend>`, so it

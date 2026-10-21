@@ -1921,7 +1921,187 @@ function demoVideoSpecs(): Spec[] {
   ]
 }
 
+/** The parts of the `FilterBar` card a spec drives. */
+function filterBarCard(page: Page) {
+  const card = page.locator("#demo-FilterBar")
+  const state = card.locator(`[data-e2e="filter-bar-state"]`)
+  return {
+    card,
+    search: card.locator(`[data-e2e="filter-search"]`),
+    tags: card.locator(`[data-e2e="filter-tags"]`),
+    author: card.locator(`[data-e2e="filter-author"]`),
+    sort: card.locator(`[data-e2e="filter-sort"]`),
+    tagsMenu: page.getByRole("menu", { name: "Tags" }),
+    /** Waits for the card's readout to include this text, word for word. */
+    stateHas: (text: string) => state.filter({ hasText: text }).waitFor(),
+    /** Waits for the focus to be on one element. */
+    focusIsOn: (target: Locator) => target.and(page.locator(":focus")).waitFor(),
+  }
+}
+
+/**
+ * Throws when axe finds a violation inside the selected elements.
+ *
+ * @param page The page.
+ * @param selector What to scan.
+ */
+async function axeClean(page: Page, selector: string): Promise<void> {
+  const { violations } = await new AxeBuilder({ page }).include(selector).analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) => `${id}: ${nodes.map((n) => n.target.join(" ")).join(", ")}`)
+        .join(" | "),
+    )
+  }
+}
+
+/** FilterBar: each control's onChange, the menus' keys, the chips' focus, the phone layout, axe. */
+function filterBarSpecs(): Spec[] {
+  const axeSpec = (colorScheme: "light" | "dark"): Spec => ({
+    name: `FilterBar: the bar and its open Tags menu pass axe, ${colorScheme}`,
+    pageId: "ui",
+    colorScheme,
+    run: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      const bar = filterBarCard(page)
+      await bar.tags.click()
+      await bar.tagsMenu.waitFor()
+      await axeClean(page, `#demo-FilterBar [role="search"]`)
+    },
+  })
+  return [
+    {
+      name: "FilterBar: search, a box in the Tags menu, a toggle and the sort each reach their " +
+        "onChange, and a box leaves the menu open",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.search.fill("plan")
+        await bar.stateHas("q: plan ·")
+
+        await bar.tags.click()
+        const plans = bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Plans" })
+        await plans.click()
+        await bar.stateHas("tags: design, plans (any)")
+        await plans.and(page.locator(`[aria-checked="true"]`)).waitFor()
+        await bar.tagsMenu.waitFor()
+        await page.keyboard.press("Escape")
+        await bar.tagsMenu.waitFor({ state: "hidden" })
+        await bar.tags.filter({ hasText: "Tags: 2" }).waitFor()
+
+        await bar.card.getByRole("button", { name: "Created by me" }).click()
+        await bar.stateHas("mine: on")
+
+        await bar.sort.click()
+        await page.getByRole("menuitemradio", { name: "Title (A–Z)" }).click()
+        await bar.stateHas("sort: title")
+        await page.getByRole("menu", { name: "Sort by" }).waitFor({ state: "hidden" })
+      },
+    },
+    {
+      name: "FilterBar: the arrow keys reach the mode switch and the boxes, Space checks a box " +
+        "with the menu left open, and Escape hands focus back to the trigger",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.tags.focus()
+        await page.keyboard.press("Enter")
+        const any = bar.tagsMenu.getByRole("menuitemradio", { name: "Any of these tags" })
+        await bar.focusIsOn(any)
+        await page.keyboard.press("ArrowDown")
+        const all = bar.tagsMenu.getByRole("menuitemradio", { name: "All of these tags" })
+        await bar.focusIsOn(all)
+        await page.keyboard.press("Enter")
+        await bar.stateHas("(all)")
+        await bar.focusIsOn(all)
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("ArrowDown")
+        const plans = bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Plans" })
+        await bar.focusIsOn(plans)
+        await page.keyboard.press(" ")
+        await bar.stateHas("tags: design, plans (all)")
+        await bar.focusIsOn(plans)
+        await page.keyboard.press("Escape")
+        await bar.focusIsOn(bar.tags)
+      },
+    },
+    {
+      name: "FilterBar: a chip's remove button takes one filter away and focuses the next chip; " +
+        "Clear filters clears the rest and focuses the search field",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.author.click()
+        await page.getByRole("menuitemradio", { name: "Maya Chen" }).click()
+        await bar.stateHas("author: maya")
+
+        await bar.card.getByRole("button", { name: "Remove the Design filter" }).click()
+        await bar.stateHas("tags: (none)")
+        await bar.stateHas("author: maya")
+        await bar.focusIsOn(bar.card.getByRole("button", { name: "Remove the Maya Chen filter" }))
+
+        await bar.search.fill("kept")
+        await bar.card.getByRole("button", { name: "Clear filters" }).click()
+        await bar.stateHas("author: (anyone)")
+        await bar.stateHas("q: kept ·")
+        await bar.focusIsOn(bar.search)
+        const chips = await bar.card.getByRole("list", { name: "Active filters" }).count()
+        if (chips !== 0) throw new Error("the chips row is still drawn after Clear filters")
+      },
+    },
+    {
+      name: "FilterBar: Clear search empties the field and hands it focus",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.search.fill("welcome")
+        await bar.stateHas("q: welcome ·")
+        await bar.card.getByRole("button", { name: "Clear search" }).click()
+        await bar.stateHas("q: (empty) ·")
+        await bar.focusIsOn(bar.search)
+      },
+    },
+    {
+      name: "FilterBar at 390 px: nothing overflows the page, the controls row scrolls on its " +
+        "own, and a menu opens as a sheet along the bottom of the screen",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const bar = filterBarCard(page)
+        await bar.search.scrollIntoViewIfNeeded()
+        const row = bar.card.locator("[data-filter-controls]")
+        const widths = await page.evaluate(() => ({
+          page: document.documentElement.scrollWidth,
+          viewport: document.documentElement.clientWidth,
+        }))
+        if (widths.page > widths.viewport) {
+          throw new Error(`the page is ${widths.page} px wide in a ${widths.viewport} px viewport`)
+        }
+        const scrolls = await row.evaluate((el) => el.scrollWidth > el.clientWidth)
+        if (!scrolls) throw new Error("the controls row does not overflow on its own at 390 px")
+
+        await bar.tags.click()
+        await bar.tagsMenu.waitFor()
+        const box = await bar.tagsMenu.boundingBox()
+        const height = await page.evaluate(() => globalThis.innerHeight)
+        const flush = box !== null && box.x === 0 && box.width === widths.viewport &&
+          Math.round(box.y + box.height) === height
+        if (!flush) {
+          throw new Error(`the menu is not a bottom sheet: ${JSON.stringify(box)}`)
+        }
+      },
+    },
+    axeSpec("light"),
+    axeSpec("dark"),
+  ]
+}
+
 export const specs: readonly Spec[] = [
+  ...filterBarSpecs(),
   ...demoVideoSpecs(),
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),
