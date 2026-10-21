@@ -2568,6 +2568,7 @@ export const specs: readonly Spec[] = [
   avatarOnHoveredRowSpec("light"),
   avatarOnHoveredRowSpec("dark"),
   ...remotePaletteSpecs(),
+  ...forgivingPaletteSpecs(),
   ...tabsAndTableKeyboardSpecs(),
   ...feedbackComponentSpecs(),
   ...kanbanDragSpecs(),
@@ -3713,6 +3714,145 @@ async function openRemotePalette(page: Page, width = 1280) {
     shows: (text: string) =>
       status.and(page.locator(":not(.sr-only)")).filter({ hasText: text }).waitFor(),
   }
+}
+
+/**
+ * The forgiving `CommandPalette` on its card: its field trigger, its dialog, and what each of its
+ * results says about how it matched.
+ */
+function forgivingPalette(page: Page) {
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`dialog[data-e2e="palette-forgiving"]`)
+  const field = dialog.getByRole("combobox")
+  return {
+    card,
+    dialog,
+    field,
+    trigger: card.locator(`[data-e2e="palette-forgiving-open"]`),
+    /** Each result's name, its `data-match` and its whole text, in list order. */
+    results: () =>
+      dialog.getByRole("option").evaluateAll((rows) =>
+        rows.map((row) => ({
+          name: row.querySelector("span span")?.textContent ?? "",
+          match: row.getAttribute("data-match"),
+          text: row.textContent ?? "",
+        }))
+      ),
+    /** The field's selection, as `[start, end]`. */
+    selection: () =>
+      field.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd]),
+  }
+}
+
+/**
+ * Throws unless the first result is `name`, matched by `match`, and shows `words` beside it.
+ *
+ * @param palette The open palette.
+ * @param name The result expected first.
+ * @param match Its expected `data-match`.
+ * @param words The match's words it should show.
+ */
+async function firstResultIs(
+  palette: ReturnType<typeof forgivingPalette>,
+  name: string,
+  match: string,
+  words: string,
+): Promise<void> {
+  await palette.dialog.getByRole("option").first().filter({ hasText: name }).waitFor()
+  const [first] = await palette.results()
+  if (first?.match !== match || !first.text.includes(words)) {
+    throw new Error(`the first result is ${JSON.stringify(first)}, not ${name} by ${match}`)
+  }
+}
+
+/** Specs for `CommandPalette`'s field trigger, `defaultQuery` and forgiving default filter. */
+function forgivingPaletteSpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette field trigger at 390 px: shows its placeholder, opens on Enter with " +
+        "the default query selected, a typo finds Combobox and the other layout finds Toast, " +
+        "each saying how it matched, and Enter picks with focus back on the trigger",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 800 })
+        const palette = forgivingPalette(page)
+        await palette.trigger.getByText("Find a component…", { exact: true }).waitFor()
+        await palette.trigger.focus()
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor()
+        await palette.field.and(page.locator(":focus")).waitFor()
+        const query = await palette.field.inputValue()
+        const selected = await palette.selection()
+        if (query !== "combobx" || selected.join() !== "0,7") {
+          throw new Error(`the field holds "${query}", selected ${selected.join("–")}`)
+        }
+        await firstResultIs(palette, "Combobox", "typo", "Typo fixed")
+        // The selected default query is replaced by the first key typed.
+        await page.keyboard.type("ещфые")
+        await firstResultIs(palette, "Toast", "layout", "Other keyboard layout")
+        const names = (await palette.results()).map((result) => result.name)
+        if (names.join() !== "Toast") throw new Error(`"ещфые" lists ${names.join(", ")}`)
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.card.locator(`[data-e2e="palette-forgiving-picked"]`)
+          .getByText("Toast", { exact: true }).waitFor()
+        await palette.trigger.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette field trigger: a letter typed on it opens the palette with that " +
+        "letter, the caret after it, and Escape gives focus back",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 })
+        const palette = forgivingPalette(page)
+        await palette.trigger.focus()
+        await page.keyboard.press("m")
+        await palette.dialog.waitFor()
+        await palette.field.and(page.locator(":focus")).waitFor()
+        const query = await palette.field.inputValue()
+        const caret = await palette.selection()
+        if (query !== "m" || caret.join() !== "1,1") {
+          throw new Error(`the field holds "${query}", caret ${caret.join("–")}`)
+        }
+        await firstResultIs(palette, "Modal", "prefix", "Start of the name")
+        await page.keyboard.press("Escape")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.trigger.and(page.locator(":focus")).waitFor()
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1280].map((width): Spec => ({
+        name: `CommandPalette forgiving at ${width} px in the ${colorScheme} palette: axe finds ` +
+          "no violation on the field trigger or in the dialog with its match words, colour " +
+          "contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          await page.setViewportSize({ width, height: 800 })
+          const palette = forgivingPalette(page)
+          await palette.trigger.scrollIntoViewIfNeeded()
+          const scan = async (selector: string) => {
+            const { violations } = await new AxeBuilder({ page }).include(selector).analyze()
+            if (violations.length > 0) {
+              throw new Error(
+                violations.map(({ id, nodes }) =>
+                  `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+                ).join(" | "),
+              )
+            }
+          }
+          await scan(`[data-e2e="palette-forgiving-open"]`)
+          await palette.trigger.click()
+          // The highlighted row and a plain one both carry match words: "c" starts Combobox's name
+          // and Date picker's alias "calendar".
+          await palette.field.fill("c")
+          await palette.dialog.getByRole("option").nth(1).waitFor()
+          await scan(`dialog[data-e2e="palette-forgiving"]`)
+        },
+      }))
+    ),
+  ]
 }
 
 /** Specs for the remote data mode of `CommandPalette`, and its rows on a phone. */

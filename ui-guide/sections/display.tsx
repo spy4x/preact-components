@@ -2226,8 +2226,9 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
     props: [
       {
         name: "options",
-        type: "{ id, label, detail?, hint?, group? }[]",
-        description: "Options it filters itself, folding case and accents. Or `search`, not both.",
+        type: "{ id, label, detail?, hint?, group?, aliases? }[]",
+        description:
+          "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. Or `search`, not both.",
       },
       {
         name: "search",
@@ -2236,6 +2237,30 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
           "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
       { name: "onSelect", type: "(option) => void", description: "The picked option." },
+      {
+        name: "trigger",
+        type: `"button" | "field"`,
+        default: `"button"`,
+        description:
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter.",
+      },
+      {
+        name: "defaultQuery",
+        type: "string",
+        description: "The query the field holds, selected, each time the palette opens.",
+      },
+      {
+        name: "showMatch",
+        type: "boolean",
+        default: "false",
+        description:
+          "Says beside each result how it matched: a typo fixed, the other layout, another name. Every result carries the kind in `data-match` either way.",
+      },
+      {
+        name: "matchLabels",
+        type: "Partial<Record<CommandPaletteMatchKind, string>>",
+        description: "The words `showMatch` shows; see `defaultCommandPaletteMatchLabels`.",
+      },
       {
         name: "hotkeys",
         type: "string[]",
@@ -2266,6 +2291,14 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   { id: "invoices", label: "Invoices", detail: "Billing", group: "Pages" },
 ]
 <CommandPalette options={options} hotkeys={["mod+p"]} onSelect={(option) => run(option.id)} />
+
+<CommandPalette
+  options={[{ id: "toast", label: "Toast", aliases: ["notification"] }]}
+  trigger="field"
+  defaultQuery="ещфые"
+  showMatch
+  onSelect={(option) => run(option.id)}
+/>
 
 <CommandPalette
   search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
@@ -2410,6 +2443,23 @@ const paletteOptions: readonly CommandPaletteOption[] = [
   { id: "settings", label: "Settings", detail: "Account", group: "Pages" },
 ]
 
+/**
+ * The forgiving `CommandPalette` demo's options: component names, one with aliases in both
+ * alphabets, so a typo, the other layout and the other alphabet each find something.
+ */
+const paletteComponents: readonly CommandPaletteOption[] = [
+  { id: "combobox", label: "Combobox", detail: "Forms", group: "Components" },
+  { id: "toast", label: "Toast", detail: "Feedback", group: "Components" },
+  {
+    id: "date-picker",
+    label: "Date picker",
+    detail: "Forms",
+    group: "Components",
+    aliases: ["calendar", "календарь"],
+  },
+  { id: "modal", label: "Modal", detail: "Overlays", group: "Components" },
+]
+
 /** The names the remote `CommandPalette` demo's pretend server knows. */
 const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
 
@@ -2459,14 +2509,16 @@ function paletteFruitSearch(
 }
 
 /**
- * `CommandPalette` both ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * `CommandPalette` three ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
- * has no hotkey. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
+ * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
+ * result matched. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
  * searches started and answered.
  */
 function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
   const pickedRemote = useSignal("nothing yet")
+  const pickedForgiving = useSignal("nothing yet")
   const searches = useSignal(0)
   const answered = useSignal(0)
   const aborted = useSignal<string[]>([])
@@ -2497,6 +2549,16 @@ function CommandPaletteDemo() {
           onSelect={(option) => pickedRemote.value = option.label}
         />
       </Cluster>
+      <CommandPalette
+        options={paletteComponents}
+        trigger="field"
+        defaultQuery="combobx"
+        showMatch
+        hotkeys={[]}
+        dataE2E="palette-forgiving"
+        labels={{ placeholder: "Find a component…" }}
+        onSelect={(option) => pickedForgiving.value = option.label}
+      />
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
@@ -2504,8 +2566,10 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-remote-answered">{answered.value}</span>; aborted{" "}
         <span data-e2e="palette-remote-aborted">
           {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
-        </span>. One letter answers slowly, longer queries quickly, “slow” takes twenty seconds,
-        “dragon” finds a long name, and “boom” fails.
+        </span>; component{" "}
+        <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>. One letter answers
+        slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long name, and
+        “boom” fails. The field below opens on “combobx”; try “ещфые” or “календарь”.
       </DemoNote>
     </Stack>
   )
