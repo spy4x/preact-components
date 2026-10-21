@@ -1,5 +1,6 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
+import { Checkbox } from "@spy4x/preact-ui/checkbox"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
 import { LoadingSkeleton } from "@spy4x/preact-ui/loading-skeleton"
 import { Stack } from "@spy4x/preact-ui/layout"
@@ -358,7 +359,6 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   const error = useSignal("")
   const saveError = useSignal("")
   const blocked = useSignal<DeletionDependency[]>([])
-  const archiveId = useId()
   const formIssueId = useId()
 
   /** Copy the row out of the store into the form. Runs once, and again after a successful update. */
@@ -529,10 +529,11 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
         blocked: blocked.value.length,
       })
 
-    if (outcome.created !== null) onCreated?.(outcome.created)
-    // Another row is on screen now: its form must not take the old row's error or reload, which
-    // would read the old `editId` from this render and put that row's values under the new one.
+    // Another row is on screen now: `onCreated` must not pull the person away from it, and its form
+    // must not take the old row's error or reload, which would read the old `editId` from this
+    // render and put that row's values under the new one.
     if (loadedKey.current !== savedKey) return
+    if (outcome.created !== null) onCreated?.(outcome.created)
     if (outcome.error !== null) {
       const label = saveErrorLabel ?? "Could not save"
       saveError.value = outcome.error.message ? `${label}: ${outcome.error.message}` : label
@@ -603,15 +604,11 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
           <div class="pc-card-footer">
             {editable && props.footerSlot?.({ vm, vl })}
             {editable && props.mode === "edit" && archive !== undefined && (
-              <div class="flex gap-2 items-center">
-                <input
-                  type="checkbox"
-                  id={archiveId}
-                  class="pc-checkbox"
-                  checked={Boolean(vm.value.deletedAt)}
-                  onChange={toggleArchive}
-                />
-                <label for={archiveId} class="pc-label">
+              <Checkbox
+                checked={Boolean(vm.value.deletedAt)}
+                onChange={toggleArchive}
+              >
+                <span>
                   {archive.label ?? "Is Archived?"} {vm.value.deletedAt
                     ? (
                       <span
@@ -622,8 +619,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                       </span>
                     )
                     : ""}
-                </label>
-              </div>
+                </span>
+              </Checkbox>
             )}
 
             <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
