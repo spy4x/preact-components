@@ -1,13 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { backdropDismissesByDefault, Modal } from "./modal.tsx"
 import {
-  applyScrollLock,
   backdropClickDismisses,
-  backdropDismissesByDefault,
   type BackdropHitTarget,
   bindEscapeClose,
-  clientWidthWithoutScrollbar,
   dialogHeldFocus,
   type DialogRect,
   dialogTitleId,
@@ -16,13 +14,12 @@ import {
   escapeCloseStrategy,
   isBackdropClick,
   isDismissKey,
-  Modal,
   platformCloseHandler,
   restoreFocus,
-  scrollLockPadding,
   shouldRetargetFocus,
   supportsClosedBy,
-} from "./modal.tsx"
+} from "./modal-internals.ts"
+import { applyScrollLock, clientWidthWithoutScrollbar, scrollLockPadding } from "./scroll-lock.ts"
 
 /** The dialog's own box, as `getBoundingClientRect()` would report it in a 1000×800 viewport. */
 const rect: DialogRect = { left: 300, top: 200, right: 700, bottom: 600 }

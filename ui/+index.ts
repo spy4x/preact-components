@@ -90,7 +90,6 @@ export {
   activeDescendant,
   Combobox,
   type ComboboxKey,
-  comboboxKey,
   type ComboboxKeyAction,
   comboboxKeyAction,
   type ComboboxKeyResult,
@@ -104,14 +103,9 @@ export {
   defaultGetLabel,
   filterItems,
   fold,
-  leavesCombobox,
   listboxContent,
   matchesQuery,
-  naming,
   nextComboboxState,
-  openingState,
-  selectableIndex,
-  typingState,
 } from "./combobox.tsx"
 export {
   DataTable,
@@ -260,23 +254,7 @@ export {
 } from "./link.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
-export {
-  backdropClickDismisses,
-  type BackdropHitTarget,
-  dialogHeldFocus,
-  type DialogRect,
-  type DialogRole,
-  dialogTitleId,
-  type DialogTone,
-  DISMISS_KEY,
-  type FocusableElement,
-  isBackdropClick,
-  isDismissKey,
-  Modal,
-  type ModalProps,
-  restoreFocus,
-  shouldRetargetFocus,
-} from "./modal.tsx"
+export { type DialogRole, type DialogTone, Modal, type ModalProps } from "./modal.tsx"
 export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
 export {
   MoneyInput,

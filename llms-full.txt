@@ -5783,8 +5783,8 @@ which is exactly what Left and Right need, since they must work only while the l
 listener on `Modal`'s own children would only ever see a key that bubbled up from whatever is
 focused inside it, one step removed from the dialog itself for no reason a caller of `Modal`
 controls. A native `<dialog>` with its own `ref` has neither problem. What does carry over from
-`Modal` is reuse, not composition: its exported `shouldRetargetFocus`/`restoreFocus` pair, the same
-one it uses for its own focus restore.
+`Modal` is reuse, not composition: the `shouldRetargetFocus`/`restoreFocus` pair in
+`ui/modal-internals.ts`, the same one it uses for its own focus restore.
 
 **Left and Right are attached once, on mount, directly on the `<dialog>` element**, reading `open`,
 the current position and the total from a ref updated every render — the same shape
@@ -6867,14 +6867,8 @@ components and tests means exactly that: nothing outside this package should bui
 
 - `backdropDismissesByDefault` is `true`: a click on the backdrop dismisses a `Modal` whose
   `closeOnBackdrop` is left out.
-- `isBackdropClick({ target, dialog }, rect, x, y)` answers whether a click landed on a modal
-  `<dialog>`'s backdrop: the target is the dialog itself and the point lies outside its rect.
-  `backdropClickDismisses(event, rect, dialog, closeOnBackdrop)` applies the caller's policy first
-  and then asks the same question. Use them for a dialog you build yourself.
-- `supportsClosedBy(dialogPrototype)` answers whether a dialog implementation knows the `closedby`
-  attribute. Pass `HTMLDialogElement.prototype`; no shipping WebKit does.
-- `clientWidthWithoutScrollbar(host)`, `scrollLockPadding(before, locked)` and
-  `applyScrollLock(document, padding)` are the scroll lock in three steps: measure the layout width
+- From the package root (`@spy4x/preact-ui`), not `./modal`: `clientWidthWithoutScrollbar(host)`,
+  `scrollLockPadding(before, locked)` and `applyScrollLock(document, padding)` are the scroll lock in three steps: measure the layout width
   with the scrollbar hidden, turn the two widths into the right padding that keeps the page from
   shifting, then lock scrolling and get back a `release()` that restores the previous inline styles.
   Use them to lock some other document behind an overlay of your own.
@@ -6883,15 +6877,9 @@ components and tests means exactly that: nothing outside this package should bui
   or style already does, and the last to release restores the page's styles, in whatever order the
   overlays close. Call it when an overlay of your own opens on the page, and release it when that
   overlay closes. Releasing one holder twice counts once.
-- `DISMISS_KEY` (`"Escape"`), `isDismissKey(event, open)`, `escapeCloseStrategy(closedBySupported)`,
-  `bindEscapeClose(target, strategy, handlers)` and `platformCloseHandler(deps)` are exported for
-  the package's own components and tests: they decide which event carries Escape on a platform and
-  wire the matching listener.
-- `dialogHeldFocus(dialog, activeElement)` answers whether focus is inside the dialog, given
-  `document.activeElement`; `null` gives `false`. Call it at close time to report or assert where
-  focus was. `Modal` itself does not use it to decide where focus goes back to.
-- `dialogTitleId(base)` is exported for the package's own components and tests: the id of the
-  dialog's title element.
+- The decision helpers behind `Modal` and `Lightbox` (the backdrop hit-test, which event carries
+  Escape on a platform, where focus goes back to on close, the title's id) live in
+  `ui/modal-internals.ts`, which is not an entry point: they change without a major.
 
 ### Combobox (`./combobox`)
 
@@ -6906,16 +6894,15 @@ components and tests means exactly that: nothing outside this package should bui
   matching items in their original order. Use them to filter a list the way `Combobox` does.
 - `defaultGetLabel(item)` is `String(item)`, the text rule `Combobox` uses when no `getLabel` is
   given; a `getLabel` of your own can fall back to it.
-- `comboboxKey(event)` maps a keyboard event to a key the combobox acts on, or `undefined` for one
-  it leaves alone. `nextComboboxState(state, key, count)` says what that key does to the highlight
+- `nextComboboxState(state, key, count)` says what that key does to the highlight
   and the open state, wrapping at both ends, and `comboboxKeyAction(key, state, count)` adds whether
   to call `preventDefault()` and which option `Enter` selects. Together they are the whole keyboard
-  table, for a search field that should behave like a `Combobox`; `CommandPalette` uses them.
-- `typingState`, `openingState`, `selectableIndex`, `listboxContent`, `leavesCombobox`, `naming`,
-  `activeDescendant`, `comboboxListboxId` and `comboboxOptionId` are exported for the package's own
-  components and tests: the highlight a new query or a fresh open starts on, the empty message,
-  when a focus change closes the popup, which prop names the input, and the ids the ARIA
-  attributes point at.
+  table, for a search field that should behave like a `Combobox`; `CommandPalette` uses them. The
+  key is a `ComboboxKey`: the event's `key`, with `"Alt+"` in front for Alt with an arrow.
+- `listboxContent`, `activeDescendant`, `comboboxListboxId` and `comboboxOptionId` are exported for
+  the package's own components and tests: the empty message and the ids the ARIA attributes point
+  at. Where the highlight starts, when a focus change closes the popup, which prop names the input
+  and which key an event is live in `ui/combobox-internals.ts`, which is not an entry point.
 
 ### DateRangePicker (`./date-range`)
 
@@ -6947,11 +6934,8 @@ components and tests means exactly that: nothing outside this package should bui
 - `matchesAccept(file, accept)` answers whether a file matches an `accept` list of extensions
   (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`), ignoring case; an empty list
   matches everything. Use it to check a dropped file the way the browser's chooser would.
-- `classifyFiles(selected, { accept, maxSize, multiple })` splits offered files into the ones a
-  `FileInput` keeps and the ones it refuses, each refusal with its reason: `"too-large"`,
-  `"wrong-type"` or, without `multiple`, `"too-many"` for every accepted file after the first.
-- `resolveLabels(labels)` is exported for the package's own components and tests: it fills every
-  message label a `FileInput` was not given with its English default.
+- Which offered files a `FileInput` keeps, and the English defaults of its message labels, live in
+  `ui/file-input-internals.ts`, which is not an entry point.
 
 ### Format (`./format`)
 

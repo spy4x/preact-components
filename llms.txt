@@ -508,7 +508,6 @@ AvatarFace	type	@spy4x/preact-ui	Which of the three faces an `Avatar` renders.
 AvatarGroup	component	@spy4x/preact-ui	Overlapping avatar stack for a handful of members, with a `+N` chip for the rest.
 AvatarMember	type	@spy4x/preact-ui	One member of an `AvatarGroup`.
 AvatarSize	type	@spy4x/preact-ui	Square box of an `Avatar` or an `AvatarGroup`.
-BackdropHitTarget	type	@spy4x/preact-ui	The two identities a backdrop hit-test compares.
 Badge	component	@spy4x/preact-ui	Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in an `<a>` when `href` is given, so the whole pill is the link, which hands plain clicks to `navigate` when one is given.
 BadgeColor	type	@spy4x/preact-ui	Palette entries a `Badge` can use.
 BadgeElementProps	type	@spy4x/preact-ui	A `Badge` with element content in place of `text` — a `StatusMark` beside a word, say, or a link inside the pill.
@@ -557,7 +556,6 @@ ComparisonValue	type	@spy4x/preact-ui	How far a product covers one capability.
 ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions.
 CopyBlock	component	@spy4x/preact-ui	A box of monospace text with a copy control beside it: an install command, an API key, an id.
 CopyButton	component	@spy4x/preact-ui	Copy a string to the clipboard through an injected port or the browser API, and say whether it worked.
-DISMISS_KEY	constant	@spy4x/preact-ui	The key that asks a `Modal` to close.
 DataTable	component	@spy4x/preact-ui	A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort rules, one component joining them.
 DataTableBaseProps	type	@spy4x/preact-ui	The props both modes share — see `DataTableProps`.
 DataTableClientProps	type	@spy4x/preact-ui	Client mode: `DataTable` sorts and pages the whole row set — see `DataTableMode`.
@@ -580,7 +578,6 @@ DateTimeRange	type	@spy4x/preact-ui	Inclusive wall-clock range, minute precision
 DemoVideo	component	@spy4x/preact-ui	A demo clip that costs nothing until it is asked for: a poster with a play mark, swapped for the clip on press.
 DemoVideoPoster	type	@spy4x/preact-ui	The still frame a `DemoVideo` shows until it is pressed.
 DemoVideoSource	type	@spy4x/preact-ui	One file of the clip, rendered as a `<source>`.
-DialogRect	type	@spy4x/preact-ui	Rectangle in viewport coordinates: a structural subset of `DOMRect`, so tests need no DOM.
 DialogRole	type	@spy4x/preact-ui	How a `Modal` announces itself to assistive technology.
 DialogTone	type	@spy4x/preact-ui	Visual register of a `Modal`: a plain surface or a destructive one.
 Dropdown	component	@spy4x/preact-ui	Trigger plus a real menu: opening moves focus into it, the arrow keys move between its items, Escape closes it and gives the trigger its focus back, and it closes as soon as focus leaves.
@@ -603,7 +600,6 @@ FieldWiring	type	@spy4x/preact-ui	The full `Field` wiring: the control's attribu
 FileInput	component	@spy4x/preact-ui	File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader story the input already has for free.
 FileRejection	type	@spy4x/preact-ui	One file a `FileInput` refused, and why.
 FocusAfterRemovalOptions	type	@spy4x/preact-ui	Options of `useFocusAfterRemoval`.
-FocusableElement	type	@spy4x/preact-ui	Anything the browser can move focus to.
 FormatContext	component	@spy4x/preact-ui	The formatter the components read.
 Grid	component	@spy4x/preact-ui	Equal columns that fill the width: as many as fit at `minColumnWidth`, a named `gap` apart.
 GridColumnWidth	type	@spy4x/preact-ui	The narrowest a `Grid` column may get before the grid drops a column.
@@ -749,13 +745,11 @@ addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, 
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
 ariaKeyShortcuts	helper	@spy4x/preact-ui	A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key` names them, joined by `+`.
 avatarFace	helper	@spy4x/preact-ui	Pick an avatar's face: the image while it is usable, then the initials, then the generic icon.
-backdropClickDismisses	helper	@spy4x/preact-ui	Whether one click should dismiss the dialog.
 badgeClasses	helper	@spy4x/preact-ui	Compose a badge's class list without rendering one, so a pill that is not a `Badge` — a pressable chip, say — draws from the same palette.
 buttonClasses	helper	@spy4x/preact-ui	Compose the class list of a button without rendering one.
 clampProgress	helper	@spy4x/preact-ui	Clamp a progress reading into `0…max` and derive its completion fraction.
 clickByHotkey	helper	@spy4x/preact-ui	Click an element for a key press, the way a hotkey should: only when the reader could have clicked it themselves.
 clientWidthWithoutScrollbar	helper	@spy4x/preact-ui	Read the layout width once the scrollbar clamping is in place.
-comboboxKey	helper	@spy4x/preact-ui	Map a DOM keyboard event onto a `ComboboxKey`.
 comboboxKeyAction	helper	@spy4x/preact-ui	The whole key decision table of the combobox: state, `preventDefault` and selection, decided purely from the key, the current state and the length of the filtered list.
 comboboxListboxId	helper	@spy4x/preact-ui	`id` of the popup listbox of the combobox whose base id is `id`.
 comboboxOptionId	helper	@spy4x/preact-ui	`id` of one option, which is also what `aria-activedescendant` points at.
@@ -777,8 +771,6 @@ defaultToastDuration	helper	@spy4x/preact-ui	How long a toast that names no dura
 defaultUnsavedGuardLabels	helper	@spy4x/preact-ui	The English words of `UnsavedGuard`'s dialog.
 defaultUpgradePromptLabels	helper	@spy4x/preact-ui	The English words `UpgradePrompt` uses when a caller passes none.
 describedImages	helper	@spy4x/preact-ui	Keep only the images with a real description.
-dialogHeldFocus	helper	@spy4x/preact-ui	Whether the dialog still holds the focused element.
-dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
@@ -795,24 +787,19 @@ hasQuestion	helper	@spy4x/preact-ui	Whether the panel's body holds something wor
 honeypotField	helper	@spy4x/preact-ui	A field simple bots fill in and people never see: off-screen rather than `display: none` or `type="hidden"`, since a scraper that already skips those two is exactly the bot this stops nothing against, and a sighted visitor tabbing past it never lands on it — `tabindex="-1"` keeps it out of the tab order on top of being off-screen, and `aria-hidden` keeps a screen reader from ever announcing it.
 hotkeyClickBinding	helper	@spy4x/preact-ui	The `useHotkeys` binding that clicks an element through `clickByHotkey`.
 inlineEditCommit	helper	@spy4x/preact-ui	What an edit saves: the trimmed draft, or `null` when there is nothing to save because the draft is empty or matches the current value.
-isBackdropClick	helper	@spy4x/preact-ui	Whether a click landed on the dialog's backdrop rather than on the dialog's content.
-isDismissKey	helper	@spy4x/preact-ui	Whether a keyboard event is a request to dismiss the dialog.
 isPlainClick	helper	@spy4x/preact-ui	Whether a click is one the page may take over: the primary button with no modifier.
 isValidDateTimeRange	helper	@spy4x/preact-ui	Whether a `DateTimeRange` is two well-formed wall-clock values, in order — not necessarily two real ones: nothing here checks whether a named local time actually occurs in any zone, since this function is not handed one.
 keyFaces	helper	@spy4x/preact-ui	The faces of every key in a combination, modifiers first, in the order the platform writes them: ⌃ ⌥ ⇧ ⌘ on Apple platforms, Ctrl Alt Shift Meta elsewhere.
 labelOr	helper	@spy4x/preact-ui	The caller's label, or the library's English default.
-leavesCombobox	helper	@spy4x/preact-ui	Whether a focus change **out of the input** closes the popup.
 listboxContent	helper	@spy4x/preact-ui	Split a filtered list into "options to render" and "message to announce".
 matchesAccept	helper	@spy4x/preact-ui	Whether `file` matches an `<input accept>`-style pattern list: comma-separated extensions (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`) — exactly the three shapes the browser's own file chooser filters by.
 matchesQuery	helper	@spy4x/preact-ui	Whether one item matches a query.
 moveKanbanItem	helper	@spy4x/preact-ui	Apply a reported move to an array of items, returning a new array.
-naming	helper	@spy4x/preact-ui	Whether the combobox has a usable accessible name, and which channel carries it.
 nextComboboxState	helper	@spy4x/preact-ui	Decide what one key press does to the active option and the open state.
 nextKanbanSlot	helper	@spy4x/preact-ui	Where an arrow key sends a picked-up card.
 nextMenuIndex	helper	@spy4x/preact-ui	Index the open menu moves focus to for `key`, or `undefined` for a key the menu does not own.
 nextTabIndex	helper	@spy4x/preact-ui	Index the tablist should move focus to for `key`, given the tab currently focused.
 occurrenceOf	helper	@spy4x/preact-ui	Which pass of its wall clock an instant is: `"later"` when `value` is a repeated time in `timeZone` and `instant` is its second occurrence, `"earlier"` otherwise — including when either argument cannot be resolved.
-openingState	helper	@spy4x/preact-ui	The state a fresh list opens into: open, highlighting the selected item when the filter kept it, else the first enabled one.
 pageRange	helper	@spy4x/preact-ui	Collapse a page range into the items a pagination control renders.
 pickHotkey	helper	@spy4x/preact-ui	The binding a key press runs, or `undefined`: the first binding whose combination matches and that may fire where the press landed.
 presetForRange	helper	@spy4x/preact-ui	The first preset whose range equals `range`, or `undefined` when none does.
@@ -825,11 +812,8 @@ resolveDateTime	helper	@spy4x/preact-ui	Whether a `YYYY-MM-DDTHH:mm` wall-clock 
 resolveDuration	helper	@spy4x/preact-ui	How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration` (`defaultToastActionDuration` for a toast with an action).
 resolveImage	helper	@spy4x/preact-ui	Turn an event target into a lightbox image, or `null` when the event missed an image.
 resolveMoneyInputEdit	helper	@spy4x/preact-ui	The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result.
-restoreFocus	helper	@spy4x/preact-ui	Move focus back to a captured element.
 rowKeyAttribute	helper	@spy4x/preact-ui	Attribute a row's first cell carries so a page — or a browser check — can find that row by the identity `DataTableProps.rowKey` gives it, without depending on rendered cell text.
 scrollLockPadding	helper	@spy4x/preact-ui	Padding, in pixels, that keeps a scroll-locked page from shifting.
-selectableIndex	helper	@spy4x/preact-ui	Index a freshly opened list should highlight: `preferred` when it is still in the list and taking it is allowed, else the first enabled item, else `-1` when nothing can be highlighted.
-shouldRetargetFocus	helper	@spy4x/preact-ui	Decide whether focus should go back to the element that opened the dialog.
 sortableOffsets	helper	@spy4x/preact-ui	How far each row is shifted while the item at `from` is shown at `to`.
 sortableTarget	helper	@spy4x/preact-ui	The index a held item would drop at, from where its middle is now.
 splitTagText	helper	@spy4x/preact-ui	Split the input's text at commas: every part before the last comma is a finished tag, and the part after it is still being typed.
@@ -838,7 +822,6 @@ tagInputKeyAction	helper	@spy4x/preact-ui	The whole key table of `TagInput`, dec
 tagSuggestions	helper	@spy4x/preact-ui	The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling once.
 timeRangePresets	helper	@spy4x/preact-ui	Canonical presentation order — the `TimeRangePreset` counterpart of `dateRangePresets`.
 toggleChipSelection	helper	@spy4x/preact-ui	The selection after one chip is pressed, in multiple mode: the chip is added or removed, and the result keeps the order of `options` rather than the order of presses.
-typingState	helper	@spy4x/preact-ui	The state a keystroke leaves behind after the caller has re-filtered for the new query.
 useApplePlatform	hook	@spy4x/preact-ui	Whether this browser is an Apple platform, for drawing or announcing `mod` as Command.
 useFocusAfterRemoval	hook	@spy4x/preact-ui	Keeps focus on the page when a row leaves a list because its own removal went through.
 useFocusFallback	hook	@spy4x/preact-ui	Keeps focus on the page when the focused control inside `container` leaves it, or when the whole container leaves.
@@ -857,22 +840,12 @@ dropdownOpensUp	helper	@spy4x/preact-ui/dropdown	Whether a `vertical="auto"` men
 enhancedFormMessage	helper	@spy4x/preact-ui/enhanced-form	The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run.
 FieldLabelFor	type	@spy4x/preact-ui/field	What `Field`'s own label points at through `for`.
 labelTarget	helper	@spy4x/preact-ui/field	The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`.
-classifyFiles	helper	@spy4x/preact-ui/file-input	Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser.
-resolveLabels	helper	@spy4x/preact-ui/file-input	Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it.
 StripNavigationVariant	type	@spy4x/preact-ui/image-gallery	How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`.
 StripScroll	type	@spy4x/preact-ui/image-gallery	Where a strip's row has scrolled to, as `stripPosition` reads it.
 stripNavigationClasses	helper	@spy4x/preact-ui/image-gallery	The full class list of the strip's Previous/Next buttons for a `navigationVariant`.
 stripPosition	helper	@spy4x/preact-ui/image-gallery	The slide a strip's counter names, `0`-based, for where its row has scrolled to.
 thumbnailKey	helper	@spy4x/preact-ui/image-gallery	A stable key for the thumbnail at `index`: its `src`, plus how many times that `src` already appeared earlier in `images`.
-EscapeCloseHandlers	type	@spy4x/preact-ui/modal	The two handlers an `EscapeCloseStrategy` can ask for, keyed by the event they belong to.
-EscapeCloseStrategy	type	@spy4x/preact-ui/modal	How Escape is handled on a platform, given whether it honours `closedby`.
-EscapeCloseTarget	type	@spy4x/preact-ui/modal	The listener surface `bindEscapeClose` needs: a structural subset of `HTMLDialogElement`.
-PlatformCloseDeps	type	@spy4x/preact-ui/modal	What `platformCloseHandler` needs: the strategy's verdict, the port and the state setter.
 backdropDismissesByDefault	helper	@spy4x/preact-ui/modal	Whether a click on the backdrop dismisses a `Modal` that says nothing about the policy.
-bindEscapeClose	helper	@spy4x/preact-ui/modal	Register the one Escape listener a strategy asks for, and hand back how to undo it.
-escapeCloseStrategy	helper	@spy4x/preact-ui/modal	Choose the Escape plan for a platform.
-platformCloseHandler	helper	@spy4x/preact-ui/modal	Build the handler for a close the platform performs itself: Escape where `closedby` is ignored.
-supportsClosedBy	helper	@spy4x/preact-ui/modal	Whether a dialog implementation knows the `closedby` attribute.
 editableText	helper	@spy4x/preact-ui/money-input	The text a person edits: the amount's digits and decimal mark in `locale`, with no currency symbol and no grouping — grouping separators would have to be re-parsed back out on every keystroke for no benefit, since `parseMoney` already understands them being absent.
 ImageSequence	type	@spy4x/preact-ui/zoomable-images	What `collectSequence` hands back: the lightbox's whole sequence, and where it opened.
 collectSequence	helper	@spy4x/preact-ui/zoomable-images	Build the sequence a lightbox pages through, and the position of the image that was opened.

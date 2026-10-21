@@ -5,14 +5,13 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import {
   activeDescendant,
-  comboboxKey,
   comboboxKeyAction,
   comboboxListboxId,
   comboboxOptionId,
   type ComboboxState,
   filterItems,
-  leavesCombobox,
 } from "./combobox.tsx"
+import { comboboxKey, leavesCombobox } from "./combobox-internals.ts"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
