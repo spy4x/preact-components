@@ -1,6 +1,9 @@
 /** Playwright specs for `ui/` components, on the guide's UI page. */
 import { AxeBuilder } from "@axe-core/playwright"
+import { h } from "preact"
+import { render as renderToString } from "preact-render-to-string"
 import type { Locator, Page } from "playwright-core"
+import { ScreenTour } from "@spy4x/preact-ui/screen-tour"
 import type { Spec } from "./runner.ts"
 import { scrollRegionSpec } from "./scroll-region.ts"
 
@@ -1050,7 +1053,94 @@ function screenTourSpecs(): Spec[] {
         const picked = alerts.card.locator(`[data-e2e="screen-tour-picked"]`)
         await picked.getByText("onSelect: not called yet", { exact: true }).waitFor()
         await alerts.tab.click()
-        await picked.getByText("onSelect: guide-tour-alerts", { exact: true }).waitFor()
+        await picked.getByText("onSelect: guide-tour-alerts, 1 call", { exact: true }).waitFor()
+      },
+    },
+    {
+      name: "ScreenTour: a click on the selected tab does not call onSelect again",
+      pageId: "ui",
+      run: async (page) => {
+        const alerts = screenTourStep(page, "Alerts")
+        const picked = alerts.card.locator(`[data-e2e="screen-tour-picked"]`)
+        await alerts.tab.click()
+        await picked.getByText("onSelect: guide-tour-alerts, 1 call", { exact: true }).waitFor()
+        await alerts.tab.click()
+        // A third pick shows the count: 2 calls when the second click on Alerts was not counted.
+        await screenTourStep(page, "Schedules").tab.click()
+        await picked.getByText(/^onSelect: guide-tour-schedules, \d+ calls$/).waitFor()
+        const text = await picked.textContent()
+        if (text !== "onSelect: guide-tour-schedules, 2 calls") throw new Error(`read "${text}"`)
+      },
+    },
+    {
+      name: "ScreenTour: Tab right after an arrow key lands on the new step's panel, not on the " +
+        "fading one",
+      pageId: "ui",
+      run: async (page) => {
+        const dashboard = screenTourStep(page, "Dashboard")
+        await dashboard.tab.click()
+        await dashboard.isSelectedAndFocused()
+        // Both presses in one task, well inside the 150 ms fade.
+        await page.keyboard.press("ArrowRight")
+        await page.keyboard.press("Tab")
+        const focused = await page.evaluate(() => document.activeElement?.id ?? "")
+        if (focused !== "guide-tour-alerts-panel") {
+          throw new Error(`focus is on "${focused || "body"}", expected the Alerts panel`)
+        }
+        await page.waitForTimeout(400)
+        const after = await page.evaluate(() => document.activeElement?.id ?? "")
+        if (after !== "guide-tour-alerts-panel") throw new Error(`focus moved to "${after}"`)
+      },
+    },
+    {
+      name: "ScreenTour: the server markup shows one step's text where scripts run, and every " +
+        "step's text without them",
+      pageId: "ui",
+      run: async (page) => {
+        const sheets = await page.evaluate(() =>
+          [...document.querySelectorAll<HTMLLinkElement>(`link[rel="stylesheet"]`)].map((link) =>
+            link.href
+          )
+        )
+        if (sheets.length === 0) throw new Error("the guide links no stylesheet")
+        const tour = renderToString(h(ScreenTour, {
+          frame: "browser",
+          steps: ["one", "two", "three"].map((id, index) => ({
+            id: `ssr-${id}`,
+            label: id,
+            text: `Text ${id}. `.repeat(index * 6 + 1),
+            image: { src: "data:,", alt: `Screen ${id}`, width: 1280, height: 800 },
+          })),
+        }))
+        const html = `<!doctype html><html><head>${
+          sheets.map((href) => `<link rel="stylesheet" href="${href}">`).join("")
+        }</head><body style="width: 390px">${tour}</body></html>`
+        const browser = page.context().browser()
+        if (browser === null) throw new Error("the page has no browser")
+        const read = async (javaScriptEnabled: boolean) => {
+          const context = await browser.newContext({ javaScriptEnabled })
+          try {
+            const bare = await context.newPage()
+            await bare.setContent(html, { waitUntil: "load" })
+            return await bare.locator(`[role="tabpanel"]`).evaluateAll((panels) => ({
+              visible: panels.filter((panel) => getComputedStyle(panel).visibility === "visible")
+                .length,
+              stack: Math.round(panels[0].parentElement!.getBoundingClientRect().height),
+              tallest: Math.round(Math.max(...panels.map((p) => p.getBoundingClientRect().height))),
+            }))
+          } finally {
+            await context.close()
+          }
+        }
+        const scripted = await read(true)
+        const bare = await read(false)
+        if (scripted.visible !== 1 || scripted.stack !== scripted.tallest) {
+          throw new Error(`with scripts: ${JSON.stringify(scripted)}, expected one panel stacked`)
+        }
+        if (bare.visible !== 3 || bare.stack <= bare.tallest) {
+          throw new Error(`without scripts: ${JSON.stringify(bare)}, expected three in a column`)
+        }
+        return `with scripts ${scripted.stack}px high, without ${bare.stack}px`
       },
     },
     {

@@ -148,7 +148,7 @@ const TOUR_STEPS: ScreenTourStep[] = [
 
 /** Both tours, with the last step `onSelect` reported, as a page's analytics would see it. */
 function ScreenTourDemo() {
-  const picked = useSignal<string | null>(null)
+  const picked = useSignal<{ id: string; calls: number } | null>(null)
   return (
     <div class="flex flex-col gap-12">
       <ScreenTour
@@ -157,12 +157,16 @@ function ScreenTourDemo() {
         browserUrl="app.example.com"
         label="Pages of the app"
         onSelect={(id) => {
-          picked.value = id
+          picked.value = { id, calls: (picked.value?.calls ?? 0) + 1 }
         }}
       />
       <ScreenTour steps={TOUR_STEPS} frame="phone" numbered label="Steps to a clip" />
       <p class="text-sm text-muted" data-e2e="screen-tour-picked">
-        {picked.value === null ? "onSelect: not called yet" : `onSelect: ${picked.value}`}
+        {picked.value === null
+          ? "onSelect: not called yet"
+          : `onSelect: ${picked.value.id}, ${picked.value.calls} ${
+            picked.value.calls === 1 ? "call" : "calls"
+          }`}
       </p>
     </div>
   )
