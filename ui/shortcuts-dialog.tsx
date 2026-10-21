@@ -1,4 +1,4 @@
-import type { JSX } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { Kbd, type KbdLabels } from "./kbd.tsx"
 import { Modal } from "./modal.tsx"
 
@@ -64,6 +64,11 @@ export interface ShortcutsDialogProps {
   apple?: boolean
   /** The words `Kbd` shows or reads out for a key. */
   kbdLabels?: Partial<KbdLabels>
+  /**
+   * Content below the list, such as a note on when the shortcuts work or a switch that turns them
+   * off. Drawn in `Modal`'s footer, below a divider.
+   */
+  footer?: ComponentChildren
   /** Extra classes for the dialog element. */
   class?: string
 }
@@ -71,6 +76,8 @@ export interface ShortcutsDialogProps {
 /**
  * A dialog that lists keyboard shortcuts, each with what it does and its keys, under group
  * headings. Headings show only when there is more than one group.
+ *
+ * `footer` goes below the list, in `Modal`'s footer.
  *
  * Built on `Modal`, so Escape, the close button and a backdrop click close it, focus moves into
  * it and returns to where it was. It is controlled: open it from a `useHotkeys` binding and close
@@ -86,12 +93,20 @@ export function ShortcutsDialog(
     defaultGroup = "General",
     apple,
     kbdLabels,
+    footer,
     class: className,
   }: ShortcutsDialogProps,
 ): JSX.Element {
   const groups = groupShortcuts(shortcuts, defaultGroup)
   return (
-    <Modal open={open} onClose={onClose} title={title} cancelLabel={closeLabel} class={className}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      cancelLabel={closeLabel}
+      footer={footer}
+      class={className}
+    >
       <div class="flex flex-col gap-6">
         {groups.map((group) => (
           <section key={group.title} class="flex flex-col gap-2">

@@ -1316,6 +1316,11 @@ function ShortcutsDialogDemo() {
         open={open.value}
         onClose={() => open.value = false}
         shortcuts={listed}
+        footer={
+          <p class="text-sm text-muted" data-e2e="shortcuts-footer">
+            Shortcuts don't work while you type in a field.
+          </p>
+        }
       />
     </Stack>
   )
@@ -2104,6 +2109,12 @@ export const displayDemos = {
         default: `"Keyboard shortcuts"`,
         description: "The dialog's title.",
       },
+      {
+        name: "footer",
+        type: "ComponentChildren",
+        description:
+          "Below the list, after a divider: a note on when the shortcuts work, or a switch that turns them off.",
+      },
     ],
     snippet: `const open = useSignal(false)
 const bindings = [
@@ -2114,7 +2125,12 @@ useHotkeys(bindings)
 // A sequence row, bound by a sequence matcher of your own
 const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Navigation" }]
 
-<ShortcutsDialog open={open.value} onClose={() => open.value = false} shortcuts={rows} />`,
+<ShortcutsDialog
+  open={open.value}
+  onClose={() => open.value = false}
+  shortcuts={rows}
+  footer={<p class="text-sm text-muted">Shortcuts don't work while you type in a field.</p>}
+/>`,
     render: () => <ShortcutsDialogDemo />,
   },
   KanbanBoard: {
