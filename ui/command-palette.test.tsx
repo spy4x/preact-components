@@ -5,7 +5,10 @@ import {
   CommandPalette,
   type CommandPaletteOption,
   defaultCommandPaletteLabels,
+  defaultCommandPaletteMatchLabels,
   groupOptions,
+  matchOption,
+  matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
 
@@ -47,6 +50,56 @@ describe("rankOptions", () => {
   it("matches every option for an empty query, up to the limit", () => {
     expect(rankOptions(options, "")).toHaveLength(4)
     expect(rankOptions(options, "", 2).map((found) => found.label)).toEqual(["Data table", "Table"])
+  })
+})
+
+describe("matchOptions", () => {
+  const options = [
+    option("Combobox", { detail: "Forms" }),
+    option("Toast", { detail: "Feedback" }),
+    option("Date picker", { aliases: ["calendar", "календарь"] }),
+    option("Badge", { detail: "Tables and lists" }),
+  ]
+  const labels = (query: string) => matchOptions(options, query).map((found) => found.label)
+
+  it("forgives one typo: combobx finds Combobox", () => {
+    expect(labels("combobx")).toEqual(["Combobox"])
+    expect(matchOption("combobx", options[0])).toBe("typo")
+  })
+
+  it("reads a query typed in the other keyboard layout: ещфые finds Toast", () => {
+    expect(labels("ещфые")).toEqual(["Toast"])
+    expect(matchOption("ещфые", options[1])).toBe("layout")
+  })
+
+  it("finds words in any order, and an option by an alias in either alphabet", () => {
+    expect(labels("picker date")).toEqual(["Date picker"])
+    expect(matchOption("picker date", options[2])).toBe("words")
+    expect(labels("календ")).toEqual(["Date picker"])
+    expect(matchOption("calendar", options[2])).toBe("alias")
+  })
+
+  it("lists a name match before an option whose detail alone holds the query", () => {
+    const withDetail = [option("Lists", { detail: "Display" }), ...options]
+    expect(matchOptions(withDetail, "list").map((found) => found.label)).toEqual([
+      "Lists",
+      "Badge",
+    ])
+    expect(matchOption("list", options[3])).toBe("detail")
+  })
+
+  it("matches every option for an empty query, up to the limit, and says no kind for it", () => {
+    expect(labels("  ")).toHaveLength(4)
+    expect(matchOptions(options, "", 2).map((found) => found.label)).toEqual([
+      "Combobox",
+      "Toast",
+    ])
+    expect(matchOption("", options[0])).toBeUndefined()
+  })
+
+  it("returns nothing for an option the query does not match", () => {
+    expect(labels("zzzz")).toEqual([])
+    expect(matchOption("zzzz", options[0])).toBeUndefined()
   })
 })
 
@@ -159,6 +212,57 @@ describe("CommandPalette", () => {
     )
     for (const word of ["Suche", "Suchen…", "Schließen", "Nichts"]) expect(html).toContain(word)
     expect(html).not.toContain(defaultCommandPaletteLabels.empty)
+  })
+
+  it("filters with the forgiving matcher by default and marks how each result matched", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Combobox"), option("Toast")]}
+        defaultQuery="combobx"
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toMatch(/<li id="[^"]+-result-Combobox" role="option"[^>]* data-match="typo"/)
+    expect(html).not.toContain(">Toast<")
+    // Without `showMatch` the kind stays an attribute; no word is drawn.
+    expect(html).not.toContain(defaultCommandPaletteMatchLabels.typo)
+  })
+
+  it("shows how a result matched in words with showMatch, taking them from matchLabels", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Toast")]}
+        defaultQuery="ещфые"
+        showMatch
+        matchLabels={{ layout: "Wrong layout" }}
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toMatch(/data-match="layout"[^>]*>.*>Toast<.*>Wrong layout</)
+  })
+
+  it("draws the field trigger with its placeholder and hint at every width", () => {
+    const html = render(
+      <CommandPalette options={options} trigger="field" onSelect={() => {}} dataE2E="palette" />,
+    )
+    const trigger = html.match(
+      /<button[^>]*data-e2e="palette-open" class="([^"]*)"[^>]*>(.*?)<\/button>/,
+    )
+    expect(trigger?.[1].split(" ")).toEqual(expect.arrayContaining(["w-full", "border-subtle"]))
+    expect(trigger?.[1]).not.toContain("sm:")
+    expect(trigger?.[2]).toContain(
+      `<span class="min-w-0 flex-1 truncate text-left">${defaultCommandPaletteLabels.placeholder}</span>`,
+    )
+    expect(trigger?.[2]).not.toContain("hidden sm:")
+  })
+
+  it("appends the caller's class to the trigger's own, unmerged", () => {
+    const html = render(
+      <CommandPalette options={options} class="w-80!" onSelect={() => {}} dataE2E="palette" />,
+    )
+    const trigger = html.match(/data-e2e="palette-open" class="([^"]*)"/)?.[1].split(" ")
+    expect(trigger?.slice(-1)).toEqual(["w-80!"])
+    expect(trigger).toContain("sm:w-56")
   })
 
   it("refuses both data modes at once, and neither, as a type error", () => {

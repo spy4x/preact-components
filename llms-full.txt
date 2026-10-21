@@ -4775,11 +4775,12 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twelve exports.** Most components pass a caller's `class` through
-  `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
-  group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  `EnhancedForm` (#511), `DemoVideo` and `ScreenTour` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
-  `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
+- **A `class` is merged, except on fifteen exports.** Most components pass a caller's `class`
+  through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the
+  same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`,
+  `Select`, `EnhancedForm` (#511), `DemoVideo`, `CommandPalette`, `Combobox` (with its `inputClass`
+  and `listboxClass`), `Modal` and `Toastr` (#943) use `join` instead, and `CopyButton` and
+  `ZoomableImages` hand their `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
   before. Their `class` is appended after their own classes, and replaces one of them only when
   it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
@@ -4828,7 +4829,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Coachmark`           | `coachmark`            | `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                                                                    |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                                                                                                       |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                                                                                                       |
-| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                                                                                                       |
+| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`            |
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                                                                                                          |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                                                                                         |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                                                                                        |
@@ -4881,7 +4882,6 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
-| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                                         |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
@@ -4894,7 +4894,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                                                 |
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                                         |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                      |
-| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?` — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                                                                |
+| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?`, `inputAttributes?` (per radio, by value) — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                      |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                                              |
 | `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                                                                                                               |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                                                                                                            |
@@ -5513,66 +5513,6 @@ the video.
   sources={[
     { src: "/demo.webm", type: "video/webm" },
     { src: "/demo.mp4", type: "video/mp4" },
-  ]}
-/>
-```
-
-## ScreenTour
-
-A product walkthrough for a product or case-study page: named steps as tabs beside one browser or
-phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is picked.
-Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View full
-size" link.
-
-The tabs are a column from 1024 px and, below it, a row that scrolls inside itself, so a phone page
-never scrolls sideways. The tab list is one Tab stop: Left/Right and Up/Down move and select (the
-list is a column on a wide screen and a row on a narrow one), and Home/End jump. The decision table
-is the exported `nextStepIndex`, built on `Tabs`' `nextTabIndex`. `group` labels a run of steps in
-the column; each tab of the run keeps its own name and takes the label as its description
-(`aria-describedby`). `numbered` draws 1, 2, 3 in
-front of the names, for steps a person follows in order.
-
-The server renders the first step selected and every step's caption and text. Where scripts run
-(`@media (scripting: enabled)`) the server markup already shows only the selected step's text, so
-hydration moves nothing; under `scripting: none` every text shows in a column, and "View full size"
-is a link to the image. Once hydrated, the link opens `Lightbox`, whose Previous and Next move the
-tour with it. A panel that is not selected leaves the Tab order, and a panel fading in is visible
-from its first frame, so a Tab right after an arrow key lands on the new step's panel. From 1024 px the phone frame is 16 rem wide. Only the first screenshot is in the HTML, and so is the only one that loads with the page;
-another loads the first time its step is picked. Screenshots and texts share one grid cell each, so
-the tour keeps the height of its tallest text and nothing below it moves on a switch; they
-cross-fade in 150 ms, and switch at once under `prefers-reduced-motion: reduce`. No `fetchpriority`
-is set unless `fetchPriority` asks, because only the page knows whether the tour is its main image.
-`onSelect` gets the step's `id` on every pick by a person (a click, a key or the lightbox), never on
-the first render: wire it to analytics. A step with a blank `alt` throws, since its caption would be
-empty, and so does an empty `steps`.
-
-```tsx
-<ScreenTour
-  frame="browser"
-  browserUrl="app.example.com"
-  onSelect={(id) => track("tour", { step: id })}
-  steps={[
-    {
-      id: "tour-dashboard",
-      label: "Dashboard",
-      text: "Every device on one map, with its state.",
-      image: {
-        src: "/dashboard.webp",
-        alt: "The dashboard, a map of devices",
-        width: 1280,
-        height: 800,
-      },
-    },
-    {
-      id: "tour-alerts",
-      label: "Alerts",
-      image: {
-        src: "/alerts.webp",
-        alt: "The alerts list, newest first",
-        width: 1280,
-        height: 800,
-      },
-    },
   ]}
 />
 ```
@@ -6366,6 +6306,17 @@ into view as it moves: the listbox is the box that scrolls, so focus stays in th
 phone the button is an icon, the dialog fills the screen, and the close button and every result
 row are at least 44 px tall. A long label stops at two lines and a long `detail` at one.
 
+`trigger="field"` draws the field-shaped button at every width, phones included, with the
+placeholder and the hotkey hint, as wide as its container. It is still a button: Tab reaches it and
+Enter or Space opens the palette. A printable key typed on it opens the palette with that key in
+the field and the caret after it, as a real field would take it; a key that is one of `hotkeys`
+opens it the hotkey's way. `defaultQuery` is the query the field holds each time the palette opens,
+selected, so the first key typed replaces it.
+
+The trigger's `class` is appended after its own classes and not merged into them, so a bundle that
+renders the palette carries no `tailwind-merge`. To replace one of the trigger's own utilities,
+such as its width, mark the replacement important: `class="w-80!"`.
+
 While an input method is still composing a word, the results stay those of the text from before
 and no `search` is asked; they follow once the word is finished. Enter and Escape pressed to
 confirm or cancel the word neither pick a result nor close the dialog.
@@ -6373,9 +6324,14 @@ confirm or cancel the word neither pick a result nor close the dialog.
 It takes its results one of two ways, never both:
 
 - `options`: the palette filters the list itself as the reader types. Its default `filter` is
-  `rankOptions(options, query, limit)`: names equal to the query first, then names starting with
-  it, then names containing it, then options whose `detail` contains it, folding case and accents
-  the way `Combobox` does. Pass `filter` to rank differently.
+  `matchOptions(options, query, limit)`, built on `matchEntry` from
+  `@spy4x/platform/universal/text`. It ignores case, accents and word order, and each query word
+  only has to start a word of the label or of one of the option's `aliases`. A word of four letters
+  or more may carry one typo, and a query typed in the other keyboard layout (ЙЦУКЕН and QWERTY) or
+  the other alphabet (Cyrillic and Latin) is read too: "combobx" finds Combobox, "ещфые" finds
+  Toast. Options whose `detail` alone holds the query come last. Pass `filter` to rank
+  differently; `rankOptions(options, query, limit)` is the plain substring ranking the palette used
+  before.
 - `search(query, signal)`: the palette calls it with the empty query when it opens and then after
   each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
   and the stale answer is ignored even when the function does not listen to it. While a call runs
@@ -6385,8 +6341,13 @@ It takes its results one of two ways, never both:
   waits for its answer and picks the answer's first result, never a row of the previous query. A
   rejection says the search failed.
 
-An option is `{ id, label, detail?, hint?, group? }`, and `onSelect` receives the same object, so
-it can carry whatever the app needs, such as an `href`. Options with a `group` are listed under a
+An option is `{ id, label, detail?, hint?, group?, aliases? }`, and `onSelect` receives the same
+object, so it can carry whatever the app needs, such as an `href`. Every result row carries how the
+query matched it in `data-match`, whichever filter or `search` listed it: `exact`, `prefix`,
+`words`, `alias`, `layout`, `translit`, `typo`, or `detail` when only the `detail` holds the query
+(`CommandPaletteMatchKind`). `showMatch` also says it in words beside the result, such as "Typo
+fixed" or "Other keyboard layout"; `defaultCommandPaletteMatchLabels` holds them and `matchLabels`
+overrides them. `matchOption(query, option)` is that kind for one option. Options with a `group` are listed under a
 heading per group; `groupOptions(options)` is that grouping on its own: the unheaded options first,
 then each group in the order it first appears. `defaultCommandPaletteLabels` holds the English
 words, which `labels` overrides one by one.
@@ -6496,6 +6457,9 @@ imports `@spy4x/preact-theme`'s `theme-preview.css`, which declares the checked 
 the frame alone through `:has()`, so it switches with JavaScript off and the page around it keeps
 its own palette. The preset's `dark` variant follows the frame too, so everything inside it, `dark:`
 utilities included, is drawn in the frame's palette. More in the theme README, "Theme preview".
+`inputAttributes` adds attributes to each radio by its value, such as an analytics event:
+`{ light: { "data-umami-event": "theme-light" } }`; the radio's own `data-preview-theme` wins over
+one of the same name.
 
 ## ToggleChips
 
@@ -7148,12 +7112,6 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
-
-### ScreenTour (`./screen-tour`)
-
-- `nextStepIndex(key, current, count)` is the step a key press on a `ScreenTour` tab moves to:
-  `nextTabIndex` with Up and Down stepping like Left and Right, wrapping at both ends, and
-  `undefined` for a key the tour does not own.
 
 ### TagInput (`./tag-input`)
 

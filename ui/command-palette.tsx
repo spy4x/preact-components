@@ -1,8 +1,9 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import { IconSearch, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useSignal } from "@preact/signals"
 import { useEffect, useId, useRef } from "preact/hooks"
+import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
@@ -25,6 +26,30 @@ export interface CommandPaletteOption {
   hint?: string
   /** The heading the option is listed under. Options without one are listed first, unheaded. */
   group?: string
+  /**
+   * Other names the default filter finds the option by, such as `["calendar", "календарь"]`.
+   * Never shown.
+   */
+  aliases?: readonly string[]
+}
+
+/**
+ * How a query matched an option, strongest first: one of `matchEntry`'s kinds from
+ * `@spy4x/platform/universal/text` (`exact`, `prefix`, `words`, `alias`, `layout`, `translit`,
+ * `typo`), or `detail` when only the option's `detail` holds the query.
+ */
+export type CommandPaletteMatchKind = SearchMatchKind | "detail"
+
+/** English defaults for the words `showMatch` puts beside a result, one per {@link CommandPaletteMatchKind}. */
+export const defaultCommandPaletteMatchLabels: Readonly<Record<CommandPaletteMatchKind, string>> = {
+  exact: "Exact name",
+  prefix: "Start of the name",
+  words: "Words in any order",
+  alias: "Another name",
+  layout: "Other keyboard layout",
+  translit: "Other alphabet",
+  typo: "Typo fixed",
+  detail: "In the details",
 }
 
 /** The palette's own words. Each has an English default in {@link defaultCommandPaletteLabels}. */
@@ -93,8 +118,32 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
    * with `-close`.
    */
   dataE2E?: string
-  /** Extra classes for the trigger, such as its width. */
+  /**
+   * Extra classes for the trigger, appended after its own and not merged into them, so
+   * `tailwind-merge` stays out of the bundle. To replace one of the trigger's own utilities, such
+   * as its width, mark the replacement important with a trailing `!`: `w-80!`.
+   */
   class?: string
+  /**
+   * The trigger's shape. `"button"`, the default, is an icon button on a phone and a field-shaped
+   * button with the placeholder and the hotkey hint from `sm`. `"field"` is the field-shaped button
+   * at every width, as wide as its container. A printable key typed on a focused `"field"` trigger
+   * opens the palette with that key as the query, as a real field would take it; a key that is
+   * one of `hotkeys` opens it as the hotkey does.
+   */
+  trigger?: "button" | "field"
+  /**
+   * The query the field holds each time the palette opens, selected, so the first key typed
+   * replaces it. Defaults to the empty query.
+   */
+  defaultQuery?: string
+  /**
+   * Shows beside each result how the query matched it ({@link CommandPaletteMatchKind}), in the
+   * words of `matchLabels`. Every result carries the kind in `data-match` either way.
+   */
+  showMatch?: boolean
+  /** Overrides for the words `showMatch` shows; see {@link defaultCommandPaletteMatchLabels}. */
+  matchLabels?: Partial<Record<CommandPaletteMatchKind, string>>
 }
 
 /** The local data mode: the palette filters `options` itself. */
@@ -103,8 +152,9 @@ export interface CommandPaletteLocalProps<T extends CommandPaletteOption>
   /** Every option, filtered as the reader types. */
   options: readonly T[]
   /**
-   * The options a query shows, in order. Defaults to {@link rankOptions}: names equal to the query,
-   * then names starting with it, then names containing it, then details containing it.
+   * The options a query shows, in order. Defaults to {@link matchOptions}, which forgives typos,
+   * word order, the other keyboard layout and the other alphabet. {@link rankOptions} is the plain
+   * substring ranking the palette used before.
    */
   filter?: (options: readonly T[], query: string) => readonly T[]
   search?: never
@@ -142,7 +192,8 @@ export interface CommandPaletteGroup<T extends CommandPaletteOption> {
 }
 
 /**
- * The options that match `query`, best first, at most `limit` of them: names equal to the query,
+ * The plain substring ranking, kept for callers that want it over {@link matchOptions}: the
+ * options that match `query`, best first, at most `limit` of them: names equal to the query,
  * then names that start with it, then names that contain it, then options whose `detail` contains
  * it. The input order breaks ties. Matching folds case and accents the way `Combobox` does, and an
  * empty query matches every option. It reads only `label` and `detail`, so any list with those
@@ -173,6 +224,65 @@ export function rankOptions<T extends Pick<CommandPaletteOption, "label" | "deta
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .slice(0, limit)
     .map((scored) => scored.option)
+}
+
+/** What {@link matchOptions} and {@link matchOption} read of an option. */
+export type MatchableOption = Pick<CommandPaletteOption, "label" | "detail" | "aliases">
+
+/** Whether the option's `detail` holds the query, folding case and accents. */
+function detailHolds(needle: string, option: MatchableOption): boolean {
+  return option.detail !== undefined && fold(option.detail).includes(needle)
+}
+
+/**
+ * How `query` matched one option, or `undefined` when it did not or the query is empty: what
+ * `matchEntry` from `@spy4x/platform/universal/text` says of its `label` and `aliases`, else
+ * `"detail"` when its `detail` holds the query.
+ *
+ * @param query What the reader typed.
+ * @param option The option to test.
+ */
+export function matchOption(
+  query: string,
+  option: MatchableOption,
+): CommandPaletteMatchKind | undefined {
+  const needle = fold(query.trim())
+  if (needle === "") return undefined
+  const match = matchEntry(query, option)
+  if (match) return match.how
+  return detailHolds(needle, option) ? "detail" : undefined
+}
+
+/**
+ * The options that match `query`, best first, at most `limit` of them: the palette's default
+ * filter. Labels and aliases are matched by `matchEntry` from `@spy4x/platform/universal/text`,
+ * which ignores case, accents and word order, lets each query word start a word of the name, fixes
+ * one typo in a word of four letters or more, and reads a query typed in the other keyboard layout
+ * (ЙЦУКЕН and QWERTY) or the other alphabet (Cyrillic and Latin): `"combobx"` finds `"Combobox"`
+ * and `"ещфые"` finds `"Toast"`. Options whose `detail` alone holds the query come last. The input
+ * order breaks ties, and an empty query matches every option.
+ *
+ * @param options The options to search.
+ * @param query What the reader typed.
+ * @param limit The most results to return.
+ */
+export function matchOptions<T extends MatchableOption>(
+  options: readonly T[],
+  query: string,
+  limit = 50,
+): T[] {
+  const needle = fold(query.trim())
+  if (needle === "") return options.slice(0, limit)
+  const scored: { option: T; index: number; score: number }[] = []
+  options.forEach((option, index) => {
+    const match = matchEntry(query, option)
+    if (match) scored.push({ option, index, score: match.score })
+    else if (detailHolds(needle, option)) scored.push({ option, index, score: -1 })
+  })
+  return scored
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map((match) => match.option)
 }
 
 /**
@@ -221,23 +331,35 @@ interface Remote<T> {
  * behind does not scroll while it is open.
  *
  * Give `options` to have it filter a list itself, or `search` to ask a server, which it calls after
- * a pause in typing, cancelling a stale call. Results with a `group` are listed under headings. On
- * a phone the trigger is an icon button and the dialog fills the screen.
+ * a pause in typing, cancelling a stale call. The default filter forgives typos, word order, the
+ * other keyboard layout and the other alphabet ({@link matchOptions}), and each result carries how
+ * it matched in `data-match`, shown in words with `showMatch`. Results with a `group` are listed
+ * under headings. On a phone the trigger is an icon button unless `trigger` is `"field"`, and the
+ * dialog fills the screen. `defaultQuery` opens it with a query already typed.
  *
  * @param props See {@link CommandPaletteProps}.
  */
 export function CommandPalette<T extends CommandPaletteOption>(
   props: CommandPaletteProps<T>,
 ): JSX.Element {
-  const { hotkeys = DEFAULT_HOTKEYS, kbdLabels, dataE2E, class: className } = props
+  const {
+    hotkeys = DEFAULT_HOTKEYS,
+    kbdLabels,
+    dataE2E,
+    class: className,
+    trigger: triggerShape = "button",
+    showMatch = false,
+  } = props
   const labels = { ...defaultCommandPaletteLabels, ...props.labels }
+  const matchLabels = { ...defaultCommandPaletteMatchLabels, ...props.matchLabels }
+  const field = triggerShape === "field"
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   // What had focus when the palette opened: where focus goes back to while the trigger is hidden.
   const before = useRef<HTMLElement | null>(null)
   const id = useId()
-  const query = useSignal("")
+  const query = useSignal(props.defaultQuery ?? "")
   const activeIndex = useSignal(0)
   const remote = useSignal<Remote<T>>({ status: Status.IDLE, options: [] })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -258,7 +380,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const composedQuery = useComposedQuery(input, query.value, (text) => onTyped(text))
   const results = props.search !== undefined
     ? remote.value.options
-    : (props.filter ?? rankOptions)(props.options, composedQuery)
+    : (props.filter ?? matchOptions)(props.options, composedQuery)
   const groups = groupOptions(results)
   const flat = groups.flatMap((group) => group.options)
 
@@ -330,13 +452,18 @@ export function CommandPalette<T extends CommandPaletteOption>(
     unlock()
   }, [])
 
-  const open = () => {
+  /**
+   * Opens the palette with `typed` in the field, the caret after it, or else with `defaultQuery`
+   * selected.
+   */
+  const open = (typed?: string) => {
     if (dialog.current?.open) return
-    query.value = ""
+    const text = typed ?? latest.current.defaultQuery ?? ""
+    query.value = text
     activeIndex.value = 0
     if (latest.current.search !== undefined) {
       remote.value = { status: Status.IDLE, options: [] }
-      ask("", 0)
+      ask(text, 0)
     }
     // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses. The
     // lock is the one `Modal` holds too, counted: a page something else has already locked, such as
@@ -345,7 +472,22 @@ export function CommandPalette<T extends CommandPaletteOption>(
     lock.current ??= acquireScrollLock()
     before.current = focusBefore(document.activeElement as HTMLElement | null, document.body)
     dialog.current?.showModal()
-    input.current?.focus()
+    const box = input.current
+    if (!box) return
+    // The signal renders the text on the next frame; the field needs it now, to select it.
+    box.value = text
+    box.focus()
+    if (typed === undefined) box.select()
+    else box.setSelectionRange(text.length, text.length)
+  }
+
+  /** A printable key on a focused field-shaped trigger opens the palette with that key typed. */
+  const onTriggerKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLButtonElement>) => {
+    if (!field || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return
+    // A space presses the button, and a hotkey opens the palette the hotkey's way.
+    if ([...event.key].length !== 1 || event.key === " " || hotkeys.includes(event.key)) return
+    event.preventDefault()
+    open(event.key)
   }
   const close = () => dialog.current?.close()
   const choose = (option: T | undefined) => {
@@ -420,40 +562,55 @@ export function CommandPalette<T extends CommandPaletteOption>(
     ? undefined
     : hotkeys.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
 
-  const row = (option: T, index: number) => (
-    <li
-      key={option.id}
-      id={optionId(option)}
-      role="option"
-      aria-selected={index === active}
-      onClick={() => choose(option)}
-      // No pointer handler moves the highlight, as in `Combobox`: `aria-activedescendant` is where a
-      // screen reader is reading, and a pointer its user is not holding must not drag it around.
-      // The row under the pointer still lights up, in CSS, announcing nothing.
-      class={cn(
-        "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
-        // A touch target on a phone, however short its text.
-        "max-sm:min-h-11 max-sm:items-center",
-        index === active ? "bg-selected-soft text-selected" : "hover:bg-hover",
-      )}
-    >
-      <span class="min-w-0">
-        {
-          /* A long name stops at two lines and a long detail at one, so one result cannot push the
+  const row = (option: T, index: number) => {
+    const how = matchOption(composedQuery, option)
+    const shownMatch = showMatch && how !== undefined ? matchLabels[how] : undefined
+    return (
+      <li
+        key={option.id}
+        id={optionId(option)}
+        role="option"
+        aria-selected={index === active}
+        data-match={how}
+        onClick={() => choose(option)}
+        // No pointer handler moves the highlight, as in `Combobox`: `aria-activedescendant` is where a
+        // screen reader is reading, and a pointer its user is not holding must not drag it around.
+        // The row under the pointer still lights up, in CSS, announcing nothing.
+        class={join(
+          "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
+          // A touch target on a phone, however short its text.
+          "max-sm:min-h-11 max-sm:items-center",
+          index === active ? "bg-selected-soft text-selected" : "hover:bg-hover",
+        )}
+      >
+        <span class="min-w-0">
+          {
+            /* A long name stops at two lines and a long detail at one, so one result cannot push the
         rest off the screen. */
-        }
-        <span class="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]">
-          {option.label}
+          }
+          <span class="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]">
+            {option.label}
+          </span>
+          {option.detail !== undefined && (
+            <span class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]">
+              {option.detail}
+            </span>
+          )}
         </span>
-        {option.detail !== undefined && (
-          <span class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]">
-            {option.detail}
+        {(shownMatch !== undefined || option.hint !== undefined) && (
+          <span class="flex shrink-0 items-baseline gap-2">
+            {shownMatch !== undefined && (
+              // How the query found the result, in words: a typo fixed, the other layout.
+              <span class="rounded-md border border-subtle px-2 text-xs text-muted">
+                {shownMatch}
+              </span>
+            )}
+            {option.hint !== undefined && <span class="text-xs text-muted">{option.hint}</span>}
           </span>
         )}
-      </span>
-      {option.hint !== undefined && <span class="shrink-0 text-xs text-muted">{option.hint}</span>}
-    </li>
-  )
+      </li>
+    )
+  }
 
   let index = 0
   return (
@@ -461,25 +618,32 @@ export function CommandPalette<T extends CommandPaletteOption>(
       <button
         ref={trigger}
         type="button"
-        onClick={open}
+        onClick={() => open()}
+        onKeyDown={onTriggerKeyDown}
         aria-haspopup="dialog"
         aria-label={labels.placeholder}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
-        class={cn(
-          // An icon button on a phone; a field-shaped button with its placeholder and hotkey from
-          // `sm`.
-          "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground",
-          "sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:text-muted sm:hover:border-control lg:w-72",
+        class={join(
+          field
+            // A field-shaped button at every width, as wide as its container.
+            ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground"
+            // An icon button on a phone; a field-shaped button with its placeholder and hotkey
+            // from `sm`.
+            : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
           className,
         )}
       >
-        <IconSearch class="size-5 shrink-0 sm:size-4" />
-        <span class="hidden flex-1 text-left sm:inline">{labels.placeholder}</span>
+        <IconSearch class={field ? "size-4 shrink-0" : "size-5 shrink-0 sm:size-4"} />
+        <span
+          class={field ? "min-w-0 flex-1 truncate text-left" : "hidden flex-1 text-left sm:inline"}
+        >
+          {labels.placeholder}
+        </span>
         {firstHotkey !== undefined && (
           // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
           // also keeps it off the icon-only trigger a narrow screen gets.
-          <span class="hidden sm:contents">
+          <span class={field ? "contents" : "hidden sm:contents"}>
             <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
           </span>
         )}
@@ -498,7 +662,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
         onClick={(event) => {
           if (backdrop.isBackdropClick(event)) close()
         }}
-        class={cn(
+        class={join(
           "inset-x-0 top-16 bottom-auto mx-auto my-0 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-subtle bg-surface p-0 text-foreground shadow-2xl",
           "backdrop:bg-scrim backdrop:backdrop-blur-sm",
           // A full-screen sheet on a phone.
@@ -585,7 +749,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             role="listbox"
             aria-label={labels.search}
             aria-busy={busy ? "true" : undefined}
-            class={cn(
+            class={join(
               "max-h-96 overflow-y-auto max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1",
               flat.length > 0 && "p-2",
             )}

@@ -433,11 +433,16 @@ export {
   type CommandPaletteGroup,
   type CommandPaletteLabels,
   type CommandPaletteLocalProps,
+  type CommandPaletteMatchKind,
   type CommandPaletteOption,
   type CommandPaletteProps,
   type CommandPaletteRemoteProps,
   defaultCommandPaletteLabels,
+  defaultCommandPaletteMatchLabels,
   groupOptions,
+  type MatchableOption,
+  matchOption,
+  matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
