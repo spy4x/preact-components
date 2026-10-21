@@ -667,7 +667,6 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
  */
 function midSentence(entity: string): string {
   const [first = "", second = ""] = entity
-  return second !== "" && second === second.toLowerCase() && second !== second.toUpperCase()
-    ? first.toLowerCase() + entity.slice(1)
-    : entity
+  // Only a lowercase letter changes when upper-cased, so this is "the second letter is lowercase".
+  return second !== second.toUpperCase() ? first.toLowerCase() + entity.slice(1) : entity
 }
