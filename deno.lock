@@ -6,13 +6,13 @@
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2.3.3": "2.3.3",
     "jsr:@hono/hono@4.13.8": "4.13.8",
-    "jsr:@spy4x/email@^1.79.0": "1.79.0",
-    "jsr:@spy4x/net@^1.79.0": "1.79.0",
-    "jsr:@spy4x/platform@1.79.0": "1.79.0",
-    "jsr:@spy4x/time@1.79.0": "1.79.0",
-    "jsr:@spy4x/time@^1.79.0": "1.79.0",
-    "jsr:@spy4x/validation@1.79.0": "1.79.0",
-    "jsr:@spy4x/validation@^1.79.0": "1.79.0",
+    "jsr:@spy4x/email@^1.87.0": "1.87.0",
+    "jsr:@spy4x/net@^1.87.0": "1.87.0",
+    "jsr:@spy4x/platform@1.87.0": "1.87.0",
+    "jsr:@spy4x/time@1.87.0": "1.87.0",
+    "jsr:@spy4x/time@^1.87.0": "1.87.0",
+    "jsr:@spy4x/validation@1.87.0": "1.87.0",
+    "jsr:@spy4x/validation@^1.87.0": "1.87.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.1",
@@ -47,7 +47,7 @@
     "jsr:@std/uuid@1.1.2": "1.1.2",
     "jsr:@std/uuid@^1.0.9": "1.1.2",
     "npm:@axe-core/playwright@4.13.0": "4.13.0_playwright-core@1.64.0",
-    "npm:@opentelemetry/api@^1.9.0": "1.9.1",
+    "npm:@opentelemetry/api@^1.9.0": "1.10.0",
     "npm:@preact/signals-core@^1.12.1": "1.14.4",
     "npm:@preact/signals@^2.5.1": "2.11.3_preact@10.29.8",
     "npm:@tailwindcss/oxide@4.1.12": "4.1.12",
@@ -113,20 +113,20 @@
     "@hono/hono@4.13.8": {
       "integrity": "bbb566d9ebb81e74c0d7eeff1f9221ba9f3fda6f1832e5ca66cbddcecb2f7fec"
     },
-    "@spy4x/email@1.79.0": {
-      "integrity": "350a113267bce63a1d0ffedf8611e4e82760bf13f3cd511dd4167e204602160d"
+    "@spy4x/email@1.87.0": {
+      "integrity": "b28f88426cff87a673514bdb1461418a083e59a6f60229b115610e7f2276fc1f"
     },
-    "@spy4x/net@1.79.0": {
-      "integrity": "8cd19298c5a4294edaee55c77dc850f2bcf56da6bfba56919c80b441ca5db972"
+    "@spy4x/net@1.87.0": {
+      "integrity": "3a2bcaa5812578ebeabefb57b11b01f6dd6a5fba39e624607ff39a0986726ca3"
     },
-    "@spy4x/platform@1.79.0": {
-      "integrity": "b2d1b727860980d3e219876eac1e58bf107b0fbac1bd74869a5d045908744907",
+    "@spy4x/platform@1.87.0": {
+      "integrity": "88cb9cf80408d6204de8caa7d8603f65534a9d74423017db4e0d9cc9ae1b125d",
       "dependencies": [
         "jsr:@hono/hono",
         "jsr:@spy4x/email",
         "jsr:@spy4x/net",
-        "jsr:@spy4x/time@^1.79.0",
-        "jsr:@spy4x/validation@^1.79.0",
+        "jsr:@spy4x/time@^1.87.0",
+        "jsr:@spy4x/validation@^1.87.0",
         "jsr:@std/crypto",
         "jsr:@std/encoding@1.0.11",
         "jsr:@std/path@1.1.6",
@@ -135,11 +135,11 @@
         "npm:arktype"
       ]
     },
-    "@spy4x/time@1.79.0": {
-      "integrity": "81fa7e699160f28e749b0e44c52c8fc5672a9030bf35bb39f8fc0fb2c7e442ba"
+    "@spy4x/time@1.87.0": {
+      "integrity": "a46222469c9878ed0a66d54bd4136fb1892cfde16e42651d28a04b50eeecaea7"
     },
-    "@spy4x/validation@1.79.0": {
-      "integrity": "f30422f2e093dd48301dfc689bd6b964192b66546dd6d179acbae62c40ec44ca",
+    "@spy4x/validation@1.87.0": {
+      "integrity": "b65670c72d40ca7e9ab3abdf642518669fa3076cac1686f8d6452b0f107c4943",
       "dependencies": [
         "npm:arktype"
       ]
@@ -392,8 +392,8 @@
         "minipass"
       ]
     },
-    "@opentelemetry/api@1.9.1": {
-      "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="
+    "@opentelemetry/api@1.10.0": {
+      "integrity": "sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ=="
     },
     "@preact/signals-core@1.14.4": {
       "integrity": "sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA=="
@@ -623,9 +623,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@spy4x/platform@1.79.0",
-      "jsr:@spy4x/time@1.79.0",
-      "jsr:@spy4x/validation@1.79.0",
+      "jsr:@spy4x/platform@1.87.0",
+      "jsr:@spy4x/time@1.87.0",
+      "jsr:@spy4x/validation@1.87.0",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/encoding@1.0.11",
       "jsr:@std/expect@1.0.20",

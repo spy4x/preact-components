@@ -11,6 +11,7 @@
     "./card": "./card.tsx",
     "./checkbox": "./checkbox.tsx",
     "./coachmark": "./coachmark.tsx",
+    "./color-field": "./color-field.tsx",
     "./confirm-dialog": "./confirm-dialog.tsx",
     "./copy-block": "./copy-block.tsx",
     "./copy-button": "./copy-button.tsx",
