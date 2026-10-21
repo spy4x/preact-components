@@ -27,6 +27,20 @@ describe("FeatureCard", () => {
     expect(html).toMatch(/<a href="\/features#sign-in" aria-describedby="sign-in"[^>]*>Learn more /)
   })
 
+  it("gives the link the library's focus ring, as a Button has", () => {
+    const html = render(<FeatureCard id="sign-in" title="Sign-in" href="/x">Text.</FeatureCard>)
+    const link = html.match(/<a [^>]*>/)?.[0] ?? ""
+    for (
+      const utility of [
+        "focus-visible:outline-hidden",
+        "focus-visible:ring-2",
+        "focus-visible:ring-focus",
+        "focus-visible:ring-offset-2",
+        "focus-visible:ring-offset-focus",
+      ]
+    ) expect(link).toContain(utility)
+  })
+
   it("prints the link label it is given in place of the default", () => {
     const html = render(
       <FeatureCard id="sign-in" title="Sign-in" href="/x" linkLabel="Read the guide">

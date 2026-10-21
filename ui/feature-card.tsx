@@ -85,7 +85,7 @@ export function FeatureCard(
           <a
             href={href}
             aria-describedby={id}
-            class="mt-auto inline-flex items-center gap-1 self-start text-sm font-medium text-foreground hover:underline"
+            class="mt-auto inline-flex items-center gap-1 self-start rounded-sm text-sm font-medium text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
           >
             {linkLabel} <IconArrowRight class="size-4" />
           </a>
