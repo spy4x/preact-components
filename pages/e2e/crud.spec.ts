@@ -817,6 +817,7 @@ export const specs: readonly Spec[] = [
     },
   },
   ...loadingAndNarrowSpecs(),
+  ...stringIdAndNumberSpecs(),
 ]
 
 /**
@@ -920,6 +921,59 @@ function loadingAndNarrowSpecs(): Spec[] {
         } finally {
           await context.close()
         }
+      },
+    },
+  ]
+}
+
+/**
+ * `CrudList` and `CrudEditor` over a real `buildModelStore` keyed by UUID v7 strings, and a
+ * `NumberField` that saves the number typed and clears to `null` (#861, #863).
+ */
+function stringIdAndNumberSpecs(): Spec[] {
+  return [
+    {
+      name:
+        "CrudList and CrudEditor: rows keyed by UUID strings load, switch, save on Enter as the number typed",
+      pageId: "crud",
+      run: async (page) => {
+        const demo = page.locator(`#demo-CrudEditor [data-e2e="uuid-demo"]`)
+        const rows = demo.locator("tbody tr")
+        const form = demo.locator("form")
+        const name = form.getByLabel("Name", { exact: true })
+        const members = form.getByLabel("Members", { exact: true })
+
+        await rows.filter({ hasText: "019a1f2e-6c00-7a10-8b2c-3d4e5f607181" }).waitFor()
+        await waitForValue(page, name, "Billing")
+
+        // Switching rows by a string id loads that row, not the previous one.
+        await demo.getByRole("button", { name: "Edit Payroll" }).click()
+        await waitForValue(page, name, "Payroll")
+        await waitForValue(page, members, "5")
+
+        // "1e3" never reads back unchanged, so no keystroke commits it; Enter must.
+        await members.fill("1e3")
+        await members.press("Enter")
+        await rows.filter({ hasText: "Payroll" }).filter({ hasText: "1000" }).waitFor()
+        await waitForValue(page, members, "1000")
+        await rows.filter({ hasText: "Billing" }).filter({ hasText: "3" }).waitFor()
+      },
+    },
+    {
+      name: "NumberField: an emptied box puts null in the model, not 0",
+      pageId: "crud",
+      run: async (page) => {
+        const card = page.locator("#demo-NumberField")
+        const box = card.getByLabel("Members", { exact: true })
+        const model = card.locator(`[data-e2e="model"]`)
+
+        await model.filter({ hasText: "members in the model: 4" }).waitFor()
+        await box.fill("")
+        await box.blur()
+        await model.filter({ hasText: "members in the model: null" }).waitFor()
+        await box.fill("007")
+        await box.press("Enter")
+        await model.filter({ hasText: "members in the model: 7" }).waitFor()
       },
     },
   ]
