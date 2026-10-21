@@ -126,7 +126,7 @@ function DeferredSignups() {
   }, [])
   if (!loaded.value) return <p class="text-sm text-muted">Loading sign-ups…</p>
   return (
-    <div ref={ref} data-e2e="chart-deferred" class="min-h-40">
+    <div ref={ref} data-e2e="chart-deferred" class="min-h-16">
       {inView
         ? (
           <LineChart
