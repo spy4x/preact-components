@@ -50,7 +50,7 @@ export interface CrudListBaseProps<M extends CrudModel> {
   /** Page title text: the `PageHeader` title, and its tooltip when `titleSlot` replaces it. */
   title: string
   /**
-   * Drawn inside the heading in place of the title and its badge — for the parent entity, say.
+   * Drawn inside the heading in place of the title, before the badge — for the parent entity, say.
    * Give it `min-w-0` and truncate inside, as `PageHeader`'s `heading` asks.
    */
   titleSlot?: ComponentChildren
@@ -268,13 +268,13 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
       <PageHeader
         title={props.title}
         headingLevel={props.headingLevel}
-        heading={props.titleSlot ?? (
+        heading={
           <span class="flex min-w-0 items-center gap-2">
-            <span class="truncate">{props.title}</span>
+            {props.titleSlot ?? <span class="truncate">{props.title}</span>}
             {props.badge !== false &&
               (props.badge ?? <Badge color="gray" class="shrink-0" text={String(count)} />)}
           </span>
-        )}
+        }
         action={showAdd && (
           <PageAction label={props.addLabel ?? "Add new"} Icon={IconPlus} href={props.addHref} />
         )}

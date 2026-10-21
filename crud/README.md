@@ -137,7 +137,7 @@ The interfaces here describe the slice actually consumed, and nothing else.
 | `rows`                                   | —                               | a plain signal instead — nested, or a read-only collection           |
 | `error`                                  | `store.op.list`                 | the banner source for a signal-backed list                           |
 | `loading`                                | —                               | with `rows`: true while they are on their way; holds the empty state |
-| `title` / `titleSlot`                    | —                               | the `PageHeader` title, or a slot drawn as its heading               |
+| `title` / `titleSlot`                    | —                               | the `PageHeader` title, or a slot in its place before the badge      |
 | `badge`                                  | non-deleted count               | badge after the title; `false` hides it                              |
 | `match`                                  | —                               | whether one word matches a row; words are ANDed                      |
 | `header`, `row`                          | —                               | the table's cells, excluding the actions column                      |
@@ -253,23 +253,23 @@ The harness is the six parts, once:
    This package no longer re-exports them (#359): `formatTimestamp` was `formatTime` under this
    package's name.
 
-| Prop             | Default              | Notes                                                             |
-| ---------------- | -------------------- | ----------------------------------------------------------------- |
-| `blank`          | —                    | the add-mode row; the row type is inferred from it                |
-| `schema`         | —                    | arktype schema validated on every change; omit if there is none   |
-| `entity`         | —                    | "Add **Region**", "Region not found", dependency sentence         |
-| `title`          | `Add/Edit <entity>`  | the `PageHeader` title; a non-string is drawn as its heading      |
-| `canChange`      | `true`               | a port, because the library has no auth; `false` leaves Cancel    |
-| `archive`        | no toggle            | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
-| `onCreated`      | —                    | navigate where the created row belongs                            |
-| `validate`       | —                    | extra checks after the schema                                     |
-| `cancelHref`     | —                    | where Cancel points                                               |
-| `saveErrorLabel` | `"Could not save"`   | what a failed save is introduced with                             |
-| `saveLabel`      | `"Save"`             | label of the Save button; `cancelLabel` is Cancel's               |
-| `notFoundLabel`  | `<entity> not found` | shown when `editId` names a row the store does not hold           |
-| `headingLevel`   | `1`                  | level of the title's heading, for a page that has its `<h1>`      |
-| `notice`         | —                    | slot between the field grid and the footer                        |
-| `footerSlot`     | —                    | slot at the start of the footer                                   |
+| Prop             | Default                            | Notes                                                             |
+| ---------------- | ---------------------------------- | ----------------------------------------------------------------- |
+| `blank`          | —                                  | the add-mode row; the row type is inferred from it                |
+| `schema`         | —                                  | arktype schema validated on every change; omit if there is none   |
+| `entity`         | —                                  | "Add **Region**", "Region not found", dependency sentence         |
+| `title`          | `Add/Edit <entity>`, sentence case | the `PageHeader` title; a non-string is drawn as its heading      |
+| `canChange`      | `true`                             | a port, because the library has no auth; `false` leaves Cancel    |
+| `archive`        | no toggle                          | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
+| `onCreated`      | —                                  | navigate where the created row belongs                            |
+| `validate`       | —                                  | extra checks after the schema                                     |
+| `cancelHref`     | —                                  | where Cancel points                                               |
+| `saveErrorLabel` | `"Could not save"`                 | what a failed save is introduced with                             |
+| `saveLabel`      | `"Save"`                           | label of the Save button; `cancelLabel` is Cancel's               |
+| `notFoundLabel`  | `<entity> not found`               | shown when `editId` names a row the store does not hold           |
+| `headingLevel`   | `1`                                | level of the title's heading, for a page that has its `<h1>`      |
+| `notice`         | —                                  | slot between the field grid and the footer                        |
+| `footerSlot`     | —                                  | slot at the start of the footer                                   |
 
 ## Field rows
 

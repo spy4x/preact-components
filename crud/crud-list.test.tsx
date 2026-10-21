@@ -477,6 +477,18 @@ describe("CrudList", () => {
     expect(html).not.toContain(`class="truncate">Regions<`)
   })
 
+  it("keeps the count badge, or the app's own badge, beside a titleSlot", () => {
+    const header = (html: string) => html.slice(html.indexOf("<header"), html.indexOf("</header>"))
+    const slot = <span class="truncate">Regions for site ABC</span>
+
+    const counted = header(storeList({ store: fakeStore(), titleSlot: slot }))
+    expect(counted).toContain("Regions for site ABC")
+    expect(counted).toMatch(/Regions for site ABC<\/span><span class="[^"]*">2<\/span>/)
+
+    const own = header(storeList({ store: fakeStore(), titleSlot: slot, badge: <b>new</b> }))
+    expect(own).toContain("Regions for site ABC</span><b>new</b>")
+  })
+
   it("starts with a PageHeader whose primary action is the add link", () => {
     const html = storeList({ store: fakeStore(), addHref: "/regions/add", addLabel: "Add region" })
     const header = html.slice(html.indexOf("<header"), html.indexOf("</header>"))
