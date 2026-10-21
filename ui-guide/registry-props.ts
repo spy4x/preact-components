@@ -7,10 +7,12 @@
  * `deno doc` run: a snippet names values it never declares (`onSave={save}`, `rows={rows}`), so
  * type-checking it would need a declaration for each.
  *
- * A component whose props type this reader cannot list in full is **open**: it extends a type from
- * outside the packages (`JSX.HTMLAttributes`), uses an index signature or a mapped type, or names a
- * type `deno doc` did not report. Any attribute may be valid on it, so it is skipped, and
- * {@link propsReport} counts how many were.
+ * The test hands `deno doc` Preact's own type files too, so a props type that extends
+ * `JSX.ButtonHTMLAttributes` is read in full, and a hyphenated attribute (`data-*`, `aria-*`) is
+ * allowed everywhere, as TypeScript allows it. A component whose props type this reader still
+ * cannot list in full is **open**: it uses an index signature or a mapped type, or names a type
+ * `deno doc` did not report. Any attribute may be valid on it, so it is skipped, and
+ * {@link propsReport} names it.
  *
  * @module
  */
@@ -41,33 +43,87 @@ export function declarationsByName(
   symbolsByFile: Iterable<DocSymbol[]>,
 ): Map<string, DocDeclaration[]> {
   const byName = new Map<string, DocDeclaration[]>()
-  for (const symbols of symbolsByFile) {
+  const add = (symbols: DocSymbol[]) => {
     for (const { name, declarations } of symbols) {
       for (const declaration of declarations) {
         if (declaration.kind === "reference") continue
-        byName.set(name, [...(byName.get(name) ?? []), declaration])
+        // A namespace's members (Preact's `JSX.HTMLAttributes`) are listed by their own name too.
+        // deno-lint-ignore no-explicit-any
+        if (declaration.kind === "namespace") add((declaration as any).def?.elements ?? [])
+        else byName.set(name, [...(byName.get(name) ?? []), declaration])
       }
     }
   }
+  for (const symbols of symbolsByFile) add(symbols)
   return byName
 }
 
 /**
- * The props a component takes, read from its first parameter's type.
+ * The props a component takes, read from the first parameter of every way it can be called: a
+ * function declaration, or a `const` whose declared type is a function type or an interface of call
+ * signatures (`export const Button: ButtonOverloads = forwardRef(…)`).
  *
  * @param name The component's export name.
  * @param byName {@link declarationsByName}.
- * @returns The prop names; `null` when the type is open or the component is not a function `deno
- *   doc` reported.
+ * @returns The prop names, every call signature's together; `null` when a props type is open or no
+ *   call signature can be read.
  */
 export function propNames(name: string, byName: Map<string, DocDeclaration[]>): PropNames {
-  const fn = byName.get(name)?.find((declaration) => declaration.kind === "function")
-  // deno-lint-ignore no-explicit-any
-  const params = (fn as any)?.def?.params as { tsType?: TsType }[] | undefined
-  if (!fn || !params) return null
-  if (params.length === 0) return new Set()
+  const declaration = byName.get(name)?.find((d) => d.kind === "function" || d.kind === "variable")
+  if (!declaration) return null
+  const file = declaration.location?.filename ?? ""
   const context = { byName, seen: new Set<string>() }
-  return params[0].tsType ? namesOf(params[0].tsType, fn.location?.filename ?? "", context) : null
+  // deno-lint-ignore no-explicit-any
+  const def = (declaration as any).def
+  const signatures = declaration.kind === "function"
+    ? [def?.params as Param[] | undefined]
+    : callSignatures(def?.tsType, file, context)
+  if (signatures.length === 0) return null
+  const all = new Set<string>()
+  for (const params of signatures) {
+    if (!params) return null
+    if (params.length === 0) continue
+    const names = params[0].tsType ? namesOf(params[0].tsType, file, context) : null
+    if (names === null) return null
+    for (const prop of names) all.add(prop)
+  }
+  return all
+}
+
+/** One parameter in `deno doc` output. */
+interface Param {
+  tsType?: TsType
+}
+
+/** The parameter lists a variable's declared type can be called with; empty when it is not callable. */
+function callSignatures(type: TsType | undefined, file: string, context: WalkContext): Param[][] {
+  if (!type) return []
+  if (type.kind === "fnOrConstructor") return [type.value.params ?? []]
+  if (type.kind !== "typeRef") return []
+  const { typeName, resolution } = type.value as {
+    typeName: string
+    resolution?: { kind: string; specifier?: string }
+  }
+  const where = whereDeclared(file, resolution)
+  const candidates = typesNamed(typeName, context).filter((d) =>
+    d.kind === "interface" || d.kind === "typeAlias"
+  )
+  const here = candidates.filter((d) => d.location?.filename === where)
+  // deno-lint-ignore no-explicit-any
+  const found = (here.length > 0 ? here : candidates)[0] as any
+  if (!found) return []
+  if (found.kind === "typeAlias") return callSignatures(found.def.tsType, where, context)
+  return (found.def.callSignatures ?? []).map((signature: { params?: Param[] }) =>
+    signature.params ?? []
+  )
+}
+
+/**
+ * The declarations of a type name; a qualified name (`JSX.HTMLAttributes`) is looked up by its last
+ * part, the way {@link declarationsByName} lists namespace members.
+ */
+function typesNamed(typeName: string, context: WalkContext): DocDeclaration[] {
+  return context.byName.get(typeName) ?? context.byName.get(typeName.split(".").at(-1)!) ?? []
 }
 
 /** What the walk carries: every declaration by name, and the types already walked. */
@@ -131,7 +187,7 @@ function namedType(typeName: string, file: string, context: WalkContext): PropNa
   const key = `${typeName}|${file}`
   if (context.seen.has(key)) return new Set()
   context.seen.add(key)
-  const candidates = (context.byName.get(typeName) ?? []).filter((d) =>
+  const candidates = typesNamed(typeName, context).filter((d) =>
     d.kind === "interface" || d.kind === "typeAlias"
   )
   const here = candidates.filter((d) => d.location?.filename === file)
@@ -235,11 +291,13 @@ function skipBraces(text: string, start: number): number {
 }
 
 /**
- * The prop names one props row documents: a row may name several (`busy / busyLabel`), and one
- * that documents a field of a prop (`images[].webpSrc`) names that prop.
+ * The prop names one props row documents: a row may name several (`busy / busyLabel`, `id, title`),
+ * one that documents a field of a prop (`images[].webpSrc`) names that prop, and a pattern such as
+ * `data-*` or `…` names none.
  */
 export function rowNames(row: string): string[] {
-  return row.split("/").map((name) => name.trim().split(/[.[]/)[0]).filter(Boolean)
+  return row.split(/[/,]/).map((name) => name.trim().split(/[.[]/)[0])
+    .filter((name) => /^[A-Za-z_$][\w$]*$/.test(name))
 }
 
 /** Attributes Preact handles itself, valid on every component whatever its props. */
@@ -291,7 +349,12 @@ export function propsReport(
       const names = allowed(tag.name)
       if (!names) continue
       for (const attribute of tag.attributes) {
-        if (names.has(attribute) || FRAMEWORK_ATTRIBUTES.has(attribute)) continue
+        // TypeScript checks no hyphenated JSX attribute (`data-*`, `aria-*`) against the props.
+        if (
+          names.has(attribute) || FRAMEWORK_ATTRIBUTES.has(attribute) || attribute.includes("-")
+        ) {
+          continue
+        }
         problems.push(
           `${card.name}'s snippet writes <${tag.name} ${attribute}>, and ${tag.name} has no prop ${attribute}`,
         )
