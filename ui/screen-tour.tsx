@@ -107,6 +107,14 @@ const layer = "[grid-area:1/1] motion-safe:transition-[opacity,visibility] motio
 const shown = "opacity-100"
 const gone = "invisible opacity-0"
 
+/**
+ * The panels' stack, and a panel that is not selected. Only where scripts run (`scripting:
+ * enabled`): there the server markup already stacks the texts in one cell, so hydration moves
+ * nothing, while a reader without scripts gets every step's text in a column.
+ */
+const panelStack = "flex flex-col gap-6 [@media(scripting:enabled)]:grid"
+const panelGone = "[@media(scripting:enabled)]:invisible [@media(scripting:enabled)]:opacity-0"
+
 const panelClass =
   "flex flex-col gap-1 rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 
@@ -141,8 +149,8 @@ export function nextStepIndex(key: string, current: number, count: number): numb
  *
  * The tabs are a column from 1024 px and a row that scrolls inside itself below. The tab list is one
  * Tab stop; the arrow keys move and select, Home and End jump. The server renders the first step
- * selected and every step's caption and text, so a reader without JavaScript sees them all; once
- * hydrated, only the selected step's text shows. Only the first screenshot is in the HTML (and so
+ * selected and every step's caption and text: under `scripting: none` they all show, and where
+ * scripts run only the selected one does, already in the server markup, so hydration shifts nothing. Only the first screenshot is in the HTML (and so
  * eager); another loads the first time its step is picked. Screenshots and texts cross-fade in
  * 150 ms, and switch at once under reduced motion. "View full size" links to the image and, once
  * hydrated, opens it in `Lightbox`, whose Previous and Next move the tour along with it.
@@ -188,6 +196,8 @@ export function ScreenTour(
   const selectedIndex = Math.max(0, steps.findIndex((step) => step.id === selected.value))
   const current = steps[selectedIndex]
   const isHydrated = hydrated.value
+  // The `id` of the group label in force for each tab, so the tab names its group as its description.
+  let groupLabelId: string | undefined
 
   /** Select the step at `index` because the person asked for it. */
   const pick = (index: number) => {
@@ -228,9 +238,17 @@ export function ScreenTour(
         {steps.map((step, index) => {
           const isSelected = index === selectedIndex
           const startsGroup = step.group !== undefined && step.group !== steps[index - 1]?.group
+          if (startsGroup) groupLabelId = `${step.id}-group`
+          if (step.group === undefined) groupLabelId = undefined
           return [
             startsGroup && (
-              <div key={`${step.id}-group`} role="none" aria-hidden="true" class={groupClass}>
+              <div
+                key={`${step.id}-group`}
+                id={`${step.id}-group`}
+                role="none"
+                aria-hidden="true"
+                class={groupClass}
+              >
                 {step.group}
               </div>
             ),
@@ -241,6 +259,7 @@ export function ScreenTour(
               id={tabId(step.id)}
               aria-selected={isSelected}
               aria-controls={panelId(step.id)}
+              aria-describedby={groupLabelId}
               tabindex={isSelected ? 0 : -1}
               class={join(tabBase, isSelected ? tabSelected : tabIdle)}
               onClick={(event) => {
@@ -256,30 +275,33 @@ export function ScreenTour(
         })}
       </div>
       <div class="flex min-w-0 flex-col gap-4">
-        <FrameChrome variant={frame} title={browserUrl}>
-          <div class={join("grid", frame === "phone" && "h-full")}>
-            {steps.map((step, index) => {
-              if (!visited.value.includes(step.id)) return null
-              const isSelected = index === selectedIndex
-              return (
-                <img
-                  key={step.id}
-                  src={step.image.src}
-                  srcset={step.image.srcset}
-                  sizes={step.image.sizes}
-                  alt={step.image.alt}
-                  width={step.image.width}
-                  height={step.image.height}
-                  decoding="async"
-                  fetchpriority={index === 0 ? fetchPriority : undefined}
-                  data-screen-tour-image={step.id}
-                  class={join(imageClass, layer, isSelected ? shown : gone)}
-                />
-              )
-            })}
-          </div>
-        </FrameChrome>
-        <div class={isHydrated ? "grid" : "flex flex-col gap-6"}>
+        {/* From 1024 px a phone stays 16 rem wide, so it never towers over the column of tabs. */}
+        <div class={frame === "phone" ? "w-full lg:mx-auto lg:max-w-64" : undefined}>
+          <FrameChrome variant={frame} title={browserUrl}>
+            <div class={join("grid", frame === "phone" && "h-full")}>
+              {steps.map((step, index) => {
+                if (!visited.value.includes(step.id)) return null
+                const isSelected = index === selectedIndex
+                return (
+                  <img
+                    key={step.id}
+                    src={step.image.src}
+                    srcset={step.image.srcset}
+                    sizes={step.image.sizes}
+                    alt={step.image.alt}
+                    width={step.image.width}
+                    height={step.image.height}
+                    decoding="async"
+                    fetchpriority={index === 0 ? fetchPriority : undefined}
+                    data-screen-tour-image={step.id}
+                    class={join(imageClass, layer, isSelected ? shown : gone)}
+                  />
+                )
+              })}
+            </div>
+          </FrameChrome>
+        </div>
+        <div class={panelStack}>
           {steps.map((step, index) => {
             const isSelected = index === selectedIndex
             return (
@@ -288,8 +310,10 @@ export function ScreenTour(
                 role="tabpanel"
                 id={panelId(step.id)}
                 aria-labelledby={tabId(step.id)}
-                tabindex={0}
-                class={join(panelClass, isHydrated && layer, isHydrated && !isSelected && gone)}
+                // Once hydrated, a fading panel leaves the Tab order at once (#950).
+                tabindex={isHydrated && !isSelected ? -1 : 0}
+                inert={isHydrated && !isSelected}
+                class={join(panelClass, layer, !isSelected && panelGone)}
               >
                 <p class="text-sm text-muted">{step.image.alt}</p>
                 {step.text !== undefined && <p class="text-base text-foreground">{step.text}</p>}
@@ -299,7 +323,7 @@ export function ScreenTour(
         </div>
         <a
           href={current.image.src}
-          class={buttonClasses("secondary", "md", "self-start")}
+          class={buttonClasses("secondary", "md", "min-h-11 self-start sm:min-h-9")}
           onClick={(event) => {
             event.preventDefault()
             lightboxOpen.value = true
