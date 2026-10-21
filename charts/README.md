@@ -3,9 +3,9 @@
 Charts for Preact that render complete on the server and become interactive in the browser, plus
 the axis and loading helpers behind them.
 
-- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DonutChart`, `Kpi`,
-  `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a native
-  tooltip on every point.
+- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DotPlot`, `DonutChart`,
+  `Kpi`, `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
+  native tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
   tooltip with its label, value and share, by pointer and by keyboard. In both, ArrowDown and
@@ -52,7 +52,8 @@ the axis and loading helpers behind them.
 | Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                     |
 | ------------ | ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                                       |
+| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                  |
+| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                   |
 | `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                              |
 | `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                                       |
 | `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                |
@@ -190,10 +191,14 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   behind a bar or an empty donut. Each is a theme variable with an inline fallback, so it works with
   or without `theme/`'s stylesheet.
 
-### Bars and DonutChart (`./bars`, `./donut-chart`)
+### Bars, DotPlot and DonutChart (`./bars`, `./dot-plot`, `./donut-chart`)
 
 - `barPercent(value, top)` is a bar's width as a percentage of the longest bar, clamped to
   `0…100`; a non-finite or negative value, or a `top` of `0` or less, gives `0`.
+- `barTotal(datum)` is a row's total: its `value`, or the sum of a stacked row's finite, positive
+  segments.
+- `dotPercent(value, domain)` is a `DotPlot` position as a percentage of `[low, high]`, clamped to
+  `0…100`; an empty, reversed or non-finite domain gives `0`.
 - `donutGeometry(data, { colors, emptyColor })` is `DonutChart`'s slice maths: each slice's share,
   printed percent, colour and start and end, the total, and a ready `conic-gradient(…)` value.
   Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.

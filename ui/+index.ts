@@ -515,6 +515,8 @@ export {
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { type StepItem, Steps, type StepsProps } from "./steps.tsx"
+export { Explorable, type ExplorableProps } from "./explorable.tsx"
+export { Slider, sliderFraction, type SliderMark, type SliderProps } from "./slider.tsx"
 export { WindowFrame, type WindowFrameProps, type WindowFrameVariant } from "./window-frame.tsx"
 export {
   type DateRangeChoice,

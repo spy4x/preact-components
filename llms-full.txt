@@ -29,9 +29,9 @@ More: live guide https://spy4x.github.io/preact-components/ · the full package 
 Charts for Preact that render complete on the server and become interactive in the browser, plus
 the axis and loading helpers behind them.
 
-- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DonutChart`, `Kpi`,
-  `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a native
-  tooltip on every point.
+- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DotPlot`, `DonutChart`,
+  `Kpi`, `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
+  native tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
   tooltip with its label, value and share, by pointer and by keyboard. In both, ArrowDown and
@@ -78,7 +78,8 @@ the axis and loading helpers behind them.
 | Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                     |
 | ------------ | ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                                       |
+| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                  |
+| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                   |
 | `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                              |
 | `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                                       |
 | `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                |
@@ -216,10 +217,14 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   behind a bar or an empty donut. Each is a theme variable with an inline fallback, so it works with
   or without `theme/`'s stylesheet.
 
-### Bars and DonutChart (`./bars`, `./donut-chart`)
+### Bars, DotPlot and DonutChart (`./bars`, `./dot-plot`, `./donut-chart`)
 
 - `barPercent(value, top)` is a bar's width as a percentage of the longest bar, clamped to
   `0…100`; a non-finite or negative value, or a `top` of `0` or less, gives `0`.
+- `barTotal(datum)` is a row's total: its `value`, or the sum of a stacked row's finite, positive
+  segments.
+- `dotPercent(value, domain)` is a `DotPlot` position as a percentage of `[low, high]`, clamped to
+  `0…100`; an empty, reversed or non-finite domain gives `0`.
 - `donutGeometry(data, { colors, emptyColor })` is `DonutChart`'s slice maths: each slice's share,
   printed percent, colour and start and end, the total, and a ready `conic-gradient(…)` value.
   Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.
@@ -902,7 +907,7 @@ actions column, empty state (on the real `buildModelStore` too) and paging (`cru
 
 # `@spy4x/preact-icons`
 
-Merged icon set. 124 exports: 123 glyphs, one named export each, plus `IconLoading`, an alias of
+Merged icon set. 125 exports: 124 glyphs, one named export each, plus `IconLoading`, an alias of
 `IconSpinner`. No runtime dependencies beyond Preact.
 
 ```tsx
@@ -964,12 +969,12 @@ surface; mixing them is visible at small sizes.
 
 | Family                         | Count | Notes                                                                                                                                                                        |
 | ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Heroicons (v1 or v2)           | 73    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
+| Heroicons (v1 or v2)           | 74    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (7 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
 | Feather and/or Lucide outlines | 26    | round caps and joins; 17 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
 | Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
 | Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-The table is a partition of all 123 glyphs: every row above is disjoint from every other, the
+The table is a partition of all 124 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
@@ -1017,13 +1022,13 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 123 glyphs, **all 123 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Of the 124 glyphs, **all 124 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
 or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 31
 replaced in #233 also the upstream file name and version.
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
 
-Five glyphs were added after the merge, straight from a pack rather than from a source app:
+Six glyphs were added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
 ([issue #381](https://github.com/spy4x/preact-components/issues/381)); `IconCopy` is Feather's
 `copy` and `IconPen` Feather's `edit-2`, a plain pen
@@ -1032,7 +1037,10 @@ so they sit next to `IconStar`, Feather's `star`, at the same `stroke-2` weight.
 Heroicons v2's `exclamation-circle` (24, outline), the glyph of `Notice`'s danger tone
 ([issue #552](https://github.com/spy4x/preact-components/issues/552)), drawn at `stroke-1.5` like
 `IconInformationCircle` beside it. `IconSprout` is Lucide's `sprout`, the glyph a brand mark tile
-(`BrandMark` in `@spy4x/preact-ui`) can hold (spy4x/template#444).
+(`BrandMark` in `@spy4x/preact-ui`) can hold (spy4x/template#444). `IconAdjustmentsHorizontal` is
+Heroicons v2's `adjustments-horizontal` (24, outline), drawn at `stroke-2`, the mark of an
+interactive figure (`Explorable` in `@spy4x/preact-ui`,
+[issue #958](https://github.com/spy4x/preact-components/issues/958)).
 
 ### Brand marks
 
@@ -4782,12 +4790,13 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twenty-three exports.** Most components pass a caller's
+- **A `class` is merged, except on twenty-five exports.** Most components pass a caller's
   `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
   of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
   `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `ScreenTour`, `PricingTable`,
   `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
-  `Combobox` (with its `inputClass` and `listboxClass`), `Modal` and `Toastr` (#943) use `join`
+  `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
+  `Slider` (#958) use `join`
   instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
   `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
@@ -4854,6 +4863,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                                       |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                                               |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                                                                                                                      |
+| `Explorable`          | `explorable`           | `title`, `children` (the result), `lead?`, `controls?` (in a `<fieldset>` disabled until live), `caption?` (`<figcaption>`), `live?` (default: on once hydrated), `noScriptNote?`, `interactiveLabel?`, `id?`, `class?` — a `<figure>` for an interactive figure                                                                                                    |
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                                              |
 | `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                                               |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                                                 |
@@ -4900,6 +4910,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
 | `ShortcutsDialog`     | `shortcuts-dialog`     | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                                                                                                                                                                                    |
+| `Slider`              | `slider`               | `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`                                                                                                                                         |
 | `SortableList`        | `sortable-list`        | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                                                                                                                                                                                           |
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                                                                                                          |
@@ -7293,6 +7304,11 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### Slider (`./slider`)
+
+- `sliderFraction(value, min, max)` is where a value sits along a `Slider`'s track, from `0` to
+  `1`, clamped; a range with no width or a non-finite bound gives `0`.
 
 ### ScreenTour (`./screen-tour`)
 
