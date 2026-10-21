@@ -222,6 +222,7 @@ An app chooses only its brand hue, its destinations and its content.
 | Author and date on a public page | `PageHero`'s `author` and `updated`: one muted `text-sm` line under the buttons, "By" with the name linked to the author's page, "Updated" with the day as a `<time datetime>`. Never above the title. |
 | Status                           | `Badge` with a word, or `StatusMark` with icon and word. Never a coloured dot alone.                                                                                                                   |
 | A row of chips                   | `ToggleChips` for filters an island owns, one or many pressed; `RadioChips` for one choice that must work without JavaScript.                                                                          |
+| A colour                         | `ColorField`: the 16 `COLOR_PRESETS`, Custom last with a hex field, and a live sample. Text on a colour is black or white by `readableTextColor`.                                                      |
 
 `RadioChips` draws the same chip on native radios in a `<fieldset>` named by its `<legend>`, so it
 renders and switches server-side: the browser keeps the choice, arrow keys move it within one tab
