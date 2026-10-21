@@ -2266,18 +2266,21 @@ function fakeInstallWindow() {
 /**
  * One `createInstallPrompt` store on fake ports, and the card it draws. Focus returns to the state
  * line when the card leaves. "Fail the next Not now" makes the stored flag's next write reject.
+ * With `unmountKey`, pressing U inside the card makes the caller unmount it rather than hide it.
  */
 function InstallCase(
-  { name, navigator, standalone, offer, failToggle }: {
+  { name, navigator, standalone, offer, failToggle, unmountKey }: {
     name: string
     navigator: { userAgent: string }
     standalone: boolean
     offer?: boolean
     failToggle?: boolean
+    unmountKey?: boolean
   },
 ) {
   const fake = useRef(fakeInstallWindow()).current
   const failNext = useSignal(false)
+  const mounted = useSignal(true)
   const stateLine = useRef<HTMLParagraphElement>(null)
   const store = useRef(
     createInstallPrompt({
@@ -2297,12 +2300,41 @@ function InstallCase(
   useEffect(() => store.watch(), [])
   return (
     <Stack gap="sm" data-e2e={`install-${name}`}>
-      <InstallPrompt
-        mode={store.visible.value ? store.mode.value : "unavailable"}
-        onInstall={store.install}
-        onDismiss={store.dismiss}
-        returnFocus={() => stateLine.current}
-      />
+      {unmountKey
+        ? (
+          <div
+            onKeyDown={(event) => {
+              if (event.key === "u") mounted.value = false
+            }}
+          >
+            {mounted.value
+              ? (
+                <InstallPrompt
+                  mode={store.visible.value ? store.mode.value : "unavailable"}
+                  onInstall={store.install}
+                  onDismiss={store.dismiss}
+                  returnFocus={() => stateLine.current}
+                />
+              )
+              : null}
+          </div>
+        )
+        : (
+          <InstallPrompt
+            mode={store.visible.value ? store.mode.value : "unavailable"}
+            onInstall={store.install}
+            onDismiss={store.dismiss}
+            returnFocus={() => stateLine.current}
+          />
+        )}
+      {unmountKey
+        ? (
+          <p class="text-sm text-muted">
+            With focus in the card, press U: the caller unmounts it, and focus goes to the line
+            below.
+          </p>
+        )
+        : null}
       <p ref={stateLine} tabIndex={-1} class="text-sm text-muted" data-e2e="install-mode">
         mode: {store.mode.value}, dismissed: {String(store.dismissed.value)}
       </p>
@@ -2363,6 +2395,9 @@ function InstallPromptDemo() {
       </Part>
       <Part title="Already running installed: nothing to offer">
         <InstallCase name="installed" navigator={IPHONE} standalone />
+      </Part>
+      <Part title="Unmounted by the caller after it mounted hidden">
+        <InstallCase name="unmount" navigator={DESKTOP} standalone={false} offer unmountKey />
       </Part>
     </Stack>
   )
