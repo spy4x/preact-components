@@ -20,7 +20,11 @@
  * structure, so a narrowly typed field would reject every parsing schema.
  */
 export interface Model {
-  id: number
+  /**
+   * A version 7 UUID string or a number. Ids are compared with `===` and never converted, so `"7"`
+   * and `7` are two different rows.
+   */
+  id: string | number
   [key: string]: unknown
 }
 

@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { effect, signal } from "@preact/signals"
 import { type } from "arktype"
 import { ErrType } from "@spy4x/platform/universal/errors"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import { buildModelStore } from "./build-model-store.ts"
 import { RemoteEvent, type ToastMessage } from "./types.ts"
 
@@ -3188,5 +3189,105 @@ describe("buildModelStore messages", () => {
 
     expect(toast.messages[0].body).toMatch(/^Zone Antwort kaputt: /)
     expect(toast.messages[0].title).toBe("Zone: Erstellen fehlgeschlagen")
+  })
+})
+
+describe("buildModelStore with UUID v7 string ids", () => {
+  const uuidRowSchema = type({
+    id: "string.uuid.v7",
+    name: "string",
+    createdAt: dateSchema,
+    deletedAt: dateSchema.or("null"),
+  })
+  type UuidRow = typeof uuidRowSchema.infer
+  const uuidRow = (id: string, name: string, deletedAt: Date | null = null): UuidRow => ({
+    id,
+    name,
+    createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    deletedAt,
+  })
+  const buildUuidStore = (fetchImpl: typeof fetch) =>
+    buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: uuidRowSchema, create: createSchema, update: updateSchema },
+      fetch: fetchImpl,
+    })
+
+  it("lists, creates, updates, deletes and restores rows keyed by UUID strings", async () => {
+    const north = uuidV7()
+    const south = uuidV7()
+    const created = uuidV7()
+    const archived = new Date("2024-02-01T00:00:00.000Z")
+    const { impl, calls } = queueFetch(
+      Response.json(uuidRow(created, "East"), { status: 201 }),
+      Response.json(uuidRow(south, "Süd")),
+      Response.json(uuidRow(north, "North", archived)),
+      Response.json(uuidRow(north, "North")),
+    )
+    const store = buildUuidStore(impl)
+    await store.onWs([uuidRow(north, "North"), uuidRow(south, "South")], RemoteEvent.LIST)
+    expect(store.one.byId(south).value?.name).toBe("South")
+
+    await store.create({ name: "East" })
+    await store.update(south, { name: "Süd" })
+    await store.delete(north)
+    expect(store.list.deleted.value.map((r) => r.id)).toEqual([north])
+    await store.undelete(north)
+
+    expect(calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      "POST /api/zones",
+      `PATCH /api/zones/${south}`,
+      `DELETE /api/zones/${north}`,
+      `POST /api/zones/${north}/undelete`,
+    ])
+    expect(store.list.all.value.map((r) => [r.id, r.name, r.deletedAt])).toEqual([
+      [north, "North", null],
+      [south, "Süd", null],
+      [created, "East", null],
+    ])
+    expect(store.op.update(south).value?.result?.name).toBe("Süd")
+
+    store.remove(south)
+    expect(store.one.byId(south).value).toBeUndefined()
+    expect(store.list.all.value.map((r) => r.id)).toEqual([north, created])
+  })
+
+  it("keeps the string 7 and the number 7 as two different rows", async () => {
+    const looseSchema = type({ id: "string | number", name: "string" })
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
+      fetch: queueFetch().impl,
+    })
+    await store.onWs([{ id: 7, name: "Number" }, { id: "7", name: "String" }], RemoteEvent.LIST)
+
+    expect(store.one.byId(7).value?.name).toBe("Number")
+    expect(store.one.byId("7").value?.name).toBe("String")
+    store.remove("7")
+    expect(store.list.all.value).toEqual([{ id: 7, name: "Number" }])
+  })
+
+  it("encodes a string id into one path segment of the default row URLs", async () => {
+    const { impl, calls } = queueFetch(
+      Response.json({ id: "a/b?c", name: "x" }),
+      Response.json({ id: "a/b?c", name: "x" }),
+    )
+    const looseSchema = type({ id: "string", name: "string" })
+    const store = buildModelStore({
+      model: "zone",
+      endpoint: "/api/zones",
+      schemas: { full: looseSchema, create: looseSchema, update: looseSchema },
+      fetch: impl,
+    })
+
+    await store.update("a/b?c", { id: "a/b?c", name: "x" })
+    await store.undelete("a/b?c")
+
+    expect(calls.map((c) => c.url)).toEqual([
+      "/api/zones/a%2Fb%3Fc",
+      "/api/zones/a%2Fb%3Fc/undelete",
+    ])
   })
 })

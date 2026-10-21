@@ -126,7 +126,7 @@ export const zone = buildModelStore({
   sort: (a, b) => a.name.localeCompare(b.name),
   session: () => currentUser.value !== null,
   extraOps: ({ request, setUpdateOp, pathFor }) => ({
-    turn: async (id: number, isOn: boolean) => {
+    turn: async (id: string | number, isOn: boolean) => {
       setUpdateOp(id, { inProgress: true, error: null, result: null })
       const outcome = await request(`${pathFor(id)}/turn`, {
         method: "POST",
