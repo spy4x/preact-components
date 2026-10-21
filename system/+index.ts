@@ -51,6 +51,12 @@ export {
   type PushSettingsProps,
   type PushSettingsStatus,
 } from "./push-settings.tsx"
+export {
+  SettingsLayout,
+  type SettingsLayoutLabels,
+  type SettingsLayoutProps,
+  type SettingsSection,
+} from "./settings-layout.tsx"
 export { pageHeading, type RouteAnnouncerOptions, useRouteAnnouncer } from "./route-announcer.ts"
 export {
   AccountMenu,

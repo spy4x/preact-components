@@ -395,6 +395,8 @@ SEOHead	component	@spy4x/preact-system	Render the head tag set for a page.
 SWUpdater	component	@spy4x/preact-system	Register the service worker and offer a reload when a new version is waiting.
 SavedCopyNotice	component	@spy4x/preact-system	Says that the list under it is a copy saved on this device, and when it was saved.
 ServiceWorkerHost	type	@spy4x/preact-system	Anything that may carry a service-worker container: `navigator`, a test double.
+SettingsLayout	component	@spy4x/preact-system	A settings page with sub-pages, such as a profile split into Account, Security and Danger zone.
+SettingsSection	type	@spy4x/preact-system	One entry of `SettingsLayoutProps.sections`: a sub-page of the settings.
 Shell	component	@spy4x/preact-system	The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below `lg` — see `mobile-panel.ts`.
 ShellNavItem	type	@spy4x/preact-system	One entry of `ShellProps.navItems`, or of one entry's own `children`.
 ShellNavItemAction	type	@spy4x/preact-system	`ShellNavItem.action`: a control of its own beside an item's link, never inside it, so it is a separate Tab stop with its own accessible name.

@@ -135,6 +135,35 @@ describe("AccountMenu", () => {
     expect(render(<AccountMenu user={user} />)).not.toContain("account-menu-header")
   })
 
+  it("makes the header row the first item, a link to headerHref named by its text", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        tag="Admin"
+        headerHref="/profile"
+        items={[{ label: "Settings", href: "/settings" }]}
+      />,
+    )
+    const opening = html.match(/<[a-z]+[^>]*data-e2e="account-menu-header"[^>]*>/)?.[0] ?? ""
+    expect(opening.startsWith("<a ")).toBe(true)
+    expect(opening).toContain('href="/profile"')
+    expect(opening).not.toContain("aria-hidden")
+    const start = html.indexOf('data-e2e="account-menu-header"')
+    const row = html.slice(start, html.indexOf("</a>", start))
+    expect(row).toContain(">Ada Lovelace<")
+    expect(row).toContain(">ada@example.com<")
+    expect(row).toContain(">Admin<")
+    expect(start).toBeLessThan(html.indexOf(">Settings<"))
+  })
+
+  it("draws the linked header even without the header prop, and only one header with it", () => {
+    expect(render(<AccountMenu user={user} headerHref="/profile" />))
+      .toMatch(/<a [^>]*data-e2e="account-menu-header"/)
+    const both = render(<AccountMenu user={user} header headerHref="/profile" />)
+    expect(both.match(/data-e2e="account-menu-header"/g)?.length).toBe(1)
+    expect(both).not.toMatch(/<div[^>]*aria-hidden="true"[^>]*data-e2e="account-menu-header"/)
+  })
+
   it("merges the caller's trigger and panel classes over its own", () => {
     const html = render(
       <AccountMenu

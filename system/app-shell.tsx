@@ -69,6 +69,11 @@ export interface AppShellAccount {
    * plain shape after 300 ms, and the rest of the shell renders at once.
    */
   user?: AccountMenuUser
+  /**
+   * Where the menu's header row (avatar, name, e-mail) leads, such as `/profile`: given, the row is
+   * a link in the rail's menu and in the phone sheet. Left out, it is plain text.
+   */
+  headerHref?: string
   /** The menu's own items, first, such as "Profile". */
   items?: readonly AccountMenuItem[]
   /** The current theme preference. Defaults to `"system"`. */
@@ -349,6 +354,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
           <RailCell tip={user.name} dataE2E="app-shell-account">
             <AccountMenu
               user={user}
+              headerHref={account.headerHref}
               items={account.items}
               theme={account.theme}
               onThemeChange={account.onThemeChange}
@@ -380,9 +386,24 @@ export function AppShell(props: AppShellProps): JSX.Element {
       )}
       {user && (
         <div class="flex flex-col gap-1 py-2 first:pt-0" data-e2e="app-shell-sheet-account">
-          <div class="flex items-center gap-3 px-3 py-2" data-e2e="app-shell-sheet-account-header">
-            <AccountIdentity user={user} tag={tag} />
-          </div>
+          {account.headerHref === undefined
+            ? (
+              <div
+                class="flex items-center gap-3 px-3 py-2"
+                data-e2e="app-shell-sheet-account-header"
+              >
+                <AccountIdentity user={user} tag={tag} />
+              </div>
+            )
+            : (
+              <SheetControl
+                href={account.headerHref}
+                navigate={navigate}
+                dataE2E="app-shell-sheet-account-header"
+              >
+                <AccountIdentity user={user} tag={tag} />
+              </SheetControl>
+            )}
           {(account.items ?? []).map((item, index) => (
             <AccountEntry
               key={`${index}-${item.label}`}

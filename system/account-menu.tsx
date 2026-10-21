@@ -129,6 +129,13 @@ export interface AccountMenuProps {
    * trigger's name already says who is signed in.
    */
   header?: boolean
+  /**
+   * Where the header row leads, such as `/profile`. Given, the row (avatar, name, e-mail, tag) is
+   * drawn whether or not {@link header} is set, as the menu's first item: a link that follows
+   * {@link navigate} like the other link items, named by the text it shows. Left out, the header
+   * stays the hidden row {@link header} describes.
+   */
+  headerHref?: string
   /** Utilities merged over the trigger's own, such as a rail cell's shape. */
   triggerClasses?: string
   /** Utilities merged over the open menu's own, such as a placement beside a rail. */
@@ -171,6 +178,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     dataE2E = "account-menu-button",
     tag,
     header = false,
+    headerHref,
     triggerClasses,
     panelClasses,
     labels,
@@ -218,7 +226,17 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
       horizontal={horizontal}
       panelClasses={cn("z-30", full && "min-w-full", panelClasses)}
     >
-      {header && (
+      {headerHref !== undefined && (
+        <DropdownItem
+          href={headerHref}
+          navigate={navigate}
+          class="mb-1 gap-3 border-b border-subtle"
+          dataE2E="account-menu-header"
+        >
+          <AccountIdentity user={user} tag={tag} />
+        </DropdownItem>
+      )}
+      {header && headerHref === undefined && (
         <div
           aria-hidden="true"
           class="mb-1 flex items-center gap-3 border-b border-subtle px-4 py-2"

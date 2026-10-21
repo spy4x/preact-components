@@ -2363,6 +2363,7 @@ Extracted from earlier source applications.
 | `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                               |
 | `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
 | `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
+| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                      |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -3185,9 +3186,41 @@ already says who is signed in. `triggerClasses` and `panelClasses` are merged ov
 and the panel's own classes, so a frame such as `AppShell` can size the trigger to its cell and open
 the panel beside its column.
 
+**`headerHref` makes that row a link,** such as to the profile, because a row that shows who is
+signed in reads as a way to their settings. Given, the row is the menu's first item, drawn whether
+or not `header` is set, named by its text and followed through `navigate` like the other link
+items. `AppShell` passes `account.headerHref` on, and links its phone sheet's header row the same
+way. Without it the row stays hidden from assistive technology and does nothing.
+
 **The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `Rail`'s tab bar (`z-10`).
 Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that
 puts `AccountMenu` in a scrolling overlay leaves room below or above it.
+
+## The `SettingsLayout` contract
+
+`SettingsLayout` (#932) is a settings page split into sub-pages, such as a profile with Account,
+Sign-in and security, and Delete account. It draws the page's `PageHeader`, a sub-navigation and
+the open section's heading; the section's content is `children`.
+
+**From `md` up** a 200 px sticky nav sits left of a `max-w-2xl` section column. The current item
+has `aria-current="page"` and the accent tint the rail's current cell wears. Sections with
+`tone: "danger"` come last, after a divider, in danger text, wherever they are in `sections`.
+
+**Below `md` the list comes first, then one section.** With `current` set to `null` the nav is the
+page: 44 px rows in a card, each with a chevron and its optional muted `value` ("Two-factor off").
+With a section open, only that section shows, under a "Back to {title}" link to `href`
+(`labels.back` replaces the words). The title stays in the document as screen-reader text. From
+`md` up, `null` shows the nav and `children` with no section heading and no current item, so an
+app draws an overview there or sends that address to its first section.
+
+**Focus follows the change of section.** When `current` becomes a section, focus moves to its
+heading (`tabindex="-1"`); when it goes back to `null`, to the nav item of the section that was
+open. The first render moves nothing. `useRouteAnnouncer` runs after this, in the app's layout, and
+moves focus on to the page's `<h1>` unless the app passes it `keepPageFocus: true`.
+
+**Pure.** Every item is a real link through the `navigate` port, so the page works before any
+script and a modified click opens a new tab. It reads no `location`; the app maps its route to
+`current`. An id in `current` that names no section throws.
 
 ## The `StateInit` contract
 
