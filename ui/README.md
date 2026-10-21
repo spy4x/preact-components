@@ -768,8 +768,8 @@ The server renders the first step selected and every step's caption and text. Wh
 (`@media (scripting: enabled)`) the server markup already shows only the selected step's text, so
 hydration moves nothing; under `scripting: none` every text shows in a column, and "View full size"
 is a link to the image. Once hydrated, the link opens `Lightbox`, whose Previous and Next move the
-tour with it, and a panel that is not selected is `inert`, so a Tab during its fade never lands on
-it. From 1024 px the phone frame is 16 rem wide. Only the first screenshot is in the HTML, and so is the only one that loads with the page;
+tour with it. A panel that is not selected leaves the Tab order, and a panel fading in is visible
+from its first frame, so a Tab right after an arrow key lands on the new step's panel. From 1024 px the phone frame is 16 rem wide. Only the first screenshot is in the HTML, and so is the only one that loads with the page;
 another loads the first time its step is picked. Screenshots and texts share one grid cell each, so
 the tour keeps the height of its tallest text and nothing below it moves on a switch; they
 cross-fade in 150 ms, and switch at once under `prefers-reduced-motion: reduce`. No `fetchpriority`

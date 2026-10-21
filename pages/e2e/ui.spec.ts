@@ -1083,10 +1083,12 @@ function screenTourSpecs(): Spec[] {
         // Both presses in one task, well inside the 150 ms fade.
         await page.keyboard.press("ArrowRight")
         await page.keyboard.press("Tab")
-        const focused = await page.evaluate(() => document.activeElement?.id ?? "")
-        if (focused !== "guide-tour-alerts-panel") {
+        const panel = dashboard.card.locator("#guide-tour-alerts-panel")
+        await panel.and(page.locator(":focus")).waitFor().catch(async () => {
+          const focused = await page.evaluate(() => document.activeElement?.id ?? "")
           throw new Error(`focus is on "${focused || "body"}", expected the Alerts panel`)
-        }
+        })
+        // Past the fade, the focus is still there rather than dropped to the page.
         await page.waitForTimeout(400)
         const after = await page.evaluate(() => document.activeElement?.id ?? "")
         if (after !== "guide-tour-alerts-panel") throw new Error(`focus moved to "${after}"`)
@@ -1118,7 +1120,8 @@ function screenTourSpecs(): Spec[] {
         const browser = page.context().browser()
         if (browser === null) throw new Error("the page has no browser")
         const read = async (javaScriptEnabled: boolean) => {
-          const context = await browser.newContext({ javaScriptEnabled })
+          // Reduced motion: no fade runs while the stylesheet arrives, so the first read is final.
+          const context = await browser.newContext({ javaScriptEnabled, reducedMotion: "reduce" })
           try {
             const bare = await context.newPage()
             await bare.setContent(html, { waitUntil: "load" })

@@ -103,9 +103,14 @@ const numberClass =
 const groupClass = "hidden px-3 pt-4 pb-1 text-xs font-medium text-muted first:pt-0 lg:block"
 
 /** Every layer in a stack shares one grid cell, so the stack is as tall as its tallest layer. */
-const layer = "[grid-area:1/1] motion-safe:transition-[opacity,visibility] motion-safe:duration-150"
-const shown = "opacity-100"
-const gone = "invisible opacity-0"
+const layer = "[grid-area:1/1] motion-safe:duration-150"
+/**
+ * A layer coming in fades its opacity only, so it is `visible` (and can take the focus) from the
+ * first frame; a layer going out also transitions `visibility`, so it stays visible while it fades.
+ */
+const shown = "opacity-100 motion-safe:transition-opacity"
+const leaving = "motion-safe:transition-[opacity,visibility]"
+const gone = `invisible opacity-0 ${leaving}`
 
 /**
  * The panels' stack, and a panel that is not selected. Only where scripts run (`scripting:
@@ -310,10 +315,10 @@ export function ScreenTour(
                 role="tabpanel"
                 id={panelId(step.id)}
                 aria-labelledby={tabId(step.id)}
-                // Once hydrated, a fading panel leaves the Tab order at once (#950).
+                // Once hydrated, a panel that is not selected leaves the Tab order, so a Tab during
+                // its fade-out never lands on it and then drops to the page (#950).
                 tabindex={isHydrated && !isSelected ? -1 : 0}
-                inert={isHydrated && !isSelected}
-                class={join(panelClass, layer, !isSelected && panelGone)}
+                class={join(panelClass, layer, isSelected ? shown : join(leaving, panelGone))}
               >
                 <p class="text-sm text-muted">{step.image.alt}</p>
                 {step.text !== undefined && <p class="text-base text-foreground">{step.text}</p>}

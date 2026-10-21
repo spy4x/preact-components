@@ -92,7 +92,7 @@ describe("ScreenTour", () => {
 
   it("cross-fades only under reduced-motion: no-preference", () => {
     const image = render(<ScreenTour steps={steps} frame="browser" />).match(/<img [^>]*>/)![0]
-    expect(image).toContain("motion-safe:transition-[opacity,visibility]")
+    expect(image).toContain("motion-safe:transition-opacity")
     expect(image).toContain("motion-safe:duration-150")
     expect(image).not.toMatch(/class="[^"]*(?<!motion-safe:)transition-/)
   })
