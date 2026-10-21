@@ -239,6 +239,12 @@ export interface AuthFormProps {
   /** Where the form posts natively before hydration, or when the matching callback is omitted. */
   action?: string
   /**
+   * In `"sign-in"` mode, sets the login field's autocomplete to `"username webauthn"`, so a browser
+   * running a conditional WebAuthn request (`mediation: "conditional"`) offers saved passkeys in
+   * that field's autofill. The caller starts that request; sign-up mode ignores this. Default off.
+   */
+  passkeyAutofill?: boolean
+  /**
    * Caller content drawn below everything else, inside the form — a "Back to sign in" or "Forgot
    * your password?" link, for instance — so it sits in whatever card holds the form. Wrapped in an
    * element carrying `data-e2e="auth-form-footer"`; nothing is rendered for it when this is absent.
@@ -279,6 +285,7 @@ export function AuthForm(
     labels,
     names,
     action,
+    passkeyAutofill = false,
     footer,
     class: className,
   }: AuthFormProps,
@@ -367,7 +374,9 @@ export function AuthForm(
             >
               <Input
                 name={fieldNames.login}
-                autocomplete="username"
+                autocomplete={passkeyAutofill && mode === "sign-in"
+                  ? "username webauthn"
+                  : "username"}
                 required
                 data-e2e="auth-form-login"
               />

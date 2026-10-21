@@ -85,6 +85,18 @@ describe("AuthForm", () => {
     expect(signUp).toMatch(/name="password"[^>]*autocomplete="new-password"/)
   })
 
+  it("adds the webauthn autocomplete token to the login field with passkeyAutofill in sign-in", () => {
+    const on = render(<AuthForm {...base} mode="sign-in" passkeyAutofill />)
+    expect(attr(inputTag(on, "login"), "autocomplete")).toBe("username webauthn")
+  })
+
+  it("keeps the login field's autocomplete plain without passkeyAutofill, and in sign-up", () => {
+    const off = render(<AuthForm {...base} mode="sign-in" />)
+    const signUp = render(<AuthForm {...base} mode="sign-up" passkeyAutofill />)
+    expect(attr(inputTag(off, "login"), "autocomplete")).toBe("username")
+    expect(attr(inputTag(signUp, "login"), "autocomplete")).toBe("username")
+  })
+
   it("switches the submit label with mode", () => {
     expect(render(<AuthForm {...base} mode="sign-in" />)).toContain(">Sign in<")
     expect(render(<AuthForm {...base} mode="sign-up" />)).toContain(">Sign up<")

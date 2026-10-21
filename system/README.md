@@ -30,7 +30,7 @@ Extracted from earlier source applications.
 | `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
 | `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                  |
 | `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                          |
-| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `footer?`                                     |
+| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                 |
 | `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
 | `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
 | `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
@@ -509,6 +509,13 @@ rendered whether or not `onModeChange` is given. Once hydrated, a plain click (t
 no modifier key) calls `onModeChange` and cancels the navigation when that callback is given; a
 Ctrl-, Meta-, Shift- or Alt-click is left to the browser, so the page opens in a new tab or window
 as a reader expects of any link. The plain-click rule is the one `Shell` uses for its links.
+
+**`passkeyAutofill` offers passkeys in the login field.** In sign-in mode it sets the login field's
+`autocomplete` to `username webauthn`, the token a browser needs to list saved passkeys in that
+field's autofill while a conditional WebAuthn request (`navigator.credentials.get` with
+`mediation: "conditional"`) is pending. The component starts no request itself: the page does, since
+that needs the server's challenge. Sign-up mode ignores the prop, because a passkey cannot sign a
+person up, and it is off by default, so an app without passkeys keeps plain `username`.
 
 **`names` renames the inputs without changing the callbacks.** By default the inputs are named
 `login`, `password` and `code`. An app whose action validates other field names — `username` and
