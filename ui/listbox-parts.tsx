@@ -1,8 +1,6 @@
 // Not exported from the package: the listbox pieces `Combobox` and `TagInput` share, so both popups
 // look and read the same without either component exporting its internals.
 import { cn } from "@spy4x/preact-cn"
-import type { JSX } from "preact"
-import { IconXMark } from "@spy4x/preact-icons"
 
 /*
  * `min-h-11` makes every row a 44 px touch target, as tall as the library's other touch targets.
@@ -44,12 +42,4 @@ export function listboxOptionClass({ active, selected, disabled }: ListboxOption
     active && selected && activeSelectedOptionClasses,
     disabled && disabledOptionClasses,
   )
-}
-
-/**
- * The cross of a clear or remove button: `IconXMark` at the listbox's glyph size, hidden from
- * screen readers because the button around it carries the name.
- */
-export function CrossGlyph(): JSX.Element {
-  return <IconXMark class="size-4" />
 }
