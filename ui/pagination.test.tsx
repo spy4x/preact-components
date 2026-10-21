@@ -155,6 +155,8 @@ describe("pageRange", () => {
     expect(asText(pageRange(4, 7))).toBe("1 2 3 4 5 6 7")
     expect(asText(pageRange(4, 9))).toBe("1 2 3 4 5 6 … 9")
     expect(asText(pageRange(4, 12))).toBe("1 2 3 4 5 6 … 12")
+    // Eight pages from the first: one past seven, so the tail collapses.
+    expect(asText(pageRange(1, 8))).toBe("1 2 3 4 5 … 8")
   })
 
   it("renders at most nine items once a range collapses, and reaches nine", () => {
