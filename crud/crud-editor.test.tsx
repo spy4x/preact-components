@@ -249,8 +249,63 @@ describe("CrudEditor header", () => {
 
     expect(html.indexOf(`data-e2e="page-header"`)).toBeLessThan(html.indexOf("<form"))
     expect(html).toMatch(
-      /<h1[^>]*title="Add Region"><span class="block truncate">Add Region<\/span>/,
+      /<h1[^>]*title="Add region"><span class="block truncate">Add region<\/span>/,
     )
+  })
+
+  it("words the default title in sentence case, keeping an acronym's capitals", () => {
+    const titled = (entity: string, mode: "add" | "edit") =>
+      render(
+        mode === "add"
+          ? (
+            <CrudEditor
+              store={fakeStore().store}
+              mode="add"
+              blank={region()}
+              entity={entity}
+              cancelHref="/x"
+            >
+              {() => null}
+            </CrudEditor>
+          )
+          : (
+            <CrudEditor
+              store={fakeStore().store}
+              mode="edit"
+              editId={3}
+              blank={region()}
+              entity={entity}
+              cancelHref="/x"
+            >
+              {() => null}
+            </CrudEditor>
+          ),
+      )
+
+    expect(titled("Team", "edit")).toContain(`title="Edit team"`)
+    expect(titled("API key", "add")).toContain(`title="Add API key"`)
+    expect(titled("X", "add")).toContain(`title="Add X"`)
+  })
+
+  it("labels the archive checkbox in sentence case unless the app words it", () => {
+    const archived = (label?: string) =>
+      render(
+        <CrudEditor
+          store={fakeStore().store}
+          mode="edit"
+          editId={3}
+          blank={region()}
+          entity="Region"
+          cancelHref="/x"
+          archive={{ label }}
+        >
+          {() => null}
+        </CrudEditor>,
+      )
+
+    expect(archived()).toContain("Is archived?")
+    expect(archived("Retired")).toContain("Retired")
+    expect(archived("Retired")).not.toContain("Is archived?")
   })
 
   it("puts a string title in the header as its title", () => {
@@ -261,7 +316,7 @@ describe("CrudEditor header", () => {
 
   it("draws a non-string title as the heading, with the default text as its tooltip", () => {
     expect(editor(<em>Region for site ABC</em>)).toMatch(
-      /<h1[^>]*title="Add Region"><em>Region for site ABC<\/em><\/h1>/,
+      /<h1[^>]*title="Add region"><em>Region for site ABC<\/em><\/h1>/,
     )
   })
 })

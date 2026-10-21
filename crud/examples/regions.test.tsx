@@ -71,13 +71,13 @@ describe("RegionList", () => {
 
 describe("RegionEditor", () => {
   it("titles the add form for a new region", () => {
-    expect(render(<RegionEditor mode="add" />)).toContain("Add Region")
+    expect(render(<RegionEditor mode="add" />)).toContain("Add region")
   })
 
   it("titles the edit form for an existing region and links back to the list", () => {
     const html = render(<RegionEditor mode="edit" editId={1} />)
 
-    expect(html).toContain("Edit Region")
+    expect(html).toContain("Edit region")
     expect(html).toContain(`href="/regions"`)
   })
 

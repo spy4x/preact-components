@@ -214,7 +214,8 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   /** Entity name in the page title and the "not found" message, for example `"Region"`. */
   entity: string
   /**
-   * Full page title. Defaults to `Add <entity>` or `Edit <entity>`. A string is the `PageHeader`
+   * Full page title. Defaults to `Add <entity>` or `Edit <entity>` in sentence case (`Edit team`;
+   * an acronym such as `API key` keeps its capitals). A string is the `PageHeader`
    * title; anything else is drawn as its `heading`, with the default text as the tooltip.
    */
   title?: ComponentChildren
@@ -294,7 +295,7 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
  * already submits, plus whatever has to be archived first for it to be allowed.
  */
 export interface ArchiveConfig<M extends CrudRow> {
-  /** Label of the checkbox. Defaults to `"Is Archived?"`. */
+  /** Label of the checkbox. Defaults to `"Is archived?"`. */
   label?: string
   /**
    * Heading of the list of what blocks the archive. Defaults to
@@ -541,7 +542,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     if (outcome.updated) loadFromStore()
   }
 
-  const defaultTitle = props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`
+  const defaultTitle = `${props.mode === "add" ? "Add" : "Edit"} ${midSentence(entity)}`
 
   return (
     <Stack as="section" gap="lg" class={cn("mx-auto max-w-6xl", className)}>
@@ -609,7 +610,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 onChange={toggleArchive}
               >
                 <span>
-                  {archive.label ?? "Is Archived?"} {vm.value.deletedAt
+                  {archive.label ?? "Is archived?"} {vm.value.deletedAt
                     ? (
                       <span
                         title={formatTime(vm.value.deletedAt, { full: true })}
@@ -658,4 +659,15 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       </div>
     </Stack>
   )
+}
+
+/**
+ * An entity name as it reads after a verb in a sentence-case title: `Team` becomes `team`, while a
+ * name whose second letter is a capital (`API key`) is taken for an acronym and kept.
+ */
+function midSentence(entity: string): string {
+  const [first = "", second = ""] = entity
+  return second !== "" && second === second.toLowerCase() && second !== second.toUpperCase()
+    ? first.toLowerCase() + entity.slice(1)
+    : entity
 }
