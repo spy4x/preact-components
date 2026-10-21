@@ -51,6 +51,12 @@ export interface AccountMenuItem {
    * the browser's own post, so the app can sign out through its own client instead.
    */
   onClick?: () => void
+  /**
+   * The keys the app binds to the same action, such as `["?"]` for "Keyboard shortcuts". The item
+   * announces them all in `aria-keyshortcuts` and shows the first with `Kbd` at its right, where
+   * the pointer is fine; it binds none of them, as `RailItem.keyshortcuts` does not.
+   */
+  keyshortcuts?: readonly string[]
   /** `data-e2e` on the rendered menu item, for an app's end-to-end tests. */
   dataE2E?: string
 }

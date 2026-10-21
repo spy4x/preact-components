@@ -18,7 +18,8 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconAlertTriangle, IconBell, type IconProps } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
-import type { KbdLabels } from "@spy4x/preact-ui/kbd"
+import { useApplePlatform } from "@spy4x/preact-ui/hotkeys"
+import { Kbd, type KbdLabels } from "@spy4x/preact-ui/kbd"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
@@ -36,6 +37,7 @@ import {
   Entry,
   entryCurrent,
   entryIdle,
+  entryKeyShortcuts,
   focusRing,
   iconsCell,
   RailCell,
@@ -210,13 +212,28 @@ function PendingAvatar({ size }: { size: "size-6" | "size-8" }): JSX.Element {
  * link's plain click itself, and leaves it open on a modified one.
  */
 function SheetControl(
-  { href, navigate, onClick, type = "button", dataE2E, children }: AccountControlProps,
+  { href, navigate, onClick, type = "button", keyshortcuts, dataE2E, children }:
+    AccountControlProps,
 ): JSX.Element {
+  const apple = useApplePlatform()
+  const shortcuts = entryKeyShortcuts(keyshortcuts, apple)
+  const first = keyshortcuts?.[0]
+  // Hidden from screen readers, which hear `aria-keyshortcuts`, and where the pointer is coarse.
+  const hint = first === undefined ? null : (
+    <span
+      aria-hidden="true"
+      data-account-key-hint=""
+      class="ml-auto hidden pointer-fine:inline-flex"
+    >
+      <Kbd keys={first} apple={apple} />
+    </span>
+  )
   if (href !== undefined) {
     return (
       <a
         href={href}
         class={sheetRow}
+        aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
         onClick={(event) => {
           onClick?.()
@@ -224,12 +241,21 @@ function SheetControl(
         }}
       >
         {children}
+        {hint}
       </a>
     )
   }
   return (
-    <button type={type} class={sheetRow} data-rail-close="" data-e2e={dataE2E} onClick={onClick}>
+    <button
+      type={type}
+      class={sheetRow}
+      aria-keyshortcuts={shortcuts}
+      data-rail-close=""
+      data-e2e={dataE2E}
+      onClick={onClick}
+    >
       {children}
+      {hint}
     </button>
   )
 }

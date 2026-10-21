@@ -1391,7 +1391,7 @@ export const specs: readonly Spec[] = [
   },
   {
     name: "AccountMenu: the menu opens upward, marks the current theme as a checked radio item, " +
-      "and choosing another reports it",
+      "announces and shows an item's key, and choosing another theme reports it",
     pageId: "system",
     run: async (page) => {
       const card = page.locator(`[data-e2e="account-menu-demo"]`)
@@ -1411,6 +1411,11 @@ export const specs: readonly Spec[] = [
       if (await radio("Dark").getAttribute("aria-checked") !== "false") {
         throw new Error("Dark is checked before it was chosen")
       }
+      const shortcuts = menu.getByRole("menuitem", { name: "Keyboard shortcuts", exact: true })
+      if (await shortcuts.getAttribute("aria-keyshortcuts") !== "?") {
+        throw new Error("Keyboard shortcuts does not announce ? in aria-keyshortcuts")
+      }
+      await shortcuts.locator("[data-hotkey-hint] kbd").filter({ hasText: "?" }).waitFor()
       await expectAxeClean(page, `[data-e2e="account-menu-demo"]`)
       await radio("Dark").click()
       await menu.waitFor({ state: "hidden" })
@@ -1420,7 +1425,7 @@ export const specs: readonly Spec[] = [
       if (await radio("Dark").getAttribute("aria-checked") !== "true") {
         throw new Error("Dark is not checked after it was chosen")
       }
-      return "opened upward; Dark chosen and checked"
+      return "opened upward; ? announced and shown; Dark chosen and checked"
     },
   },
   {
