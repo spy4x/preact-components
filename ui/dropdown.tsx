@@ -202,6 +202,13 @@ export interface DropdownItemProps extends HotkeyProps {
    */
   hotkey?: string
   /**
+   * Combinations the app binds itself that also choose this item, such as `["?"]` for an item that
+   * opens the same dialog as `?`. They are announced in `aria-keyshortcuts` and the first shows as
+   * the hint at the item's right edge, but the item binds none of them. With `hotkey` too, `hotkey`
+   * comes first in both.
+   */
+  keyshortcuts?: readonly string[]
+  /**
    * Makes the item one choice of a set, such as the current group of a switcher. Given at all, the
    * item is a `menuitemradio` with `aria-checked`, and draws a check before its text when `true`
    * and an empty space of the same width when `false`, so the names of a set line up. Left out,
@@ -251,6 +258,7 @@ export function DropdownItem(
     hotkey,
     hotkeyHint = true,
     kbdLabels,
+    keyshortcuts = [],
     checked,
     children,
   }: DropdownItemProps,
@@ -264,9 +272,12 @@ export function DropdownItem(
       : [hotkeyClickBinding(hotkey, () => item.current, () => trigger?.current ?? item.current)],
     { enabled: hotkey !== undefined },
   )
-  const shortcuts = hotkey === undefined ? undefined : ariaKeyShortcuts(hotkey, apple)
-  const hint = hotkey !== undefined && hotkeyHint
-    ? <HotkeyHint keys={hotkey} apple={apple} labels={kbdLabels} class="ml-auto pl-4" />
+  const announced = hotkey === undefined ? keyshortcuts : [hotkey, ...keyshortcuts]
+  const shortcuts = announced.length === 0
+    ? undefined
+    : announced.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
+  const hint = announced.length > 0 && hotkeyHint
+    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ml-auto pl-4" />
     : null
 
   // `disabled` disables the button form only, so only there does it take the red away.
