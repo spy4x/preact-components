@@ -12,6 +12,7 @@ import {
   ONE_HOUR_IN_MILLISECONDS as HOUR,
   ONE_MINUTE_IN_MILLISECONDS as MINUTE,
 } from "@spy4x/platform/universal/time-constants"
+import { validTimeZoneOr } from "@spy4x/time/tz"
 
 /** The unit a tick step counts in. */
 export type TimeUnit = "minute" | "hour" | "day" | "month" | "year"
@@ -99,18 +100,20 @@ export function timeTicks(start: number, end: number, options: TimeTickOptions =
   return { step, ticks }
 }
 
-/** Formats that read a zone's wall clock, one per zone, built once. */
-const WALL_FORMATS = new Map<string, Intl.DateTimeFormat>()
+/** Formats that read a zone's wall clock, one per zone, built once; `null` for a zone that is no
+ * real IANA zone, which reads as UTC. */
+const WALL_FORMATS = new Map<string, Intl.DateTimeFormat | null>()
 
 /**
  * `time` as the wall clock of `timeZone` reads it, written as if that reading were UTC: 09:00 in
- * Tokyo is 09:00 here. Ticks are laid on this clock, so a midnight is the zone's midnight.
+ * Tokyo is 09:00 here. Ticks are laid on this clock, so a midnight is the zone's midnight. A
+ * `timeZone` that is no real IANA zone reads as UTC rather than throwing out of a render.
  */
 export function toWall(time: number, timeZone = "UTC"): number {
   if (timeZone === "UTC") return time
   let format = WALL_FORMATS.get(timeZone)
-  if (!format) {
-    format = new Intl.DateTimeFormat("en-US", {
+  if (format === undefined) {
+    format = validTimeZoneOr(timeZone, "UTC") === "UTC" ? null : new Intl.DateTimeFormat("en-US", {
       timeZone,
       hourCycle: "h23",
       year: "numeric",
@@ -122,6 +125,7 @@ export function toWall(time: number, timeZone = "UTC"): number {
     })
     WALL_FORMATS.set(timeZone, format)
   }
+  if (!format) return time
   const part = Object.fromEntries(
     format.formatToParts(time).map(({ type, value }) => [type, value]),
   )
@@ -223,7 +227,8 @@ const LABEL_FORMATS = new Map<string, Intl.DateTimeFormat>()
 
 /**
  * `time` printed with `parts`. A chart prints a heading for every point on every render, so the
- * `Intl.DateTimeFormat` is cached per locale, zone and parts rather than built per call.
+ * `Intl.DateTimeFormat` is cached per locale, zone and parts rather than built per call. A zone
+ * that is no real IANA zone prints in UTC rather than throwing out of a render.
  */
 function format(time: number, parts: Intl.DateTimeFormatOptions, options: TimeFormatOptions) {
   const locale = options.locale ?? "en-GB"
@@ -231,7 +236,16 @@ function format(time: number, parts: Intl.DateTimeFormatOptions, options: TimeFo
   const key = JSON.stringify([locale, timeZone, parts])
   let formatter = LABEL_FORMATS.get(key)
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat(locale, { timeZone, ...parts })
+    // Built with the zone as given first, so a valid zone costs one construction; only a throw
+    // pays for the check. A bad locale still throws, as it always did.
+    try {
+      formatter = new Intl.DateTimeFormat(locale, { timeZone, ...parts })
+    } catch {
+      formatter = new Intl.DateTimeFormat(locale, {
+        timeZone: validTimeZoneOr(timeZone, "UTC"),
+        ...parts,
+      })
+    }
     LABEL_FORMATS.set(key, formatter)
   }
   return formatter.format(time)

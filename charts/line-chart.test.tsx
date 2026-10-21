@@ -143,6 +143,18 @@ describe("LineChart", () => {
     expect(xLabels(html)[0]).toBe("0% 09:00")
   })
 
+  it("renders a time axis in UTC when its time zone is not a real one, instead of throwing", () => {
+    const series: LineSeries[] = [{
+      name: "Revenue",
+      points: [{ x: "2026-03-01T00:00:00Z", y: 1 }, { x: "2026-03-01T04:00:00Z", y: 3 }],
+    }]
+    const html = render(<LineChart series={series} xAxis="time" timeZone="Not/A_Zone" />)
+    const utc = render(<LineChart series={series} xAxis="time" />)
+
+    expect(xLabels(html)).toEqual(xLabels(utc))
+    expect(xLabels(html)[0]).toBe("0% 1 Mar")
+  })
+
   it("keeps the hour in a point's heading when points are hourly, though the axis steps in days", () => {
     const start = Date.UTC(2026, 2, 1)
     const series: LineSeries[] = [{
