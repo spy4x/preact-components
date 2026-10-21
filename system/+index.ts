@@ -145,6 +145,7 @@ export {
 } from "./sync-status.tsx"
 export {
   type ContainerLike,
+  DEFAULT_SW_UPDATER_LABELS,
   DEFAULT_UPDATE_MESSAGE,
   type RegistrationLike,
   reloadOnControllerChange,
@@ -153,6 +154,7 @@ export {
   skipWaiting,
   startUpdates,
   SWUpdater,
+  type SWUpdaterLabels,
   type SWUpdaterProps,
   type UpdateStart,
   type UpdateWatcher,

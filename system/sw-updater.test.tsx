@@ -3,6 +3,7 @@ import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
   type ContainerLike,
+  DEFAULT_SW_UPDATER_LABELS,
   DEFAULT_UPDATE_MESSAGE,
   type RegistrationLike,
   reloadOnControllerChange,
@@ -14,6 +15,7 @@ import {
   watchForUpdate,
   type WorkerLike,
 } from "./sw-updater.tsx"
+import { swUpdaterWords } from "./sw-updater-internals.ts"
 
 /** A worker that records listeners so a test can drive its state machine by hand. */
 class FakeWorker implements WorkerLike {
@@ -445,5 +447,34 @@ describe("SWUpdater", () => {
     expect(render(<SWUpdater container={container} message="Reload for the new version" />))
       .toBe(EMPTY_REGION)
     expect(container.calls).toEqual([])
+  })
+})
+
+describe("SWUpdater's words", () => {
+  it("shows the English defaults when the caller passes no words", () => {
+    expect(swUpdaterWords({})).toEqual({
+      message: "New version available",
+      reload: "Reload",
+      dismiss: "Dismiss",
+    })
+    expect(swUpdaterWords({})).toEqual(DEFAULT_SW_UPDATER_LABELS)
+  })
+
+  it("takes each of labels over its default, keeping the defaults it leaves out", () => {
+    expect(swUpdaterWords({ labels: { message: "Update ready", dismiss: "Later" } })).toEqual({
+      message: "Update ready",
+      reload: "Reload",
+      dismiss: "Later",
+    })
+  })
+
+  it("lets each deprecated prop win over the matching label", () => {
+    const labels = { message: "From labels", reload: "Labels reload", dismiss: "Labels dismiss" }
+    expect(swUpdaterWords({ labels, message: "Old message" })).toEqual({
+      ...labels,
+      message: "Old message",
+    })
+    expect(swUpdaterWords({ labels, reloadLabel: "Old reload" }).reload).toBe("Old reload")
+    expect(swUpdaterWords({ labels, dismissLabel: "Old dismiss" }).dismiss).toBe("Old dismiss")
   })
 })
