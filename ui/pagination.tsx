@@ -38,8 +38,8 @@ const sideWidth = 2
 /**
  * Collapse a page range into the items a pagination control renders.
  *
- * Pure and DOM-free, so the collapsing rules are unit-testable on their own. A range no longer than
- * `size` is listed in full. Past that, three rules hold together, in this order:
+ * Pure and DOM-free, so the collapsing rules are unit-testable on their own. A range of up to
+ * {@link fullListLimit} pages is listed in full. Past that, three rules hold together, in this order:
  *
  * - the first and last page are always shown;
  * - the current page keeps {@link sideWidth} neighbours on **both** sides, as far as the ends of
@@ -49,9 +49,9 @@ const sideWidth = 2
  *   itself and an end, that page is written out instead of marked: a `…` takes the same room as the
  *   number and says less.
  *
- * That last rule is why a collapsed range can show more page numbers than `size` — it swallows a
- * page by dropping the `…` that would have hidden it — and it is why `size` does not bound how much
- * the control renders. {@link sideWidth} does. A collapsed range renders at most
+ * That last rule is why a collapsed range can show more page numbers than {@link fullListLimit} —
+ * it swallows a page by dropping the `…` that would have hidden it. {@link sideWidth} bounds how
+ * much the control renders. A collapsed range renders at most
  * `2 * sideWidth + 5` items, **nine** as this module is configured: the window is
  * `2 * sideWidth + 1` pages, and each end adds at most two more items — the first or last page and
  * a `…`, or the two pages the window swallowed in place of that `…`.
@@ -62,7 +62,7 @@ const sideWidth = 2
  *
  * `sideWidth` is a constant of this module and not a parameter, so what the unit suite can pin is
  * the number the library ships rather than the formula: it walks every page of every total up to 60
- * across a dozen values of `size` and asserts both that nothing exceeds nine and that nine is
+ * and asserts both that nothing exceeds nine and that nine is
  * reached, which is what turns a change that widens the swallow, or narrows the window, red.
  *
  * `page` is clamped into `1…pageCount` first.
@@ -72,18 +72,13 @@ const sideWidth = 2
  *
  * @param page Current page, `1`-based. Non-integers are rounded.
  * @param pageCount Total number of pages; `0` or fewer yields `[]`.
- * @param size How long a range may be and still be listed in full. Defaults to `7`; values below
- *   `5` are raised, because a range shorter than that cannot show both ends and still give the
- *   current page a neighbour on each side. It does not set the collapsed window's width —
- *   {@link sideWidth} does — so raising it moves only the point at which collapsing starts.
  * @returns The items to render, in order: `[{ page: 1 }, { gap: "gap" }, …]`.
  */
-export function pageRange(page: number, pageCount: number, size = fullListLimit): PageRangeItem[] {
+export function pageRange(page: number, pageCount: number): PageRangeItem[] {
   if (pageCount < 1) return []
 
   const current = Math.max(1, Math.min(pageCount, Math.round(page)))
-  const budget = Math.max(5, size)
-  if (pageCount <= budget) {
+  if (pageCount <= fullListLimit) {
     return Array.from({ length: pageCount }, (_, index) => ({ page: index + 1 }))
   }
 
@@ -109,8 +104,8 @@ export function pageRange(page: number, pageCount: number, size = fullListLimit)
  * window, so the neighbours the first step granted are never taken away again: page 5 of 10 keeps
  * a neighbour on each side.
  *
- * Called only for `pageCount > budget`, and `budget` is at least `5`, so the range is always long
- * enough to hold the window.
+ * Called only for `pageCount > fullListLimit`, which is more than the five pages a window holds, so
+ * the range is always long enough to hold it.
  *
  * @param current Current page, already clamped into `1…pageCount`.
  * @param pageCount Total number of pages.

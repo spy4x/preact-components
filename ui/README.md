@@ -799,13 +799,11 @@ control, so nobody's focus is on one at that moment.
 **The window keeps two pages on each side of the current one.** The first and last page are always
 shown, the window slides back inside the range rather than shrinking when it reaches an end, and a
 `…` always stands for at least two pages: where a mark would have hidden a single page, that page is
-written out instead, because the mark takes the same room and says less. `pageRange(page, pageCount,
-size)` is that rule on its own, exported and unit-tested; `size` says how long a range may be before
-it collapses at all, and the collapsed window's width does not depend on it. What bounds the
-collapsed form is the two-page rule instead: at most nine items, being the five-page window plus, at
+written out instead, because the mark takes the same room and says less. `pageRange(page, pageCount)`
+is that rule on its own, exported and unit-tested; a range of up to seven pages is listed in full.
+What bounds the collapsed form is the two-page rule: at most nine items, being the five-page window plus, at
 each end, either that end's page and a `…` or the two pages the window swallowed in place of that
-`…`. The unit suite walks every page of every total up to sixty across a dozen values of `size`, so
-nine is a measured ceiling rather than an estimate — and it checks that nine is reached, because a
+`…`. The unit suite walks every page of every total up to sixty, so nine is a measured ceiling rather than an estimate — and it checks that nine is reached, because a
 bound nobody reaches is a bound nobody has tested.
 
 ```
@@ -2277,11 +2275,10 @@ components and tests means exactly that: nothing outside this package should bui
 
 ### Pagination (`./pagination`)
 
-- `pageRange(page, pageCount, size)` collapses a page range into the items a pagination control
-  renders: `{ page }` for a number and `{ gap: "gap" }` for a `…`. A range of up to `size` pages
-  (default `7`) is listed in full; a longer one keeps the first page, the last page and the current
-  page with its neighbours. A `size` below `5` counts as `5`. Use it to draw pagination in markup of
-  your own.
+- `pageRange(page, pageCount)` collapses a page range into the items a pagination control
+  renders: `{ page }` for a number and `{ gap: "gap" }` for a `…`. A range of up to seven pages is
+  listed in full; a longer one keeps the first page, the last page and the current page with its
+  neighbours. Use it to draw pagination in markup of your own.
 
 ### Progress (`./progress`)
 
