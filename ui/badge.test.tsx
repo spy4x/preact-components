@@ -158,6 +158,20 @@ describe("Badge's deprecated color and type", () => {
     }
   })
 
+  it("maps each old colour to the tone that keeps its look", () => {
+    expect(BADGE_TONE_OF_COLOR).toEqual({
+      red: "danger",
+      orange: "warning",
+      green: "success",
+      gray: "neutral",
+      blue: "info",
+      purple: "primary",
+      purpleNav: "primaryStrong",
+    })
+    expect(badgeClasses("info")).toContain("bg-blue-600")
+    expect(badgeClasses("danger")).toContain("bg-danger-fill")
+  })
+
   it("lets tone and variant win over color and type", () => {
     expect(render(<Badge text="x" tone="danger" color="green" variant="filled" type="outline" />))
       .toBe(render(<Badge text="x" tone="danger" />))
