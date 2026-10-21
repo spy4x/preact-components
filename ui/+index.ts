@@ -518,3 +518,9 @@ export {
   type FilterBarToggle,
   filterTriggerLabel,
 } from "./filter-bar.tsx"
+export {
+  ScreenTour,
+  type ScreenTourImage,
+  type ScreenTourProps,
+  type ScreenTourStep,
+} from "./screen-tour.tsx"

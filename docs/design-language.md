@@ -230,6 +230,15 @@ stop, and page CSS can follow it through `:has(#id:checked)`. Reach for it on a 
 a demo that works with JavaScript off, and inside a plain form; an island may still pass `value`
 and `onChange`. Never draw a local radio look-alike.
 
+**A product walkthrough is `ScreenTour`:** named steps as tabs beside one browser or phone frame
+whose screenshot swaps, the step's caption (its `alt`) and one line of text under the frame, and
+"View full size" into `Lightbox`. Use it on a product or case-study page when the screens tell a
+story a person picks through by name: the pages of an app, or the steps of a flow (`numbered`).
+Keep it to the screens that carry the story, about three to twelve, with `group` labels past six.
+A plain `ImageGallery` is better when the screenshots have no names or order worth reading, when
+there are only one or two, or when the point is to browse them all at full size. One tour per
+page; its line of text is the project's own words, never new claims.
+
 `ThemePreview` is the one way to show components in both palettes on one page: a `RadioChips` pair,
 Dark first and checked, over a frame that takes the chosen palette while the page keeps its own.
 Use it on a page that sells or documents the library; never repaint a whole page to show light and

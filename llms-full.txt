@@ -4775,10 +4775,10 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on eleven exports.** Most components pass a caller's `class` through
+- **A `class` is merged, except on twelve exports.** Most components pass a caller's `class` through
   `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
   group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  `EnhancedForm` (#511) and `DemoVideo` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
+  `EnhancedForm` (#511), `DemoVideo` and `ScreenTour` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
   `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
   before. Their `class` is appended after their own classes, and replaces one of them only when
@@ -4882,6 +4882,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
+| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                                         |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
@@ -5549,11 +5550,15 @@ A short demo clip that costs nothing until a reader asks for it. The server rend
 play mark over it. Without JavaScript the link opens the clip in the browser's own player.
 
 After hydration, a click, Enter or Space on the link stays on the page and swaps the poster for
-`<video controls autoplay muted playsinline preload="auto">`, one `<source>` per entry of
-`sources`, in the same box: the box keeps the poster's aspect, so nothing below it moves. Focus
-moves to the video, so a keyboard reader can pause it at once. No `<video>` element exists before
-the press, so the browser requests no video bytes. Under `prefers-reduced-motion: reduce` the clip
-still plays, since the reader asked for it, but `loop` is ignored.
+`<video controls autoplay playsinline preload="auto">`, one `<source>` per entry of `sources`,
+in the same box: the box keeps the poster's aspect, so nothing below it moves. Focus moves to the
+video, so a keyboard reader can pause it at once. The clip plays with its sound, since the press
+is the reader's own gesture; when the browser still refuses sound, it mutes the clip and plays
+again, so it always starts. The video is `object-contain` on a dark fill: in full screen on a
+screen of another aspect, the whole frame shows with dark bars, captions at the edges included.
+No `<video>` element exists before the press, so the browser requests no video bytes. Under
+`prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
+ignored.
 
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the
@@ -5574,6 +5579,66 @@ the video.
   sources={[
     { src: "/demo.webm", type: "video/webm" },
     { src: "/demo.mp4", type: "video/mp4" },
+  ]}
+/>
+```
+
+## ScreenTour
+
+A product walkthrough for a product or case-study page: named steps as tabs beside one browser or
+phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is picked.
+Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View full
+size" link.
+
+The tabs are a column from 1024 px and, below it, a row that scrolls inside itself, so a phone page
+never scrolls sideways. The tab list is one Tab stop: Left/Right and Up/Down move and select (the
+list is a column on a wide screen and a row on a narrow one), and Home/End jump. The decision table
+is the exported `nextStepIndex`, built on `Tabs`' `nextTabIndex`. `group` labels a run of steps in
+the column; each tab of the run keeps its own name and takes the label as its description
+(`aria-describedby`). `numbered` draws 1, 2, 3 in
+front of the names, for steps a person follows in order.
+
+The server renders the first step selected and every step's caption and text. Where scripts run
+(`@media (scripting: enabled)`) the server markup already shows only the selected step's text, so
+hydration moves nothing; under `scripting: none` every text shows in a column, and "View full size"
+is a link to the image. Once hydrated, the link opens `Lightbox`, whose Previous and Next move the
+tour with it. A panel that is not selected leaves the Tab order, and a panel fading in is visible
+from its first frame, so a Tab right after an arrow key lands on the new step's panel. From 1024 px the phone frame is 16 rem wide. Only the first screenshot is in the HTML, and so is the only one that loads with the page;
+another loads the first time its step is picked. Screenshots and texts share one grid cell each, so
+the tour keeps the height of its tallest text and nothing below it moves on a switch; they
+cross-fade in 150 ms, and switch at once under `prefers-reduced-motion: reduce`. No `fetchpriority`
+is set unless `fetchPriority` asks, because only the page knows whether the tour is its main image.
+`onSelect` gets the step's `id` on every pick by a person (a click, a key or the lightbox), never on
+the first render: wire it to analytics. A step with a blank `alt` throws, since its caption would be
+empty, and so does an empty `steps`.
+
+```tsx
+<ScreenTour
+  frame="browser"
+  browserUrl="app.example.com"
+  onSelect={(id) => track("tour", { step: id })}
+  steps={[
+    {
+      id: "tour-dashboard",
+      label: "Dashboard",
+      text: "Every device on one map, with its state.",
+      image: {
+        src: "/dashboard.webp",
+        alt: "The dashboard, a map of devices",
+        width: 1280,
+        height: 800,
+      },
+    },
+    {
+      id: "tour-alerts",
+      label: "Alerts",
+      image: {
+        src: "/alerts.webp",
+        alt: "The alerts list, newest first",
+        width: 1280,
+        height: 800,
+      },
+    },
   ]}
 />
 ```
@@ -7149,6 +7214,12 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### ScreenTour (`./screen-tour`)
+
+- `nextStepIndex(key, current, count)` is the step a key press on a `ScreenTour` tab moves to:
+  `nextTabIndex` with Up and Down stepping like Left and Right, wrapping at both ends, and
+  `undefined` for a key the tour does not own.
 
 ### TagInput (`./tag-input`)
 
