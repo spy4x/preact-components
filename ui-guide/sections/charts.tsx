@@ -115,25 +115,33 @@ const revenue: LineSeries[] = [
 
 /**
  * A chart behind a loading state, drawn once it scrolls into view: the element `useInView` watches
- * only exists after the loading line is gone, which is the case the browser check for #863 guards.
+ * only exists after the loading bar is gone, which is the case the browser check for #863 guards.
+ * Neither state has text of its own, so the served card reads the same as the hydrated one.
  */
-function DeferredSignups() {
+function DeferredDonut() {
   const loaded = useSignal(false)
   const { ref, inView } = useInView<HTMLDivElement>()
-  // Stands in for data arriving after hydration; the server render shows the loading line.
+  // Stands in for data arriving after hydration; the server render shows the loading bar.
   useEffect(() => {
     loaded.value = true
   }, [])
-  if (!loaded.value) return <p class="text-sm text-muted">Loading sign-ups…</p>
+  if (!loaded.value) {
+    return (
+      <div
+        aria-hidden="true"
+        class="h-4 w-32 animate-pulse rounded bg-track motion-reduce:animate-none"
+      />
+    )
+  }
   return (
     <div ref={ref} data-e2e="chart-deferred" class="min-h-16">
       {inView
         ? (
-          <LineChart
-            series={signups}
-            title="Sign-ups per day, drawn when scrolled into view"
-            height={160}
-            yFormat={(value) => value.toFixed(0)}
+          <DonutChart
+            data={traffic}
+            showLegend={false}
+            ariaLabel="Traffic sources, drawn when scrolled into view"
+            valueFormat={(value) => `${value * 124} sessions`}
           />
         )
         : null}
@@ -208,13 +216,16 @@ export const chartsDemos = {
   title="Traffic sources"
 />`,
     render: () => (
-      <DonutChart
-        data={traffic}
-        centerValue="12.4k"
-        centerLabel="sessions"
-        title="Traffic sources"
-        valueFormat={(value) => `${value * 124} sessions`}
-      />
+      <div class="flex flex-col gap-6">
+        <DonutChart
+          data={traffic}
+          centerValue="12.4k"
+          centerLabel="sessions"
+          title="Traffic sources"
+          valueFormat={(value) => `${value * 124} sessions`}
+        />
+        <DeferredDonut />
+      </div>
     ),
   },
   LineChart: {
@@ -288,7 +299,6 @@ export const chartsDemos = {
             yFormat={(value) => value.toFixed(0)}
           />
         </div>
-        <DeferredSignups />
       </div>
     ),
   },
