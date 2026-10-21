@@ -993,8 +993,8 @@ app that imports it keeps working and gets the kept drawing. Both old names go i
 | `IconCpuChip`         | `IconChip`         | `stroke-2`, like most of the set                      |
 | `IconSpinner`         | `IconLoading`      | `stroke-2`, where the old arc was the set's one `2.5` |
 
-The kept drawings default to `size-5`, so `IconCheckCircle`, `IconArrowPath`, `IconArrowDownTray`
-and `IconCpuChip` without a `class` now render at `size-5` instead of `size-6`. The guide's gallery
+Three kept drawings default to `size-5`, so `IconArrowPath`, `IconArrowDownTray` and `IconCpuChip`
+without a `class` now render at `size-5` instead of `size-6`. The guide's gallery
 shows the kept names only and lists the old ones under it.
 
 ## Provenance

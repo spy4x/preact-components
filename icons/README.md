@@ -103,9 +103,8 @@ app that imports it keeps working and gets the kept drawing. The old names go in
 | `IconCpuChip`         | `IconChip`         | `stroke-2`, like most of the set                          |
 | `IconLoading`         | `IconSpinner`      | the one spinner, which `Button` and `LoadingSpinner` draw |
 
-The kept drawings of the first six default to `size-5`, so `IconCheckCircle`, `IconArrowPath`,
-`IconArrowDownTray` and `IconCpuChip` without a `class` now render at `size-5` instead of `size-6`.
-`IconLoading` drew Lucide's eight-spoke `loader`; `IconSpinner` is Lucide's `loader-circle` arc. The
+Three kept drawings default to `size-5` where the old one was `size-6`, so `IconArrowPath`,
+`IconArrowDownTray` and `IconCpuChip` without a `class` now render smaller. `IconLoading` drew Lucide's eight-spoke `loader`; `IconSpinner` is Lucide's `loader-circle` arc. The
 guide's gallery shows the kept names only and lists the old ones under it.
 
 ## Provenance
