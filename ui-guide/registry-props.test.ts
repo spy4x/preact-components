@@ -8,7 +8,8 @@ import { describe, it } from "@std/testing/bdd"
 import { denoDoc } from "../infra/scripts/llms-txt.ts"
 import { entryPoints, memberConfig } from "../infra/scripts/workspace.ts"
 import { isComponent, packageExports } from "./coverage.ts"
-import { classDemoNames, demoRegistry, packageIds } from "./registry.ts"
+import { demoRegistry, packageIds } from "./registry.ts"
+import { classDemoNames } from "./registry-internals.ts"
 import {
   type CardInput,
   declarationsByName,

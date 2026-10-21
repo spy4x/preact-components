@@ -30,3 +30,12 @@ export const coveredPackageIds = [...packageIds, ...helperPackageIds] as const
 
 /** Identifier of a catalogued package: its directory, and the last segment of its specifier. */
 export type PackageId = (typeof coveredPackageIds)[number]
+
+/**
+ * The package the class sections document.
+ *
+ * A class section names it to say which package's vocabulary its cards belong to. Its card ids are
+ * not exports, and `coverage.ts` reads only component sections, so they stay out of the coverage
+ * rule.
+ */
+export const CLASS_PACKAGE = "theme" as const

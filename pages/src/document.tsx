@@ -11,7 +11,7 @@
  * its canonical address is now parsed rather than concatenated — see `renderDocument` below.
  */
 
-import type { RouteTable } from "@spy4x/preact-ui-guide/routes"
+import type { RouteTable } from "../../ui-guide/routes-internals.ts"
 import { renderToString } from "preact-render-to-string"
 import { themeBootstrapScript } from "@spy4x/preact-signals/theme"
 import { SEOHead } from "@spy4x/preact-system/seo-head"

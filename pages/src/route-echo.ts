@@ -18,7 +18,7 @@
  */
 
 import { type } from "arktype"
-import type { RouteTable } from "@spy4x/preact-ui-guide/routes"
+import type { RouteTable } from "../../ui-guide/routes-internals.ts"
 
 /** `id` of the echo element. The one string both halves have to agree on. */
 export const ROUTE_TABLE_ID = "ui-guide-routes"

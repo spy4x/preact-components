@@ -482,7 +482,7 @@ Every link in the guide's navigation is such a route.
 ### The route echo
 
 Under hash routing the one `index.html` **is** every route, so there is no per-route emission to
-check. Instead `src/document.tsx` embeds the route table (`routeTable()`, from the route model) as
+check. Instead `src/document.tsx` embeds the route table (`routeTable()`, from `ui-guide/routes-internals.ts`) as
 `<script type="application/json" id="ui-guide-routes">`, and `build.ts` reads it back out of the
 rendered document and runs it through `routeTableDrift()`: every entry must resolve back to its own
 section or demo, be canonical, appear once, and account for every section and demo in the catalogue.

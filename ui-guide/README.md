@@ -181,8 +181,8 @@ Decisions worth stating, because a later wave will build on them:
 - **A page is not a card's address.** Pages are routes a reader navigates by; a card is still
   addressed by its section, so every link written before pages existed still opens its card.
 
-`routeTable()` is the route table a host can echo into its single document, and `routeTableDrift()`
-is the build guard over it: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
+`routeTable()` and `routeTableDrift()`, in `routes-internals.ts` and not exported by the package,
+are this repository's build guard: `pages/build.ts` embeds the table, reads it back out of the emitted HTML
 and fails when a page, section or demo entry is missing, duplicated, non-canonical, or one the
 resolver would not accept.
 
@@ -365,6 +365,11 @@ where a later position utility wins).
 entry — and renders every glyph with a live name filter and click-to-copy of `<IconName />`. A new
 icon is in the catalogue the moment it is exported. `icons.test.tsx` matches the rendered
 `data-icon` attributes against the icon module's own exports, so the gallery cannot fall behind it.
+
+The one list is `DEPRECATED_ICON_NAMES`: the old names the icon package still exports as second
+names of a kept glyph. The gallery shows each glyph once, under the name to use, lists the old names
+under the grid (`labels.deprecated` leads that line, `labels.useInstead` joins each pair).
+`icons.test.tsx` fails when two exports share a component and the pair is not listed.
 
 The clipboard goes through the `copy` port, which falls back to `copyToClipboard` from
 `@spy4x/platform/browser/clipboard` so the legacy `execCommand` path is not reimplemented here.

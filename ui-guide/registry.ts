@@ -3,7 +3,7 @@
  *
  * The sections live in `sections/*.tsx` and hand their cards over here. A section states the package
  * its keys belong to and the group it is read in, and everything the page and the route model need —
- * {@link catalogueSections}, {@link catalogueNames}, {@link sectionIds} — is derived from that
+ * {@link catalogueSections}, {@link catalogueNames}, `sectionIds` — is derived from that
  * one record, so there is no second list to keep in step.
  *
  * Nothing in this file checks itself. `coverage.ts` is the check: it reads every covered package's
@@ -46,12 +46,18 @@ import { pushSettingsDemos } from "./sections/push-settings.tsx"
 import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
-import { coveredPackageIds, helperPackageIds, type PackageId, packageIds } from "./registry-ids.ts"
+import {
+  CLASS_PACKAGE,
+  coveredPackageIds,
+  helperPackageIds,
+  type PackageId,
+  packageIds,
+} from "./registry-ids.ts"
 
 export { coveredPackageIds, helperPackageIds, type PackageId, packageIds }
 
 /** `@spy4x/preact-<id>` — the specifier a reader copies out of the guide. */
-export function packageSpecifier(id: SectionPackage): string {
+function packageSpecifier(id: SectionPackage): string {
   return `@spy4x/preact-${id}`
 }
 
@@ -107,15 +113,6 @@ export interface Demo {
  */
 export type DemoFragment = Record<string, Demo>
 
-/**
- * The package the class sections document.
- *
- * A class section names it to say which package's vocabulary its cards belong to. Its card ids are
- * not exports, and `coverage.ts` reads only component sections, so they stay out of the coverage
- * rule.
- */
-export const CLASS_PACKAGE = "theme" as const
-
 /** A section's package: a package whose components have cards, or the theme for its classes. */
 export type SectionPackage = (typeof packageIds)[number] | typeof CLASS_PACKAGE
 
@@ -162,7 +159,7 @@ export type SectionKind = "component" | "class"
  * and the group is kept because the shell is a reader's own reason for looking rather than a
  * leftover of the package it once shared a heading with.
  */
-export const catalogueGroupIds = [
+const catalogueGroupIds = [
   "foundations",
   "surfaces",
   "inputs",
@@ -171,7 +168,7 @@ export const catalogueGroupIds = [
 ] as const
 
 /** Identifier of a top-level group, e.g. `"inputs"`. */
-export type GroupId = (typeof catalogueGroupIds)[number]
+type GroupId = (typeof catalogueGroupIds)[number]
 
 /** Heading, blurb, group and demos of one catalogue section, before it is resolved for rendering. */
 interface SectionSpec {
@@ -389,7 +386,7 @@ const catalogueGroups: Record<GroupId, readonly SectionId[]> = (() => {
  * {@link catalogueSections} is built from, and so the order each page lists its sections in. The
  * groups are no longer drawn as headings; they only order the sections.
  */
-export const sectionIds: SectionId[] = catalogueGroupIds.flatMap((groupId) => [
+const sectionIds: SectionId[] = catalogueGroupIds.flatMap((groupId) => [
   ...catalogueGroups[groupId],
 ])
 
@@ -420,7 +417,7 @@ export interface CatalogueSection {
 /**
  * The sections in render order, resolved against {@link catalogue}.
  *
- * The order is {@link sectionIds}: groups first, declaration order within them, which is the one
+ * The order is `sectionIds`: groups first, declaration order within them, which is the one
  * order the catalogue keeps. The flat array stays the interface — `pages/`, `routes.ts` and
  * `verify.ts` all iterate sections — and none of them has to know that the page draws a heading
  * every few of them.
@@ -494,11 +491,6 @@ export const classDemos: Record<string, ClassDemo> = Object.fromEntries(
 export function cardLabel(name: string): string {
   return classDemos[name]?.title ?? `<${name} />`
 }
-
-/** Card ids of the class sections, in render order: the demos that document classes, not components. */
-export const classDemoNames: string[] = catalogueSections
-  .filter((section) => section.kind === "class")
-  .flatMap((section) => section.names)
 
 /**
  * Cards the sections mean to render that this registry does not carry.

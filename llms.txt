@@ -109,9 +109,9 @@ typedNumber	helper	@spy4x/preact-crud	The number a keystroke may commit, or `und
 IconAlertTriangle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArchive	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons.
 IconArrowDown	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
-IconArrowDownTray	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconArrowDownTray	component	@spy4x/preact-icons	Deprecated: Use `IconDownload`. Old name of `IconDownload`, kept as the same component: the two drew one idea twice.
 IconArrowLeft	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
-IconArrowPath	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconArrowPath	component	@spy4x/preact-icons	Deprecated: Use `IconRefresh`. Old name of `IconRefresh`, kept as the same component: the two drew one idea twice.
 IconArrowRight	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconArrowUp	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconArrowUpRight	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "arrow-up-right" exactly.
@@ -131,7 +131,7 @@ IconCalendarDays	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5)
 IconChartPie	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconChatBubble	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "chat-alt" from heroicons@1.0.6 (#233).
 IconCheck	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
-IconCheckCircle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconCheckCircle	component	@spy4x/preact-icons	Deprecated: Use `IconSuccess`. Old name of `IconSuccess`, kept as the same component: the two drew one idea twice.
 IconChevronDown	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconChevronLeft	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "chevron-left" exactly, not Heroicons.
 IconChevronRight	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "chevron-right" exactly, not Heroicons.
@@ -144,7 +144,7 @@ IconCloudArrowUp	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) �
 IconCode	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "code" exactly, not Heroicons.
 IconCog6Tooth	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconCopy	component	@spy4x/preact-icons	Feather outline (stroke-2); Feather's "copy" (4.29.2), added in #495.
-IconCpuChip	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
+IconCpuChip	component	@spy4x/preact-icons	Deprecated: Use `IconChip`. Old name of `IconChip`, kept as the same component: the two drew one idea twice.
 IconCreditCard	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "credit-card" from heroicons@1.0.6 (#233).
 IconCursorArrowRays	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconDocument	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "document" from heroicons@2.2.0 (#233).
@@ -154,7 +154,7 @@ IconDollar	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-2); matche
 IconDownload	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconEllipsisVertical	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconExclamationCircle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5); Heroicons v2's "exclamation-circle" (2.2.0), added for the danger tone of `Notice` (#552).
-IconExternal	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "external-link" exactly.
+IconExternal	component	@spy4x/preact-icons	Deprecated: Use `IconExternalLink`. Old name of `IconExternalLink`, kept as the same component: the two drew one idea twice.
 IconExternalLink	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application, redrawn as "external-link" from heroicons@1.0.6 (#233).
 IconEye	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconEyeOff	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
@@ -178,7 +178,7 @@ IconLightBulb	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) ·
 IconLink	component	@spy4x/preact-icons	Feather/Lucide outline (stroke 1.75) · matches both packs' "link" exactly.
 IconLinkedIn	component	@spy4x/preact-icons	Brand mark (trademarked), Feather outline (stroke-2) · "linkedin" from feather-icons@4.29.2 (#233).
 IconList	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "list" exactly.
-IconLoading	component	@spy4x/preact-icons	The same spinner as `IconSpinner`, under the name older apps import.
+IconLoading	component	@spy4x/preact-icons	Deprecated: Use `IconSpinner`. Old name of `IconSpinner`, kept as the same component: the two drew one idea twice.
 IconLocationMarker	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconLockClosed	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconLockClosedFilled	component	@spy4x/preact-icons	Heroicons v1 solid · from a source application; matches Heroicons v1's "lock-closed" exactly, not v2.
@@ -223,7 +223,7 @@ IconTwitter	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "x
 IconUpwork	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "upwork" from simple-icons@16.33.0 (#233).
 IconUser	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconUsers	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
-IconVideo	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "video-camera" from heroicons@2.2.0 (#233).
+IconVideo	component	@spy4x/preact-icons	Deprecated: Use `IconVideoCamera`. Old name of `IconVideoCamera`, kept as the same component: the two drew one idea twice.
 IconVideoCamera	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconViewColumns	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5); matches Heroicons v2's "view-columns" exactly, not v1.
 IconWallet	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "wallet" exactly, not Heroicons.
@@ -877,7 +877,6 @@ editableText	helper	@spy4x/preact-ui/money-input	The text a person edits: the am
 ImageSequence	type	@spy4x/preact-ui/zoomable-images	What `collectSequence` hands back: the lightbox's whole sequence, and where it opened.
 collectSequence	helper	@spy4x/preact-ui/zoomable-images	Build the sequence a lightbox pages through, and the position of the image that was opened.
 zoomableAlt	helper	@spy4x/preact-ui/zoomable-images	The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`, not treated as a real name because a non-empty string happens to be truthy.
-CLASS_PACKAGE	constant	@spy4x/preact-ui-guide	The package the class sections document.
 CatalogueSection	type	@spy4x/preact-ui-guide	One rendered section: its identity, its copy, the package it documents and its cards.
 ClassDemo	type	@spy4x/preact-ui-guide	One card of a class section: the same shape as `Demo`, plus what only a class card has.
 ClassDemoFragment	type	@spy4x/preact-ui-guide	The shape a class section's cards have: one `ClassDemo` per card id.
@@ -886,9 +885,7 @@ Demo	type	@spy4x/preact-ui-guide	One entry of the catalogue: what the component 
 DemoCard	component	@spy4x/preact-ui-guide	One demo: its name and one sentence, the live example on a quiet canvas, an optional props summary, and the code behind it.
 DemoFragment	type	@spy4x/preact-ui-guide	The shape a section's demos have: one `Demo` per card, keyed by component name.
 DemoRegistry	type	@spy4x/preact-ui-guide	The complete registry: one demo per card every section documents.
-DemoRouteEntry	type	@spy4x/preact-ui-guide	One demo's route, as the emitted route table carries it.
 DemoRouteMatch	type	@spy4x/preact-ui-guide	Matched one demo card: `#/inputs/toggle-switch`, or the legacy `#toggle-switch`.
-GroupId	type	@spy4x/preact-ui-guide	Identifier of a top-level group, e.g.
 GuideAuthor	type	@spy4x/preact-ui-guide	Who made the library, as the host names them: the footer and the header link to them.
 GuidePage	type	@spy4x/preact-ui-guide	One page as the navigation and the page header show it.
 GuidePageId	type	@spy4x/preact-ui-guide	Identifier of one page of the guide, e.g.
@@ -898,24 +895,19 @@ IndexRouteMatch	type	@spy4x/preact-ui-guide	Matched the landing route: the catal
 MapTiles	type	@spy4x/preact-ui-guide	A tile provider: its URL template and the credit line it requires.
 OPENSTREETMAP_TILES	constant	@spy4x/preact-ui-guide	OpenStreetMap's standard tile layer, and its required credit line.
 PackageId	type	@spy4x/preact-ui-guide	Identifier of a catalogued package: its directory, and the last segment of its specifier.
-PageRouteEntry	type	@spy4x/preact-ui-guide	One page's route, as the emitted route table carries it.
 PageRouteMatch	type	@spy4x/preact-ui-guide	Matched one page of the guide whose id names no section: `#/ui`, `#/icons`.
 PartialDemoRegistry	type	@spy4x/preact-ui-guide	A registry that may still be short an entry, which is what `missingDemos` reports on.
 RouteMatch	type	@spy4x/preact-ui-guide	What a hash resolved to: a page, a section, a demo, or the landing route.
-RouteTable	type	@spy4x/preact-ui-guide	The routes the deployed document echoes: one entry per page, per section and per demo.
 SearchKindWords	type	@spy4x/preact-ui-guide	The word beside a result for each kind of entry.
 SectionId	type	@spy4x/preact-ui-guide	Identifier of a catalogue section.
 SectionKind	type	@spy4x/preact-ui-guide	What a section's cards are: a package's components, or the theme's classes.
 SectionPackage	type	@spy4x/preact-ui-guide	A section's package: a package whose components have cards, or the theme for its classes.
-SectionRouteEntry	type	@spy4x/preact-ui-guide	One section's route, as the emitted route table carries it.
 SectionRouteMatch	type	@spy4x/preact-ui-guide	Matched one section of the catalogue: `#/inputs`.
 UIGuide	component	@spy4x/preact-ui-guide	The live catalogue: a header, a navigation and the page the route names.
 UiGuideRoute	type	@spy4x/preact-ui-guide	A route a host app can register, in the shape most routers want.
 cardLabel	helper	@spy4x/preact-ui-guide	A card's heading: a class card's own title, and `<Name />` for a component.
-catalogueGroupIds	helper	@spy4x/preact-ui-guide	The group a section belongs to, as the reader's reason for looking rather than as a package boundary.
 catalogueNames	helper	@spy4x/preact-ui-guide	Names with a demo, in render order — every card the catalogue renders, `ui`'s first.
 catalogueSections	helper	@spy4x/preact-ui-guide	The sections in render order, resolved against `catalogue`.
-classDemoNames	helper	@spy4x/preact-ui-guide	Card ids of the class sections, in render order: the demos that document classes, not components.
 classDemos	helper	@spy4x/preact-ui-guide	Every class demonstration the catalogue renders, keyed by card id.
 coveredPackageIds	helper	@spy4x/preact-ui-guide	Every package the coverage rule accounts for: `packageIds`, then `helperPackageIds`.
 demoHref	helper	@spy4x/preact-ui-guide	Canonical href of one demo card.
@@ -923,10 +915,9 @@ demoRegistry	helper	@spy4x/preact-ui-guide	The flat registry the catalogue rende
 guidePageIds	helper	@spy4x/preact-ui-guide	The guide's pages, in navigation order: the overview, then one page per package.
 guidePages	helper	@spy4x/preact-ui-guide	Every page of the guide, resolved, in `guidePageIds` order.
 helperPackageIds	helper	@spy4x/preact-ui-guide	Packages that export no component: helpers only, so the guide shows none of their exports and no stylesheet needs to scan them.
-iconNames	helper	@spy4x/preact-ui-guide	Every glyph the icon package exports, in module order.
+iconNames	helper	@spy4x/preact-ui-guide	Every glyph the icon package exports, under the name to use, in module order.
 missingDemos	helper	@spy4x/preact-ui-guide	Cards the sections mean to render that this registry does not carry.
 packageIds	helper	@spy4x/preact-ui-guide	Every package whose components the catalogue renders, in reading order.
-packageSpecifier	helper	@spy4x/preact-ui-guide	`@spy4x/preact-<id>` — the specifier a reader copies out of the guide.
 pageHref	helper	@spy4x/preact-ui-guide	Canonical href of a page: `#/` for the overview, `#/<id>` for the rest.
 pageOfFragment	helper	@spy4x/preact-ui-guide	The page holding the element a bare fragment names, for the ids the guide itself renders: a section's (`#inputs`) and a page's own (`#icons`, the gallery).
 pageOfRoute	helper	@spy4x/preact-ui-guide	The page a route opens, or `undefined` for a hash that names no route.
@@ -934,9 +925,6 @@ pageOfSection	helper	@spy4x/preact-ui-guide	The page a section is read on: its p
 parseRoute	helper	@spy4x/preact-ui-guide	Resolve an incoming `location.hash` to the route it names.
 routeHref	helper	@spy4x/preact-ui-guide	Canonical href of a section.
 routeSlug	helper	@spy4x/preact-ui-guide	URL slug of a name or a section id: `ToggleSwitch` becomes `toggle-switch`.
-routeTable	helper	@spy4x/preact-ui-guide	The route table for a set of sections: every section's route, then every demo's.
-routeTableDrift	helper	@spy4x/preact-ui-guide	Read an emitted route table back and report every entry the resolver would not accept.
-sectionIds	helper	@spy4x/preact-ui-guide	The groups' sections as one array, in group order then declaration order: the reading order `catalogueSections` is built from, and so the order each page lists its sections in.
 uiGuideRoute	helper	@spy4x/preact-ui-guide	Route descriptor for the catalogue.
 useLocationHash	hook	@spy4x/preact-ui-guide	`location.hash`, re-read on every `hashchange`.
 DemoProp	type	@spy4x/preact-ui-guide/registry	One row of a card's props summary: a prop, its type, its default and what it does.

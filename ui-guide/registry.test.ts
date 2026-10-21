@@ -10,8 +10,6 @@ import { describe, it } from "@std/testing/bdd"
 import {
   catalogueNames,
   catalogueSections,
-  CLASS_PACKAGE,
-  classDemoNames,
   classDemos,
   coveredPackageIds,
   demoRegistry,
@@ -22,6 +20,7 @@ import {
   packageIds,
   packagePages,
 } from "./registry.ts"
+import { CLASS_PACKAGE, classDemoNames } from "./registry-internals.ts"
 
 /** A copy of the registry with one entry removed, so the missing-card path can be exercised. */
 function without(...names: string[]): Partial<typeof demoRegistry> {
