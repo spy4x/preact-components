@@ -131,7 +131,10 @@ const DEFAULT_SIZE = "h-80 w-full"
 const BOX_BASE =
   "relative overflow-hidden rounded-primary border border-subtle bg-canvas dark:bg-surface"
 
-/** See this file's own doc. */
+/**
+ * Markers on a Leaflet tile layer, with a plain-text list of the same places beside it. Leaflet
+ * loads in a browser only; see this file's own doc for the details.
+ */
 export function LeafletMap(
   {
     center,
