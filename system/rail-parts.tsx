@@ -56,6 +56,20 @@ export const entryCurrent =
   "bg-[var(--color-surface-active,var(--color-accent-100))] dark:bg-[var(--color-surface-active,var(--color-selected-soft))] text-[color:var(--color-nav-active,var(--color-selected-text))] font-semibold forced-colors:outline-2 forced-colors:outline-solid forced-colors:outline-[CanvasText]"
 
 /**
+ * The labels variant's mark on its current entry, on top of {@link entryCurrent}: a 3 px bar in
+ * the current text colour on the entry's inner edge, the left edge of a column cell and the top
+ * edge of a tab. A site's warm dark palette can leave the fill too faint to find the page by; the
+ * bar is a pseudo-element, so it takes no room and moves nothing. The icons variant keeps the fill
+ * alone, and the sheet's rows draw no bar.
+ */
+export const entryCurrentBar: Record<Exclude<EntryPlace, "sheet">, string> = {
+  rail:
+    "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--color-nav-active,var(--color-selected-text))]",
+  tab:
+    "before:absolute before:inset-x-3 before:top-0 before:h-[3px] before:rounded-full before:bg-[var(--color-nav-active,var(--color-selected-text))]",
+}
+
+/**
  * The primary action: `Button`'s primary fill. In the dark palettes that fill, step 600, is about
  * 2.7:1 against the rail's surface, so a border in step 400 draws its edge at 3:1 or more.
  */
@@ -334,6 +348,7 @@ export function Entry(props: EntryProps): JSX.Element {
     entryBase,
     place === "rail" ? railCell[variant] : entryPlace[place],
     primary ? entryPrimary : current ? entryCurrent : entryIdle,
+    current && !primary && variant === "labels" && place !== "sheet" && entryCurrentBar[place],
   )
   const content = (
     <>

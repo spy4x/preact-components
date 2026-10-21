@@ -322,6 +322,82 @@ describe("Rail", () => {
     expect(html).not.toContain("before:w-1")
   })
 
+  const barColour = "before:bg-[var(--color-nav-active,var(--color-selected-text))]"
+  const columnBar = ["before:absolute", "before:left-0", "before:w-[3px]", barColour]
+  const tabBar = ["before:absolute", "before:top-0", "before:h-[3px]", barColour]
+
+  it("adds a 3 px left-edge bar to the labels variant's current cell, a RailEntry's included", () => {
+    const html = render(
+      <Rail
+        variant="labels"
+        items={itemsOf(3)}
+        currentKey="i2"
+        top={(place) =>
+          place === "rail" && (
+            <RailEntry
+              item={{ key: "home", label: "Home", href: "/" }}
+              place="rail"
+              variant="labels"
+              current="page"
+            />
+          )}
+      >
+        page
+      </Rail>,
+    )
+    const [currentTag] = linkTags(region(html, "rail-shell-rail", "nav"), "/i2")
+    const [idleTag] = linkTags(region(html, "rail-shell-rail", "nav"), "/i1")
+    const [portraitTag] = linkTags(region(html, "rail-shell-top", "div"), "/")
+    for (const tag of [currentTag, portraitTag]) {
+      const classes = controlClass(tag).split(" ")
+      for (const name of columnBar) expect(classes).toContain(name)
+      expect(classes).toContain("bg-[var(--color-surface-active,var(--color-accent-100))]")
+      expect(classes).toContain("font-semibold")
+      expect(classes).toContain("forced-colors:outline-[CanvasText]")
+    }
+    expect(controlClass(idleTag)).not.toContain("before:")
+  })
+
+  it("adds a 3 px top-edge bar to the labels variant's current tab, More included", () => {
+    const items: RailItem[] = [
+      ...itemsOf(2),
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const tabbar = (path: string) =>
+      region(
+        render(<Rail variant="labels" items={items} currentPath={path}>page</Rail>),
+        "rail-shell-tabbar",
+        "nav",
+      )
+    const [currentTab] = linkTags(tabbar("/i2"), "/i2")
+    const [idleTab] = linkTags(tabbar("/i2"), "/i1")
+    for (const name of tabBar) expect(controlClass(currentTab).split(" ")).toContain(name)
+    expect(controlClass(idleTab)).not.toContain("before:")
+    const more = (path: string) =>
+      tabbar(path).match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
+    for (const name of tabBar) expect(controlClass(more("/about")).split(" ")).toContain(name)
+    expect(more("/i1")).not.toBe("")
+    expect(controlClass(more("/i1"))).not.toContain("before:")
+  })
+
+  it("keeps the icons variant's current cell and tab to the fill alone, with no edge bar", () => {
+    const items: RailItem[] = [
+      ...itemsOf(2),
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const html = render(<Rail items={items} currentKey="i2">page</Rail>)
+    const tags = linkTags(html, "/i2")
+    expect(tags).toHaveLength(2)
+    for (const tag of tags) {
+      expect(tag).toContain("bg-[var(--color-surface-active")
+      expect(controlClass(tag)).not.toContain("before:")
+    }
+    const more = render(<Rail items={items} currentPath="/about">page</Rail>)
+      .match(/<button[^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0] ?? ""
+    expect(more).toContain("bg-[var(--color-surface-active")
+    expect(controlClass(more)).not.toContain("before:")
+  })
+
   it("names an icon cell by hidden text and keeps its aria-hidden tooltip outside the control", () => {
     const html = render(
       <Rail items={[{ key: "home", label: "Home", href: "/", Icon: IconHome }]}>page</Rail>,
