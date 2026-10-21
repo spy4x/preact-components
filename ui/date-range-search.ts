@@ -28,8 +28,6 @@ export interface RangeFromSearchOptions {
   presets?: readonly DateRangePreset[]
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
-
 /**
  * The range an address asks for, or the default preset's when it asks for none or for one that
  * cannot be read.
@@ -46,7 +44,7 @@ export function rangeFromSearch(
   const to = search.get("to")
   if (from !== null && to !== null && presets.includes("custom")) {
     const custom = { from, to }
-    if (ISO_DAY.test(from) && ISO_DAY.test(to) && isValidDateRange(custom)) {
+    if (isValidDateRange(custom)) {
       return { preset: "custom", range: custom }
     }
   }
