@@ -152,10 +152,9 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
       title: message.title ?? options.titles?.[type] ?? defaultTitles[type],
       body: message.body,
       type,
-      // `duration` is the name both sides use; `timeout` is the old one, kept working for a
-      // release. `??` rather than `||`, so an explicit `0` — keep this toast until it is
-      // dismissed — is carried through instead of being read as "nothing was asked for".
-      duration: message.duration ?? message.timeout,
+      // Copied as given, so an explicit `0` — keep this toast until it is dismissed — is carried
+      // through instead of being read as "nothing was asked for".
+      duration: message.duration,
     }
     // Only when asked for, so an entry without a hook has no `dataE2E` key at all.
     if (message.dataE2E !== undefined) entry.dataE2E = message.dataE2E
