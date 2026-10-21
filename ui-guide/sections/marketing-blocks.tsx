@@ -1,11 +1,13 @@
 /**
  * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript;
  * `DemoVideo` uses it to play its clip in place, and without it the play link opens the clip.
- * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `Steps` and `WindowFrame` are spread into the
+ * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `ScreenTour`, `Steps` and `WindowFrame` are
+ * spread into the
  * Display section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
 
+import { useSignal } from "@preact/signals"
 import { IconSprout } from "@spy4x/preact-icons"
 import {
   Badge,
@@ -18,6 +20,8 @@ import {
   Field,
   Input,
   PageHero,
+  ScreenTour,
+  type ScreenTourStep,
   Steps,
   ThemePreview,
   WindowFrame,
@@ -58,6 +62,111 @@ const STEPS = [
   { title: "Import", text: "Bring your records in from a CSV file." },
   { title: "Invite", text: "Add the people you work with." },
 ]
+
+/**
+ * A placeholder screenshot as a data URI: a header bar, a side column and two content blocks in one
+ * hue, so the tour's cards need no image asset and no network. Each screen gets its own hue, so a
+ * swap is visible.
+ *
+ * @param hue The screen's hue, `0`-`360`.
+ * @param phone Draw a tall phone screen instead of a wide browser one.
+ */
+function tourScreen(hue: number, phone = false): string {
+  const [width, height] = phone ? [390, 844] : [1280, 800]
+  const block = (x: number, y: number, w: number, h: number, light: number) =>
+    `<rect x='${x}' y='${y}' width='${w}' height='${h}' rx='12' fill='hsl(${hue} 60% ${light}%)'/>`
+  const body = phone
+    ? block(24, 120, 342, 220, 80) + block(24, 364, 342, 120, 88) + block(24, 508, 342, 120, 88)
+    : block(32, 96, 240, 672, 88) + block(304, 96, 944, 360, 80) + block(304, 488, 456, 280, 88) +
+      block(792, 488, 456, 280, 88)
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'>` +
+    `<rect width='${width}' height='${height}' fill='hsl(${hue} 60% 96%)'/>` +
+    `<rect width='${width}' height='${phone ? 96 : 64}' fill='hsl(${hue} 60% 45%)'/>${body}</svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+/** The browser tour: four pages of an operations app, in two groups. */
+const TOUR_PAGES: ScreenTourStep[] = [
+  {
+    id: "guide-tour-dashboard",
+    label: "Dashboard",
+    group: "Monitor",
+    text: "Every device on one map, with its state.",
+    image: {
+      src: tourScreen(220),
+      alt: "The dashboard, a map of devices",
+      width: 1280,
+      height: 800,
+    },
+  },
+  {
+    id: "guide-tour-alerts",
+    label: "Alerts",
+    group: "Monitor",
+    text: "Failures raise an alert by push, chat or email.",
+    image: { src: tourScreen(0), alt: "The alerts list, newest first", width: 1280, height: 800 },
+  },
+  {
+    id: "guide-tour-schedules",
+    label: "Schedules",
+    group: "Automate",
+    text: "Time-of-day rules, sensor triggers and manual overrides.",
+    image: { src: tourScreen(140), alt: "The schedules calendar", width: 1280, height: 800 },
+  },
+  {
+    id: "guide-tour-users",
+    label: "Users",
+    group: "Access",
+    image: { src: tourScreen(280), alt: "The users table with roles", width: 1280, height: 800 },
+  },
+]
+
+/** The phone tour: three steps a person follows in order. */
+const TOUR_STEPS: ScreenTourStep[] = [
+  {
+    id: "guide-tour-pick",
+    label: "Pick a template",
+    image: { src: tourScreen(30, true), alt: "A list of templates", width: 390, height: 844 },
+  },
+  {
+    id: "guide-tour-record",
+    label: "Record",
+    text: "One scene at a time, with the script on screen.",
+    image: { src: tourScreen(190, true), alt: "The camera with a script", width: 390, height: 844 },
+  },
+  {
+    id: "guide-tour-watch",
+    label: "Watch",
+    image: {
+      src: tourScreen(320, true),
+      alt: "The finished clip playing",
+      width: 390,
+      height: 844,
+    },
+  },
+]
+
+/** Both tours, with the last step `onSelect` reported, as a page's analytics would see it. */
+function ScreenTourDemo() {
+  const picked = useSignal<string | null>(null)
+  return (
+    <div class="flex flex-col gap-12">
+      <ScreenTour
+        steps={TOUR_PAGES}
+        frame="browser"
+        browserUrl="app.example.com"
+        label="Pages of the app"
+        onSelect={(id) => {
+          picked.value = id
+        }}
+      />
+      <ScreenTour steps={TOUR_STEPS} frame="phone" numbered label="Steps to a clip" />
+      <p class="text-sm text-muted" data-e2e="screen-tour-picked">
+        {picked.value === null ? "onSelect: not called yet" : `onSelect: ${picked.value}`}
+      </p>
+    </div>
+  )
+}
 
 export const marketingBlockDemos: DemoFragment = {
   BrandMark: {
@@ -341,6 +450,82 @@ export const marketingBlockDemos: DemoFragment = {
         </div>
       </ThemePreview>
     ),
+  },
+  ScreenTour: {
+    summary:
+      "A product walkthrough: named steps as tabs beside one browser or phone frame whose screenshot swaps, with a caption, a line of text and View full size.",
+    wide: true,
+    props: [
+      {
+        name: "steps",
+        type: "{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]",
+        description:
+          "The steps in order. `alt` is also the caption; `group` labels a run of steps in the column.",
+      },
+      {
+        name: "frame",
+        type: `"browser" | "phone"`,
+        description: "The device drawn around the screenshot.",
+      },
+      { name: "browserUrl", type: "string", description: "The address in the browser's bar." },
+      {
+        name: "numbered",
+        type: "boolean",
+        default: "false",
+        description: "Number the tabs, for steps a person follows in order.",
+      },
+      {
+        name: "fetchPriority",
+        type: `"high" | "low" | "auto"`,
+        description: "Set on the first screenshot, when the tour is the page's main image.",
+      },
+      {
+        name: "onSelect",
+        type: "(id: string) => void",
+        description: "Called with the step a person picks, never on the first render.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"Screens"`,
+        description: "The tab list's accessible name.",
+      },
+      {
+        name: "viewFullSizeLabel",
+        type: "string",
+        default: `"View full size"`,
+        description: "The words of the link that opens the screenshot in the lightbox.",
+      },
+      {
+        name: "closeLabel",
+        type: "string",
+        default: `"Close"`,
+        description:
+          "The lightbox's close control; `previousLabel`, `nextLabel` and `counterLabel` too.",
+      },
+    ],
+    snippet: `<ScreenTour
+  frame="browser"
+  browserUrl="app.example.com"
+  onSelect={(id) => track("tour", { step: id })}
+  steps={[
+    {
+      id: "tour-dashboard",
+      label: "Dashboard",
+      group: "Monitor",
+      text: "Every device on one map, with its state.",
+      image: { src: "/dashboard.webp", alt: "The dashboard, a map of devices", width: 1280, height: 800 },
+    },
+    {
+      id: "tour-alerts",
+      label: "Alerts",
+      group: "Monitor",
+      image: { src: "/alerts.webp", alt: "The alerts list, newest first", width: 1280, height: 800 },
+    },
+  ]}
+/>
+<ScreenTour frame="phone" numbered steps={steps} />`,
+    render: () => <ScreenTourDemo />,
   },
   WindowFrame: {
     summary:
