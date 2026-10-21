@@ -577,7 +577,7 @@ The harness is the six parts, once:
 | ---------------- | ---------------------------------- | ----------------------------------------------------------------- |
 | `blank`          | —                                  | the add-mode row; the row type is inferred from it                |
 | `schema`         | —                                  | arktype schema validated on every change; omit if there is none   |
-| `entity`         | —                                  | "Add **Region**", "Region not found", dependency sentence         |
+| `entity`         | —                                  | "Add **region**", "Region not found", dependency sentence         |
 | `title`          | `Add/Edit <entity>`, sentence case | the `PageHeader` title; a non-string is drawn as its heading      |
 | `canChange`      | `true`                             | a port, because the library has no auth; `false` leaves Cancel    |
 | `archive`        | no toggle                          | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |

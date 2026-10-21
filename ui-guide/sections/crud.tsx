@@ -509,9 +509,9 @@ function CrudUuidDemo() {
             <td class="tabular-nums">{row.members}</td>
             {/* A phone has room for the name, the count and the button; the id joins from `sm`. */}
             <td class="hidden sm:table-cell">
-              {/* Eight characters keep the column narrow; the full id is the tooltip and is read out. */}
+              {/* Last eight characters: a version 7 UUID starts with its timestamp. */}
               <code class="text-xs" title={row.id}>
-                <span aria-hidden="true">{row.id.slice(0, 8)}…</span>
+                <span aria-hidden="true">…{row.id.slice(-8)}</span>
                 <span class="sr-only">{row.id}</span>
               </code>
             </td>
