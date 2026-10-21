@@ -17,7 +17,10 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconBars3 } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { useId, useLayoutEffect, useRef, useState } from "preact/hooks"
+import { scrollPageNearEdge, useKeptFocus, usePointerDrag } from "./pointer-drag.ts"
+
+export { edgeScrollStep } from "./pointer-drag.ts"
 
 /** The one field the list reads off an item. The caller's items may carry anything else. */
 export interface SortableItem {
@@ -147,34 +150,6 @@ export function sortableOffsets(
   return offsets
 }
 
-/**
- * How far to scroll in one animation frame while a held item is dragged near an edge.
- *
- * Inside `edge` pixels of the top or bottom of the scrolling area the speed grows towards `max`
- * the closer the pointer gets; elsewhere it is 0.
- *
- * @param y The pointer's vertical position, in viewport pixels.
- * @param top The scrolling area's visible top edge, in viewport pixels.
- * @param bottom Its visible bottom edge.
- * @param edge Depth of the zone that scrolls. Shrinks to a quarter of a short area.
- * @param max The largest step, in pixels per frame.
- * @returns A negative step to scroll up, a positive one to scroll down, or 0.
- */
-export function edgeScrollStep(
-  y: number,
-  top: number,
-  bottom: number,
-  edge = 48,
-  max = 16,
-): number {
-  const zone = Math.min(edge, (bottom - top) / 4)
-  if (zone <= 0) return 0
-  const depth = (into: number) => Math.ceil(max * Math.min(into, zone) / zone)
-  if (y < top + zone) return -depth(top + zone - y)
-  if (y > bottom - zone) return depth(y - (bottom - zone))
-  return 0
-}
-
 /** An item held by keyboard (`pointer` is `null`) or by a drag. */
 interface Held {
   id: string
@@ -186,23 +161,6 @@ interface Held {
   /** For a drag, how far the held row follows the pointer from where it was; `null` by keyboard. */
   pointer: number | null
 }
-
-/** A press on a handle that has not moved far enough to be a drag yet, or the drag it became. */
-interface Press {
-  id: string
-  pointerId: number
-  x: number
-  y: number
-  /** The pointer's latest vertical position, in viewport pixels. */
-  lastY: number
-  /** The pointer's position inside the list when the drag started; `null` before that. */
-  startInList: number | null
-  /** Ends the window listeners and the edge-scroll loop. */
-  stop: AbortController
-}
-
-/** How far a pointer moves on a handle before the press becomes a drag. */
-const DRAG_THRESHOLD = 4
 
 const listClass = "flex flex-col gap-2"
 const rowClass =
@@ -216,16 +174,6 @@ const bodyClass = "min-w-0 flex-1"
 /** The items' ids in order, as one string to compare. */
 function orderOf(items: readonly SortableItem[]): string {
   return items.map((item) => item.id).join("\n")
-}
-
-/** The nearest ancestor that scrolls vertically, or `null` when only the page does. */
-function scrollParent(element: HTMLElement): HTMLElement | null {
-  for (let node = element.parentElement; node !== null; node = node.parentElement) {
-    if (node === document.body || node === document.documentElement) return null
-    const overflow = getComputedStyle(node).overflowY
-    if (/(auto|scroll|overlay)/.test(overflow) && node.scrollHeight > node.clientHeight) return node
-  }
-  return null
 }
 
 /**
@@ -248,10 +196,8 @@ export function SortableList<Item extends SortableItem>(
   const [announcement, setAnnouncement] = useState("")
   /** The latest held item, for window listeners and timers that outlive a render. */
   const heldRef = useRef<Held | null>(null)
-  const press = useRef<Press | null>(null)
-  /** The handle to keep focused after a drop or a cancel, until focus goes somewhere else. */
-  const pendingFocus = useRef<string | null>(null)
-  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  /** Where the drag began inside the list, in pixels from its top edge; `null` with no drag. */
+  const startInList = useRef<number | null>(null)
   /** The latest render's props, for listeners that outlive the render that added them. */
   const latest = useRef({ items, itemLabel, onMove, text })
   latest.current = { items, itemLabel, onMove, text }
@@ -275,6 +221,9 @@ export function SortableList<Item extends SortableItem>(
     listRef.current?.querySelector<HTMLElement>(
       `[data-sortable-item="${CSS.escape(id)}"] [data-sortable-handle]`,
     ) ?? null
+
+  /** The handle to keep focused after a drop or a cancel, until focus goes somewhere else. */
+  const focus = useKeptFocus(handleOf)
 
   /** Every row's box relative to the list's top edge, in list order. */
   const measure = (): SortableBox[] => {
@@ -322,24 +271,13 @@ export function SortableList<Item extends SortableItem>(
     setAnnouncement(latest.current.text.cancelled(placeOf(now.id, now.from)))
   }
 
-  const endPress = () => {
-    press.current?.stop.abort()
-    press.current = null
-  }
-
-  // Unmounting mid-drag must not leave window listeners, a frame loop or a timer behind.
-  useEffect(() => () => {
-    endPress()
-    clearTimeout(blurTimer.current)
-  }, [])
-
   // The caller changed the list under a held item: its indexes no longer mean anything. A layout
   // effect, so the check runs in the same commit and never lands after a later pick-up.
   const order = orderOf(items)
   useLayoutEffect(() => {
     const now = heldRef.current
     if (now === null || now.order === order) return
-    endPress()
+    drag.end()
     cancel()
   }, [order])
 
@@ -350,36 +288,21 @@ export function SortableList<Item extends SortableItem>(
       handleOf(held.id)?.scrollIntoView?.({ block: "nearest" })
       return
     }
-    const pending = pendingFocus.current
-    if (pending === null) return
-    const handle = handleOf(pending)
-    const active = document.activeElement
-    if (handle === null || active === handle) return
-    if (active !== null && active !== document.body) {
-      pendingFocus.current = null
-      return
-    }
-    handle.focus()
+    focus.restore()
   })
 
   /**
    * Focus leaving a handle: a keyboard-held item is put back (Tab, or a click elsewhere), and a
-   * handle waiting to be refocused after a drop is forgotten.
-   *
-   * Decided a task later, not in the event: the caller's re-render after a drop can move the row,
-   * which blurs its handle, and the layout effect above focuses it again before that task runs.
+   * handle waiting to be refocused after a drop is forgotten. `useKeptFocus` says why a task later.
    */
   const onHandleBlur = (id: string) => {
     const now = heldRef.current
     const keyboardHeld = now !== null && now.pointer === null && now.id === id
-    if (!keyboardHeld && pendingFocus.current !== id) return
-    clearTimeout(blurTimer.current)
-    blurTimer.current = setTimeout(() => {
-      if (document.activeElement === handleOf(id)) return
-      if (pendingFocus.current === id) pendingFocus.current = null
+    if (!keyboardHeld && !focus.isKept(id)) return
+    focus.blurred(id, () => {
       const still = heldRef.current
       if (still !== null && still.pointer === null && still.id === id) cancel()
-    }, 0)
+    })
   }
 
   const onHandleKeyDown = (event: KeyboardEvent, id: string) => {
@@ -389,7 +312,7 @@ export function SortableList<Item extends SortableItem>(
       if (!pick) return
       event.preventDefault()
       if (event.repeat) return
-      pendingFocus.current = null
+      focus.forget()
       pickUp(id, null)
       return
     }
@@ -397,7 +320,7 @@ export function SortableList<Item extends SortableItem>(
     if (pick) {
       event.preventDefault()
       if (event.repeat) return
-      pendingFocus.current = id
+      focus.keep(id)
       drop()
       return
     }
@@ -405,7 +328,7 @@ export function SortableList<Item extends SortableItem>(
       // Escape stays with the list, so a dialog around it does not close too.
       event.preventDefault()
       event.stopPropagation()
-      pendingFocus.current = id
+      focus.keep(id)
       cancel()
       return
     }
@@ -424,112 +347,59 @@ export function SortableList<Item extends SortableItem>(
     if (event.detail !== 0) return
     const now = heldRef.current
     if (now === null) {
-      pendingFocus.current = null
+      focus.forget()
       pickUp(id, null)
       return
     }
     if (now.id !== id || now.pointer !== null) return
-    pendingFocus.current = id
+    focus.keep(id)
     drop()
   }
 
   /** Follow the pointer at viewport height `y`: the held row's offset and its drop index. */
   const follow = (y: number) => {
     const now = heldRef.current
-    const current = press.current
     const list = listRef.current
-    if (now === null || current === null || current.startInList === null || list === null) return
+    if (now === null || startInList.current === null || list === null) return
     const box = now.boxes[now.from]
     const last = now.boxes[now.boxes.length - 1]
     const offset = Math.min(
-      Math.max(y - list.getBoundingClientRect().top - current.startInList, -box.top),
+      Math.max(y - list.getBoundingClientRect().top - startInList.current, -box.top),
       last.top + last.height - box.height - box.top,
     )
     moveTo(sortableTarget(now.boxes, now.from, box.top + offset + box.height / 2), offset)
   }
 
-  /** Scroll the nearest scrolling area while the pointer is near its edge, one step per frame. */
-  const edgeScroll = (signal: AbortSignal) => {
-    const list = listRef.current
-    if (list === null) return
-    const parent = scrollParent(list)
-    const frame = () => {
-      const current = press.current
-      if (signal.aborted || current === null) return
-      const area = parent?.getBoundingClientRect()
-      const step = edgeScrollStep(
-        current.lastY,
-        Math.max(area?.top ?? 0, 0),
-        Math.min(area?.bottom ?? globalThis.innerHeight, globalThis.innerHeight),
-      )
-      if (step !== 0) {
-        // Instant: a page with smooth scrolling would otherwise restart a smooth scroll every frame.
-        const scroller = parent ?? globalThis
-        scroller.scrollBy({ top: step, behavior: "instant" })
-        follow(current.lastY)
-      }
-      requestAnimationFrame(frame)
-    }
-    requestAnimationFrame(frame)
-  }
+  const drag = usePointerDrag({
+    start: (id, _x, y) => {
+      const list = listRef.current
+      if (list === null || !pickUp(id, 0)) return false
+      focus.forget()
+      // A touch never focuses the button it drags; the drop keeps focus on this handle.
+      handleOf(id)?.focus({ preventScroll: true })
+      startInList.current = y - list.getBoundingClientRect().top
+      return true
+    },
+    move: (_x, y) => follow(y),
+    drop: (id) => {
+      startInList.current = null
+      focus.keep(id)
+      drop()
+    },
+    cancel: (id) => {
+      startInList.current = null
+      focus.keep(id)
+      cancel()
+    },
+    // Scroll the nearest scrolling area while the pointer is near its edge, one step per frame.
+    frame: (_x, y) => {
+      const list = listRef.current
+      if (list !== null && scrollPageNearEdge(list, y)) follow(y)
+    },
+  })
 
   const onHandlePointerDown = (event: PointerEvent, id: string) => {
-    if (!event.isPrimary || event.button !== 0 || heldRef.current !== null) return
-    endPress()
-    const stop = new AbortController()
-    press.current = {
-      id,
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      lastY: event.clientY,
-      startInList: null,
-      stop,
-    }
-    const options = { signal: stop.signal }
-    const mine = (e: PointerEvent) =>
-      press.current !== null && e.pointerId === press.current.pointerId
-    globalThis.addEventListener("pointermove", (e: PointerEvent) => {
-      const current = press.current
-      if (!mine(e) || current === null) return
-      current.lastY = e.clientY
-      if (current.startInList === null) {
-        if (Math.hypot(e.clientX - current.x, e.clientY - current.y) < DRAG_THRESHOLD) return
-        const list = listRef.current
-        if (list === null || !pickUp(current.id, 0)) return endPress()
-        pendingFocus.current = null
-        // A touch never focuses the button it drags; the drop keeps focus on this handle.
-        handleOf(current.id)?.focus({ preventScroll: true })
-        current.startInList = current.y - list.getBoundingClientRect().top
-        edgeScroll(stop.signal)
-      }
-      follow(e.clientY)
-    }, options)
-    globalThis.addEventListener("pointerup", (e: PointerEvent) => {
-      if (!mine(e)) return
-      const current = press.current
-      endPress()
-      if (current === null || current.startInList === null) return
-      pendingFocus.current = current.id
-      drop()
-    }, options)
-    globalThis.addEventListener("pointercancel", (e: PointerEvent) => {
-      if (!mine(e)) return
-      const current = press.current
-      endPress()
-      if (current === null || current.startInList === null) return
-      pendingFocus.current = current.id
-      cancel()
-    }, options)
-    globalThis.addEventListener("keydown", (e: KeyboardEvent) => {
-      const current = press.current
-      if (e.key !== "Escape" || current === null || current.startInList === null) return
-      e.preventDefault()
-      e.stopPropagation()
-      endPress()
-      pendingFocus.current = current.id
-      cancel()
-    }, { signal: stop.signal, capture: true })
+    if (heldRef.current === null) drag.onPointerDown(event, id)
   }
 
   const offsets = held === null ? [] : sortableOffsets(held.boxes, held.from, held.to)
