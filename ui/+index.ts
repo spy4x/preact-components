@@ -393,13 +393,16 @@ export {
   type ZoomableImagesProps,
 } from "./zoomable-images.tsx"
 export {
+  activeShortcuts,
   ariaKeyShortcuts,
   clickByHotkey,
+  createHotkeyListener,
   firesInFields,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
   type HotkeyProps,
+  isSingleKey,
   pickHotkey,
   useApplePlatform,
   useHotkeyClick,

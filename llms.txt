@@ -745,6 +745,7 @@ WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` draws arou
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.
+activeShortcuts	helper	@spy4x/preact-ui	The shortcuts that work now: all of them, or, while single keys are off, the ones that are not `isSingleKey`.
 addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported.
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
 ariaKeyShortcuts	helper	@spy4x/preact-ui	A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key` names them, joined by `+`.
@@ -761,6 +762,7 @@ comboboxListboxId	helper	@spy4x/preact-ui	`id` of the popup listbox of the combo
 comboboxOptionId	helper	@spy4x/preact-ui	`id` of one option, which is also what `aria-activedescendant` points at.
 confirmVariant	helper	@spy4x/preact-ui	Button variant for the confirming action.
 counterText	helper	@spy4x/preact-ui	The counter text, e.g.
+createHotkeyListener	helper	@spy4x/preact-ui	The `keydown` listener `useHotkeys` attaches, on its own: it reads the bindings on every press, runs the first that matches and cancels the press's default action.
 createLeaveGuard	helper	@spy4x/preact-ui	Creates a `LeaveGuard`.
 dateRangePresets	helper	@spy4x/preact-ui	Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods, then custom.
 defaultCommandPaletteLabels	helper	@spy4x/preact-ui	English defaults for every `CommandPaletteLabels` entry.
@@ -798,6 +800,7 @@ inlineEditCommit	helper	@spy4x/preact-ui	What an edit saves: the trimmed draft, 
 isBackdropClick	helper	@spy4x/preact-ui	Whether a click landed on the dialog's backdrop rather than on the dialog's content.
 isDismissKey	helper	@spy4x/preact-ui	Whether a keyboard event is a request to dismiss the dialog.
 isPlainClick	helper	@spy4x/preact-ui	Whether a click is one the page may take over: the primary button with no modifier.
+isSingleKey	helper	@spy4x/preact-ui	Whether a switch for single-key shortcuts turns these keys off: every press types a character, such as `"?"`, `"n"`, `"shift+n"`, `"space"` or `"g i"`.
 isValidDateTimeRange	helper	@spy4x/preact-ui	Whether a `DateTimeRange` is two well-formed wall-clock values, in order — not necessarily two real ones: nothing here checks whether a named local time actually occurs in any zone, since this function is not handed one.
 keyFaces	helper	@spy4x/preact-ui	The faces of every key in a combination, modifiers first, in the order the platform writes them: ⌃ ⌥ ⇧ ⌘ on Apple platforms, Ctrl Alt Shift Meta elsewhere.
 labelOr	helper	@spy4x/preact-ui	The caller's label, or the library's English default.

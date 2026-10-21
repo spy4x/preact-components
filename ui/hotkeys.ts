@@ -1,12 +1,14 @@
 import type { RefObject } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import {
+  createHotkeyMatcher,
   isApplePlatform,
   isTypingTarget,
   matchesHotkey,
   parseHotkey,
 } from "@spy4x/platform/browser/hotkeys"
 import { isImeKeyPress } from "./ime.ts"
+import { listenToKeydown } from "./keydown.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
 
 /**
@@ -15,7 +17,10 @@ import type { KbdLabels } from "./kbd-keys.tsx"
 export interface HotkeyBinding {
   /**
    * The combination: `"?"`, `"/"`, `"shift+n"`, `"mod+k"`, `"esc"`. `mod` is Command on Apple
-   * platforms and Control elsewhere. One key press only; a sequence such as `"g i"` throws.
+   * platforms and Control elsewhere. A sequence of presses is written with spaces between them,
+   * `"g i"`: the second key must follow within a second. A sequence never fires while the reader
+   * types in a field, inside a dialog or a menu, or while a modal dialog is open, whatever
+   * `inFields` and `inDialogs` say.
    */
   keys: string
   /** Runs when the combination is pressed. */
@@ -26,7 +31,7 @@ export interface HotkeyBinding {
   group?: string
   /** Also fire while the reader types in a text field, a select or editable content. */
   inFields?: boolean
-  /** Also fire while focus is inside a dialog. */
+  /** Also fire while focus is inside a dialog or a menu, or while a modal dialog is open. */
   inDialogs?: boolean
   /** Whether to cancel the key press's default action. Defaults to `true`. */
   preventDefault?: boolean
@@ -59,14 +64,15 @@ export interface HotkeyPress {
   getModifierState?(key: string): boolean
   /** The press landed in a text field, a select or editable content. */
   typing: boolean
-  /** The press landed inside a dialog. */
+  /** The press landed inside a dialog or a menu, or a modal dialog is open. */
   inDialog: boolean
 }
 
 /**
  * The binding a key press runs, or `undefined`: the first binding whose combination matches and
  * that may fire where the press landed. A press while typing only runs a binding with `inFields`,
- * and one inside a dialog only a binding with `inDialogs`.
+ * and one inside a dialog or a menu only a binding with `inDialogs`. Sequences (`"g i"`) are
+ * skipped: they need the presses before this one, which {@link createHotkeyListener} keeps.
  *
  * @param bindings The shortcuts, in priority order.
  * @param press The key press.
@@ -79,23 +85,172 @@ export function pickHotkey<Binding extends HotkeyBinding>(
   apple: boolean,
 ): Binding | undefined {
   return bindings.find((binding) =>
+    !isSequence(binding.keys) &&
     (!press.typing || binding.inFields === true) &&
     (!press.inDialog || binding.inDialogs === true) &&
     matchesHotkey(parseHotkey(binding.keys), press, apple)
   )
 }
 
-/** Elements that count as a dialog for {@link HotkeyBinding.inDialogs}. */
+/** Elements that count as a dialog for {@link HotkeyBinding.inDialogs} and `clickByHotkey`. */
 const DIALOG_SELECTOR = "dialog, [role='dialog'], [role='alertdialog']"
+
+/** Elements a press inside of skips every binding without {@link HotkeyBinding.inDialogs}. */
+const SCOPE_SELECTOR = `${DIALOG_SELECTOR}, [role='menu']`
+
+/** Whether `keys` is a sequence of presses, such as `"g i"`. */
+function isSequence(keys: string): boolean {
+  return /\s/.test(keys.trim())
+}
+
+/** The presses of `keys`: one for a combination, several for a sequence. */
+function presses(keys: string): string[] {
+  return keys.trim().split(/\s+/)
+}
+
+/**
+ * The `keydown` listener {@link useHotkeys} attaches, on its own: it reads the bindings on every
+ * press, runs the first that matches and cancels the press's default action. Single presses go
+ * through {@link pickHotkey}: one without `inDialogs` is skipped inside a dialog or a menu and while
+ * a modal dialog is open. Sequences go through ts-libs' `createHotkeyMatcher`, which keeps the first
+ * key for a second; a press in a field, one an input method takes, one inside a dialog or a menu or
+ * one under a modal dialog matches no sequence and drops a waiting key. The matcher is rebuilt only
+ * when the sequences change. A completed sequence wins over a single press of its last key. A
+ * single press that runs a binding drops a waiting key too, so when `g` and `g i` are both bound,
+ * `g` wins and `g i` never fires, as ts-libs' matcher has it: give a sequence its own first key.
+ *
+ * @param bindings Reads the bindings, in priority order, when a key is pressed.
+ * @param apple Whether `mod` means Command.
+ */
+export function createHotkeyListener(
+  bindings: () => readonly HotkeyBinding[],
+  apple: boolean,
+): (event: KeyboardEvent) => void {
+  const sequences = sequenceMatcher(apple)
+  const listener = keydownListener(bindings, apple, (current, press, isApple, event) => {
+    const sequence = sequences(event, current, press.inDialog)
+    if (sequence) return sequence
+    const single = pickHotkey(current, press, isApple)
+    // A single press that runs drops a sequence it may have started.
+    if (single) sequences(event, current, true)
+    return single
+  })
+  return (event) => {
+    // A press an input method takes runs nothing, and drops a waiting key.
+    if (isImeKeyPress(event) && !event.defaultPrevented) sequences(event, bindings(), true)
+    listener(event)
+  }
+}
+
+/**
+ * Finds the sequence a press completes, given the bindings and whether the press is skipped (in a
+ * dialog, a menu, under a modal or taken by an input method). A skipped press drops a waiting key.
+ */
+type SequenceMatch = (
+  event: KeyboardEvent,
+  bindings: readonly HotkeyBinding[],
+  skipped: boolean,
+) => HotkeyBinding | undefined
+
+/**
+ * The sequence half of {@link createHotkeyListener}: one ts-libs matcher over the bindings with a
+ * space in their keys, rebuilt when those change, so a waiting first key survives a re-render.
+ */
+function sequenceMatcher(apple: boolean): SequenceMatch {
+  let matcher: { signature: string; match: (event: KeyboardEvent) => number | undefined } | null =
+    null
+  let scoped = false
+  return (event, bindings, skipped) => {
+    const sequences = bindings.flatMap((binding, index) => isSequence(binding.keys) ? [index] : [])
+    const signature = sequences.map((index) => bindings[index].keys).join("\n")
+    if (matcher?.signature !== signature) {
+      // An id is a position among the sequences, which stays put while the single-press bindings
+      // around them come and go.
+      matcher = {
+        signature,
+        match: createHotkeyMatcher<number, KeyboardEvent>(
+          sequences.map((index, position) => ({
+            id: position,
+            keys: presses(bindings[index].keys),
+          })),
+          { apple, ignore: () => scoped },
+        ),
+      }
+    }
+    scoped = skipped
+    const done = matcher.match(event)
+    return done === undefined ? undefined : bindings[sequences[done]]
+  }
+}
+
+/**
+ * A `keydown` listener that runs the binding `pick` chooses, {@link pickHotkey} by default. Kept
+ * apart so `useHotkeyClick`, which every `Button` with a `hotkey` uses, does not bundle the
+ * sequence matcher.
+ */
+function keydownListener(
+  bindings: () => readonly HotkeyBinding[],
+  apple: boolean,
+  pick: (
+    bindings: readonly HotkeyBinding[],
+    press: HotkeyPress,
+    apple: boolean,
+    event: KeyboardEvent,
+  ) => HotkeyBinding | undefined = pickHotkey,
+): (event: KeyboardEvent) => void {
+  return (event) => {
+    if (event.defaultPrevented || isImeKeyPress(event)) return
+    // The target can be the document or a text node, which have no `closest`.
+    const target = event.target as Partial<Element> | null
+    const binding = pick(
+      bindings(),
+      {
+        key: event.key,
+        code: event.code,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+        // A plain `Event`, which some browsers send on autofill, has no `getModifierState`.
+        getModifierState: event.getModifierState?.bind(event),
+        typing: isTypingTarget(target as HTMLElement | null),
+        inDialog: (target?.closest?.(SCOPE_SELECTOR) ?? null) !== null || openModal() !== null,
+      },
+      apple,
+      event,
+    )
+    if (binding === undefined) return
+    if (binding.preventDefault !== false) event.preventDefault()
+    binding.handler(event)
+  }
+}
+
+/** Attaches the listener `create` makes to `document` while mounted and `enabled`. */
+function useKeydown(
+  bindings: readonly HotkeyBinding[],
+  { enabled = true, apple }: UseHotkeysOptions,
+  create: (bindings: () => readonly HotkeyBinding[], apple: boolean) => (e: KeyboardEvent) => void,
+): void {
+  for (const binding of bindings) presses(binding.keys).forEach((keys) => parseHotkey(keys))
+  const latest = useRef(bindings)
+  latest.current = bindings
+
+  useEffect(() => {
+    if (!enabled) return
+    return listenToKeydown(document, create(() => latest.current, apple ?? isApplePlatform()))
+  }, [enabled, apple])
+}
 
 /**
  * Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is
  * mounted, and runs the first binding that matches.
  *
  * Key presses in a text field, a select or `contenteditable` content are left alone, and so are
- * presses inside a dialog, unless a binding opts in with `inFields` or `inDialogs`. A press another
- * handler already cancelled, and a press that composes text through an input method, run nothing.
- * A matched press has its default action cancelled unless the binding says `preventDefault: false`.
+ * presses inside a dialog or a menu and while a modal dialog is open, unless a binding opts in with
+ * `inFields` or `inDialogs`. A sequence such as `"g i"` fires on its last key, and never in those
+ * places. A press another handler already cancelled, and a press that composes text through an
+ * input method, run nothing. A matched press has its default action cancelled unless the binding
+ * says `preventDefault: false`. The listener itself is {@link createHotkeyListener}.
  *
  * The bindings are read when a key is pressed, so an inline array with inline handlers is fine:
  * the listener is attached once and always runs the handlers of the latest render. Every
@@ -107,37 +262,43 @@ const DIALOG_SELECTOR = "dialog, [role='dialog'], [role='alertdialog']"
  */
 export function useHotkeys(
   bindings: readonly HotkeyBinding[],
-  { enabled = true, apple }: UseHotkeysOptions = {},
+  options: UseHotkeysOptions = {},
 ): void {
-  for (const binding of bindings) parseHotkey(binding.keys)
-  const latest = useRef(bindings)
-  latest.current = bindings
+  useKeydown(bindings, options, createHotkeyListener)
+}
 
-  useEffect(() => {
-    if (!enabled) return
-    const isApple = apple ?? isApplePlatform()
-    const listener = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isImeKeyPress(event)) return
-      const target = event.target instanceof Element ? event.target : null
-      const binding = pickHotkey(latest.current, {
-        key: event.key,
-        code: event.code,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
-        altKey: event.altKey,
-        shiftKey: event.shiftKey,
-        // A plain `Event`, which some browsers send on autofill, has no `getModifierState`.
-        getModifierState: event.getModifierState?.bind(event),
-        typing: isTypingTarget(target as HTMLElement | null),
-        inDialog: (target?.closest(DIALOG_SELECTOR) ?? null) !== null,
-      }, isApple)
-      if (binding === undefined) return
-      if (binding.preventDefault !== false) event.preventDefault()
-      binding.handler(event)
-    }
-    document.addEventListener("keydown", listener)
-    return () => document.removeEventListener("keydown", listener)
-  }, [enabled, apple])
+/**
+ * Whether a switch for single-key shortcuts turns these keys off: every press types a character,
+ * such as `"?"`, `"n"`, `"shift+n"`, `"space"` or `"g i"`. That is the shortcut WCAG 2.1.4 says a
+ * reader must be able to turn off, because typing or speech input can press it by accident. A press
+ * with Control, Command, Alt or `mod` types no character, and neither does a named key (Escape,
+ * Enter, Tab, an arrow, F1, Delete, Home), so those stay on.
+ *
+ * @param keys A combination or a sequence, as {@link HotkeyBinding.keys} takes it.
+ * @throws {Error} When a press cannot be read.
+ */
+export function isSingleKey(keys: string): boolean {
+  return presses(keys).every((press) => {
+    const hotkey = parseHotkey(press)
+    // A named key is a word (`"escape"`, `"f1"`); a character is one code point.
+    return !hotkey.mod && !hotkey.ctrl && !hotkey.meta && !hotkey.alt &&
+      [...hotkey.key].length === 1
+  })
+}
+
+/**
+ * The shortcuts that work now: all of them, or, while single keys are off, the ones that are not
+ * {@link isSingleKey}. Pass the result to both `useHotkeys` and `ShortcutsDialog`, so the dialog
+ * never lists a key that does nothing.
+ *
+ * @param shortcuts Bindings or dialog rows; anything with `keys`.
+ * @param singleKeys Whether single-key shortcuts are on.
+ */
+export function activeShortcuts<Shortcut extends { keys: string }>(
+  shortcuts: readonly Shortcut[],
+  singleKeys: boolean,
+): Shortcut[] {
+  return singleKeys ? [...shortcuts] : shortcuts.filter((shortcut) => !isSingleKey(shortcut.keys))
 }
 
 /**
@@ -328,9 +489,10 @@ export function useHotkeyClick<Target extends HTMLElement>(
   options: UseHotkeysOptions = {},
 ): RefObject<Target> {
   const ref = useRef<Target>(null)
-  useHotkeys(
+  useKeydown(
     keys === undefined ? [] : [hotkeyClickBinding(keys, () => ref.current)],
     { ...options, enabled: keys !== undefined && (options.enabled ?? true) },
+    (bindings, apple) => keydownListener(bindings, apple),
   )
   return ref
 }
