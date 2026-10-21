@@ -293,8 +293,8 @@ export function AppShell(props: AppShellProps): JSX.Element {
     counter: notifications.unread,
   }
   const bellCurrent = bell && currentStates([bell], undefined, currentPath).get(bell)
-  const navigateLink = navigate && ((_key: string, href: string) => navigate(href))
-  const entryPorts = { navigateLink, counterWords, variant: "icons" as const, primary: false }
+  // Every entry here has an `href`, so `navigate` only ever receives one.
+  const entryPorts = { navigate, counterWords, variant: "icons" as const, primary: false }
   const themes: readonly [AccountMenuTheme, string][] = [
     ["system", labels?.accountMenu?.system ?? "System"],
     ["light", labels?.accountMenu?.light ?? "Light"],
@@ -418,7 +418,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
         items={items}
         currentKey={currentKey}
         currentPath={currentPath}
-        navigateLink={navigateLink}
+        navigate={navigate}
         top={switcher}
         bottom={(place) => place === "rail" ? railBottom : sheetBottom}
         moreTab={{

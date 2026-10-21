@@ -47,9 +47,19 @@ export interface RailShellProps {
   currentPath?: string
   /** The one visually distinct action, pinned first and centred in the phone bar. */
   primary?: RailShellItem
-  /** Port for an entry with no `href`: receives that entry's key. */
-  navigate?: (key: string) => void
-  /** Port to the app's client router for an entry with an `href`. */
+  /**
+   * Port to the app's client router for an entry with an `href`: receives its `href`. With no
+   * `onSelect`, an entry with no `href` still calls it with its key, as before; that use is
+   * deprecated. See `RailProps.navigate`.
+   */
+  navigate?: (href: string) => void
+  /** Reports which entry was chosen, with its key; see `RailProps.onSelect`. */
+  onSelect?: (key: string) => void
+  /**
+   * The old link port, with the entry's key and `href`; given, it wins over `navigate` for links.
+   *
+   * @deprecated Use `navigate(href)`, and `onSelect(key)` for the key. Removed in the next major.
+   */
   navigateLink?: (key: string, href: string) => void
   /** The column's top zone and the overlay's first section. Called once per place. */
   sidebarTop?: (place: RailShellSidebarPlace) => ComponentChildren

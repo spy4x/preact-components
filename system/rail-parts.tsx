@@ -13,7 +13,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { ariaKeyShortcuts, useApplePlatform } from "@spy4x/preact-ui/hotkeys"
 import { KBD_LABELS, type KbdLabels, keyFaces } from "@spy4x/preact-ui/kbd"
-import { followLinkClick, isPlainClick } from "@spy4x/preact-ui/link"
+import { followLinkClick, isPlainClick, type LinkClickEvent } from "@spy4x/preact-ui/link"
 import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext } from "preact/hooks"
 import type { RailCurrent, RailItem, RailVariant } from "./rail.tsx"
@@ -270,15 +270,73 @@ export function currentStates(
   return states
 }
 
+/** The ports an entry reaches the app through, as `RailProps` documents them. */
+export interface EntryPorts {
+  /** A link entry's plain click, with its `href`; with no `onSelect`, a button's, with its key. */
+  navigate?: (target: string) => void
+  /** Which entry was chosen: every button click, and a link's plain click. */
+  onSelect?: (key: string) => void
+  /** The deprecated link port; wins over `navigate` for a link entry. */
+  navigateLink?: (key: string, href: string) => void
+}
+
+/**
+ * The router call a link entry's plain same-origin click makes in place of the browser's: the
+ * deprecated `navigateLink(key, href)` when given, else `navigate(href)`. `undefined`, with
+ * neither, leaves every click the browser's.
+ */
+export function linkNavigation(
+  ports: EntryPorts,
+  key: string,
+  href: string,
+): (() => void) | undefined {
+  const { navigate, navigateLink } = ports
+  if (navigateLink) return () => navigateLink(key, href)
+  if (navigate) return () => navigate(href)
+  return undefined
+}
+
+/**
+ * A link entry's click. The router port from {@link linkNavigation} takes a plain same-origin
+ * click and cancels the browser's own navigation, by `followLinkClick`'s rule; a plain click of any
+ * origin then reports the entry through `onSelect` and runs `onChoose`. A modified click opens the
+ * page elsewhere, so it is not a choice here: nothing is reported and the sheet stays open.
+ *
+ * @param anchorHref The anchor's own resolved address, which decides the origin test.
+ */
+export function clickLinkEntry(
+  event: LinkClickEvent,
+  anchorHref: string,
+  item: { key: string; href: string },
+  ports: EntryPorts,
+  onChoose?: () => void,
+): void {
+  followLinkClick(event, {
+    href: anchorHref,
+    navigate: linkNavigation(ports, item.key, item.href),
+  })
+  if (!isPlainClick(event)) return
+  ports.onSelect?.(item.key)
+  onChoose?.()
+}
+
+/**
+ * A button entry's click: `onSelect(key)` when given, else the deprecated `navigate(key)`, which
+ * is what `navigate` meant before it took an `href`; then `onChoose`.
+ */
+export function clickButtonEntry(key: string, ports: EntryPorts, onChoose?: () => void): void {
+  if (ports.onSelect) ports.onSelect(key)
+  else ports.navigate?.(key)
+  onChoose?.()
+}
+
 /** The shared props of one entry. */
-export interface EntryProps {
+export interface EntryProps extends EntryPorts {
   item: RailItem
   place: EntryPlace
   variant: RailVariant
   current: RailCurrent | undefined
   primary: boolean
-  navigate?: (key: string) => void
-  navigateLink?: (key: string, href: string) => void
   /**
    * Runs after the entry is chosen, and for a link only on a plain click; the sheet closes itself
    * through this.
@@ -318,18 +376,19 @@ export function entryTip(
 }
 
 /**
- * One entry: a link when it has an `href`, followed through `navigateLink` on a plain click when
- * that port is given, and a button through `navigate` otherwise. In the desktop column it is
+ * One entry: a link when it has an `href`, its clicks as {@link clickLinkEntry} says, and a button
+ * otherwise, as {@link clickButtonEntry} says. In the desktop column it is
  * wrapped in its cell, with the tooltip beside the control rather than inside it, so the control's
  * name stays its label.
  */
 export function Entry(props: EntryProps): JSX.Element {
-  const { item, place, variant, current, primary, navigate, navigateLink, onChoose, counterWords } =
+  const { item, place, variant, current, primary, navigate, onSelect, navigateLink, onChoose } =
     props
+  const ports: EntryPorts = { navigate, onSelect, navigateLink }
   const { Icon, label, href, key, counter, attributes, keyshortcuts } = item
   const apple = useApplePlatform()
   const shortcuts = entryKeyShortcuts(keyshortcuts, apple)
-  const name = countedName(label, counter, counterWords)
+  const name = countedName(label, counter, props.counterWords)
   const className = cn(
     entryBase,
     place === "rail" ? railCell[variant] : entryPlace[place],
@@ -356,16 +415,8 @@ export function Entry(props: EntryProps): JSX.Element {
         aria-label={name}
         aria-keyshortcuts={shortcuts}
         class={className}
-        onClick={(event) => {
-          // The anchor's own address, as the browser would follow it, decides the origin test.
-          followLinkClick(event, {
-            href: event.currentTarget.href,
-            navigate: navigateLink && (() => navigateLink(key, href)),
-          })
-          // A modified click opens the page elsewhere, so the sheet stays open, as `Rail`'s own
-          // handler and `Shell` decide.
-          if (isPlainClick(event)) onChoose?.()
-        }}
+        onClick={(event) =>
+          clickLinkEntry(event, event.currentTarget.href, { key, href }, ports, onChoose)}
         data-e2e="rail-shell-entry"
       >
         {content}
@@ -379,10 +430,7 @@ export function Entry(props: EntryProps): JSX.Element {
         aria-label={name}
         aria-keyshortcuts={shortcuts}
         class={className}
-        onClick={() => {
-          navigate?.(key)
-          onChoose?.()
-        }}
+        onClick={() => clickButtonEntry(key, ports, onChoose)}
         data-e2e="rail-shell-entry"
       >
         {content}

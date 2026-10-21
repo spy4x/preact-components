@@ -1727,4 +1727,24 @@ export const specs: readonly Spec[] = [
       return "card absent at mount; after the unmount, focus is on the returnFocus line"
     },
   },
+  {
+    name: "Rail: a plain click on a link goes through navigate and onSelect, and the page's " +
+      "address stays",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const column = inCard(page, RAIL_CARD, "rail-shell-column")
+      await column.scrollIntoViewIfNeeded()
+      const current = inCard(page, RAIL_CARD, "rail-demo-current")
+      const before = page.url()
+      await column.getByRole("link", { name: "Services", exact: true }).click()
+      await current.filter({ hasText: /^services$/ }).waitFor()
+      await column.getByRole("link", { name: "Book", exact: true }).click()
+      await current.filter({ hasText: /^book$/ }).waitFor()
+      if (page.url() !== before) {
+        throw new Error(`the address moved from ${before} to ${page.url()}`)
+      }
+      return "Services, then Book, chosen through onSelect; the address stayed"
+    },
+  },
 ]

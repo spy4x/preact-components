@@ -4,7 +4,15 @@ import { render } from "preact-render-to-string"
 import { IconHome } from "@spy4x/preact-icons"
 import type { IconProps } from "@spy4x/preact-icons"
 import { Rail, RailCell, RailEntry, railFocusRing, type RailItem, tabBarSlots } from "./rail.tsx"
-import { entryKeyShortcuts, entryTip } from "./rail-parts.tsx"
+import {
+  clickButtonEntry,
+  clickLinkEntry,
+  entryKeyShortcuts,
+  type EntryPorts,
+  entryTip,
+} from "./rail-parts.tsx"
+import type { LinkClickEvent } from "@spy4x/preact-ui/link"
+import { onAppPage } from "../ui/testdata/page-at.ts"
 
 /** `count` items keyed `i1`…, each a link to `/i1`…. */
 function itemsOf(count: number): RailItem[] {
@@ -660,5 +668,110 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
       </Rail>,
     )
     expect(html).toMatch(/data-e2e="rail-shell-tooltip"><span[^>]*>Find \(Strg K\)</)
+  })
+})
+
+/** A click as an entry's anchor receives it, with no modifier unless `overrides` says otherwise. */
+function entryClick(
+  overrides: Partial<LinkClickEvent> = {},
+): LinkClickEvent & { cancelled: boolean } {
+  const event = {
+    button: 0,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+    defaultPrevented: false,
+    cancelled: false,
+    preventDefault() {
+      event.cancelled = true
+      event.defaultPrevented = true
+    },
+    ...overrides,
+  }
+  return event
+}
+
+/** Ports that record every call, in order, as `"<port> <argument…>"`. */
+function recordingPorts(
+  which: readonly (keyof EntryPorts)[],
+): { ports: EntryPorts; calls: string[] } {
+  const calls: string[] = []
+  const ports: EntryPorts = {}
+  if (which.includes("navigate")) ports.navigate = (target) => calls.push(`navigate ${target}`)
+  if (which.includes("onSelect")) ports.onSelect = (key) => calls.push(`onSelect ${key}`)
+  if (which.includes("navigateLink")) {
+    ports.navigateLink = (key, href) => calls.push(`navigateLink ${key} ${href}`)
+  }
+  return { ports, calls }
+}
+
+const OWN = "https://app.example.com/projects"
+const FOREIGN = "https://elsewhere.example.org/projects"
+const LINK = { key: "projects", href: "/projects" }
+
+describe("Rail's router ports", () => {
+  onAppPage()
+
+  it("routes a link's plain click through navigate with its href, then reports its key", () => {
+    const { ports, calls } = recordingPorts(["navigate", "onSelect"])
+    const event = entryClick()
+    let chosen = 0
+    clickLinkEntry(event, OWN, LINK, ports, () => chosen++)
+    expect(calls).toEqual(["navigate /projects", "onSelect projects"])
+    expect(event.cancelled).toBe(true)
+    expect(chosen).toBe(1)
+  })
+
+  it("leaves a link ordinary with no navigate, and still reports its plain click", () => {
+    const { ports, calls } = recordingPorts(["onSelect"])
+    const event = entryClick()
+    clickLinkEntry(event, OWN, LINK, ports)
+    expect(calls).toEqual(["onSelect projects"])
+    expect(event.cancelled).toBe(false)
+  })
+
+  it("reports a plain click on a link to another origin without routing it", () => {
+    const { ports, calls } = recordingPorts(["navigate", "onSelect"])
+    const event = entryClick()
+    clickLinkEntry(event, FOREIGN, LINK, ports)
+    expect(calls).toEqual(["onSelect projects"])
+    expect(event.cancelled).toBe(false)
+  })
+
+  it("leaves a modified or middle click on a link to the browser and reports nothing", () => {
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { button: 1 }]) {
+      const { ports, calls } = recordingPorts(["navigate", "onSelect"])
+      const event = entryClick(modifier)
+      let chosen = 0
+      clickLinkEntry(event, OWN, LINK, ports, () => chosen++)
+      expect({ calls, cancelled: event.cancelled, chosen }).toEqual({
+        calls: [],
+        cancelled: false,
+        chosen: 0,
+      })
+    }
+  })
+
+  it("routes a link through the deprecated navigateLink with key and href, ahead of navigate", () => {
+    const { ports, calls } = recordingPorts(["navigate", "navigateLink"])
+    const event = entryClick()
+    clickLinkEntry(event, OWN, LINK, ports)
+    expect(calls).toEqual(["navigateLink projects /projects"])
+    expect(event.cancelled).toBe(true)
+  })
+
+  it("reports a button's click through onSelect and never hands its key to navigate", () => {
+    const { ports, calls } = recordingPorts(["navigate", "onSelect"])
+    let chosen = 0
+    clickButtonEntry("compose", ports, () => chosen++)
+    expect(calls).toEqual(["onSelect compose"])
+    expect(chosen).toBe(1)
+  })
+
+  it("hands a button's key to the deprecated navigate(key) when no onSelect is given", () => {
+    const { ports, calls } = recordingPorts(["navigate"])
+    clickButtonEntry("compose", ports)
+    expect(calls).toEqual(["navigate compose"])
   })
 })
