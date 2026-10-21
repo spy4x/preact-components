@@ -39,9 +39,10 @@ export interface NoticeProps
    */
   live?: boolean
   /**
-   * Draws a close button at the end of the row and calls this when it is pressed. The caller hides
-   * the notice (and remembers that it did, when it should stay hidden); the component keeps no
-   * state of its own. Omitted, no close button is drawn.
+   * Draws a close button in the top-right corner and calls this when it is pressed. The caller hides
+   * the notice (and remembers that it did, when it should stay hidden) and moves focus on, for
+   * example with `useFocusAfterRemoval`; the component keeps no state of its own. Omitted, no close
+   * button is drawn.
    */
   onDismiss?: () => void
   /** The close button's accessible name. Defaults to `"Dismiss"`. */
@@ -151,7 +152,7 @@ export function Notice(
       {onDismiss && (
         <button
           type="button"
-          class={`absolute right-1 top-1 inline-flex items-center rounded-md cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden sm:right-2 sm:top-2 ${TOUCH_TARGET}`}
+          class={`absolute right-1 top-1 inline-flex items-center rounded-md cursor-pointer transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden sm:right-2 sm:top-2 ${TOUCH_TARGET}`}
           aria-label={dismissLabel}
           data-e2e="notice-dismiss"
           onClick={onDismiss}

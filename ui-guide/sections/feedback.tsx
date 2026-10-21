@@ -952,17 +952,6 @@ const removalLeads = {
 type RemovalLead = keyof typeof removalLeads
 
 /**
- * A list whose rows are removed behind a confirmation, with a pretend request that the first
- * checkbox makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
- * focus), `useFreshError` (the dialog opens again without it) and `useFocusAfterRemoval` (a removed
- * row hands focus to its neighbour, or to "Bring everyone back").
- *
- * The other controls are there for `pages/e2e/ui.spec.ts`, which drives every one: a removal that
- * takes the row at once and ends by hand, a person who leaves with no removal running, and rows
- * that start with something other than their button. The last line is written from an effect that
- * runs after the hook's, so a check that reads it knows the hook has finished with that state.
- */
-/**
  * A `Notice` the reader can close, and a button that brings it back, so the browser check can
  * press the close button and see the caller hide it.
  */
@@ -991,6 +980,17 @@ function DismissibleNoticeDemo() {
     )
 }
 
+/**
+ * A list whose rows are removed behind a confirmation, with a pretend request that the first
+ * checkbox makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
+ * focus), `useFreshError` (the dialog opens again without it) and `useFocusAfterRemoval` (a removed
+ * row hands focus to its neighbour, or to "Bring everyone back").
+ *
+ * The other controls are there for `pages/e2e/ui.spec.ts`, which drives every one: a removal that
+ * takes the row at once and ends by hand, a person who leaves with no removal running, and rows
+ * that start with something other than their button. The last line is written from an effect that
+ * runs after the hook's, so a check that reads it knows the hook has finished with that state.
+ */
 function RemovalDemo() {
   const [people, setPeople] = useState(REMOVAL_PEOPLE)
   const [removingId, setRemovingId] = useState<string | null>(null)
