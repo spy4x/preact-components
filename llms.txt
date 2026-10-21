@@ -365,6 +365,7 @@ DEFAULT_CONFLICT_CHOOSER_LABELS	constant	@spy4x/preact-system	The English words 
 DEFAULT_INSTALL_PROMPT_LABELS	constant	@spy4x/preact-system	The English words `InstallPrompt` shows when the caller passes none.
 DEFAULT_PUSH_SETTINGS_LABELS	constant	@spy4x/preact-system	The English words `PushSettings` shows when the caller passes none.
 DEFAULT_SAVED_COPY_NOTICE_LABELS	constant	@spy4x/preact-system	The English words `SavedCopyNotice` shows when the caller passes none.
+DEFAULT_SW_UPDATER_LABELS	constant	@spy4x/preact-system	The English words `SWUpdater` shows when the caller passes none.
 DEFAULT_SYNC_STATUS_LABELS	constant	@spy4x/preact-system	The English words `SyncStatus` shows when the caller passes none.
 DEFAULT_UNSENT_CHANGES_DIALOG_LABELS	constant	@spy4x/preact-system	The English words `UnsentChangesDialog` shows when the caller passes none.
 DEFAULT_UPDATE_MESSAGE	constant	@spy4x/preact-system	What a waiting worker is told to take over with, when the caller names nothing else.
@@ -395,7 +396,7 @@ SEOHead	component	@spy4x/preact-system	Render the head tag set for a page.
 SWUpdater	component	@spy4x/preact-system	Register the service worker and offer a reload when a new version is waiting.
 SavedCopyNotice	component	@spy4x/preact-system	Says that the list under it is a copy saved on this device, and when it was saved.
 ServiceWorkerHost	type	@spy4x/preact-system	Anything that may carry a service-worker container: `navigator`, a test double.
-Shell	component	@spy4x/preact-system	The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below `lg` — see `mobile-panel.ts`.
+Shell	component	@spy4x/preact-system	Deprecated: Use `AppShell`, the one frame every app draws. The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below `lg` — see `mobile-panel.ts`.
 ShellNavItem	type	@spy4x/preact-system	One entry of `ShellProps.navItems`, or of one entry's own `children`.
 ShellNavItemAction	type	@spy4x/preact-system	`ShellNavItem.action`: a control of its own beside an item's link, never inside it, so it is a separate Tab stop with its own accessible name.
 ShellSidebarPlace	type	@spy4x/preact-system	Where a sidebar slot is being drawn: the desktop sidebar, or the mobile drawer's copy of it.
@@ -442,7 +443,7 @@ BoundaryOptions	type	@spy4x/preact-system/boundary	What `boundaryPlugin` and `ch
 BoundaryRuleContext	type	@spy4x/preact-system/boundary	What a rule gets from Deno's linter: the file it runs over, and a way to report.
 BoundaryViolation	type	@spy4x/preact-system/boundary	One place `checkModule` found a module breaking the boundary.
 DEFAULT_FORBIDDEN_GLOBALS	constant	@spy4x/preact-system/boundary	Globals a screen must not read by default: each fetches, routes or reads the page.
-DEFAULT_FORBIDDEN_NAMES	constant	@spy4x/preact-system/boundary	Exports app code must not import by default: `RailShell`, because every app draws `AppShell`, which owns the frame, so no app builds its own chrome around the rail.
+DEFAULT_FORBIDDEN_NAMES	constant	@spy4x/preact-system/boundary	Exports app code must not import by default: `RailShell` and the deprecated `Shell`, because every app draws `AppShell`, which owns the frame, so no app builds its own chrome around the rail or draws a second frame.
 DEFAULT_FORBIDDEN_PACKAGES	constant	@spy4x/preact-system/boundary	Import sources a screen must not use by default: signals stores and the router.
 ForbiddenName	type	@spy4x/preact-system/boundary	One export a module must not import by name, and why: `BoundaryOptions.forbiddenNames`.
 boundaryPlugin	helper	@spy4x/preact-system/boundary	Build the Deno lint plugin `ui` with one rule, `boundary`, from the lists in `options`.

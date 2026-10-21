@@ -22,6 +22,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { swUpdaterWords } from "./sw-updater-internals.ts"
 
 /** The slice of `ServiceWorker` this package uses. */
 export interface WorkerLike {
@@ -246,6 +247,24 @@ export function startUpdates(
   }
 }
 
+/** Every word {@link SWUpdater} shows. */
+export interface SWUpdaterLabels {
+  /** The bar's sentence. Defaults to `"New version available"`. */
+  message: string
+  /** The Reload button. Defaults to `"Reload"`. */
+  reload: string
+  /** The Dismiss button. Defaults to `"Dismiss"`. */
+  dismiss: string
+}
+
+/** The English words {@link SWUpdater} shows when the caller passes none. */
+export const DEFAULT_SW_UPDATER_LABELS: SWUpdaterLabels = {
+  message: "New version available",
+  reload: "Reload",
+  dismiss: "Dismiss",
+}
+
+/** What {@link SWUpdater} takes. */
 export interface SWUpdaterProps {
   /** Service-worker script URL. Defaults to `"/sw.js"`. */
   scriptUrl?: string
@@ -258,11 +277,22 @@ export interface SWUpdaterProps {
    * its own registration hands over the container it already has.
    */
   container?: ContainerLike
-  /** Bar copy. Defaults to `"New version available"`. */
+  /** The bar's words, each over {@link DEFAULT_SW_UPDATER_LABELS}. */
+  labels?: Partial<SWUpdaterLabels>
+  /**
+   * The bar's sentence; wins over `labels.message`.
+   * @deprecated Use `labels.message`. Removed in the next major.
+   */
   message?: string
-  /** Reload button copy. Defaults to `"Reload"`. */
+  /**
+   * The Reload button's words; wins over `labels.reload`.
+   * @deprecated Use `labels.reload`. Removed in the next major.
+   */
   reloadLabel?: string
-  /** Dismiss button copy. Defaults to `"Dismiss"`. */
+  /**
+   * The Dismiss button's words; wins over `labels.dismiss`.
+   * @deprecated Use `labels.dismiss`. Removed in the next major.
+   */
   dismissLabel?: string
   /**
    * What to post to the waiting worker when the visitor presses Reload.
@@ -326,9 +356,10 @@ export function SWUpdater(
     scriptUrl,
     scope,
     container,
-    message = "New version available",
-    reloadLabel = "Reload",
-    dismissLabel = "Dismiss",
+    labels,
+    message,
+    reloadLabel,
+    dismissLabel,
     updateMessage,
     reload,
     onUpdate,
@@ -337,6 +368,7 @@ export function SWUpdater(
     class: className,
   }: SWUpdaterProps,
 ): JSX.Element {
+  const words = swUpdaterWords({ labels, message, reloadLabel, dismissLabel })
   const [available, setAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [registration, setRegistration] = useState<RegistrationLike | null>(null)
@@ -392,9 +424,9 @@ export function SWUpdater(
       {available && !dismissed
         ? (
           <div class={cn(barClass, className)}>
-            <span class="text-sm">{message}</span>
+            <span class="text-sm">{words.message}</span>
             <button type="button" onClick={requestReload} class={reloadButtonClass}>
-              {reloadLabel}
+              {words.reload}
             </button>
             <button
               type="button"
@@ -404,7 +436,7 @@ export function SWUpdater(
               }}
               class={dismissButtonClass}
             >
-              {dismissLabel}
+              {words.dismiss}
             </button>
           </div>
         )

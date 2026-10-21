@@ -128,6 +128,19 @@ describe("checkModule", () => {
     for (const message of found) expect(message).toContain("draw AppShell instead")
   })
 
+  it("reports the deprecated Shell imported or re-exported from the system package", () => {
+    const source = `
+      import { AppShell, Shell } from "@spy4x/preact-system"
+      import { Shell as Frame } from "jsr:@spy4x/preact-system@8.0.0/shell"
+      export { Shell } from "@spy4x/preact-system/shell"
+    `
+    const found = messages(source)
+    expect(found).toHaveLength(3)
+    for (const message of found) {
+      expect(message).toMatch(/^"Shell" from ".*" is not for app code; draw AppShell instead\.$/)
+    }
+  })
+
   it("allows the system package's other names and a RailShell of the caller's own", () => {
     const source = `
       import { AppShell, type RailShellItem } from "@spy4x/preact-system"

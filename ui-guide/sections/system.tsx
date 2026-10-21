@@ -367,7 +367,7 @@ function SwUpdaterQuietDemo() {
       {/* Block flow on purpose: in a flex or grid parent the empty region would still cost a gap. */}
       <SWUpdater
         container={rig.current.container}
-        message={QUIET_MESSAGE}
+        labels={{ message: QUIET_MESSAGE }}
         reload={() => reloads.value++}
         class="static mt-4 shadow-none"
       />
@@ -1566,10 +1566,12 @@ function RailShellDemoAccount(
  * count. `sidebarTop` holds a workspace switcher; `sidebarBottom` holds a notifications link and
  * `AccountMenu`, each compact in the rail and full in the overlay.
  *
- * Every item is a link followed through the `navigateLink` port, so a plain click moves the
- * current marker and prints the key and `href` it was handed instead of following the link; the
+ * Every item is a link followed through the deprecated `navigateLink` port, so a plain click moves
+ * the current marker and prints the key and `href` it was handed instead of following the link; the
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
- * `href`, so it is a button through `navigate`. The frame scrolls the shell, so it takes the tab
+ * `href`, so it is a button reported through `onSelect`. The card keeps the old link port on
+ * purpose: the browser checks of `pages/checks/system.ts` prove it through this card until the
+ * next major removes it. The frame scrolls the shell, so it takes the tab
  * bar's scroll padding itself and takes it off the root, as the component's doc asks of such a
  * caller.
  */
@@ -1597,9 +1599,12 @@ function RailShellDemo() {
         items={railShellItems}
         currentKey={current.value}
         primary={{ key: "compose", label: "Write", Icon: IconPencilSquare }}
-        navigate={(key) => {
+        onSelect={(key) => {
+          // Links report here too; the card prints only the button's choice, as the links print
+          // theirs through `navigateLink`, so a link the checkbox leaves ordinary changes nothing.
+          if (key !== "compose") return
           current.value = key
-          via.value = "navigate"
+          via.value = "onSelect"
         }}
         navigateLink={routeLinks.value
           ? (key, href) => {
@@ -1688,13 +1693,21 @@ function RailDemoPortrait() {
 }
 
 /**
+ * The Rail card's `navigate`: it takes a plain click on the card's `#rail-demo-*` links and routes
+ * nowhere, so the guide's own address, which picks the page, stays as it is.
+ */
+function keepAddress(_href: string): void {}
+
+/**
  * `Rail` in a bounded frame, as a personal site draws it: a portrait linking home in the top zone,
  * drawn as a `RailEntry`, "Book" pinned first as the primary action, Home and About only in the
  * phone sheet, a footer under the page, and the variant chosen with two radio buttons. The labels
  * variant prints each destination's name under its icon, for visitors who do not know the icons
  * yet; the icons variant names them in tooltips. On a phone the primary action takes the tab bar's
  * centre slot, and "More" is current while Home or About is. The frame sizes the column through
- * `--rail-height`, as the `RailShell` card's. W goes to Writing, whose tooltip says so.
+ * `--rail-height`, as the `RailShell` card's. W goes to Writing, whose tooltip says so. A plain
+ * click on an entry goes through `navigate`, which keeps the guide's address, and `onSelect` moves
+ * the current marker.
  */
 function RailDemo() {
   const variant = useSignal<RailVariant>("labels")
@@ -1712,7 +1725,8 @@ function RailDemo() {
         items={railItems}
         currentKey={current.value}
         primary={{ key: "book", label: "Book", href: "#rail-demo-book", Icon: IconCalendar }}
-        navigateLink={(key) => current.value = key}
+        navigate={keepAddress}
+        onSelect={(key) => current.value = key}
         top={(place) =>
           place === "rail" && (
             <RailEntry
@@ -1726,7 +1740,8 @@ function RailDemo() {
               place="rail"
               variant={variant.value}
               current={current.value === "home" ? "page" : undefined}
-              navigateLink={(key) => current.value = key}
+              navigate={keepAddress}
+              onSelect={(key) => current.value = key}
             />
           )}
         footer={
@@ -2406,7 +2421,7 @@ function InstallPromptDemo() {
 export const systemDemos = {
   Shell: {
     summary:
-      "The frame of a signed-in app: a header with the brand and a user menu, a sidebar from `lg` up, and the same navigation in a drawer below it.",
+      "Deprecated: draw `AppShell`; `Shell` is removed in the next major, and the boundary rule fails a test that imports it. The frame of a signed-in app: a header with the brand and a user menu, a sidebar from `lg` up, and the same navigation in a drawer below it.",
     wide: true,
     props: [
       {
@@ -2530,10 +2545,22 @@ useEffect(() => {
           'Marks an exact `href` match with `aria-current="page"`, and the item whose `href` is the longest section prefix with `aria-current="true"`. `currentKey` marks by key.',
       },
       {
+        name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "The client router: called with the `href` on a plain left click on an item's same-origin link, instead of following it.",
+      },
+      {
+        name: "onSelect",
+        type: "(key: string) => void",
+        description:
+          "Which entry was chosen: every click of an item with no `href`, and a plain left click of a link.",
+      },
+      {
         name: "navigateLink",
         type: "(key: string, href: string) => void",
         description:
-          "Called on a plain left click on an item's same-origin link, instead of following it.",
+          "Deprecated: use `navigate` and `onSelect`. Given, it takes a link's plain click in place of `navigate`.",
       },
       {
         name: "top",
@@ -2572,6 +2599,7 @@ useEffect(() => {
   ]}
   currentPath={url.pathname}
   primary={{ key: "book", label: "Book", href: "/book", Icon: IconCalendar }}
+  navigate={(href) => router.navigate(href)}
   top={(place) =>
     place === "rail" && (
       <RailEntry
@@ -2696,14 +2724,21 @@ useEffect(() => {
       },
       {
         name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "Called with the `href` on a plain left click on an item's same-origin link, instead of following it; a modified or middle click stays the browser's.",
+      },
+      {
+        name: "onSelect",
         type: "(key: string) => void",
-        description: "Called for an item with no `href`, instead of following a link.",
+        description:
+          "Which entry was chosen, such as **Write**, which has no `href`: every click of a button item, and a plain left click of a link.",
       },
       {
         name: "navigateLink",
         type: "(key: string, href: string) => void",
         description:
-          "Called on a plain left click on an item's same-origin link, instead of following it; a modified or middle click stays the browser's.",
+          "Deprecated: use `navigate` and `onSelect`. Given, it takes a link's plain click in place of `navigate`. This card still passes it, so the old port stays proven in a browser.",
       },
       {
         name: "sidebarTop",
@@ -2732,7 +2767,7 @@ useEffect(() => {
   ]}
   currentPath={location.pathname}
   primary={{ key: "compose", label: "Write", href: "/new", Icon: IconPencilSquare }}
-  navigateLink={(key, href) => navigate(href)}
+  navigate={(href) => router.navigate(href)}
   sidebarTop={(place) => <WorkspaceSwitcher compact={place === "rail"} />}
   sidebarBottom={(place) => (
     <>
@@ -3135,10 +3170,11 @@ const tags = seoHeadTags(head)`,
         description: "Runs once the new version has taken over.",
       },
       {
-        name: "message",
-        type: "string",
-        default: '"New version available"',
-        description: "The bar's text.",
+        name: "labels",
+        type: "Partial<SWUpdaterLabels>",
+        default: "DEFAULT_SW_UPDATER_LABELS",
+        description:
+          'The bar\'s words: `message` ("New version available"), `reload` ("Reload") and `dismiss` ("Dismiss"). The props `message`, `reloadLabel` and `dismissLabel` are deprecated aliases that win over them.',
       },
       {
         name: "updateMessage",

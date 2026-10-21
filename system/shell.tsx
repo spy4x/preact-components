@@ -1,5 +1,6 @@
 /**
- * `Shell` — the frame every signed-in app built from `spy4x/seed` needs: a top bar, a side
+ * `Shell` — deprecated: draw `AppShell`; `Shell` is removed in the next major. It was the frame
+ * of a signed-in app built from `spy4x/seed`: a top bar, a side
  * navigation that collapses into a mobile drawer, a user menu, and a content area with a skip link
  * in front of all of it.
  *
@@ -312,6 +313,8 @@ function ShellNavList(
  * The frame for a signed-in app: a header (menu button, brand, status, user menu) that is always in
  * view, a sidebar below it from `lg` up, and the same navigation in a `<details>`-built drawer below
  * `lg` — see `mobile-panel.ts`.
+ *
+ * @deprecated Use `AppShell`, the one frame every app draws. Removed in the next major.
  *
  * **The skip link is the first focusable element on the page.** It targets `<main>`, which this
  * component gives `tabindex="-1"` so activating the link moves focus there — not only the address

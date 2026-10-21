@@ -10,8 +10,8 @@
  * cannot appear there.
  *
  * Props and ports only: items, the current key or path, the primary action and every label arrive
- * from the caller; a button item reaches the app's router through `navigate`, and a link item
- * through `navigateLink` when the caller passes one. The column and the tab bar switch at
+ * from the caller; a link item reaches the app's router through `navigate(href)` when the caller
+ * passes one, and `onSelect(key)` reports which entry was chosen, a button item's only port. The column and the tab bar switch at
  * Tailwind's `md` breakpoint in CSS, so the server render already carries both and nothing reads
  * the window while rendering.
  *
@@ -68,7 +68,7 @@ export interface RailItem {
   label: string
   /**
    * Rendered as a link when given, which is what keeps the rail working with no JavaScript. With
-   * no `href` the entry is a button that calls {@link RailProps.navigate} with {@link key}.
+   * no `href` the entry is a button that calls {@link RailProps.onSelect} with {@link key}.
    */
   href?: string
   /**
@@ -166,12 +166,28 @@ export interface RailProps {
    * the bar's centre slot. See {@link tabBarSlots}.
    */
   primary?: RailItem
-  /** Port for an entry with no `href`: receives that entry's key. */
-  navigate?: (key: string) => void
   /**
-   * Port to the app's client router for an entry with an `href`. Given, a plain left click on that
-   * link calls it with the entry's key and `href` and cancels the browser's own navigation. Every
-   * other click, a middle click included, stays the browser's. Left out, every link is ordinary.
+   * Port to the app's client router for an entry with an `href`. Given, a plain left click on a
+   * same-origin link calls it with the entry's `href` and cancels the browser's own navigation.
+   * Every other click, a middle click included, stays the browser's. Left out, every link is
+   * ordinary.
+   *
+   * Before `onSelect` existed, `navigate` was the port of an entry with no `href` and received its
+   * key. With no `onSelect` given, a button entry still calls `navigate` with its key; that use is
+   * deprecated: pass `onSelect`. Removed in the next major.
+   */
+  navigate?: (href: string) => void
+  /**
+   * Reports which entry was chosen, with its key: every click of an entry with no `href`, and a
+   * plain left click of a link, after `navigate` has taken it. A modified click, which opens the
+   * page elsewhere, reports nothing.
+   */
+  onSelect?: (key: string) => void
+  /**
+   * Port to the app's client router for an entry with an `href`, with the entry's key and `href`.
+   * Given, it takes a link's plain click in place of `navigate`, which then reaches no link.
+   *
+   * @deprecated Use `navigate(href)`, and `onSelect(key)` for the key. Removed in the next major.
    */
   navigateLink?: (key: string, href: string) => void
   /**
@@ -253,9 +269,15 @@ export interface RailEntryProps {
   variant?: RailVariant
   /** How the entry is current, the caller's own answer for its page: `aria-current` and the fill. */
   current?: RailCurrent
-  /** Port for an entry with no `href`: receives its key. */
-  navigate?: (key: string) => void
-  /** Port to a client router for an entry with an `href`, as {@link RailProps.navigateLink}. */
+  /** Port to a client router for an entry with an `href`, as {@link RailProps.navigate}. */
+  navigate?: (href: string) => void
+  /** Reports the entry chosen, as {@link RailProps.onSelect}. */
+  onSelect?: (key: string) => void
+  /**
+   * The old link port, as {@link RailProps.navigateLink}.
+   *
+   * @deprecated Use `navigate(href)`, and `onSelect(key)` for the key. Removed in the next major.
+   */
   navigateLink?: (key: string, href: string) => void
   /** The words a counter adds to the name, as {@link RailLabels.counter}. Defaults to the number. */
   counterWords?: (count: number) => string
@@ -273,7 +295,7 @@ export interface RailEntryProps {
  * link's plain click closes it as any link inside the sheet does.
  */
 export function RailEntry(props: RailEntryProps): JSX.Element {
-  const { item, place, variant = "icons", current, navigate, navigateLink } = props
+  const { item, place, variant = "icons", current, navigate, onSelect, navigateLink } = props
   const closes = place === "sheet" && item.href === undefined
   return (
     <Entry
@@ -283,6 +305,7 @@ export function RailEntry(props: RailEntryProps): JSX.Element {
       current={current}
       primary={false}
       navigate={navigate}
+      onSelect={onSelect}
       navigateLink={navigateLink}
       counterWords={props.counterWords ?? String}
       kbdLabels={props.kbdLabels}
@@ -348,6 +371,7 @@ export function Rail(props: RailProps): JSX.Element {
     currentPath,
     primary,
     navigate,
+    onSelect,
     navigateLink,
     top,
     bottom,
@@ -415,7 +439,14 @@ export function Rail(props: RailProps): JSX.Element {
   const sheetTop = hasSheet ? top?.("sheet") : undefined
   const sheetBottom = hasSheet ? bottom?.("sheet") : undefined
   const close = () => dialogRef.current?.close()
-  const entryPorts = { navigate, navigateLink, counterWords, variant, kbdLabels: labels?.kbd }
+  const entryPorts = {
+    navigate,
+    onSelect,
+    navigateLink,
+    counterWords,
+    variant,
+    kbdLabels: labels?.kbd,
+  }
   const zonePad = variant === "labels" ? "px-1" : "px-3 [@media(hover:none)]:px-1"
   // The labels variant's column is wider, so a label such as "How I work" has room to breathe.
   const columnWidth = variant === "labels" ? "w-22" : "w-18"
