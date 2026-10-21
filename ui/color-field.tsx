@@ -1,5 +1,5 @@
 import { join } from "@spy4x/preact-cn/join"
-import { IconCheck, IconPlus } from "@spy4x/preact-icons"
+import { IconCheck } from "@spy4x/preact-icons"
 import { isHexColor, readableTextColor } from "@spy4x/platform/universal/color"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
@@ -87,6 +87,9 @@ export interface ColorFieldProps {
 const NONE = "none"
 /** The radio value of the "Custom" swatch. */
 const CUSTOM = "custom"
+
+/** The "Custom" swatch before a custom colour is chosen: the colour wheel people know it by. */
+const WHEEL = "conic-gradient(#ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)"
 
 /** The 44 px touch area around each swatch. */
 const touch = "relative inline-flex size-11 items-center justify-center cursor-pointer"
@@ -180,7 +183,10 @@ export function ColorField(
     }
   }
 
-  /** One swatch: a hidden radio, the round fill, and the name for a screen reader. */
+  /**
+   * One swatch: a hidden radio, the round fill (a CSS `background`, or the surface when left out)
+   * and the name for a screen reader.
+   */
   const option = (
     optionValue: string,
     label: string,
@@ -198,7 +204,7 @@ export function ColorField(
       />
       <span
         class={join(swatch, background === undefined ? "bg-surface text-muted" : "text-foreground")}
-        style={background === undefined ? undefined : { backgroundColor: background }}
+        style={background === undefined ? undefined : { background }}
         aria-hidden="true"
       >
         {fill}
@@ -237,8 +243,8 @@ export function ColorField(
         {option(
           CUSTOM,
           labels.custom ?? "Pick a custom colour",
-          customColor === null ? <IconPlus class="size-4" /> : check(customColor, true),
-          customColor ?? undefined,
+          customColor === null ? null : check(customColor, true),
+          customColor ?? WHEEL,
         )}
       </div>
       {selected === CUSTOM && (
@@ -268,7 +274,7 @@ export function ColorField(
                 maxLength={7}
                 autocomplete="off"
                 spellcheck={false}
-                class="min-w-0 flex-1 font-mono"
+                class="w-32 font-mono"
                 onInput={(event) => typeHex(event.currentTarget.value)}
                 onBlur={() => showHexError.value = draft.value !== null}
               />

@@ -61,7 +61,8 @@ describe("ColorField", () => {
     const checked = checkedRadios(html)
     expect(checked.length).toBe(1)
     expect(checked[0]).toContain(`value="#b91c1c"`)
-    expect(html.match(/<svg/g)?.length).toBe(2) // the check, and the plus on Custom
+    expect(html.match(/<svg/g)?.length).toBe(1)
+    expect(html).toContain("conic-gradient(") // Custom, with no custom colour chosen
     expect(html).not.toContain("Hex code")
   })
 
@@ -69,12 +70,12 @@ describe("ColorField", () => {
     const html = render(<ColorField value="#facc15" onChange={noop} />)
 
     expect(html).toMatch(
-      /background-color:\s*#facc15[^>]*><span class="inline-flex" style="color:\s*#000000/,
+      /background:\s*#facc15[^>]*><span class="inline-flex" style="color:\s*#000000/,
     )
 
     const blue = render(<ColorField value="#1d4ed8" onChange={noop} />)
     expect(blue).toMatch(
-      /background-color:\s*#1d4ed8[^>]*><span class="inline-flex" style="color:\s*#ffffff/,
+      /background:\s*#1d4ed8[^>]*><span class="inline-flex" style="color:\s*#ffffff/,
     )
   })
 
@@ -84,7 +85,7 @@ describe("ColorField", () => {
     const checked = checkedRadios(html)
     expect(checked.length).toBe(1)
     expect(checked[0]).toContain(`value="custom"`)
-    expect(html).toMatch(/background-color:\s*#59168b/)
+    expect(html).toMatch(/background:\s*#59168b/)
     expect(html).toContain(">Hex code</label>")
     expect(html).toMatch(/<input[^>]*value="#59168b"[^>]*placeholder="#59168b"/)
     expect(html).toMatch(/<input type="color"[^>]*aria-label="Colour picker"[^>]*value="#59168b"/)
