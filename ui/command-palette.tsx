@@ -627,10 +627,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
         class={join(
           field
             // A field-shaped button at every width, as wide as its container.
-            ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground"
+            ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
             // An icon button on a phone; a field-shaped button with its placeholder and hotkey
             // from `sm`.
-            : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
+            : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
+          // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
+          // 44 px touch target either way.
+          "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden",
           className,
         )}
       >

@@ -249,11 +249,28 @@ describe("CommandPalette", () => {
       /<button[^>]*data-e2e="palette-open" class="([^"]*)"[^>]*>(.*?)<\/button>/,
     )
     expect(trigger?.[1].split(" ")).toEqual(expect.arrayContaining(["w-full", "border-subtle"]))
-    expect(trigger?.[1]).not.toContain("sm:")
+    // No class switches at `sm`: the field is the same at every width.
+    expect(trigger?.[1].split(" ").filter((name) => name.startsWith("sm:"))).toEqual([])
     expect(trigger?.[2]).toContain(
       `<span class="min-w-0 flex-1 truncate text-left">${defaultCommandPaletteLabels.placeholder}</span>`,
     )
     expect(trigger?.[2]).not.toContain("hidden sm:")
+  })
+
+  it("gives both triggers a 44 px touch target on a phone and the library's focus ring", () => {
+    for (const shape of ["field", "button"] as const) {
+      const html = render(
+        <CommandPalette options={options} trigger={shape} onSelect={() => {}} dataE2E="palette" />,
+      )
+      const classes = html.match(/data-e2e="palette-open" class="([^"]*)"/)?.[1].split(" ")
+      expect(classes, shape).toEqual(expect.arrayContaining([
+        "max-sm:min-h-11",
+        "focus-visible:ring-2",
+        "focus-visible:ring-offset-2",
+        "focus-visible:outline-hidden",
+      ]))
+      if (shape === "button") expect(classes).toContain("max-sm:min-w-11")
+    }
   })
 
   it("appends the caller's class to the trigger's own, unmerged", () => {
