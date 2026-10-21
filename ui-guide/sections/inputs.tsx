@@ -590,7 +590,7 @@ function CityCombobox() {
         ariaLabel="City"
         placeholder="Search a city…"
         clearLabel="Clear the city"
-        listboxClass="max-h-48"
+        listboxClass="max-h-48!"
       />
       <Note e2e="controlled-value">
         {comboboxStatusLabel(city.value?.code ?? null, query.value)}

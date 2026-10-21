@@ -461,7 +461,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1133 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1167 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -556,6 +556,7 @@ CommandPalette	component	@spy4x/preact-ui	A search trigger and the dialog it ope
 CommandPaletteBaseProps	type	@spy4x/preact-ui	Props every `CommandPalette` takes, whichever data mode it uses.
 CommandPaletteGroup	type	@spy4x/preact-ui	One heading and the options under it, in the order the palette lists them.
 CommandPaletteLocalProps	type	@spy4x/preact-ui	The local data mode: the palette filters `options` itself.
+CommandPaletteMatchKind	type	@spy4x/preact-ui	How a query matched an option, strongest first: one of `matchEntry`'s kinds from `@spy4x/platform/universal/text` (`exact`, `prefix`, `words`, `alias`, `layout`, `translit`, `typo`), or `detail` when only the option's `detail` holds the query.
 CommandPaletteOption	type	@spy4x/preact-ui	One result the palette lists.
 CommandPaletteRemoteProps	type	@spy4x/preact-ui	The remote data mode: the palette asks `search` for the options of each query.
 ComparisonRow	type	@spy4x/preact-ui	One capability of a `ComparisonTable`: a row, with one value per product.
@@ -613,6 +614,15 @@ FieldControlWiring	type	@spy4x/preact-ui	The DOM attributes of one `Field`, hand
 FieldWiring	type	@spy4x/preact-ui	The full `Field` wiring: the control's attributes plus the ids of the messages.
 FileInput	component	@spy4x/preact-ui	File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader story the input already has for free.
 FileRejection	type	@spy4x/preact-ui	One file a `FileInput` refused, and why.
+FilterBar	component	@spy4x/preact-ui	Search, filter menus, one-tap toggles and a sort over a list, with the active filters as removable chips under them and a result count.
+FilterBarChip	type	@spy4x/preact-ui	One active filter, drawn as a removable chip under the bar.
+FilterBarMenu	type	@spy4x/preact-ui	One filter menu of a `FilterBar`: one shape per `multiple`.
+FilterBarMultipleMenu	type	@spy4x/preact-ui	A menu where any number of choices can be on, drawn as boxes; the menu stays open on a choice.
+FilterBarOption	type	@spy4x/preact-ui	One choice of a `FilterBarMenu`.
+FilterBarSearch	type	@spy4x/preact-ui	The search field of a `FilterBar`.
+FilterBarSingleMenu	type	@spy4x/preact-ui	A menu with at most one choice; choosing closes the menu.
+FilterBarSort	type	@spy4x/preact-ui	The sort menu of a `FilterBar`.
+FilterBarToggle	type	@spy4x/preact-ui	A one-tap filter of a `FilterBar`, such as "Created by me".
 FocusAfterRemovalOptions	type	@spy4x/preact-ui	Options of `useFocusAfterRemoval`.
 FocusableElement	type	@spy4x/preact-ui	Anything the browser can move focus to.
 FormatContext	component	@spy4x/preact-ui	The formatter the components read.
@@ -649,6 +659,7 @@ LinkClickEvent	type	@spy4x/preact-ui	The part of a `MouseEvent` `followLinkClick
 LinkClickTarget	type	@spy4x/preact-ui	The anchor a click landed on, as `followLinkClick` needs it.
 LoadingSkeleton	component	@spy4x/preact-ui	Placeholder layout shown while a result loads.
 LoadingSpinner	component	@spy4x/preact-ui	Inline spinner with an accessible live region.
+MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read of an option.
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
 MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals.
 MoneyInput	component	@spy4x/preact-ui	A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it.
@@ -766,6 +777,7 @@ WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` or a `Scre
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.
+activeFilterChips	helper	@spy4x/preact-ui	Every active filter as a chip: one per chosen option of each menu, in menu order, then one per pressed toggle.
 activeShortcuts	helper	@spy4x/preact-ui	The shortcuts that work now: all of them, or, while single keys are off, the ones that are not `isSingleKey`.
 addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported.
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
@@ -788,6 +800,7 @@ createLeaveGuard	helper	@spy4x/preact-ui	Creates a `LeaveGuard`.
 dashboardRows	helper	@spy4x/preact-ui	Groups widgets into rows, in order: each run of consecutive stats is one row, and each full widget is a row of its own.
 dateRangePresets	helper	@spy4x/preact-ui	Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods, then custom.
 defaultCommandPaletteLabels	helper	@spy4x/preact-ui	English defaults for every `CommandPaletteLabels` entry.
+defaultCommandPaletteMatchLabels	helper	@spy4x/preact-ui	English defaults for the words `showMatch` puts beside a result, one per `CommandPaletteMatchKind`.
 defaultComparisonTableLabels	helper	@spy4x/preact-ui	The English defaults of `ComparisonTableLabels`.
 defaultGetLabel	helper	@spy4x/preact-ui	The identity rule for item text: `String(item)`.
 defaultKanbanLabels	helper	@spy4x/preact-ui	The English defaults of `KanbanBoardLabels`.
@@ -807,6 +820,7 @@ dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
+filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.
 fold	helper	@spy4x/preact-ui	Fold text for matching: accents removed and lower-cased.
 followLinkClick	helper	@spy4x/preact-ui	Follow a link click through the `navigate` port when the page may take it over, and report whether it did.
@@ -829,6 +843,8 @@ keyFaces	helper	@spy4x/preact-ui	The faces of every key in a combination, modifi
 labelOr	helper	@spy4x/preact-ui	The caller's label, or the library's English default.
 leavesCombobox	helper	@spy4x/preact-ui	Whether a focus change **out of the input** closes the popup.
 listboxContent	helper	@spy4x/preact-ui	Split a filtered list into "options to render" and "message to announce".
+matchOption	helper	@spy4x/preact-ui	How `query` matched one option, or `undefined` when it did not or the query is empty: what `matchEntry` from `@spy4x/platform/universal/text` says of its `label` and `aliases`, else `"detail"` when its `detail` holds the query.
+matchOptions	helper	@spy4x/preact-ui	The options that match `query`, best first, at most `limit` of them: the palette's default filter.
 matchesAccept	helper	@spy4x/preact-ui	Whether `file` matches an `<input accept>`-style pattern list: comma-separated extensions (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`) — exactly the three shapes the browser's own file chooser filters by.
 matchesQuery	helper	@spy4x/preact-ui	Whether one item matches a query.
 mergeLayout	helper	@spy4x/preact-ui	A saved layout made valid for the parts that exist now, in the saved order.
@@ -850,7 +866,7 @@ rangeForPreset	helper	@spy4x/preact-ui	The inclusive range a preset describes.
 rangeForTimePreset	helper	@spy4x/preact-ui	The inclusive wall-clock range a sub-day preset describes, minute precision.
 rangeFromSearch	helper	@spy4x/preact-ui	The range an address asks for, or the default preset's when it asks for none or for one that cannot be read.
 rangeToSearch	helper	@spy4x/preact-ui	`search` with the choice written into it, every other parameter kept.
-rankOptions	helper	@spy4x/preact-ui	The options that match `query`, best first, at most `limit` of them: names equal to the query, then names that start with it, then names that contain it, then options whose `detail` contains it.
+rankOptions	helper	@spy4x/preact-ui	The plain substring ranking, kept for callers that want it over `matchOptions`: the options that match `query`, best first, at most `limit` of them: names equal to the query, then names that start with it, then names that contain it, then options whose `detail` contains it.
 resolveDateTime	helper	@spy4x/preact-ui	Whether a `YYYY-MM-DDTHH:mm` wall-clock value happens once, never or twice in `timeZone`, with the instants behind it — `resolveWallClock` from `@spy4x/time/tz`, taking this module's value shape and answering in its string instants.
 resolveDuration	helper	@spy4x/preact-ui	How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration` (`defaultToastActionDuration` for a toast with an action).
 resolveImage	helper	@spy4x/preact-ui	Turn an event target into a lightbox image, or `null` when the event missed an image.

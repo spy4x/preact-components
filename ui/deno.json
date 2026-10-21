@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui",
-  "version": "9.0.0",
+  "version": "9.1.0",
   "exports": {
     ".": "./+index.ts",
     "./avatar": "./avatar.tsx",
@@ -32,6 +32,7 @@
     "./feature-card": "./feature-card.tsx",
     "./field": "./field.tsx",
     "./file-input": "./file-input.tsx",
+    "./filter-bar": "./filter-bar.tsx",
     "./format": "./format.tsx",
     "./honeypot": "./honeypot.tsx",
     "./image-gallery": "./image-gallery.tsx",

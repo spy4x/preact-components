@@ -1,4 +1,4 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import { IconXMark } from "@spy4x/preact-icons"
 import { fold } from "@spy4x/platform/universal/text"
 import { useSignal } from "@preact/signals"
@@ -542,11 +542,16 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   "aria-describedby"?: string
   /** Marks the field invalid; `Field` sets it while it carries an error. */
   "aria-invalid"?: boolean | string
-  /** Utilities for the wrapper. */
+  /**
+   * Utilities for the wrapper, appended after its own and not merged into them, so
+   * `tailwind-merge` stays out of the bundle. To replace one of the component's own utilities,
+   * mark the replacement important with a trailing `!`. The same holds for `inputClass` and
+   * `listboxClass`.
+   */
   class?: string
-  /** Utilities for the search input. */
+  /** Utilities for the search input, appended after its own; see {@link ComboboxProps.class}. */
   inputClass?: string
-  /** Utilities for the popup listbox. */
+  /** Utilities for the popup listbox, appended after its own; see {@link ComboboxProps.class}. */
   listboxClass?: string
 }
 
@@ -890,12 +895,12 @@ export function Combobox<T>({
   const inputValue = isOpen.value ? draft : hasSelection ? getText(items[selectedIndex]) : draft
 
   return (
-    <div class={cn("relative", className)} ref={rootRef}>
+    <div class={join("relative", className)} ref={rootRef}>
       <div class="relative flex items-center">
         <input
           ref={inputRef}
           id={id}
-          class={cn("pc-input font-normal tracking-normal pr-16", inputClass)}
+          class={join("pc-input font-normal tracking-normal pr-16", inputClass)}
           type="text"
           role="combobox"
           value={inputValue}
@@ -982,7 +987,7 @@ export function Combobox<T>({
         // The `hidden` attribute, not a `hidden` utility: the popup then disappears on markup alone,
         // without the stylesheet, and cannot be shown by a utility the caller adds.
         hidden={!isOpen.value}
-        class={cn(listboxClasses, listboxClass)}
+        class={join(listboxClasses, listboxClass)}
       >
         {content.options.map((item, index) => {
           // A lookup, not a scan: reading `items` per row is what made this loop quadratic.

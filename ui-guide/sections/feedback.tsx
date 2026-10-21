@@ -365,7 +365,7 @@ function ToastrDemo() {
         onDismiss={store.remove}
         dataE2E="guide-toastr"
         {...(placement.value === "card"
-          ? { class: "static max-w-sm" }
+          ? { class: "static! max-w-sm!" }
           : { corner: placement.value })}
       />
     </Stack>

@@ -440,11 +440,16 @@ export {
   type CommandPaletteGroup,
   type CommandPaletteLabels,
   type CommandPaletteLocalProps,
+  type CommandPaletteMatchKind,
   type CommandPaletteOption,
   type CommandPaletteProps,
   type CommandPaletteRemoteProps,
   defaultCommandPaletteLabels,
+  defaultCommandPaletteMatchLabels,
   groupOptions,
+  type MatchableOption,
+  matchOption,
+  matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
@@ -541,6 +546,20 @@ export {
   type WidgetStatProps,
   type WidgetStatus,
 } from "./widget-card.tsx"
+export {
+  activeFilterChips,
+  FilterBar,
+  type FilterBarChip,
+  type FilterBarMenu,
+  type FilterBarMultipleMenu,
+  type FilterBarOption,
+  type FilterBarProps,
+  type FilterBarSearch,
+  type FilterBarSingleMenu,
+  type FilterBarSort,
+  type FilterBarToggle,
+  filterTriggerLabel,
+} from "./filter-bar.tsx"
 export {
   ScreenTour,
   type ScreenTourImage,
