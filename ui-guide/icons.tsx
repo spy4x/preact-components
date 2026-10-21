@@ -28,7 +28,7 @@ export const DEPRECATED_ICON_NAMES: Readonly<Record<string, string>> = {
   IconCheckCircle: "IconSuccess",
   IconCpuChip: "IconChip",
   IconExternal: "IconExternalLink",
-  IconSpinner: "IconLoading",
+  IconLoading: "IconSpinner",
   IconVideo: "IconVideoCamera",
 }
 

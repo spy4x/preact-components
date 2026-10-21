@@ -178,7 +178,7 @@ IconLightBulb	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) ·
 IconLink	component	@spy4x/preact-icons	Feather/Lucide outline (stroke 1.75) · matches both packs' "link" exactly.
 IconLinkedIn	component	@spy4x/preact-icons	Brand mark (trademarked), Feather outline (stroke-2) · "linkedin" from feather-icons@4.29.2 (#233).
 IconList	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "list" exactly.
-IconLoading	component	@spy4x/preact-icons	The same spinner as `IconSpinner`, under the name older apps import.
+IconLoading	component	@spy4x/preact-icons	Deprecated: Use `IconSpinner`. Old name of `IconSpinner`, kept as the same component: the two drew one idea twice.
 IconLocationMarker	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
 IconLockClosed	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconLockClosedFilled	component	@spy4x/preact-icons	Heroicons v1 solid · from a source application; matches Heroicons v1's "lock-closed" exactly, not v2.
@@ -206,7 +206,7 @@ IconShare	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches
 IconShieldCheck	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconSmile	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconSparkle	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · "sparkles" from heroicons@1.0.6 (#233).
-IconSpinner	component	@spy4x/preact-icons	Deprecated: Use `IconLoading`. Old name of `IconLoading`, kept as the same component: the two drew one idea twice.
+IconSpinner	component	@spy4x/preact-icons	Lucide outline (stroke 2.5); matches Lucide's "loader-circle"/"loader-2" exactly.
 IconSprout	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "sprout" (lucide-static@1.47.0) exactly.
 IconStar	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "star" exactly, not Heroicons; `filled` for solid.
 IconStopCircle	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.

@@ -3,7 +3,7 @@ import type { Spec } from "./runner.ts"
 
 export const specs: readonly Spec[] = [
   {
-    name: "IconLoading spins, and stops under reduced motion",
+    name: "IconSpinner spins, and stops under reduced motion",
     pageId: "icons",
     run: async (page) => {
       const spinners = page.locator("svg.animate-spin")
