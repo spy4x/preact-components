@@ -98,6 +98,8 @@ export interface IconGalleryLabels {
   copyCode: string
   /** Leads the list of deprecated old names. Defaults to `"Old names, removed in the next major:"`. */
   deprecated: string
+  /** Joins an old name to the name to use: `IconVideo (use IconVideoCamera)`. Defaults to `"use"`. */
+  useInstead: string
 }
 
 /** The gallery's English words. */
@@ -111,6 +113,7 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
   noMatch: (query) => `No glyph matches “${query}”.`,
   copyCode: "Copy the icon example",
   deprecated: "Old names, removed in the next major:",
+  useInstead: "use",
 }
 
 /** The code row of the gallery's card: how an app uses one glyph. */
@@ -243,8 +246,8 @@ export function IconGallery(
           {Object.entries(DEPRECATED_ICON_NAMES).flatMap(([old, current], index) => [
             index > 0 ? ", " : "",
             <span key={old} class="whitespace-nowrap">
-              <code class="text-xs line-through">{old}</code> →{" "}
-              <code class="text-xs">{current}</code>
+              <code class="text-xs line-through">{old}</code> ({labels.useInstead}{" "}
+              <code class="text-xs">{current}</code>)
             </span>,
           ])}
         </p>

@@ -85,11 +85,11 @@ describe("IconGallery", () => {
   })
 
   it("names each deprecated old name next to the name to use", () => {
-    const html = render(<IconGallery labels={{ deprecated: "Alte Namen:" }} />)
+    const html = render(<IconGallery labels={{ deprecated: "Alte Namen:", useInstead: "nimm" }} />)
 
     expect(html).toContain("Alte Namen:")
     for (const [old, current] of Object.entries(DEPRECATED_ICON_NAMES)) {
-      expect(html).toContain(`>${old}</code> → <code class="text-xs">${current}</code>`)
+      expect(html).toContain(`>${old}</code> (nimm <code class="text-xs">${current}</code>)`)
       expect(renderedIconNames(html)).not.toContain(old)
     }
   })
