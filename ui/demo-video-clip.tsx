@@ -53,7 +53,8 @@ export function DemoVideoClip(
       onError={onFail}
     >
       {sources.map((source, index) => (
-        // A `<video>` with `<source>` children reports a failed load on its last source, not itself.
+        // A `<video>` with `<source>` children reports a failed load on its last source, not on
+        // itself.
         <source
           key={source.src}
           src={source.src}
@@ -68,7 +69,8 @@ export function DemoVideoClip(
 /**
  * Starts the clip with sound. When the browser refuses (autoplay with sound is not allowed), it
  * mutes the clip and plays again, so the clip always starts; the reader can unmute it in the
- * controls. A second refusal is ignored: the controls stay, and a failed load shows its own message.
+ * controls. A second refusal is ignored: the controls stay, and a failed load shows its own
+ * message.
  *
  * @param video The clip's `<video>`, or anything with its `play()` and `muted`.
  * @returns Settles once the clip plays, or once both attempts were refused.

@@ -117,10 +117,10 @@ function prefersReducedMotion(): boolean {
  * place, at the same aspect, and focus moves to the video so a keyboard reader can pause it at
  * once. The clip plays with its sound, since the press is the reader's own gesture; when the
  * browser still refuses sound, it plays muted. The video is `object-contain`, so in full screen on
- * a screen of another aspect the whole frame shows, with dark bars. No `<video>` element exists before the press, so the browser fetches no video bytes.
- * Under `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but
- * `loop` is ignored. Any other attribute goes onto the play link, so `data-*` analytics attributes
- * count the press.
+ * a screen of another aspect the whole frame shows, with dark bars. No `<video>` element exists
+ * before the press, so the browser fetches no video bytes. Under `prefers-reduced-motion: reduce`
+ * the clip still plays, since the reader asked for it, but `loop` is ignored. Any other attribute
+ * goes onto the play link, so `data-*` analytics attributes count the press.
  *
  * When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its
  * size and shows `errorLabel` with a link to the first source; focus moves to that link when it was
@@ -156,8 +156,9 @@ export function DemoVideo(
   const pressingKey = useRef<string | null>(null)
 
   useEffect(() => {
-    // Started by the press, not by `autoplay` alone: Chromium pauses a muted video that autoplayed
-    // once it leaves the viewport, and a page that moves under it would stop a clip asked for.
+    // Started by the press, not by `autoplay` alone: Chromium pauses a video that `autoplay`
+    // started once it leaves the viewport, and a page that moves under it would stop a clip asked
+    // for. `playClip` plays with sound and falls back to muted when the browser refuses.
     if (current.kind === "playing" && video.current !== null) playClip(video.current)
     if (current.kind === "playing" && pressingKey.current === null) video.current?.focus()
     if (current.kind === "failed" && current.hadFocus) fileLink.current?.focus()

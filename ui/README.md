@@ -724,9 +724,10 @@ in the same box: the box keeps the poster's aspect, so nothing below it moves. F
 video, so a keyboard reader can pause it at once. The clip plays with its sound, since the press
 is the reader's own gesture; when the browser still refuses sound, it mutes the clip and plays
 again, so it always starts. The video is `object-contain` on a dark fill: in full screen on a
-screen of another aspect, the whole frame shows with dark bars, captions at the edges included. No `<video>` element exists before
-the press, so the browser requests no video bytes. Under `prefers-reduced-motion: reduce` the clip
-still plays, since the reader asked for it, but `loop` is ignored.
+screen of another aspect, the whole frame shows with dark bars, captions at the edges included.
+No `<video>` element exists before the press, so the browser requests no video bytes. Under
+`prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
+ignored.
 
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the

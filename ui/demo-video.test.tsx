@@ -100,7 +100,7 @@ describe("DemoVideo", () => {
         />,
       )
 
-    it("shows the whole frame, so full screen on another aspect adds bars instead of cutting", () => {
+    it("shows the whole frame, so full screen adds bars instead of cutting the clip", () => {
       const html = clip()
       expect(html).toMatch(/^<video [^>]*class="[^"]*\bobject-contain\b/)
       expect(html).not.toContain("object-cover")
