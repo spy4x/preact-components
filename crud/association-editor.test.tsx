@@ -4,6 +4,7 @@ import { computed, signal } from "@preact/signals"
 import { render } from "preact-render-to-string"
 import type { ValidationModel } from "@spy4x/validation/model"
 import { uuidV7 } from "@spy4x/platform/universal/uuid"
+import { formatTime } from "@spy4x/platform/universal/time"
 import {
   associationActions,
   AssociationEditor,
@@ -194,6 +195,38 @@ describe("AssociationEditor", () => {
     expect(html).toContain(">Restore</button>")
     expect(html).not.toContain(">Delete</button>")
     expect(html).toContain("Removed")
+  })
+
+  it("titles the removal time the way CrudEditor does, not with Date.toString", () => {
+    const at = new Date("2025-01-01T00:00:00Z")
+    const html = render(
+      <AssociationEditor
+        {...shared}
+        mode="edit"
+        editId={1}
+        store={fakeStore().store}
+        blank={row({ id: 1, deletedAt: at })}
+      >
+        {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+      </AssociationEditor>,
+    )
+
+    expect(html).toContain(`title="${formatTime(at, { full: true })}"`)
+    expect(html).not.toContain(at.toString())
+  })
+
+  it("keeps the Restore offer from a viewer canChange refuses", () => {
+    const store = fakeStore([row({ id: 5, zoneId: 0, deletedAt: new Date() })]).store
+    const offer = (canChange: () => boolean) =>
+      render(
+        <AssociationEditor {...shared} mode="add" store={store} canChange={canChange}>
+          {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
+        </AssociationEditor>,
+      )
+
+    expect(offer(() => true)).toContain(">Restore</button>")
+    expect(offer(() => false)).not.toContain(">Restore</button>")
+    expect(offer(() => false)).not.toContain("Restoring it keeps the record")
   })
 
   it("offers to restore the duplicate when the row it collides with was removed", () => {

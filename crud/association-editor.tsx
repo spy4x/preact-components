@@ -6,7 +6,7 @@ import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
-import { timeAgo } from "@spy4x/platform/universal/time"
+import { formatTime, timeAgo } from "@spy4x/platform/universal/time"
 import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
 import {
   CrudEditor,
@@ -298,6 +298,7 @@ export function AssociationEditor<M extends CrudRow>(
         conflict={conflict}
         restoreWording={restoreWording}
         hint={props.restoreHint}
+        canChange={canChange}
       />
     ),
     footerSlot: ({ vm }: CrudEditorSlot<M>) =>
@@ -423,12 +424,14 @@ function ConfirmedAction(
  * `aria-invalid`; a caller's own control that does not keeps the browser's default.
  */
 function RemovedConflict<M extends CrudRow>(
-  { store, vm, conflict, restoreWording, hint }: {
+  { store, vm, conflict, restoreWording, hint, canChange }: {
     store: CrudAssociationStore<M>
     vm: Signal<M>
     conflict: (row: M, rows: M[]) => M | undefined
     restoreWording: ConfirmWording
     hint?: string
+    /** The editor's own port: a viewer it refuses gets no Restore offer, as no Delete either. */
+    canChange?: () => boolean
   },
 ) {
   const offer = useRef<HTMLDivElement>(null)
@@ -445,7 +448,7 @@ function RemovedConflict<M extends CrudRow>(
     form.querySelector<HTMLElement>(`[aria-invalid="true"]`)?.focus()
   }, [restorable])
 
-  if (!isRestorable(conflicting)) return null
+  if (!isRestorable(conflicting) || !(canChange?.() ?? true)) return null
 
   const id = conflicting.id
   const restoring = store.op.undelete(id).value?.inProgress === true
@@ -520,7 +523,7 @@ function AssociationFooter<M extends CrudRow>(
         }}
       />
       {removed && (
-        <span class="text-danger mr-auto" title={vm.value.deletedAt?.toString()}>
+        <span class="text-danger mr-auto" title={formatTime(vm.value.deletedAt, { full: true })}>
           {removedLabel?.(ago) ?? `Removed ${ago}`}
         </span>
       )}
