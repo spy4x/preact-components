@@ -23,10 +23,7 @@ deno add jsr:@spy4x/preact-ui
 The design system and the original markup are by [Eirene](https://github.com/Eirene)
 ([isorokina.com](https://isorokina.com/)) — see [Credits](#credits).
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/guide-overview-dark.png">
-  <img src="docs/screenshots/guide-overview-light.png" width="1216" alt="The live UI guide's overview page. A header holds the library's name and version, a search box, a GitHub link, a dark-mode switch and an accent colour picker. A side navigation lists Overview under Start here and the UI, Icons, Theme, Charts, Map, System and CRUD packages. The page opens with the headline Preact components that render on the server and work from the keyboard, a Browse components button and a Star on GitHub button, the install command deno add jsr:@spy4x/preact-ui with a copy button, and the counts of components, icons and packages, above the See it in an app section and the title and summary of its dashboard card.">
-</picture>
+<a href="https://antonshubin.com/tools/preact-components"><img src="media/demo/poster.webp" width="1280" alt="A one-minute demo video of the live guide, in the dark theme: the overview, the Orbit dashboard with its chart tooltip and the Failing filter, the switch to light and back, three accent colours, keyboard search that opens the Tabs component, arrow keys moving between its tabs, its code copied, and the install command deno add jsr:@spy4x/preact-ui copied. Opens the video page on antonshubin.com."></a>
 
 </div>
 
