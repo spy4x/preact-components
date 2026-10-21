@@ -166,9 +166,11 @@ export function listRows<M extends CrudModel>(
 export interface ListPage<M> {
   /** The rows of this page. */
   rows: M[]
-  /** The page shown, `1`-based: the page asked for, brought into `1…pageCount`. */
+  /** The page shown, `1`-based: the page asked for, brought into `1…pageCount`; `1` when empty. */
   page: number
-  /** How many pages the rows fill; `1` for an empty list. */
+  /**
+   * How many pages the rows fill; `0` for an empty list, as `DataTable` and `Pagination` count it.
+   */
   pageCount: number
 }
 
@@ -181,7 +183,7 @@ export interface ListPage<M> {
  */
 export function pageOf<M>(rows: M[], page: number, pageSize: number): ListPage<M> {
   const size = Math.max(1, Math.floor(pageSize) || 1)
-  const pageCount = Math.max(1, Math.ceil(rows.length / size))
+  const pageCount = Math.ceil(rows.length / size)
   const current = Math.max(1, Math.min(pageCount, Math.round(page) || 1))
   return { rows: rows.slice((current - 1) * size, current * size), page: current, pageCount }
 }
@@ -243,7 +245,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
   }
 
   const shown = props.pageSize === undefined
-    ? { rows, page: 1, pageCount: 1 }
+    ? { rows, page: 1, pageCount: rows.length > 0 ? 1 : 0 }
     : pageOf(rows, page.value, props.pageSize)
   const showEmpty = rows.length === 0 && error === null && loaded
   const searching = query.value.trim() !== ""

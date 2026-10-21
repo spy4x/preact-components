@@ -166,8 +166,9 @@ describe("pageOf", () => {
     expect(pageOf(five, Number.NaN, 2).rows).toEqual([1, 2])
   })
 
-  it("counts one page for an empty list", () => {
-    expect(pageOf([], 1, 10)).toEqual({ rows: [], page: 1, pageCount: 1 })
+  it("counts no pages for an empty list and still shows page one", () => {
+    expect(pageOf([], 1, 10)).toEqual({ rows: [], page: 1, pageCount: 0 })
+    expect(pageOf([], 4, 10)).toEqual({ rows: [], page: 1, pageCount: 0 })
   })
 
   it("shows one row a page for a page size below one", () => {
