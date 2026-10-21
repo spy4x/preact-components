@@ -962,6 +962,35 @@ type RemovalLead = keyof typeof removalLeads
  * that start with something other than their button. The last line is written from an effect that
  * runs after the hook's, so a check that reads it knows the hook has finished with that state.
  */
+/**
+ * A `Notice` the reader can close, and a button that brings it back, so the browser check can
+ * press the close button and see the caller hide it.
+ */
+function DismissibleNoticeDemo() {
+  const shown = useSignal(true)
+  return shown.value
+    ? (
+      <Notice
+        data-e2e="notice-dismissible"
+        onDismiss={() => shown.value = false}
+        dismissLabel="Hide this message"
+        action={<Button size="sm" variant="outline">Keep your account</Button>}
+      >
+        This account lives only in this browser. Add a sign-in method to keep it.
+      </Notice>
+    )
+    : (
+      <Button
+        size="sm"
+        variant="outline"
+        data-e2e="notice-show-again"
+        onClick={() => shown.value = true}
+      >
+        Show the notice again
+      </Button>
+    )
+}
+
 function RemovalDemo() {
   const [people, setPeople] = useState(REMOVAL_PEOPLE)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -1251,6 +1280,18 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         description:
           'A polite status (`role="status"`) that a screen reader reads out when it appears. `false` drops the role, for standing instructions that the reader should find while reading.',
       },
+      {
+        name: "onDismiss",
+        type: "() => void",
+        description:
+          "Draws a close button in the top-right corner and calls this when it is pressed. The caller hides the notice.",
+      },
+      {
+        name: "dismissLabel",
+        type: "string",
+        default: `"Dismiss"`,
+        description: "The close button's accessible name.",
+      },
     ],
     snippet: `<Notice
   tone="warning"
@@ -1273,7 +1314,18 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
 // Standing instructions that arrive after a fetch, found while reading:
 <Notice live={false} title="Public demo">
   Anyone can sign in with this account.
-</Notice>`,
+</Notice>
+
+// One the reader can close; the caller hides it and remembers that:
+{shown.value && (
+  <Notice
+    onDismiss={() => shown.value = false}
+    dismissLabel="Hide this message"
+    action={<Button size="sm" variant="outline" href="/keep">Keep your account</Button>}
+  >
+    This account lives only in this browser. Add a sign-in method to keep it.
+  </Notice>
+)}`,
     render: () => (
       <Stack>
         {entries(noticeTones).map(([tone, { title, body, action, href }]) => (
@@ -1290,6 +1342,7 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
             {body}
           </Notice>
         ))}
+        <DismissibleNoticeDemo />
       </Stack>
     ),
   },
