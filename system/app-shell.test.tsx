@@ -144,6 +144,23 @@ describe("AppShell", () => {
     expect(sheet).toMatch(/<button type="submit"[^>]*data-rail-close[^>]*>Sign out</)
   })
 
+  it("announces an account item's keyshortcuts in the sheet and hints the first on a fine pointer", () => {
+    const html = shell({
+      account: {
+        user,
+        items: [
+          { label: "Profile", href: "/profile" },
+          { label: "Keyboard shortcuts", onClick: () => {}, keyshortcuts: ["?"] },
+        ],
+      },
+    })
+    const sheet = whole(html, "app-shell-sheet-account", "dialog")
+    expect(sheet).toMatch(
+      /<button type="button"[^>]*aria-keyshortcuts="\?"[^>]*>Keyboard shortcuts<span aria-hidden="true" data-account-key-hint class="ml-auto hidden pointer-fine:inline-flex"><kbd[^>]*>\?<\/kbd>/,
+    )
+    expect(sheet).toMatch(/<a href="\/profile"(?![^>]*aria-keyshortcuts)[^>]*>Profile<\/a>/)
+  })
+
   it("draws a plain placeholder and no menu while the person is unknown", () => {
     const html = shell({ account: {} })
     expect(html).toContain('data-e2e="app-shell-account-pending"')

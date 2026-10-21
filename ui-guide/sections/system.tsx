@@ -1411,6 +1411,7 @@ const railShellItems: RailShellItem[] = [
 /**
  * `AccountMenu` at the foot of a sidebar-width column, opening upward, with the chosen theme and the
  * last address `navigate` took printed under it, so a choice and a routed "Profile" click show.
+ * "Keyboard shortcuts" shows its `?` at the right and prints "shortcuts" as the route when chosen.
  */
 function AccountMenuDemo() {
   const theme = useSignal<AccountMenuTheme>("system")
@@ -1422,7 +1423,15 @@ function AccountMenuDemo() {
     >
       <AccountMenu
         user={railShellUser}
-        items={[{ label: "Profile", href: "#account-profile" }]}
+        items={[
+          { label: "Profile", href: "#account-profile" },
+          {
+            label: "Keyboard shortcuts",
+            onClick: () => route.value = "shortcuts",
+            keyshortcuts: ["?"],
+            dataE2E: "account-menu-demo-shortcuts",
+          },
+        ]}
         navigate={(href) => route.value = href}
         theme={theme.value}
         onThemeChange={(value) => theme.value = value}
@@ -2766,7 +2775,8 @@ useEffect(() => {
       {
         name: "items",
         type: "AccountMenuItem[]",
-        description: "The caller's entries first: a link, a form post (`action`) or a button.",
+        description:
+          "The caller's entries first: a link, a form post (`action`) or a button. `keyshortcuts` announces the keys the app binds to the same action and shows the first at the item's right.",
       },
       {
         name: "theme / onThemeChange",
@@ -2799,7 +2809,11 @@ useEffect(() => {
     ],
     snippet: `<AccountMenu
   user={{ name: "Uma Lee", email: "uma@example.com" }}
-  items={[{ label: "Profile", href: "/profile" }]}
+  items={[
+    { label: "Profile", href: "/profile" },
+    // The app binds "?" itself; the item announces it and shows it
+    { label: "Keyboard shortcuts", onClick: openShortcuts, keyshortcuts: ["?"] },
+  ]}
   navigate={(href) => router.navigate(href)}
   theme={theme}
   onThemeChange={setTheme}

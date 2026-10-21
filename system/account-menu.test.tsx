@@ -58,6 +58,22 @@ describe("AccountMenu", () => {
     expect(html).toMatch(/<form method="post" action="\/sign-out" role="none">/)
   })
 
+  it("announces an item's keyshortcuts and shows the first at its right", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        items={[
+          { label: "Profile", href: "/profile" },
+          { label: "Keyboard shortcuts", onClick: () => undefined, keyshortcuts: ["?"] },
+        ]}
+      />,
+    )
+    expect(html).toMatch(
+      /<button[^>]*aria-keyshortcuts="\?"[^>]*>Keyboard shortcuts<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*>\?<\/kbd>/,
+    )
+    expect(html.match(/aria-keyshortcuts/g)?.length).toBe(1)
+  })
+
   // Before hydration `DropdownItem` is a plain button, where the choice is `aria-current`; the
   // hydrated `menuitemradio` with `aria-checked` is proven in `pages/e2e/system.spec.ts`.
   it("marks only the current theme in a group named by its heading", () => {
