@@ -2925,6 +2925,13 @@ useEffect(() => {
         description: "Where the form posts when no script is running.",
       },
       {
+        name: "passkeyAutofill",
+        type: "boolean",
+        default: "false",
+        description:
+          'On sign-in, the login field\'s autofill also offers saved passkeys (autocomplete "username webauthn"). Your page starts the conditional WebAuthn request.',
+      },
+      {
         name: "footer",
         type: "ComponentChildren",
         description: "Shown below the form, inside it: a link back to sign-in, for instance.",
@@ -2960,6 +2967,11 @@ useEffect(() => {
         </Part>
         <Part title="With the mode switch as a link">
           <AuthFormModeLinkDemo />
+        </Part>
+        <Part title="With passkeys offered in the login field's autofill">
+          <div class="max-w-sm" data-e2e="auth-form-passkey-demo">
+            <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" passkeyAutofill />
+          </div>
         </Part>
         <Part title="With a link below the form">
           <div class="max-w-sm" data-e2e="auth-form-footer-demo">
