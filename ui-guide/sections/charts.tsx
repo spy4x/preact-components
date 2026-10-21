@@ -224,7 +224,10 @@ export const chartsDemos = {
           title="Traffic sources"
           valueFormat={(value) => `${value * 124} sessions`}
         />
-        <DeferredDonut />
+        <div class="flex flex-col gap-3">
+          <p class="text-xs text-muted">the same donut, drawn once it scrolls into view</p>
+          <DeferredDonut />
+        </div>
       </div>
     ),
   },
