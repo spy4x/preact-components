@@ -2947,6 +2947,13 @@ useEffect(() => {
           'On sign-in, the login field\'s autofill also offers saved passkeys (autocomplete "username webauthn"). Your page starts the conditional WebAuthn request.',
       },
       {
+        name: "submitVariant",
+        type: "ButtonVariant",
+        default: `"primary"`,
+        description:
+          'The credentials submit\'s variant. `"secondary"` when the page\'s one primary action is outside the form, such as "Try it now" above sign-up. The code step stays primary.',
+      },
+      {
         name: "footer",
         type: "ComponentChildren",
         description: "Shown below the form, inside it: a link back to sign-in, for instance.",
@@ -2968,7 +2975,11 @@ useEffect(() => {
   names={{ login: "username", code: "otp" }} // what a post without script sends
   action="/auth/sign-in"
   footer={<a class="pc-link" href="/sign-in">Back to sign in</a>}
-/>`,
+/>
+
+// The page's one primary action is above the form, so the form's submit steps down:
+<Button onClick={tryAsGuest}>Try it now</Button>
+<AuthForm mode="sign-up" step="credentials" onSignUp={signUp} submitVariant="secondary" />`,
     render: () => (
       <Stack gap="xl">
         <Part title="Sign in and sign up, side by side">
@@ -2986,6 +2997,17 @@ useEffect(() => {
         <Part title="With passkeys offered in the login field's autofill">
           <div class="max-w-sm" data-e2e="auth-form-passkey-demo">
             <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" passkeyAutofill />
+          </div>
+        </Part>
+        <Part title="With a secondary submit, under the page's one primary action">
+          <div class="flex max-w-sm flex-col gap-4" data-e2e="auth-form-submit-variant-demo">
+            <Button type="button" class="w-full">Try it now</Button>
+            <AuthForm
+              mode="sign-up"
+              step="credentials"
+              action="/auth/sign-up"
+              submitVariant="secondary"
+            />
           </div>
         </Part>
         <Part title="With a link below the form">

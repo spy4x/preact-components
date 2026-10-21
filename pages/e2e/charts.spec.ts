@@ -104,10 +104,39 @@ function deferredChartSpec(): Spec {
   }
 }
 
+/**
+ * The hidden data table of a 30-day `LineChart` takes no room: on a 390 px page the chart's box
+ * holds nothing that scrolls below it, and the page does not scroll sideways.
+ */
+function hiddenTableSpec(): Spec {
+  return {
+    name: "LineChart: at 390 px the hidden data table adds no scroll height and no sideways scroll",
+    pageId: "charts",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const chart = page.locator(`#demo-LineChart [data-e2e="chart-30-days"] [data-chart="line"]`)
+      await chart.locator("[data-chart-table] tr").nth(30).waitFor({ state: "attached" })
+      const sizes = await chart.evaluate((element) => {
+        const table = element.querySelector("[data-chart-table]") as HTMLElement
+        return {
+          overflow: element.scrollHeight - element.clientHeight,
+          table: table.getBoundingClientRect().height,
+          sideways: document.documentElement.scrollWidth - globalThis.innerWidth,
+        }
+      })
+      if (sizes.overflow > 1) throw new Error(`the chart scrolls ${sizes.overflow} px below itself`)
+      if (sizes.table > 1) throw new Error(`the hidden table is ${sizes.table} px tall`)
+      if (sizes.sideways > 0) throw new Error(`the page scrolls ${sizes.sideways} px sideways`)
+      return `table ${sizes.table} px tall, no overflow`
+    },
+  }
+}
+
 export const specs: readonly Spec[] = [
   labelsApartSpec(320),
   labelsApartSpec(1280),
   arrowDownSpec("LineChart", "[data-chart-plot]"),
   arrowDownSpec("DonutChart", "[data-chart-ring]"),
   deferredChartSpec(),
+  hiddenTableSpec(),
 ]
