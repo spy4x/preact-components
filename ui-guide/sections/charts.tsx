@@ -10,7 +10,8 @@
  * the same markup, and the browser prints what the server did.
  */
 
-import { type BarDatum, Bars } from "@spy4x/preact-charts/bars"
+import { type BarDatum, Bars, type StackedBarDatum } from "@spy4x/preact-charts/bars"
+import { DotPlot, type DotPlotRow } from "@spy4x/preact-charts/dot-plot"
 import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
@@ -149,13 +150,52 @@ function DeferredDonut() {
   )
 }
 
+/** Monthly spending split into three series, for the stacked `Bars` demo. */
+const spending: StackedBarDatum[] = [
+  {
+    label: "January",
+    segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 420 }, {
+      series: "Transport",
+      value: 130,
+    }],
+  },
+  {
+    label: "February",
+    segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 380 }, {
+      series: "Transport",
+      value: 210,
+    }],
+  },
+  {
+    label: "March",
+    segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 510 }, {
+      series: "Transport",
+      value: 90,
+    }],
+  },
+]
+
+/** Hours of sleep by age group, with one group too small to trust and one not surveyed. */
+const sleep: DotPlotRow[] = [
+  { id: "18-24", label: "18 to 24", value: 7.6, detail: "1,204 people" },
+  { id: "25-34", label: "25 to 34", value: 6.9, detail: "2,310 people" },
+  { id: "35-49", label: "35 to 49", value: 6.4, detail: "1,876 people" },
+  { id: "50-64", label: "50 to 64", value: 6.8, detail: "1,102 people" },
+  { id: "65+", label: "65 and over", value: 7.9, muted: true, note: "Only 48 people" },
+  { id: "under-18", label: "Under 18", value: null, detail: "Not surveyed" },
+]
+
 export const chartsDemos = {
   Bars: {
     summary:
       "A labelled bar chart drawn as a table of proportions: no d3, no client JavaScript, no width to measure.",
     wide: false,
     props: [
-      { name: "data", type: "BarDatum[]", description: "The rows: a label and a value each." },
+      {
+        name: "data",
+        type: "(BarDatum | StackedBarDatum)[]",
+        description: "The rows: a label and a value each, or a label and stacked `segments`.",
+      },
       {
         name: "max",
         type: "number",
@@ -175,9 +215,29 @@ export const chartsDemos = {
         default: "3",
         description: "The level of the title's heading, so it fits the page's outline.",
       },
+      {
+        name: "reference",
+        type: "{ value, label }",
+        description: "A dashed line at one value across every bar, named in the legend.",
+      },
     ],
-    snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />`,
-    render: () => <Bars data={bars} title="Orders by plan" />,
+    snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />
+<Bars
+  title="Spending by month"
+  data={[{ label: "March", segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 510 }] }]}
+  reference={{ value: 1500, label: "Budget" }}
+/>`,
+    render: () => (
+      <div class="flex flex-col gap-6">
+        <Bars data={bars} title="Orders by plan" />
+        <Bars
+          data={spending}
+          title="Spending by month"
+          reference={{ value: 1480, label: "Budget" }}
+          labelWidth="6rem"
+        />
+      </div>
+    ),
   },
   DonutChart: {
     summary:
@@ -229,6 +289,55 @@ export const chartsDemos = {
           <DeferredDonut />
         </div>
       </div>
+    ),
+  },
+  DotPlot: {
+    summary:
+      "A dot plot read as a list: one row per item, a dot on a shared scale, shaded bands named in a legend, and a bolder summary row.",
+    wide: true,
+    props: [
+      {
+        name: "rows",
+        type: "{ id, label, value, detail?, muted?, note? }[]",
+        description: "The rows; a `null` value draws no dot and a muted one a hollow dot.",
+      },
+      { name: "summary", type: "DotPlotRow", description: "A bolder last row under a hairline." },
+      { name: "domain", type: "[number, number]", description: "The ends of the scale." },
+      {
+        name: "bands",
+        type: "{ from, to, label, strength }[]",
+        description: "Shaded stretches behind the dots, each named in the legend.",
+      },
+      {
+        name: "zero",
+        type: "boolean",
+        default: "false",
+        description: "A rule at zero, when zero is inside the domain.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How a value and the scale's ends print.",
+      },
+    ],
+    snippet: `<DotPlot
+  ariaLabel="Hours of sleep by age"
+  domain={[5, 9]}
+  rows={[{ id: "18-24", label: "18 to 24", value: 7.6, detail: "1,204 people" }]}
+  summary={{ id: "all", label: "Everyone", value: 7 }}
+  bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
+  format={(value) => \`\${value} h\`}
+/>`,
+    render: () => (
+      <DotPlot
+        ariaLabel="Hours of sleep by age"
+        domain={[5, 9]}
+        rows={sleep}
+        summary={{ id: "all", label: "Everyone", value: 7 }}
+        bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
+        format={(value) => `${value} h`}
+      />
     ),
   },
   LineChart: {
