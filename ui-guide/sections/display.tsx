@@ -2569,7 +2569,7 @@ function CommandPaletteDemo() {
         </span>; component{" "}
         <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>. One letter answers
         slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long name, and
-        “boom” fails. The field below opens on “combobx”; try “ещфые” or “календарь”.
+        “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”.
       </DemoNote>
     </Stack>
   )
