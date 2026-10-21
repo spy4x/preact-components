@@ -719,11 +719,15 @@ A short demo clip that costs nothing until a reader asks for it. The server rend
 play mark over it. Without JavaScript the link opens the clip in the browser's own player.
 
 After hydration, a click, Enter or Space on the link stays on the page and swaps the poster for
-`<video controls autoplay muted playsinline preload="auto">`, one `<source>` per entry of
-`sources`, in the same box: the box keeps the poster's aspect, so nothing below it moves. Focus
-moves to the video, so a keyboard reader can pause it at once. No `<video>` element exists before
-the press, so the browser requests no video bytes. Under `prefers-reduced-motion: reduce` the clip
-still plays, since the reader asked for it, but `loop` is ignored.
+`<video controls autoplay playsinline preload="auto">`, one `<source>` per entry of `sources`,
+in the same box: the box keeps the poster's aspect, so nothing below it moves. Focus moves to the
+video, so a keyboard reader can pause it at once. The clip plays with its sound, since the press
+is the reader's own gesture; when the browser still refuses sound, it mutes the clip and plays
+again, so it always starts. The video is `object-contain` on a dark fill: in full screen on a
+screen of another aspect, the whole frame shows with dark bars, captions at the edges included.
+No `<video>` element exists before the press, so the browser requests no video bytes. Under
+`prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
+ignored.
 
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the

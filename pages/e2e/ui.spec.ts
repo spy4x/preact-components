@@ -1732,14 +1732,14 @@ async function demoVideoCard(page: Page) {
 
 /**
  * The `DemoVideo` card: nothing of the clip loads before the press; a click or a key plays it in
- * the poster's box, muted, with controls; focus moves to it; reduced motion stops the loop; and
- * with JavaScript off the link opens the clip file.
+ * the poster's box, with sound and controls, showing the whole frame; focus moves to it; reduced
+ * motion stops the loop; and with JavaScript off the link opens the clip file.
  */
 function demoVideoSpecs(): Spec[] {
   return [
     {
       name: "DemoVideo: no video element and no request for the clip before the press; a click " +
-        "plays it inline, muted, with controls, in the poster's box",
+        "plays it inline, with sound and controls, the whole frame shown, in the poster's box",
       pageId: "ui",
       run: async (page) => {
         const requested: string[] = []
@@ -1759,9 +1759,16 @@ function demoVideoSpecs(): Spec[] {
         await playing()
         const state = await video.evaluate((element) => {
           const played = element as HTMLVideoElement
-          return { muted: played.muted, src: played.currentSrc }
+          return {
+            muted: played.muted,
+            fit: getComputedStyle(played).objectFit,
+            src: played.currentSrc,
+          }
         })
-        if (!state.muted) throw new Error("the clip plays with sound")
+        if (state.muted) throw new Error("the clip plays muted")
+        if (state.fit !== "contain") {
+          throw new Error(`the clip is object-fit ${state.fit}, not contain`)
+        }
         if (!/\/video-demo\/clip\.webm$/.test(state.src)) {
           throw new Error(`the clip plays ${state.src}, not the first source`)
         }
