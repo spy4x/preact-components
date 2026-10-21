@@ -695,29 +695,52 @@ function QuickAddDemo() {
   )
 }
 
-/** A server-rendered single choice: page CSS reads the checked radio, no script needed. */
-/** A tag's colour: the presets, "Custom", and the tag chip the caller draws as the live sample. */
+/**
+ * A tag's colour with the tag chip as its live sample, the value it stores, and a reset that changes
+ * it from outside; then a group's colour, which may have none.
+ */
 function ColorFieldDemo() {
   const color = useSignal<string | null>("#0369a1")
+  const groupColor = useSignal<string | null>(null)
   return (
-    <ColorField
-      value={color.value}
-      onChange={(next) => color.value = next}
-      legend="Tag colour"
-      hint="Text on the tag turns black or white, whichever reads better."
-      preview={(background, text) => (
-        <span
-          class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
-          style={{ backgroundColor: background, color: text }}
-          data-e2e="color-field-chip"
-        >
-          Groceries
-        </span>
-      )}
-    />
+    <Stack gap="lg">
+      <Stack gap="sm">
+        <ColorField
+          value={color.value}
+          onChange={(next) => color.value = next}
+          legend="Tag colour"
+          hint="Text on the tag turns black or white, whichever reads better."
+          preview={(background, text) => (
+            <span
+              class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
+              style={{ backgroundColor: background, color: text }}
+              data-e2e="color-field-chip"
+            >
+              Groceries
+            </span>
+          )}
+        />
+        <Cluster gap="sm">
+          <p class="text-xs text-muted">
+            Stored: <code data-e2e="color-field-value">{color.value ?? "none"}</code>
+          </p>
+          <Button variant="outline" size="sm" onClick={() => color.value = "#0369a1"}>
+            Reset to Sky
+          </Button>
+        </Cluster>
+      </Stack>
+      <ColorField
+        value={groupColor.value}
+        onChange={(next) => groupColor.value = next}
+        legend="Group colour"
+        allowNone
+        noneLabel="No group colour"
+      />
+    </Stack>
   )
 }
 
+/** A server-rendered single choice: page CSS reads the checked radio, no script needed. */
 function RadioChipsDemo() {
   return (
     <div class="flex flex-col gap-3 [&:has(#radio-chips-read-only:checked)_[data-tool=delete]]:hidden">
