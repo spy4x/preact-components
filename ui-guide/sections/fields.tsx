@@ -11,6 +11,7 @@ import {
   Button,
   Checkbox,
   Cluster,
+  ColorField,
   Combobox,
   Field,
   Grid,
@@ -695,6 +696,28 @@ function QuickAddDemo() {
 }
 
 /** A server-rendered single choice: page CSS reads the checked radio, no script needed. */
+/** A tag's colour: the presets, "Custom", and the tag chip the caller draws as the live sample. */
+function ColorFieldDemo() {
+  const color = useSignal<string | null>("#0369a1")
+  return (
+    <ColorField
+      value={color.value}
+      onChange={(next) => color.value = next}
+      legend="Tag colour"
+      hint="Text on the tag turns black or white, whichever reads better."
+      preview={(background, text) => (
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
+          style={{ backgroundColor: background, color: text }}
+          data-e2e="color-field-chip"
+        >
+          Groceries
+        </span>
+      )}
+    />
+  )
+}
+
 function RadioChipsDemo() {
   return (
     <div class="flex flex-col gap-3 [&:has(#radio-chips-read-only:checked)_[data-tool=delete]]:hidden">
@@ -1134,6 +1157,64 @@ export const fieldDemos = {
   onAdd={addExpense}
 />`,
     render: () => <QuickAddDemo />,
+  },
+  ColorField: {
+    summary:
+      "A colour from 16 readable swatches or a custom hex, with a live sample of the thing being coloured.",
+    wide: false,
+    props: [
+      {
+        name: "value / onChange",
+        type: "string | null / (value: string | null) => void",
+        description:
+          "The chosen `#rrggbb`, or `null` for none; a custom hex arrives in lower case.",
+      },
+      {
+        name: "presets",
+        type: "{ value, label }[]",
+        default: "COLOR_PRESETS",
+        description: "The swatches before Custom: a gray and 15 hues, each 4.5:1 with its text.",
+      },
+      {
+        name: "allowNone / noneLabel",
+        type: "boolean / string",
+        default: `false / "No colour"`,
+        description: "A first swatch that sends `null`.",
+      },
+      {
+        name: "legend / hint / error",
+        type: "ComponentChildren / ComponentChildren / string | null",
+        default: `"Colour"`,
+        description: "The group's name, and messages tied to it with `aria-describedby`.",
+      },
+      {
+        name: "preview",
+        type: "(color, textColor) => ComponentChildren",
+        description:
+          "The caller's live sample, such as a tag chip, drawn while a colour is chosen.",
+      },
+      {
+        name: "labels",
+        type: "{ custom?, picker?, hexCode?, hexPlaceholder?, hexError? }",
+        description:
+          "Every word of the Custom swatch and its hex field, each with an English default.",
+      },
+      {
+        name: "name / class",
+        type: "string",
+        description:
+          "The radios' shared name (generated when left out), and utilities on the fieldset.",
+      },
+    ],
+    snippet: `<ColorField
+  value={color.value}
+  onChange={(next) => color.value = next}
+  legend="Tag colour"
+  preview={(background, text) => (
+    <span style={{ backgroundColor: background, color: text }}>Groceries</span>
+  )}
+/>`,
+    render: () => <ColorFieldDemo />,
   },
   RadioChips: {
     summary:
