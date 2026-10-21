@@ -518,30 +518,34 @@ export function LineChart({
         : null}
       {dataTable
         ? (
-          <table class="sr-only" data-chart-table="">
-            <caption>{label}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{xLabel}</th>
-                {lines.map((line, lineIndex) => (
-                  <th key={`th-${lineIndex}`} scope="col">{line.name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {slots.map((slot, slotIndex) => (
-                <tr key={`tr-${slot.key}`}>
-                  <th scope="row">{slot.label}</th>
-                  {lines.map((line, lineIndex) => {
-                    const value = line.values[slotIndex]
-                    return (
-                      <td key={`td-${lineIndex}`}>{isDefined(value) ? yFormat(value) : "–"}</td>
-                    )
-                  })}
+          // The wrapper hides the table: `sr-only` on a table itself keeps the table's content size,
+          // which would add blank scroll under the chart and sideways scroll on a phone.
+          <div class="sr-only" data-chart-table="">
+            <table>
+              <caption>{label}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{xLabel}</th>
+                  {lines.map((line, lineIndex) => (
+                    <th key={`th-${lineIndex}`} scope="col">{line.name}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {slots.map((slot, slotIndex) => (
+                  <tr key={`tr-${slot.key}`}>
+                    <th scope="row">{slot.label}</th>
+                    {lines.map((line, lineIndex) => {
+                      const value = line.values[slotIndex]
+                      return (
+                        <td key={`td-${lineIndex}`}>{isDefined(value) ? yFormat(value) : "–"}</td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )
         : null}
       <div

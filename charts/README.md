@@ -49,13 +49,13 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                              |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`       |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                     |
+| ------------ | ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel` |
+| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                                       |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                              |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                                       |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                |
 
 Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
 period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a

@@ -309,13 +309,33 @@ describe("LineChart", () => {
       />,
     )
     expect(html).toContain(
-      '<table class="sr-only" data-chart-table><caption>Notes each day</caption>',
+      '<div class="sr-only" data-chart-table><table><caption>Notes each day</caption>',
     )
     expect(html).toContain(
       '<th scope="col">Day</th><th scope="col">This period</th><th scope="col">Previous</th>',
     )
     expect(html).toContain('<tr><th scope="row">Mon</th><td>3</td><td>1</td></tr>')
     expect(html).toContain('<tr><th scope="row">Tue</th><td>–</td><td>2</td></tr>')
+  })
+
+  it("prints the hidden table's values through yFormat", () => {
+    const html = render(
+      <LineChart
+        yFormat={(value) => `${value} km`}
+        series={[{ name: "Run", points: [{ x: "Mon", y: 3 }] }]}
+      />,
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>3 km</td></tr>')
+  })
+
+  it("prints a zero as missing in the hidden table when the chart ignores zeroes", () => {
+    const html = render(
+      <LineChart
+        ignoreZeroes
+        series={[{ name: "Reading", points: [{ x: "Mon", y: 0 }, { x: "Tue", y: 4 }] }]}
+      />,
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>–</td></tr>')
   })
 
   it("leaves the hidden table out when asked to", () => {
