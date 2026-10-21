@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-crud",
-  "version": "9.1.0",
+  "version": "10.0.0",
   "exports": {
     ".": "./+index.ts",
     "./association-editor": "./association-editor.tsx",
