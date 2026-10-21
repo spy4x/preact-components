@@ -51,9 +51,10 @@ describe("Input", () => {
     expect(html).toContain("pc-input")
   })
 
-  it("keeps a caller's classes as given, merging nothing", () => {
-    // A merge would drop `p-2`: the control joins its classes so `tailwind-merge` stays out (#511).
-    expect(render(<Input class="p-2 p-4" />)).toContain('class="pc-input p-2 p-4"')
+  it("merges a caller's conflicting classes, so the last one wins", () => {
+    // `cn` (#861): `tailwind-merge` keeps one utility per group. It cannot see inside `pc-input`,
+    // which is one opaque class to it, so that class always stays.
+    expect(render(<Input class="p-2 p-4" />)).toContain('class="pc-input p-4"')
   })
 
   it("renders an aria-describedby and an id for a Field to point at", () => {
@@ -87,6 +88,11 @@ describe("Textarea", () => {
   it("appends a caller class instead of replacing the primitive's", () => {
     expect(render(<Textarea class="min-h-32" />)).toContain("min-h-32")
     expect(render(<Textarea class="min-h-32" />)).toContain("pc-textarea")
+  })
+
+  it("merges a caller's conflicting classes, so the last one wins", () => {
+    expect(render(<Textarea class="min-h-16 min-h-32" />))
+      .toContain('class="pc-textarea min-h-32"')
   })
 })
 
@@ -146,5 +152,9 @@ describe("Select", () => {
   it("appends a caller class instead of replacing the primitive's", () => {
     expect(render(<Select class="mt-2" options={[]} />)).toContain("mt-2")
     expect(render(<Select class="mt-2" options={[]} />)).toContain("pc-select")
+  })
+
+  it("merges a caller's conflicting classes, so the last one wins", () => {
+    expect(render(<Select class="w-40 w-60" options={[]} />)).toContain('class="pc-select w-60"')
   })
 })

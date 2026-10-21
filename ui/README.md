@@ -11,14 +11,17 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on eleven exports.** Most components pass a caller's `class` through
-  `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
-  group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  `EnhancedForm` (#511) and `DemoVideo` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
-  `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
-  `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
-  before. Their `class` is appended after their own classes, and replaces one of them only when
-  it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
+- **A `class` is merged, except on five exports.** Components pass a caller's `class` through `cn`
+  from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same group:
+  `<Button class="px-8">` replaces the size's padding. `Button`, `buttonClasses`, `Input`,
+  `Textarea`, `Select`, `EnhancedForm` and `CopyButton` merge too since #861, so a browser bundle
+  that renders one of them carries `tailwind-merge`, about 28 KB minified. `ImageGallery`,
+  `Lightbox` (#471) and `DemoVideo` use `join` instead, `ZoomableImages` hands its `class` to
+  `Lightbox`, and `Field` puts its `class` on its wrapper unchanged: their `class` is appended after
+  their own classes, and replaces one of them only when it is marked important,
+  `<Lightbox class="p-8!">`. `tailwind-merge` sees `pc-input` and the other theme classes as one
+  opaque class each, so `pc-input` stays beside a caller's `h-10`, and the stylesheet's order
+  decides which height applies. Every component the library renders keeps one utility per group on an
   element; `ui-guide/class-conflicts.test.tsx` holds that for every card in the guide.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward

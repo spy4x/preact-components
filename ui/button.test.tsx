@@ -111,6 +111,13 @@ describe("Button", () => {
     expect(html).toContain("w-full")
     expect(html).toContain("bg-accent-900")
   })
+
+  it("lets a caller's conflicting class win over the size's padding", () => {
+    const classes = classOf(render(<Button class="px-8">Wide</Button>)).split(" ")
+
+    expect(classes).toContain("px-8")
+    expect(classes).not.toContain("px-3")
+  })
 })
 
 describe("Button size none", () => {
@@ -320,13 +327,14 @@ describe("Button hotkey", () => {
 })
 
 describe("buttonClasses", () => {
-  it("appends a caller's classes after its own, merging nothing", () => {
-    // Two utilities of the groups the variant and size already set: a merge would drop those.
-    const classes = buttonClasses("outline", "md", "rounded-full px-8")
+  it("lets a caller's conflicting classes win over its own", () => {
+    // Two utilities of the groups the base and the size already set: `cn` drops those (#861).
+    const classes = buttonClasses("outline", "md", "rounded-full px-8").split(" ")
 
-    expect(classes.endsWith(" rounded-full px-8")).toBe(true)
-    expect(classes.split(" ")).toContain("rounded-md")
-    expect(classes.split(" ")).toContain("px-3")
+    expect(classes).toContain("rounded-full")
+    expect(classes).toContain("px-8")
+    expect(classes).not.toContain("rounded-md")
+    expect(classes).not.toContain("px-3")
   })
 
   it("keeps utilities from other groups", () => {

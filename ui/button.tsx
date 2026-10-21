@@ -1,4 +1,4 @@
-import { join } from "@spy4x/preact-cn/join"
+import { cn } from "@spy4x/preact-cn"
 import { IconSpinner } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, Ref, RefObject, VNode } from "preact"
 import { useCallback } from "preact/hooks"
@@ -22,10 +22,9 @@ export interface ButtonProps
    */
   size?: ButtonSize | "none"
   /**
-   * Plain utilities, appended after the button's own and not merged into them, so `tailwind-merge`
-   * stays out of the bundle (#471). To replace one of the button's own utilities, mark the
-   * replacement important with a trailing `!`. Narrowed from Preact's `Signalish<string>`: this package never
-   * renders a signal in `class`.
+   * Utilities merged into the button's own through `cn`: a caller's `px-8` replaces the size's
+   * padding (#861). Narrowed from Preact's `Signalish<string>`: this package never renders a signal
+   * in `class`.
    */
   class?: string
   children?: ComponentChildren
@@ -75,7 +74,7 @@ export interface ButtonLinkProps extends
    * caller sizes the button with its own `class`.
    */
   size?: ButtonSize | "none"
-  /** Plain utilities, appended after the button's own; see {@link ButtonProps.class}. */
+  /** Utilities merged into the button's own; see {@link ButtonProps.class}. */
   class?: string
   children?: ComponentChildren
 }
@@ -120,9 +119,8 @@ const iconSizeClasses: Record<ButtonSize | "none", string> = {
  * Compose the class list of a button without rendering one.
  *
  * Exported so sibling primitives (`CopyButton`, `Dropdown`) share one
- * definition of a button instead of copying utility strings. The classes are joined, not merged:
- * a caller's class is appended, and replaces one of the button's own utilities only when it is
- * marked important with a trailing `!`.
+ * definition of a button instead of copying utility strings. A caller's class is merged through
+ * `cn`, so it replaces the button's own utility of the same group.
  *
  * @param variant Visual role, defaults to `"primary"`.
  * @param size Control height, defaults to `"md"`. The `icon` variant maps it to a square box.
@@ -135,7 +133,7 @@ export function buttonClasses(
   size: ButtonSize | "none" = "md",
   className?: string,
 ): string {
-  return join(
+  return cn(
     baseLayout,
     // Every size has the same gap; `"none"` adds none.
     size !== "none" && "gap-2",
@@ -199,7 +197,7 @@ function renderLink(
         ref={ref}
         role="link"
         aria-disabled="true"
-        class={buttonClasses(variant, size, join(disabledLinkClasses, className))}
+        class={buttonClasses(variant, size, cn(disabledLinkClasses, className))}
       >
         {children}
         {hint}

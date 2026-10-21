@@ -1,4 +1,4 @@
-import { join } from "@spy4x/preact-cn/join"
+import { cn } from "@spy4x/preact-cn"
 import type { JSX, Ref, VNode } from "preact"
 import { forwardRef } from "./forward-ref.ts"
 
@@ -11,16 +11,16 @@ import { forwardRef } from "./forward-ref.ts"
  */
 export interface InputProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "class"> {
   /**
-   * Plain utilities, appended after `.pc-input` and not merged, so `tailwind-merge` stays out of the
-   * bundle (#511). Narrowed from Preact's `Signalish<string>`: this package never renders a signal
-   * in `class`.
+   * Utilities after `.pc-input`, merged through `cn` (#861): of two utilities of one group, the last
+   * one stays. Narrowed from Preact's `Signalish<string>`: this package never renders a signal in
+   * `class`.
    */
   class?: string
 }
 
 /** Multi-line control of the library. Same contract as {@link Input}, on a `<textarea>`. */
 export type TextareaProps = Omit<JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, "class"> & {
-  /** Plain utilities, appended after `.pc-textarea` and not merged; see {@link InputProps.class}. */
+  /** Utilities after `.pc-textarea`, merged through `cn`; see {@link InputProps.class}. */
   class?: string
 }
 
@@ -32,7 +32,7 @@ export interface SelectOption {
 
 /** Native `<select>` of the library, with its option list as data. */
 export interface SelectProps extends Omit<JSX.SelectHTMLAttributes<HTMLSelectElement>, "class"> {
-  /** Plain utilities, appended after `.pc-select` and not merged; see {@link InputProps.class}. */
+  /** Utilities after `.pc-select`, merged through `cn`; see {@link InputProps.class}. */
   class?: string
   options: SelectOption[]
   /** Label of a leading empty option. Omit for a select that must always hold a value. */
@@ -59,7 +59,7 @@ export const Input: (
   { class: className, ...rest },
   ref,
 ) {
-  return <input {...rest} ref={ref} class={join("pc-input", className)} />
+  return <input {...rest} ref={ref} class={cn("pc-input", className)} />
 })
 
 /**
@@ -72,7 +72,7 @@ export const Textarea: (
   { class: className, ...rest },
   ref,
 ) {
-  return <textarea {...rest} ref={ref} class={join("pc-textarea", className)} />
+  return <textarea {...rest} ref={ref} class={cn("pc-textarea", className)} />
 })
 
 /**
@@ -93,7 +93,7 @@ export const Select: (
   ref,
 ) {
   return (
-    <select {...rest} ref={ref} class={join("pc-select", className)}>
+    <select {...rest} ref={ref} class={cn("pc-select", className)}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((option) => (
         <option key={String(option.value)} value={String(option.value)}>{option.label}</option>

@@ -2,10 +2,13 @@
  * What a browser bundle of a library component carries (#471).
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
- * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea`, `EnhancedForm`
- * (#511), `PricingTable` (#523), `DemoVideo` and `RadioChips` compose their classes with `join`
- * instead, so an island that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and is
- * bundled here the way an app's build bundles one: `deno bundle --platform browser --minify`.
+ * `DemoVideo` and `RadioChips` compose their classes with `join` instead, so an island that renders
+ * one of them must not carry it. `Button`, `Input`, `Textarea`, `Select` and `EnhancedForm` merge a
+ * caller's `class` through `cn` since #861 (the owner's pick: a caller's class always wins, and
+ * islands carry `tailwind-merge`), so every island that renders one of them — `ImageGallery`,
+ * `Lightbox`, `Field` and `PricingTable` through `Button` or `Input` — carries it, under a ceiling
+ * of its own. Each fixture under `testdata/` is such an island, and is bundled here the way an
+ * app's build bundles one: `deno bundle --platform browser --minify`.
  *
  * `tailwind-merge`'s minified code keeps its class-group names as strings, so its presence is read
  * from one of them. The control fixture calls `cn` and must contain that string: if a
@@ -26,23 +29,26 @@ const TAILWIND_MERGE_MARKER = "oldstyle-nums"
 const BUTTON_HOTKEY_MARKER = "aria-keyshortcuts"
 
 /**
- * A ceiling on each component island, well under the ~28 KB `tailwind-merge` alone would add on
- * top of it. `Button`'s `hotkey` prop (#610) put Preact's hooks, the hotkey parser and the key
+ * A ceiling on each island that does not merge, well under the ~28 KB `tailwind-merge` alone
+ * would add on top of it. `Button`'s `hotkey` prop (#610) put Preact's hooks, the hotkey parser and the key
  * faces of `Kbd` into every island that renders a `Button`, about 9.8 KB minified (3.8 KB gzipped):
  * the `Button` island went from 13.7 KB to 23.5 KB, and the others that render one to about 29.5 KB.
  */
 const ISLAND_CEILING_BYTES = 31_000
 
 /**
- * Islands allowed more than {@link ISLAND_CEILING_BYTES}, each with its reason. `ImageGallery`'s
- * strip measures its row for the counter and Previous/Next (#567), about 2.6 KB on top of the
- * 23.2 KB it bundled before, and #610 added 7.2 KB more; with `tailwind-merge` it would still be
- * over 60 KB. `PricingTable`'s forms became `EnhancedForm`s for `pending` (#568), which put the
- * form's busy guard, live region and focus recovery into its island: 29.6 KB became 31.6 KB.
+ * Islands that carry `tailwind-merge` since #861, each with a ceiling about 3 KB over what it
+ * bundled then: its size before #861 plus the ~27.5 KB `tailwind-merge` added (`Button` 24.3 KB
+ * became 51.8 KB, `ImageGallery` 33.5 KB 61.1 KB, `Lightbox` 29.4 KB 56.9 KB, `Field` 13.8 KB
+ * 41.3 KB, `EnhancedForm` 15.4 KB 42.9 KB, `PricingTable` 32.8 KB 60.3 KB).
  */
-const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
-  "island-image-gallery.tsx": 35_000,
-  "island-pricing-table.tsx": 33_000,
+const MERGING_ISLAND_CEILINGS: Readonly<Record<string, number>> = {
+  "island-button.tsx": 55_000,
+  "island-image-gallery.tsx": 64_000,
+  "island-lightbox.tsx": 60_000,
+  "island-field.tsx": 45_000,
+  "island-enhanced-form.tsx": 46_000,
+  "island-pricing-table.tsx": 63_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
@@ -72,24 +78,19 @@ describe("a browser bundle of a library component", () => {
     expect(await bundle("island-cn.tsx")).toContain(TAILWIND_MERGE_MARKER)
   })
 
-  for (
-    const fixture of [
-      "island-button.tsx",
-      "island-image-gallery.tsx",
-      "island-lightbox.tsx",
-      "island-field.tsx",
-      "island-enhanced-form.tsx",
-      "island-pricing-table.tsx",
-      "island-demo-video.tsx",
-      "island-radio-chips.tsx",
-    ]
-  ) {
+  for (const [fixture, ceiling] of Object.entries(MERGING_ISLAND_CEILINGS)) {
+    it(`carries tailwind-merge, and stays under its ceiling, for ${fixture}`, async () => {
+      const code = await bundle(fixture)
+      expect(code).toContain(TAILWIND_MERGE_MARKER)
+      expect(new TextEncoder().encode(code).length).toBeLessThan(ceiling)
+    })
+  }
+
+  for (const fixture of ["island-demo-video.tsx", "island-radio-chips.tsx"]) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
       const code = await bundle(fixture)
       expect(code).not.toContain(TAILWIND_MERGE_MARKER)
-      expect(new TextEncoder().encode(code).length).toBeLessThan(
-        ISLAND_CEILINGS[fixture] ?? ISLAND_CEILING_BYTES,
-      )
+      expect(new TextEncoder().encode(code).length).toBeLessThan(ISLAND_CEILING_BYTES)
     })
   }
 
