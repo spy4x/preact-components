@@ -3,8 +3,9 @@
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
  * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea`, `EnhancedForm`
- * (#511), `PricingTable` (#523), `DemoVideo`, `RadioChips` and `ScreenTour` compose their classes with `join`
- * instead, so an island that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and is
+ * (#511), `PricingTable` (#523), `DemoVideo`, `RadioChips`, `ScreenTour`, `CommandPalette`,
+ * `Combobox`, `Modal` and `Toastr` (#943) compose their classes with `join` instead, so an island
+ * that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and is
  * bundled here the way an app's build bundles one: `deno bundle --platform browser --minify`.
  *
  * `tailwind-merge`'s minified code keeps its class-group names as strings, so its presence is read
@@ -44,6 +45,10 @@ const ISLAND_CEILING_BYTES = 31_000
  * app already ships for its islands. It measured 43.4 KB.
  */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
+  // A palette and a toaster, the forgiving matcher and the hotkeys included: 49.2 KB (#943).
+  "island-command-palette.tsx": 52_000,
+  // A modal over a combobox, with the modal's `Button` and its hotkey code: 45.1 KB (#943).
+  "island-modal-combobox.tsx": 48_000,
   "island-image-gallery.tsx": 35_000,
   "island-pricing-table.tsx": 33_000,
   "island-screen-tour.tsx": 45_000,
@@ -87,6 +92,9 @@ describe("a browser bundle of a library component", () => {
       "island-demo-video.tsx",
       "island-radio-chips.tsx",
       "island-screen-tour.tsx",
+      "island-command-palette.tsx",
+      "island-modal-combobox.tsx",
+      "island-toastr.tsx",
     ]
   ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
@@ -99,9 +107,9 @@ describe("a browser bundle of a library component", () => {
   }
 
   it("carries none of Button's hotkey code for an island that renders only Toastr", async () => {
-    // `Toastr` calls `cn`, so it cannot join the cases above. `Button` is what writes
-    // `aria-keyshortcuts`; the string in this bundle means `Toastr` imported something that
-    // imports `Button`, which once cost 19 KB minified for one class-name constant (#671).
+    // `Button` is what writes `aria-keyshortcuts`; the string in this bundle means `Toastr`
+    // imported something that imports `Button`, which once cost 19 KB minified for one class-name
+    // constant (#671).
     expect(await bundle("island-toastr.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
   })
 })

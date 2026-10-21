@@ -23,7 +23,7 @@ const entries: SearchEntry[] = [
 ]
 
 describe("searchEntries", () => {
-  it("ranks an exact name, then a prefix, then a substring, then a match in the place", () => {
+  it("ranks an exact name, then a prefix, then a word of the name, then a match in the place", () => {
     expect(searchEntries(entries, "table").map((entry) => entry.label)).toEqual([
       "Table",
       "table",
@@ -40,11 +40,21 @@ describe("searchEntries", () => {
   })
 
   it("folds case and accents, and trims the query", () => {
-    expect(searchEntries(entries, "  TÁBS ").map((entry) => entry.label)).toEqual(["Tabs"])
+    // The other tables follow as one-typo matches, after the exact name.
+    expect(searchEntries(entries, "  TÁBS ")[0].label).toBe("Tabs")
   })
 
   it("offers the pages alone for an empty query", () => {
     expect(searchEntries(entries, "").map((entry) => entry.kind)).toEqual([SearchKind.PAGE])
+  })
+
+  it("forgives a typo and a query typed in the other keyboard layout", () => {
+    expect(searchEntries(entries, "tabel").map((entry) => entry.label)).toEqual([
+      "Table",
+      "DataTable",
+      "table",
+    ])
+    expect(searchEntries(entries, "ифвпу").map((entry) => entry.label)).toEqual(["Badge"])
   })
 
   it("returns at most the limit", () => {
