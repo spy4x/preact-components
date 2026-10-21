@@ -23,6 +23,7 @@
 
 import { COMPONENT_CLASSES } from "./component-classes.ts"
 import { INK_CSS } from "./ink-css.ts"
+import { THEME_PREVIEW_CSS } from "./theme-preview-css.ts"
 import { PRESET_CSS } from "./preset-css.ts"
 import { TOKENS_CSS } from "./tokens-css.ts"
 import { canParse, satisfies, tryParse, tryParseRange } from "@std/semver"
@@ -180,6 +181,11 @@ const THEME_STYLESHEETS: ReadonlyArray<{ specifier: string; text: string; requir
   { specifier: "@spy4x/preact-theme/tokens.css", text: TOKENS_CSS, required: true },
   { specifier: "@spy4x/preact-theme/ink.css", text: INK_CSS, required: false },
   { specifier: "@spy4x/preact-theme/preset.css", text: PRESET_CSS, required: true },
+  {
+    specifier: "@spy4x/preact-theme/theme-preview.css",
+    text: THEME_PREVIEW_CSS,
+    required: false,
+  },
 ]
 
 /** Options for {@link preactThemeCss}. */
@@ -196,7 +202,7 @@ export interface PreactThemeCssOptions {
  *
  * JSR cannot publish a CSS file as an importable module, so this package exports each
  * stylesheet's text instead. The plugin replaces each theme `@import` line in the stylesheet with
- * that text — `tokens.css` and `preset.css` are required, `ink.css` is optional — and appends one
+ * that text — `tokens.css` and `preset.css` are required, `ink.css` and `theme-preview.css` are optional — and appends one
  * `@source inline(...)` line with {@link COMPONENT_CLASSES}, so Tailwind emits the components'
  * classes without scanning the library's files. Deno keeps those files in its cache, and inside
  * the Alpine image Tailwind's scanner reads none of them (spy4x/preact-components#323).

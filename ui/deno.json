@@ -53,6 +53,7 @@
     "./progress": "./progress.tsx",
     "./radio": "./radio.tsx",
     "./radio-chips": "./radio-chips.tsx",
+    "./theme-preview": "./theme-preview.tsx",
     "./setting-row": "./setting-row.tsx",
     "./status-mark": "./status-mark.tsx",
     "./table": "./table.tsx",

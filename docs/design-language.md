@@ -223,6 +223,11 @@ stop, and page CSS can follow it through `:has(#id:checked)`. Reach for it on a 
 a demo that works with JavaScript off, and inside a plain form; an island may still pass `value`
 and `onChange`. Never draw a local radio look-alike.
 
+`ThemePreview` is the one way to show components in both palettes on one page: a `RadioChips` pair,
+Dark first and checked, over a frame that takes the chosen palette while the page keeps its own.
+Use it on a page that sells or documents the library; never repaint a whole page to show light and
+dark.
+
 ### Words
 
 - **Plain, short, sentence case.** "Create note", not "Submit"; "Delete group", not "Confirm".

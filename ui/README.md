@@ -129,6 +129,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                           |
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                   |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                |
+| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?` — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                                          |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                        |
 | `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                                                                                         |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                                                                                      |
@@ -1647,6 +1648,14 @@ the pressed chip's accent fill and check from `:checked`, and the focus ring fro
 so the markup works server-rendered with JavaScript off. `defaultValue` checks an option in that
 markup; an island can pass `value` and `onChange` instead. An option's `id` lets page CSS read
 `:has(#id:checked)`, and its `inputAttributes` (analytics `data-*`, say) go on the radio.
+
+## ThemePreview
+
+A Dark / Light `RadioChips` pair, dark by default, over a frame whose children are a slot. The app
+imports `@spy4x/preact-theme`'s `theme-preview.css`, which declares the checked palette's tokens on
+the frame alone through `:has()`, so it switches with JavaScript off and the page around it keeps
+its own palette. The preset's `dark` variant follows the frame too, so everything inside it, `dark:`
+utilities included, is drawn in the frame's palette. More in the theme README, "Theme preview".
 
 ## ToggleChips
 

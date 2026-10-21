@@ -11,7 +11,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { INK_CSS, PRESET_CSS, TOKENS_CSS } from "./+index.ts"
+import { INK_CSS, PRESET_CSS, THEME_PREVIEW_CSS, TOKENS_CSS } from "./+index.ts"
 
 describe("the generated CSS text constants", () => {
   it("TOKENS_CSS matches tokens.css byte for byte", async () => {
@@ -27,6 +27,11 @@ describe("the generated CSS text constants", () => {
   it("INK_CSS matches ink.css byte for byte", async () => {
     const source = await Deno.readTextFile(new URL("./ink.css", import.meta.url))
     expect(INK_CSS).toBe(source)
+  })
+
+  it("THEME_PREVIEW_CSS matches theme-preview.css byte for byte", async () => {
+    const source = await Deno.readTextFile(new URL("./theme-preview.css", import.meta.url))
+    expect(THEME_PREVIEW_CSS).toBe(source)
   })
 })
 

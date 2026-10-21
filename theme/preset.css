@@ -24,12 +24,17 @@
  * `<body>`; see the README for why, and for which rule is which.
  */
 
+/*
+ * A `ThemePreview` frame (`theme-preview.css`) decides the palette for everything inside it: a
+ * descendant of a dark frame matches on any page, and a descendant of a light frame never does,
+ * even under `.dark`. `:where()` keeps the variant's specificity flat.
+ */
 @custom-variant dark {
-  &:where(.dark, .dark *) {
+  &:where(.dark, .dark *, :has([data-preview-theme=dark]:checked) + [data-preview-frame] *):not(:where(:has([data-preview-theme=light]:checked) + [data-preview-frame] *)) {
     @slot;
   }
   @media (prefers-color-scheme: dark) {
-    &:where([data-theme-auto], [data-theme-auto] *) {
+    &:where([data-theme-auto], [data-theme-auto] *):not(:where(:has([data-preview-theme=light]:checked) + [data-preview-frame] *)) {
       @slot;
     }
   }

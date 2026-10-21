@@ -108,8 +108,16 @@ describe("the ink theme", () => {
     // `compiler.build()` emits `.btn`'s nested `&:focus-visible` blocks unflattened (as authored
     // in preset.css), so this reads the declaration directly rather than assuming a flattened
     // `.btn:focus-visible { ... }` selector, which never appears in this output.
+    // The `dark` variant's `.dark` list, with a `ThemePreview` frame's arms (preset.css).
+    const frame = (theme: string) =>
+      `:has([data-preview-theme=${theme}]:checked) + [data-preview-frame] *`
+    const dark = `&:where(.dark, .dark *, ${frame("dark")}):not(:where(${frame("light")}))`
+    const escaped = dark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     expect(css).toMatch(
-      /&:where\(\.dark, \.dark \*\) \{\s*&:focus-visible \{\s*outline-color: var\(--color-focus-ring, var\(--color-primary-muted,/,
+      new RegExp(
+        String.raw`${escaped} \{\s*&:focus-visible \{\s*outline-color: ` +
+          String.raw`var\(--color-focus-ring, var\(--color-primary-muted,`,
+      ),
     )
     expect(css).not.toContain("var(--color-focus-ring, currentColor)")
   })
