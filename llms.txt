@@ -461,7 +461,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1126 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1127 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -684,7 +684,7 @@ RadioOption	type	@spy4x/preact-ui	One choice of a `RadioGroup`.
 ResolvedDateTime	type	@spy4x/preact-ui	What `resolveDateTime` found for one wall-clock value in one zone.
 RowId	type	@spy4x/preact-ui	The id of a row: what the caller's list of ids holds.
 SWIPE_MIN_PX	constant	@spy4x/preact-ui	How far, in CSS pixels, one finger must travel sideways for a swipe to change the image.
-ScreenTour	component	@spy4x/preact-ui	A product walkthrough: named steps as tabs, beside one browser or phone frame whose screenshot swaps when a step is picked, with the step's caption and line of text under it.
+ScreenTour	component	@spy4x/preact-ui	A product walkthrough: named steps as tabs, beside one plain, browser or phone frame whose screenshot swaps when a step is picked, with the step's caption and line of text under it.
 ScreenTourImage	type	@spy4x/preact-ui	The screenshot of one `ScreenTourStep`.
 ScreenTourStep	type	@spy4x/preact-ui	One step of a `ScreenTour`: a tab, its screenshot and its line of text.
 ScrollLock	type	@spy4x/preact-ui	A held lock, undone by `ScrollLock.release`.
@@ -750,8 +750,8 @@ UpgradePrompt	component	@spy4x/preact-ui	A short message and an upgrade link, sh
 WHEN_LABELS	constant	@spy4x/preact-ui	The English words `When` and `OnDay` show when the caller passes none.
 WallClockOccurrence	type	@spy4x/preact-ui	Which of the two instants a repeated wall-clock time names: before or after the clocks go back.
 When	component	@spy4x/preact-ui	A moment as its distance from now, `3 days ago`, in a `<time datetime>` whose hover text is the exact instant in the person's format (`FormatContext`).
-WindowFrame	component	@spy4x/preact-ui	Draws a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
-WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` or a `ScreenTour` draws around its content.
+WindowFrame	component	@spy4x/preact-ui	Draws a plain frame, a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
+WindowFrameVariant	type	@spy4x/preact-ui	Which frame a `WindowFrame` or a `ScreenTour` draws around its content.
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.

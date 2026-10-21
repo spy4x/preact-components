@@ -4888,7 +4888,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
-| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                                         |
+| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"plain"`, `"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                              |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
@@ -4913,7 +4913,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                                                                                                                |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab                                                                                        |
 | `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                                                                                                         |
-| `WindowFrame`         | `window-frame`         | `variant` (`"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                            |
+| `WindowFrame`         | `window-frame`         | `variant` (`"plain"`, `"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                 |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                                                                                                                                     |
 
 ## Usage
@@ -5517,12 +5517,16 @@ No `<video>` element exists before the press, so the browser requests no video b
 `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
 ignored.
 
+One clip plays at a time. When a clip starts, by the press or by its own controls (its `play`
+event), every other `DemoVideo` on the page pauses where it is, so two soundtracks never overlap.
+
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the
 name. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
 for a clip on the first screen. `class` is joined, not merged, so an island that renders the
 component carries no `tailwind-merge`. Any other attribute, such as `id` or a `data-*` analytics
-attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`.
+attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`,
+whose `plain` variant suits it best.
 
 When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its size
 and shows `errorLabel` ("The video didn't load.") with a link, `openFileLabel` ("Open the video
@@ -5542,10 +5546,10 @@ the video.
 
 ## ScreenTour
 
-A product walkthrough for a product or case-study page: named steps as tabs beside one browser or
-phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is picked.
-Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View full
-size" link.
+A product walkthrough for a product or case-study page: named steps as tabs beside one plain,
+browser or phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is
+picked. Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View
+full size" link.
 
 The tabs are a column from 1024 px and, below it, a row that scrolls inside itself, so a phone page
 never scrolls sideways. The tab list is one Tab stop: Left/Right and Up/Down move and select (the

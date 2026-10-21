@@ -2248,6 +2248,63 @@ function demoVideoSpecs(): Spec[] {
       },
     },
     {
+      name: "DemoVideo: starting a second clip pauses the first where it was, and starting the " +
+        "first from its own controls pauses the second",
+      pageId: "ui",
+      run: async (page) => {
+        const { card, link } = await demoVideoCard(page)
+        const second = card.getByRole("link", {
+          name: "Play video: A second test pattern",
+          exact: true,
+        })
+        const firstVideo = card.locator("video[aria-label='A test pattern']")
+        const secondVideo = card.locator("video[aria-label='A second test pattern']")
+        /** Waits until the video has played past `after` seconds and is still playing. */
+        const playedPast = (video: typeof firstVideo, after: number) =>
+          video.evaluate((element, seconds) =>
+            new Promise<void>((resolve, reject) => {
+              const played = element as HTMLVideoElement
+              const timer = setTimeout(() =>
+                reject(
+                  new Error(
+                    `not past ${seconds}s: paused ${played.paused}, at ${played.currentTime}s`,
+                  ),
+                ), 10_000)
+              const check = () => {
+                if (played.paused || played.currentTime <= seconds) return
+                clearTimeout(timer)
+                played.removeEventListener("timeupdate", check)
+                resolve()
+              }
+              played.addEventListener("timeupdate", check)
+              check()
+            }), after)
+        const state = (video: typeof firstVideo) =>
+          video.evaluate((element) => {
+            const played = element as HTMLVideoElement
+            return { paused: played.paused, time: played.currentTime }
+          })
+
+        await link.click()
+        await firstVideo.waitFor()
+        await playedPast(firstVideo, 0.5)
+        await second.scrollIntoViewIfNeeded()
+        await second.click()
+        await secondVideo.waitFor()
+        await playedPast(secondVideo, 0)
+        const first = await state(firstVideo)
+        if (!first.paused) throw new Error("the first clip still plays beside the second")
+        if (first.time < 0.5) throw new Error(`the first clip went back to ${first.time}s`)
+
+        // The video's own play, as its native controls start it, not the poster's press.
+        await firstVideo.evaluate((element) => (element as HTMLVideoElement).play())
+        await playedPast(firstVideo, first.time)
+        if (!(await state(secondVideo)).paused) {
+          throw new Error("the second clip still plays after the first started again")
+        }
+      },
+    },
+    {
       name: "DemoVideo: with JavaScript off, the play link opens the clip file",
       pageId: "ui",
       run: async (page) => {

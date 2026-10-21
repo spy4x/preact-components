@@ -85,3 +85,29 @@ export async function playClip(
     await video.play().catch(() => {})
   }
 }
+
+/** What {@link playOneAtATime} needs of a clip: its `play` event and `pause()`. */
+export type OneAtATimeClip = EventTarget & Pick<HTMLMediaElement, "pause">
+
+/** Every `DemoVideo` clip on the page, so the one that starts can pause the rest. */
+const clips = new Set<OneAtATimeClip>()
+
+/**
+ * Makes `video` the only clip that plays: whenever it starts (its `play` event, so the native
+ * controls count too), every other clip registered here pauses and keeps its position, so two
+ * soundtracks never overlap.
+ *
+ * @param video The clip's `<video>`, or any event target with `pause()`.
+ * @returns Removes the clip from the set and its listener, for an effect's cleanup.
+ */
+export function playOneAtATime(video: OneAtATimeClip): () => void {
+  const pauseOthers = () => {
+    for (const other of clips) if (other !== video) other.pause()
+  }
+  clips.add(video)
+  video.addEventListener("play", pauseOthers)
+  return () => {
+    clips.delete(video)
+    video.removeEventListener("play", pauseOthers)
+  }
+}
