@@ -20,6 +20,7 @@ DonutGeometry	type	@spy4x/preact-charts
 DonutSegment	type	@spy4x/preact-charts	
 InViewHandle	type	@spy4x/preact-charts	Handle returned by `createInViewObserver`.
 InViewOptions	type	@spy4x/preact-charts	
+InViewRef	type	@spy4x/preact-charts	`useInView`'s `ref`: a callback ref that also keeps the element in `current`.
 Kpi	component	@spy4x/preact-charts	Key-performance-indicator card: label, value, optional caption.
 KpiGrid	component	@spy4x/preact-charts	Responsive grid for `Kpi` cards: two columns on a phone, as many as fit on a desktop.
 KpiTone	type	@spy4x/preact-charts	Colour role of a `Kpi` value.

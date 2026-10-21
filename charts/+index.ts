@@ -59,6 +59,7 @@ export {
   createInViewObserver,
   type InViewHandle,
   type InViewOptions,
+  type InViewRef,
   useInView,
 } from "./use-in-view.ts"
 export { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"

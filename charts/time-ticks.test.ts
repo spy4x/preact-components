@@ -161,3 +161,17 @@ describe("time label formats", () => {
     expect(formatTimeFull(time, false, { locale: "de-DE" })).toBe("1. März 2026")
   })
 })
+
+describe("an invalid time zone", () => {
+  it("falls back to UTC for ticks and labels instead of throwing", () => {
+    const start = at("2026-03-01T00:20:00Z")
+    const end = at("2026-03-01T23:00:00Z")
+    const options = { timeZone: "Not/A_Zone" }
+
+    const { step, ticks } = timeTicks(start, end, options)
+
+    expect(iso(ticks)).toEqual(iso(timeTicks(start, end).ticks))
+    expect(formatTimeTick(ticks[0], step, options)).toBe("06:00")
+    expect(formatTimeFull(ticks[0], true, options)).toBe("1 Mar 2026, 06:00")
+  })
+})

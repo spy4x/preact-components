@@ -159,6 +159,16 @@ describe("DonutChart", () => {
     expect(html).toContain("background:#888888")
   })
 
+  it("borders its tooltip with axisColor, and with the theme's control border by default", () => {
+    const tooltipStyle = (html: string) =>
+      html.match(/style="([^"]*)" role="status" data-chart-tooltip/)?.[1] ?? ""
+
+    expect(tooltipStyle(render(<DonutChart data={data} axisColor="#777777" />)))
+      .toContain("border-color:#777777")
+    expect(tooltipStyle(render(<DonutChart data={data} />)))
+      .toContain("border-color:var(--color-border-control")
+  })
+
   it("serves an empty, hidden tooltip and no focus stop, which the browser adds", () => {
     const html = render(<DonutChart data={data} title="Orders" />)
 

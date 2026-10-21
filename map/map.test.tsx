@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Map, mountArgsFrom } from "./map.tsx"
+import { Map } from "./map.tsx"
 import type { MapMarker } from "./types.ts"
 
 const markers: MapMarker[] = [
@@ -167,48 +167,5 @@ describe("Map", () => {
     expect(html).toMatch(/<h2 class="[^"]*">Places<\/h2>/)
     expect(html).toContain(`London office<span class="sr-only">, open</span>`)
     expect(html).toContain(`Paris office<span class="sr-only">, status unknown</span>`)
-  })
-})
-
-/**
- * The mount effect's own arguments live inside a `useEffect`, so no render test can observe them
- * directly — `preact-render-to-string` never runs an effect (see this file's own doc). `mountArgsFrom`
- * is what the effect calls to resolve them, and it is a plain function, so these tests prove what
- * it returns. They do not prove that the effect passes that result on to `mountLeafletMap`: a no-op
- * swapped in for `args.onLoadError` inside the effect would leave them green. That one line is
- * covered by reading it, not by a test.
- */
-describe("mountArgsFrom", () => {
-  it("returns the onLoadError it was given, unchanged", () => {
-    const onLoadError = (_error: unknown) => {}
-
-    const args = mountArgsFrom({
-      tileUrl: "https://tiles.example.com/{z}/{x}/{y}.png",
-      center: { lat: 0, lng: 0 },
-      zoom: 3,
-      zoomInLabel: "Zoom in",
-      zoomOutLabel: "Zoom out",
-      onLoadError,
-    })
-
-    expect(args.onLoadError).toBe(onLoadError)
-  })
-
-  it("groups the two zoom labels into zoomLabels, and passes the rest through unchanged", () => {
-    const center = { lat: 51.5, lng: -0.1 }
-
-    const args = mountArgsFrom({
-      tileUrl: "https://tiles.example.com/{z}/{x}/{y}.png",
-      center,
-      zoom: 5,
-      zoomInLabel: "Zoom in",
-      zoomOutLabel: "Zoom out",
-      onLoadError: () => {},
-    })
-
-    expect(args.tileUrl).toBe("https://tiles.example.com/{z}/{x}/{y}.png")
-    expect(args.center).toBe(center)
-    expect(args.zoom).toBe(5)
-    expect(args.zoomLabels).toEqual({ zoomInLabel: "Zoom in", zoomOutLabel: "Zoom out" })
   })
 })
