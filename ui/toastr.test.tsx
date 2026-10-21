@@ -150,28 +150,18 @@ describe("Toastr", () => {
     ]))
   })
 
-  it("lets a caller's own unprefixed offsets and widths replace the stack's at every width", () => {
-    const own = ["top-20", "right-4", "bottom-auto", "left-4", "w-auto", "max-w-sm"]
+  it("appends a caller's classes after the stack's own, unmerged", () => {
+    const own = ["top-20!", "right-4!", "bottom-auto!", "left-4!", "w-auto!", "max-w-sm!"]
     for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"] as const) {
       const classes = stackClasses(
         render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner} class={own.join(" ")} />),
       )
-      // No offset or width of the stack's own is left, under any breakpoint, to win over these.
-      const placing = classes.filter((name) =>
-        /^([a-z-]+:)?(top|right|bottom|left|inset|w|max-w)-/.test(name)
-      )
 
-      expect(placing.sort(), corner).toEqual([...own].sort())
+      // The caller's classes come last, in their order, and the stack keeps its own width: an
+      // important caller class wins by `!`, not by removing the stack's.
+      expect(classes.slice(-own.length), corner).toEqual(own)
+      expect(classes, corner).toEqual(expect.arrayContaining(["w-(--toastr-width)"]))
     }
-  })
-
-  it("keeps the stack's other offsets when a caller moves one", () => {
-    const classes = stackClasses(render(<Toastr toasts={[]} onDismiss={() => {}} class="top-20" />))
-
-    expect(classes).toEqual(
-      expect.arrayContaining(["top-20", "right-(--toastr-gap)", "left-(--toastr-far)"]),
-    )
-    expect(classes).not.toContain("top-(--toastr-gap)")
   })
 
   it("slides a toast in from the right in a right corner and from the left in a left one", () => {
