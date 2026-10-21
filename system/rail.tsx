@@ -29,10 +29,10 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import {
   countedName,
   CounterBadge,
+  CurrentBar,
   currentStates,
   Entry,
   entryCurrent,
-  entryCurrentBar,
   entryIdle,
   focusRing,
   hasCount,
@@ -573,7 +573,6 @@ export function Rail(props: RailProps): JSX.Element {
                     "relative flex h-full w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[var(--radius-primary,0.5rem)] px-0 py-1 text-center text-xs font-medium",
                     focusRing,
                     moreHoldsCurrent ? entryCurrent : entryIdle,
-                    moreHoldsCurrent && variant === "labels" && entryCurrentBar.tab,
                   )}
                   onClick={(event) => {
                     event.preventDefault()
@@ -582,6 +581,7 @@ export function Rail(props: RailProps): JSX.Element {
                   }}
                   data-e2e="rail-shell-more"
                 >
+                  {moreHoldsCurrent && variant === "labels" && <CurrentBar place="tab" />}
                   {moreTab?.icon === undefined ? <MoreDots /> : (
                     <span
                       class="flex size-6 shrink-0 items-center justify-center"

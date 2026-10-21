@@ -58,15 +58,22 @@ export const entryCurrent =
 /**
  * The labels variant's mark on its current entry, on top of {@link entryCurrent}: a 3 px bar in
  * the current text colour on the entry's inner edge, the left edge of a column cell and the top
- * edge of a tab. A site's warm dark palette can leave the fill too faint to find the page by; the
- * bar is a pseudo-element, so it takes no room and moves nothing. The icons variant keeps the fill
- * alone, and the sheet's rows draw no bar.
+ * edge of a tab. A site's warm dark palette can leave the fill too faint to find the page by. The
+ * bar is an absolutely placed, `aria-hidden` `<span>` ({@link CurrentBar}), so it takes no room and
+ * moves nothing. It is not a pseudo-element or a background image, because axe cannot decide the
+ * label's contrast under either, and it stays clear of the label's box. The icons variant keeps
+ * the fill alone, and the sheet's rows draw no bar.
  */
 export const entryCurrentBar: Record<Exclude<EntryPlace, "sheet">, string> = {
   rail:
-    "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--color-nav-active,var(--color-selected-text))]",
+    "pointer-events-none absolute inset-y-3 left-0 w-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
   tab:
-    "before:absolute before:inset-x-3 before:top-0 before:h-[3px] before:rounded-full before:bg-[var(--color-nav-active,var(--color-selected-text))]",
+    "pointer-events-none absolute inset-x-3 top-0 h-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
+}
+
+/** The bar {@link entryCurrentBar} describes, as the first child of the current entry's control. */
+export function CurrentBar(props: { place: Exclude<EntryPlace, "sheet"> }): JSX.Element {
+  return <span class={entryCurrentBar[props.place]} aria-hidden="true" data-current-bar="" />
 }
 
 /**
@@ -348,10 +355,11 @@ export function Entry(props: EntryProps): JSX.Element {
     entryBase,
     place === "rail" ? railCell[variant] : entryPlace[place],
     primary ? entryPrimary : current ? entryCurrent : entryIdle,
-    current && !primary && variant === "labels" && place !== "sheet" && entryCurrentBar[place],
   )
+  const barred = current !== undefined && !primary && variant === "labels" && place !== "sheet"
   const content = (
     <>
+      {barred && <CurrentBar place={place} />}
       {Icon && (
         <span class="flex shrink-0" aria-hidden="true">
           <Icon class="size-6" />
