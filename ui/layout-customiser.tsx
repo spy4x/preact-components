@@ -164,7 +164,7 @@ export function LayoutCustomiser(
                 >
                   {item.title}
                 </span>
-                {item.hidden ? <Badge>{text.hidden}</Badge> : null}
+                {item.hidden ? <Badge color="gray" type="outline">{text.hidden}</Badge> : null}
                 <ToggleSwitch
                   value={!item.hidden}
                   label={text.show(item.title)}

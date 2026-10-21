@@ -1924,7 +1924,8 @@ function demoVideoSpecs(): Spec[] {
 /** Specs of the dashboard cards: `WidgetCard`, `LayoutCustomiser`, and the picker's preset. */
 const dashboardSpecs: Spec[] = [
   {
-    name: "WidgetCard: a load shows its skeleton after the delay, and Try again calls the retry",
+    name:
+      "WidgetCard: a load shows its skeleton after the delay; Try again calls the retry and keeps focus on the card",
     pageId: "ui",
     run: async (page) => {
       const card = page.locator("#demo-WidgetCard")
@@ -1936,10 +1937,15 @@ const dashboardSpecs: Spec[] = [
       await card.locator(`[data-e2e="widget-status-error"]`).click()
       await widget.getByRole("alert").filter({ hasText: "We could not load the note count." })
         .waitFor()
-      await widget.getByRole("button", { name: "Try again", exact: true }).click()
+      const retry = widget.getByRole("button", { name: "Try again", exact: true })
+      await retry.focus()
+      await page.keyboard.press("Enter")
       await card.locator(`[data-e2e="widget-retries"]`).getByText("Retries: 1", { exact: true })
         .waitFor()
-      await widget.and(page.locator(`[data-widget-status="loading"]`)).waitFor()
+      // The button is gone; focus is on the card, not the page, and stays there once data arrives.
+      await widget.and(page.locator(":focus")).waitFor()
+      await widget.and(page.locator(`[data-widget-status="ready"]`)).waitFor()
+      await widget.and(page.locator(":focus")).waitFor()
     },
   },
   {

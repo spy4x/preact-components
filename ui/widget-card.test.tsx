@@ -22,7 +22,7 @@ describe("WidgetCard", () => {
   it("names its card by its heading and draws the widget when ready", () => {
     const html = card({ caption: "Last 30 days" })
     expect(html).toMatch(
-      /<div role="group" aria-labelledby="(widget-[^"]+)"[^>]*><div[^>]*><div[^>]*><h2 id="\1"/,
+      /<div role="group" tabindex="-1" aria-labelledby="(widget-[^"]+)"[^>]*><div[^>]*><div[^>]*><h2 id="\1"/,
     )
     expect(html).toContain(">31</p>")
     expect(html).toContain('<p class="text-sm text-muted">Last 30 days</p>')
@@ -42,6 +42,14 @@ describe("WidgetCard", () => {
     expect(html).toContain("We could not load the note count.")
     expect(html).toContain(">Try again</button>")
     expect(html).not.toContain(">31</p>")
+  })
+
+  it("can hold focus without being a Tab stop, so Try again can hand focus to it", () => {
+    expect(card({ status: "error" })).toMatch(/role="group" tabindex="-1"/)
+  })
+
+  it("draws the library's card surface and radius", () => {
+    expect(card()).toContain('class="pc-card ')
   })
 
   it("shows one line when it has nothing to show", () => {

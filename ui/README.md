@@ -707,6 +707,11 @@ A picker's choice in the page's address (`date-range-search`), one format for ev
 `DateRangePicker`'s `onChange` gets the preset as its second argument (`"custom"` from the panel),
 so a caller keeps the person's choice instead of guessing it with `presetForRange`.
 
+Focus in a dashboard: "Try again" moves focus to its `WidgetCard` (a named group with
+`tabindex="-1"`), where it stays when the data arrives. A card that a caller hides from its own menu
+unmounts with the menu, so the caller moves focus to the next card's heading, or the previous one
+when it was the last.
+
 Dashboard helpers beside `WidgetCard` and `LayoutCustomiser`:
 
 - `dashboardRows(items)` groups widgets into rows the way `DashboardGrid` draws them.

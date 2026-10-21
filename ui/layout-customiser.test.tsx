@@ -83,7 +83,7 @@ describe("LayoutCustomiser", () => {
       />,
     )
 
-  it("names a switch per row by the part it shows, on for a shown part and off for a hidden one", () => {
+  it("names a switch per row by the part it shows, and tags a hidden row in a quiet, unfilled badge", () => {
     const markup = html()
     const switches = markup.match(/<button[^>]*role="switch"[^>]*>/g) ?? []
     expect(switches.length).toBe(2)
@@ -92,6 +92,9 @@ describe("LayoutCustomiser", () => {
     expect(switches[1]).toContain('aria-checked="false"')
     expect(markup).toContain("Show Notes over time")
     expect(markup).toContain(">Hidden<")
+    const tag = markup.match(/<span class="([^"]*)">Hidden<\/span>/)?.[1] ?? ""
+    expect(tag).toContain("text-muted")
+    expect(tag).not.toContain("bg-selected")
   })
 
   it("offers Reset to default and Done, and names the list", () => {

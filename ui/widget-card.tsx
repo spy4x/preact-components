@@ -9,7 +9,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useState } from "preact/hooks"
+import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { MoreMenu } from "./page-header.tsx"
 
@@ -65,6 +65,9 @@ const bodyHeight: Record<WidgetSize, string> = { stat: "min-h-16", full: "min-h-
  * three-dots menu, and a body that shows the widget, a skeleton while it loads, its error with a
  * retry, or one line when it has nothing to show.
  *
+ * "Try again" moves focus to the card (`tabindex="-1"`) before the retry button gives way to the
+ * skeleton, and focus stays there when the data arrives.
+ *
  * The skeleton waits `skeletonDelay` before it appears, so a fast load never flashes; the body keeps
  * the loaded card's height in every state, so nothing jumps when the data arrives. While loading, a
  * screen reader hears `loadingLabel` once, not the skeleton.
@@ -94,6 +97,13 @@ export function WidgetCard(
   }: WidgetCardProps,
 ): JSX.Element {
   const headingId = `widget-${useId()}`
+  const root = useRef<HTMLDivElement>(null)
+  // The retry button unmounts as the load starts; the card takes focus first, so a keyboard user
+  // stays on the widget instead of falling to the page, and stays there when the data arrives.
+  const retry = () => {
+    root.current?.focus()
+    onRetry?.()
+  }
   const Heading = `h${headingLevel}` as "h2"
   const showSkeleton = useDelayed(status === "loading", skeletonDelay)
 
@@ -106,13 +116,15 @@ export function WidgetCard(
 
   return (
     <div
+      ref={root}
       role="group"
+      tabIndex={-1}
       aria-labelledby={headingId}
       aria-busy={status === "loading" ? "true" : undefined}
       data-e2e={dataE2E}
       data-widget-status={status}
       class={cn(
-        "flex min-w-0 flex-col gap-2 rounded-lg border border-subtle bg-surface p-4",
+        "pc-card flex min-w-0 flex-col gap-2 p-4 outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
         className,
       )}
     >
@@ -148,7 +160,7 @@ export function WidgetCard(
             <div role="alert" class="flex flex-1 flex-col items-start justify-center gap-2">
               <p class="text-sm text-danger">{errorMessage}</p>
               {onRetry
-                ? <Button variant="secondary" size="sm" onClick={onRetry}>{retryLabel}</Button>
+                ? <Button variant="secondary" size="sm" onClick={retry}>{retryLabel}</Button>
                 : null}
             </div>
           )

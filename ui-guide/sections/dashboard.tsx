@@ -63,6 +63,8 @@ function WidgetCardDemo() {
         onRetry={() => {
           retries.value++
           status.value = "loading"
+          // The demo's data "arrives" a moment later, so the browser check can see focus stay put.
+          setTimeout(() => status.value = "ready", 800)
         }}
         emptyLabel="No notes yet"
         menu={<DropdownItem onClick={() => status.value = "empty"}>Hide widget</DropdownItem>}
