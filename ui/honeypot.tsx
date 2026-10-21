@@ -6,6 +6,7 @@
  * @module
  */
 
+import { HONEYPOT_FIELD_NAME } from "@spy4x/platform/universal/honeypot"
 import type { JSX } from "preact"
 
 /**
@@ -16,12 +17,16 @@ import type { JSX } from "preact"
  * ever announcing it.
  *
  * @param name Field name a submit handler reads back with `honeypotFilled` from
- * `@spy4x/platform/universal/honeypot`; pass its `HONEYPOT_FIELD_NAME` unless you need another.
- * @param label Off-screen text for the one assistive technology that does not honour
+ * `@spy4x/platform/universal/honeypot`. Defaults to its `HONEYPOT_FIELD_NAME`, the name
+ * `honeypotFilled` reads by default.
+ * @param label Defaults to `"Leave this field blank"`. Off-screen text for the one assistive technology that does not honour
  * `aria-hidden` on a field it is autofilling — kept short and plain rather than skipped, because
  * "why is there a field with no label" is a worse trap than one extra sentence nobody sees.
  */
-export function honeypotField(name: string, label: string): JSX.Element {
+export function honeypotField(
+  name: string = HONEYPOT_FIELD_NAME,
+  label: string = "Leave this field blank",
+): JSX.Element {
   return (
     <div class="absolute h-px w-px overflow-hidden" style="clip: rect(0 0 0 0)" aria-hidden="true">
       <label>

@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
@@ -424,7 +425,7 @@ export function FileInput(
                 disabled={disabled}
                 onClick={() => removeFile(file)}
               >
-                <RemoveIcon />
+                <IconXMark class="size-4" />
               </button>
             </li>
           ))}
@@ -576,24 +577,6 @@ function UploadIcon(): JSX.Element {
     >
       <path d="M12 16V4m0 0-4 4m4-4 4 4" />
       <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-    </svg>
-  )
-}
-
-function RemoveIcon(): JSX.Element {
-  return (
-    <svg
-      class="size-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 6 6 18" />
-      <path d="M6 6l12 12" />
     </svg>
   )
 }

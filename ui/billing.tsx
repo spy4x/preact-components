@@ -5,6 +5,12 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { EnhancedForm } from "./enhanced-form.tsx"
+import {
+  BADGE_BASE,
+  BADGE_FILLED_ACCENT,
+  BADGE_OUTLINE_GRAY,
+  GRID_COLUMNS_MD,
+} from "./plain-classes.ts"
 
 /** How often a plan bills. */
 export enum BillingInterval {
@@ -262,9 +268,8 @@ function BillingForm(
   )
 }
 
-/** The outline-pill look of a short label: a grey outline `Badge`'s, without `cn`. */
-const pillClasses =
-  "inline-flex w-fit items-center rounded-md border px-2 py-1 text-xs font-medium whitespace-nowrap"
+/** A short label drawn as a `Badge`, joined without `cn` to keep `tailwind-merge` out. */
+const pillClasses = join(BADGE_BASE, "w-fit")
 
 /**
  * Plans side by side, each with its price, its features and a "Choose" button.
@@ -338,7 +343,7 @@ export function PricingTable(
           </div>
         </fieldset>
       )}
-      <ul class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4">
+      <ul class={join("grid gap-4", GRID_COLUMNS_MD)}>
         {plans.map((plan) => (
           <li
             key={plan.id}
@@ -354,10 +359,7 @@ export function PricingTable(
                 <Heading class="text-lg font-semibold">{plan.name}</Heading>
                 {plan.highlighted && (
                   <span
-                    class={join(
-                      pillClasses,
-                      "border-selected bg-selected text-selected-foreground",
-                    )}
+                    class={join(pillClasses, BADGE_FILLED_ACCENT)}
                   >
                     {words.highlighted}
                   </span>
@@ -603,9 +605,7 @@ export function PlanCard(
     <div class={join("pc-card", className)} data-status={status}>
       <div class="pc-card-header gap-2">
         <Heading class="text-lg font-semibold">{planName}</Heading>
-        {statusWord && (
-          <span class={join(pillClasses, "border-control text-muted")}>{statusWord}</span>
-        )}
+        {statusWord && <span class={join(pillClasses, BADGE_OUTLINE_GRAY)}>{statusWord}</span>}
       </div>
       <div class="pc-card-body flex flex-col gap-2">
         {price && (

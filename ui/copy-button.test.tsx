@@ -112,25 +112,29 @@ function body(status: CopyStatus, overrides: Partial<CopyButtonBodyProps> = {}) 
   )
 }
 
+/** `IconXMark`'s and `IconCheck`'s drawings, which the failed and copied states show. */
+const CROSS = 'd="M6 18 18 6M6 6l12 12"'
+const CHECK = 'd="m4.5 12.75 6 6 9-13.5"'
+
 describe("CopyButton's confirmation", () => {
   it("shows a cross and announces the failure after a failed copy, never the checkmark", () => {
     const html = body("failed")
 
-    expect(html).toContain('d="M18 6 6 18M6 6l12 12"')
-    expect(html).not.toContain('d="m5 13 4 4L19 7"')
+    expect(html).toContain(CROSS)
+    expect(html).not.toContain(CHECK)
     expect(html).toContain(
       '<span role="status" aria-live="polite" class="sr-only">Copy failed</span>',
     )
   })
 
   it("draws the failure cross in the danger colour", () => {
-    expect(body("failed")).toMatch(/<svg class="[^"]*text-danger[^"]*"/)
+    expect(body("failed")).toMatch(/<svg[^>]* class="[^"]*text-danger[^"]*"/)
   })
 
   it("shows the checkmark and announces the copy after a copy that worked", () => {
     const html = body("copied")
 
-    expect(html).toContain('d="m5 13 4 4L19 7"')
+    expect(html).toContain(CHECK)
     expect(html).toContain('<span role="status" aria-live="polite" class="sr-only">Copied</span>')
   })
 

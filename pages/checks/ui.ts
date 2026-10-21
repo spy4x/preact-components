@@ -929,8 +929,8 @@ async function roundCheckboxFocusRingChecks(devtools: Devtools): Promise<void> {
   }
 }
 
-/** The checkmark path {@link CopyButton} swaps in for its own glyph while `copied` is true. */
-const COPY_BUTTON_CHECKMARK = "m5 13 4 4L19 7"
+/** `IconCheck`'s path, which {@link CopyButton} swaps in for its own glyph while `copied` is true. */
+const COPY_BUTTON_CHECKMARK = "m4.5 12.75 6 6 9-13.5"
 
 /**
  * `CopyBlock` copies its command on a real click and on a real Enter press, and announces the copy.
@@ -18049,8 +18049,8 @@ async function dropdownHydrationUpgradeChecks(devtools: Devtools): Promise<void>
   }
 }
 
-/** The cross path `CopyButton` swaps in for its own glyph after a failed copy. */
-const COPY_BUTTON_CROSS = "M18 6 6 18M6 6l12 12"
+/** `IconXMark`'s path, which `CopyButton` swaps in for its own glyph after a failed copy. */
+const COPY_BUTTON_CROSS = "M6 18 18 6M6 6l12 12"
 
 /** What {@link copyButtonStatusChecks} reads off one `CopyButton` at one moment. */
 interface CopyButtonReading {

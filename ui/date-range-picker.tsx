@@ -3,6 +3,7 @@ import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { Button, buttonClasses } from "./button.tsx"
+import { useDismiss } from "./use-dismiss.ts"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
 import {
   type DateRangePreset,
@@ -402,29 +403,22 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     triggerRef.current?.focus()
   }, [isOpen.value])
 
+  // No focus return: the person has just put focus on whatever they pressed.
+  useDismiss(rootRef, isOpen.value, () => closePanel(false))
+
   useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!isOpen.value) return
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        // No focus return: the person has just put focus on whatever they clicked.
-        closePanel(false)
-      }
-    }
+    if (!isOpen.value) return
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen.value || event.key !== "Escape") return
-      // The same question the outside-click branch asks, and for the same reason. A Tab out closes
-      // the panel, but focus can still fall to the page itself with the panel open — a scripted
-      // blur, a focused control that vanished — and an Escape press from there is not a press from
-      // inside. Focus goes back only when they were still inside when they pressed the key.
+      if (event.key !== "Escape") return
+      // A Tab out closes the panel, but focus can still fall to the page itself with the panel
+      // open — a scripted blur, a focused control that vanished — and an Escape press from there
+      // is not a press from inside. Focus goes back only when they were still inside when they
+      // pressed the key.
       closePanel(rootRef.current?.contains(document.activeElement) === true)
     }
-    document.addEventListener("mousedown", handlePointerDown)
     document.addEventListener("keydown", handleKeyDown)
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown)
-      document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [])
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isOpen.value])
 
   /**
    * Closes the panel when focus leaves the component, the way `Dropdown` does (#198), and leaves
@@ -521,11 +515,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
     closePanel(true)
   }
 
-  const triggerText = !props.range
-    ? text.placeholder
-    : props.withTime
-    ? rangeText(props.range, props.formatRange)
-    : rangeText(props.range, props.formatRange)
+  const triggerText = props.range ? rangeText(props.range, props.formatRange) : text.placeholder
 
   /**
    * Escape pressed from inside the component closes the panel and stops there, so a `Modal` around

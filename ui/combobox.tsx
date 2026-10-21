@@ -1,11 +1,13 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconXMark } from "@spy4x/preact-icons"
 import { fold } from "@spy4x/platform/universal/text"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
-import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
+import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
+import { useDismiss } from "./use-dismiss.ts"
 
 /**
  * Keys the combobox acts on, and what each does. Everything else falls through to the platform,
@@ -687,7 +689,6 @@ export function Combobox<T>({
   const inputRef = useRef<HTMLInputElement>(null)
   /** Whether the last render had nothing to show, so the next one can tell arrival from a change. */
   const wasEmpty = useRef(true)
-  const closeRef = useRef(() => {})
   const draftQuery = useSignal("")
   const isOpen = useSignal(false)
   const activeIndex = useSignal(-1)
@@ -765,14 +766,6 @@ export function Combobox<T>({
     inputRef.current?.setCustomValidity(missing ? requiredMessage : "")
   }, [missing, requiredMessage])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) closeRef.current()
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
   /**
    * Highlight the first usable row when options arrive under an open, empty popup.
    *
@@ -846,8 +839,7 @@ export function Combobox<T>({
   }
 
   const close = () => apply({ isOpen: false, activeIndex: -1 })
-  // The outside-click listener is bound once, so it reaches the latest `close` through a ref.
-  closeRef.current = close
+  useDismiss(rootRef, isOpen.value, close)
 
   /**
    * Open the list and put the highlight where a fresh list belongs.
@@ -975,7 +967,7 @@ export function Combobox<T>({
                 if (isOpen.value) close()
               }}
             >
-              <CrossGlyph />
+              <IconXMark class="size-4" />
             </button>
           )}
           <Chevron />

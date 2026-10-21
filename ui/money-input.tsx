@@ -7,7 +7,7 @@ import {
   parseMoney,
 } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
-import { useEffect, useId, useRef } from "preact/hooks"
+import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 
 export interface MoneyInputBounds {
   /** Smallest-unit lower bound, when one is set. */
@@ -261,11 +261,12 @@ export function MoneyInput(
   }, [])
 
   // An amount, currency or locale changed from outside re-formats the text, unless the visitor is
-  // editing it. In an effect, not the render body: writing a signal during render re-renders forever
-  // (#300). It skips the mount, which the hydration effect above settles: the amount that one
-  // resolved from pre-hydration text reaches `value` only on the caller's next render.
+  // editing it. In a layout effect, not the render body: writing a signal during render re-renders
+  // forever (#300), and a plain effect would paint the old text for one frame. It skips the mount,
+  // which the hydration effect above settles: the amount that one resolved from pre-hydration text
+  // reaches `value` only on the caller's next render.
   const resyncs = useRef(false)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!resyncs.current) {
       resyncs.current = true
       return

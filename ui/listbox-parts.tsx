@@ -1,7 +1,6 @@
 // Not exported from the package: the listbox pieces `Combobox` and `TagInput` share, so both popups
 // look and read the same without either component exporting its internals.
 import { cn } from "@spy4x/preact-cn"
-import type { JSX } from "preact"
 
 /*
  * `min-h-11` makes every row a 44 px touch target, as tall as the library's other touch targets.
@@ -42,22 +41,5 @@ export function listboxOptionClass({ active, selected, disabled }: ListboxOption
     selected && selectedOptionClasses,
     active && selected && activeSelectedOptionClasses,
     disabled && disabledOptionClasses,
-  )
-}
-
-/**
- * The cross glyph of a clear or remove button, inline so `ui`'s "no dependency on `icons/`" rule
- * holds. `aria-hidden`: the button around it carries the name.
- */
-export function CrossGlyph(): JSX.Element {
-  return (
-    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M6 18L18 6M6 6l12 12"
-      />
-    </svg>
   )
 }

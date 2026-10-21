@@ -1,5 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
+import { Link } from "./link.tsx"
+import { BADGE_BASE, BADGE_FILLED_ACCENT, BADGE_OUTLINE_GRAY } from "./plain-classes.ts"
 
 /**
  * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
@@ -21,11 +23,14 @@ export interface BadgeProps {
   class?: string
   /**
    * Makes the whole badge a link: it renders an `<a>` with a keyboard focus ring, and its content is
-   * the link's accessible name. Leave it out for a static `<span>`. A plain `href`, with no
-   * navigation port: an app that routes on the client intercepts the click the way it does for any
-   * other link.
+   * the link's accessible name. Leave it out for a static `<span>`.
    */
   href?: string
+  /**
+   * Called with `href` on a plain click instead of the browser following the link, as `Link` and
+   * `Button` do: the app's router, passed in. Ignored without `href`.
+   */
+  navigate?: (href: string) => void
 }
 
 /**
@@ -49,7 +54,7 @@ const outlineClasses: Record<BadgeColor, string> = {
   red: "border-red-700 text-red-700 dark:border-red-400 dark:text-red-400",
   orange: "border-orange-700 text-orange-700 dark:border-orange-400 dark:text-orange-400",
   green: "border-green-800 text-green-800 dark:border-green-400 dark:text-green-400",
-  gray: "border-control text-muted",
+  gray: BADGE_OUTLINE_GRAY,
   blue: "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400",
   purple: "border-accent-600 text-accent-600 dark:border-accent-400 dark:text-accent-400",
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
@@ -67,12 +72,9 @@ const filledClasses: Record<BadgeColor, string> = {
   green: "border-transparent bg-success text-(--color-success-foreground)",
   gray: "border-subtle bg-track text-foreground",
   blue: "border-blue-600 bg-blue-600 text-blue-50",
-  purple: "border-transparent bg-selected text-selected-foreground",
+  purple: BADGE_FILLED_ACCENT,
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
 }
-
-const base =
-  "inline-flex items-center border rounded-md px-2 py-1 text-xs whitespace-nowrap font-medium"
 
 /**
  * Compose a badge's class list without rendering one, so a pill that is not a {@link Badge} — a
@@ -89,7 +91,7 @@ export function badgeClasses(
   className?: string,
 ): string {
   const palette = type === "outline" ? outlineClasses : filledClasses
-  return cn(base, palette[color], className)
+  return cn(BADGE_BASE, palette[color], className)
 }
 
 /**
@@ -102,10 +104,11 @@ const linkClasses = "hover:underline underline-offset-4 focus-visible:outline-hi
 
 /**
  * Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in
- * an `<a>` when `href` is given, so the whole pill is the link.
+ * an `<a>` when `href` is given, so the whole pill is the link, which hands plain clicks to
+ * `navigate` when one is given.
  */
 export function Badge(props: BadgeProps | BadgeElementProps): JSX.Element {
-  const { text, color = "purple", type = "filled", class: className, href } = props
+  const { text, color = "purple", type = "filled", class: className, href, navigate } = props
   const children = "children" in props ? props.children : undefined
   // Element content usually means a shape beside a word, which needs a gap a single label does not.
   const classes = badgeClasses(
@@ -116,5 +119,5 @@ export function Badge(props: BadgeProps | BadgeElementProps): JSX.Element {
   const content = children ?? text
   return href === undefined
     ? <span class={classes}>{content}</span>
-    : <a href={href} class={classes}>{content}</a>
+    : <Link href={href} navigate={navigate} class={classes}>{content}</Link>
 }

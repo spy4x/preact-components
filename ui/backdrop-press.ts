@@ -16,6 +16,11 @@ export interface BackdropPress {
  * click. So the press is tested too: the same `onBackdrop` test runs on `pointerdown` and on
  * `click`, and only a click whose press passed it dismisses.
  *
+ * Only a click the browser itself sent counts. A press that never becomes a click, such as a touch
+ * the browser takes over for a scroll, leaves its record behind, and a script's `dialog.click()`
+ * afterwards must not read it. A real click always follows a press of its own, which writes a fresh
+ * record first.
+ *
  * @param onBackdrop Whether one event's target and position are the backdrop.
  * @returns The dialog's `onPointerDown` handler and the click test.
  */
@@ -28,7 +33,7 @@ export function useBackdropPress(onBackdrop: (event: MouseEvent) => boolean): Ba
     isBackdropClick: (event) => {
       const began = pressed.current
       pressed.current = false
-      return began && onBackdrop(event)
+      return began && event.isTrusted && onBackdrop(event)
     },
   }
 }

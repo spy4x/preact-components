@@ -1,4 +1,5 @@
 import { join } from "@spy4x/preact-cn/join"
+import { IconSpinner } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, Ref, RefObject, VNode } from "preact"
 import { useCallback } from "preact/hooks"
 import { forwardRef } from "./forward-ref.ts"
@@ -101,14 +102,6 @@ const variantClasses: Record<ButtonVariant, string> = {
   danger: "bg-danger-fill text-danger-fill-foreground hover:bg-danger-fill-hover",
 }
 
-/** The gap sits with the size, so `"none"` leaves it out; the other sizes keep the same class list. */
-const gapClasses: Record<ButtonSize | "none", string> = {
-  sm: "gap-2",
-  md: "gap-2",
-  lg: "gap-2",
-  none: "",
-}
-
 const sizeClasses: Record<ButtonSize | "none", string> = {
   none: "",
   sm: "px-2 py-2 text-xs",
@@ -144,26 +137,12 @@ export function buttonClasses(
 ): string {
   return join(
     baseLayout,
-    gapClasses[size],
+    // Every size has the same gap; `"none"` adds none.
+    size !== "none" && "gap-2",
     baseLook,
     variantClasses[variant],
     variant === "icon" ? iconSizeClasses[size] : sizeClasses[size],
     className,
-  )
-}
-
-/** The spinner a busy {@link Button} shows; the button's own text or `aria-label` names it. */
-function BusySpinner(): JSX.Element {
-  return (
-    <svg
-      class="size-4 shrink-0 animate-spin motion-reduce:animate-none"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-    </svg>
   )
 }
 
@@ -291,7 +270,7 @@ function renderButton(
       aria-disabled="true"
       onClick={ignorePress}
     >
-      <BusySpinner />
+      <IconSpinner class="size-4" />
       {variant === "icon" ? null : busyLabel ?? children}
       {hint}
     </button>

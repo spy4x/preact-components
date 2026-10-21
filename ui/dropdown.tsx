@@ -14,6 +14,7 @@ import {
   useHotkeys,
 } from "./hotkeys.ts"
 import { followLinkClick } from "./link.tsx"
+import { useDismiss } from "./use-dismiss.ts"
 
 /**
  * How the trigger button gets its accessible name. One of the two is required, which is what makes
@@ -421,15 +422,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     triggerRef.current?.focus()
   }, [isEnhanced])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        isOpen.value = false
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  useDismiss(rootRef, open, () => isOpen.value = false)
 
   // Measured before the browser paints the opened panel, so an upward menu is never drawn
   // downward first. The panel is laid out by now: this render dropped its `hidden`.
@@ -497,7 +490,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     const left = event.target as HTMLElement | null
     setTimeout(() => {
       const root = rootRef.current
-      // Already closed — an outside click, which `handleClickOutside` answers first — or gone.
+      // Already closed — an outside press, which `useDismiss` answers first — or gone.
       // Deliberate belt and braces, with no check behind it: a review removed this line and
       // nothing went red, because a closed panel is `display:none`, its items cannot take focus,
       // and the restore below is already a no-op. Kept because it states the intent where a later

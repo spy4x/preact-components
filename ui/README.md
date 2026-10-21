@@ -53,7 +53,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                                                                                                                                                  |
 | `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                                                                                                                                                |
-| `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link)                                                                                                                                                                                                                                                                |
+| `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`                                                                                                                                                                                                                                                   |
 | `BrandMark`           | `brand-mark`           | `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header                                                                                                                                                                                                |
 | `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                  |
 | `Card`                | `card`                 | `children`, `class` — a bordered surface; forwards `ref` to its `<div>`                                                                                                                                                                                                                                                                       |
@@ -1039,12 +1039,12 @@ string for a key of `labels` makes the region say nothing in that status, and
 — the server's error, say — is the only message. The region still renders, empty, and still takes
 focus when the visitor's submit button is disabled under them.
 
-A form built on this can carry a honeypot from `honeypot`: `honeypotField` renders an off-screen
-field simple bots fill in. Its server half comes from `@spy4x/platform/universal/honeypot`:
-`HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a browser's own autofill heuristics reach
-for) names the field, and `honeypotFilled(formData)` reads it back, in the page or in the handler a
-no-JavaScript post reaches. A submit
-whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
+A form built on this can carry a honeypot from `honeypot`: `honeypotField(name?, label?)` renders
+an off-screen field simple bots fill in. Its server half comes from
+`@spy4x/platform/universal/honeypot`: `HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a
+browser's own autofill heuristics reach for) names the field and is `name`'s default, and
+`honeypotFilled(formData)` reads it back, in the page or in the handler a no-JavaScript post
+reaches. A submit whose honeypot carries a value should resolve as if it had succeeded, because telling a bot it was
 caught only teaches it which field to leave alone next time.
 
 ## Lightbox
