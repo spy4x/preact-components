@@ -31,12 +31,14 @@ Use `join` where no two inputs can be utilities of one group, and `cn` where a l
 replace an earlier one. `join` is also exported from `@spy4x/preact-cn` itself; the `/join` path
 is the one that never reaches `tailwind-merge`, whatever the bundler's tree-shaking does.
 
-`Button`, `buttonClasses`, `ImageGallery` and `Lightbox` (#471), and `Input`, `Textarea`, `Select`,
-`EnhancedForm` and `Field`'s label (#511), in `@spy4x/preact-ui` compose their classes with `join`,
-so an island that renders them carries no `tailwind-merge`; `CopyButton` and `ZoomableImages` pass
-their `class` to `Button` and `Lightbox`, so the same holds for them. Their `class` is appended to
-their own classes, not merged into them: to replace one of their own utilities, mark the
-replacement important, `<Button class="px-8!">`. Tailwind 4 writes the `!` at the end.
+`ImageGallery` and `Lightbox` (#471) and `Field`'s label (#511) in `@spy4x/preact-ui` compose
+their own classes with `join`, and `ZoomableImages` passes its `class` to `Lightbox`. Their `class`
+is appended to their own classes, not merged into them: to replace one of their own utilities,
+mark the replacement important, `<Lightbox class="p-8!">`. Tailwind 4 writes the `!` at the end.
+`Button`, `buttonClasses`, `Input`, `Textarea`, `Select` and `EnhancedForm` merge a caller's
+`class` through `cn` since #861, so a caller's utility wins and an island that renders one of them
+carries `tailwind-merge`. Both `ImageGallery` and `Lightbox` render a `Button`, so their islands
+carry it too.
 
 ## The theme-class rule
 

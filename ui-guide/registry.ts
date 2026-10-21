@@ -11,7 +11,7 @@
  * no package exports, or when its allow-list has gone stale.
  *
  * Prop vocabulary is guarded one level down, per component: a demo iterates a `Record<Union, …>`
- * keyed by a prop's own union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, …) through
+ * keyed by a prop's own union type (`ButtonVariant`, `BadgeTone`, `SpinnerSize`, …) through
  * `record.ts`'s `entries()`, so adding a variant to a component fails `deno check` until the
  * catalogue shows it.
  *

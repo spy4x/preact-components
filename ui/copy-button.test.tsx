@@ -18,12 +18,19 @@ describe("CopyButton", () => {
     expect(html).toContain('aria-label="Copy"')
   })
 
-  it("renders an outlined button with the label text when a title is given", () => {
-    const html = render(<CopyButton textToCopy="abc" title="Copy link" />)
+  it("renders an outlined button with the label text when a text is given", () => {
+    const html = render(<CopyButton textToCopy="abc" text="Copy link" />)
 
     expect(html).toContain("border-control")
     expect(html).toContain("Copy link")
     expect(html).not.toContain('aria-label="Copy"')
+  })
+
+  it("still shows the deprecated title as its visible text, and prefers text", () => {
+    expect(render(<CopyButton textToCopy="abc" title="Copy link" />))
+      .toBe(render(<CopyButton textToCopy="abc" text="Copy link" />))
+    expect(render(<CopyButton textToCopy="abc" title="Old" text="Copy link" />))
+      .toBe(render(<CopyButton textToCopy="abc" text="Copy link" />))
   })
 
   it("takes a custom label for tooltip and accessible name", () => {
@@ -43,6 +50,13 @@ describe("CopyButton", () => {
 
   it("appends a caller class", () => {
     expect(render(<CopyButton textToCopy="abc" class="ml-2" />)).toContain("ml-2")
+  })
+
+  it("lets a caller's conflicting class win over Button's own", () => {
+    const classes = classOf(render(<CopyButton textToCopy="abc" text="Copy" class="px-8" />))
+
+    expect(classes).toContain("px-8")
+    expect(classes).not.toContain("px-3")
   })
 })
 
@@ -142,12 +156,12 @@ describe("CopyButton's confirmation", () => {
     expect(body("idle")).toContain('<span role="status" aria-live="polite" class="sr-only"></span>')
   })
 
-  it("replaces a visible title with the confirmation text while it shows", () => {
-    expect(body("idle", { title: "Copy number" })).toContain("Copy number")
-    const copied = body("copied", { title: "Copy number" })
+  it("replaces the visible text with the confirmation text while it shows", () => {
+    expect(body("idle", { text: "Copy number" })).toContain("Copy number")
+    const copied = body("copied", { text: "Copy number" })
     expect(copied).not.toContain("Copy number")
     expect(copied).toMatch(/<\/svg>Copied<\/button>/)
-    const failed = body("failed", { title: "Copy number" })
+    const failed = body("failed", { text: "Copy number" })
     expect(failed).not.toContain("Copy number")
     expect(failed).toContain('<span class="text-danger">Copy failed</span></button>')
   })
@@ -182,7 +196,7 @@ describe("CopyButton's passthrough", () => {
       /<button[^>]* aria-label="Copy the invoice id"/,
     )
     expect(
-      render(<CopyButton textToCopy="abc" title="Copy id" aria-label="Copy the invoice id" />),
+      render(<CopyButton textToCopy="abc" text="Copy id" aria-label="Copy the invoice id" />),
     ).toMatch(/<button[^>]* aria-label="Copy the invoice id"/)
   })
 
@@ -214,8 +228,8 @@ describe("CopyButton's passthrough", () => {
 })
 
 describe("CopyButton hotkey", () => {
-  it("passes its hotkey to the button: a hint beside a title, none on the icon alone", () => {
-    const titled = render(<CopyButton textToCopy="x" title="Copy id" hotkey="c" />)
+  it("passes its hotkey to the button: a hint beside a text, none on the icon alone", () => {
+    const titled = render(<CopyButton textToCopy="x" text="Copy id" hotkey="c" />)
     expect(titled).toContain('aria-keyshortcuts="C"')
     expect(titled).toContain("data-hotkey-hint")
     const icon = render(<CopyButton textToCopy="x" hotkey="c" />)
@@ -223,3 +237,16 @@ describe("CopyButton hotkey", () => {
     expect(icon).not.toContain("data-hotkey-hint")
   })
 })
+
+/**
+ * The class list of the first element in a render.
+ *
+ * @param html A render.
+ * @returns Its first `class` attribute, split into utilities.
+ * @throws When the render has no class attribute.
+ */
+function classOf(html: string): string[] {
+  const value = html.match(/class="([^"]*)"/)?.[1]
+  if (value === undefined) throw new TypeError("the render has no class attribute")
+  return value.split(" ")
+}

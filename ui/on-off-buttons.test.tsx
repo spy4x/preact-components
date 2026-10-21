@@ -1,18 +1,39 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { OnOffButtons } from "./on-off-buttons.tsx"
+import type { VNode } from "preact"
+import { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
 
 describe("OnOffButtons", () => {
+  it("reports each half through onChange", () => {
+    const seen: boolean[] = []
+    pressHalves({ value: true, onChange: (on) => seen.push(on) })
+
+    expect(seen).toEqual([true, false])
+  })
+
+  it("still reports through the deprecated onSwitch", () => {
+    const seen: boolean[] = []
+    pressHalves({ value: true, onSwitch: (on) => seen.push(on) })
+
+    expect(seen).toEqual([true, false])
+  })
+
+  it("still takes the group's name from the deprecated label, and prefers ariaLabel", () => {
+    expect(render(<OnOffButtons onChange={() => {}} label="Old" />)).toContain('aria-label="Old"')
+    expect(render(<OnOffButtons onChange={() => {}} label="Old" ariaLabel="New" />))
+      .toContain('aria-label="New"')
+  })
+
   it("renders both halves", () => {
-    const html = render(<OnOffButtons onSwitch={() => {}} />)
+    const html = render(<OnOffButtons onChange={() => {}} />)
 
     expect(html).toContain(">ON<")
     expect(html).toContain(">OFF<")
   })
 
   it("marks the ON half as selected", () => {
-    const html = render(<OnOffButtons value onSwitch={() => {}} />)
+    const html = render(<OnOffButtons value onChange={() => {}} />)
 
     // The primary fill stays in the class list; the selection fill is important, so it wins.
     expect(countOccurrences(html, " bg-selected! ")).toBe(1)
@@ -21,50 +42,50 @@ describe("OnOffButtons", () => {
   })
 
   it("marks the OFF half as selected", () => {
-    const html = render(<OnOffButtons value={false} onSwitch={() => {}} />)
+    const html = render(<OnOffButtons value={false} onChange={() => {}} />)
 
     expect(countOccurrences(html, " bg-selected! ")).toBe(1)
   })
 
   it("leaves both halves unselected when value is undefined", () => {
-    expect(render(<OnOffButtons onSwitch={() => {}} />)).not.toContain("bg-selected")
+    expect(render(<OnOffButtons onChange={() => {}} />)).not.toContain("bg-selected")
   })
 
   it("says which half is pressed with aria-pressed, not only with colour", () => {
-    expect(pressed(render(<OnOffButtons value onSwitch={() => {}} />))).toEqual(["true", "false"])
-    expect(pressed(render(<OnOffButtons value={false} onSwitch={() => {}} />)))
+    expect(pressed(render(<OnOffButtons value onChange={() => {}} />))).toEqual(["true", "false"])
+    expect(pressed(render(<OnOffButtons value={false} onChange={() => {}} />)))
       .toEqual(["false", "true"])
   })
 
   it("reports neither half pressed when value is undefined", () => {
-    expect(pressed(render(<OnOffButtons onSwitch={() => {}} />))).toEqual(["false", "false"])
+    expect(pressed(render(<OnOffButtons onChange={() => {}} />))).toEqual(["false", "false"])
   })
 
   it("names the pair as a group after its two labels by default", () => {
-    const html = render(<OnOffButtons onSwitch={() => {}} onLabel="Active" offLabel="Archived" />)
+    const html = render(<OnOffButtons onChange={() => {}} onLabel="Active" offLabel="Archived" />)
 
     expect(html).toContain('<div role="group" aria-label="Active / Archived"')
   })
 
   it("names the group with the caller's label", () => {
-    const html = render(<OnOffButtons onSwitch={() => {}} label="Rows to show" />)
+    const html = render(<OnOffButtons onChange={() => {}} ariaLabel="Rows to show" />)
 
     expect(html).toContain('<div role="group" aria-label="Rows to show"')
   })
 
   it("renders the amounts under the labels", () => {
-    const html = render(<OnOffButtons value onSwitch={() => {}} amount={{ on: 12, off: 3 }} />)
+    const html = render(<OnOffButtons value onChange={() => {}} amount={{ on: 12, off: 3 }} />)
 
     expect(html).toContain(">12<")
     expect(html).toContain(">3<")
   })
 
   it("omits the amounts when none are given", () => {
-    expect(render(<OnOffButtons value onSwitch={() => {}} />)).not.toContain("text-xs")
+    expect(render(<OnOffButtons value onChange={() => {}} />)).not.toContain("text-xs")
   })
 
   it("squares the halves off against each other", () => {
-    const html = render(<OnOffButtons value onSwitch={() => {}} />)
+    const html = render(<OnOffButtons value onChange={() => {}} />)
 
     expect(html).toContain("rounded-r-none")
     expect(html).toContain("rounded-l-none")
@@ -73,7 +94,7 @@ describe("OnOffButtons", () => {
 
   it("uses the caller's labels", () => {
     const html = render(
-      <OnOffButtons value onSwitch={() => {}} onLabel="Active" offLabel="Archived" />,
+      <OnOffButtons value onChange={() => {}} onLabel="Active" offLabel="Archived" />,
     )
 
     expect(html).toContain(">Active<")
@@ -81,10 +102,25 @@ describe("OnOffButtons", () => {
   })
 
   it("stacks the label above the amount", () => {
-    expect(render(<OnOffButtons value onSwitch={() => {}} amount={{ on: 1, off: 2 }} />))
+    expect(render(<OnOffButtons value onChange={() => {}} amount={{ on: 1, off: 2 }} />))
       .toContain("flex-col")
   })
 })
+
+/**
+ * Press the ON half, then the OFF half, on the vnode the component returned: a rendered string has
+ * no handlers.
+ *
+ * @param props The pair's props.
+ * @throws When a half carries no click handler.
+ */
+function pressHalves(props: OnOffButtonsProps): void {
+  const group = OnOffButtons(props) as VNode<{ children: VNode<{ onClick?: () => void }>[] }>
+  for (const half of group.props.children) {
+    if (half.props.onClick === undefined) throw new TypeError("a half has no click handler")
+    half.props.onClick()
+  }
+}
 
 /** The `aria-pressed` value of each button, in document order. */
 function pressed(html: string): string[] {

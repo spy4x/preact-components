@@ -4,22 +4,72 @@ import { Link } from "./link.tsx"
 import { BADGE_BASE, BADGE_FILLED_ACCENT, BADGE_OUTLINE_GRAY } from "./plain-classes.ts"
 
 /**
- * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
- * draw purple by default and follow the accent when an app sets it — `--color-primary` in the light
- * palette, `--color-accent` in both.
+ * What a {@link Badge} says, by meaning, in the tone names `Notice`, `Progress` and `Timeline` use.
+ * `primary` is the theme's accent: purple by default, following the accent when an app sets it —
+ * `--color-primary` in the light palette, `--color-accent` in both. `primaryStrong` is a dark accent
+ * pill that looks the same in both variants, for a counter on a dark surface such as a navigation
+ * entry.
+ */
+export type BadgeTone =
+  | "primary"
+  | "primaryStrong"
+  | "neutral"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+
+/** Whether a {@link Badge} is tinted (`filled`, the default) or only outlined. */
+export type BadgeVariant = "filled" | "outline"
+
+/**
+ * The palette names a {@link Badge} took before `tone`.
+ *
+ * @deprecated Use {@link BadgeTone}; {@link BADGE_TONE_OF_COLOR} maps each name. Removed in the
+ * next major.
  */
 export type BadgeColor = "red" | "orange" | "green" | "gray" | "blue" | "purple" | "purpleNav"
 
-/** Whether a {@link Badge} is tinted (`filled`, the default) or only outlined. */
-export type BadgeType = "filled" | "outline"
+/**
+ * The name `variant` had before.
+ *
+ * @deprecated Use {@link BadgeVariant}, which has the same values. Removed in the next major.
+ */
+export type BadgeType = BadgeVariant
+
+/**
+ * The tone each deprecated colour name draws: `red` is `danger`, `orange` `warning`, `green`
+ * `success`, `gray` `neutral`, `blue` `info`, `purple` `primary` and `purpleNav` `primaryStrong`.
+ */
+export const BADGE_TONE_OF_COLOR: Readonly<Record<BadgeColor, BadgeTone>> = {
+  red: "danger",
+  orange: "warning",
+  green: "success",
+  gray: "neutral",
+  blue: "info",
+  purple: "primary",
+  purpleNav: "primaryStrong",
+}
 
 export interface BadgeProps {
   /** The label, shown exactly as given: the badge changes no letter's case. */
   text: string
-  /** Defaults to `"purple"`, the accent. */
-  color?: BadgeColor
+  /** Defaults to `"primary"`, the accent. */
+  tone?: BadgeTone
   /** Defaults to `"filled"`. */
-  type?: BadgeType
+  variant?: BadgeVariant
+  /**
+   * The tone under its old palette name; `tone` wins when both are given.
+   *
+   * @deprecated Use `tone`; {@link BADGE_TONE_OF_COLOR} maps each name. Removed in the next major.
+   */
+  color?: BadgeColor
+  /**
+   * The variant under its old name; `variant` wins when both are given.
+   *
+   * @deprecated Use `variant`, which takes the same values. Removed in the next major.
+   */
+  type?: BadgeVariant
   class?: string
   /**
    * Makes the whole badge a link: it renders an `<a>` with a keyboard focus ring, and its content is
@@ -50,14 +100,14 @@ export interface BadgeElementProps extends Omit<BadgeProps, "text"> {
  * their 400 shade: at 600 they read below 4.5:1 on the gray-900 canvas and the gray-800 surface.
  * Grey reads the muted text token, which each palette sets itself.
  */
-const outlineClasses: Record<BadgeColor, string> = {
-  red: "border-red-700 text-red-700 dark:border-red-400 dark:text-red-400",
-  orange: "border-orange-700 text-orange-700 dark:border-orange-400 dark:text-orange-400",
-  green: "border-green-800 text-green-800 dark:border-green-400 dark:text-green-400",
-  gray: BADGE_OUTLINE_GRAY,
-  blue: "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400",
-  purple: "border-accent-600 text-accent-600 dark:border-accent-400 dark:text-accent-400",
-  purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
+const outlineClasses: Record<BadgeTone, string> = {
+  danger: "border-red-700 text-red-700 dark:border-red-400 dark:text-red-400",
+  warning: "border-orange-700 text-orange-700 dark:border-orange-400 dark:text-orange-400",
+  success: "border-green-800 text-green-800 dark:border-green-400 dark:text-green-400",
+  neutral: BADGE_OUTLINE_GRAY,
+  info: "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400",
+  primary: "border-accent-600 text-accent-600 dark:border-accent-400 dark:text-accent-400",
+  primaryStrong: "border-accent-700 bg-accent-900 text-accent-100",
 }
 
 /**
@@ -66,32 +116,43 @@ const outlineClasses: Record<BadgeColor, string> = {
  * palettes: white on the danger fill, a near-black label on the warning fill (no pale label reaches
  * 4.5:1 on an orange lighter than orange-700), and a pale green one on the success fill.
  */
-const filledClasses: Record<BadgeColor, string> = {
-  red: "border-transparent bg-danger-fill text-danger-fill-foreground",
-  orange: "border-transparent bg-warning text-(--color-warning-foreground)",
-  green: "border-transparent bg-success text-(--color-success-foreground)",
-  gray: "border-subtle bg-track text-foreground",
-  blue: "border-blue-600 bg-blue-600 text-blue-50",
-  purple: BADGE_FILLED_ACCENT,
-  purpleNav: "border-accent-700 bg-accent-900 text-accent-100",
+const filledClasses: Record<BadgeTone, string> = {
+  danger: "border-transparent bg-danger-fill text-danger-fill-foreground",
+  warning: "border-transparent bg-warning text-(--color-warning-foreground)",
+  success: "border-transparent bg-success text-(--color-success-foreground)",
+  neutral: "border-subtle bg-track text-foreground",
+  info: "border-blue-600 bg-blue-600 text-blue-50",
+  primary: BADGE_FILLED_ACCENT,
+  primaryStrong: "border-accent-700 bg-accent-900 text-accent-100",
+}
+
+/**
+ * The tone a tone or a deprecated colour name stands for.
+ *
+ * @param name A {@link BadgeTone}, or a deprecated {@link BadgeColor}.
+ * @returns The tone.
+ */
+function toneOf(name: BadgeTone | BadgeColor): BadgeTone {
+  return name in BADGE_TONE_OF_COLOR ? BADGE_TONE_OF_COLOR[name as BadgeColor] : name as BadgeTone
 }
 
 /**
  * Compose a badge's class list without rendering one, so a pill that is not a {@link Badge} — a
  * pressable chip, say — draws from the same palette.
  *
- * @param color Palette entry, defaults to `"purple"`, the accent.
- * @param type Tinted or outlined, defaults to `"filled"`.
+ * @param tone Defaults to `"primary"`, the accent. A deprecated {@link BadgeColor} name still works
+ *   and draws the tone {@link BADGE_TONE_OF_COLOR} maps it to.
+ * @param variant Tinted or outlined, defaults to `"filled"`.
  * @param className Extra utilities; they win over the badge's own in the same group.
  * @returns The merged `class` attribute value.
  */
 export function badgeClasses(
-  color: BadgeColor = "purple",
-  type: BadgeType = "filled",
+  tone: BadgeTone | BadgeColor = "primary",
+  variant: BadgeVariant = "filled",
   className?: string,
 ): string {
-  const palette = type === "outline" ? outlineClasses : filledClasses
-  return cn(BADGE_BASE, palette[color], className)
+  const palette = variant === "outline" ? outlineClasses : filledClasses
+  return cn(BADGE_BASE, palette[toneOf(tone)], className)
 }
 
 /**
@@ -108,12 +169,12 @@ const linkClasses = "hover:underline underline-offset-4 focus-visible:outline-hi
  * `navigate` when one is given.
  */
 export function Badge(props: BadgeProps | BadgeElementProps): JSX.Element {
-  const { text, color = "purple", type = "filled", class: className, href, navigate } = props
+  const { text, tone, variant, color, type, class: className, href, navigate } = props
   const children = "children" in props ? props.children : undefined
   // Element content usually means a shape beside a word, which needs a gap a single label does not.
   const classes = badgeClasses(
-    color,
-    type,
+    tone ?? color,
+    variant ?? type,
     cn(children !== undefined && "gap-1", href !== undefined && linkClasses, className),
   )
   const content = children ?? text

@@ -1,8 +1,8 @@
 import { useSignal } from "@preact/signals"
 import {
   Badge,
-  type BadgeColor,
-  type BadgeType,
+  type BadgeTone,
+  type BadgeVariant,
   Cluster,
   Stack,
   StatusMark,
@@ -12,37 +12,37 @@ import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 
 /**
- * Every palette entry the primitive accepts.
+ * Every tone the primitive accepts.
  *
- * The record is the coverage guard, not the demo: `Record<BadgeColor, …>` stops compiling when a
- * colour is added to or removed from `BadgeColor`, so the catalogue cannot drift behind the
+ * The record is the coverage guard, not the demo: `Record<BadgeTone, …>` stops compiling when a
+ * tone is added to or removed from `BadgeTone`, so the catalogue cannot drift behind the
  * component's palette.
  */
-const colors: Record<BadgeColor, string> = {
-  red: "red",
-  orange: "orange",
-  green: "green",
-  gray: "gray",
-  blue: "blue",
-  purple: "purple",
-  purpleNav: "purpleNav",
+const tones: Record<BadgeTone, string> = {
+  primary: "primary",
+  primaryStrong: "primaryStrong",
+  neutral: "neutral",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  danger: "danger",
 }
 
-const types: Record<BadgeType, string> = {
+const variants: Record<BadgeVariant, string> = {
   filled: "filled",
   outline: "outline",
 }
 
-/** One row per type, each row every colour, with the type named in a fixed-width first column. */
+/** One row per variant, each row every tone, with the variant named in a fixed-width column. */
 function BadgeMatrix() {
   return (
     <Stack gap="sm">
-      {entries(types).map(([type, typeLabel]) => (
-        <Cluster key={type} align="baseline" class="flex-nowrap">
-          <span class="w-16 shrink-0 text-xs text-muted">{typeLabel}</span>
+      {entries(variants).map(([variant, variantLabel]) => (
+        <Cluster key={variant} align="baseline" class="flex-nowrap">
+          <span class="w-16 shrink-0 text-xs text-muted">{variantLabel}</span>
           <Cluster>
-            {entries(colors).map(([color, label]) => (
-              <Badge key={color} type={type} color={color} text={label} />
+            {entries(tones).map(([tone, label]) => (
+              <Badge key={tone} variant={variant} tone={tone} text={label} />
             ))}
           </Cluster>
         </Cluster>
@@ -64,11 +64,11 @@ function BadgeContentRow() {
       <Cluster align="baseline" class="flex-nowrap">
         <span class="w-16 shrink-0 text-xs text-muted">content</span>
         <Cluster>
-          <Badge color="gray" href={CI_RUNS}>
+          <Badge tone="neutral" href={CI_RUNS}>
             <span>CI</span>
             <StatusMark status="ready" label="Passing" />
           </Badge>
-          <Badge color="gray" type="outline">
+          <Badge tone="neutral" variant="outline">
             <StatusMark status="beta" />
             <a href={CI_RUNS} class="underline underline-offset-4">notes</a>
           </Badge>
@@ -79,8 +79,8 @@ function BadgeContentRow() {
         <Cluster>
           <Badge
             text="system page"
-            color="blue"
-            type="outline"
+            tone="info"
+            variant="outline"
             href="#/system"
             navigate={(href) => navigated.value = href}
           />
@@ -95,7 +95,7 @@ function BadgeContentRow() {
 
 const CI_RUNS = "https://github.com/spy4x/preact-components/actions"
 
-/** Every status a `StatusMark` accepts, for the coverage guard — see {@link colors}. */
+/** Every status a `StatusMark` accepts, for the coverage guard — see {@link tones}. */
 const statuses: Record<StatusMarkStatus, string> = {
   ready: "ready",
   "in-use": "in-use",
@@ -155,22 +155,36 @@ export const badgeDemos = {
           "the browser's.",
       },
       {
-        name: "color",
-        type: "BadgeColor",
-        default: `"purple"`,
-        description: "One of the seven palette entries shown here. `purple` and `purpleNav` are " +
-          "the theme's accent: they follow `--color-primary` in light and `--color-accent` in both.",
+        name: "tone",
+        type: "BadgeTone",
+        default: `"primary"`,
+        description: "One of the seven tones shown here, named as on `Notice` and `Progress`. " +
+          "`primary` and `primaryStrong` are the theme's accent: they follow `--color-primary` in " +
+          "light and `--color-accent` in both. `primaryStrong` is a dark pill in both variants, " +
+          "for a counter on a dark surface.",
       },
       {
-        name: "type",
+        name: "variant",
         type: `"filled" | "outline"`,
         default: `"filled"`,
         description: "Tinted, or only outlined.",
       },
+      {
+        name: "color",
+        type: "BadgeColor",
+        description: "Deprecated: use `tone`. The old palette names still draw their tone: `red` " +
+          "`danger`, `orange` `warning`, `green` `success`, `gray` `neutral`, `blue` `info`, " +
+          "`purple` `primary`, `purpleNav` `primaryStrong`.",
+      },
+      {
+        name: "type",
+        type: `"filled" | "outline"`,
+        description: "Deprecated: use `variant`, which takes the same values.",
+      },
     ],
-    snippet: `<Badge text="paid" color="green" />
-<Badge text="draft" color="gray" type="outline" />
-<Badge color="gray" href="https://ci.example.com/my-repo">
+    snippet: `<Badge text="paid" tone="success" />
+<Badge text="draft" tone="neutral" variant="outline" />
+<Badge tone="neutral" href="https://ci.example.com/my-repo">
   <span>CI</span>
   <StatusMark status="ready" label="Passing" />
 </Badge>

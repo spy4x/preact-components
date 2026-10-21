@@ -64,7 +64,7 @@ function Note(
   return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
 }
 
-/** Controlled: the switch renders `value` and reports the intended value through `onToggle`. */
+/** Controlled: the switch renders `value` and reports the intended value through `onChange`. */
 function ToggleSwitchDemo() {
   const archived = useSignal(false)
   const notifications = useSignal(true)
@@ -74,8 +74,8 @@ function ToggleSwitchDemo() {
       <Cluster gap="sm">
         <ToggleSwitch
           value={archived.value}
-          onToggle={(next) => archived.value = next}
-          label="Show archived"
+          onChange={(next) => archived.value = next}
+          ariaLabel="Show archived"
         />
         <span class="text-sm text-muted">
           archived: {archived.value ? "on" : "off"}
@@ -84,15 +84,15 @@ function ToggleSwitchDemo() {
       <Cluster gap="sm">
         <ToggleSwitch
           value={notifications.value}
-          onToggle={(next) => notifications.value = next}
-          label="Notifications"
+          onChange={(next) => notifications.value = next}
+          ariaLabel="Notifications"
         />
         <span class="text-sm text-muted">
           notifications: {notifications.value ? "on" : "off"}
         </span>
       </Cluster>
       <Cluster gap="sm">
-        <ToggleSwitch value={false} onToggle={() => {}} disabled label="Disabled" />
+        <ToggleSwitch value={false} onChange={() => {}} disabled ariaLabel="Disabled" />
         <span class="text-sm text-muted">disabled</span>
       </Cluster>
     </Stack>
@@ -106,7 +106,7 @@ function OnOffButtonsDemo() {
   return (
     <Stack gap="md">
       <Cluster gap="sm">
-        <OnOffButtons value={value.value} onSwitch={(on) => value.value = on} />
+        <OnOffButtons value={value.value} onChange={(on) => value.value = on} />
         <span class="text-sm text-muted">
           value: {value.value === undefined ? "undefined" : String(value.value)}
         </span>
@@ -114,11 +114,11 @@ function OnOffButtonsDemo() {
       <Cluster gap="sm">
         <OnOffButtons
           value={value.value}
-          onSwitch={(on) => value.value = on}
+          onChange={(on) => value.value = on}
           amount={{ on: 128, off: 14 }}
           onLabel="Active"
           offLabel="Archived"
-          label="Rows to show"
+          ariaLabel="Rows to show"
         />
         <span class="text-sm text-muted">with counts and custom labels</span>
       </Cluster>
@@ -878,7 +878,7 @@ function TagInputDemo() {
 
 /**
  * Six labelled switch rows: plain, described and required, and the read-only, disabled and failing
- * shapes. The card's report is the caller's own state after `onToggle`, which is the whole
+ * shapes. The card's report is the caller's own state after `onChange`, which is the whole
  * contract.
  */
 function ToggleFieldDemo() {
@@ -893,13 +893,13 @@ function ToggleFieldDemo() {
           id="guide-toggle-archived"
           label="Show archived"
           value={archived.value}
-          onToggle={(next) => archived.value = next}
+          onChange={(next) => archived.value = next}
         />
         <ToggleField
           id="guide-toggle-admin"
           label="Administrators only"
           value={adminOnly.value}
-          onToggle={(next) => adminOnly.value = next}
+          onChange={(next) => adminOnly.value = next}
           description="Hides the row from everyone without the administrator role."
           required
         />
@@ -907,21 +907,21 @@ function ToggleFieldDemo() {
           id="guide-toggle-notifications"
           label="Notifications"
           value={notifications.value}
-          onToggle={(next) => notifications.value = next}
+          onChange={(next) => notifications.value = next}
           description="Send an email when a run fails."
         />
         <ToggleField
           id="guide-toggle-readonly"
           label="Read-only setting"
           value={false}
-          onToggle={() => {}}
+          onChange={() => {}}
           description="The caller ignores the change, so the switch stays off."
         />
         <ToggleField
           id="guide-toggle-locked"
           label="Locked setting"
           value={false}
-          onToggle={() => {}}
+          onChange={() => {}}
           description="Disabled: the label dims with the switch."
           disabled
         />
@@ -929,7 +929,7 @@ function ToggleFieldDemo() {
           id="guide-toggle-error"
           label="Two-factor authentication"
           value={false}
-          onToggle={() => {}}
+          onChange={() => {}}
           error="Your role cannot change this setting."
         />
       </Grid>
@@ -1196,11 +1196,12 @@ export const inputDemos = {
     props: [
       { name: "value", type: "boolean", description: "Whether the switch is on." },
       {
-        name: "onToggle",
+        name: "onChange",
         type: "(value: boolean) => void",
-        description: "Called with the value a press asks for; the caller stores it.",
+        description: "Called with the value a press asks for; the caller stores it. " +
+          "`onToggle` is its deprecated name.",
       },
-      { name: "label", type: "string", description: "The switch's accessible name." },
+      { name: "ariaLabel", type: "string", description: "The switch's accessible name." },
       { name: "disabled", type: "boolean", default: "false", description: "Greys it out." },
       {
         name: "aria-invalid",
@@ -1210,8 +1211,8 @@ export const inputDemos = {
     ],
     snippet: `<ToggleSwitch
   value={archived.value}
-  onToggle={(next) => archived.value = next}
-  label="Show archived"
+  onChange={(next) => archived.value = next}
+  ariaLabel="Show archived"
 />`,
     render: () => <ToggleSwitchDemo />,
   },
@@ -1226,9 +1227,9 @@ export const inputDemos = {
         description: "The chosen half; `undefined` chooses neither.",
       },
       {
-        name: "onSwitch",
+        name: "onChange",
         type: "(on: boolean) => void",
-        description: "Called with the half that was pressed.",
+        description: "Called with the half that was pressed. `onSwitch` is its deprecated name.",
       },
       {
         name: "amount",
@@ -1242,19 +1243,20 @@ export const inputDemos = {
         description: "The halves' text.",
       },
       {
-        name: "label",
+        name: "ariaLabel",
         type: "string",
         default: "the two labels, `ON / OFF`",
-        description: "The pair's name for a screen reader, which also hears which half is pressed.",
+        description: "The pair's name for a screen reader, which also hears which half is " +
+          "pressed. `label` is its deprecated name.",
       },
     ],
     snippet: `<OnOffButtons
-  label="Rows to show"
+  ariaLabel="Rows to show"
   onLabel="Active"
   offLabel="Archived"
   value={showActive.value}
   amount={{ on: 128, off: 14 }}
-  onSwitch={(on) => showActive.value = on}
+  onChange={(on) => showActive.value = on}
 />`,
     render: () => <OnOffButtonsDemo />,
   },
@@ -1271,9 +1273,9 @@ export const inputDemos = {
       { name: "label", type: "ComponentChildren", description: "The row's visible name." },
       { name: "value", type: "boolean", description: "Whether the switch is on." },
       {
-        name: "onToggle",
+        name: "onChange",
         type: "(value: boolean) => void",
-        description: "Called with the value a press asks for.",
+        description: "Called with the value a press asks for. `onToggle` is its deprecated name.",
       },
       { name: "description", type: "ComponentChildren", description: "A hint under the row." },
       { name: "error", type: "string | null", description: "An error under the row, announced." },
@@ -1282,7 +1284,7 @@ export const inputDemos = {
   id="show-archived"
   label="Show archived"
   value={archived.value}
-  onToggle={(next) => archived.value = next}
+  onChange={(next) => archived.value = next}
   description="Hides the row from the list"
   required
 />`,

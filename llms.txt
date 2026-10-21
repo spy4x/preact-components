@@ -457,7 +457,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1064 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1066 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -508,11 +508,14 @@ AvatarFace	type	@spy4x/preact-ui	Which of the three faces an `Avatar` renders.
 AvatarGroup	component	@spy4x/preact-ui	Overlapping avatar stack for a handful of members, with a `+N` chip for the rest.
 AvatarMember	type	@spy4x/preact-ui	One member of an `AvatarGroup`.
 AvatarSize	type	@spy4x/preact-ui	Square box of an `Avatar` or an `AvatarGroup`.
+BADGE_TONE_OF_COLOR	constant	@spy4x/preact-ui	The tone each deprecated colour name draws: `red` is `danger`, `orange` `warning`, `green` `success`, `gray` `neutral`, `blue` `info`, `purple` `primary` and `purpleNav` `primaryStrong`.
 BackdropHitTarget	type	@spy4x/preact-ui	The two identities a backdrop hit-test compares.
 Badge	component	@spy4x/preact-ui	Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in an `<a>` when `href` is given, so the whole pill is the link, which hands plain clicks to `navigate` when one is given.
-BadgeColor	type	@spy4x/preact-ui	Palette entries a `Badge` can use.
+BadgeColor	type	@spy4x/preact-ui	Deprecated: Use `BadgeTone`; `BADGE_TONE_OF_COLOR` maps each name. The palette names a `Badge` took before `tone`.
 BadgeElementProps	type	@spy4x/preact-ui	A `Badge` with element content in place of `text` — a `StatusMark` beside a word, say, or a link inside the pill.
-BadgeType	type	@spy4x/preact-ui	Whether a `Badge` is tinted (`filled`, the default) or only outlined.
+BadgeTone	type	@spy4x/preact-ui	What a `Badge` says, by meaning, in the tone names `Notice`, `Progress` and `Timeline` use.
+BadgeType	type	@spy4x/preact-ui	Deprecated: Use `BadgeVariant`, which has the same values. The name `variant` had before.
+BadgeVariant	type	@spy4x/preact-ui	Whether a `Badge` is tinted (`filled`, the default) or only outlined.
 BillingHeadingLevel	type	@spy4x/preact-ui	Heading level of a billing component's own heading.
 BillingInterval	type	@spy4x/preact-ui	How often a plan bills.
 BrandMark	component	@spy4x/preact-ui	A product's brand mark: a rounded square at `--radius-card`, filled with the brand hue and holding one glyph, followed by the product's name in weight 500 — the construction the design language gives every app's mark (`docs/design-language.md`, "The brand mark").
@@ -722,6 +725,7 @@ ToastId	type	@spy4x/preact-ui	What identifies one toast in a stack: the type of 
 ToastItem	type	@spy4x/preact-ui	
 ToastVariant	type	@spy4x/preact-ui	Kind of a toast, selecting its colour and glyph.
 Toastr	component	@spy4x/preact-ui	Stack of transient notifications in a corner of the window — top right unless `corner` says otherwise.
+ToggleChangeProps	type	@spy4x/preact-ui	The value port of a toggle: `onChange`, or its deprecated alias `onToggle`.
 ToggleChipOption	type	@spy4x/preact-ui	One chip of a `ToggleChips` group.
 ToggleChips	component	@spy4x/preact-ui	A group of pressable chips for filtering a list — the clickable counterpart of `Badge`, which only shows text.
 ToggleChipsMultipleProps	type	@spy4x/preact-ui	Any number of chips pressed at once: `value` lists them, in the order of `options`.

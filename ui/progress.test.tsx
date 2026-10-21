@@ -122,11 +122,11 @@ describe("Progress", () => {
     const globals = globalThis as { document?: unknown; window?: unknown }
     expect(globals.document).toBeUndefined()
     expect(globals.window).toBeUndefined()
-    expect(render(<Progress value={10} />)).toContain('role="progressbar"')
+    expect(render(<Progress ariaLabel="Saved" value={10} />)).toContain('role="progressbar"')
   })
 
   it("exposes the reading as a progress bar", () => {
-    const html = render(<Progress value={42} />)
+    const html = render(<Progress ariaLabel="Saved" value={42} />)
 
     expect(html).toContain('role="progressbar"')
     expect(html).toContain('aria-valuenow="42"')
@@ -135,33 +135,33 @@ describe("Progress", () => {
   })
 
   it("publishes the caller's max", () => {
-    const html = render(<Progress value={3} max={12} />)
+    const html = render(<Progress ariaLabel="Saved" value={3} max={12} />)
 
     expect(html).toContain('aria-valuenow="3"')
     expect(html).toContain('aria-valuemax="12"')
   })
 
   it("clamps an over-range reading instead of publishing it", () => {
-    const html = render(<Progress value={140} />)
+    const html = render(<Progress ariaLabel="Saved" value={140} />)
 
     expect(html).toContain('aria-valuenow="100"')
     expect(html).not.toContain('aria-valuenow="140"')
   })
 
   it("clamps a negative reading to zero", () => {
-    expect(render(<Progress value={-5} />)).toContain('aria-valuenow="0"')
+    expect(render(<Progress ariaLabel="Saved" value={-5} />)).toContain('aria-valuenow="0"')
   })
 
   it("renders the fill width in the server-rendered markup", () => {
-    expect(render(<Progress value={42} />)).toContain("width:42%")
+    expect(render(<Progress ariaLabel="Saved" value={42} />)).toContain("width:42%")
   })
 
   it("renders a full-width fill at max", () => {
-    expect(render(<Progress value={100} />)).toContain("width:100%")
+    expect(render(<Progress ariaLabel="Saved" value={100} />)).toContain("width:100%")
   })
 
   it("omits aria-valuenow when the reading is unknown", () => {
-    const html = render(<Progress value={Number.NaN} />)
+    const html = render(<Progress ariaLabel="Saved" value={Number.NaN} />)
 
     expect(html).toContain('role="progressbar"')
     expect(html).not.toContain("aria-valuenow")
@@ -169,21 +169,21 @@ describe("Progress", () => {
   })
 
   it("omits aria-valuenow when the reading is missing", () => {
-    const html = render(<Progress />)
+    const html = render(<Progress ariaLabel="Saved" />)
 
     expect(html).not.toContain("aria-valuenow")
     expect(html).not.toContain("width:")
   })
 
   it("omits aria-valuenow and the fill when max is unmeasurable", () => {
-    const html = render(<Progress value={5} max={0} />)
+    const html = render(<Progress ariaLabel="Saved" value={5} max={0} />)
 
     expect(html).not.toContain("aria-valuenow")
     expect(html).not.toContain("width:")
   })
 
   it("falls back to ARIA's implicit range when max is unmeasurable", () => {
-    const html = render(<Progress value={5} max={0} />)
+    const html = render(<Progress ariaLabel="Saved" value={5} max={0} />)
 
     expect(html).toContain('aria-valuemin="0"')
     expect(html).toContain('aria-valuemax="100"')
@@ -191,19 +191,19 @@ describe("Progress", () => {
   })
 
   it("publishes the caller's max as valuemax for a measurable bar", () => {
-    expect(render(<Progress value={5} max={7} />)).toContain('aria-valuemax="7"')
+    expect(render(<Progress ariaLabel="Saved" value={5} max={7} />)).toContain('aria-valuemax="7"')
   })
 
   it("paints the fill with the semantic colour atoms", () => {
-    expect(render(<Progress value={50} />)).toContain("bg-primary")
-    expect(render(<Progress value={50} tone="success" />)).toContain("bg-success")
-    expect(render(<Progress value={50} tone="warning" />)).toContain("bg-warning")
-    expect(render(<Progress value={50} tone="danger" />)).toContain("bg-danger")
+    expect(render(<Progress ariaLabel="Saved" value={50} />)).toContain("bg-primary")
+    expect(render(<Progress ariaLabel="Saved" value={50} tone="success" />)).toContain("bg-success")
+    expect(render(<Progress ariaLabel="Saved" value={50} tone="warning" />)).toContain("bg-warning")
+    expect(render(<Progress ariaLabel="Saved" value={50} tone="danger" />)).toContain("bg-danger")
   })
 
   it("hardcodes no colour for the fill", () => {
     for (const tone of ["primary", "success", "warning", "danger"] as const) {
-      const html = render(<Progress value={50} tone={tone} />)
+      const html = render(<Progress ariaLabel="Saved" value={50} tone={tone} />)
 
       expect(html).not.toContain("bg-gradient")
       expect(html).not.toContain("bg-red-")
@@ -260,6 +260,13 @@ describe("Progress", () => {
     expect(unnamed).toBeDefined()
   })
 
+  it("rejects a bar with neither a caption nor ariaLabel at compile time", () => {
+    // @ts-expect-error A bar needs a name: `label` with `id`, or `ariaLabel` (#861).
+    const nameless = <Progress value={50} />
+
+    expect(nameless).toBeDefined()
+  })
+
   it("rejects an id without a caption at compile time", () => {
     // @ts-expect-error `id` names a caption; on its own it labels nothing.
     const pointless = <Progress value={50} id="storage" />
@@ -271,15 +278,17 @@ describe("Progress", () => {
     expect(render(<Progress value={50} id="storage" label="Storage used" />)).toContain(
       "aria-labelledby",
     )
-    expect(render(<Progress value={50} showValue={false} />)).not.toContain("aria-labelledby")
+    expect(render(<Progress ariaLabel="Saved" value={50} showValue={false} />)).not.toContain(
+      "aria-labelledby",
+    )
   })
 
   it("shows the percentage by default", () => {
-    expect(render(<Progress value={66.7} />)).toContain("66%")
+    expect(render(<Progress ariaLabel="Saved" value={66.7} />)).toContain("66%")
   })
 
   it("hides the percentage when asked", () => {
-    const html = render(<Progress value={66.7} showValue={false} />)
+    const html = render(<Progress ariaLabel="Saved" value={66.7} showValue={false} />)
 
     expect(html).not.toContain("67%")
     expect(html).not.toContain("pc-num")
@@ -293,24 +302,24 @@ describe("Progress", () => {
   })
 
   it("renders no percentage for an unmeasurable reading", () => {
-    const html = render(<Progress value={5} max={0} />)
+    const html = render(<Progress ariaLabel="Saved" value={5} max={0} />)
 
     expect(html).not.toContain("pc-num")
     expect(html).not.toContain("justify-between")
   })
 
   it("renders no header row when there is nothing to put in it", () => {
-    const html = render(<Progress value={10} showValue={false} />)
+    const html = render(<Progress ariaLabel="Saved" value={10} showValue={false} />)
 
     expect(html).not.toContain("justify-between")
   })
 
   it("keeps the header row when it carries only a value", () => {
-    expect(render(<Progress value={10} />)).toContain("justify-between")
+    expect(render(<Progress ariaLabel="Saved" value={10} />)).toContain("justify-between")
   })
 
   it("does not round a filling bar up to complete", () => {
-    const html = render(<Progress value={999} max={1000} />)
+    const html = render(<Progress ariaLabel="Saved" value={999} max={1000} />)
 
     expect(html).toContain('aria-valuenow="999"')
     expect(html).toContain("width:99.9%")
@@ -319,21 +328,21 @@ describe("Progress", () => {
   })
 
   it("renders a paint-ready width instead of a float artefact", () => {
-    const html = render(<Progress value={1} max={3} />)
+    const html = render(<Progress ariaLabel="Saved" value={1} max={3} />)
 
     expect(html).toContain("width:33.3%")
     expect(html).not.toContain("33.300000000000004")
   })
 
   it("keeps the track neutral rather than tone-coloured", () => {
-    expect(render(<Progress value={50} tone="danger" />)).toContain("bg-track")
+    expect(render(<Progress ariaLabel="Saved" value={50} tone="danger" />)).toContain("bg-track")
   })
 
   it("darkens the track to the hover fill so the dark fill keeps its contrast", () => {
-    expect(render(<Progress value={50} />)).toContain("dark:bg-hover")
+    expect(render(<Progress ariaLabel="Saved" value={50} />)).toContain("dark:bg-hover")
   })
 
   it("appends a caller class", () => {
-    expect(render(<Progress value={50} class="mt-4" />)).toContain("mt-4")
+    expect(render(<Progress ariaLabel="Saved" value={50} class="mt-4" />)).toContain("mt-4")
   })
 })

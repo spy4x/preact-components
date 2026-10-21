@@ -1,6 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
-import { ToggleSwitch } from "./toggle-switch.tsx"
+import { type ToggleChangeProps, ToggleSwitch } from "./toggle-switch.tsx"
 
 /**
  * Labelled row for a {@link ToggleSwitch}: label, control, description and error.
@@ -30,10 +30,10 @@ import { ToggleSwitch } from "./toggle-switch.tsx"
  * that names it. Nothing here is duplicated from `Field` beyond its class tokens, which are repeated
  * because rendering through `Field` is what would break the association.
  *
- * Controlled: it renders `value` and reports the intended new value through `onToggle`. It holds no
+ * Controlled: it renders `value` and reports the intended new value through `onChange`. It holds no
  * state and touches no DOM global, so it server-renders.
  */
-export interface ToggleFieldProps {
+interface ToggleFieldBaseProps {
   /**
    * `id` of the switch. Required and **not generated**, so the caller can point a test or a form at
    * it. Used as-is on the button; the label element becomes `${id}-label`.
@@ -43,11 +43,6 @@ export interface ToggleFieldProps {
   label: ComponentChildren
   /** Current state of the switch. */
   value: boolean
-  /**
-   * Called with the flipped value. No `onChange`: the payload is the intended boolean, not a DOM
-   * event, so the same prop name as {@link ToggleSwitch} keeps the pair interchangeable.
-   */
-  onToggle: (value: boolean) => void
   /**
    * Description under the row, expected and rendered as the field's `hint`: same slot, same classes,
    * and the id `Field` would have generated (`${id}-hint`). It is not a separate concept, and a
@@ -71,6 +66,12 @@ export interface ToggleFieldProps {
   class?: string
 }
 
+/**
+ * Props of {@link ToggleField}: the row's props plus the value port, `onChange` (or its deprecated
+ * alias `onToggle`), called with the flipped boolean exactly as {@link ToggleSwitch}'s is.
+ */
+export type ToggleFieldProps = ToggleFieldBaseProps & ToggleChangeProps
+
 const labelText = "pc-label items-center gap-3"
 // The message classes are `Field`'s, character for character: a description on a switch row must not
 // look different from a hint on an input row.
@@ -87,6 +88,7 @@ export function ToggleField({
   id,
   label,
   value,
+  onChange,
   onToggle,
   description,
   error,
@@ -109,6 +111,8 @@ export function ToggleField({
   // `A B` with an empty half would describe the control with an element that does not exist, so the
   // ids are joined only when there are ids to join — same rule as `Field`.
   const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined
+  // The type allows exactly one of the two; `onChange` is the name, `onToggle` the old alias.
+  const report = (onChange ?? onToggle) as (value: boolean) => void
 
   return (
     <div class={className}>
@@ -123,7 +127,7 @@ export function ToggleField({
             // browser that one day does activate label-to-button would arrive through this handler.
             event.preventDefault()
             if (disabled) return
-            onToggle(!value)
+            report(!value)
           }}
         >
           {label}
@@ -135,7 +139,7 @@ export function ToggleField({
         </label>
         <ToggleSwitch
           value={value}
-          onToggle={onToggle}
+          onChange={report}
           disabled={disabled}
           id={id}
           aria-labelledby={labelId}

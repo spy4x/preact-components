@@ -7,18 +7,12 @@ import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
 /** Side of the trigger the tooltip is anchored to. */
 export type TooltipPlacement = "top" | "right" | "bottom" | "left"
 
-export interface TooltipProps {
+/** Props every {@link Tooltip} takes, whichever name its accessible name goes by. */
+interface TooltipBaseProps {
   /** Visible content of the trigger. It also carries the trigger's accessible name. */
   children: ComponentChildren
-  /** Tooltip text. Supplementary to {@link TooltipProps.label}, never the trigger's only name. */
+  /** Tooltip text. Supplementary to the trigger's `ariaLabel`, never the trigger's only name. */
   content: ComponentChildren
-  /**
-   * Accessible name for the trigger, applied as `aria-label`.
-   *
-   * Required, so the trigger always has a name of its own. Screen readers announce it first and
-   * the tooltip only as the description.
-   */
-  label: string
   /** Side of the trigger the tooltip is anchored to. Defaults to `"top"`. */
   placement?: TooltipPlacement
   /**
@@ -35,6 +29,29 @@ export interface TooltipProps {
   /** Extra utilities for the tooltip surface: its anchoring, its width and its reveal. */
   contentClass?: string
 }
+
+/**
+ * Props of {@link Tooltip}. The trigger's accessible name is required, so the trigger always has a
+ * name of its own: screen readers announce it first and the tooltip only as the description.
+ */
+export type TooltipProps =
+  & TooltipBaseProps
+  & (
+    | {
+      /** Accessible name for the trigger, applied as `aria-label`. */
+      ariaLabel: string
+      label?: undefined
+    }
+    | {
+      /**
+       * Accessible name for the trigger, applied as `aria-label`.
+       *
+       * @deprecated Use `ariaLabel`. Removed in the next major.
+       */
+      label: string
+      ariaLabel?: undefined
+    }
+  )
 
 const triggerBase =
   "relative inline-flex cursor-help rounded-sm group focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden"
@@ -93,7 +110,7 @@ const placementClasses: Record<TooltipPlacement, string> = {
  * is no scroll listener and no resize listener, so it costs nothing while nobody is on it.
  *
  * The wrapper is the described element: it carries `aria-describedby`, and the tooltip surface
- * carries that id and `role="tooltip"`. The trigger keeps its own name through `label`, so the
+ * carries that id and `role="tooltip"`. The trigger keeps its own name through `ariaLabel`, so the
  * tooltip text is always a description and never the only label. That wrapper is a `<button>`
  * rather than a `<span>` with a tab stop, because `aria-label` on an element with no role is not
  * guaranteed to reach the accessibility tree: the hint used to hang off something that might carry
@@ -134,6 +151,7 @@ export function Tooltip(
   {
     children,
     content,
+    ariaLabel,
     label,
     placement = "top",
     focusable = true,
@@ -228,7 +246,7 @@ export function Tooltip(
   )
   const wrapper = {
     class: cn(triggerBase, className),
-    "aria-label": label,
+    "aria-label": ariaLabel ?? label,
     onPointerEnter: () => engage(hovered),
     onPointerLeave: () => hovered.value = false,
     onFocusIn: () => engage(focused),

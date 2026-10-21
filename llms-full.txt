@@ -294,12 +294,14 @@ Use `join` where no two inputs can be utilities of one group, and `cn` where a l
 replace an earlier one. `join` is also exported from `@spy4x/preact-cn` itself; the `/join` path
 is the one that never reaches `tailwind-merge`, whatever the bundler's tree-shaking does.
 
-`Button`, `buttonClasses`, `ImageGallery` and `Lightbox` (#471), and `Input`, `Textarea`, `Select`,
-`EnhancedForm` and `Field`'s label (#511), in `@spy4x/preact-ui` compose their classes with `join`,
-so an island that renders them carries no `tailwind-merge`; `CopyButton` and `ZoomableImages` pass
-their `class` to `Button` and `Lightbox`, so the same holds for them. Their `class` is appended to
-their own classes, not merged into them: to replace one of their own utilities, mark the
-replacement important, `<Button class="px-8!">`. Tailwind 4 writes the `!` at the end.
+`ImageGallery` and `Lightbox` (#471) and `Field`'s label (#511) in `@spy4x/preact-ui` compose
+their own classes with `join`, and `ZoomableImages` passes its `class` to `Lightbox`. Their `class`
+is appended to their own classes, not merged into them: to replace one of their own utilities,
+mark the replacement important, `<Lightbox class="p-8!">`. Tailwind 4 writes the `!` at the end.
+`Button`, `buttonClasses`, `Input`, `Textarea`, `Select` and `EnhancedForm` merge a caller's
+`class` through `cn` since #861, so a caller's utility wins and an island that renders one of them
+carries `tailwind-merge`. Both `ImageGallery` and `Lightbox` render a `Button`, so their islands
+carry it too.
 
 ## The theme-class rule
 
@@ -4731,14 +4733,17 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on eleven exports.** Most components pass a caller's `class` through
-  `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
-  group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  `EnhancedForm` (#511) and `DemoVideo` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
-  `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
-  `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
-  before. Their `class` is appended after their own classes, and replaces one of them only when
-  it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
+- **A `class` is merged, except on five exports.** Components pass a caller's `class` through `cn`
+  from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same group:
+  `<Button class="px-8">` replaces the size's padding. `Button`, `buttonClasses`, `Input`,
+  `Textarea`, `Select`, `EnhancedForm` and `CopyButton` merge too since #861, so a browser bundle
+  that renders one of them carries `tailwind-merge`, about 28 KB minified. `ImageGallery`,
+  `Lightbox` (#471) and `DemoVideo` use `join` instead, `ZoomableImages` hands its `class` to
+  `Lightbox`, and `Field` puts its `class` on its wrapper unchanged: their `class` is appended after
+  their own classes, and replaces one of them only when it is marked important,
+  `<Lightbox class="p-8!">`. `tailwind-merge` sees `pc-input` and the other theme classes as one
+  opaque class each, so `pc-input` stays beside a caller's `h-10`, and the stylesheet's order
+  decides which height applies. Every component the library renders keeps one utility per group on an
   element; `ui-guide/class-conflicts.test.tsx` holds that for every card in the guide.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
@@ -4773,9 +4778,9 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                                                                                                                                                  |
 | `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                                                                                                                                                |
-| `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`                                                                                                                                                                                                                                                   |
+| `Badge`               | `badge`                | `text` or `children`, `tone?` (deprecated `color`), `variant?` (deprecated `type`), `href?` (the whole pill becomes a link), `navigate?`                                                                                                                                                                                                      |
 | `BrandMark`           | `brand-mark`           | `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header                                                                                                                                                                                                |
-| `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                  |
+| `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, `class` (merged: a caller's utility wins), native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                                                                                                       |
 | `Card`                | `card`                 | `children`, `class` — a bordered surface; forwards `ref` to its `<div>`                                                                                                                                                                                                                                                                       |
 | `CardBody`            | `card`                 | `children`, `class`                                                                                                                                                                                                                                                                                                                           |
 | `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                                                                                                                                           |
@@ -4788,14 +4793,14 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                                                                                    |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                                                                   |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                                                                  |
-| `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                                                                                        |
+| `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `text?` (visible text; deprecated `title`), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                                            |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                                                                                               |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                      |
 | `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                                                                                                                                                                           |
 | `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before                                                                                            |
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)                                                                                                                                                |
-| `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                 |
+| `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?`, `class?` (merged) — posts natively before hydration                                                                                                                                                                                              |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                         |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                                                                                                |
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                        |
@@ -4805,7 +4810,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                            |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                  |
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                 |
-| `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                   |
+| `Input`               | `input`                | native input attrs, `class` (merged); forwards `ref`                                                                                                                                                                                                                                                                                          |
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                              |
 | `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                                                                                                                |
 | `InlineEdit`          | `inline-edit`          | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`                                                                                                                                                                        |
@@ -4821,16 +4826,16 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty                                                                                           |
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                                                                                 |
 | `OnDay`               | `format`               | `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`                                                                                                                                                                                   |
-| `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`                                                                                                                                                                                                                                            |
+| `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onChange` (deprecated `onSwitch`), `ariaLabel?` (the pair's accessible name; deprecated `label`); each half has `aria-pressed`                                                                                                                                                                                            |
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                                                                                           |
 | `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                                                                                     |
 | `PageHeader`          | `page-header`          | `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`                                                                                               |
 | `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript                |
-| `PageTitle`           | `page-title`           | `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                                                                                              |
+| `PageTitle`           | `page-title`           | deprecated, use `PageHeader`: `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                                                                |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                           |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                             |
 | `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                                                                                                                        |
-| `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`), `ariaLabel?` (the name when there is no caption)                                                                                                                                                                                                                                     |
+| `Progress`            | `progress`             | `value`, `max`, and a name: `label` with `id` (a caption), or `ariaLabel` (no caption)                                                                                                                                                                                                                                                        |
 | `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood                                                                                                    |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                                                                                                                      |
 | `RadioChips`          | `radio-chips`          | `legend`, `name`, `options` (`id?`, `inputAttributes?` each), `defaultValue?` or `value?`, `onChange?`, `hideLegend?` — `ToggleChips`' look on native radios; works without JavaScript                                                                                                                                                        |
@@ -4853,10 +4858,10 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                        |
 | `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                                                                                         |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                                                                                      |
-| `ToggleChips`         | `toggle-chips`         | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                                                                                                                                                                          |
-| `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                                                                                                                                                                  |
-| `ToggleSwitch`        | `toggle-switch`        | `value`, `onToggle`, `disabled`, `label`, `aria-invalid?`; no `required`: a switch is never empty                                                                                                                                                                                                                                             |
-| `Tooltip`             | `tooltip`              | `content`, `label`, `placement`, `focusable`                                                                                                                                                                                                                                                                                                  |
+| `ToggleChips`         | `toggle-chips`         | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `ariaLabel?` (deprecated `label`), `tone?` (deprecated `color`) — pressable `Badge`-look chips with `aria-pressed`                                                                                                                                                             |
+| `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onChange` (deprecated `onToggle`), `description?`, `error?`                                                                                                                                                                                                                                                          |
+| `ToggleSwitch`        | `toggle-switch`        | `value`, `onChange` (deprecated `onToggle`), `disabled`, `ariaLabel` (deprecated `label`), `aria-invalid?`; no `required`: a switch is never empty                                                                                                                                                                                            |
+| `Tooltip`             | `tooltip`              | `content`, `ariaLabel` (deprecated `label`), `placement`, `focusable`                                                                                                                                                                                                                                                                         |
 | `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`                                                                                                       |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                                                                                          |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab                                                                  |
@@ -4875,7 +4880,7 @@ import { Badge } from "@spy4x/preact-ui/badge"
 Wiring side effects through ports, so the package stays app-agnostic:
 
 ```tsx
-<ToggleSwitch value={archived} onToggle={(next) => settings.archive.set(next)} />
+<ToggleSwitch value={archived} onChange={(next) => settings.archive.set(next)} />
 
 <CopyButton textToCopy={invoice.id} copy={(text) => app.clipboard.copy(text)} />
 
@@ -5032,7 +5037,7 @@ content — a `StatusMark` beside a word, say — gets a `gap-1` between its par
 your own overrides:
 
 ```tsx
-<Badge color="gray" href="https://ci.example.com/my-repo">
+<Badge tone="neutral" href="https://ci.example.com/my-repo">
   <span>CI</span>
   <StatusMark status="ready" label="Passing" />
 </Badge>
@@ -5043,6 +5048,12 @@ components draw, and the pill's content is the link's accessible name. That is t
 pill, where the pill is one target. For a pill with a link inside it, leave `href` out and pass the
 `<a>` among the children instead. A badge without `href` renders the same `<span>`, with the same
 classes, as before element content existed.
+
+`tone` names what a badge says, in the tone names `Notice`, `Progress` and `Timeline` use, and
+`variant` says whether it is filled or outlined. `color` and `type`, the old names, still work and
+are deprecated; `tone` and `variant` win when both are given. `BADGE_TONE_OF_COLOR` maps each old
+colour to its tone: `red` is `danger`, `orange` `warning`, `green` `success`, `gray` `neutral`,
+`blue` `info`, `purple` `primary` and `purpleNav` `primaryStrong`.
 
 ## Button
 
@@ -5120,7 +5131,7 @@ surface's own padding, so a pointer can travel onto the hint and rest there whil
 that cannot be dismissed covers what somebody was reading, and one that cannot be hovered cannot be
 read at all by anyone magnifying the screen.
 
-`label` is the trigger's own accessible name and the hint is only ever its description. By default
+`ariaLabel` (deprecated `label`) is the trigger's own accessible name, required, and the hint is only ever its description. By default
 the trigger is a `<button>`, because `aria-label` on an element with no role is not guaranteed to
 reach the accessibility tree at all. `focusable={false}` is for a trigger whose children are already
 interactive: the wrapper becomes a `role="group"` around that control, which keeps one tab stop for
@@ -5129,7 +5140,7 @@ element inside the group carries `aria-describedby`, so a screen reader hears th
 control it is focused on.
 
 ```tsx
-<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
+<Tooltip content="Supplements the trigger" ariaLabel="Total revenue" placement="right">
   <span>Revenue</span>
 </Tooltip>
 ```
@@ -6379,15 +6390,15 @@ utilities included, is drawn in the frame's palette. More in the theme README, "
 
 ## ToggleChips
 
-Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
-chip is a filled badge in `color`, an unpressed one a grey outlined badge. In `mode="single"`,
+Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `ariaLabel`. A
+pressed chip is a filled badge in `tone`, an unpressed one a grey outlined badge. In `mode="single"`,
 pressing another chip moves the selection and pressing the pressed chip clears it to `null`.
 
 `toggleChipSelection(options, selected, pressed)` is the multiple-mode press on its own: it adds or
 removes `pressed` and returns the selection in the order of `options`.
 
-`badgeClasses(color, type, className)` is `Badge`'s class list without the element, which is how
-the chips share `Badge`'s palette.
+`badgeClasses(tone, variant, className)` is `Badge`'s class list without the element, which is how
+the chips share `Badge`'s palette. It still takes an old colour name in place of a tone.
 
 ## KanbanBoard
 
@@ -7426,7 +7437,7 @@ Each kind of drift fails `deno task test`, naming the export and its package:
 | an allow-list entry that is a helper, or the reverse | `signals's ThemeValue is not a component, so …`                           |
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
-union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
+union type (`ButtonVariant`, `BadgeTone`, `SpinnerSize`, `BadgeVariant`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
 ### The list carries a reason, and it only shrinks

@@ -538,8 +538,8 @@ export const enhancedFormDemos = {
         name: "class",
         type: "string",
         description:
-          "Extra classes for the form. The failure text carries `enhanced-form-error`, a hook " +
-          "for styling it.",
+          "Utilities merged into the form's own `space-y-4`: `space-y-6` replaces it. The " +
+          "failure text carries `enhanced-form-error`, a hook for styling it.",
       },
       {
         name: "method",
