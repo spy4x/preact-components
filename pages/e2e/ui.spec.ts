@@ -922,6 +922,46 @@ function colorFieldSpecs(): Spec[] {
     },
     {
       name:
+        "ColorField: an invalid hex refuses the form's submit, focuses the field and shows its error; a preset, a valid hex and None save",
+      pageId: "ui",
+      run: async (page) => {
+        const save = card(page).getByRole("button", { name: "Save", exact: true })
+        const savedIs = (text: string) =>
+          card(page).locator(`[data-e2e="color-field-saves"]`).getByText(text, { exact: true })
+            .waitFor()
+        await save.click()
+        await savedIs("saves: 1, saved: #0369a1, group none")
+
+        await openCustom(page)
+        const hex = group(page).getByRole("textbox", { name: "Hex code" })
+        const message = "Enter # and 6 characters, such as #59168b."
+        const error = group(page).getByText(message)
+        // Enter submits from the field without blurring it, so only the refusal can show the error.
+        await hex.fill("#zzz")
+        await hex.press("Enter")
+        await savedIs("saves: 1, saved: #0369a1, group none")
+        await error.waitFor()
+        const bubble = await hex.evaluate((input: HTMLInputElement) => input.validationMessage)
+        if (bubble !== message) throw new Error(`the browser's message is "${bubble}"`)
+
+        await hex.fill("#12")
+        await save.click()
+        await hex.and(page.locator(":focus")).waitFor()
+        await savedIs("saves: 1, saved: #0369a1, group none")
+
+        await hex.fill("#59168b")
+        await save.click()
+        await savedIs("saves: 2, saved: #59168b, group none")
+
+        const groupColour = card(page).getByRole("group", { name: "Group colour" })
+        await groupColour.getByTitle("Red").click()
+        await groupColour.getByTitle("No group colour").click()
+        await save.click()
+        await savedIs("saves: 3, saved: #59168b, group none")
+      },
+    },
+    {
+      name:
         "ColorField: a value the caller changes from outside to a preset checks that preset, unchecks Custom and hides the hex field",
       pageId: "ui",
       run: async (page) => {

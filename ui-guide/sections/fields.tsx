@@ -697,46 +697,63 @@ function QuickAddDemo() {
 
 /**
  * A tag's colour with the tag chip as its live sample, the value it stores, and a reset that changes
- * it from outside; then a group's colour, which may have none.
+ * it from outside; then a group's colour, which may have none. Both sit in a real `<form>`, so a
+ * browser check can prove an invalid hex refuses the submit and every valid choice saves.
  */
 function ColorFieldDemo() {
   const color = useSignal<string | null>("#0369a1")
   const groupColor = useSignal<string | null>(null)
+  const saves = useSignal(0)
+  const saved = useSignal("")
   return (
-    <Stack gap="lg">
-      <Stack gap="sm">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        saves.value++
+        saved.value = `${color.value ?? "none"}, group ${groupColor.value ?? "none"}`
+      }}
+    >
+      <Stack gap="lg">
+        <Stack gap="sm">
+          <ColorField
+            value={color.value}
+            onChange={(next) => color.value = next}
+            legend="Tag colour"
+            hint="Text on the tag turns black or white, whichever reads better."
+            preview={(background, text) => (
+              <span
+                class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
+                style={{ backgroundColor: background, color: text }}
+                data-e2e="color-field-chip"
+              >
+                Groceries
+              </span>
+            )}
+          />
+          <Cluster gap="sm">
+            <p class="text-xs text-muted">
+              Stored: <code data-e2e="color-field-value">{color.value ?? "none"}</code>
+            </p>
+            <Button variant="outline" size="sm" onClick={() => color.value = "#0369a1"}>
+              Reset to Sky
+            </Button>
+          </Cluster>
+        </Stack>
         <ColorField
-          value={color.value}
-          onChange={(next) => color.value = next}
-          legend="Tag colour"
-          hint="Text on the tag turns black or white, whichever reads better."
-          preview={(background, text) => (
-            <span
-              class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
-              style={{ backgroundColor: background, color: text }}
-              data-e2e="color-field-chip"
-            >
-              Groceries
-            </span>
-          )}
+          value={groupColor.value}
+          onChange={(next) => groupColor.value = next}
+          legend="Group colour"
+          allowNone
+          noneLabel="No group colour"
         />
         <Cluster gap="sm">
-          <p class="text-xs text-muted">
-            Stored: <code data-e2e="color-field-value">{color.value ?? "none"}</code>
+          <Button type="submit" size="sm">Save</Button>
+          <p class="text-xs text-muted" data-e2e="color-field-saves">
+            saves: {saves.value}, saved: {saved.value || "(none)"}
           </p>
-          <Button variant="outline" size="sm" onClick={() => color.value = "#0369a1"}>
-            Reset to Sky
-          </Button>
         </Cluster>
       </Stack>
-      <ColorField
-        value={groupColor.value}
-        onChange={(next) => groupColor.value = next}
-        legend="Group colour"
-        allowNone
-        noneLabel="No group colour"
-      />
-    </Stack>
+    </form>
   )
 }
 
