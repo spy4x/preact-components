@@ -1423,6 +1423,7 @@ function AccountMenuDemo() {
     >
       <AccountMenu
         user={railShellUser}
+        headerHref="#account-you"
         items={[
           { label: "Profile", href: "#account-profile" },
           {

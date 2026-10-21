@@ -28,7 +28,8 @@
     "./route-announcer": "./route-announcer.ts",
     "./sync-status": "./sync-status.tsx",
     "./saved-copy-notice": "./saved-copy-notice.tsx",
-    "./unsent-changes-dialog": "./unsent-changes-dialog.tsx"
+    "./unsent-changes-dialog": "./unsent-changes-dialog.tsx",
+    "./settings-layout": "./settings-layout.tsx"
   },
   "imports": {
     // Fresh is pinned here and nowhere else, for one test file only: `seo-head.fresh.test.tsx`

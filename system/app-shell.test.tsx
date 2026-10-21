@@ -77,6 +77,17 @@ describe("AppShell", () => {
     expect(html).not.toMatch(/bg-selected[^"]*">Admin</)
   })
 
+  it("links the account header to headerHref in the rail's menu and in the phone sheet", () => {
+    const html = shell({ account: { user, headerHref: "/profile/account" } })
+    expect(html).toMatch(/<a [^>]*href="\/profile\/account"[^>]*data-e2e="account-menu-header"/)
+    expect(html).toMatch(
+      /<a [^>]*href="\/profile\/account"[^>]*data-e2e="app-shell-sheet-account-header"/,
+    )
+    const plain = shell()
+    expect(plain).toMatch(/<div [^>]*data-e2e="app-shell-sheet-account-header"/)
+    expect(plain).not.toContain('href="/profile/account"')
+  })
+
   it("keeps one live region outside the rail, present and empty with no connection", () => {
     const quiet = shell()
     expect(quiet.match(/data-e2e="shell-ws-status"/g)).toHaveLength(1)

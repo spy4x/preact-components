@@ -166,6 +166,12 @@ Pick the shell by the kind of app; all of them are library components.
 and, if needed, one "More actions" menu on the right. On a phone the title stays on one line and
 the actions become icon buttons with accessible names. Nothing else draws a page title.
 
+**A settings page with sub-pages is `SettingsLayout`:** a 200 px sticky nav beside one section
+in a `max-w-2xl` column from `md` up, the current item in the accent tint, a danger item such as
+"Delete account" last after a divider in danger text. On a phone the list is the page, 44 px rows
+with a chevron and a muted state ("Two-factor off"), and choosing a row shows that section alone
+under a "Back to" link. Inside a section, settings are `SettingList` rows as below.
+
 **Placement** follows how often a person needs a control: daily on the page, monthly one click
 away, once or never in a menu or a "Danger zone" disclosure at the bottom. Forms open when asked,
 in a `Modal` for a short form or `InlineEdit` for one value. What cannot happen is not shown. The
