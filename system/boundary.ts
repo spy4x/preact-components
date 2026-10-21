@@ -52,11 +52,13 @@ export interface ForbiddenName {
 }
 
 /**
- * Exports app code must not import by default: `RailShell`, because every app draws `AppShell`,
- * which owns the frame, so no app builds its own chrome around the rail.
+ * Exports app code must not import by default: `RailShell` and the deprecated `Shell`, because
+ * every app draws `AppShell`, which owns the frame, so no app builds its own chrome around the rail
+ * or draws a second frame.
  */
 export const DEFAULT_FORBIDDEN_NAMES: readonly ForbiddenName[] = [
   { name: "RailShell", from: "@spy4x/preact-system", reason: "draw AppShell instead." },
+  { name: "Shell", from: "@spy4x/preact-system", reason: "draw AppShell instead." },
 ]
 
 /** What {@link boundaryPlugin} and {@link checkModule} forbid. Every list is optional. */
