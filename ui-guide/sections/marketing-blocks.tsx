@@ -419,6 +419,11 @@ export const pageHeroDemo: DemoFragment = {
           "The day the page last changed, `YYYY-MM-DD`, as a `<time datetime>` in the meta line.",
       },
       {
+        name: "note",
+        type: "ComponentChildren",
+        description: "A short caveat right under the meta line, in the same quiet text.",
+      },
+      {
         name: "labels",
         type: "Partial<PageHeroLabels>",
         description: "The meta line's words: `by` (`By`) and `updated` (`Updated`).",
