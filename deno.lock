@@ -47,7 +47,7 @@
     "jsr:@std/uuid@1.1.2": "1.1.2",
     "jsr:@std/uuid@^1.0.9": "1.1.2",
     "npm:@axe-core/playwright@4.13.0": "4.13.0_playwright-core@1.64.0",
-    "npm:@opentelemetry/api@^1.9.0": "1.9.1",
+    "npm:@opentelemetry/api@^1.9.0": "1.10.0",
     "npm:@preact/signals-core@^1.12.1": "1.14.4",
     "npm:@preact/signals@^2.5.1": "2.11.3_preact@10.29.8",
     "npm:@tailwindcss/oxide@4.1.12": "4.1.12",
@@ -392,8 +392,8 @@
         "minipass"
       ]
     },
-    "@opentelemetry/api@1.9.1": {
-      "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="
+    "@opentelemetry/api@1.10.0": {
+      "integrity": "sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ=="
     },
     "@preact/signals-core@1.14.4": {
       "integrity": "sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA=="

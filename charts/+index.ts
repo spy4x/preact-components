@@ -9,6 +9,7 @@
  */
 
 export { type BarDatum, barPercent, Bars, type BarsProps } from "./bars.tsx"
+export { changeText, type PeriodChange } from "./change.ts"
 export {
   DEFAULT_AXIS_COLOR,
   DEFAULT_CHART_PALETTE,

@@ -296,4 +296,52 @@ describe("LineChart", () => {
     expect(html).toMatch(/^<div class="[^"]*\bgap-4\b/)
     expect(html).not.toMatch(/^<div class="[^"]*\bgap-2\b/)
   })
+
+  it("prints every point in a hidden table, one column per series, with a dash for a gap", () => {
+    const html = render(
+      <LineChart
+        ariaLabel="Notes each day"
+        xLabel="Day"
+        series={[
+          { name: "This period", points: [{ x: "Mon", y: 3 }, { x: "Tue", y: null }] },
+          { name: "Previous", dashed: true, points: [{ x: "Mon", y: 1 }, { x: "Tue", y: 2 }] },
+        ]}
+      />,
+    )
+    expect(html).toContain(
+      '<div class="sr-only" data-chart-table><table><caption>Notes each day</caption>',
+    )
+    expect(html).toContain(
+      '<th scope="col">Day</th><th scope="col">This period</th><th scope="col">Previous</th>',
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>3</td><td>1</td></tr>')
+    expect(html).toContain('<tr><th scope="row">Tue</th><td>–</td><td>2</td></tr>')
+  })
+
+  it("prints the hidden table's values through yFormat", () => {
+    const html = render(
+      <LineChart
+        yFormat={(value) => `${value} km`}
+        series={[{ name: "Run", points: [{ x: "Mon", y: 3 }] }]}
+      />,
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>3 km</td></tr>')
+  })
+
+  it("prints a zero as missing in the hidden table when the chart ignores zeroes", () => {
+    const html = render(
+      <LineChart
+        ignoreZeroes
+        series={[{ name: "Reading", points: [{ x: "Mon", y: 0 }, { x: "Tue", y: 4 }] }]}
+      />,
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>–</td></tr>')
+  })
+
+  it("leaves the hidden table out when asked to", () => {
+    const html = render(
+      <LineChart dataTable={false} series={[{ name: "A", points: [{ x: "a", y: 1 }] }]} />,
+    )
+    expect(html).not.toContain("<table")
+  })
 })

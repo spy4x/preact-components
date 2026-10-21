@@ -43,6 +43,10 @@ the axis and loading helpers behind them.
   `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
   `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
   not on the `<table>`.
+- **Every value is readable without the picture.** `LineChart` prints its points in a visually
+  hidden table after the plot, one row per X position and one column per series, captioned with
+  the chart's accessible name; `xLabel` names the first column and `dataTable={false}` leaves it
+  out.
 - **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
   time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
@@ -71,15 +75,17 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                              |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`       |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                         |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                     |
+| ------------ | ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel` |
+| `Bars`       | `bars`        | no                                     | `data`, `max`, `format`, `labelWidth`, `colors`                                                                       |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                              |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                                       |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                |
 
-Hooks and helpers: `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
+Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
+period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a
+percentage; `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
 `chartPayloadSchema` (`payload`), the `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary
 (`time-series`), and the axis maths in `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`,
 `linearScale`, `extent`, `xLabelStride`.
@@ -4831,6 +4837,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                                                                                                                                     |
 | `Coachmark`           | `coachmark`            | `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                                                                    |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                                                                                                       |
+| `ColorField`          | `color-field`          | `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field                                                                                        |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                                                                                                       |
 | `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`            |
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                                                                                                          |
@@ -5191,6 +5198,22 @@ hint is reached by focus only, which is the right behaviour on a touch screen. T
 drive both paths: one moves a real pointer onto the trigger and asserts the hint appears and then
 goes away again, and another asserts the hit testing that lets the pointer travel onto the hint and
 rest there.
+
+## ColorField
+
+A colour choice for things a person tells apart by colour, such as tags and groups. Round 32 px
+swatches with a 44 px touch area sit on native radios in a `<fieldset>`, so the group is one tab
+stop, the arrow keys move the choice and Space checks it. The checked swatch shows a check in the
+text colour that reads on it. `COLOR_PRESETS` are the 16 default swatches, a gray and 15 hues. Black
+or white text from `readableTextColor` reaches 4.5:1 on any colour, presets and custom ones
+alike. `allowNone` adds a first "No colour" swatch that sends `null`.
+
+The last swatch, "Pick a custom colour", shows a native colour input and a "Hex code" field. A
+picked colour reaches `onChange` at once, a typed one once it is a full `#rrggbb` (sent in lower
+case); anything else shows "Enter # and 6 characters, such as #59168b." when the field loses focus.
+`preview(color, textColor)` draws the caller's own sample under the swatches, given the colour and
+black or white from `readableTextColor` in `@spy4x/platform/universal/color`, which also has the
+`isHexColor` check and the arktype `hexColor` a server validator uses.
 
 ## Combobox
 
