@@ -26,8 +26,15 @@ export interface CopyButtonProps extends
    */
   textToCopy: string | (() => string)
   /**
-   * Visible label. Without it the button renders icon-only. While a confirmation is showing, the
-   * label is replaced by `copiedLabel` or `failedLabel`.
+   * Visible text. Without it the button renders icon-only. While a confirmation is showing, the
+   * text is replaced by `copiedLabel` or `failedLabel`.
+   */
+  text?: string
+  /**
+   * Visible text, under its old name; `text` wins when both are given. It is not the HTML `title`:
+   * the button's `title` is `copyLabel`.
+   *
+   * @deprecated Use `text`. From the next major, `title` is the HTML `title` attribute.
    */
   title?: string
   /**
@@ -51,10 +58,7 @@ export interface CopyButtonProps extends
   copiedForMs?: number
   /** Runs first on every click, before the copy starts — for analytics, say. */
   onClick?: (event: JSX.TargetedMouseEvent<HTMLButtonElement>) => void
-  /**
-   * Utilities for the button, appended to `Button`'s own and merged with none of them: mark a
-   * replacement important with a trailing `!`.
-   */
+  /** Utilities for the button, merged into `Button`'s own: a caller's utility wins its group. */
   class?: string
 }
 
@@ -128,6 +132,7 @@ function StatusIcon({ status }: { status: CopyStatus }): JSX.Element {
 export function CopyButtonBody(
   {
     textToCopy: _textToCopy,
+    text: visibleText,
     title,
     copyLabel = "Copy",
     copiedLabel = "Copied",
@@ -141,26 +146,27 @@ export function CopyButtonBody(
   }: CopyButtonBodyProps,
 ): JSX.Element {
   const message = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : ""
+  const text = visibleText ?? title
   return (
     <>
       <Button
         {...rest}
         type="button"
-        variant={title ? "outline" : "icon"}
+        variant={text ? "outline" : "icon"}
         class={className}
         title={copyLabel}
-        aria-label={ariaLabel ?? (title ? undefined : copyLabel)}
+        aria-label={ariaLabel ?? (text ? undefined : copyLabel)}
         onClick={(event) => {
           onClick?.(event)
           onPress()
         }}
       >
         <StatusIcon status={status} />
-        {title === undefined
+        {text === undefined
           ? null
           : status === "failed"
           ? <span class="text-danger">{failedLabel}</span>
-          : message || title}
+          : message || text}
       </Button>
       <span role="status" aria-live="polite" class="sr-only">{message}</span>
     </>

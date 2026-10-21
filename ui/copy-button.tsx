@@ -14,7 +14,7 @@ export type { CopyButtonProps }
  * Copy a string to the clipboard through an injected port or the browser API, and say whether it
  * worked.
  *
- * The copy is awaited: a checkmark (and, with a `title`, `copiedLabel` in its place) follows a copy
+ * The copy is awaited: a checkmark (and, with a `text`, `copiedLabel` in its place) follows a copy
  * that worked, a cross and `failedLabel` one that did not, and a polite live region announces
  * either. The confirmation clears after `copiedForMs`. Any other attribute, such as `data-*` for
  * analytics, is passed to the `<button>`.
