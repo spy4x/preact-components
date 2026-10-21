@@ -5,11 +5,12 @@ import { MAP_PAGE_MARKERS } from "../src/map-page/page.tsx"
 import type { Spec } from "./runner.ts"
 
 const TILE = /map-demo\/tile\.png/
-const ATTRIBUTION = `#demo-Map [data-e2e="map-attribution"]`
+const ATTRIBUTION = `#demo-LeafletMap [data-e2e="map-attribution"]`
 
 export const specs: readonly Spec[] = [
   {
-    name: "Map: the attribution passes axe's colour contrast in the dark palette when no tile " +
+    name:
+      "LeafletMap: the attribution passes axe's colour contrast in the dark palette when no tile " +
       "has loaded",
     pageId: "map",
     colorScheme: "dark",
@@ -21,7 +22,7 @@ export const specs: readonly Spec[] = [
       await page.reload()
       await page.locator(`html[data-hydrated="true"]`).waitFor()
       await asked
-      await page.locator("#demo-Map .leaflet-container").waitFor()
+      await page.locator("#demo-LeafletMap .leaflet-container").waitFor()
       await page.locator(ATTRIBUTION).waitFor()
 
       const { passes, violations, incomplete } = await new AxeBuilder({ page })
@@ -29,7 +30,7 @@ export const specs: readonly Spec[] = [
 
       const state = await page.evaluate(() => ({
         dark: document.documentElement.classList.contains("dark"),
-        loaded: document.querySelectorAll("#demo-Map img.leaflet-tile-loaded").length,
+        loaded: document.querySelectorAll("#demo-LeafletMap img.leaflet-tile-loaded").length,
       }))
       if (!state.dark) throw new Error("the page is drawn light, not dark")
       if (state.loaded > 0) throw new Error(`${state.loaded} tiles loaded; none should have`)
@@ -49,10 +50,11 @@ export const specs: readonly Spec[] = [
   },
   // #855: the status in words, and pins that survive a marker update.
   {
-    name: "Map: a focused pin keeps focus when markers change, and takes its new status in place",
+    name:
+      "LeafletMap: a focused pin keeps focus when markers change, and takes its new status in place",
     pageId: "map",
     run: async (page) => {
-      const card = page.locator("#demo-Map")
+      const card = page.locator("#demo-LeafletMap")
       const pin = card.locator(`[data-marker-id="warehouse"]`)
       await pin.and(page.locator(`[aria-label="Paris warehouse, off"]`)).waitFor()
       await pin.focus()
@@ -73,10 +75,10 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "Map: every pin's accessible name says its label and its status",
+    name: "LeafletMap: every pin's accessible name says its label and its status",
     pageId: "map",
     run: async (page) => {
-      const card = page.locator("#demo-Map")
+      const card = page.locator("#demo-LeafletMap")
       const names = ["London depot, on", "Paris warehouse, off", "Berlin outpost, status unknown"]
       for (const name of names) {
         await card.getByRole("button", { name, exact: true }).waitFor()
@@ -85,10 +87,10 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "Map: the plain list says each place and its status, in order, to assistive tech",
+    name: "LeafletMap: the plain list says each place and its status, in order, to assistive tech",
     pageId: "map",
     run: async (page) => {
-      const rows = await listRows(page, "#demo-Map")
+      const rows = await listRows(page, "#demo-LeafletMap")
       const expected = [
         "London depot, on",
         "Paris warehouse, off",
@@ -101,7 +103,8 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "Map: a hydrated server-rendered Map lists the same places with their status",
+    name:
+      "LeafletMap: a hydrated server-rendered LeafletMap lists the same places with their status",
     pageId: "map",
     run: async (page) => {
       await page.goto(new URL("map-demo/", page.url()).href)

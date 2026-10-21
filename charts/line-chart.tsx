@@ -53,6 +53,11 @@ export interface LineChartProps {
   /** Height of the plot, in pixels. Defaults to `240`. The chart always takes its parent's width. */
   height?: number
   /** Y tick and tooltip value format. Defaults to at most two decimals. */
+  valueFormat?: (value: number) => string
+  /**
+   * @deprecated Use `valueFormat`. Removed in the next major. Behaves the same; when both are
+   * passed, `valueFormat` wins.
+   */
   yFormat?: (value: number) => string
   /** X label and tooltip heading format; a time axis passes a `Date`. */
   xFormat?: (x: string | Date) => string
@@ -149,7 +154,8 @@ export function LineChart({
   series,
   xAxis = "category",
   height = 240,
-  yFormat = formatNumber,
+  valueFormat,
+  yFormat: legacyYFormat,
   xFormat,
   yDomain,
   yTicks = 5,
@@ -176,6 +182,7 @@ export function LineChart({
   keyboardHint = "Arrow keys step through the points.",
   class: className,
 }: LineChartProps): JSX.Element {
+  const yFormat = valueFormat ?? legacyYFormat ?? formatNumber
   const rootRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)

@@ -43,7 +43,7 @@ interface HydratedMapState {
 }
 
 /** The card these checks drive, and the pieces of it they read. */
-const CARD = "#demo-Map"
+const CARD = "#demo-LeafletMap"
 
 /** `ui-guide/sections/map.tsx`'s `PLACES` ids, in the order the card renders them: what a pin's
  * `data-marker-id` carries. What the pins and the list say is proven in `e2e/map.spec.ts`. */

@@ -71,11 +71,27 @@ describe("Bars", () => {
     expect(html).toContain("width:25%")
   })
 
-  it("formats the numeric column through the format port", () => {
+  it("formats the numeric column through valueFormat", () => {
+    const html = render(<Bars data={data} valueFormat={(value) => `${value} h`} />)
+
+    expect(html).toContain(">4 h</span>")
+    expect(html).toContain(">2 h</span>")
+  })
+
+  it("still formats through the deprecated format prop", () => {
     const html = render(<Bars data={data} format={(value) => `${value} h`} />)
 
     expect(html).toContain(">4 h</span>")
     expect(html).toContain(">2 h</span>")
+  })
+
+  it("prefers valueFormat when format is passed too", () => {
+    const html = render(
+      <Bars data={data} valueFormat={(value) => `${value} h`} format={(value) => `${value} m`} />,
+    )
+
+    expect(html).toContain(">4 h</span>")
+    expect(html).not.toContain(" m</span>")
   })
 
   it("links a label when the datum carries an href", () => {
