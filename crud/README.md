@@ -219,7 +219,9 @@ The harness is the six parts, once:
    A row that has not arrived yet re-runs the effect when it does. A new `editId` or `mode` on the
    same mounted editor drops the form and loads again, so a router that keeps the component between
    rows needs no `key`. "Not found" waits until the store's `op.list` has settled, so a cold edit
-   link shows no error while the list is still loading.
+   link shows no error while the list is still loading. While the row is on its way, the form is
+   `aria-busy` and its fields give way to a `LoadingSkeleton` with one field bar per field row and no card of its own, shown after 300 ms; a row that is not
+   found leaves the fields disabled. Either way nothing typed into a blank form is lost.
 2. **Validate on every change** with arktype, plus the caller's own checks through `validate`, which
    runs after the schema and may read signals — that is how a check against a not-yet-loaded
    collection fixes itself. A rule that compares two fields, or a value arktype rejects before it

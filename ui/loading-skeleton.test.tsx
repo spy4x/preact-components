@@ -27,6 +27,24 @@ describe("LoadingSkeleton", () => {
     expect(countOccurrences(html, "animate-pulse")).toBeGreaterThanOrEqual(5)
   })
 
+  it("draws one label bar and one field bar per field, with no card, border or icon", () => {
+    const html = render(<LoadingSkeleton fields={3} />)
+
+    expect(countOccurrences(html, "sm:col-span-3")).toBe(3)
+    expect(countOccurrences(html, "h-12 w-full")).toBe(3)
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).not.toContain("border")
+    expect(html).not.toContain("<svg")
+  })
+
+  it("draws an empty form, not the cards, for zero fields", () => {
+    const html = render(<LoadingSkeleton fields={0} />)
+
+    expect(html).toContain("sm:grid-cols-6")
+    expect(html).not.toContain("sm:col-span-3")
+    expect(html).not.toContain("rounded-lg border")
+  })
+
   it("appends a caller class", () => {
     expect(render(<LoadingSkeleton class="mt-0" />)).toContain("mt-0")
   })

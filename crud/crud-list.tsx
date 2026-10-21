@@ -265,7 +265,11 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
 
       <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-left" />
 
-      <div class="flex gap-2 items-center">
+      {
+        // Wraps on a narrow screen rather than squeezing the Status select to one letter. The row
+        // gap clears the select's label, which `-mt-6` lifts above its own line.
+      }
+      <div class="flex flex-wrap gap-x-2 gap-y-8 items-center">
         <SearchBox
           value={query}
           placeholder={props.searchPlaceholder}
@@ -389,7 +393,7 @@ function SearchBox(
 
   return (
     <form
-      class="w-full max-w-xs relative flex gap-2 items-center"
+      class="min-w-40 max-w-xs flex-1 relative flex gap-2 items-center"
       onSubmit={(event) => {
         event.preventDefault()
         commit()
@@ -426,7 +430,7 @@ function StatusSelect(
   const id = useId()
   const wording = labels === undefined || labels === false ? {} : labels
   return (
-    <div class="-mt-6">
+    <div class="-mt-6 shrink-0">
       <label class="pc-label" for={id}>{wording.label ?? "Status"}</label>
       <div>
         <select

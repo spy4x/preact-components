@@ -1,12 +1,13 @@
 import { IconLoading } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
 import { ErrorState } from "@spy4x/preact-ui/error-state"
+import { LoadingSkeleton } from "@spy4x/preact-ui/loading-skeleton"
 import { Stack } from "@spy4x/preact-ui/layout"
 import { PageTitle, type PageTitleProps } from "@spy4x/preact-ui/page-title"
 import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@preact/signals"
 import type { Type } from "arktype"
-import type { ComponentChildren, JSX } from "preact"
-import { useId, useLayoutEffect, useRef } from "preact/hooks"
+import { type ComponentChildren, Fragment, type JSX, toChildArray } from "preact"
+import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import { formatTime, timeAgo } from "@spy4x/platform/universal/time"
 import {
   type FieldIssue,
@@ -21,6 +22,22 @@ import { setField } from "./field.tsx"
 import { listSettled } from "./list-settled.ts"
 import type { CrudEditorStore } from "./store.ts"
 import type { CrudRow, DeletionDependency, StoreErrorLike } from "./types.ts"
+
+/** How long a loading form stays blank before its skeleton shows, in milliseconds. */
+const skeletonDelay = 300
+
+/**
+ * How many field rows `children` renders, so the loading skeleton draws as many: the elements at the
+ * top of what it returns, looking through one fragment that wraps them all. At least one.
+ */
+function fieldCount(rendered: ComponentChildren): number {
+  const top = toChildArray(rendered)
+  const only = top.length === 1 ? top[0] : undefined
+  if (typeof only === "object" && only.type === Fragment) {
+    return fieldCount((only.props as { children?: ComponentChildren }).children)
+  }
+  return Math.max(1, top.filter((child) => typeof child === "object").length)
+}
 
 /**
  * The six-part editor harness, once.
@@ -434,6 +451,24 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   const stateInput = editorStateInput((signal) => signal.value)
   const state = editorState(stateInput)
   const editable = stateInput.canChange
+  // An edit form with no row in it yet — the list is loading, or the row was not found — takes no
+  // input: whatever was typed into the blank form would be thrown away when the row arrives.
+  const rowless = props.mode === "edit" && !initialized.value
+  // Rowless because the row has not arrived, rather than because it is not there: the fields give
+  // way to a skeleton. A row the store already holds is copied in by the effect above before the
+  // next paint, so it never flashes the skeleton.
+  const waiting = props.mode === "edit" && !initialized.value && error.value === "" &&
+    store.one.byId(props.editId).value === undefined
+  // The design language's loading rule: nothing for the first 300 ms, then the skeleton.
+  const skeletonShown = useSignal(false)
+  useEffect(() => {
+    if (!waiting) {
+      skeletonShown.value = false
+      return
+    }
+    const timer = setTimeout(() => skeletonShown.value = true, skeletonDelay)
+    return () => clearTimeout(timer)
+  }, [waiting])
 
   // An issue with no field of its own — a cross-field `.narrow`, or a value that was never an
   // object — is filed under `FORM_FIELD` rather than on one of the rows `children` renders, so
@@ -509,13 +544,25 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       </PageTitle>
       {error.value !== "" && <p class="text-danger">{error.value}</p>}
 
-      <form class="pc-card" onSubmit={submit}>
-        <fieldset disabled={state.busy}>
+      <form
+        class="pc-card"
+        aria-busy={waiting || undefined}
+        onSubmit={submit}
+      >
+        <fieldset disabled={state.busy || rowless}>
           <div class="pc-card-body">
-            <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              {props.children({ vm, vl })}
-            </div>
-            {props.notice?.({ vm, vl })}
+            {waiting
+              ? skeletonShown.value && (
+                <LoadingSkeleton fields={fieldCount(props.children({ vm, vl }))} />
+              )
+              : (
+                <>
+                  <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                    {props.children({ vm, vl })}
+                  </div>
+                  {props.notice?.({ vm, vl })}
+                </>
+              )}
             {
               /*
               The form-level live region, rendered on every render and empty until an issue with no

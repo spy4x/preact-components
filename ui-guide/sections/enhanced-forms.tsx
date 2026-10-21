@@ -115,12 +115,14 @@ function EnhancedFormDemo() {
         }
         done={<p class="text-sm text-muted">Done.</p>}
       >
-        <Field id="guide-enhanced-form-note" label="A note, any note">
-          <Input name="note" placeholder="Anything" />
-        </Field>
-        <Cluster>
-          <Button type="submit">Submit</Button>
-        </Cluster>
+        <Stack gap="md">
+          <Field id="guide-enhanced-form-note" label="A note, any note">
+            <Input name="note" placeholder="Anything" />
+          </Field>
+          <Cluster>
+            <Button type="submit">Submit</Button>
+          </Cluster>
+        </Stack>
       </EnhancedForm>
       <Count e2e="enhanced-form-submits">submits: {submits.value}</Count>
     </Stack>
@@ -188,21 +190,23 @@ function ContactDemoForm(
       labels={contactLabels}
       done={<p class="text-sm text-muted">{contactLabels.done}</p>}
     >
-      <Grid minColumnWidth="sm" gap="md">
-        <Field id={`${id}-name`} label="Name" required>
-          <Input name="name" autocomplete="name" required />
+      <Stack gap="md">
+        <Grid minColumnWidth="sm" gap="md">
+          <Field id={`${id}-name`} label="Name" required>
+            <Input name="name" autocomplete="name" required />
+          </Field>
+          <Field id={`${id}-email`} label="Email" required>
+            <Input type="email" name="email" autocomplete="email" required />
+          </Field>
+        </Grid>
+        <Field id={`${id}-message`} label="Message" required>
+          <Textarea name="message" rows={4} required />
         </Field>
-        <Field id={`${id}-email`} label="Email" required>
-          <Input type="email" name="email" autocomplete="email" required />
-        </Field>
-      </Grid>
-      <Field id={`${id}-message`} label="Message" required>
-        <Textarea name="message" rows={4} required />
-      </Field>
-      {honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank")}
-      <Cluster>
-        <Button type="submit">Send</Button>
-      </Cluster>
+        {honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank")}
+        <Cluster>
+          <Button type="submit">Send</Button>
+        </Cluster>
+      </Stack>
     </EnhancedForm>
   )
 }
@@ -347,12 +351,14 @@ function ControlledDemo() {
           setTimeout(() => status.value = shouldFail.value ? "failed" : "done", 600)
         }}
       >
-        <Field id="guide-controlled-form-note" label="A note, any note">
-          <Input name="note" placeholder="Anything" />
-        </Field>
-        <Cluster>
-          <Button type="submit">Submit</Button>
-        </Cluster>
+        <Stack gap="md">
+          <Field id="guide-controlled-form-note" label="A note, any note">
+            <Input name="note" placeholder="Anything" />
+          </Field>
+          <Cluster>
+            <Button type="submit">Submit</Button>
+          </Cluster>
+        </Stack>
       </EnhancedForm>
       <p
         class={status.value === "failed" ? "text-sm text-danger" : "text-sm text-muted"}
@@ -425,18 +431,20 @@ function FocusDemo() {
             if (!error.value) step.value = "sent"
           }}
         >
-          <Field id="guide-focus-demo-email" label="Email" error={error.value}>
-            <Input
-              ref={field}
-              name="email"
-              value={email.value}
-              onInput={(event) => email.value = event.currentTarget.value}
-              data-e2e="focus-demo-email"
-            />
-          </Field>
-          <Cluster>
-            <Button type="submit" data-e2e="focus-demo-submit">Send the link</Button>
-          </Cluster>
+          <Stack gap="md">
+            <Field id="guide-focus-demo-email" label="Email" error={error.value}>
+              <Input
+                ref={field}
+                name="email"
+                value={email.value}
+                onInput={(event) => email.value = event.currentTarget.value}
+                data-e2e="focus-demo-email"
+              />
+            </Field>
+            <Cluster>
+              <Button type="submit" data-e2e="focus-demo-submit">Send the link</Button>
+            </Cluster>
+          </Stack>
         </EnhancedForm>
       )}
       <Cluster justify="between">
@@ -545,10 +553,14 @@ export const enhancedFormDemos = {
   onSubmit={async (data) => api.subscribe(data.get("email"))}
   done={<p>Thanks.</p>}
 >
-  <Field id="email" label="Email">
-    <Input type="email" name="email" required />
-  </Field>
-  <Button type="submit">Subscribe</Button>
+  <Stack gap="md">
+    <Field id="email" label="Email">
+      <Input type="email" name="email" required />
+    </Field>
+    <Cluster>
+      <Button type="submit">Subscribe</Button>
+    </Cluster>
+  </Stack>
 </EnhancedForm>`,
     render: () => <EnhancedFormCard />,
   },
