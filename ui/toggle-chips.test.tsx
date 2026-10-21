@@ -47,7 +47,7 @@ describe("ToggleChips", () => {
 
   it("draws a pressed chip as a filled badge and an unpressed one in the full text colour on the surface", () => {
     const html = render(
-      <ToggleChips options={options} value={["home"]} color="green" onChange={() => {}} />,
+      <ToggleChips options={options} value={["home"]} tone="success" onChange={() => {}} />,
     )
     const [work, home] = chipClasses(html)
 
@@ -91,11 +91,46 @@ describe("ToggleChips", () => {
 
   it("disables a disabled option and takes the caller's group name", () => {
     const html = render(
-      <ToggleChips options={options} value={[]} label="Tags" onChange={() => {}} />,
+      <ToggleChips options={options} value={[]} ariaLabel="Tags" onChange={() => {}} />,
     )
 
     expect(html).toContain(`aria-label="Tags"`)
     expect(html).toMatch(/<button[^>]* disabled[ >][^>]*>iOS</)
     expect(html).not.toMatch(/<button[^>]* disabled[ >][^>]*>work</)
+  })
+
+  it("still takes the deprecated label and color, and prefers ariaLabel and tone", () => {
+    const legacy = render(
+      <ToggleChips
+        options={options}
+        value={["home"]}
+        label="Tags"
+        color="green"
+        onChange={() => {}}
+      />,
+    )
+    const current = render(
+      <ToggleChips
+        options={options}
+        value={["home"]}
+        ariaLabel="Tags"
+        tone="success"
+        onChange={() => {}}
+      />,
+    )
+    const both = render(
+      <ToggleChips
+        options={options}
+        value={["home"]}
+        label="Old"
+        ariaLabel="Tags"
+        color="red"
+        tone="success"
+        onChange={() => {}}
+      />,
+    )
+
+    expect(legacy).toBe(current)
+    expect(both).toBe(current)
   })
 })
