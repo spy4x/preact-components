@@ -9,9 +9,10 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { Button } from "@spy4x/preact-ui/button"
+import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
-import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
+import { useEffect, useId, useRef } from "preact/hooks"
 
 /**
  * What the block shows.
@@ -159,24 +160,13 @@ export function PushSettings(
   const messageId = useId()
   const announcement = useSignal("")
   const previous = useRef(status)
-  /** Set while rendering with focus inside the block, read once the render is in the page. */
-  const hadFocus = useRef(false)
   /** Set when focus was moved to the explanation, which a screen reader then reads by itself. */
   const movedFocus = useRef(false)
 
-  // Read before this render reaches the page: once a focused button is gone, focus has already
-  // fallen to the body. A server render has no document.
-  hadFocus.current = Boolean(
-    block.current?.contains(globalThis.document?.activeElement ?? null),
-  )
-
-  // A layout effect runs in the commit that removed the button, so focus never rests on the body.
-  useLayoutEffect(() => {
-    const element = block.current
-    if (hadFocus.current && element && !element.contains(element.ownerDocument.activeElement)) {
-      description.current?.focus()
-      movedFocus.current = true
-    }
+  // A button leaving with focus on it hands focus to the sentence that says why.
+  useFocusFallback(block, () => {
+    movedFocus.current = true
+    return description.current
   })
 
   const message = failed ? words[FAILURES[failed]] : sent ? words.testSent : ""

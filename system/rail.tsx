@@ -393,9 +393,12 @@ export function Rail(props: RailProps): JSX.Element {
   // is not drawn (`display: none`), and a transition does not run out of that, so the first hover
   // of a cell would skip the 300 ms delay and a quick sweep down the rail would flash its hints.
   // Hover and focus place a tooltip again before it shows, so a later layout change is caught.
+  // After each render only a tooltip not placed yet is measured, such as one of a cell just added.
   useEffect(() => {
     const column = columnRef.current
-    column?.querySelectorAll("[data-rail-tip]").forEach((tip) => placeTip(tip, column))
+    column?.querySelectorAll("[data-rail-tip]:not([data-placed])").forEach((tip) =>
+      placeTip(tip, column)
+    )
   })
 
   const hasSlots = top !== undefined || bottom !== undefined

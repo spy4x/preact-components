@@ -8,6 +8,7 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { Button } from "@spy4x/preact-ui/button"
+import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 
@@ -134,36 +135,38 @@ export function ConflictChooser(
   const [failedId, setFailedId] = useState<string | null>(null)
   /** The position of the item whose button was pressed, while its removal is awaited. */
   const chosenAt = useRef<number | null>(null)
+  /** What the last focus move after a choice went to, so the live region does not repeat it. */
+  const movedTo = useRef<HTMLElement | null>(null)
   /** How many conflicts the last effect saw, to tell the moment the list becomes empty. */
   const seenCount = useRef(conflicts.length)
   /** Whether the live region says the list is empty: only when focus did not move to the heading. */
   const [announceResolved, setAnnounceResolved] = useState(false)
 
+  // After a choice removed its item and focus fell to the body, focus the item now in its place,
+  // else the one before it, else the heading. A removal nobody chose here moves nothing.
+  useFocusFallback(root, () => {
+    const index = chosenAt.current
+    if (index === null || !root.current) return null
+    const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
+    const next = items[Math.min(index, items.length - 1)]
+    movedTo.current = next?.querySelector<HTMLElement>("button") ?? heading.current
+    return movedTo.current
+  })
+
   useEffect(() => {
     const emptied = conflicts.length === 0 && seenCount.current > 0
     seenCount.current = conflicts.length
-    const focused = moveFocus()
+    // A changed list ends the wait for the chosen item, whether it left or stayed.
+    chosenAt.current = null
+    const moved = movedTo.current
+    movedTo.current = null
+    const onHeading = moved !== null && moved === heading.current &&
+      moved.ownerDocument.activeElement === moved
     if (conflicts.length > 0) setAnnounceResolved(false)
     // The focused heading already reads "All conflicts resolved"; the live region saying it too
     // would announce it twice.
-    else if (emptied) setAnnounceResolved(focused !== heading.current)
+    else if (emptied) setAnnounceResolved(!onHeading)
   }, [conflicts])
-
-  /** After a choice removed its item, focus what follows it, and return what got focus. */
-  const moveFocus = (): HTMLElement | null => {
-    const index = chosenAt.current
-    if (index === null || !root.current) return null
-    chosenAt.current = null
-    const document = root.current.ownerDocument
-    // Only when the pressed button is gone and focus fell to the body: anything else the person did
-    // in the meantime wins.
-    if (document.activeElement && document.activeElement !== document.body) return null
-    const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
-    const next = items[Math.min(index, items.length - 1)]
-    const target = next?.querySelector<HTMLElement>("button") ?? heading.current
-    target?.focus()
-    return target && document.activeElement === target ? target : null
-  }
 
   const choose = (id: string, index: number, run: (id: string) => void | Promise<unknown>) => {
     if (busy.has(id)) return

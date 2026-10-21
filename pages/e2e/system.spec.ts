@@ -1705,4 +1705,26 @@ export const specs: readonly Spec[] = [
       return seen.map(({ word }) => word).join(", ") + ": each radio on top, painting nothing"
     },
   })),
+  {
+    name:
+      "InstallPrompt mounted hidden, shown later and then unmounted by its caller with focus on " +
+      "Not now hands focus to returnFocus",
+    pageId: "system",
+    run: async (page) => {
+      const part = page.locator('#demo-InstallPrompt [data-e2e="install-unmount"]')
+      await part.scrollIntoViewIfNeeded()
+      const card = part.getByRole("region", { name: "Install this app" })
+      const hiddenAtMount = await card.count()
+      await part.locator('[data-e2e="install-offer"]').click()
+      const notNow = card.getByRole("button", { name: "Not now" })
+      await notNow.focus()
+      await page.keyboard.press("u")
+      await card.waitFor({ state: "detached" })
+      const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-e2e"))
+      if (hiddenAtMount !== 0 || focused !== "install-mode") {
+        throw new Error(`card at mount: ${hiddenAtMount}; focus after unmount: ${focused}`)
+      }
+      return "card absent at mount; after the unmount, focus is on the returnFocus line"
+    },
+  },
 ]

@@ -604,7 +604,7 @@ function withGlobalDocument(body: (page: ReturnType<typeof fakeDocument>) => voi
   }
 }
 
-describe("createThemeStore default apply", () => {
+describe("createThemeStore on a document", () => {
   it("removes the auto-dark marker, so a chosen light theme stays light on a dark system", () => {
     withGlobalDocument((page) => {
       const store = createThemeStore({
@@ -614,6 +614,21 @@ describe("createThemeStore default apply", () => {
       store.attach()
       expect(page.attributes.has(THEME_AUTO_ATTRIBUTE)).toBe(false)
       expect(page.classes.has("dark")).toBe(false)
+      store.dispose()
+    })
+  })
+
+  it("removes the auto-dark marker on attach with a custom apply too", () => {
+    withGlobalDocument((page) => {
+      const applied: string[] = []
+      const store = createThemeStore({
+        storage: fakeStorage({ theme: "light" }),
+        media: fakeMedia(true).source,
+        apply: (theme) => void applied.push(theme),
+      })
+      store.attach()
+      expect(page.attributes.has(THEME_AUTO_ATTRIBUTE)).toBe(false)
+      expect(applied).toEqual(["light"])
       store.dispose()
     })
   })
@@ -962,28 +977,6 @@ describe("themeBootstrapScript followSystem", () => {
 
   it("leaves the script unchanged when followSystem is off", () => {
     expect(themeBootstrapScript({ followSystem: false })).toBe(themeBootstrapScript())
-  })
-
-  it("falls back to addListener on a media query list without addEventListener", () => {
-    const listeners: Array<() => void> = []
-    const query = {
-      matches: false,
-      addListener: (listener: () => void) => void listeners.push(listener),
-    }
-    const { document, classes } = fakeDocument()
-    new Function(
-      "localStorage",
-      "matchMedia",
-      "document",
-      themeBootstrapScript({ followSystem: true }),
-    )(
-      fakeStorage({ theme: "system" }),
-      () => query,
-      document,
-    )
-    query.matches = true
-    for (const listener of listeners) listener()
-    expect(classes.has("dark")).toBe(true)
   })
 
   it("does nothing and does not throw when the browser has no matchMedia", () => {

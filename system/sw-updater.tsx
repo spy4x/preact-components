@@ -56,11 +56,8 @@ export interface ServiceWorkerHost {
  * The service-worker container of a host, or `undefined` when there is none.
  *
  * The default host is `globalThis.navigator`, because that is where a browser keeps the container:
- * a page has no `globalThis.serviceWorker`, only a worker's own scope does. Reading it off
- * `globalThis` is the bug this function shipped with, and no test could see it — Deno and a server
- * render have no container either way, so the component quietly did nothing in every browser.
- * Going through `globalThis.navigator` keeps the lookup a property read rather than a `typeof
- * navigator` dance, so a server render still gets `undefined` instead of a `ReferenceError`.
+ * a page has no `globalThis.serviceWorker`, only a worker's own scope does. Reading it as a
+ * property of `globalThis` lets a server render get `undefined` instead of a `ReferenceError`.
  *
  * @param host Where to look; defaults to `globalThis.navigator`.
  * @returns The container, or `undefined` off a browser.
@@ -288,21 +285,19 @@ export interface SWUpdaterProps {
 }
 
 const barClass =
-  "fixed top-0 right-0 left-0 z-50 flex items-center gap-3 bg-warning px-4 py-3 text-(--color-warning-foreground,oklch(0.13_0.028_261.692)) shadow-popover sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:rounded-lg"
+  "fixed top-0 right-0 left-0 z-50 flex items-center gap-3 bg-warning px-4 py-3 text-(--color-warning-foreground) shadow-popover sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:rounded-lg"
 const reloadButtonClass =
-  "ml-auto cursor-pointer rounded bg-(--color-scrim-foreground,oklch(1_0_0)) px-3 py-1 text-sm font-semibold text-foreground transition-colors hover:bg-orange-100 focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground,oklch(1_0_0)) dark:text-canvas focus-visible:outline-hidden sm:ml-0"
+  "ml-auto cursor-pointer rounded bg-(--color-scrim-foreground) px-3 py-1 text-sm font-semibold text-foreground transition-colors hover:bg-orange-100 focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground) dark:text-canvas focus-visible:outline-hidden sm:ml-0"
 const dismissButtonClass =
-  "cursor-pointer rounded px-2 py-1 text-sm font-medium text-(--color-warning-foreground,oklch(0.13_0.028_261.692)) transition-colors hover:bg-on-scrim-strong hover:text-(--color-warning-foreground,oklch(0.13_0.028_261.692)) focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground,oklch(1_0_0)) focus-visible:outline-hidden"
+  "cursor-pointer rounded px-2 py-1 text-sm font-medium text-(--color-warning-foreground) transition-colors hover:bg-on-scrim-strong hover:text-(--color-warning-foreground) focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground) focus-visible:outline-hidden"
 
 /**
  * Register the service worker and offer a reload when a new version is waiting.
  *
- * **The live region is in the document at all times, including before anything has happened**,
- * which is a change from the version that returned `null` until an update existed. That empty
- * region is what makes the message announceable: assistive technology announces a *change* to a
- * region it is already watching, and commonly says nothing at all about a region that arrives with
- * its text already inside it. A `role="status"` added to a bar that only appears with its own
- * message would therefore have announced nothing, which is precisely the defect this replaces.
+ * **The live region is in the document at all times, including before anything has happened.**
+ * That empty region is what makes the message announceable: assistive technology announces a
+ * *change* to a region it is already watching, and commonly says nothing about a region that
+ * arrives with its text already inside it.
  *
  * What is always there is only the region: no class, no padding, no border, no minimum height, so
  * an empty one paints nothing and is zero pixels tall. It is an ordinary in-flow element, which is
@@ -323,8 +318,8 @@ const dismissButtonClass =
  * be able to put it away.
  *
  * A dismissal puts *that* update away rather than the component: the next update to be reported
- * clears it, so the message leaves the region and later arrives in it again as a fresh change.
- * Without that, a visitor who dismissed one version was never told about any version after it.
+ * clears it, so the message leaves the region and later arrives in it again as a fresh change, and
+ * a visitor who dismissed one version is still told about the next.
  */
 export function SWUpdater(
   {

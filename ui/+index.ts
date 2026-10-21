@@ -414,6 +414,7 @@ export {
   type FocusAfterRemovalOptions,
   type RowId,
   useFocusAfterRemoval,
+  useFocusFallback,
 } from "./use-focus-after-removal.ts"
 export { Kbd, KBD_LABELS, type KbdLabels, type KbdProps, type KeyFace, keyFaces } from "./kbd.tsx"
 export {

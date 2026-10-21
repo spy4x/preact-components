@@ -39,7 +39,7 @@ export interface SettingsTransport {
 export type SettingsSaveOutcome<T> =
   | SettingsSaveResult<T>
   /** The transport rejected (no network), or the store was reset while the save was out. */
-  | { ok: false; reason: `failed`; error: unknown }
+  | { ok: false; reason: "failed"; error: unknown }
 
 /** A synced settings store. */
 export interface SettingsSignals<T> {
@@ -139,7 +139,7 @@ export function createSettingsStore<T extends object>(
     queuedIn: number,
   ): Promise<SettingsSaveOutcome<T>> => {
     if (queuedIn !== generation) {
-      return { ok: false, reason: `conflict`, current: record.peek() }
+      return { ok: false, reason: "conflict", current: record.peek() }
     }
     const base = record.peek()
     let answer: SettingsSaveResult<unknown>
@@ -150,10 +150,10 @@ export function createSettingsStore<T extends object>(
       })
     } catch (error) {
       if (queuedIn === generation) remove(change)
-      return { ok: false, reason: `failed`, error }
+      return { ok: false, reason: "failed", error }
     }
     if (queuedIn !== generation) {
-      return { ok: false, reason: `failed`, error: new Error(`The settings store was reset.`) }
+      return { ok: false, reason: "failed", error: new Error("The settings store was reset.") }
     }
     if (answer.ok) {
       const settings = definition.resolve(answer.settings)
@@ -164,7 +164,7 @@ export function createSettingsStore<T extends object>(
       })
       return { ok: true, settings }
     }
-    if (answer.reason === `conflict`) {
+    if (answer.reason === "conflict") {
       const current = definition.resolve(answer.current)
       generation++
       batch(() => {
@@ -172,7 +172,7 @@ export function createSettingsStore<T extends object>(
         record.value = current
         conflict.value = current
       })
-      return { ok: false, reason: `conflict`, current }
+      return { ok: false, reason: "conflict", current }
     }
     remove(change)
     return answer

@@ -6,11 +6,13 @@
  * region that is in the page from the first render, so a change is announced without moving focus.
  */
 
+import { useSignal } from "@preact/signals"
 import { cn } from "@spy4x/preact-cn"
 import { Button } from "@spy4x/preact-ui/button"
 import { StatusMark, type StatusMarkStatus } from "@spy4x/preact-ui/status-mark"
+import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { JSX } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useRef } from "preact/hooks"
 
 /** Which of the five states the line shows. */
 export type SyncState = "offline" | "failed" | "syncing" | "waiting" | "synced"
@@ -103,32 +105,19 @@ export function SyncStatus(
 ): JSX.Element {
   const words = { ...DEFAULT_SYNC_STATUS_LABELS, ...labels }
   const state = syncState({ online, pending, syncing, failed })
-  const [retrying, setRetrying] = useState(false)
+  const retrying = useSignal(false)
   const root = useRef<HTMLDivElement>(null)
-  const retryButton = useRef<HTMLButtonElement>(null)
-  const restoreFocus = useRef(false)
 
   // A retry that this button started stays on screen, busy, until the sync it started ends.
-  const retryRunning = retrying && state === "syncing"
+  const retryRunning = retrying.value && state === "syncing"
   const showRetry = Boolean(onRetry) && (state === "failed" || retryRunning)
 
-  // Read before the button leaves the page: once it is gone, the browser has already moved focus to
-  // the body, and whether it had focus can no longer be asked. A server render has no document.
-  if (
-    !showRetry && retryButton.current && globalThis.document?.activeElement === retryButton.current
-  ) {
-    restoreFocus.current = true
-  }
+  // Retry leaving with focus on it hands focus to this element, which stays.
+  useFocusFallback(root, () => root.current)
 
   useEffect(() => {
-    if (state !== "syncing") setRetrying(false)
+    if (state !== "syncing") retrying.value = false
   }, [state])
-
-  useEffect(() => {
-    if (!restoreFocus.current) return
-    restoreFocus.current = false
-    root.current?.focus()
-  }, [showRetry])
 
   const text = state === "synced" ? words.synced : words[state](pending)
 
@@ -147,10 +136,9 @@ export function SyncStatus(
           <Button
             variant="ghost"
             size="sm"
-            ref={retryButton}
             busy={retryRunning}
             onClick={() => {
-              setRetrying(true)
+              retrying.value = true
               onRetry?.()
             }}
           >
