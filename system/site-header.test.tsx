@@ -81,6 +81,29 @@ describe("SiteHeader", () => {
     }
   })
 
+  it("tells a screen reader where an external link goes, in both copies of the link", () => {
+    const html = render(
+      <SiteHeader
+        links={[
+          {
+            label: "Hire me",
+            href: "https://me.example",
+            external: true,
+            externalHint: "(opens me.example)",
+          },
+          { label: "Docs", href: "/docs", externalHint: "(opens docs)" },
+        ]}
+        brand="Acme"
+      />,
+    )
+    const tags = linksTo(html, "https://me.example")
+    expect(tags.length).toBe(2)
+    for (const tag of tags) {
+      expect(tag).toMatch(/<\/svg><span class="sr-only"> \(opens me\.example\)<\/span><\/a>$/)
+    }
+    for (const tag of linksTo(html, "/docs")) expect(tag).not.toContain("sr-only")
+  })
+
   it("renders brand exactly as given, with no anchor of the component's own around it", () => {
     const html = render(<SiteHeader links={[]} brand={<span data-e2e="my-brand">Acme</span>} />)
     expect(html).toContain('<span data-e2e="my-brand">Acme</span>')

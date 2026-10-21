@@ -64,6 +64,29 @@ describe("SiteFooter", () => {
     expect(external).not.toContain("target=")
   })
 
+  it("tells a screen reader where an external link goes, with the caller's words", () => {
+    const html = render(
+      <SiteFooter
+        groups={[{
+          title: "More",
+          links: [
+            {
+              label: "Blog",
+              href: "https://me.example",
+              external: true,
+              externalHint: "(opens me.example)",
+            },
+            { label: "Docs", href: "/docs", externalHint: "(opens docs)" },
+          ],
+        }]}
+      />,
+    )
+    expect(linkTo(html, "https://me.example")).toMatch(
+      /Blog<svg.*?<\/svg><span class="sr-only"> \(opens me\.example\)<\/span><\/a>/,
+    )
+    expect(linkTo(html, "/docs")).not.toContain("sr-only")
+  })
+
   it("draws no icon on a link that is not external", () => {
     const html = render(<SiteFooter groups={groups} />)
 

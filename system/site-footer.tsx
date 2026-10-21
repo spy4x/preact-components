@@ -22,6 +22,11 @@ export interface SiteFooterLink {
    * tab; whether to leave the page is the visitor's choice, not this component's.
    */
   external?: boolean
+  /**
+   * Words a screen reader hears after the label of an `external` link, such as
+   * `"(opens example.com)"`, since the icon is hidden from it. Printed only with `external`.
+   */
+  externalHint?: string
 }
 
 /** One column of the footer: a titled list of links. */
@@ -92,6 +97,9 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
                       >
                         {link.label}
                         {link.external && <IconExternalLink class="size-4" aria-hidden="true" />}
+                        {link.external && link.externalHint && (
+                          <span class="sr-only">{` ${link.externalHint}`}</span>
+                        )}
                       </a>
                     </li>
                   ))}

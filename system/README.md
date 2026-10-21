@@ -566,10 +566,12 @@ menu button, because a button that opens an empty panel is a dead control. What 
 on the left and `actions` on the right: the top bar of a single-page tool, in the design language's
 shell table.
 
-**Every link, and every word of `brand`, is the caller's.** `links` is `{ label, href, Icon? }`, and
+**Every link, and every word of `brand`, is the caller's.** `links` is `{ label, href, Icon?, external?, externalHint? }`, and
 nothing here writes a `href`, a label or a brand string of its own — `brand` is rendered exactly as
 given, with no anchor of this component's own wrapped around it, because inventing one would mean
 inventing the `href` it points at.
+`external` and `externalHint` work as on `SiteFooter`'s links: an icon after the label, and the
+hint as screen-reader-only text.
 
 **`actions` is rendered once, `links` is redrawn.** A caller's own element can only ever be mounted
 in one place — Preact tracks it by identity, and a second placement would move it rather than copy
@@ -676,6 +678,8 @@ server-only page and with scripts off.
 **Each group is its own landmark.** A group is `{ title, links }` and renders as
 `<nav aria-label={title}>` holding an `<h2>` with the title and a `<ul>` of plain `<a href>` links.
 A link with `external: true` gets an `IconExternalLink`, hidden from assistive tech, after its label.
+Its `externalHint` ("(opens example.com)") follows as screen-reader-only text, since the icon says
+nothing to a screen reader.
 It still opens in the same tab: leaving the page is the visitor's choice.
 
 **Layout.** On a phone the groups sit two to a row and `aside` takes the full width below them;
