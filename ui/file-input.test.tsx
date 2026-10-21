@@ -2,7 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Field } from "./field.tsx"
-import { classifyFiles, FileInput, matchesAccept, resolveLabels } from "./file-input.tsx"
+import { FileInput, matchesAccept } from "./file-input.tsx"
+import { classifyFiles, resolveLabels } from "./file-input-internals.ts"
 
 /** A minimal real `File`, the same platform primitive the browser hands the component. */
 function file(name: string, size: number, type = ""): File {

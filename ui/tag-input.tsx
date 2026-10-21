@@ -5,14 +5,14 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import {
   activeDescendant,
-  comboboxKey,
   comboboxKeyAction,
   comboboxListboxId,
   comboboxOptionId,
   type ComboboxState,
   filterItems,
-  leavesCombobox,
 } from "./combobox.tsx"
+import { comboboxKey, leavesCombobox } from "./combobox-internals.ts"
+import { fieldErrorClass } from "./field-internals.ts"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
@@ -202,6 +202,8 @@ export interface TagInputProps {
   /**
    * Visible label above the field. Nested inside `Field`, leave it out: `Field` renders the label
    * and points it at `id`.
+   *
+   * @deprecated Wrap `TagInput` in `Field` and pass `label` to `Field`. Removed in the next major.
    */
   label?: ComponentChildren
   /** Accessible name of the field when there is no visible label at all. */
@@ -213,6 +215,8 @@ export interface TagInputProps {
   /**
    * Message under the field, which also marks it invalid. Nested inside `Field`, pass the error to
    * `Field` instead: it renders the message and marks this field through `aria-invalid`.
+   *
+   * @deprecated Wrap `TagInput` in `Field` and pass `error` to `Field`. Removed in the next major.
    */
   error?: string | null
   /** Set by `Field`'s wiring; your own ids to describe the field by are kept beside it. */
@@ -533,7 +537,7 @@ export function TagInput({
           )
         })}
       </ul>
-      {message !== undefined && <p id={errorId} class="mt-2 text-sm text-danger">{message}</p>}
+      {message !== undefined && <p id={errorId} class={fieldErrorClass}>{message}</p>}
       <div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
         {announcement.value}
       </div>

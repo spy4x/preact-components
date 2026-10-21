@@ -34,15 +34,16 @@ export interface ConfirmDialogProps {
   closeLabel?: string
   /**
    * Injected confirm port. Called with the click event, so a caller can read a form field or a
-   * checkbox out of the dialog. The dialog does **not** close itself and ignores the return value:
-   * the caller closes it by unmounting it, once the work succeeds. That keeps a failed request from
-   * discarding the panel.
+   * checkbox out of the dialog. The dialog does **not** close itself, and nothing reads a return
+   * value: the caller closes it by unmounting it, once the work succeeds. That keeps a failed
+   * request from discarding the panel.
    */
-  onConfirm: (event: MouseEvent) => boolean | void
+  onConfirm: (event: MouseEvent) => void
   /**
-   * Injected cancel port. The caller closes the dialog by unmounting it. Return `false` from
-   * Escape, the header dismiss control or a backdrop click to refuse, and the dialog stays open —
-   * the hook for "you have unsaved changes" and for a second confirmation.
+   * Injected cancel port. The caller closes the dialog by unmounting it. The footer's cancel button
+   * never closes the dialog itself, so there its return value does not matter. Escape, the header
+   * dismiss control and a backdrop click do close it, unless this returns `false`: the dialog then
+   * stays open — the hook for "you have unsaved changes" and for a second confirmation.
    */
   onCancel: () => boolean | void
   /**

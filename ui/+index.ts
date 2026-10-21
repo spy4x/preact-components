@@ -90,7 +90,6 @@ export {
   activeDescendant,
   Combobox,
   type ComboboxKey,
-  comboboxKey,
   type ComboboxKeyAction,
   comboboxKeyAction,
   type ComboboxKeyResult,
@@ -104,14 +103,9 @@ export {
   defaultGetLabel,
   filterItems,
   fold,
-  leavesCombobox,
   listboxContent,
   matchesQuery,
-  naming,
   nextComboboxState,
-  openingState,
-  selectableIndex,
-  typingState,
 } from "./combobox.tsx"
 export {
   DataTable,
@@ -210,7 +204,14 @@ export {
   type WhenProps,
 } from "./format.tsx"
 export { honeypotField } from "./honeypot.tsx"
-export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
+export {
+  ImageGallery,
+  type ImageGalleryBaseProps,
+  type ImageGalleryGridProps,
+  type ImageGalleryImage,
+  type ImageGalleryProps,
+  type ImageGalleryStripProps,
+} from "./image-gallery.tsx"
 export {
   Input,
   type InputProps,
@@ -260,23 +261,7 @@ export {
 } from "./link.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
-export {
-  backdropClickDismisses,
-  type BackdropHitTarget,
-  dialogHeldFocus,
-  type DialogRect,
-  type DialogRole,
-  dialogTitleId,
-  type DialogTone,
-  DISMISS_KEY,
-  type FocusableElement,
-  isBackdropClick,
-  isDismissKey,
-  Modal,
-  type ModalProps,
-  restoreFocus,
-  shouldRetargetFocus,
-} from "./modal.tsx"
+export { type DialogRole, type DialogTone, Modal, type ModalProps } from "./modal.tsx"
 export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
 export {
   MoneyInput,

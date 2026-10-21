@@ -81,7 +81,7 @@ import { join } from "@spy4x/preact-cn/join"
 import { IconChevronLeft, IconChevronRight, IconXMark } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
-import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal.tsx"
+import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal-internals.ts"
 
 /** One image a {@link Lightbox} can show. */
 export interface LightboxImage {

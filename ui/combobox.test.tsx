@@ -5,7 +5,6 @@ import {
   activeDescendant,
   Combobox,
   type ComboboxKey,
-  comboboxKey,
   comboboxKeyAction,
   comboboxListboxId,
   comboboxOptionId,
@@ -13,15 +12,18 @@ import {
   defaultGetLabel,
   filterItems,
   fold,
-  leavesCombobox,
   listboxContent,
   matchesQuery,
-  naming,
   nextComboboxState,
+} from "./combobox.tsx"
+import {
+  comboboxKey,
+  leavesCombobox,
+  naming,
   openingState,
   selectableIndex,
   typingState,
-} from "./combobox.tsx"
+} from "./combobox-internals.ts"
 
 /** Closed, nothing highlighted: the state every reducer case starts from unless it says otherwise. */
 const closed: ComboboxState = { activeIndex: -1, isOpen: false }

@@ -864,13 +864,9 @@ function TagInputDemo() {
         </Stack>
       </Variant>
       <Variant title="Disabled">
-        <TagInput
-          id="guide-tag-input-disabled"
-          label="Tags"
-          value={["work", "phone"]}
-          onChange={() => {}}
-          disabled
-        />
+        <Field id="guide-tag-input-disabled" label="Tags" disabled>
+          <TagInput value={["work", "phone"]} onChange={() => {}} disabled />
+        </Field>
       </Variant>
     </Grid>
   )
@@ -946,8 +942,9 @@ function ToggleFieldDemo() {
  * `FileInput` in five shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
  * at one file, and posting through a plain `<form>`.
  *
- * What a caller reads — `onFiles` and `onReject` — is echoed under the first and fourth pickers.
- * Inside a `Field`, the label and hint go to `Field`, and `FileInput` renders none of its own.
+ * What a caller reads — `onFiles` and `onReject` — is echoed under the first and second pickers.
+ * Every picker sits in a `Field`, which renders the label and the hint; `FileInput`'s own `label`,
+ * `hint` and `error` are deprecated.
  *
  * The single-file picker has no `multiple`, so a second file is refused with reason `"too-many"`;
  * it also accepts PNG only, which `pages/checks/ui.ts` uses to prove a wrong-type refusal leaves a
@@ -969,17 +966,20 @@ function FileInputDemo() {
       <Grid minColumnWidth="md" gap="lg">
         <Variant title="Images only, up to 2 MB">
           {mounted.value && (
-            <FileInput
-              id="guide-file-input"
-              label="Attachments"
-              hint="PNG or JPEG, up to 2 MB each"
-              accept="image/png,image/jpeg"
-              maxSize={2 * 1024 * 1024}
-              multiple
-              onFiles={(files) => chosen.value = files.map((f) => f.name)}
-              onReject={(reasons) =>
-                refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
-            />
+            <Field id="guide-file-input" label="Attachments" hint="PNG or JPEG, up to 2 MB each">
+              <FileInput
+                id="guide-file-input"
+                accept="image/png,image/jpeg"
+                maxSize={2 * 1024 * 1024}
+                multiple
+                onFiles={(files) =>
+                  chosen.value = files.map((f) =>
+                    f.name
+                  )}
+                onReject={(reasons) =>
+                  refused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+              />
+            </Field>
           )}
           <Note e2e="file-input-chosen">
             chosen: {chosen.value.length === 0 ? "none" : chosen.value.join(", ")}
@@ -999,14 +999,15 @@ function FileInputDemo() {
           </Cluster>
         </Variant>
         <Variant title="One file, PNG only">
-          <FileInput
-            id="guide-file-input-single"
-            label="Attachment"
-            accept="image/png"
-            labels={{ tooMany: (name) => `${name}: un seul fichier est autorisé` }}
-            onReject={(reasons) =>
-              singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
-          />
+          <Field id="guide-file-input-single" label="Attachment">
+            <FileInput
+              id="guide-file-input-single"
+              accept="image/png"
+              labels={{ tooMany: (name) => `${name}: un seul fichier est autorisé` }}
+              onReject={(reasons) =>
+                singleRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+            />
+          </Field>
           <Note e2e="file-input-single-refused">
             refused: {singleRefused.value.length === 0 ? "none" : singleRefused.value.join(", ")}
           </Note>
@@ -1027,13 +1028,17 @@ function FileInputDemo() {
           </Field>
         </Variant>
         <Variant title="Disabled">
-          <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+          <Field id="guide-file-input-disabled" label="Attachments" disabled>
+            <FileInput id="guide-file-input-disabled" disabled />
+          </Field>
         </Variant>
       </Grid>
       <Variant title="A plain form post">
         <form action="form-demo/" method="post" encType="multipart/form-data">
           <Stack gap="sm">
-            <FileInput id="guide-file-input-form" name="attachment" label="Attachment" />
+            <Field id="guide-file-input-form" label="Attachment">
+              <FileInput id="guide-file-input-form" name="attachment" />
+            </Field>
             <Cluster>
               <Button type="submit" variant="outline">Send</Button>
             </Cluster>
@@ -1489,14 +1494,14 @@ export const inputDemos = {
         description: "Tags to offer while typing; chosen ones are hidden.",
       },
       {
-        name: "label / ariaLabel",
-        type: "ComponentChildren / string",
-        description: "A visible label, or a name with none; inside `Field`, leave both out.",
+        name: "ariaLabel",
+        type: "string",
+        description: "A name when there is no visible label; inside `Field`, leave it out.",
       },
       {
-        name: "error",
-        type: "string | null",
-        description: "A message under the field; inside `Field`, pass it to `Field` instead.",
+        name: "label / error",
+        type: "ComponentChildren / string | null",
+        description: "Deprecated, removed in the next major: pass them to the `Field` around it.",
       },
       {
         name: "disabled",
@@ -1624,17 +1629,23 @@ export const inputDemos = {
         default: "true",
         description: "Shows a thumbnail beside each image.",
       },
+      {
+        name: "label / hint / error",
+        type: "ComponentChildren / ComponentChildren / string | null",
+        description: "Deprecated, removed in the next major: pass them to the `Field` around it.",
+      },
     ],
-    snippet: `<FileInput
-  id="attachments"
-  label="Attachments"
-  hint="PNG or JPEG, up to 2 MB each"
-  accept="image/png,image/jpeg"
-  maxSize={2 * 1024 * 1024}
-  multiple
-  onFiles={(files) => chosen.value = files}
-  onReject={(reasons) => refused.value = reasons}
-/>`,
+    snippet:
+      `<Field id="attachments" label="Attachments" hint="PNG or JPEG, up to 2 MB each" error={error}>
+  <FileInput
+    id="attachments"
+    accept="image/png,image/jpeg"
+    maxSize={2 * 1024 * 1024}
+    multiple
+    onFiles={(files) => chosen.value = files}
+    onReject={(reasons) => refused.value = reasons}
+  />
+</Field>`,
     render: () => <FileInputDemo />,
   },
 } satisfies DemoFragment

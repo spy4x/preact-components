@@ -4801,7 +4801,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                        |
 | `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                         |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                           |
-| `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                                                                                                                        |
+| `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `previews?`, `labels?`; inside `Field` (its own `label?`, `hint?`, `error?` are deprecated)                                                                                                                                                                       |
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                            |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                  |
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                 |
@@ -4847,7 +4847,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Steps`               | `steps`                | `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter                                                                                                                                                                        |
 | `Table`               | `table`                | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                                                                                                 |
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                           |
-| `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                   |
+| `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `ariaLabel?` or a `Field` around it (its own `label?` and `error?` are deprecated), `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                   |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                |
 | `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?` — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                                          |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                        |
@@ -5519,13 +5519,11 @@ control, so nobody's focus is on one at that moment.
 **The window keeps two pages on each side of the current one.** The first and last page are always
 shown, the window slides back inside the range rather than shrinking when it reaches an end, and a
 `…` always stands for at least two pages: where a mark would have hidden a single page, that page is
-written out instead, because the mark takes the same room and says less. `pageRange(page, pageCount,
-size)` is that rule on its own, exported and unit-tested; `size` says how long a range may be before
-it collapses at all, and the collapsed window's width does not depend on it. What bounds the
-collapsed form is the two-page rule instead: at most nine items, being the five-page window plus, at
+written out instead, because the mark takes the same room and says less. `pageRange(page, pageCount)`
+is that rule on its own, exported and unit-tested; a range of up to seven pages is listed in full.
+What bounds the collapsed form is the two-page rule: at most nine items, being the five-page window plus, at
 each end, either that end's page and a `…` or the two pages the window swallowed in place of that
-`…`. The unit suite walks every page of every total up to sixty across a dozen values of `size`, so
-nine is a measured ceiling rather than an estimate — and it checks that nine is reached, because a
+`…`. The unit suite walks every page of every total up to sixty, so nine is a measured ceiling rather than an estimate — and it checks that nine is reached, because a
 bound nobody reaches is a bound nobody has tested.
 
 ```
@@ -5783,8 +5781,8 @@ which is exactly what Left and Right need, since they must work only while the l
 listener on `Modal`'s own children would only ever see a key that bubbled up from whatever is
 focused inside it, one step removed from the dialog itself for no reason a caller of `Modal`
 controls. A native `<dialog>` with its own `ref` has neither problem. What does carry over from
-`Modal` is reuse, not composition: its exported `shouldRetargetFocus`/`restoreFocus` pair, the same
-one it uses for its own focus restore.
+`Modal` is reuse, not composition: the `shouldRetargetFocus`/`restoreFocus` pair in
+`ui/modal-internals.ts`, the same one it uses for its own focus restore.
 
 **Left and Right are attached once, on mount, directly on the `<dialog>` element**, reading `open`,
 the current position and the total from a ref updated every render — the same shape
@@ -5918,7 +5916,10 @@ images, each most of the row's width, that scrolls sideways and snaps each image
 row's start (CSS scroll snapping, no script). The strip shows each image's full `src`; `thumbSrc` is
 for the grid. Every image is still a real button, so Tab moves through them and scrolls the focused
 one fully into view, and Enter or Space opens it in `Lightbox`. The row has no smooth scrolling, so
-there is no motion for the reduced-motion preference to stop.
+there is no motion for the reduced-motion preference to stop. The props are a union on `layout`
+(`ImageGalleryGridProps | ImageGalleryStripProps`): the eight strip-only props (`hero`, `captions`,
+`navigation`, `navigationVariant`, `snap`, `slideWidth`, `stripPreviousLabel`, `stripNextLabel`)
+are a type error on a grid instead of being ignored there.
 
 Give each strip image its intrinsic pixel size in `width` and `height`. The strip renders both on
 the `<img>`, so the browser reserves the image's height before it loads and nothing below a hero
@@ -6091,7 +6092,9 @@ Chosen files are listed, each with a remove button named after the file it remov
 `URL.createObjectURL` thumbnail next to it; the preview is revoked the instant its file leaves the
 list, and every preview still outstanding is revoked on unmount.
 
-`FileInput` also works nested inside `Field`, unmodified: the native `<input type="file">` is a
+Wrap `FileInput` in `Field`: `Field` is the only labelled wrapper. `FileInput`'s own `label`, `hint`
+and `error` still render this major but are deprecated, and go in the next. It works nested inside
+`Field` unmodified: the native `<input type="file">` is a
 labelable element, so `Field`'s ordinary element-child clone (`id`, `aria-describedby`,
 `aria-invalid`) applies the same way it does to a plain `<input>`.
 
@@ -6344,6 +6347,9 @@ arrow key chose a suggestion first. Escape on an open list closes it and drops t
 `Combobox`; with no list showing, Escape leaves the text alone. Text still in the field when focus leaves it is not added.
 As in `Combobox`, the suggestions wait for a word an input method is still composing, and a comma
 inside it adds no tag until the word is finished.
+
+Put the visible label and the error on a `Field` around it, as with any control. `TagInput`'s own
+`label` and `error` still render this major but are deprecated, and go in the next.
 
 Each chip's remove button is named `"Remove tag <name>"` and is 44 px square, and so is the text
 field's height. After a removal focus goes back to the text field. Additions, removals and refused
@@ -6867,14 +6873,8 @@ components and tests means exactly that: nothing outside this package should bui
 
 - `backdropDismissesByDefault` is `true`: a click on the backdrop dismisses a `Modal` whose
   `closeOnBackdrop` is left out.
-- `isBackdropClick({ target, dialog }, rect, x, y)` answers whether a click landed on a modal
-  `<dialog>`'s backdrop: the target is the dialog itself and the point lies outside its rect.
-  `backdropClickDismisses(event, rect, dialog, closeOnBackdrop)` applies the caller's policy first
-  and then asks the same question. Use them for a dialog you build yourself.
-- `supportsClosedBy(dialogPrototype)` answers whether a dialog implementation knows the `closedby`
-  attribute. Pass `HTMLDialogElement.prototype`; no shipping WebKit does.
-- `clientWidthWithoutScrollbar(host)`, `scrollLockPadding(before, locked)` and
-  `applyScrollLock(document, padding)` are the scroll lock in three steps: measure the layout width
+- From the package root (`@spy4x/preact-ui`), not `./modal`: `clientWidthWithoutScrollbar(host)`,
+  `scrollLockPadding(before, locked)` and `applyScrollLock(document, padding)` are the scroll lock in three steps: measure the layout width
   with the scrollbar hidden, turn the two widths into the right padding that keeps the page from
   shifting, then lock scrolling and get back a `release()` that restores the previous inline styles.
   Use them to lock some other document behind an overlay of your own.
@@ -6883,15 +6883,9 @@ components and tests means exactly that: nothing outside this package should bui
   or style already does, and the last to release restores the page's styles, in whatever order the
   overlays close. Call it when an overlay of your own opens on the page, and release it when that
   overlay closes. Releasing one holder twice counts once.
-- `DISMISS_KEY` (`"Escape"`), `isDismissKey(event, open)`, `escapeCloseStrategy(closedBySupported)`,
-  `bindEscapeClose(target, strategy, handlers)` and `platformCloseHandler(deps)` are exported for
-  the package's own components and tests: they decide which event carries Escape on a platform and
-  wire the matching listener.
-- `dialogHeldFocus(dialog, activeElement)` answers whether focus is inside the dialog, given
-  `document.activeElement`; `null` gives `false`. Call it at close time to report or assert where
-  focus was. `Modal` itself does not use it to decide where focus goes back to.
-- `dialogTitleId(base)` is exported for the package's own components and tests: the id of the
-  dialog's title element.
+- The decision helpers behind `Modal` and `Lightbox` (the backdrop hit-test, which event carries
+  Escape on a platform, where focus goes back to on close, the title's id) live in
+  `ui/modal-internals.ts`, which is not an entry point: they change without a major.
 
 ### Combobox (`./combobox`)
 
@@ -6906,16 +6900,15 @@ components and tests means exactly that: nothing outside this package should bui
   matching items in their original order. Use them to filter a list the way `Combobox` does.
 - `defaultGetLabel(item)` is `String(item)`, the text rule `Combobox` uses when no `getLabel` is
   given; a `getLabel` of your own can fall back to it.
-- `comboboxKey(event)` maps a keyboard event to a key the combobox acts on, or `undefined` for one
-  it leaves alone. `nextComboboxState(state, key, count)` says what that key does to the highlight
+- `nextComboboxState(state, key, count)` says what that key does to the highlight
   and the open state, wrapping at both ends, and `comboboxKeyAction(key, state, count)` adds whether
   to call `preventDefault()` and which option `Enter` selects. Together they are the whole keyboard
-  table, for a search field that should behave like a `Combobox`; `CommandPalette` uses them.
-- `typingState`, `openingState`, `selectableIndex`, `listboxContent`, `leavesCombobox`, `naming`,
-  `activeDescendant`, `comboboxListboxId` and `comboboxOptionId` are exported for the package's own
-  components and tests: the highlight a new query or a fresh open starts on, the empty message,
-  when a focus change closes the popup, which prop names the input, and the ids the ARIA
-  attributes point at.
+  table, for a search field that should behave like a `Combobox`; `CommandPalette` uses them. The
+  key is a `ComboboxKey`: the event's `key`, with `"Alt+"` in front for Alt with an arrow.
+- `listboxContent`, `activeDescendant`, `comboboxListboxId` and `comboboxOptionId` are exported for
+  the package's own components and tests: the empty message and the ids the ARIA attributes point
+  at. Where the highlight starts, when a focus change closes the popup, which prop names the input
+  and which key an event is live in `ui/combobox-internals.ts`, which is not an entry point.
 
 ### DateRangePicker (`./date-range`)
 
@@ -6947,11 +6940,8 @@ components and tests means exactly that: nothing outside this package should bui
 - `matchesAccept(file, accept)` answers whether a file matches an `accept` list of extensions
   (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`), ignoring case; an empty list
   matches everything. Use it to check a dropped file the way the browser's chooser would.
-- `classifyFiles(selected, { accept, maxSize, multiple })` splits offered files into the ones a
-  `FileInput` keeps and the ones it refuses, each refusal with its reason: `"too-large"`,
-  `"wrong-type"` or, without `multiple`, `"too-many"` for every accepted file after the first.
-- `resolveLabels(labels)` is exported for the package's own components and tests: it fills every
-  message label a `FileInput` was not given with its English default.
+- Which offered files a `FileInput` keeps, and the English defaults of its message labels, live in
+  `ui/file-input-internals.ts`, which is not an entry point.
 
 ### Format (`./format`)
 
@@ -7013,11 +7003,10 @@ components and tests means exactly that: nothing outside this package should bui
 
 ### Pagination (`./pagination`)
 
-- `pageRange(page, pageCount, size)` collapses a page range into the items a pagination control
-  renders: `{ page }` for a number and `{ gap: "gap" }` for a `…`. A range of up to `size` pages
-  (default `7`) is listed in full; a longer one keeps the first page, the last page and the current
-  page with its neighbours. A `size` below `5` counts as `5`. Use it to draw pagination in markup of
-  your own.
+- `pageRange(page, pageCount)` collapses a page range into the items a pagination control
+  renders: `{ page }` for a number and `{ gap: "gap" }` for a `…`. A range of up to seven pages is
+  listed in full; a longer one keeps the first page, the last page and the current page with its
+  neighbours. Use it to draw pagination in markup of your own.
 
 ### Progress (`./progress`)
 
