@@ -500,15 +500,16 @@ function CrudUuidDemo() {
           <>
             <th scope="col" class="text-left">Name</th>
             <th scope="col" class="text-left">Members</th>
-            <th scope="col" class="text-left">Id</th>
+            <th scope="col" class="hidden text-left sm:table-cell">Id</th>
           </>
         }
         row={(row) => (
           <>
             <td class="text-foreground">{row.name}</td>
             <td class="tabular-nums">{row.members}</td>
-            <td>
-              {/* Eight characters fit a phone; the full id is the tooltip and what is read out. */}
+            {/* A phone has room for the name, the count and the button; the id joins from `sm`. */}
+            <td class="hidden sm:table-cell">
+              {/* Eight characters keep the column narrow; the full id is the tooltip and is read out. */}
               <code class="text-xs" title={row.id}>
                 <span aria-hidden="true">{row.id.slice(0, 8)}…</span>
                 <span class="sr-only">{row.id}</span>
