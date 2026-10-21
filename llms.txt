@@ -461,7 +461,7 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1134 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1160 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -610,6 +610,15 @@ FieldControlWiring	type	@spy4x/preact-ui	The DOM attributes of one `Field`, hand
 FieldWiring	type	@spy4x/preact-ui	The full `Field` wiring: the control's attributes plus the ids of the messages.
 FileInput	component	@spy4x/preact-ui	File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader story the input already has for free.
 FileRejection	type	@spy4x/preact-ui	One file a `FileInput` refused, and why.
+FilterBar	component	@spy4x/preact-ui	Search, filter menus, one-tap toggles and a sort over a list, with the active filters as removable chips under them and a result count.
+FilterBarChip	type	@spy4x/preact-ui	One active filter, drawn as a removable chip under the bar.
+FilterBarMenu	type	@spy4x/preact-ui	One filter menu of a `FilterBar`: one shape per `multiple`.
+FilterBarMultipleMenu	type	@spy4x/preact-ui	A menu where any number of choices can be on, drawn as boxes; the menu stays open on a choice.
+FilterBarOption	type	@spy4x/preact-ui	One choice of a `FilterBarMenu`.
+FilterBarSearch	type	@spy4x/preact-ui	The search field of a `FilterBar`.
+FilterBarSingleMenu	type	@spy4x/preact-ui	A menu with at most one choice; choosing closes the menu.
+FilterBarSort	type	@spy4x/preact-ui	The sort menu of a `FilterBar`.
+FilterBarToggle	type	@spy4x/preact-ui	A one-tap filter of a `FilterBar`, such as "Created by me".
 FocusAfterRemovalOptions	type	@spy4x/preact-ui	Options of `useFocusAfterRemoval`.
 FocusableElement	type	@spy4x/preact-ui	Anything the browser can move focus to.
 FormatContext	component	@spy4x/preact-ui	The formatter the components read.
@@ -757,6 +766,7 @@ WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` or a `Scre
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.
+activeFilterChips	helper	@spy4x/preact-ui	Every active filter as a chip: one per chosen option of each menu, in menu order, then one per pressed toggle.
 activeShortcuts	helper	@spy4x/preact-ui	The shortcuts that work now: all of them, or, while single keys are off, the ones that are not `isSingleKey`.
 addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported.
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
@@ -797,6 +807,7 @@ dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
+filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.
 fold	helper	@spy4x/preact-ui	Fold text for matching: accents removed and lower-cased.
 followLinkClick	helper	@spy4x/preact-ui	Follow a link click through the `navigate` port when the page may take it over, and report whether it did.
