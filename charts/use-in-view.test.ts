@@ -1,7 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { render } from "preact-render-to-string"
-import { createInViewObserver, useInView } from "./use-in-view.ts"
+import { createInViewObserver } from "./use-in-view.ts"
 
 interface FakeObserver {
   callback: IntersectionObserverCallback
@@ -124,26 +123,6 @@ describe("createInViewObserver", () => {
     const restore = removeObserver()
     try {
       expect(createInViewObserver({} as Element, () => {})).toBe(null)
-    } finally {
-      restore()
-    }
-  })
-})
-
-/** Component under test: renders its view state so a server render can be asserted on. */
-function Panel() {
-  const { ref, inView } = useInView<HTMLDivElement>()
-  return <div ref={ref}>{inView ? "visible" : "waiting"}</div>
-}
-
-describe("useInView", () => {
-  it("server-renders as not in view", () => {
-    const restore = removeObserver()
-    try {
-      const html = render(<Panel />)
-
-      expect(html).toContain("waiting")
-      expect(html).not.toContain("visible")
     } finally {
       restore()
     }

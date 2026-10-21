@@ -1,7 +1,7 @@
 # `@spy4x/preact-charts`
 
 Charts for Preact that render complete on the server and become interactive in the browser, plus
-the axis and loading helpers behind them.
+the axis and data helpers behind them.
 
 - **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DonutChart`, `Kpi`,
   `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a native
@@ -23,8 +23,8 @@ the axis and loading helpers behind them.
 ## Rules this package follows
 
 - **Props and ports, never a global store.** No component imports an app's state singleton and no
-  module-level signal holds app data. Data arrives as props; loading arrives as a `loadStats`
-  callback; colours arrive as props.
+  module-level signal holds app data. Data and colours arrive as props; loading
+  is the app's.
 - **Colours are props, with theme tokens as the default.** The defaults are CSS custom properties
   with an inline fallback, so a chart picks up `theme/` when it is loaded and still renders
   standalone. They are applied through `style`, because `var()` does not resolve inside SVG
@@ -57,10 +57,13 @@ Every chart prints its values through `valueFormat`. The older names, `Bars`' `f
 `LineChart`'s `yFormat`, still work the same way and are deprecated; when both are passed,
 `valueFormat` wins. They are removed in the next major.
 
-Hooks and helpers: `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
-`chartPayloadSchema` (`payload`), the `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary
-(`time-series`), and the axis maths in `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`,
-`linearScale`, `extent`, `xLabelStride`.
+Helpers: `createInViewObserver` (`use-in-view`), `timeSeriesPointSchema` (`payload`), the
+`TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in
+`scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`, `extent`.
+
+`linearScale`, `xLabelStride`, `previousPeriod`, `loadChartPayload`, `chartPayloadSchema`,
+`LoadPayloadResult`, `DateRange`, `useInView`, `InViewRef` and `InViewOptions`' `once` were removed
+(#861): nothing outside this package used them, and nothing inside it does.
 
 ## Usage
 
@@ -97,8 +100,8 @@ const shifted = previous.data.map((p) => ({ x: +new Date(p.timeGroup) + span, y:
 />
 ```
 
-A comparison is the caller's data: load the earlier window with `loadChartPayload` and
-`previousPeriod`, move its instants forward by the window's length, and pass it as a dashed series.
+A comparison is the caller's data: load the earlier window, move its instants forward by the
+window's length, and pass it as a dashed series.
 
 ### Moving from `D3LineChart` and `CompareChart`
 
@@ -116,10 +119,10 @@ Both were removed in favour of the one `LineChart` (#356), and `MetricPanel` wit
 | `colors.reference`                                 | `referenceColor`                                                                                                    |
 | `aspectRatio`                                      | `height`, in pixels; the chart takes its parent's width                                                             |
 | `LineChart`'s `width` (the `viewBox` width)        | gone: the chart is as wide as its parent                                                                            |
-| `<CompareChart range data loadStats />`            | a second, `dashed` series; load it with `loadChartPayload(loadStats, previousPeriod(range))`                        |
+| `<CompareChart range data loadStats />`            | a second, `dashed` series, loaded by the app for the window before `range`                                          |
 | `CompareChart`'s `compareLabel` toggle             | the app's own toggle: add or drop the dashed series when it changes                                                 |
 | `CompareChart`'s `rangePicker` slot                | the app's own picker, rendered beside the chart                                                                     |
-| `CompareChart`'s `onError`                         | `loadChartPayload` returns `{ error }`; show it with `ui/`'s `ErrorState` or a toast                                |
+| `CompareChart`'s `onError`                         | the app's own loader error; show it with `ui/`'s `ErrorState` or a toast                                            |
 | `<MetricPanel title unit error actions>`           | the app's own heading, `ui/`'s `ErrorState`, and a `LineChart`                                                      |
 | `@spy4x/preact-charts/svg`                         | `@spy4x/preact-charts`: no module imports d3 any more                                                               |
 
@@ -197,23 +200,19 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.
   Use it to draw a donut or a share legend of your own.
 
-### Loading (`./payload`, `./use-in-view`)
+### Data and loading (`./payload`, `./use-in-view`)
 
 - `timeSeriesPointSchema` is the arktype schema of one `TimeSeriesPoint`, `{ timeGroup, value }`,
-  as it arrives from an API; `chartPayloadSchema` uses it for its `data`.
+  as it arrives from an API; `ChartPayload` is the type of a whole response, `{ data, timeFrame }`.
 - `createInViewObserver(element, onChange, { rootMargin, threshold })` observes one element and
   calls `onChange(isIntersecting)` on every change, preloading `200px` early by default. It
   returns a handle with `disconnect()`, or `null` where `IntersectionObserver` does not exist, such
-  as on the server. `useInView` is built on it; call it directly outside a component.
-- `useInView({ rootMargin, threshold, once })` returns `{ ref, inView }`: attach `ref` to an
-  element and `inView` turns `true` once it comes within `rootMargin` of the viewport. `ref` is a
-  callback ref that also keeps the element in `ref.current`, so an element rendered later, after a
-  loading state, is observed too.
+  as on the server. Call it in an effect and disconnect the handle in that effect's cleanup.
 
 ## Tests
 
-`deno task test` from the repo root. `scales.test.ts` covers `extent`, `paddedDomain`, `niceScale`,
-`linearScale` and `xLabelStride` — the axis helpers this package still owns — including degenerate,
+`deno task test` from the repo root. `scales.test.ts` covers `extent`, `paddedDomain` and
+`niceScale` — the axis helpers this package still owns — including degenerate,
 negative, tiny, huge and boundary-tick cases, and runs `niceScale`'s own non-termination case
 (`niceScale(1e6, 2e6, { target: 1e25 })`) and a termination check on the re-exported `ticks`
 (`ticks(1e18, 1e18 + 100)`) each in a worker with a deadline — `deno test` has no per-test timeout, so
