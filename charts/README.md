@@ -13,9 +13,11 @@ the axis and loading helpers behind them.
   inside the chart and the viewport, flipping to the other side of the point near an edge.
 - **Titles fit the page's outline.** `LineChart`, `Bars` and `DonutChart` print `title` as an `<h3>`,
   with data and without; `headingLevel` picks another level.
-- **A caller's `class` wins.** Every component merges `class` into its own classes with
-  `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
-  `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
+- **A caller's `class` wins on most components.** `LineChart`, `DonutChart` and `Kpi` merge
+  `class` into their own classes with `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's
+  `px-4` instead of competing with it. `Bars` and `DotPlot` add `class` after their own with `join`,
+  so an island that renders them carries no `tailwind-merge`; mark an override important
+  (`gap-4!`). `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
   not on the `<table>`.
 - **Every value is readable without the picture.** `LineChart` prints its points in a visually
   hidden table after the plot, one row per X position and one column per series, captioned with

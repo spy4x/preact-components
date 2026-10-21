@@ -1,5 +1,5 @@
 import type { JSX } from "preact"
-import { twMerge } from "tailwind-merge"
+import { join } from "@spy4x/preact-cn/join"
 
 /** One row of a {@link DotPlot}: a label, a value and the words around it. */
 export interface DotPlotRow {
@@ -47,6 +47,10 @@ export interface DotPlotProps {
   ariaLabel?: string
   /** What a row with no value prints. Defaults to `"No data"`. */
   missingLabel?: string
+  /**
+   * Added after the chart's own classes, not merged over them (`join`, so an island that renders
+   * it carries no tailwind-merge). To replace one of its own, mark yours important: `gap-4!`.
+   */
   class?: string
 }
 
@@ -104,7 +108,7 @@ export function DotPlot({
   const zeroAt = zero && domain[0] < 0 && domain[1] > 0 ? dotPercent(0, domain) : null
   const track = { domain, zeroAt, bands }
   return (
-    <div class={twMerge("flex min-w-0 flex-col gap-3 text-sm", className)}>
+    <div class={join("flex min-w-0 flex-col gap-3 text-sm", className)}>
       <ul role="list" aria-label={ariaLabel} class="flex flex-col">
         {rows.map((row) => (
           <DotPlotItem key={row.id} row={row} format={format} missing={missingLabel} {...track} />
@@ -166,7 +170,7 @@ function DotPlotItem(
   const position = row.value === null ? null : dotPercent(row.value, domain)
   return (
     <li
-      class={twMerge(GRID, "items-center py-2", summary && "mt-1 border-t border-subtle pt-3")}
+      class={join(GRID, "items-center", summary ? "mt-1 border-t border-subtle pt-3 pb-2" : "py-2")}
       data-dot-row={summary ? "summary" : "row"}
       data-muted={row.muted ? "true" : undefined}
     >
@@ -203,7 +207,7 @@ function DotPlotItem(
         {position !== null && (
           <span
             data-dot
-            class={twMerge(
+            class={join(
               "absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2",
               summary ? "size-4" : "size-3",
             )}
