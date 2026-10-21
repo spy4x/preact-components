@@ -534,3 +534,9 @@ export {
   type WidgetStatProps,
   type WidgetStatus,
 } from "./widget-card.tsx"
+export {
+  ScreenTour,
+  type ScreenTourImage,
+  type ScreenTourProps,
+  type ScreenTourStep,
+} from "./screen-tour.tsx"
