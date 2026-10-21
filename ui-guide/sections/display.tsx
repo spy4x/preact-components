@@ -1878,7 +1878,8 @@ export const displayDemos = {
         name: "layout",
         type: `"grid" | "strip"`,
         default: `"grid"`,
-        description: "A wrapping grid of thumbnails, or one row that scrolls sideways and snaps.",
+        description:
+          'A wrapping grid of thumbnails, or one row that scrolls sideways and snaps. A prop marked Strip only is a type error without `layout="strip"`.',
       },
       {
         name: "hero",

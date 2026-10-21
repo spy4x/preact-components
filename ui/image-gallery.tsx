@@ -57,7 +57,8 @@ export interface ImageGalleryImage extends LightboxImage {
   height?: number
 }
 
-export interface ImageGalleryProps {
+/** The props every {@link ImageGallery} takes, whatever its layout. */
+export interface ImageGalleryBaseProps {
   /** The images the strip draws thumbnails for, and the lightbox pages through. */
   images: readonly ImageGalleryImage[]
   /**
@@ -81,22 +82,53 @@ export interface ImageGalleryProps {
    * `Lightbox`'s `caption`.
    */
   lightboxCaption?: boolean
-  /** Strip only: the name of the row's Previous button. Defaults to `previousLabel`. */
-  stripPreviousLabel?: string
-  /** Strip only: the name of the row's Next button. Defaults to `nextLabel`. */
-  stripNextLabel?: string
   /**
    * Where the lightbox puts its counter and previous/next buttons: over the image (`"overlay"`, the
    * default) or in a row below it (`"below"`).
    */
   controls?: "overlay" | "below"
   /**
+   * Extra utilities for the thumbnail strip, appended after its own and not merged into them. To
+   * replace one of its own utilities, mark the replacement important with a trailing `!`.
+   */
+  class?: string
+}
+
+/**
+ * {@link ImageGallery}'s props for the default grid of small square thumbnails. The strip's own
+ * props are typed `never` here, so passing one to a grid is a type error rather than a prop that is
+ * silently ignored.
+ */
+export interface ImageGalleryGridProps extends ImageGalleryBaseProps {
+  /**
+   * `"grid"`, the default: a wrapping grid of small square thumbnails, each drawn from the image's
+   * `thumbSrc`. `"strip"` is {@link ImageGalleryStripProps}.
+   */
+  layout?: "grid"
+  /** Strip only; see {@link ImageGalleryStripProps}. */
+  stripPreviousLabel?: never
+  stripNextLabel?: never
+  hero?: never
+  captions?: never
+  navigation?: never
+  navigationVariant?: never
+  snap?: never
+  slideWidth?: never
+}
+
+/** {@link ImageGallery}'s props for `layout="strip"`: one row of large images that scrolls sideways. */
+export interface ImageGalleryStripProps extends ImageGalleryBaseProps {
+  /**
    * How the images are laid out: a wrapping grid of small square thumbnails (`"grid"`, the default)
    * or one row of large, uncropped images that scrolls sideways and snaps to each image
    * (`"strip"`), for a hero or case-study gallery. The strip shows each image's full `src`, since
    * its images are large; `thumbSrc` is for the grid.
    */
-  layout?: "grid" | "strip"
+  layout: "strip"
+  /** Strip only: the name of the row's Previous button. Defaults to `previousLabel`. */
+  stripPreviousLabel?: string
+  /** Strip only: the name of the row's Next button. Defaults to `nextLabel`. */
+  stripNextLabel?: string
   /**
    * Strip only: the strip is the page's hero, so its first image is likely the largest thing on the
    * first screen. That image loads with `loading="eager"` and `fetchpriority="high"`; every later
@@ -136,12 +168,13 @@ export interface ImageGalleryProps {
    * does not fill the column.
    */
   slideWidth?: "wide" | "orientation"
-  /**
-   * Extra utilities for the thumbnail strip, appended after its own and not merged into them. To
-   * replace one of its own utilities, mark the replacement important with a trailing `!`.
-   */
-  class?: string
 }
+
+/**
+ * {@link ImageGallery}'s props: a grid ({@link ImageGalleryGridProps}) or a strip
+ * ({@link ImageGalleryStripProps}), told apart by `layout`.
+ */
+export type ImageGalleryProps = ImageGalleryGridProps | ImageGalleryStripProps
 
 const thumbButtonClass =
   "block cursor-pointer overflow-hidden rounded-md border border-subtle transition-opacity hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
@@ -180,7 +213,7 @@ const navRowClass = "flex items-center gap-3"
 const navCounterClass = "mx-auto text-sm text-muted tabular-nums"
 const navButtonClass = "size-10 aria-disabled:pointer-events-none aria-disabled:opacity-50"
 
-/** How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`. */
+/** How the strip's Previous/Next buttons look; see `ImageGalleryStripProps.navigationVariant`. */
 export type StripNavigationVariant = "outline" | "ghost"
 
 /**

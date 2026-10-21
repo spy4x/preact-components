@@ -1196,7 +1196,10 @@ images, each most of the row's width, that scrolls sideways and snaps each image
 row's start (CSS scroll snapping, no script). The strip shows each image's full `src`; `thumbSrc` is
 for the grid. Every image is still a real button, so Tab moves through them and scrolls the focused
 one fully into view, and Enter or Space opens it in `Lightbox`. The row has no smooth scrolling, so
-there is no motion for the reduced-motion preference to stop.
+there is no motion for the reduced-motion preference to stop. The props are a union on `layout`
+(`ImageGalleryGridProps | ImageGalleryStripProps`): the eight strip-only props (`hero`, `captions`,
+`navigation`, `navigationVariant`, `snap`, `slideWidth`, `stripPreviousLabel`, `stripNextLabel`)
+are a type error on a grid instead of being ignored there.
 
 Give each strip image its intrinsic pixel size in `width` and `height`. The strip renders both on
 the `<img>`, so the browser reserves the image's height before it loads and nothing below a hero

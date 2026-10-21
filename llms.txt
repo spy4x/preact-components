@@ -609,7 +609,10 @@ HotkeyPress	type	@spy4x/preact-ui	A key press as `pickHotkey` sees it: the key, 
 HotkeyProps	type	@spy4x/preact-ui	The props a component takes to bind a key to its own button: `hotkey` binds it and announces it, and a `Kbd` hint inside the button shows it.
 ImageElementLike	type	@spy4x/preact-ui	The view of a clicked element this component needs.
 ImageGallery	component	@spy4x/preact-ui	Thumbnails that open the shared `Lightbox` on the one pressed: a wrapping grid by default, or a sideways-scrolling, snapping row of large images with `layout="strip"`.
+ImageGalleryBaseProps	type	@spy4x/preact-ui	The props every `ImageGallery` takes, whatever its layout.
+ImageGalleryGridProps	type	@spy4x/preact-ui	`ImageGallery`'s props for the default grid of small square thumbnails.
 ImageGalleryImage	type	@spy4x/preact-ui	One image a gallery's strip can show, and hand to the lightbox it opens.
+ImageGalleryStripProps	type	@spy4x/preact-ui	`ImageGallery`'s props for `layout="strip"`: one row of large images that scrolls sideways.
 InlineEdit	component	@spy4x/preact-ui	A value shown as text that turns into a text field in place, for renaming a list, a tag or a column where it stands.
 Input	component	@spy4x/preact-ui	Controlled text input.
 InputButton	component	@spy4x/preact-ui	Render the input, the button and the chrome that positions them.
@@ -840,7 +843,7 @@ dropdownOpensUp	helper	@spy4x/preact-ui/dropdown	Whether a `vertical="auto"` men
 enhancedFormMessage	helper	@spy4x/preact-ui/enhanced-form	The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run.
 FieldLabelFor	type	@spy4x/preact-ui/field	What `Field`'s own label points at through `for`.
 labelTarget	helper	@spy4x/preact-ui/field	The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`.
-StripNavigationVariant	type	@spy4x/preact-ui/image-gallery	How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`.
+StripNavigationVariant	type	@spy4x/preact-ui/image-gallery	How the strip's Previous/Next buttons look; see `ImageGalleryStripProps.navigationVariant`.
 StripScroll	type	@spy4x/preact-ui/image-gallery	Where a strip's row has scrolled to, as `stripPosition` reads it.
 stripNavigationClasses	helper	@spy4x/preact-ui/image-gallery	The full class list of the strip's Previous/Next buttons for a `navigationVariant`.
 stripPosition	helper	@spy4x/preact-ui/image-gallery	The slide a strip's counter names, `0`-based, for where its row has scrolled to.

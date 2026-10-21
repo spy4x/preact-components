@@ -204,7 +204,14 @@ export {
   type WhenProps,
 } from "./format.tsx"
 export { honeypotField } from "./honeypot.tsx"
-export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
+export {
+  ImageGallery,
+  type ImageGalleryBaseProps,
+  type ImageGalleryGridProps,
+  type ImageGalleryImage,
+  type ImageGalleryProps,
+  type ImageGalleryStripProps,
+} from "./image-gallery.tsx"
 export {
   Input,
   type InputProps,

@@ -5,6 +5,7 @@ import { render } from "preact-render-to-string"
 import {
   ImageGallery,
   type ImageGalleryImage,
+  type ImageGalleryProps,
   stripNavigationClasses,
   stripPosition,
   thumbnailKey,
@@ -298,6 +299,7 @@ describe('ImageGallery with layout="strip" and hero', () => {
   })
 
   it("leaves the grid's thumbnails without a priority", () => {
+    // @ts-expect-error a strip-only prop on a grid is a type error; a plain-JS caller is ignored
     const html = beforeDialog(render(<ImageGallery images={IMAGES} hero />))
 
     expect(html).not.toMatch(/fetchpriority=|loading=|decoding=/)
@@ -366,6 +368,7 @@ describe('ImageGallery with layout="strip" and captions', () => {
   })
 
   it("leaves the grid uncaptioned", () => {
+    // @ts-expect-error a strip-only prop on a grid is a type error; a plain-JS caller is ignored
     const html = beforeDialog(render(<ImageGallery images={IMAGES} captions />))
 
     expect(html).not.toContain("<figcaption")
@@ -408,6 +411,7 @@ describe('ImageGallery with layout="strip" and navigation', () => {
     for (
       const html of [
         render(<ImageGallery images={[IMAGES[0]]} layout="strip" navigation />),
+        // @ts-expect-error a strip-only prop on a grid is a type error; a plain-JS caller is ignored
         render(<ImageGallery images={IMAGES} navigation />),
       ]
     ) {
@@ -536,5 +540,44 @@ describe('ImageGallery with layout="strip", snap and slideWidth', () => {
       expect(slide).toContain("w-5/6")
       expect(slide).not.toContain("w-11/20")
     }
+  })
+})
+
+describe("ImageGalleryProps", () => {
+  it("makes every strip-only prop a type error on a grid, and accepts each on a strip", () => {
+    // Each line is checked by `deno check`: an `@ts-expect-error` that finds no error fails it.
+    const grids: ImageGalleryProps[] = [
+      // @ts-expect-error strip only
+      { images: IMAGES, stripPreviousLabel: "Back" },
+      // @ts-expect-error strip only
+      { images: IMAGES, stripNextLabel: "On" },
+      // @ts-expect-error strip only
+      { images: IMAGES, hero: true },
+      // @ts-expect-error strip only
+      { images: IMAGES, layout: "grid", captions: true },
+      // @ts-expect-error strip only
+      { images: IMAGES, navigation: true },
+      // @ts-expect-error strip only
+      { images: IMAGES, navigationVariant: "ghost" },
+      // @ts-expect-error strip only
+      { images: IMAGES, snap: "center" },
+      // @ts-expect-error strip only
+      { images: IMAGES, slideWidth: "orientation" },
+    ]
+    const strip: ImageGalleryProps = {
+      images: IMAGES,
+      layout: "strip",
+      stripPreviousLabel: "Back",
+      stripNextLabel: "On",
+      hero: true,
+      captions: true,
+      navigation: true,
+      navigationVariant: "ghost",
+      snap: "center",
+      slideWidth: "orientation",
+    }
+
+    expect(grids).toHaveLength(8)
+    expect(strip.layout).toBe("strip")
   })
 })
