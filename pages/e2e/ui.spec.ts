@@ -4548,6 +4548,7 @@ function dismissSpec(
   name: string,
   open: (page: Page) => Promise<Locator>,
   alsoListensFor: readonly string[] = [],
+  afterwards?: (page: Page) => Promise<void>,
 ): Spec {
   return {
     name:
@@ -4576,6 +4577,7 @@ function dismissSpec(
           )
         }
       }
+      await afterwards?.(page)
     },
   }
 }
@@ -4603,6 +4605,21 @@ function dismissSpecs(): Spec[] {
       await input.focus()
       return input
     }),
+    dismissSpec(
+      "Combobox",
+      async (page) => {
+        const field = page.locator("#guide-combobox-fetch")
+        await field.click()
+        await field.pressSequentially("B")
+        return field
+      },
+      [],
+      // A controlled query belongs to the caller: closing leaves it where it is.
+      async (page) => {
+        await page.locator(`#demo-Combobox [data-e2e="combobox-fetch"]`)
+          .filter({ hasText: /query "B"$/ }).waitFor()
+      },
+    ),
   ]
 }
 
