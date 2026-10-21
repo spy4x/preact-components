@@ -7,7 +7,7 @@ import { Dropdown, DropdownItem } from "./dropdown.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, useApplePlatform } from "./hotkeys.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
-import { ToggleChips } from "./toggle-chips.tsx"
+import { ToggleChips, toggleChipSelection } from "./toggle-chips.tsx"
 
 /** One choice of a {@link FilterBarMenu}. */
 export interface FilterBarOption {
@@ -293,10 +293,7 @@ function FilterMenuButton(
   const isChosen = (value: string) => chosen.some((option) => option.value === value)
   const choose = (value: string) => {
     if (menu.multiple) {
-      const next = isChosen(value)
-        ? menu.value.filter((v) => v !== value)
-        : menu.options.map((o) => o.value).filter((v) => v === value || menu.value.includes(v))
-      menu.onChange(next)
+      menu.onChange(toggleChipSelection(menu.options, menu.value, value))
     } else menu.onChange(value)
   }
   return (

@@ -1985,8 +1985,8 @@ function filterBarSpecs(): Spec[] {
       },
     },
     {
-      name: "FilterBar: search, a box in the Tags menu, a toggle and the sort each reach their " +
-        "onChange, and a box leaves the menu open",
+      name: "FilterBar: search, the Tags menu's boxes (checked and unchecked), a toggle and the " +
+        "sort each reach their onChange, and a box leaves the menu open",
       pageId: "ui",
       run: async (page) => {
         await page.setViewportSize({ width: 1280, height: 900 })
@@ -2000,9 +2000,15 @@ function filterBarSpecs(): Spec[] {
         await bar.stateHas("tags: design, plans (any)")
         await plans.and(page.locator(`[aria-checked="true"]`)).waitFor()
         await bar.tagsMenu.waitFor()
+        await bar.tags.filter({ hasText: "Tags: 2" }).waitFor()
+        // Unchecking a box takes its value out and leaves the others.
+        const design = bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Design" })
+        await design.click()
+        await bar.stateHas("tags: plans (any)")
+        await design.and(page.locator(`[aria-checked="false"]`)).waitFor()
         await page.keyboard.press("Escape")
         await bar.tagsMenu.waitFor({ state: "hidden" })
-        await bar.tags.filter({ hasText: "Tags: 2" }).waitFor()
+        await bar.tags.filter({ hasText: "Tags: Plans" }).waitFor()
 
         await bar.card.getByRole("button", { name: "Created by me" }).click()
         await bar.stateHas("mine: on")
