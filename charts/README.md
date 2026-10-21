@@ -201,6 +201,10 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   calls `onChange(isIntersecting)` on every change, preloading `200px` early by default. It
   returns a handle with `disconnect()`, or `null` where `IntersectionObserver` does not exist, such
   as on the server. `useInView` is built on it; call it directly outside a component.
+- `useInView({ rootMargin, threshold, once })` returns `{ ref, inView }`: attach `ref` to an
+  element and `inView` turns `true` once it comes within `rootMargin` of the viewport. `ref` is a
+  callback ref that also keeps the element in `ref.current`, so an element rendered later, after a
+  loading state, is observed too.
 
 ## Tests
 

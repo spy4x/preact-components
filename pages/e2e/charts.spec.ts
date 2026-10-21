@@ -85,9 +85,29 @@ function arrowDownSpec(component: string, plot: string): Spec {
   }
 }
 
+/**
+ * #863: `useInView` observes an element that first appears after a loading state. The guide's
+ * deferred chart renders "Loading" on the server and its watched box only after hydration; once
+ * that box is scrolled into view, the chart inside it is drawn.
+ */
+function deferredChartSpec(): Spec {
+  return {
+    name:
+      "useInView: a chart whose box appears after a loading state is drawn once scrolled into view",
+    pageId: "charts",
+    run: async (page) => {
+      const box = page.locator(`#demo-LineChart [data-e2e="chart-deferred"]`)
+      await box.scrollIntoViewIfNeeded()
+      await box.locator(`[data-chart="line"]`).waitFor({ timeout: 10_000 })
+      return "drawn after the loading line"
+    },
+  }
+}
+
 export const specs: readonly Spec[] = [
   labelsApartSpec(320),
   labelsApartSpec(1280),
   arrowDownSpec("LineChart", "[data-chart-plot]"),
   arrowDownSpec("DonutChart", "[data-chart-ring]"),
+  deferredChartSpec(),
 ]

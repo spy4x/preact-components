@@ -15,6 +15,9 @@ import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
 import { LineChart, type LineSeries } from "@spy4x/preact-charts/line-chart"
+import { useInView } from "@spy4x/preact-charts/use-in-view"
+import { useSignal } from "@preact/signals"
+import { useEffect } from "preact/hooks"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 
@@ -109,6 +112,34 @@ const revenue: LineSeries[] = [
     points: hours.map((x, index) => ({ x, y: lastWeek[index] })),
   },
 ]
+
+/**
+ * A chart behind a loading state, drawn once it scrolls into view: the element `useInView` watches
+ * only exists after the loading line is gone, which is the case the browser check for #863 guards.
+ */
+function DeferredSignups() {
+  const loaded = useSignal(false)
+  const { ref, inView } = useInView<HTMLDivElement>()
+  // Stands in for data arriving after hydration; the server render shows the loading line.
+  useEffect(() => {
+    loaded.value = true
+  }, [])
+  if (!loaded.value) return <p class="text-sm text-muted">Loading sign-ups…</p>
+  return (
+    <div ref={ref} data-e2e="chart-deferred" class="min-h-40">
+      {inView
+        ? (
+          <LineChart
+            series={signups}
+            title="Sign-ups per day, drawn when scrolled into view"
+            height={160}
+            yFormat={(value) => value.toFixed(0)}
+          />
+        )
+        : null}
+    </div>
+  )
+}
 
 export const chartsDemos = {
   Bars: {
@@ -251,6 +282,7 @@ export const chartsDemos = {
             yFormat={(value) => value.toFixed(0)}
           />
         </div>
+        <DeferredSignups />
       </div>
     ),
   },

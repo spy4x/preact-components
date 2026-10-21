@@ -1,5 +1,6 @@
 import type { RefObject } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+import { useEffect, useMemo } from "preact/hooks"
 
 export interface InViewOptions {
   /** How far ahead of the viewport the element counts as visible. Defaults to `"200px"`. */
@@ -41,6 +42,9 @@ export function createInViewObserver(
   return { disconnect: () => observer.disconnect() }
 }
 
+/** {@link useInView}'s `ref`: a callback ref that also keeps the element in `current`. */
+export type InViewRef<T extends Element> = RefObject<T> & ((element: T | null) => void)
+
 /**
  * Report whether the element behind `ref` has scrolled into view.
  *
@@ -48,6 +52,10 @@ export function createInViewObserver(
  * work before the element is actually visible, and with `once` (the default) the observer stops
  * after the first hit so a lazy fetch happens exactly once. Server-safe — with no
  * `IntersectionObserver` the effect is a no-op and `inView` stays `false` until hydration.
+ *
+ * `ref` is a callback ref that also holds the element in `ref.current`, so the hook observes
+ * whichever element it is attached to, whenever that happens: an element first rendered after a
+ * loading state, or swapped for another one, is observed too.
  *
  * Name the element type so the ref fits the tag it is attached to:
  *
@@ -58,24 +66,32 @@ export function createInViewObserver(
  */
 export function useInView<T extends Element = Element>(
   options: InViewOptions = {},
-): { ref: RefObject<T>; inView: boolean } {
+): { ref: InViewRef<T>; inView: boolean } {
   const { rootMargin = "200px", threshold = 0, once = true } = options
-  const ref = useRef<T>(null)
-  const [inView, setInView] = useState(false)
+  const element = useSignal<T | null>(null)
+  const inView = useSignal(false)
+  const ref = useMemo(() => {
+    const attach = ((next: T | null) => {
+      attach.current = next
+      element.value = next
+    }) as InViewRef<T>
+    attach.current = null
+    return attach
+  }, [])
 
+  const observed = element.value
   useEffect(() => {
-    const element = ref.current
-    if (!element) return
+    if (!observed) return
 
     let handle: InViewHandle | null = null
-    handle = createInViewObserver(element, (isIntersecting) => {
-      if (isIntersecting) setInView(true)
-      else if (!once) setInView(false)
+    handle = createInViewObserver(observed, (isIntersecting) => {
+      if (isIntersecting) inView.value = true
+      else if (!once) inView.value = false
       if (isIntersecting && once) handle?.disconnect()
     }, { rootMargin, threshold })
 
     return () => handle?.disconnect()
-  }, [rootMargin, threshold, once])
+  }, [observed, rootMargin, threshold, once])
 
-  return { ref, inView }
+  return { ref, inView: inView.value }
 }
