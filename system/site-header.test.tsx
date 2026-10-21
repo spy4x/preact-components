@@ -63,6 +63,24 @@ describe("SiteHeader", () => {
     for (const tag of linksTo(html, "/pricing")) expect(tag).not.toContain("<svg")
   })
 
+  it("marks an external link with a hidden icon after its label, and opens it in the same tab", () => {
+    const html = render(
+      <SiteHeader
+        links={[{ label: "Hire me", href: "https://me.example", external: true }]}
+        brand="Acme"
+      />,
+    )
+    const tags = linksTo(html, "https://me.example")
+    expect(tags.length).toBe(2)
+    for (const tag of tags) {
+      expect(tag).toMatch(/Hire me<svg[^>]*aria-hidden="true"/)
+      expect(tag).not.toContain("target=")
+    }
+    for (const tag of linksTo(render(<SiteHeader links={links} brand="Acme" />), "/pricing")) {
+      expect(tag).not.toContain("<svg")
+    }
+  })
+
   it("renders brand exactly as given, with no anchor of the component's own around it", () => {
     const html = render(<SiteHeader links={[]} brand={<span data-e2e="my-brand">Acme</span>} />)
     expect(html).toContain('<span data-e2e="my-brand">Acme</span>')

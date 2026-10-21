@@ -2816,7 +2816,7 @@ useEffect(() => {
         name: "links",
         type: "SiteHeaderLink[]",
         description:
-          "The links, each a label, an `href` and an optional icon. With none, the bar has no navigation and no menu button.",
+          "The links, each a label, an `href`, an optional icon and an optional `external` mark. With none, the bar has no navigation and no menu button.",
       },
       {
         name: "currentPath",

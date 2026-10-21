@@ -13,7 +13,7 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconBars3, type IconProps, IconXMark } from "@spy4x/preact-icons"
+import { IconBars3, IconExternalLink, type IconProps, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
@@ -25,6 +25,11 @@ export interface SiteHeaderLink {
   href: string
   /** Rendered at `size-5` beside the label, in both the desktop row and the mobile panel. */
   Icon?: ComponentType<IconProps>
+  /**
+   * Marks a link that leaves the site: an icon follows the label. The link still opens in the same
+   * tab; whether to leave the page is the visitor's choice, not this component's.
+   */
+  external?: boolean
 }
 
 /** Every user-visible or accessible string this component prints that is not `links`/`brand`. */
@@ -88,7 +93,7 @@ function SiteHeaderNavLink(
     onClick?: () => void
   },
 ): JSX.Element {
-  const { label, href, Icon } = link
+  const { label, href, Icon, external } = link
   const current = isCurrentLink(href, currentPath)
 
   return (
@@ -100,6 +105,7 @@ function SiteHeaderNavLink(
     >
       {Icon && <Icon class="size-5" />}
       {label}
+      {external && <IconExternalLink class="size-4" aria-hidden="true" />}
     </a>
   )
 }
