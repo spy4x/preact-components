@@ -3,7 +3,7 @@
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
  * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea`, `EnhancedForm`
- * (#511), `PricingTable` (#523), `DemoVideo` and `RadioChips` compose their classes with `join`
+ * (#511), `PricingTable` (#523), `DemoVideo`, `RadioChips` and `ScreenTour` compose their classes with `join`
  * instead, so an island that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and is
  * bundled here the way an app's build bundles one: `deno bundle --platform browser --minify`.
  *
@@ -39,10 +39,14 @@ const ISLAND_CEILING_BYTES = 31_000
  * 23.2 KB it bundled before, and #610 added 7.2 KB more; with `tailwind-merge` it would still be
  * over 60 KB. `PricingTable`'s forms became `EnhancedForm`s for `pending` (#568), which put the
  * form's busy guard, live region and focus recovery into its island: 29.6 KB became 31.6 KB.
+ * `ScreenTour` renders `Lightbox` (29.5 KB on its own) and keeps its state in signals, as the
+ * library's rule for local state asks: `@preact/signals` is about 7.3 KB minified, which a Fresh
+ * app already ships for its islands. It measured 43.4 KB.
  */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   "island-image-gallery.tsx": 35_000,
   "island-pricing-table.tsx": 33_000,
+  "island-screen-tour.tsx": 45_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
@@ -82,6 +86,7 @@ describe("a browser bundle of a library component", () => {
       "island-pricing-table.tsx",
       "island-demo-video.tsx",
       "island-radio-chips.tsx",
+      "island-screen-tour.tsx",
     ]
   ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
