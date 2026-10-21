@@ -5,7 +5,7 @@ import { Modal } from "@spy4x/preact-ui/modal"
 
 render(
   <Modal open title="Pick a coin" onClose={() => {}}>
-    <Combobox items={["BTC", "ETH"]} label="Coin" onChange={() => {}} />
+    <Combobox items={["BTC", "ETH"]} ariaLabel="Coin" onChange={() => {}} />
   </Modal>,
   document.body,
 )
