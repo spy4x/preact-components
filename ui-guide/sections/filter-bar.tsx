@@ -119,8 +119,9 @@ function FilterBarDemo() {
             options: TAGS.map((tag) => ({ ...tag, count: tagCount(tag.value) })),
             value: tags.value,
             onChange: (next) => tags.value = next,
+            headerLabel: "Show notes with",
             header: (
-              <div role="group" aria-label="Show notes with">
+              <>
                 <DropdownItem
                   checked={match.value === "any"}
                   keepOpen
@@ -135,7 +136,7 @@ function FilterBarDemo() {
                 >
                   All of these tags
                 </DropdownItem>
-              </div>
+              </>
             ),
           },
           {
@@ -203,7 +204,7 @@ export const filterBarDemos = {
         name: "filters",
         type: "FilterBarMenu[]",
         description:
-          "One menu each: `{ id, label, options, value, onChange }`, with `multiple: true` for boxes that keep the menu open, `chipLabel`, `anyLabel`, `activeLabel` and a `header` slot.",
+          "One menu each: `{ id, label, options, value, onChange }`, with `multiple: true` for boxes that keep the menu open (with a Done item on a phone), `chipLabel`, `anyLabel`, `activeLabel`, and a `header` slot with an optional `headerLabel`.",
       },
       {
         name: "toggles",

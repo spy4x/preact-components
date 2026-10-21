@@ -36,8 +36,14 @@ interface FilterBarMenuBase {
    * Drawn at the top of the menu, above the choices and a divider, such as an "Any of these tags /
    * All of these tags" switch. Pass `DropdownItem`s with `checked` and `keepOpen` inside a
    * `<div role="group" aria-label="…">`, so the arrow keys reach them and the menu stays open.
+   * With `headerLabel`, pass the items alone: the bar wraps them in that group itself.
    */
   header?: ComponentChildren
+  /**
+   * A visible heading over `header`, such as `"Show notes with"`, which also names the group the
+   * bar then wraps `header` in.
+   */
+  headerLabel?: string
 }
 
 /** A menu where any number of choices can be on, drawn as boxes; the menu stays open on a choice. */
@@ -136,6 +142,8 @@ export interface FilterBarProps {
   togglesLabel?: string
   /** Name of the list of chips. Defaults to `"Active filters"`. */
   chipsLabel?: string
+  /** Text of the item that closes a `multiple` menu's sheet on a phone. Defaults to `"Done"`. */
+  doneLabel?: string
   /** Text of the button that clears every filter. Defaults to `"Clear filters"`. */
   clearLabel?: string
   /** Name of a chip's remove button. Defaults to `"Remove the Design filter"`. */
@@ -249,15 +257,12 @@ function triggerClasses(active: boolean): string {
 /**
  * On a phone the controls row scrolls sideways, which would clip a panel hanging below it, so the
  * panel leaves the row: it is fixed to the bottom of the screen as a sheet, full width, with 44 px
- * rows, and a shadow as wide as the screen dims the page behind it the way a dialog's scrim does.
+ * rows (every button or link inside it, a `header`'s items included), and a shadow as wide as the screen dims the page behind it the way a dialog's scrim does.
  * The shadow takes no clicks, so a press on the dimmed page still reaches `Dropdown`'s outside-press
  * close. From `sm` up it is the ordinary dropdown under its trigger.
  */
 const sheetPanel =
-  "max-sm:fixed max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:z-50 max-sm:m-0 max-sm:max-h-[70dvh] max-sm:overflow-y-auto max-sm:rounded-t-xl max-sm:rounded-b-none max-sm:pb-4 max-sm:shadow-[0_0_0_100vmax_var(--color-scrim)] max-sm:whitespace-normal sm:min-w-56"
-
-/** An item's touch target on a phone, where the menu is a sheet. */
-const sheetItem = "max-sm:min-h-11"
+  "max-sm:fixed max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:z-50 max-sm:m-0 max-sm:max-h-[70dvh] max-sm:overflow-y-auto max-sm:rounded-t-xl max-sm:rounded-b-none max-sm:pb-4 max-sm:shadow-[0_0_0_100vmax_var(--color-scrim)] max-sm:whitespace-normal max-sm:[&_button]:min-h-11 max-sm:[&_a]:min-h-11 sm:min-w-56"
 
 /** The sheet's visible title, on a phone only: a sheet at the bottom has no trigger beside it. */
 function SheetTitle({ children }: { children: string }): JSX.Element {
@@ -272,11 +277,17 @@ function SheetTitle({ children }: { children: string }): JSX.Element {
 const divider = <div role="separator" class="my-1 border-t border-subtle" />
 
 /**
- * One filter menu: a chip trigger and a `Dropdown` of its choices, boxes when `multiple`.
+ * One filter menu: a chip trigger and a `Dropdown` of its choices, boxes when `multiple`. A
+ * `multiple` menu ends with a Done item on a phone, where its sheet covers the bar and a reader
+ * picking several needs an obvious way out; it is a plain item, so choosing it closes the menu.
  *
  * @param props.menu The menu.
+ * @param props.doneLabel The Done item's text.
  */
-function FilterMenuButton({ menu }: { menu: FilterBarMenu }): JSX.Element {
+function FilterMenuButton(
+  { menu, doneLabel }: { menu: FilterBarMenu; doneLabel: string },
+): JSX.Element {
+  const headingId = useId()
   const chosen = chosenOptions(menu)
   const active = chosen.length > 0
   const isChosen = (value: string) => chosen.some((option) => option.value === value)
@@ -308,7 +319,16 @@ function FilterMenuButton({ menu }: { menu: FilterBarMenu }): JSX.Element {
       {menu.header !== undefined
         ? (
           <>
-            {menu.header}
+            {menu.headerLabel === undefined
+              ? menu.header
+              : (
+                <div role="group" aria-labelledby={headingId}>
+                  <div id={headingId} class="px-4 pt-2 pb-1 text-xs font-medium text-muted">
+                    {menu.headerLabel}
+                  </div>
+                  {menu.header}
+                </div>
+              )}
             {divider}
           </>
         )
@@ -317,7 +337,6 @@ function FilterMenuButton({ menu }: { menu: FilterBarMenu }): JSX.Element {
         ? (
           <DropdownItem
             checked={menu.value === null}
-            class={sheetItem}
             onClick={() => menu.onChange(null)}
           >
             {menu.anyLabel}
@@ -329,7 +348,6 @@ function FilterMenuButton({ menu }: { menu: FilterBarMenu }): JSX.Element {
           key={option.value}
           checked={isChosen(option.value)}
           multiple={menu.multiple === true}
-          class={sheetItem}
           onClick={() => choose(option.value)}
         >
           <span class="min-w-0 flex-1 truncate">{option.label}</span>
@@ -338,6 +356,13 @@ function FilterMenuButton({ menu }: { menu: FilterBarMenu }): JSX.Element {
             : null}
         </DropdownItem>
       ))}
+      {menu.multiple
+        ? (
+          <DropdownItem class="mt-2 justify-center border-t border-subtle font-medium text-selected sm:hidden">
+            {doneLabel}
+          </DropdownItem>
+        )
+        : null}
     </Dropdown>
   )
 }
@@ -364,9 +389,10 @@ interface Refocus {
  * Each chip's remove button takes one filter away and moves focus to the next chip, or to the
  * search field (else the first control) when it was the last; "Clear filters" does the same.
  *
- * From `sm` up the search field and the controls share one row that wraps. On a phone the search
- * field has its own row, the controls scroll sideways on theirs, and a menu opens as a sheet fixed
- * to the bottom of the screen, since a panel hanging from a scrolling row would be clipped.
+ * From `sm` up the search field and every control share one row that wraps, search first. On a
+ * phone the search field has its own row, the controls scroll sideways on theirs, and a menu opens
+ * as a sheet fixed to the bottom of the screen, since a panel hanging from a scrolling row would be
+ * clipped.
  */
 export function FilterBar(props: FilterBarProps): JSX.Element {
   const {
@@ -380,6 +406,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
     togglesLabel = "Quick filters",
     chipsLabel = "Active filters",
     clearLabel = "Clear filters",
+    doneLabel = "Done",
     removeLabel = (chip) => `Remove the ${chip.valueLabel} filter`,
     class: className,
   } = props
@@ -486,7 +513,6 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           <DropdownItem
             key={option.value}
             checked={option.value === sort.value}
-            class={sheetItem}
             onClick={() => sort.onChange(option.value)}
           >
             {option.label}
@@ -512,9 +538,11 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           ? (
             <div
               data-filter-controls=""
-              class="pc-scrollbar flex min-w-0 flex-1 items-center gap-2 p-1 sm:flex-wrap sm:overflow-visible sm:p-0"
+              class="pc-scrollbar flex min-w-0 flex-1 items-center gap-2 p-1 sm:contents"
             >
-              {filters.map((menu) => <FilterMenuButton key={menu.id} menu={menu} />)}
+              {filters.map((menu) => (
+                <FilterMenuButton key={menu.id} menu={menu} doneLabel={doneLabel} />
+              ))}
               {toggles.length > 0
                 ? (
                   <ToggleChips

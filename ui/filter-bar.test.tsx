@@ -238,11 +238,47 @@ describe("FilterBar", () => {
     const panel = html.match(/<div class="[^"]*\babsolute\b[^"]*"/)?.[0] ?? ""
 
     expect(row).toContain("pc-scrollbar")
-    expect(row).toContain("sm:flex-wrap")
-    expect(row).toContain("sm:overflow-visible")
     for (const name of ["max-sm:fixed", "max-sm:inset-x-0", "max-sm:bottom-0", "max-sm:top-auto"]) {
       expect(panel).toContain(name)
     }
     expect(html).toMatch(/<div aria-hidden="true" class="[^"]*sm:hidden[^"]*">Tags<\/div>/)
+  })
+
+  it("puts search and every control in one wrapping row from sm up, search first", () => {
+    const html = render(
+      <FilterBar search={{ value: "", onChange: () => {} }} filters={[tags([])]} />,
+    )
+    const row = html.match(/<div data-filter-controls[^>]*>/)?.[0] ?? ""
+
+    // The controls' own box drops out from sm up, so they wrap on the search field's row.
+    expect(row).toContain("sm:contents")
+    expect(html).toMatch(/<div class="[^"]*sm:flex-wrap[^"]*"><div class="relative[^"]*"><label/)
+  })
+
+  it("makes every item of a phone sheet 44 px tall, the header's included", () => {
+    const panel = render(<FilterBar filters={[tags([])]} />)
+      .match(/<div class="[^"]*\babsolute\b[^"]*"/)?.[0] ?? ""
+
+    expect(panel).toContain("max-sm:[&amp;_button]:min-h-11")
+    expect(panel).toContain("max-sm:[&amp;_a]:min-h-11")
+  })
+
+  it("names the header with a visible heading when headerLabel is given", () => {
+    const menu = { ...tags([]), headerLabel: "Show notes with", header: <i>switch</i> }
+    const html = render(<FilterBar filters={[menu]} />)
+    const id = html.match(/<div role="group" aria-labelledby="([^"]+)"/)?.[1]
+
+    expect(id).toBeTruthy()
+    expect(html).toContain(
+      `<div id="${id}" class="px-4 pt-2 pb-1 text-xs font-medium text-muted">Show notes with</div><i>switch</i>`,
+    )
+  })
+
+  it("ends a multiple menu with a Done item shown only on a phone, and a single menu without one", () => {
+    const html = render(<FilterBar filters={[tags([]), author(null)]} />)
+
+    expect(html.match(/>Done<\/button>/g)?.length).toBe(1)
+    expect(html).toMatch(/<button[^>]*class="[^"]*\bsm:hidden\b[^"]*"[^>]*>Done<\/button>/)
+    expect(render(<FilterBar filters={[tags([])]} doneLabel="Close" />)).toMatch(/>Close<\/button>/)
   })
 })

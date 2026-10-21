@@ -2001,7 +2001,8 @@ function filterBarSpecs(): Spec[] {
     },
     {
       name: "FilterBar: the arrow keys reach the mode switch and the boxes, Space checks a box " +
-        "with the menu left open, and Escape hands focus back to the trigger",
+        "with the menu left open, End skips the phone-only Done item, and Escape hands focus " +
+        "back to the trigger",
       pageId: "ui",
       run: async (page) => {
         await page.setViewportSize({ width: 1280, height: 900 })
@@ -2023,6 +2024,8 @@ function filterBarSpecs(): Spec[] {
         await page.keyboard.press(" ")
         await bar.stateHas("tags: design, plans (all)")
         await bar.focusIsOn(plans)
+        await page.keyboard.press("End")
+        await bar.focusIsOn(bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Hiring" }))
         await page.keyboard.press("Escape")
         await bar.focusIsOn(bar.tags)
       },
@@ -2067,7 +2070,8 @@ function filterBarSpecs(): Spec[] {
     },
     {
       name: "FilterBar at 390 px: nothing overflows the page, the controls row scrolls on its " +
-        "own, and a menu opens as a sheet along the bottom of the screen",
+        "own, and a menu opens as a sheet along the bottom of the screen, every item 44 px tall, " +
+        "closed by its Done item",
       pageId: "ui",
       run: async (page) => {
         await page.setViewportSize({ width: 390, height: 844 })
@@ -2092,6 +2096,39 @@ function filterBarSpecs(): Spec[] {
           Math.round(box.y + box.height) === height
         if (!flush) {
           throw new Error(`the menu is not a bottom sheet: ${JSON.stringify(box)}`)
+        }
+        const short = await bar.tagsMenu.locator(`[role^="menuitem"]`).evaluateAll((items) =>
+          items.map((item) => [item.textContent, item.getBoundingClientRect().height] as const)
+            .filter(([, height]) => height < 44)
+        )
+        if (short.length > 0) throw new Error(`items under 44 px: ${JSON.stringify(short)}`)
+        await bar.tagsMenu.getByRole("menuitem", { name: "Done" }).click()
+        await bar.tagsMenu.waitFor({ state: "hidden" })
+      },
+    },
+    {
+      name: "FilterBar at 768 px with the controls wrapping: the search field sits on the first " +
+        "line, level with the first control",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 768, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.tags.click()
+        await bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Plans" }).click()
+        await page.keyboard.press("Escape")
+        await bar.author.click()
+        await page.getByRole("menuitemradio", { name: "Maya Chen" }).click()
+        await bar.card.getByRole("button", { name: "Created by me", exact: true }).click()
+        await bar.stateHas("mine: on")
+        const [search, tags, sort] = await Promise.all(
+          [bar.search, bar.tags, bar.sort].map((control) => control.boundingBox()),
+        )
+        if (!search || !tags || !sort) throw new Error("a control is not drawn")
+        if (Math.abs(search.y - tags.y) > 1) {
+          throw new Error(`the search field is at y ${search.y}, the Tags menu at y ${tags.y}`)
+        }
+        if (sort.y <= tags.y) {
+          throw new Error("the controls do not wrap at 768 px, so this proves nothing")
         }
       },
     },
