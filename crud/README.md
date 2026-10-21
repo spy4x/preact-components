@@ -544,7 +544,7 @@ the same rules.
   `deletedAt` with now and lists what `dependencies` says still points at the row in `blocked`;
   un-archiving clears both.
 - `fieldText(value)` is a model value as the text a control shows, with `null` and `undefined` as
-  `""`. `commitNumber(raw)` parses a number box's text, reading an empty or half-typed value as `0`.
+  `""`. `commitNumber(raw)` parses a number box's text, reading an empty or half-typed value as `null`.
   `typedNumber(raw)` is the number a keystroke may commit, or `undefined` while the text would not
   read back unchanged (`-`, `1.`, `1.0`).
 - `CONFLICT` (`"CONFLICT"`) is the issue type an association editor reports a duplicate under, on

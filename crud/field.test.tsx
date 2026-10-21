@@ -110,20 +110,23 @@ describe("NumberField", () => {
       .toContain(`value="12"`)
   })
 
-  it("commits 0 for the empty box a number input reports", () => {
-    expect(commitNumber("")).toBe(0)
-    expect(commitNumber("  ")).toBe(0)
+  it("commits null for the empty box a number input reports", () => {
+    expect(commitNumber("")).toBeNull()
+    expect(commitNumber("  ")).toBeNull()
   })
 
-  it("commits 0 for a half-typed box instead of NaN", () => {
-    expect(commitNumber("-")).toBe(0)
-    expect(commitNumber("1e")).toBe(0)
+  it("commits null for a half-typed box instead of NaN or 0", () => {
+    expect(commitNumber("-")).toBeNull()
+    expect(commitNumber("1e")).toBeNull()
   })
 
   it("commits a parsable number", () => {
     expect(commitNumber(" 12 ")).toBe(12)
     expect(commitNumber("-3.5")).toBe(-3.5)
+    expect(commitNumber("1e3")).toBe(1000)
+    expect(commitNumber("007")).toBe(7)
   })
+
   it("commits a keystroke only when the box reads back unchanged", () => {
     expect(typedNumber("12")).toBe(12)
     expect(typedNumber("-3.5")).toBe(-3.5)
