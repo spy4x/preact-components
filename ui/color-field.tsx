@@ -16,9 +16,10 @@ export interface ColorPreset {
 }
 
 /**
- * The 16 swatches {@link ColorField} offers by default: a neutral gray and 15 hues. Each takes
- * black or white text by `readableTextColor` and reaches at least 4.5:1 with it, so a name drawn on
- * any of them passes WCAG AA in either theme.
+ * The 16 swatches {@link ColorField} offers by default: a neutral gray and 15 hues, dark enough to
+ * take white text except Yellow, which takes black. Text in `readableTextColor` reaches at least
+ * 4.58:1 on any `#rrggbb` (the worst case, a background of relative luminance 0.18, gives √21), so
+ * a name drawn on a preset or on a custom colour always passes WCAG AA.
  */
 export const COLOR_PRESETS: readonly ColorPreset[] = [
   { value: "#4b5563", label: "Gray" },

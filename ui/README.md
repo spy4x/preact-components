@@ -429,9 +429,9 @@ rest there.
 A colour choice for things a person tells apart by colour, such as tags and groups. Round 32 px
 swatches with a 44 px touch area sit on native radios in a `<fieldset>`, so the group is one tab
 stop, the arrow keys move the choice and Space checks it. The checked swatch shows a check in the
-text colour that reads on it. `COLOR_PRESETS` are the 16 default swatches, a gray and 15 hues, each
-at 4.5:1 or more with its readable text colour. `allowNone` adds a first "No colour" swatch that
-sends `null`.
+text colour that reads on it. `COLOR_PRESETS` are the 16 default swatches, a gray and 15 hues. Black
+or white text from `readableTextColor` reaches 4.5:1 on any colour, presets and custom ones
+alike. `allowNone` adds a first "No colour" swatch that sends `null`.
 
 The last swatch, "Pick a custom colour", shows a native colour input and a "Hex code" field. A
 picked colour reaches `onChange` at once, a typed one once it is a full `#rrggbb` (sent in lower

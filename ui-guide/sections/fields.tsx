@@ -1173,7 +1173,7 @@ export const fieldDemos = {
         name: "presets",
         type: "{ value, label }[]",
         default: "COLOR_PRESETS",
-        description: "The swatches before Custom: a gray and 15 hues, each 4.5:1 with its text.",
+        description: "The swatches before Custom: a gray and 15 hues.",
       },
       {
         name: "allowNone / noneLabel",

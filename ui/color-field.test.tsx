@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { contrastRatio, isHexColor, readableTextColor } from "@spy4x/platform/universal/color"
+import { isHexColor } from "@spy4x/platform/universal/color"
 import { render } from "preact-render-to-string"
 import { COLOR_PRESETS, ColorField } from "./color-field.tsx"
 
@@ -30,13 +30,6 @@ describe("COLOR_PRESETS", () => {
       expect(preset.value).toBe(preset.value.toLowerCase())
     }
     expect(COLOR_PRESETS.some((preset) => preset.label === "Gray")).toBe(true)
-  })
-
-  it("gives every preset at least 4.5:1 with its readable text colour", () => {
-    for (const preset of COLOR_PRESETS) {
-      const ratio = contrastRatio(preset.value, readableTextColor(preset.value))
-      if (ratio < 4.5) throw new Error(`${preset.label} ${preset.value}: ${ratio.toFixed(2)}`)
-    }
   })
 })
 

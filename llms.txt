@@ -524,7 +524,7 @@ ButtonOverloads	type	@spy4x/preact-ui	`Button`'s two call shapes: given `href`, 
 ButtonSize	type	@spy4x/preact-ui	Control height and text scale of a `Button`.
 ButtonVariant	type	@spy4x/preact-ui	Visual role of a `Button`.
 CANCEL_LABEL	constant	@spy4x/preact-ui	English default for the cancelling action.
-COLOR_PRESETS	constant	@spy4x/preact-ui	The 16 swatches `ColorField` offers by default: a neutral gray and 15 hues.
+COLOR_PRESETS	constant	@spy4x/preact-ui	The 16 swatches `ColorField` offers by default: a neutral gray and 15 hues, dark enough to take white text except Yellow, which takes black.
 CONFIRM_LABEL	constant	@spy4x/preact-ui	English default for the confirming action, used when the caller names no verb.
 Card	component	@spy4x/preact-ui	Card surface.
 CardBody	component	@spy4x/preact-ui	Card body: the content region of a `Card`.
