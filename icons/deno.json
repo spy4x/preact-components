@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-icons",
-  "version": "8.11.0",
+  "version": "8.12.0",
   "exports": {
     ".": "./+index.tsx"
   },
