@@ -113,9 +113,11 @@ export function useFocusAfterRemoval(
  * a reason the caller does not answer.
  *
  * When the component unmounts with focus inside `container`, it focuses `fallback()` too, unless
- * that element is inside the container that is leaving.
+ * that element is inside the container that is leaving. That holds for a container first drawn
+ * after the mount, such as a card that mounted hidden: the element is looked up as it leaves.
  *
- * @param container The element focus is kept for. Read before each render and after its commit.
+ * @param container The element focus is kept for. Read before each render, after its commit, and
+ *   at unmount.
  * @param fallback Where focus goes, read only when it is needed.
  */
 export function useFocusFallback(
@@ -123,6 +125,8 @@ export function useFocusFallback(
   fallback: () => HTMLElement | null | undefined,
 ): void {
   const latest = useRef(fallback)
+  /** The container as the last commit left it: it may first appear after the mount. */
+  const shown = useRef<HTMLElement | null>(null)
   // Read while rendering, before the render reaches the page: once a focused control is gone, focus
   // has already fallen to the body. A server render has no document.
   const hadFocus = Boolean(container.current?.contains(globalThis.document?.activeElement ?? null))
@@ -130,6 +134,7 @@ export function useFocusFallback(
   useLayoutEffect(() => {
     latest.current = fallback
     const element = container.current
+    shown.current = element
     const active = globalThis.document?.activeElement ?? null
     if (!hadFocus || element?.contains(active)) return
     if (active && active !== active.ownerDocument.body) return
@@ -137,10 +142,12 @@ export function useFocusFallback(
   })
 
   // The caller may unmount the container instead of changing it. Effect cleanups run while its
-  // markup is still in the page, so focus can still be asked about there.
+  // markup is still in the page, so focus can still be asked about there. The element is looked up
+  // then, not at mount: a container rendered only later, such as a card shown after it mounted
+  // hidden, is the one leaving.
   useLayoutEffect(() => {
-    const element = container.current
     return () => {
+      const element = container.current ?? shown.current
       if (!element?.isConnected || !element.contains(element.ownerDocument.activeElement)) return
       const target = latest.current()
       if (target && !element.contains(target)) target.focus()

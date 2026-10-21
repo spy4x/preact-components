@@ -2375,8 +2375,7 @@ The `Button` card's "Save" demo uses it.
   `container` leaves it, or the whole container leaves: when focus was inside before a render and
   is on the body after it, it focuses `fallback()`, in a layout effect so focus never rests on the
   body. Focus the person moved elsewhere is left alone, and `fallback()` may return `null` to move
-  nothing. On unmount with focus inside, it focuses `fallback()` unless that is inside the leaving
-  container. `InstallPrompt`, `PushSettings`, `SyncStatus` and `ConflictChooser` in
+  nothing. On unmount with focus inside, it focuses `fallback()` unless that is inside the leaving container, also when the container was first drawn after the mount. `InstallPrompt`, `PushSettings`, `SyncStatus` and `ConflictChooser` in
   `@spy4x/preact-system` use it.
 
 A row that confirms its removal in a dialog uses all three with `ConfirmDialog` and `ErrorState`:
