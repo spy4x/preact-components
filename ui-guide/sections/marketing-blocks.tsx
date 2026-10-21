@@ -419,6 +419,11 @@ export const pageHeroDemo: DemoFragment = {
           "The day the page last changed, `YYYY-MM-DD`, as a `<time datetime>` in the meta line.",
       },
       {
+        name: "note",
+        type: "ComponentChildren",
+        description: "A short caveat right under the meta line, in the same quiet text.",
+      },
+      {
         name: "labels",
         type: "Partial<PageHeroLabels>",
         description: "The meta line's words: `by` (`By`) and `updated` (`Updated`).",
@@ -431,6 +436,7 @@ export const pageHeroDemo: DemoFragment = {
   lead="Every feature on every plan. Pay monthly, cancel any time."
   author={{ name: "Anton Shubin", href: "/about" }}
   updated="2026-10-19"
+  note="Prices in euros, before VAT."
 >
   <Button href="/sign-up">Start free</Button>
 </PageHero>`,
@@ -441,6 +447,7 @@ export const pageHeroDemo: DemoFragment = {
         lead="Every feature on every plan. Pay monthly, cancel any time."
         author={{ name: "Anton Shubin", href: "#demo-PageHero" }}
         updated="2026-10-19"
+        note="Prices in euros, before VAT."
       >
         <div>
           <Button href="#demo-PageHero">Start free</Button>
