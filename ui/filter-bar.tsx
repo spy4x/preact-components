@@ -358,7 +358,7 @@ function FilterMenuButton(
       ))}
       {menu.multiple
         ? (
-          <DropdownItem class="mt-2 justify-center border-t border-subtle font-medium text-selected sm:hidden">
+          <DropdownItem class="mt-2 justify-center border-t border-subtle font-medium text-foreground sm:hidden">
             {doneLabel}
           </DropdownItem>
         )

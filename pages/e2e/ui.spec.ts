@@ -1971,6 +1971,20 @@ function filterBarSpecs(): Spec[] {
   })
   return [
     {
+      name: "FilterBar at 390 px, dark: the sheet passes axe with its Done item focused",
+      pageId: "ui",
+      colorScheme: "dark",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const bar = filterBarCard(page)
+        await bar.search.scrollIntoViewIfNeeded()
+        await bar.tags.click()
+        await bar.tagsMenu.waitFor()
+        await bar.tagsMenu.getByRole("menuitem", { name: "Done" }).focus()
+        await axeClean(page, `#demo-FilterBar [role="search"]`)
+      },
+    },
+    {
       name: "FilterBar: search, a box in the Tags menu, a toggle and the sort each reach their " +
         "onChange, and a box leaves the menu open",
       pageId: "ui",
