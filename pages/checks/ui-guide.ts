@@ -374,10 +374,10 @@ interface DrawnInBrowser {
 const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
   "demo-CrudEditor": {
     selector: `[role="status"][aria-atomic="true"]`,
-    parts: 2,
+    parts: 3,
     reason: "validation runs in an effect, so the cross-field message in the live region above " +
-      "Save exists only in the browser; the second editor's region stays empty in both, " +
-      "because its demo row passes that validation",
+      "Save exists only in the browser; the other two editors' regions stay empty in both, " +
+      "because their demo rows pass that validation",
   },
   "demo-LineChart": {
     selector: `[data-chart="line"] > [aria-hidden="true"] .inset-x-3`,
