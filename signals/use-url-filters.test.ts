@@ -2,14 +2,12 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import {
   clearFilterFields,
-  type FilterField,
   filterSearch,
   filterWrite,
   readAddress,
-  resolveFilterValue,
   restoredAddress,
-  shouldPersistFilter,
-} from "./use-url-filters.ts"
+} from "./use-url-filters-internals.ts"
+import { type FilterField, resolveFilterValue, shouldPersistFilter } from "./use-url-filters.ts"
 import { effect, signal } from "@preact/signals"
 
 function stringField(urlParam: string, initialValue: string): FilterField<string> {

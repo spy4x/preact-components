@@ -328,13 +328,6 @@ themeBootstrapScript	helper	@spy4x/preact-signals	The source of an inline `<head
 useNow	hook	@spy4x/preact-signals	The current time, on a signal that changes at each midnight in `zone` and whenever the page becomes visible again.
 usePushSubscription	hook	@spy4x/preact-signals	The push state of this device for one component, ready to spread into `PushSettings` from `@spy4x/preact-system`.
 useUrlFilters	hook	@spy4x/preact-signals	Bind filter signals to URL parameters.
-AddressParts	type	@spy4x/preact-signals/use-url-filters	An address as `location` reports it, in the four pieces this hook has to read.
-FilterWrite	type	@spy4x/preact-signals/use-url-filters	What one filter does to its own query parameter: set it, or — with no `value` — remove it.
-clearFilterFields	helper	@spy4x/preact-signals/use-url-filters	Take every field back to its default, as **one** change.
-filterSearch	helper	@spy4x/preact-signals/use-url-filters	The query string a set of filter values implies, starting from the one the address already has.
-filterWrite	helper	@spy4x/preact-signals/use-url-filters	What one field's value means for its parameter.
-readAddress	helper	@spy4x/preact-signals/use-url-filters	Read the address into the filters, and answer with the query string they now agree on.
-restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the write should have left behind, or `undefined` when that is already the address.
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
 AccountMenuTheme	type	@spy4x/preact-system	The theme preferences `AccountMenu` offers; `"system"` follows the device.

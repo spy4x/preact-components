@@ -2116,8 +2116,9 @@ socket.on(`settings`, (record) => settings.apply(record))
   address, so the entry the reader returned to is never overwritten. `pages/e2e/signals.spec.ts`
   holds each of these in a browser.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
-  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch`,
-  `readAddress`, `restoredAddress` and `clearFilterFields` — which between them hold the rules for
+  a query string: `resolveFilterValue`, `shouldPersistFilter`, and the address rules in
+  `use-url-filters-internals.ts`, which is not an entry point (`filterWrite`, `filterSearch`,
+  `readAddress`, `restoredAddress` and `clearFilterFields`) — which between them hold the rules for
   dropping a default, carrying a parameter the filters do not own, answering with the same string
   when nothing changed, keeping a value the reader changed before the first read, putting a fragment
   back on the address a write left behind, and clearing as one change.
