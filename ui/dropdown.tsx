@@ -239,8 +239,10 @@ export interface DropdownItemProps extends HotkeyProps {
  * menu with nothing in it. Rendering the item here is what puts the role on the element the user
  * actually activates.
  *
- * The item is out of the tab order (`tabindex="-1"`): inside a menu the arrow keys move between
- * items and Tab leaves the menu altogether, which is the behaviour {@link Dropdown} implements.
+ * The item renders out of the tab order (`tabindex="-1"`): inside a menu the arrow keys move
+ * between items and Tab leaves the menu altogether, which is the behaviour {@link Dropdown}
+ * implements. {@link Dropdown} gives the focused item `tabindex="0"`, a roving tab stop, so a menu
+ * that scrolls holds one item in the tab order, as axe's `scrollable-region-focusable` asks.
  * Before its dropdown hydrates, the item is a plain link or button instead: it carries no
  * `role="menuitem"`, because no script answers the arrow keys yet, and it stays in the tab order,
  * because Tab is the only way a keyboard reaches it.
@@ -534,8 +536,22 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     items[target]?.focus()
   }
 
-  // Tab is deliberately not handled here. The items are out of the tab order, so one Tab press
-  // already takes focus out of the menu; this listener is what notices and closes behind it.
+  // A roving tab stop: the focused item alone is in the tab order. A scrolling menu then holds a
+  // tabbable element, which axe's `scrollable-region-focusable` asks for, and Tab and Shift+Tab
+  // still leave the menu in one press, since every other item stays at `tabindex="-1"`. Set on the
+  // DOM, not through props: the items are the caller's children, rendered before the menu sees
+  // them, and their render writes `-1` again only when that prop itself changes.
+  const handleFocusIn = (event: FocusEvent) => {
+    const focused = event.target as HTMLElement | null
+    const panel = panelRef.current
+    if (!panel || !focused?.matches(MENU_ITEM) || !panel.contains(focused)) return
+    for (const item of panel.querySelectorAll<HTMLElement>(MENU_ITEM)) {
+      item.tabIndex = item === focused ? 0 : -1
+    }
+  }
+
+  // Tab is deliberately not handled here. Only the focused item is in the tab order, so one Tab
+  // press already takes focus out of the menu; this listener is what notices and closes behind it.
   const handleFocusOut = (event: FocusEvent) => {
     const next = event.relatedTarget as Node | null
     if (next) {
@@ -644,6 +660,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
       class={rootClasses}
       ref={rootRef}
       onKeyDown={handleKeyDown}
+      onFocusIn={handleFocusIn}
       onFocusOut={handleFocusOut}
     >
       <button
