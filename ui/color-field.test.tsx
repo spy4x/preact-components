@@ -98,6 +98,23 @@ describe("ColorField", () => {
     expect(checkedRadios(plain).length).toBe(0)
   })
 
+  it("keeps the wheel mark on Custom while it holds a colour, so it never looks like a preset", () => {
+    const custom = render(<ColorField value="#59168b" onChange={noop} />)
+    const mark = custom.match(/<label[^>]*><input[^>]*value="custom"[^>]*>.*?<\/label>/)?.[0] ?? ""
+    expect(mark).toContain(`data-e2e="color-field-custom-mark"`)
+    expect(mark).toContain("conic-gradient(")
+
+    const preset = render(<ColorField value="#b91c1c" onChange={noop} />)
+    expect(preset).not.toContain(`color-field-custom-mark`)
+  })
+
+  it("draws the check on the checked None swatch, as on every other", () => {
+    const html = render(<ColorField value={null} onChange={noop} allowNone />)
+    const none = html.match(/<label[^>]*><input[^>]*value="none"[^>]*>.*?<\/label>/)?.[0] ?? ""
+    expect(none).toContain("<svg")
+    expect(html.match(/<svg/g)?.length).toBe(1)
+  })
+
   it("treats a value that is not #rrggbb as no colour", () => {
     const html = render(<ColorField value="red" onChange={noop} preview={() => "sample"} />)
 

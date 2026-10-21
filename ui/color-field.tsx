@@ -116,9 +116,11 @@ const swatch = join(
  *
  * Choosing "Custom" shows the colour input and the "Hex code" field, which Tab reaches after the
  * group. It does not open the system picker by itself, because the arrow keys pass through "Custom"
- * on their way round. A picked colour reaches `onChange` at once; a typed one when it is a full
- * `#rrggbb`. A typed value that is not shows `labels.hexError` once the field loses focus, and
- * `onChange` is not called. A value that is no preset opens on "Custom", with the swatch filled.
+ * on their way round. While it holds a colour, a small wheel stays on its corner, so it never looks
+ * like a preset of the same colour. A picked colour reaches `onChange` at once; a typed one when it
+ * is a full `#rrggbb`, in lower case. A typed value that is not shows `labels.hexError` once the
+ * field loses focus, and `onChange` is not called. A value that is no preset opens on "Custom",
+ * with the swatch filled.
  */
 export function ColorField(
   {
@@ -137,8 +139,12 @@ export function ColorField(
   }: ColorFieldProps,
 ): JSX.Element {
   const id = useId()
-  /** "Custom" was chosen, so it stays checked even on a colour a preset has. */
-  const customChosen = useSignal(false)
+  /**
+   * The colour "Custom" was chosen on, or the last one it sent, so it stays checked on a colour a
+   * preset has. A `value` the caller changes from outside no longer matches it, so the swatches
+   * follow the new value again. `undefined` while Custom was not chosen.
+   */
+  const customFor = useSignal<string | null | undefined>(undefined)
   /** The hex field's text while it is not a valid colour; `null` shows `value`. */
   const draft = useSignal<string | null>(null)
   const showHexError = useSignal(false)
@@ -147,7 +153,7 @@ export function ColorField(
   const preset = color === null
     ? undefined
     : presets.find((option) => option.value.toLowerCase() === color)
-  const selected = customChosen.value
+  const selected = customFor.value !== undefined && customFor.value === color
     ? CUSTOM
     : color === null
     ? (allowNone ? NONE : null)
@@ -165,10 +171,10 @@ export function ColorField(
 
   const choose = (next: string) => {
     if (next === CUSTOM) {
-      customChosen.value = true
+      customFor.value = color
       return
     }
-    customChosen.value = false
+    customFor.value = undefined
     draft.value = null
     showHexError.value = false
     onChange(next === NONE ? null : next)
@@ -178,6 +184,7 @@ export function ColorField(
     if (isHexColor(text)) {
       draft.value = null
       showHexError.value = false
+      customFor.value = text.toLowerCase()
       onChange(text.toLowerCase())
     } else {
       draft.value = text
@@ -185,14 +192,15 @@ export function ColorField(
   }
 
   /**
-   * One swatch: a hidden radio, the round fill (a CSS `background`, or the surface when left out)
-   * and the name for a screen reader.
+   * One swatch: a hidden radio, the round fill (a CSS `background`, or the surface when left out),
+   * an optional `mark` over its corner, and the name for a screen reader.
    */
   const option = (
     optionValue: string,
     label: string,
     fill: JSX.Element | null,
     background?: string,
+    mark?: JSX.Element,
   ) => (
     <label key={optionValue} class={touch} title={label}>
       <input
@@ -210,6 +218,7 @@ export function ColorField(
       >
         {fill}
       </span>
+      {mark}
       <span class="sr-only">{label}</span>
     </label>
   )
@@ -231,7 +240,9 @@ export function ColorField(
         {allowNone && option(
           NONE,
           noneLabel,
-          <span class="block h-0.5 w-6 -rotate-45 rounded-full bg-current" />,
+          selected === NONE
+            ? <IconCheck class="size-4 text-foreground" />
+            : <span class="block h-0.5 w-6 -rotate-45 rounded-full bg-current" />,
         )}
         {presets.map((swatchOption) =>
           option(
@@ -246,6 +257,14 @@ export function ColorField(
           labels.custom ?? "Pick a custom colour",
           customColor === null ? null : check(customColor, true),
           customColor ?? WHEEL,
+          customColor === null ? undefined : (
+            <span
+              class="absolute right-0.5 bottom-0.5 size-3.5 rounded-full border-2 border-surface"
+              style={{ background: WHEEL }}
+              aria-hidden="true"
+              data-e2e="color-field-custom-mark"
+            />
+          ),
         )}
       </div>
       {selected === CUSTOM && (
