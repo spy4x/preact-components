@@ -82,7 +82,8 @@
     "./theme-toggle": "./theme-toggle.tsx",
     "./unsaved-guard": "./unsaved-guard.tsx",
     "./steps": "./steps.tsx",
-    "./window-frame": "./window-frame.tsx"
+    "./window-frame": "./window-frame.tsx",
+    "./screen-tour": "./screen-tour.tsx"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a
