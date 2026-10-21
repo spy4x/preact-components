@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { DemoVideo, type DemoVideoProps } from "./demo-video.tsx"
+import { DemoVideoClip, playClip } from "./demo-video-clip.tsx"
 
 const PROPS: DemoVideoProps = {
   title: "Creating an invoice",
@@ -83,5 +84,71 @@ describe("DemoVideo", () => {
     expect(() => render(<DemoVideo {...PROPS} sources={[]} />)).toThrow(
       "DemoVideo needs at least one source",
     )
+  })
+
+  describe("the playing clip", () => {
+    const clip = () =>
+      render(
+        <DemoVideoClip
+          videoRef={{ current: null }}
+          sources={PROPS.sources}
+          title={PROPS.title}
+          width={1280}
+          height={720}
+          loop={false}
+          onFail={() => {}}
+        />,
+      )
+
+    it("shows the whole frame, so full screen on another aspect adds bars instead of cutting", () => {
+      const html = clip()
+      expect(html).toMatch(/^<video [^>]*class="[^"]*\bobject-contain\b/)
+      expect(html).not.toContain("object-cover")
+    })
+
+    it("is not muted, so the clip plays with its sound", () => {
+      expect(clip()).not.toMatch(/^<video [^>]*\bmuted\b/)
+    })
+  })
+
+  describe("playClip", () => {
+    it("plays with sound when the browser allows it", async () => {
+      const calls: boolean[] = []
+      const video = {
+        muted: false,
+        play() {
+          calls.push(this.muted)
+          return Promise.resolve()
+        },
+      }
+      await playClip(video)
+      expect(calls).toEqual([false])
+      expect(video.muted).toBe(false)
+    })
+
+    it("mutes the clip and plays again when the browser refuses sound", async () => {
+      const calls: boolean[] = []
+      const video = {
+        muted: false,
+        play() {
+          calls.push(this.muted)
+          return this.muted
+            ? Promise.resolve()
+            : Promise.reject(new DOMException("", "NotAllowedError"))
+        },
+      }
+      await playClip(video)
+      expect(calls).toEqual([false, true])
+      expect(video.muted).toBe(true)
+    })
+
+    it("settles without throwing when even the muted play is refused", async () => {
+      const video = {
+        muted: false,
+        play: () => Promise.reject(new DOMException("", "NotAllowedError")),
+      }
+      await playClip(video)
+      expect(video.muted).toBe(true)
+    })
   })
 })
