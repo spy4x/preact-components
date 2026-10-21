@@ -3,12 +3,15 @@ import { describe, it } from "@std/testing/bdd"
 import { h } from "preact"
 import { render } from "preact-render-to-string"
 import {
+  activeShortcuts,
   ariaKeyShortcuts,
   clickByHotkey,
+  createHotkeyListener,
   firesInFields,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
+  isSingleKey,
   pickHotkey,
   useHotkeys,
 } from "./hotkeys.ts"
@@ -60,18 +63,203 @@ describe("pickHotkey", () => {
     expect(pickHotkey([opted], press("?", { inDialog: true }), false)).toBe(opted)
   })
 
+  it("skips a sequence, which needs the presses before this one", () => {
+    expect(pickHotkey([binding("g i")], press("i"), false)).toBeUndefined()
+  })
+
   it("throws on a binding whose combination cannot be read", () => {
-    expect(() => pickHotkey([binding("g i")], press("g"), false)).toThrow("sequence")
+    expect(() => pickHotkey([binding("ctrl+")], press("g"), false)).toThrow("empty part")
   })
 })
 
 describe("useHotkeys", () => {
+  it("renders with a sequence, and throws on a sequence with a press it cannot read", () => {
+    const Bound = ({ keys }: { keys: string }) => {
+      useHotkeys([binding(keys)])
+      return null
+    }
+    expect(render(h(Bound, { keys: "g i" }))).toBe("")
+    expect(() => render(h(Bound, { keys: "g ctrl+" }))).toThrow("empty part")
+  })
+
   it("throws during render on a combination it cannot read, before any key is pressed", () => {
     function Page() {
-      useHotkeys([binding("mod+k"), binding("g i")])
+      useHotkeys([binding("mod+k"), binding("ctrl+")])
       return h("p", null, "page")
     }
-    expect(() => render(h(Page, null))).toThrow('The hotkey "g i" holds a sequence')
+    expect(() => render(h(Page, null))).toThrow("empty part")
+  })
+})
+
+/** A press for {@link createHotkeyListener}, with what it ran and whether it was cancelled. */
+interface ListenerPress {
+  key: string
+  ctrlKey?: boolean
+  target?: unknown
+  timeStamp?: number
+  defaultPrevented?: boolean
+}
+
+/**
+ * A listener over `bindings`, each recording its keys when it runs. `press` sends one key press and
+ * returns whether the listener cancelled it.
+ */
+function listen(bindings: HotkeyBinding[]) {
+  const ran: string[] = []
+  let current = bindings.map((b) => ({ ...b, handler: () => void ran.push(b.keys) }))
+  const listener = createHotkeyListener(() => current, false)
+  const send = (
+    { key, ctrlKey = false, target = null, timeStamp = 0, defaultPrevented = false }: ListenerPress,
+  ): boolean => {
+    let cancelled = false
+    listener({
+      key,
+      code: "",
+      ctrlKey,
+      metaKey: false,
+      altKey: false,
+      shiftKey: false,
+      isComposing: false,
+      keyCode: 0,
+      target,
+      timeStamp,
+      defaultPrevented,
+      preventDefault: () => void (cancelled = true),
+    } as unknown as KeyboardEvent)
+    return cancelled
+  }
+  const replace = (next: HotkeyBinding[]) => {
+    current = next.map((b) => ({ ...b, handler: () => void ran.push(b.keys) }))
+  }
+  return { ran, send, replace }
+}
+
+/** A target inside an element that `selector`-matching `closest` reports for `part`. */
+function inside(part: string): unknown {
+  return { closest: (selector: string) => selector.includes(part) ? {} : null }
+}
+
+describe("createHotkeyListener", () => {
+  it("runs a single key and cancels its default action", () => {
+    const { ran, send } = listen([binding("n")])
+    expect(send({ key: "n" })).toBe(true)
+    expect(send({ key: "x" })).toBe(false)
+    expect(ran).toEqual(["n"])
+  })
+
+  it("runs a sequence on its second key, and its first key alone runs nothing", () => {
+    const { ran, send } = listen([binding("g i")])
+    expect(send({ key: "g", timeStamp: 0 })).toBe(false)
+    expect(ran).toEqual([])
+    expect(send({ key: "i", timeStamp: 500 })).toBe(true)
+    expect(ran).toEqual(["g i"])
+    expect(send({ key: "i", timeStamp: 600 })).toBe(false)
+    expect(ran).toEqual(["g i"])
+  })
+
+  it("drops a first key the second one follows more than a second later", () => {
+    const { ran, send } = listen([binding("g i")])
+    send({ key: "g", timeStamp: 0 })
+    send({ key: "i", timeStamp: 1500 })
+    expect(ran).toEqual([])
+  })
+
+  it("lets a completed sequence win over a binding of its last key", () => {
+    const { ran, send } = listen([binding("i"), binding("g i")])
+    send({ key: "g", timeStamp: 0 })
+    send({ key: "i", timeStamp: 100 })
+    send({ key: "i", timeStamp: 200 })
+    expect(ran).toEqual(["g i", "i"])
+  })
+
+  it("runs no sequence while the reader types in a field, even with inFields", () => {
+    const field = { tagName: "INPUT", type: "text", closest: () => null }
+    const { ran, send } = listen([binding("g i", { inFields: true })])
+    send({ key: "g", target: field })
+    send({ key: "i", target: field, timeStamp: 100 })
+    expect(ran).toEqual([])
+  })
+
+  it("runs nothing inside a menu unless the binding opts in, sequences never", () => {
+    const menu = inside("[role='menu']")
+    const { ran, send } = listen([
+      binding("n"),
+      binding("g i", { inDialogs: true }),
+      binding("?", { inDialogs: true }),
+    ])
+    send({ key: "n", target: menu })
+    send({ key: "g", target: menu })
+    send({ key: "i", target: menu, timeStamp: 100 })
+    send({ key: "?", target: menu })
+    expect(ran).toEqual(["?"])
+  })
+
+  it("runs nothing while a modal dialog is open unless the binding opts in", () => {
+    const own = Object.getOwnPropertyDescriptor(globalThis, "document")
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { querySelector: (selector: string) => selector === "dialog:modal" ? {} : null },
+    })
+    try {
+      const { ran, send } = listen([
+        binding("n"),
+        binding("g i"),
+        binding("?", { inDialogs: true }),
+      ])
+      send({ key: "n" })
+      send({ key: "g" })
+      send({ key: "i", timeStamp: 100 })
+      send({ key: "?" })
+      expect(ran).toEqual(["?"])
+    } finally {
+      if (own) Object.defineProperty(globalThis, "document", own)
+      else delete (globalThis as { document?: unknown }).document
+    }
+  })
+
+  it("leaves a press another handler cancelled alone", () => {
+    const { ran, send } = listen([binding("n")])
+    send({ key: "n", defaultPrevented: true })
+    expect(ran).toEqual([])
+  })
+
+  it("reads the latest bindings on each press, sequences included", () => {
+    const { ran, send, replace } = listen([binding("g i")])
+    replace([binding("g t")])
+    send({ key: "g", timeStamp: 0 })
+    send({ key: "i", timeStamp: 100 })
+    send({ key: "g", timeStamp: 200 })
+    send({ key: "t", timeStamp: 300 })
+    expect(ran).toEqual(["g t"])
+  })
+})
+
+describe("isSingleKey", () => {
+  it("is true for plain keys and sequences of them", () => {
+    expect(["?", "/", "n", "shift+n", "g i"].map(isSingleKey)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ])
+  })
+
+  it("is false for Control, Command, mod or Alt, and for Escape and Enter", () => {
+    expect(["mod+k", "ctrl+g", "meta+g", "alt+n", "esc", "enter", "g mod+i"].map(isSingleKey))
+      .toEqual([false, false, false, false, false, false, false])
+  })
+})
+
+describe("activeShortcuts", () => {
+  const rows = [{ keys: "?" }, { keys: "mod+k" }, { keys: "g i" }, { keys: "esc" }]
+
+  it("keeps every shortcut while single keys are on", () => {
+    expect(activeShortcuts(rows, true)).toEqual(rows)
+  })
+
+  it("drops the single keys while they are off", () => {
+    expect(activeShortcuts(rows, false)).toEqual([{ keys: "mod+k" }, { keys: "esc" }])
   })
 })
 

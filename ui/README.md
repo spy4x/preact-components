@@ -1402,15 +1402,17 @@ component that calls it is mounted. A binding is `{ keys, handler }`, with an op
 `description` and `group` for `ShortcutsDialog`. `keys` takes one key press: a single key (`"?"`,
 `"/"`), a key with modifiers (`"shift+n"`, `"mod+k"`) or a named key (`"esc"`, `"up"`). `mod` is
 Command on Apple platforms and Control elsewhere; the platform is read when the listener is
-attached, or given as `options.apple`. Two-key sequences such as `"g i"` are not supported and
-throw; `Kbd` and `ShortcutsDialog` still draw them, for a sequence bound by another matcher.
+attached, or given as `options.apple`. A sequence of presses is written with spaces, `"g i"`: the
+second key must follow within a second, and a sequence never fires in a field, inside a dialog or
+a menu, or while a modal dialog is open. A completed sequence wins over a binding of its last key.
 
 A symbol typed with AltGr, such as `@` on a German keyboard, still runs a binding for that
 symbol: the hook asks the browser whether AltGr is held, so a real Control+Alt chord on a keyboard
 without AltGr runs only a binding that names Control and Alt.
 
 Key presses in a text field, a select or editable content are left alone, and so are presses
-inside a dialog, unless a binding sets `inFields` or `inDialogs`. A matched press has its default
+inside a dialog or a menu and while a modal dialog is open, unless a binding sets `inFields` or
+`inDialogs`. A matched press has its default
 action cancelled unless the binding sets `preventDefault: false`. `options.enabled` switches every
 binding off at once. A key press an input method has taken, such as the Enter that confirms a word
 typed in Japanese, runs no binding.
@@ -1427,7 +1429,14 @@ useHotkeys(bindings)
 ```
 
 `pickHotkey(bindings, press, apple)` is the hook's decision on its own: the first binding whose
-combination matches a key press and that may fire where the press landed.
+combination matches a key press and that may fire where the press landed. It skips sequences.
+`createHotkeyListener(bindings, apple)` is the whole `keydown` listener the hook attaches,
+sequences included, for a caller that attaches it elsewhere.
+
+A page must let a reader turn single-key shortcuts off (WCAG 2.1.4). `isSingleKey(keys)` says
+whether a combination or sequence is one: plain keys only, not Escape or Enter.
+`activeShortcuts(shortcuts, singleKeys)` drops those while the switch is off; pass the result to
+both `useHotkeys` and `ShortcutsDialog`, so the dialog lists only keys that work.
 
 `Kbd` draws a combination as nested `<kbd>` elements: ⌘K on Apple platforms, Ctrl + K elsewhere.
 A sequence, written as its presses separated by whitespace (`"g t"`), draws each press that way with
