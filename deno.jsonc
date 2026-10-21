@@ -75,6 +75,9 @@
     // this repository, given as the next argument, e.g. `deno task private-names /path/to/names.txt`.
     // See docs/pre-publish-checks.md.
     "private-names": "deno run --allow-read --allow-run=deno infra/scripts/private-names.ts",
+    // Remakes the demo video in `media/demo/`: builds the guide, records it in Chromium, encodes
+    // it with ffmpeg. Not part of `check`. See media/demo/recipe/README.md.
+    "demo-video": "deno run -A media/demo/recipe/demo-video.ts",
     "fix": {
       "command": "echo 'Fixes applied!'",
       "description": "Run all fixes",

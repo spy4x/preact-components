@@ -3,6 +3,9 @@ import { IconPlaySolid } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import { DemoVideoClip, type DemoVideoSource, playClip } from "./demo-video-clip.tsx"
+
+export type { DemoVideoSource }
 
 /** The still frame a {@link DemoVideo} shows until it is pressed. */
 export interface DemoVideoPoster {
@@ -16,14 +19,6 @@ export interface DemoVideoPoster {
   width: number
   /** The poster's intrinsic height in pixels. */
   height: number
-}
-
-/** One file of the clip, rendered as a `<source>`. */
-export interface DemoVideoSource {
-  /** Where the browser loads this file from. */
-  src: string
-  /** Its media type, such as `"video/webm"` or `"video/mp4"`. */
-  type: string
 }
 
 /**
@@ -80,7 +75,8 @@ const linkClass = join(
   "group cursor-pointer focus-visible:outline-hidden",
 )
 
-const mediaClass = "block h-full w-full object-cover"
+/** The poster fills the frame; the clip itself is `object-contain` (see `DemoVideoClip`). */
+const posterClass = "block h-full w-full object-cover"
 
 /** The message that takes the clip's place when no source can play. */
 const failedClass =
@@ -117,12 +113,14 @@ function prefersReducedMotion(): boolean {
  *
  * The server renders the poster `<img>` inside a link to the first source, so without JavaScript
  * the link opens the clip in the browser's own player. After hydration, a click, Enter or Space on
- * the link stays on the page and puts `<video controls autoplay muted playsinline>` in the
- * poster's place, at the same aspect, and focus moves to the video so a keyboard reader can pause
- * it at once. No `<video>` element exists before the press, so the browser fetches no video bytes.
- * Under `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but
- * `loop` is ignored. Any other attribute goes onto the play link, so `data-*` analytics attributes
- * count the press.
+ * the link stays on the page and puts `<video controls autoplay playsinline>` in the poster's
+ * place, at the same aspect, and focus moves to the video so a keyboard reader can pause it at
+ * once. The clip plays with its sound, since the press is the reader's own gesture; when the
+ * browser still refuses sound, it plays muted. The video is `object-contain`, so in full screen on
+ * a screen of another aspect the whole frame shows, with dark bars. No `<video>` element exists
+ * before the press, so the browser fetches no video bytes. Under `prefers-reduced-motion: reduce`
+ * the clip still plays, since the reader asked for it, but `loop` is ignored. Any other attribute
+ * goes onto the play link, so `data-*` analytics attributes count the press.
  *
  * When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its
  * size and shows `errorLabel` with a link to the first source; focus moves to that link when it was
@@ -158,9 +156,10 @@ export function DemoVideo(
   const pressingKey = useRef<string | null>(null)
 
   useEffect(() => {
-    // Started by the press, not by `autoplay` alone: Chromium pauses a muted video that autoplayed
-    // once it leaves the viewport, and a page that moves under it would stop a clip asked for.
-    if (current.kind === "playing") video.current?.play().catch(() => {})
+    // Started by the press, not by `autoplay` alone: Chromium pauses a video that `autoplay`
+    // started once it leaves the viewport, and a page that moves under it would stop a clip asked
+    // for. `playClip` plays with sound and falls back to muted when the browser refuses.
+    if (current.kind === "playing" && video.current !== null) playClip(video.current)
     if (current.kind === "playing" && pressingKey.current === null) video.current?.focus()
     if (current.kind === "failed" && current.hadFocus) fileLink.current?.focus()
   }, [current])
@@ -179,36 +178,21 @@ export function DemoVideo(
   }
 
   if (current.kind === "playing") {
-    // A `<video>` with `<source>` children reports a failed load on its last source, not itself.
     const fail = () => {
       const focused = video.current !== null && video.current === document.activeElement
       phase.value = { kind: "failed", hadFocus: focused }
     }
     return (
       <div class={join(frameClass, className)} style={style}>
-        <video
-          ref={video}
-          controls
-          autoplay
-          muted
-          playsinline
-          preload="auto"
-          loop={current.loop}
+        <DemoVideoClip
+          videoRef={video}
+          sources={sources}
+          title={title}
           width={poster.width}
           height={poster.height}
-          aria-label={title}
-          class={join(mediaClass, "bg-scrim-strong focus-visible:outline-hidden")}
-          onError={fail}
-        >
-          {sources.map((source, index) => (
-            <source
-              key={source.src}
-              src={source.src}
-              type={source.type}
-              onError={index === sources.length - 1 ? fail : undefined}
-            />
-          ))}
-        </video>
+          loop={current.loop}
+          onFail={fail}
+        />
       </div>
     )
   }
@@ -259,7 +243,7 @@ export function DemoVideo(
         loading={eager ? "eager" : "lazy"}
         fetchpriority={eager ? "high" : undefined}
         decoding={eager ? undefined : "async"}
-        class={mediaClass}
+        class={posterClass}
       />
       <span
         aria-hidden="true"

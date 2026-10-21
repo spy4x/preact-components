@@ -205,6 +205,20 @@ describe("AuthForm", () => {
     expect(busy).toContain("Working…")
   })
 
+  it("draws the credentials submit as the primary button unless the caller picks a variant", () => {
+    expect(submitButtonTag(render(<AuthForm {...base} />))).toContain("bg-accent-900")
+    const secondary = submitButtonTag(
+      render(<AuthForm {...base} mode="sign-up" submitVariant="secondary" />),
+    )
+    expect(secondary).not.toContain("bg-accent-900")
+    expect(secondary).toContain("bg-hover")
+  })
+
+  it("keeps the one-time-code submit primary whatever variant the credentials submit has", () => {
+    const html = render(<AuthForm {...base} step="one-time-code" submitVariant="secondary" />)
+    expect(submitButtonTag(html)).toContain("bg-accent-900")
+  })
+
   it("accepts a partial labels override, keeping the rest of the defaults", () => {
     const html = render(<AuthForm {...base} labels={{ signIn: "Log in" }} />)
     expect(html).toContain(">Log in<")
