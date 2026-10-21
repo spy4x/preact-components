@@ -436,6 +436,7 @@ export const pageHeroDemo: DemoFragment = {
   lead="Every feature on every plan. Pay monthly, cancel any time."
   author={{ name: "Anton Shubin", href: "/about" }}
   updated="2026-10-19"
+  note="Prices in euros, before VAT."
 >
   <Button href="/sign-up">Start free</Button>
 </PageHero>`,
@@ -446,6 +447,7 @@ export const pageHeroDemo: DemoFragment = {
         lead="Every feature on every plan. Pay monthly, cancel any time."
         author={{ name: "Anton Shubin", href: "#demo-PageHero" }}
         updated="2026-10-19"
+        note="Prices in euros, before VAT."
       >
         <div>
           <Button href="#demo-PageHero">Start free</Button>
