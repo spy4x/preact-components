@@ -1053,19 +1053,24 @@ function FileInputDemo() {
  */
 function DateRangePickerDemo() {
   const range = useSignal<DateRange | null>(fixedToday)
+  const preset = useSignal<DateRangePreset>("last-7-days")
 
   return (
     <div class="space-y-3">
       <DateRangePicker
         range={range.value}
-        onChange={(next) => range.value = next}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
         timeZone={fixedZone}
         now={fixedNow}
         presets={datePresetOptions}
         labels={dateLabels}
-        selectedPreset="last-7-days"
+        selectedPreset={preset.value}
         dataE2E="guide-date-range"
       />
+      <Note e2e="controlled-preset">preset: {preset.value}</Note>
       <Note e2e="controlled-value">
         range:{" "}
         <span class="whitespace-nowrap">
