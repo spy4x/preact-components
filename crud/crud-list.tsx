@@ -186,6 +186,7 @@ export interface ListPage<M> {
  * The page asked for is brought into range rather than trusted, because it outlives the rows it
  * was chosen for: a search or a removal can leave fewer pages than the one the person was on, and
  * they then see the last page instead of an empty table. A `pageSize` below one shows one row.
+ * An empty list has no pages (`pageCount` 0) and still shows page 1.
  */
 export function pageOf<M>(rows: M[], page: number, pageSize: number): ListPage<M> {
   const size = Math.max(1, Math.floor(pageSize) || 1)
