@@ -837,6 +837,95 @@ function themePreviewSpecs(): Spec[] {
   ])
 }
 /**
+ * `ColorField`: round swatches on native radios. Arrow keys move the choice within one tab stop,
+ * "Custom" shows a colour input and a hex field that Tab reaches, a valid hex reaches the caller and
+ * an invalid one shows the error instead, and axe passes in both palettes.
+ */
+function colorFieldSpecs(): Spec[] {
+  const card = (page: Page) => page.locator("#demo-ColorField")
+  const group = (page: Page) => card(page).getByRole("group", { name: "Tag colour" })
+  const radio = (page: Page, name: string, checked?: boolean) =>
+    group(page).getByRole("radio", { name, exact: true, checked })
+  /** Waits for the demo's tag chip, the caller's preview, to be drawn on this background. */
+  const chipIs = (page: Page, rgb: string) =>
+    page.waitForFunction(
+      ([selector, expected]) => {
+        const chip = document.querySelector(selector)
+        return chip !== null && getComputedStyle(chip).backgroundColor === expected
+      },
+      [`#demo-ColorField [data-e2e="color-field-chip"]`, rgb] as const,
+    )
+  /** Clicks the Custom swatch, as a person does, and waits for its radio to be checked. */
+  const openCustom = async (page: Page) => {
+    await card(page).getByTitle("Pick a custom colour").click()
+    await radio(page, "Pick a custom colour", true).waitFor()
+  }
+  return [
+    {
+      name:
+        "ColorField: arrow keys move the one checked swatch and the preview follows; Custom shows the picker and the hex field, which Tab reaches next",
+      pageId: "ui",
+      run: async (page) => {
+        const focused = page.locator(":focus")
+        await radio(page, "Sky", true).focus()
+        await chipIs(page, "rgb(3, 105, 161)")
+        await page.keyboard.press("ArrowRight")
+        await radio(page, "Blue", true).and(focused).waitFor()
+        await radio(page, "Sky", false).waitFor()
+        await chipIs(page, "rgb(29, 78, 216)")
+
+        const hex = card(page).getByRole("textbox", { name: "Hex code" })
+        if (await hex.count() !== 0) throw new Error("the hex field shows before Custom is chosen")
+        await radio(page, "Gray").focus()
+        await page.keyboard.press("ArrowLeft")
+        await radio(page, "Pick a custom colour", true).and(focused).waitFor()
+        await page.keyboard.press("Tab")
+        await card(page).getByLabel("Colour picker").and(focused).waitFor()
+        await page.keyboard.press("Tab")
+        await hex.and(focused).waitFor()
+        const shown = await hex.inputValue()
+        // Focus moved to Gray without choosing it, so the colour is still Blue.
+        if (shown !== "#1d4ed8") throw new Error(`the hex field shows ${shown}, not the colour`)
+      },
+    },
+    {
+      name:
+        "ColorField: a typed or picked hex reaches onChange; an invalid one shows the error on blur and does not",
+      pageId: "ui",
+      run: async (page) => {
+        await openCustom(page)
+        const hex = card(page).getByRole("textbox", { name: "Hex code" })
+        await hex.fill("#59168B")
+        await chipIs(page, "rgb(89, 22, 139)")
+
+        await hex.fill("#12")
+        await hex.blur()
+        const error = card(page).getByText("Enter # and 6 characters, such as #59168b.")
+        await error.waitFor()
+        await hex.and(page.locator(`[aria-invalid="true"]`)).waitFor()
+        await chipIs(page, "rgb(89, 22, 139)")
+
+        await card(page).getByLabel("Colour picker").fill("#123456")
+        await chipIs(page, "rgb(18, 52, 86)")
+        await error.waitFor({ state: "detached" })
+        const shown = await hex.inputValue()
+        if (shown !== "#123456") throw new Error(`the hex field shows ${shown} after a pick`)
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `ColorField: axe finds no violation on the swatches and the hex field, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        await openCustom(page)
+        await card(page).getByRole("textbox", { name: "Hex code" }).waitFor()
+        return await axePasses(page, ["#demo-ColorField"])
+      },
+    })),
+  ]
+}
+
+/**
  * `RadioChips`: native radios drawn as chips. Arrow keys move the choice within one tab stop and
  * skip the disabled chip, the page's own `:has(#id:checked)` CSS follows the choice, the checked
  * chip shows the accent fill and the focus ring, and axe passes in both palettes.
@@ -2302,6 +2391,7 @@ export const specs: readonly Spec[] = [
     },
   })),
   ...radioChipsSpecs(),
+  ...colorFieldSpecs(),
   ...themePreviewSpecs(),
   ...unsavedHistorySpecs(),
   ...quickAddSpecs(),
