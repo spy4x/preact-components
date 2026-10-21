@@ -2330,8 +2330,8 @@ function InstallCase(
       {unmountKey
         ? (
           <p class="text-sm text-muted">
-            With focus in the card, press U: the caller unmounts it, and focus goes to the line
-            below.
+            Press "Fire beforeinstallprompt" to show the card. Then, with focus in the card, press
+            U: the caller unmounts it, and focus goes to the line below.
           </p>
         )
         : null}
