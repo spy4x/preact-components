@@ -100,6 +100,13 @@ export interface LineChartProps {
   emptyLabel?: string
   /** Added to the accessible name once the chart responds to keys. */
   keyboardHint?: string
+  /**
+   * Print the points as a visually hidden table after the plot, one row per X position and one
+   * column per series, so a screen reader can read every value. Defaults to `true`.
+   */
+  dataTable?: boolean
+  /** Heading of the hidden table's first column, the X positions. Defaults to `"Point"`. */
+  xLabel?: string
   class?: string
 }
 
@@ -174,6 +181,8 @@ export function LineChart({
   loadingLabel = "Loading…",
   emptyLabel = "No data",
   keyboardHint = "Arrow keys step through the points.",
+  dataTable = true,
+  xLabel = "Point",
   class: className,
 }: LineChartProps): JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -505,6 +514,34 @@ export function LineChart({
               )
               : null}
           </div>
+        )
+        : null}
+      {dataTable
+        ? (
+          <table class="sr-only" data-chart-table="">
+            <caption>{label}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{xLabel}</th>
+                {lines.map((line, lineIndex) => (
+                  <th key={`th-${lineIndex}`} scope="col">{line.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {slots.map((slot, slotIndex) => (
+                <tr key={`tr-${slot.key}`}>
+                  <th scope="row">{slot.label}</th>
+                  {lines.map((line, lineIndex) => {
+                    const value = line.values[slotIndex]
+                    return (
+                      <td key={`td-${lineIndex}`}>{isDefined(value) ? yFormat(value) : "–"}</td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )
         : null}
       <div
