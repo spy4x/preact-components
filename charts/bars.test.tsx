@@ -57,10 +57,10 @@ describe("Bars", () => {
     expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
   })
 
-  it("adds a caller's class after its own, so an important utility overrides one of them", () => {
-    const html = render(<Bars data={data} class="gap-4!" />)
+  it("adds a caller's class after its own instead of merging it", () => {
+    const html = render(<Bars data={data} class="gap-4" />)
 
-    expect(html).toMatch(/^<div class="flex flex-col gap-2 [^"]*\bgap-4!"/)
+    expect(html).toMatch(/^<div class="flex flex-col gap-2 [^"]*\bgap-4"/)
   })
 
   it("honours a fixed maximum for cross-list comparison", () => {
