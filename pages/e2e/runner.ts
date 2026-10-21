@@ -45,6 +45,11 @@ export interface E2eTarget {
 /** How long a locator waits for its element before the spec fails, at full speed. */
 const ACTION_TIMEOUT_MS = 10_000
 /**
+ * How long a navigation may take, at full speed. Longer than a locator's wait: on a loaded CI host
+ * a guide page's `load` event has taken over 10 seconds, which failed specs before they began.
+ */
+const NAVIGATION_TIMEOUT_MS = 30_000
+/**
  * How long one spec may take, at full speed. Below `verify`'s 90-second stall limit, so a spec that
  * hangs is reported under its own name rather than as a stalled phase.
  */
@@ -134,6 +139,7 @@ export async function runSpecs(target: E2eTarget, specs: readonly Spec[]): Promi
 async function runSpec(browser: Browser, target: E2eTarget, spec: Spec): Promise<SpecResult> {
   const context = await browser.newContext({ colorScheme: spec.colorScheme ?? "light" })
   context.setDefaultTimeout(ACTION_TIMEOUT_MS * target.cpuThrottle)
+  context.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS * target.cpuThrottle)
   let deadline: ReturnType<typeof setTimeout> | undefined
   try {
     const detail = await Promise.race([
