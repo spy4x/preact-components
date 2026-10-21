@@ -4,7 +4,6 @@
   "exports": {
     ".": "./+index.ts",
     "./build-model-store": "./build-model-store.ts",
-    "./clipboard": "./clipboard.ts",
     "./install-prompt": "./install-prompt.ts",
     "./map-entry": "./map-entry.ts",
     "./now": "./now.ts",

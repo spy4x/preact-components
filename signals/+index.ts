@@ -26,13 +26,6 @@ export {
   type StoreStateOf,
 } from "./build-model-store.ts"
 export {
-  CLIPBOARD_UNAVAILABLE,
-  type ClipboardPort,
-  type ClipboardStore,
-  type CopyFeedback,
-  createClipboard,
-} from "./clipboard.ts"
-export {
   createInstallPrompt,
   createStoredInstallPrompt,
   INSTALL_DISMISSED_KEY,
