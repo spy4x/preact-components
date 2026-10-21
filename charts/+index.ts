@@ -2,13 +2,22 @@
  * `@spy4x/preact-charts` — charts that render complete on the server and become interactive in a
  * browser, plus the axis and loading helpers behind them.
  *
- * `LineChart`, `Bars`, `DonutChart` and `Kpi` render plain markup with no JavaScript. `LineChart`
- * and `DonutChart` add a tooltip, by pointer and by keyboard, once they run in a browser. Nothing in
- * the package imports a charting library, and nothing reads an application store or a global
- * signal: colours and data arrive through props.
+ * `LineChart`, `Bars`, `DotPlot`, `DonutChart` and `Kpi` render plain markup with no JavaScript.
+ * `LineChart` and `DonutChart` add a tooltip, by pointer and by keyboard, once they run in a
+ * browser. Nothing in the package imports a charting library, and nothing reads an application
+ * store or a global signal: colours and data arrive through props.
  */
 
-export { type BarDatum, barPercent, Bars, type BarsProps } from "./bars.tsx"
+export {
+  type BarDatum,
+  barPercent,
+  type BarReference,
+  Bars,
+  type BarSegment,
+  type BarsProps,
+  barTotal,
+  type StackedBarDatum,
+} from "./bars.tsx"
 export { changeText, type PeriodChange } from "./change.ts"
 export {
   DEFAULT_AXIS_COLOR,
@@ -19,6 +28,13 @@ export {
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "./colors.ts"
+export {
+  dotPercent,
+  DotPlot,
+  type DotPlotBand,
+  type DotPlotProps,
+  type DotPlotRow,
+} from "./dot-plot.tsx"
 export {
   DonutChart,
   type DonutChartProps,

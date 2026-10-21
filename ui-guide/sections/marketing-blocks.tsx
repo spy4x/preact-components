@@ -8,6 +8,7 @@
  */
 
 import { useSignal } from "@preact/signals"
+import { Bars } from "@spy4x/preact-charts/bars"
 import { IconSprout } from "@spy4x/preact-icons"
 import {
   Badge,
@@ -15,6 +16,7 @@ import {
   Button,
   Checkbox,
   DemoVideo,
+  Explorable,
   FaqList,
   FeatureCard,
   Field,
@@ -22,6 +24,7 @@ import {
   PageHero,
   ScreenTour,
   type ScreenTourStep,
+  Slider,
   Steps,
   ThemePreview,
   WindowFrame,
@@ -169,6 +172,81 @@ function ScreenTourDemo() {
           }`}
       </p>
     </div>
+  )
+}
+
+/** Whole numbers with thousands separators, the same on every machine. */
+const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 })
+
+/**
+ * What 100 a month grows to over `years` at 6% a year, less a yearly `fee` in percent. Monthly
+ * compounding; plain arithmetic, so the server and the browser print the same numbers.
+ */
+function savingsAfter(years: number, fee: number): number {
+  const monthly = (0.06 - fee / 100) / 12
+  let total = 0
+  for (let month = 0; month < years * 12; month++) total = (total + 100) * (1 + monthly)
+  return Math.round(total)
+}
+
+/**
+ * An article's interactive figure: two sliders change a fee and a horizon, and a `Bars` chart and
+ * a sentence show what the fee takes. `live` is left out, so the frame turns live on hydration.
+ */
+function ExplorableDemo() {
+  const fee = useSignal(1)
+  const years = useSignal(25)
+  const without = savingsAfter(years.value, 0)
+  const withFee = savingsAfter(years.value, fee.value)
+  const paidIn = years.value * 1200
+  return (
+    <Explorable
+      id="explorable-fee"
+      title="What a yearly fee takes from your savings"
+      lead="Change the fee and the horizon; the bars show where 100 a month ends up."
+      caption="Assumes 6% a year before fees, compounded monthly. An illustration, not advice."
+      noScriptNote="The controls need JavaScript; without it, the figure shows a 1% fee over 25 years."
+      controls={
+        <>
+          <Slider
+            label="Yearly fee"
+            value={fee.value}
+            min={0}
+            max={3}
+            step={0.1}
+            onInput={(next) => fee.value = next}
+            format={(value) => `${value.toFixed(1)}%`}
+            valueText={(value) => `${value.toFixed(1)} percent`}
+            marks={[{ value: 0.2, label: "Index fund" }, { value: 2, label: "Managed fund" }]}
+          />
+          <Slider
+            label="Years"
+            value={years.value}
+            min={5}
+            max={40}
+            onInput={(next) => years.value = next}
+          />
+        </>
+      }
+    >
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-foreground">
+          The fee costs <strong class="tabular-nums">{whole.format(without - withFee)}</strong> over
+          {" "}
+          {years.value} years.
+        </p>
+        <Bars
+          data={[
+            // A no-break space keeps each two-word label on one line beside its bar.
+            { label: "No\u00a0fee", value: without },
+            { label: `${fee.value.toFixed(1)}%\u00a0fee`, value: withFee },
+          ]}
+          format={(value) => whole.format(value)}
+          reference={{ value: paidIn, label: "Paid in" }}
+          ariaLabel="Savings at the end"
+        />
+      </div>
+    </Explorable>
   )
 }
 
@@ -412,6 +490,50 @@ export const marketingBlockDemos: DemoFragment = {
   ]}
 />`,
     render: () => <Steps items={STEPS} orientation="horizontal" />,
+  },
+  Explorable: {
+    summary:
+      "A frame for an interactive figure in an article: a title kept out of the table of contents, the result, its controls and a caption; the controls stay disabled until the page's code runs.",
+    wide: true,
+    props: [
+      { name: "title", type: "string", description: "The figure's name, set as a paragraph." },
+      { name: "lead", type: "ComponentChildren", description: "One line on what to try." },
+      {
+        name: "children",
+        type: "ComponentChildren",
+        description: "The result the controls change.",
+      },
+      {
+        name: "controls",
+        type: "ComponentChildren",
+        description: "The controls, in a `<fieldset>` that is disabled until the figure is live.",
+      },
+      {
+        name: "caption",
+        type: "ComponentChildren",
+        description: "The `<figcaption>`, left-aligned under everything.",
+      },
+      {
+        name: "live",
+        type: "boolean",
+        default: "true once hydrated",
+        description: "Whether the controls work; the Interactive line shows only while they do.",
+      },
+      {
+        name: "noScriptNote",
+        type: "ComponentChildren",
+        description: "Shown inside `<noscript>`: what the figure shows without scripts.",
+      },
+    ],
+    snippet: `<Explorable
+  title="What a yearly fee takes from your savings"
+  lead="Change the fee; the bars show where 100 a month ends up."
+  caption="Assumes 6% a year before fees."
+  controls={<Slider label="Yearly fee" value={fee.value} onInput={(next) => fee.value = next} />}
+>
+  <Bars data={rows} reference={{ value: paidIn, label: "Paid in" }} />
+</Explorable>`,
+    render: () => <ExplorableDemo />,
   },
   ThemePreview: {
     summary:
