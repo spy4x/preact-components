@@ -13,11 +13,13 @@ import {
   Cluster,
   ColorField,
   Combobox,
+  DateTimeField,
   Field,
   Grid,
   InlineEdit,
   Input,
   InputButton,
+  ListField,
   MoneyInput,
   QuickAdd,
   Radio,
@@ -33,6 +35,7 @@ import { useSignal } from "@preact/signals"
 import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
+import { DemoNote } from "./demo-note.tsx"
 
 /** One profile form: a labelled field per control, plus the two that carry their own label. */
 function FieldDemo() {
@@ -814,6 +817,60 @@ function ToggleChipsDemo() {
   )
 }
 
+/** Key points of a post: up to five lines, in a form whose submits the note counts. */
+function ListFieldDemo() {
+  const points = useSignal(["Jobs are written down first.", "A failed run retries on its own."])
+  const submits = useSignal(0)
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        submits.value++
+      }}
+    >
+      <Stack gap="sm">
+        <ListField
+          id="guide-points"
+          label="Key points"
+          value={points.value}
+          onChange={(next) => points.value = next}
+          max={5}
+          maxLength={160}
+          placeholder="One sentence"
+          hint="Shown in a box above the post. Enter adds a point."
+          labels={{
+            item: (n) => `Key point ${n}`,
+            remove: (n) => `Remove key point ${n}`,
+            add: "Add point",
+          }}
+        />
+        <DemoNote e2e="list-field-value">
+          {JSON.stringify(points.value)}; submitted {submits.value} times
+        </DemoNote>
+      </Stack>
+    </form>
+  )
+}
+
+/** A publish time typed in Berlin, stored as an instant. */
+function DateTimeFieldDemo() {
+  const at = useSignal<string | null>("2026-10-25T08:30:00.000Z")
+  return (
+    <Stack gap="sm">
+      <DateTimeField
+        id="guide-publish-at"
+        label="Goes live at"
+        value={at.value}
+        onChange={(next) => at.value = next}
+        timeZone="Europe/Berlin"
+        hint="The post goes live on its own at that time."
+        required
+      />
+      <DemoNote e2e="date-time-field-value">Stored: {at.value ?? "none"}</DemoNote>
+    </Stack>
+  )
+}
+
 export const fieldDemos = {
   Field: {
     summary:
@@ -1360,5 +1417,85 @@ export const fieldDemos = {
   onChange={(next) => status.value = next}
 />`,
     render: () => <ToggleChipsDemo />,
+  },
+  ListField: {
+    summary:
+      "An ordered list of short lines, such as a post's key points: an input per line, add and remove, up to a limit.",
+    wide: false,
+    props: [
+      {
+        name: "id / label",
+        type: "string / ComponentChildren",
+        description: "The first line's `id`, and the group's `<legend>`.",
+      },
+      {
+        name: "value / onChange",
+        type: "string[] / (value: string[]) => void",
+        description: "The lines, and the whole new list after every change.",
+      },
+      {
+        name: "max / maxLength",
+        type: "number",
+        description: "The most lines, and the most characters one line takes.",
+      },
+      {
+        name: "hint / error / disabled / name / placeholder",
+        type: "ComponentChildren / string / boolean / string / string",
+        description: "Messages tied to the group, and attributes on every line.",
+      },
+      {
+        name: "labels",
+        type: "{ item?, remove?, add?, count? }",
+        description: `Each line's name, the remove button's, "Add item" and "3 of 5".`,
+      },
+    ],
+    snippet: `<ListField
+  id="tldr"
+  label="Key points"
+  value={points.value}
+  onChange={(next) => points.value = next}
+  max={5}
+/>`,
+    render: () => <ListFieldDemo />,
+  },
+  DateTimeField: {
+    summary:
+      "One date and time typed in a named time zone, which shows beside the input with its offset, read and written as an instant.",
+    wide: false,
+    props: [
+      {
+        name: "value / onChange",
+        type: "string | null / (value: string | null) => void",
+        description: "The moment as an ISO 8601 instant, or `null` for none.",
+      },
+      {
+        name: "timeZone",
+        type: "string",
+        description: "The IANA zone the person types in; an unknown one reads as UTC.",
+      },
+      {
+        name: "min / max",
+        type: "string",
+        description: "The range the browser's picker offers, as instants.",
+      },
+      {
+        name: "id / label / hint / error / required / disabled",
+        type: "string / ComponentChildren / ComponentChildren / string / boolean / boolean",
+        description: "As on `Field`.",
+      },
+      {
+        name: "labels",
+        type: "{ zone? }",
+        description: `The zone line, "Time zone: Berlin, Europe · GMT+2" by default.`,
+      },
+    ],
+    snippet: `<DateTimeField
+  id="publish-at"
+  label="Goes live at"
+  value={at.value}
+  onChange={(next) => at.value = next}
+  timeZone="Europe/Berlin"
+/>`,
+    render: () => <DateTimeFieldDemo />,
   },
 } satisfies DemoFragment
