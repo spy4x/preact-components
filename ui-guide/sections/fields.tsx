@@ -844,6 +844,9 @@ function ListFieldDemo() {
             add: "Add point",
           }}
         />
+        <Cluster gap="sm">
+          <Button type="submit" variant="secondary">Save points</Button>
+        </Cluster>
         <DemoNote e2e="list-field-value">
           {JSON.stringify(points.value)}; submitted {submits.value} times
         </DemoNote>

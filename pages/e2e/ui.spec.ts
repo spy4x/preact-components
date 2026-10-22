@@ -1282,10 +1282,14 @@ function blogBlockSpecs(): Spec[] {
         await input.focus()
         await page.keyboard.press("ArrowUp")
         await stored.filter({ hasNotText: "2026-10-25T08:30:00.000Z" }).waitFor()
-        const wall = await input.inputValue()
-        const [date, time] = wall.split("T")
-        const expected = zonedDateTime(date, time, "Europe/Berlin").toISOString()
+        // ArrowUp steps the first segment, a date part in every locale, so the time stays 09:30.
+        // Read back after the store re-renders: a field that stored the wrong instant shows
+        // another wall clock than the one typed.
+        const date = (await input.inputValue()).split("T")[0]
+        const expected = zonedDateTime(date, "09:30", "Europe/Berlin").toISOString()
         await stored.filter({ hasText: `Stored: ${expected}` }).waitFor()
+        const wall = await input.inputValue()
+        if (wall !== `${date}T09:30`) throw new Error(`the input shows ${wall}, not ${date}T09:30`)
         await page.locator("#guide-publish-at-zone").filter({ hasText: "Berlin, Europe" }).waitFor()
         return `${wall} in Berlin is ${expected}`
       },
