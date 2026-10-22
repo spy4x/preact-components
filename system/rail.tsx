@@ -439,8 +439,7 @@ export function Rail(props: RailProps): JSX.Element {
   const frame = (
     <div
       class={cn(
-        // Below md the frame clips what overflows its foot: the dock's hidden strip (below).
-        "flex min-h-dvh flex-col max-md:overflow-y-clip md:flex-row max-md:[:root:has(&)]:pc-scroll-pb-tab-bar",
+        "flex min-h-dvh flex-col md:flex-row max-md:[:root:has(&)]:pc-scroll-pb-tab-bar",
         className,
       )}
       data-rail-variant={variant}
@@ -540,17 +539,15 @@ export function Rail(props: RailProps): JSX.Element {
         </div>
       )}
 
-      <div
-        class="sticky -bottom-6 z-10 -mb-6 shrink-0 md:hidden"
-        data-e2e="rail-shell-dock"
-      >
+      <div class="sticky bottom-0 z-10 shrink-0 md:hidden" data-e2e="rail-shell-dock">
         {
           // A 24 px band where a tap reaches neither the page nor a tab, so a page link partly
           // under the dock is never a tap away from a tab, which axe's `target-size` asks for. The
           // page fades into the bar through it, showing that the dock covers what lies behind.
         }
         <div
-          class="h-6 bg-linear-to-b from-transparent to-[var(--color-surface,oklch(1_0_0))]"
+          // The bar's own surface class, faded in by a mask, so the band and the bar share a source.
+          class={cn("h-6 [mask-image:linear-gradient(transparent,#000)]", surface)}
           aria-hidden="true"
           data-e2e="rail-shell-dock-fade"
         />
@@ -615,13 +612,6 @@ export function Rail(props: RailProps): JSX.Element {
             )}
           </ul>
         </nav>
-        {
-          // A 24 px strip of the bar's surface past the window's foot: the dock sticks 24 px low
-          // and gives that space back with a negative margin the frame clips, so nothing shows,
-          // but a page link peeking out under the bar's foot lies inside the dock, not half past
-          // its edge, and axe's `target-size` counts it as covered rather than too small.
-        }
-        <div class={cn("h-6", surface)} aria-hidden="true" data-e2e="rail-shell-dock-foot" />
       </div>
 
       {hasSheet && (

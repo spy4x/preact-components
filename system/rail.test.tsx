@@ -692,29 +692,13 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     )
     const dock = html.slice(html.indexOf('data-e2e="rail-shell-dock"'))
     const band = dock.match(/<div[^>]*data-e2e="rail-shell-dock-fade"[^>]*>/)?.[0] ?? ""
-    expect(band).toContain(
-      'class="h-6 bg-linear-to-b from-transparent to-[var(--color-surface,oklch(1_0_0))]"',
-    )
+    // The bar's own surface class, faded in by a mask.
+    expect(band).toContain('class="h-6 [mask-image:linear-gradient(transparent,#000)] bg-surface"')
     expect(band).toContain('aria-hidden="true"')
     expect(dock.indexOf(band)).toBeLessThan(dock.indexOf('data-e2e="notice"'))
     expect(dock.indexOf('data-e2e="notice"')).toBeLessThan(
       dock.indexOf('data-e2e="rail-shell-tabbar"'),
     )
-  })
-
-  it("ends the dock with a 24 px strip of the bar's surface hidden past the window's foot", () => {
-    const html = render(<Rail items={itemsOf(2)}>page</Rail>)
-    const dockTag = html.match(/<div[^>]*data-e2e="rail-shell-dock"[^>]*>/)?.[0] ?? ""
-    // Sticks 24 px low and gives the 24 px back, so the bar itself still ends at the window's foot.
-    expect(dockTag).toContain("-bottom-6")
-    expect(dockTag).toContain("-mb-6")
-    const dock = html.slice(html.indexOf(dockTag))
-    const foot = dock.match(/<div[^>]*data-e2e="rail-shell-dock-foot"[^>]*>/)?.[0] ?? ""
-    expect(foot).toContain('class="h-6 bg-surface"')
-    expect(foot).toContain('aria-hidden="true"')
-    expect(dock.indexOf(foot)).toBeGreaterThan(dock.indexOf("</nav>"))
-    // The frame clips the strip, or the window could scroll to it at the page's end.
-    expect(html.match(/^<div class="([^"]*)"/)?.[1].split(" ")).toContain("max-md:overflow-y-clip")
   })
 
   it("lets a backdrop tap close the sheet with no script", () => {

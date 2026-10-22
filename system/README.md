@@ -1452,13 +1452,13 @@ the badge shows "99+" and the name keeps the exact count. A counter of 0 draws n
 **Nothing covers the page.** The column is a column in the layout. The tab bar sticks to the bottom
 but keeps its place in the flow, pads itself by the bottom safe-area inset, and below `md` gives the
 root element the tab bar's scroll padding, so a control tabbed to near the bottom scrolls into view
-above it. A 24 px band above the bar, where the page fades into it, takes taps for neither the page
-nor a tab, so a page link half under the dock is never a tap away from a tab; and a 24 px strip of
-the bar's surface hangs past the window's foot, clipped by the frame, so a link peeking out under
-the bar's foot lies inside the dock. Both keep axe's `target-size` rule quiet wherever the page
-stops. `tabBarNotice` is drawn right above the bar, such as an offline strip. Inside a bounded,
-scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and that
-container becomes what both stick to.
+above it. A 24 px band above the bar, the bar's own surface faded in, takes taps for neither the
+page nor a tab, so a page link half under the dock's top edge is never a tap away from a tab, as
+axe's `target-size` rule asks. One case stays open: a link peeking out under the bar's last pixels,
+past the window's foot, still fails that rule where the device reports no bottom inset.
+`tabBarNotice` is drawn right above the bar, such as an offline strip. Inside a bounded, scrolling
+container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and that container becomes
+what both stick to.
 
 **Links reach a client router through `navigateLink`.** An entry with an `href` is a real link.
 With `navigateLink`, a plain left click on a same-origin link calls `navigateLink(key, href)` and
