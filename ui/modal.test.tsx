@@ -174,6 +174,28 @@ describe("Modal", () => {
     expect(render(<Modal open title="Delete" />)).not.toContain("<footer")
   })
 
+  it("gives the footer DialogActions' row classes, its border and its buttons in order", () => {
+    const html = render(
+      <Modal
+        open
+        title="Delete"
+        footer={
+          <>
+            <button type="button">Cancel</button>
+            <button type="button">Delete</button>
+          </>
+        }
+      />,
+    )
+    const footer = /<footer class="([^"]*)">/.exec(html)?.[1].split(" ") ?? []
+    for (const cls of ["flex-col", "sm:flex-row", "sm:justify-end"]) {
+      expect(footer).toContain(cls)
+    }
+    expect(footer).toEqual(expect.arrayContaining(["border-t", "border-subtle", "px-6", "py-4"]))
+    const body = html.slice(html.indexOf("<footer"))
+    expect(body.indexOf("Cancel")).toBeLessThan(body.indexOf("Delete"))
+  })
+
   it("keeps the headless body padding off the dialog element itself", () => {
     // The dialog paints its own padded children; a `p-*` on the element would fight `max-w-md`.
     const html = render(<Modal open title="Delete">body</Modal>)

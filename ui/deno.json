@@ -23,6 +23,7 @@
     "./date-range-picker": "./date-range-picker.tsx",
     "./date-range-search": "./date-range-search.ts",
     "./demo-video": "./demo-video.tsx",
+    "./dialog-actions": "./dialog-actions.tsx",
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",

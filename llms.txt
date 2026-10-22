@@ -601,6 +601,7 @@ DateTimeRange	type	@spy4x/preact-ui	Inclusive wall-clock range, minute precision
 DemoVideo	component	@spy4x/preact-ui	A demo clip that costs nothing until it is asked for: a poster with a play mark, swapped for the clip on press.
 DemoVideoPoster	type	@spy4x/preact-ui	The still frame a `DemoVideo` shows until it is pressed.
 DemoVideoSource	type	@spy4x/preact-ui	One file of the clip, rendered as a `<source>`.
+DialogActions	component	@spy4x/preact-ui	A dialog's button row: stacked full width on a phone, right-aligned in one row from `sm`.
 DialogRect	type	@spy4x/preact-ui	Rectangle in viewport coordinates: a structural subset of `DOMRect`, so tests need no DOM.
 DialogRole	type	@spy4x/preact-ui	How a `Modal` announces itself to assistive technology.
 DialogTone	type	@spy4x/preact-ui	Visual register of a `Modal`: a plain surface or a destructive one.

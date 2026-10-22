@@ -151,6 +151,7 @@ export {
   type DemoVideoSource,
 } from "./demo-video.tsx"
 export { YouTubeVideo, type YouTubeVideoProps } from "./youtube-video.tsx"
+export { DialogActions, type DialogActionsProps } from "./dialog-actions.tsx"
 export {
   type DateRangePreset,
   dateRangePresets,
