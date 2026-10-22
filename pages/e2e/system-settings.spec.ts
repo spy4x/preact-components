@@ -62,6 +62,7 @@ async function settingsAxeClean(page: Page): Promise<string> {
   await view.root.scrollIntoViewIfNeeded()
   const wide = await expectAxeClean(page, DEMO)
   await page.setViewportSize({ width: 390, height: 844 })
+  await view.back.click()
   await view.item("Account").waitFor({ state: "visible" })
   const phone = await expectAxeClean(page, DEMO)
   return `1440 px: ${wide}; 390 px list: ${phone}`
@@ -117,8 +118,7 @@ export const specs: readonly Spec[] = [
       await page.setViewportSize({ width: 390, height: 844 })
       const view = settings(page)
       await view.root.scrollIntoViewIfNeeded()
-      // The demo opens on the list's address, so the phone shows the list; open Account first.
-      await view.item("Account").click()
+      // The demo opens on Account, so the phone shows that section and no list.
       await view.back.waitFor({ state: "visible" })
       if (await view.nav.isVisible()) throw new Error("the list shows beside an open section")
       await view.back.click()
@@ -143,8 +143,15 @@ export const specs: readonly Spec[] = [
     run: async (page) => {
       // Reduced motion turns the items' colour transition off, so a resize repaints at once.
       await page.emulateMedia({ reducedMotion: "reduce" })
-      await page.setViewportSize({ width: 1440, height: 900 })
+      // The demo opens on Account; the phone's back link is the way to the list's address.
+      await page.setViewportSize({ width: 390, height: 844 })
       const view = settings(page)
+      await view.root.scrollIntoViewIfNeeded()
+      await view.back.click()
+      await view.route.filter({ hasText: "#settings" }).waitFor()
+      // Off every item, so no hover tint skews the colours read below.
+      await page.mouse.move(0, 0)
+      await page.setViewportSize({ width: 1440, height: 900 })
       await view.root.scrollIntoViewIfNeeded()
       await view.heading.filter({ hasText: "Account" }).waitFor({ state: "visible" })
       const account = view.item("Account")

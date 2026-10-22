@@ -78,11 +78,11 @@ function Edit({ name }: { name: string }) {
 
 /**
  * A profile with its own router: `navigate` maps a section's address to its id, and the list's
- * address to `null`, so on a phone the list is the page until a section is chosen. It opens on the
- * list's address, where `defaultSection` shows Account from `md` up.
+ * address to `null`, so on a phone the list is the page until a section is chosen. It opens on
+ * Account; back on the list's address, `defaultSection` keeps Account showing from `md` up.
  */
 function SettingsLayoutDemo() {
-  const current = useSignal<string | null>(null)
+  const current = useSignal<string | null>("account")
   const route = useSignal("none")
   const navigate = (href: string) => {
     route.value = href
