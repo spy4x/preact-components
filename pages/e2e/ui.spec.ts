@@ -2621,9 +2621,12 @@ async function openScrollingTagsSheet(page: Page) {
   if (size.content <= size.box || size.overflow !== "auto") {
     throw new Error(`the Tags sheet does not scroll: ${JSON.stringify(size)}`)
   }
-  /** The items in the tab order, by name: the roving tab stop leaves exactly one. */
+  /**
+   * The items in the tab order, by name: the roving tab stop leaves exactly one. Found by CSS, as
+   * a role locator does not match the menu once it is closed and hidden.
+   */
   const tabStops = () =>
-    bar.tagsMenu.evaluate((menu) =>
+    page.locator(`#demo-FilterBar [role="menu"][aria-label="Tags"]`).evaluate((menu) =>
       Array.from(menu.querySelectorAll<HTMLElement>(`[tabindex="0"]`)).map((item) =>
         item.textContent?.trim()
       )
@@ -2648,7 +2651,7 @@ function dropdownSheetSpecs(): Spec[] {
     {
       name: "Dropdown at 390 px, in a sheet that scrolls: the focused item is the one tab stop; " +
         "the arrow keys, Home and End move it, Shift+Tab reaches the trigger with the menu " +
-        "open, Escape hands focus back, and Tab leaves and closes the menu",
+        "open, Escape hands focus back and leaves no tab stop, and Tab leaves and closes the menu",
       pageId: "ui",
       run: async (page) => {
         const sheet = await openScrollingTagsSheet(page)
@@ -2685,6 +2688,10 @@ function dropdownSheetSpecs(): Spec[] {
         await page.keyboard.press("Escape")
         await sheet.tagsMenu.waitFor({ state: "hidden" })
         await sheet.focusIsOn(sheet.tags)
+        const closedStops = await sheet.tabStops()
+        if (closedStops.length > 0) {
+          throw new Error(`the closed menu kept tab stops ${JSON.stringify(closedStops)}`)
+        }
 
         await page.keyboard.press("Enter")
         await sheet.focusIsOn(any)
