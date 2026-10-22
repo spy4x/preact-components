@@ -3339,6 +3339,46 @@ export const specs: readonly Spec[] = [
   zoomableCropSpec,
   ...comparisonTablePhoneSpecs(),
   {
+    name: "ResendButton: the countdown ticks in a sentence no live region announces, then a " +
+      "44 px button sends by keyboard, keeps focus while busy, and hands focus to the sent line",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 800 })
+      const card = page.locator(`[data-e2e="resend-button-demo"]`)
+      const waiting = card.locator(`[data-e2e="resend-button-waiting"]`)
+      await waiting.scrollIntoViewIfNeeded()
+      const first = await waiting.textContent()
+      await waiting.filter({ hasNotText: first ?? "" }).filter({ hasText: "seconds" }).waitFor()
+      const live = await waiting.evaluate((element) =>
+        element.getAttribute("aria-live") === "off" &&
+        element.parentElement?.closest("[aria-live], [role=status], [role=alert]") === null
+      )
+      if (!live) throw new Error("the countdown is not kept out of every live region")
+      if (await card.getByRole("button").count() > 0) {
+        throw new Error("a button is drawn while the cooldown runs")
+      }
+
+      const send = card.getByRole("button", { name: "Send a new link", exact: true })
+      await send.waitFor()
+      const box = await send.boundingBox()
+      if (box === null || box.height < 44) throw new Error(`the button is ${box?.height} px tall`)
+      const { violations } = await new AxeBuilder({ page })
+        .include(`[data-e2e="resend-button-demo"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(violations.map((v) => `${v.id}: ${v.help}`).join("; "))
+      }
+
+      await send.focus()
+      await page.keyboard.press("Enter")
+      await card.locator(`[aria-busy="true"]:focus`).filter({ hasText: "Sending…" }).waitFor()
+      const sent = card.locator(`[data-e2e="resend-button-sent"]:focus`)
+      await sent.filter({ hasText: "A new link is on its way." }).waitFor()
+      await waiting.waitFor()
+      await card.locator(`[data-e2e="resend-button-demo-count"]`).filter({ hasText: "1" })
+        .waitFor()
+    },
+  },
+  {
     name: "Notice with onDismiss: at 390 px the close button is a named 44 px target in the " +
       "top corner, passes axe, and pressing it calls the caller, which hides the notice",
     pageId: "ui",

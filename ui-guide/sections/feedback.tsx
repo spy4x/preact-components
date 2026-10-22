@@ -31,6 +31,7 @@ import {
   Notice,
   type NoticeTone,
   RadioGroup,
+  ResendButton,
   type SpinnerSize,
   Stack,
   TagInput,
@@ -1145,6 +1146,58 @@ function RemovalRow(
   )
 }
 
+/** The cooldown in the `ResendButton` demo: short, so a reader sees the button come back. */
+const RESEND_DEMO_COOLDOWN_MS = 5_000
+/** How long the demo's pretend resend takes. */
+const RESEND_DEMO_SEND_MS = 800
+
+/**
+ * A "Check your inbox" card whose mail was just sent: the line counts down from 5 seconds, then
+ * offers the button. A press is busy for a moment, then restarts the cooldown, as a caller's
+ * server round trip would; the line under the card counts the resends.
+ * `pages/e2e/ui.spec.ts` drives it.
+ */
+function ResendButtonDemo() {
+  const readyAt = useSignal(Date.now() + RESEND_DEMO_COOLDOWN_MS)
+  const busy = useSignal(false)
+  const resends = useSignal(0)
+
+  return (
+    <Stack gap="sm" class="max-w-sm" data-e2e="resend-button-demo">
+      <Card>
+        <Stack gap="sm">
+          <p class="text-lg font-semibold">Check your inbox</p>
+          <p class="text-sm">
+            We sent a sign-in link to{" "}
+            <strong>ana@example.com</strong>. It works once, for 15 minutes.
+          </p>
+          <ResendButton
+            label="Send a new link"
+            waitingText={(seconds) =>
+              `Not there? Check your spam folder. You can send a new link in ${seconds} ${
+                seconds === 1 ? "second" : "seconds"
+              }.`}
+            sentText="A new link is on its way. Earlier links still work until one is used."
+            busy={busy.value}
+            readyAt={readyAt.value}
+            onResend={() => {
+              busy.value = true
+              setTimeout(() => {
+                readyAt.value = Date.now() + RESEND_DEMO_COOLDOWN_MS
+                busy.value = false
+                resends.value += 1
+              }, RESEND_DEMO_SEND_MS)
+            }}
+          />
+        </Stack>
+      </Card>
+      <DemoNote>
+        resends: <span data-e2e="resend-button-demo-count">{resends.value}</span>
+      </DemoNote>
+    </Stack>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -1669,6 +1722,74 @@ export const leaveGuard = createLeaveGuard()
   corner="bottom-right"
 />`,
     render: () => <ToastrDemo />,
+  },
+  ResendButton: {
+    summary:
+      'The "Not there?" line under "Check your inbox": a countdown sentence, then a button that sends the mail again.',
+    wide: false,
+    props: [
+      {
+        name: "onResend",
+        type: "() => void",
+        description: "Called on a press. The caller sends the mail again.",
+      },
+      {
+        name: "busy",
+        type: "boolean",
+        default: `false`,
+        description:
+          "The resend is running: the button shows `busyLabel` and keeps focus. Set the new `readyAt` no later than the render that clears it.",
+      },
+      {
+        name: "readyAt",
+        type: "number",
+        description:
+          "When the button may be pressed again, in milliseconds since the epoch. Until then a sentence counts down, kept out of live regions. Left out, the button shows at once.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"Send it again"`,
+        description: "The button's text.",
+      },
+      {
+        name: "busyLabel",
+        type: "string",
+        default: `"Sending…"`,
+        description: "The button's text while `busy`.",
+      },
+      {
+        name: "waitingText",
+        type: "(seconds: number) => ComponentChildren",
+        description:
+          'The countdown sentence, given the whole seconds left. Defaults to "Not there? Check your spam folder. You can send it again in 45 seconds."',
+      },
+      {
+        name: "readyText",
+        type: "ComponentChildren",
+        default: `"Not there? Check your spam folder, or"`,
+        description: "The words before the button.",
+      },
+      {
+        name: "sentText",
+        type: "ComponentChildren",
+        default: `"Sent again. Check your inbox."`,
+        description:
+          'The `role="status"` line that takes focus once a resend went out, since the button is gone.',
+      },
+    ],
+    snippet: `<ResendButton
+  label="Send a new link"
+  readyAt={sentAt + 60_000} // a sentence counts down until then
+  busy={sending}
+  onResend={async () => {
+    sending = true
+    await api.sendLink(address)
+    sentAt = Date.now() // set it before clearing busy
+    sending = false
+  }}
+/>`,
+    render: () => <ResendButtonDemo />,
   },
   ...onboardingDemos,
 } satisfies DemoFragment
