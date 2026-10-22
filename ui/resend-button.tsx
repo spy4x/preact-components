@@ -113,7 +113,7 @@ export function ResendButton(
         ref={status}
         role="status"
         tabIndex={-1}
-        class="text-foreground empty:hidden"
+        class="text-foreground outline-hidden empty:hidden"
         data-e2e="resend-button-sent"
       >
         {sent.value ? sentText : null}
