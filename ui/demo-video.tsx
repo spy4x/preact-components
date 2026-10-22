@@ -8,6 +8,7 @@ import {
   playClip,
   playOneAtATime,
 } from "./demo-video-clip.tsx"
+import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 
 export type { DemoVideoSource }
@@ -212,7 +213,10 @@ export function DemoVideo(
       aria-label={`${playLabel}: ${title}`}
       class={join(playLinkClass, className)}
       style={style}
-      onClick={play}
+      onClick={(event) => {
+        // Ctrl, Cmd, Shift or Alt, or another button, opens the link the browser's way.
+        if (isPlainClick(event)) play(event)
+      }}
       onKeyUp={() => {
         // Released on the link itself: the press did not play the clip, so nothing waits for it.
         pressingKey.current = null

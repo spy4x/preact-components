@@ -2112,6 +2112,34 @@ function tabsAndTableKeyboardSpecs(): Spec[] {
   ]
 }
 
+/**
+ * Ctrl-click and Shift-click on a video's play link open its `href` in a new tab or window, the
+ * browser's way, and leave the card's poster in place (`player` stays absent and the page stays
+ * put); a plain click afterwards still plays in place, which `played` waits for.
+ */
+async function modifiedClicksOpenTheLink(
+  page: Page,
+  link: Locator,
+  player: Locator,
+  href: RegExp,
+  played: () => Promise<unknown>,
+) {
+  const before = page.url()
+  for (const modifier of ["Control", "Shift"] as const) {
+    const [opened] = await Promise.all([
+      page.context().waitForEvent("page"),
+      link.click({ modifiers: [modifier] }),
+    ])
+    await opened.waitForURL(href)
+    await opened.close()
+    if (await player.count() > 0) throw new Error(`${modifier}-click also played in place`)
+    if (page.url() !== before) throw new Error(`${modifier}-click navigated to ${page.url()}`)
+  }
+  await link.click()
+  await played()
+  if (page.url() !== before) throw new Error(`the plain click navigated to ${page.url()}`)
+}
+
 /** The parts of the `DemoVideo` card a spec drives, with its poster scrolled into view and loaded. */
 async function demoVideoCard(page: Page) {
   const card = page.locator("#demo-DemoVideo")
@@ -2384,6 +2412,15 @@ function demoVideoSpecs(): Spec[] {
       },
     },
     {
+      name: "DemoVideo: Ctrl-click and Shift-click open the clip file in a new tab and leave " +
+        "the poster; a plain click still plays in place",
+      pageId: "ui",
+      run: async (page) => {
+        const { link, video, playing } = await demoVideoCard(page)
+        await modifiedClicksOpenTheLink(page, link, video, /\/video-demo\/clip\.webm$/, playing)
+      },
+    },
+    {
       name: "DemoVideo: with JavaScript off, the play link opens the clip file",
       pageId: "ui",
       run: async (page) => {
@@ -2612,6 +2649,26 @@ function youTubeVideoSpecs(): Spec[] {
         const { violations } = await new AxeBuilder({ page }).include("#demo-YouTubeVideo")
           .analyze()
         if (violations.length > 0) throw new Error(violations.map(({ id }) => id).join(", "))
+      },
+    },
+    {
+      name: "YouTubeVideo: Ctrl-click and Shift-click open the watch page in a new tab and " +
+        "leave the poster; a plain click still starts the player in place",
+      pageId: "ui",
+      run: async (page) => {
+        await page.context().route(/^https:\/\/www\.youtube\.com\/watch/, (route) =>
+          route.fulfill({
+            contentType: "text/html",
+            body: "<!doctype html><html lang='en'><title>Watch</title><main><h1>Watch</h1></main>",
+          }))
+        const { link, player } = await youTubeVideoCard(page)
+        await modifiedClicksOpenTheLink(
+          page,
+          link,
+          player,
+          /^https:\/\/www\.youtube\.com\/watch\?v=uaqFYlfOZeE$/,
+          () => focusInPlayer(page),
+        )
       },
     },
     ...(["Enter", " "] as const).map((key): Spec => ({
