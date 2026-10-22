@@ -786,6 +786,7 @@ WidgetStat	component	@spy4x/preact-ui	A stat widget's body: one large number in 
 WidgetStatus	type	@spy4x/preact-ui	Where a widget's data stands.
 WindowFrame	component	@spy4x/preact-ui	Draws a plain frame, a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
 WindowFrameVariant	type	@spy4x/preact-ui	Which frame a `WindowFrame` or a `ScreenTour` draws around its content.
+YouTubeVideo	component	@spy4x/preact-ui	A YouTube video that costs nothing until it is asked for: the caller's own poster with a play mark, swapped for YouTube's player on press.
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.

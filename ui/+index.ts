@@ -150,6 +150,7 @@ export {
   type DemoVideoProps,
   type DemoVideoSource,
 } from "./demo-video.tsx"
+export { YouTubeVideo, type YouTubeVideoProps } from "./youtube-video.tsx"
 export {
   type DateRangePreset,
   dateRangePresets,
