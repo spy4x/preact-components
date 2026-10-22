@@ -503,8 +503,14 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   }, [open, vertical])
 
   useEffect(() => {
-    if (!open) return
-    menuItems(panelRef.current)[0]?.focus()
+    if (open) {
+      menuItems(panelRef.current)[0]?.focus()
+      return
+    }
+    // A closed menu has no tab stop, as the server rendered it: the roving one below is undone.
+    for (const item of panelRef.current?.querySelectorAll<HTMLElement>(MENU_ITEM) ?? []) {
+      item.tabIndex = -1
+    }
   }, [open])
 
   const close = (returnFocus: boolean) => {
