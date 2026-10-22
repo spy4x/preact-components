@@ -20,8 +20,9 @@ export const BADGE_FILLED_ACCENT = "border-transparent bg-selected text-selected
 export const GRID_COLUMNS_MD = "grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]"
 
 /**
- * A dialog's button row, as `DialogActions` and `Modal`'s footer draw it: a column of full-width
- * buttons on a phone, one right-aligned row of natural-width buttons from `sm`. The column keeps
- * DOM order, so the submit, written last, is at the bottom on a phone and Tab reaches it last.
+ * A dialog's button row, as `DialogActions` and `Modal`'s footer draw it: a column on a phone,
+ * whose children stretch to its full width, and one right-aligned row from `sm`, where each child
+ * keeps its own width (a wrapper with `w-full` stays full width). The column keeps DOM order, so
+ * the submit, written last, is at the bottom on a phone and Tab reaches it last.
  */
-export const DIALOG_ACTIONS = "flex flex-col gap-3 sm:flex-row sm:justify-end *:w-full sm:*:w-auto"
+export const DIALOG_ACTIONS = "flex flex-col gap-3 sm:flex-row sm:justify-end"

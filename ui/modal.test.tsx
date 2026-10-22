@@ -188,7 +188,7 @@ describe("Modal", () => {
       />,
     )
     const footer = /<footer class="([^"]*)">/.exec(html)?.[1].split(" ") ?? []
-    for (const cls of ["flex-col", "sm:flex-row", "sm:justify-end", "*:w-full", "sm:*:w-auto"]) {
+    for (const cls of ["flex-col", "sm:flex-row", "sm:justify-end"]) {
       expect(footer).toContain(cls)
     }
     expect(footer).toEqual(expect.arrayContaining(["border-t", "border-subtle", "px-6", "py-4"]))

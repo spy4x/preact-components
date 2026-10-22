@@ -10,8 +10,6 @@ const ROW_CLASSES = [
   "gap-3",
   "sm:flex-row",
   "sm:justify-end",
-  "*:w-full",
-  "sm:*:w-auto",
 ]
 
 /** The root element's classes, one per entry. */
