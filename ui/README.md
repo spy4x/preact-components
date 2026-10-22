@@ -974,6 +974,33 @@ empty, and so does an empty `steps`.
 />
 ```
 
+## Prose, TldrBox and PostList
+
+The blocks of a blog, all plain markup and CSS, so a server-rendered page shows them with no
+JavaScript. `Prose` puts the theme's `pc-prose` class on one wrapper and sets the article's HTML
+inside it; that HTML must already be safe (rendered from Markdown with raw HTML stripped and links
+limited to safe schemes), because `Prose` styles and never cleans. Start the body at `h2`: the page
+draws the `h1`.
+
+```tsx
+<PageHero eyebrow={post.topic} title={post.title} />
+<TldrBox items={post.tldr} />
+<Prose as="article" html={post.html} />
+<PostList posts={next} label="Read next" headingLevel={3} />
+```
+
+`PostList` reads each `publishedAt` as its UTC day, through the nearest `FormatContext`, so a post
+shows the same date to every reader and on the server.
+
+## ListField and DateTimeField
+
+`ListField` edits a short list of lines (a post's key points): Enter in a line adds the next one
+instead of submitting the form, Backspace in an empty line other than the first removes it, and a
+removed line hands focus to the line that took its place. `DateTimeField` edits one instant in a
+named zone: the person types the wall clock of `timeZone`, the field shows that zone and its offset
+beside the input, and `onChange` receives `toISOString()`. A time a clock change skips moves
+forward by the gap; a repeated one is the earlier of the two.
+
 ## Timeline
 
 `Timeline` lists events as an ordered list with an accessible name (`label`, `"Timeline"` by
