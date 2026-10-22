@@ -65,6 +65,7 @@ import { dashboardDemos } from "./dashboard.tsx"
 import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
+import { contentBlockDemos } from "./content-blocks.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
@@ -1476,6 +1477,7 @@ export const displayDemos = {
   },
   ...comparisonTableDemos,
   ...marketingBlockDemos,
+  ...contentBlockDemos,
   Table: {
     summary:
       "The frame of a data table: you write the cells, it draws the dividers, the hover and the scroll.",

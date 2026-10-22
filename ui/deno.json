@@ -92,7 +92,13 @@
     "./unsaved-guard": "./unsaved-guard.tsx",
     "./steps": "./steps.tsx",
     "./window-frame": "./window-frame.tsx",
-    "./screen-tour": "./screen-tour.tsx"
+    "./screen-tour": "./screen-tour.tsx",
+    "./date-time-field": "./date-time-field.tsx",
+    "./fact-list": "./fact-list.tsx",
+    "./list-field": "./list-field.tsx",
+    "./post-list": "./post-list.tsx",
+    "./prose": "./prose.tsx",
+    "./tldr-box": "./tldr-box.tsx"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`. A glob rather than a

@@ -320,7 +320,8 @@ classes keep their names: no app writes them as ordinary words.
   and the subtle border in dark, or the subtle border in every theme for an app that never sets
   the token), `bg-danger`, `bg-warning`, `bg-success` and the `text-*` status tones.
 - **Type** — `pc-h1`–`pc-h5`, `pc-link`, `page-layout` (deprecated: use `Page` from
-  `@spy4x/preact-ui/layout`), `list-ul`, plus `theme-base` for
+  `@spy4x/preact-ui/layout`), `list-ul`, `pc-prose` (an article's rendered Markdown, which
+  `Prose` from `@spy4x/preact-ui` puts on its wrapper), plus `theme-base` for
   the document-level font, colour and canvas. Nothing is applied to the host
   page by importing the preset; `theme-base` is put on `<body>` when wanted, and
   every rule that would otherwise restyle the host is gated behind it — the
