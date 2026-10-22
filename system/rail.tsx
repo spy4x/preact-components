@@ -2,12 +2,12 @@
  * `Rail` — the house page frame's navigation: a column from `md` at every desktop width, 72 px in
  * the icons variant and 88 px in the labels variant, and below `md` a bottom tab bar of at most five slots whose last slot opens a sheet with the rest.
  *
- * Two variants share the column, the cells and the current style. `"icons"`, for apps, draws a
+ * Two variants share the column, the cells and the current fill. `"icons"`, for apps, draws a
  * 48 px square per destination, names it with visually hidden text and shows the label as a tooltip
  * on hover and keyboard focus. `"labels"`, for a site whose first-time visitors do not know the
- * icons, draws a short label under each icon and has no tooltip, so it needs no script at all. On a
- * screen with no hover, such as a tablet, the icons variant draws the labels too, because a tooltip
- * cannot appear there.
+ * icons, draws a short label under each icon, marks the current entry with an edge bar as well and
+ * has no tooltip, so it needs no script at all. On a screen with no hover, such as a tablet, the
+ * icons variant draws the labels too, because a tooltip cannot appear there.
  *
  * Props and ports only: items, the current key or path, the primary action and every label arrive
  * from the caller; a button item reaches the app's router through `navigate`, and a link item
@@ -29,6 +29,7 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import {
   countedName,
   CounterBadge,
+  CurrentBar,
   currentStates,
   Entry,
   entryCurrent,
@@ -320,7 +321,9 @@ const TIPS_HIDDEN = "data-tips-hidden"
  * and it follows its cell when the list scrolls.
  *
  * **The current entry is a filled cell,** with `aria-current="page"` or `"true"` (see
- * {@link RailProps.currentPath}); under forced colours a 2 px outline marks it instead.
+ * {@link RailProps.currentPath}); under forced colours a 2 px outline marks it instead. In the
+ * labels variant it also carries a 3 px bar in the current colour on its inner edge: the left edge
+ * of a column cell, the top edge of a tab, "More" included when its sheet holds the page.
  *
  * **The tab bar** sticks to the bottom but keeps its place in the flow, pads itself by the device's
  * bottom inset, and below `md` gives the root element the preset's `pc-scroll-pb-tab-bar`, so a
@@ -578,6 +581,7 @@ export function Rail(props: RailProps): JSX.Element {
                   }}
                   data-e2e="rail-shell-more"
                 >
+                  {moreHoldsCurrent && variant === "labels" && <CurrentBar place="tab" />}
                   {moreTab?.icon === undefined ? <MoreDots /> : (
                     <span
                       class="flex size-6 shrink-0 items-center justify-center"
