@@ -3119,6 +3119,41 @@ function dialogRowSpecs(): Spec[] {
         return lines.join("; ")
       },
     },
+    {
+      name: "LayoutCustomiser footer at 1440 px: its own full-width wrapper keeps Reset at the " +
+        "left edge and Done at the right",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await page.locator(`#demo-LayoutCustomiser [data-e2e="layout-open"]`).click()
+        const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
+        const footer = dialog.locator("footer")
+        const reset = footer.getByRole("button", { name: "Reset to default", exact: true })
+        const done = footer.getByRole("button", { name: "Done", exact: true })
+        await done.waitFor()
+        const [box, resetBox, doneBox] = await Promise.all(
+          [footer, reset, done].map((target) => target.boundingBox()),
+        )
+        if (box === null || resetBox === null || doneBox === null) {
+          throw new Error("the footer or its buttons are not drawn")
+        }
+        const inner = await footer.evaluate((node) => {
+          const style = getComputedStyle(node)
+          return { left: parseFloat(style.paddingLeft), right: parseFloat(style.paddingRight) }
+        })
+        const left = box.x + inner.left
+        const right = box.x + box.width - inner.right
+        if (Math.abs(resetBox.x - left) >= 1) {
+          throw new Error(`Reset starts at ${resetBox.x}, not the footer's left edge ${left}`)
+        }
+        if (Math.abs(doneBox.x + doneBox.width - right) >= 1) {
+          throw new Error(
+            `Done ends at ${doneBox.x + doneBox.width}, not the footer's edge ${right}`,
+          )
+        }
+        return `Reset at ${resetBox.x}, Done ends at ${doneBox.x + doneBox.width}`
+      },
+    },
   ]
 }
 
