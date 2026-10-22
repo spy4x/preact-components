@@ -136,7 +136,7 @@ export const contentBlockDemos: DemoFragment = {
   },
   FactList: {
     summary:
-      "Labels and their values, such as a record's details, as a description list that reads on a phone and a desktop.",
+      "Labels and their values, such as a record's details, as a description list: stacked on a phone, two columns from `sm`.",
     wide: false,
     props: [
       {

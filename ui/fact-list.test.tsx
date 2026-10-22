@@ -29,14 +29,14 @@ describe("FactList", () => {
     )
     expect(html).toContain('data-e2e="error"')
     expect(html).toMatch(
-      />TimeoutError<\/dd><dd class="basis-full[^"]*">The error type only\.<\/dd>/,
+      />TimeoutError<\/dd><dd class="[^"]*sm:col-start-2">The error type only\.<\/dd>/,
     )
   })
 
-  it("lets a long value wrap under its label instead of overflowing", () => {
+  it("stacks each value under its label on a phone, in two columns from sm, wrapping long values", () => {
     const html = render(<FactList facts={[{ label: "Job", value: "auth.password-reset-mail" }]} />)
-    expect(html).toContain("flex flex-wrap")
-    expect(html).toContain("wrap-anywhere")
+    expect(html).toContain('class="grid gap-x-4 gap-y-1 py-3 sm:grid-cols-3"')
+    expect(html).toContain("wrap-anywhere sm:col-span-2")
   })
 
   it("renders nothing for no facts", () => {

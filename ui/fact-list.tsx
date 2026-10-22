@@ -22,10 +22,10 @@ export interface FactListProps {
 }
 
 /**
- * Labels and their values, such as the details of a record: a description list (`<dl>`) of rows,
- * the label muted on the left and the value on the right, divided by hairlines. A value too long
- * for one line drops under its label, so the same list reads on a phone and a desktop. A hint is a
- * second `<dd>` under the value.
+ * Labels and their values, such as the details of a record: a description list (`<dl>`) of rows
+ * divided by hairlines. On a phone each value sits under its muted label; from `sm` the labels
+ * take the first third and the values the rest, so a column of values reads down the page. A long
+ * value wraps anywhere instead of overflowing. A hint is a second `<dd>` under the value.
  *
  * Plain markup, so it shows on a server-rendered page with no JavaScript.
  *
@@ -38,13 +38,15 @@ export function FactList({ facts, class: className }: FactListProps): JSX.Elemen
       {facts.map((fact) => (
         <div
           key={fact.id ?? fact.label}
-          class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3"
+          class="grid gap-x-4 gap-y-1 py-3 sm:grid-cols-3"
           data-e2e={fact.id}
         >
           <dt class="text-muted">{fact.label}</dt>
-          <dd class="min-w-0 text-right font-medium text-foreground wrap-anywhere">{fact.value}</dd>
+          <dd class="min-w-0 font-medium text-foreground wrap-anywhere sm:col-span-2">
+            {fact.value}
+          </dd>
           {fact.hint !== undefined && fact.hint !== null && (
-            <dd class="basis-full text-right text-xs text-muted">{fact.hint}</dd>
+            <dd class="text-xs text-muted sm:col-span-2 sm:col-start-2">{fact.hint}</dd>
           )}
         </div>
       ))}
