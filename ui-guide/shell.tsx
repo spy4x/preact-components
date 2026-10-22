@@ -571,7 +571,7 @@ export function UIGuide(
               data-e2e="ui-guide-title"
             >
               {/* Never cut short: a name too long for the bar wraps at its hyphen instead. */}
-              <span class="leading-tight">{labels.title}</span>
+              <span class="text-sm leading-tight sm:text-base">{labels.title}</span>
               {version
                 ? (
                   <span class="hidden shrink-0 rounded-full bg-canvas px-2 text-xs font-medium text-muted lg:inline">
@@ -580,7 +580,7 @@ export function UIGuide(
                 )
                 : null}
             </a>
-            <div class="ml-auto flex items-center gap-2">
+            <div class="ml-auto flex items-center gap-1 sm:gap-2">
               <GuideSearch entries={entries} labels={labels} go={go} />
               {author
                 ? (
@@ -601,7 +601,7 @@ export function UIGuide(
                     rel="noreferrer"
                     aria-label={labels.repository}
                     title={labels.repository}
-                    class={buttonClasses("ghost", "sm", "max-sm:hidden")}
+                    class={buttonClasses("ghost", "sm")}
                     data-e2e="ui-guide-repository"
                   >
                     <IconGitHub class="size-5" />
