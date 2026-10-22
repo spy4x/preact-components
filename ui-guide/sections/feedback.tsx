@@ -19,6 +19,7 @@ import {
   DateRangePicker,
   defaultToastActionDuration,
   defaultToastDuration,
+  DialogActions,
   type DialogTone,
   EmptyState,
   ErrorBoundary,
@@ -1432,7 +1433,11 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         type: "string",
         description: "The close button's name; without it there is no close button.",
       },
-      { name: "footer", type: "ComponentChildren", description: "The row of buttons at the end." },
+      {
+        name: "footer",
+        type: "ComponentChildren",
+        description: "The buttons at the end, laid out as `DialogActions` lays them out.",
+      },
       {
         name: "tone",
         type: `"default" | "danger"`,
@@ -1450,6 +1455,42 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
   <p>Modal body.</p>
 </Modal>`,
     render: () => <ModalDemo />,
+  },
+  DialogActions: {
+    summary:
+      "A dialog's button row: Cancel then the submit, stacked full width on a phone with the submit at the bottom, right-aligned from `sm`.",
+    wide: false,
+    props: [
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities added after the row's own, for anything that is not its layout.",
+      },
+    ],
+    snippet: `<form onSubmit={rename}>
+  <Stack>
+    <Input aria-label="List name" value={name} />
+    <DialogActions>
+      <Button variant="outline" onClick={close}>Cancel</Button>
+      <Button type="submit">Rename</Button>
+    </DialogActions>
+  </Stack>
+</form>`,
+    render: () => (
+      <form
+        class="rounded-lg border border-subtle bg-surface p-6"
+        data-e2e="dialog-actions-demo"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <Stack>
+          <Input aria-label="List name" value="Groceries" />
+          <DialogActions data-e2e="dialog-actions-row">
+            <Button variant="outline" type="button">Cancel</Button>
+            <Button type="submit">Rename</Button>
+          </DialogActions>
+        </Stack>
+      </form>
+    ),
   },
   ConfirmDialog: {
     summary: "Asks the user to confirm an action before it happens, with two labelled buttons.",
