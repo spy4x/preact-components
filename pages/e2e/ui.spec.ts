@@ -1320,8 +1320,12 @@ function screenTourSpecs(): Spec[] {
                 .length,
               stack: Math.round(panels[0].parentElement!.getBoundingClientRect().height),
               tallest: Math.round(Math.max(...panels.map((p) => p.getBoundingClientRect().height))),
-              // The first step is the selected one in the server markup.
-              selected: Math.round(panels[0].getBoundingClientRect().height),
+              // The first step is the selected one in the server markup. Its own lines, not its
+              // box: a grid item stretches to the cell, which the tallest panel would set.
+              selected: Math.round(
+                panels[0].lastElementChild!.getBoundingClientRect().bottom -
+                  panels[0].getBoundingClientRect().top,
+              ),
             }))
           } finally {
             await context.close()
@@ -1425,13 +1429,17 @@ function screenTourSpecs(): Spec[] {
         const tour = screenTourStep(page, "Dashboard").tab.locator("xpath=../..")
         const button = tour.locator("[data-screen-tour-full-size]")
         await button.scrollIntoViewIfNeeded()
-        /** The space between the selected step's panel and View full size, in px. */
+        /**
+         * The space between the selected step's last line and View full size, in px: its lines, not
+         * its box, which a grid cell stretches to the tallest panel.
+         */
         const space = () =>
           button.evaluate((link) => {
             const panel = link.parentElement!.querySelector(
               `[role="tabpanel"]:not([tabindex="-1"])`,
             )!
-            return link.getBoundingClientRect().top - panel.getBoundingClientRect().bottom
+            return link.getBoundingClientRect().top -
+              panel.lastElementChild!.getBoundingClientRect().bottom
           })
         const withText = await space()
         await screenTourStep(page, "Users").tab.click()
