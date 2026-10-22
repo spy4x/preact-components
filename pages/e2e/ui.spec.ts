@@ -1320,6 +1320,8 @@ function screenTourSpecs(): Spec[] {
                 .length,
               stack: Math.round(panels[0].parentElement!.getBoundingClientRect().height),
               tallest: Math.round(Math.max(...panels.map((p) => p.getBoundingClientRect().height))),
+              // The first step is the selected one in the server markup.
+              selected: Math.round(panels[0].getBoundingClientRect().height),
             }))
           } finally {
             await context.close()
@@ -1327,8 +1329,12 @@ function screenTourSpecs(): Spec[] {
         }
         const scripted = await read(true)
         const bare = await read(false)
-        if (scripted.visible !== 1 || scripted.stack !== scripted.tallest) {
-          throw new Error(`with scripts: ${JSON.stringify(scripted)}, expected one panel stacked`)
+        // Where scripts run, the stack is as tall as the selected step's text alone, so a short
+        // step leaves no gap under it (#991).
+        if (scripted.visible !== 1 || scripted.stack !== scripted.selected) {
+          throw new Error(
+            `with scripts: ${JSON.stringify(scripted)}, expected one panel, the stack its height`,
+          )
         }
         if (bare.visible !== 3 || bare.stack <= bare.tallest) {
           throw new Error(`without scripts: ${JSON.stringify(bare)}, expected three in a column`)
@@ -1393,6 +1399,102 @@ function screenTourSpecs(): Spec[] {
         return `transition-duration ${duration}`
       },
     })),
+    {
+      name: "ScreenTour at 390 px: the line above the frame names the selected step's group and " +
+        "follows the selection; from 1024 px the column's labels take over and it hides",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const dashboard = screenTourStep(page, "Dashboard")
+        const tour = dashboard.tab.locator("xpath=../..")
+        const line = tour.locator("[data-screen-tour-group]")
+        await line.scrollIntoViewIfNeeded()
+        await line.filter({ hasText: /^Monitor$/ }).waitFor({ state: "visible" })
+        await screenTourStep(page, "Schedules").tab.click()
+        await line.filter({ hasText: /^Automate$/ }).waitFor({ state: "visible" })
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await line.waitFor({ state: "hidden" })
+      },
+    },
+    ...([390, 1440] as const).map((width): Spec => ({
+      name: `ScreenTour at ${width} px: a step without text leaves no more room above View full ` +
+        "size than a step with text does",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width, height: 900 })
+        const tour = screenTourStep(page, "Dashboard").tab.locator("xpath=../..")
+        const button = tour.locator("[data-screen-tour-full-size]")
+        await button.scrollIntoViewIfNeeded()
+        /** The space between the selected step's panel and View full size, in px. */
+        const space = () =>
+          button.evaluate((link) => {
+            const panel = link.parentElement!.querySelector(
+              `[role="tabpanel"]:not([tabindex="-1"])`,
+            )!
+            return link.getBoundingClientRect().top - panel.getBoundingClientRect().bottom
+          })
+        const withText = await space()
+        await screenTourStep(page, "Users").tab.click()
+        await tour.locator(`[role="tabpanel"][id="guide-tour-users-panel"]:not([tabindex="-1"])`)
+          .waitFor()
+        const withoutText = await space()
+        if (Math.abs(withoutText - withText) > 0.5) {
+          throw new Error(`${withoutText}px above the button without text, ${withText}px with`)
+        }
+      },
+    })),
+    {
+      name: "ScreenTour in the phone frame: nothing of the notch covers the screenshot's top 40 px",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const image = page.locator("#demo-ScreenTour").getByRole("tablist", {
+          name: "Steps to a clip",
+        }).locator("xpath=..").locator("img[data-screen-tour-image]").first()
+        await image.scrollIntoViewIfNeeded()
+        const covered = await image.evaluate((element) => {
+          // Centred, so the guide's sticky header covers none of the image's top.
+          element.scrollIntoView({ block: "center" })
+          const box = element.getBoundingClientRect()
+          const misses: string[] = []
+          for (const y of [1, 10, 20, 30, 39]) {
+            for (const x of [0.2, 0.5, 0.8]) {
+              const hit = document.elementFromPoint(box.left + box.width * x, box.top + y)
+              if (hit !== element) misses.push(`${y}px at ${x}: ${hit?.outerHTML.slice(0, 60)}`)
+            }
+          }
+          return misses
+        })
+        if (covered.length > 0) throw new Error(`covered: ${covered.join("; ")}`)
+      },
+    },
+    {
+      name: "ScreenTour in the phone frame at 1440 px: the caption and View full size start at " +
+        "the phone's left edge",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const tour = page.locator("#demo-ScreenTour").getByRole("tablist", {
+          name: "Steps to a clip",
+        }).locator("xpath=..")
+        const image = tour.locator("img[data-screen-tour-image]").first()
+        await image.scrollIntoViewIfNeeded()
+        const edges = await image.evaluate((element) => {
+          const phone = element.closest(`[class*="aspect-"]`)!.getBoundingClientRect()
+          const root = element.closest(`[class*="lg:grid-cols"]`)!
+          const caption = root.querySelector(`[role="tabpanel"]:not([tabindex="-1"]) p`)!
+          const button = root.querySelector("[data-screen-tour-full-size]")!
+          return {
+            phone: phone.left,
+            caption: caption.getBoundingClientRect().left,
+            button: button.getBoundingClientRect().left,
+          }
+        })
+        if (
+          Math.abs(edges.caption - edges.phone) > 0.5 || Math.abs(edges.button - edges.phone) > 0.5
+        ) throw new Error(`left edges: ${JSON.stringify(edges)}`)
+      },
+    },
     ...(["light", "dark"] as const).map((palette): Spec => ({
       name: `ScreenTour: at 390 px the tabs scroll inside their own row, and axe finds no ` +
         `violation at 390 and 1440 px, ${palette}`,

@@ -53,8 +53,12 @@ const browserFrame = "overflow-hidden rounded-xl border border-frame bg-surface 
 const terminalFrame =
   "dark overflow-hidden rounded-xl border border-subtle bg-canvas text-foreground shadow-2xl"
 
+/**
+ * The phone. Its top bezel is deeper than the sides and holds the notch, so the notch never covers
+ * the top of the screenshot, where an app keeps its own bar.
+ */
 const phoneFrame =
-  "mx-auto aspect-[9/19] w-full max-w-xs rounded-[2.5rem] bg-foreground p-2 shadow-2xl"
+  "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-[2.5rem] bg-foreground p-2 pt-8 shadow-2xl"
 
 /**
  * Draws the device around `children`. The chrome (the window buttons, the address bar, the notch)
@@ -87,13 +91,11 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
   if (variant === "phone") {
     return (
       <div class={phoneFrame}>
-        <div class="relative h-full overflow-hidden rounded-[2rem] bg-surface">
-          <span
-            aria-hidden="true"
-            class="absolute left-1/2 top-2 z-10 h-6 w-24 -translate-x-1/2 rounded-full bg-foreground"
-          />
-          {children}
-        </div>
+        <span
+          aria-hidden="true"
+          class="absolute left-1/2 top-3 h-2 w-16 -translate-x-1/2 rounded-full bg-track"
+        />
+        <div class="relative h-full overflow-hidden rounded-[2rem] bg-surface">{children}</div>
       </div>
     )
   }

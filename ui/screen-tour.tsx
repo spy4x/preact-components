@@ -47,7 +47,8 @@ export interface ScreenTourStep {
   text?: ComponentChildren
   /**
    * A small label shown above the first step of a run of steps with the same group, in the vertical
-   * list from 1024 px. Decorative: the tabs keep their own names.
+   * list from 1024 px; below 1024 px the selected step's group shows above the frame instead.
+   * Decorative: the tabs keep their own names.
    */
   group?: string
   /** The screenshot. */
@@ -78,6 +79,11 @@ export interface ScreenTourProps {
   label?: string
   /** The words of the button that opens the screenshot in the lightbox. Defaults to `"View full size"`. */
   viewFullSizeLabel?: string
+  /**
+   * Extra utilities for "View full size", appended after its secondary-button classes and not merged
+   * into them, so an app can give it its own button look.
+   */
+  viewFullSizeClass?: string
   /** The lightbox's close control. Defaults to `"Close"`. */
   closeLabel?: string
   /** The lightbox's previous control. Defaults to `"Previous image"`. */
@@ -120,8 +126,13 @@ const gone = `invisible opacity-0 ${leaving}`
  * enabled`): there the server markup already stacks the texts in one cell, so hydration moves
  * nothing, while a reader without scripts gets every step's text in a column.
  */
-const panelStack = "flex flex-col gap-6 [@media(scripting:enabled)]:grid"
-const panelGone = "[@media(scripting:enabled)]:invisible [@media(scripting:enabled)]:opacity-0"
+const panelStack = "relative flex flex-col gap-6 [@media(scripting:enabled)]:grid"
+/**
+ * A panel that is not selected also leaves the flow where scripts run, so the stack is as tall as
+ * the selected step's text alone: a step without text leaves no gap above "View full size".
+ */
+const panelGone =
+  "[@media(scripting:enabled)]:invisible [@media(scripting:enabled)]:opacity-0 [@media(scripting:enabled)]:absolute [@media(scripting:enabled)]:inset-x-0 [@media(scripting:enabled)]:top-0"
 
 const panelClass =
   "flex flex-col gap-1 rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
@@ -177,6 +188,7 @@ export function ScreenTour(
     onSelect,
     label = "Screens",
     viewFullSizeLabel = "View full size",
+    viewFullSizeClass,
     closeLabel,
     previousLabel,
     nextLabel,
@@ -203,6 +215,7 @@ export function ScreenTour(
 
   const selectedIndex = Math.max(0, steps.findIndex((step) => step.id === selected.value))
   const current = steps[selectedIndex]
+  const grouped = steps.some((step) => step.group !== undefined)
   const isHydrated = hydrated.value
   // The `id` of the group label in force for each tab, so the tab names its group as its description.
   let groupLabelId: string | undefined
@@ -282,9 +295,33 @@ export function ScreenTour(
           ]
         })}
       </div>
-      <div class="flex min-w-0 flex-col gap-4">
-        {/* From 1024 px a phone stays 16 rem wide, so it never towers over the column of tabs. */}
-        <div class={frame === "phone" ? "w-full lg:mx-auto lg:max-w-64" : undefined}>
+      {
+        /*
+         * From 1024 px a phone stays 16 rem wide, so it never towers over the column of tabs, and its
+         * caption, text and button keep to the same centred column, aligned with the phone.
+         */
+      }
+      <div
+        class={join(
+          "flex min-w-0 flex-col gap-4",
+          frame === "phone" && "lg:mx-auto lg:w-full lg:max-w-64",
+        )}
+      >
+        <div class="flex flex-col gap-2">
+          {
+            // Below 1024 px the row of tabs has no group labels, so the selected step's group shows
+            // here. The tab already names it as its description, so this copy is hidden from
+            // assistive tech; a step with no group keeps the line, empty, so the frame never moves.
+            grouped && (
+              <p
+                aria-hidden="true"
+                class="text-xs font-medium text-muted lg:hidden"
+                data-screen-tour-group=""
+              >
+                {current.group ?? "\u00a0"}
+              </p>
+            )
+          }
           <FrameChrome variant={frame} title={browserUrl}>
             <div class={join("grid", frame === "phone" && "h-full")}>
               {steps.map((step, index) => {
@@ -331,7 +368,12 @@ export function ScreenTour(
         </div>
         <a
           href={current.image.src}
-          class={buttonClasses("secondary", "md", "min-h-11 self-start sm:min-h-9")}
+          class={buttonClasses(
+            "secondary",
+            "md",
+            join("min-h-11 self-start sm:min-h-9", viewFullSizeClass),
+          )}
+          data-screen-tour-full-size=""
           onClick={(event) => {
             event.preventDefault()
             lightboxOpen.value = true
