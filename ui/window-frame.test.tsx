@@ -47,7 +47,7 @@ describe("WindowFrame", () => {
     expect(html).toMatch(/<span aria-hidden="true" class="[^"]*rounded-full bg-track"/)
   })
 
-  it("draws the phone's notch in the top bezel, outside the screen, so it covers no content", () => {
+  it("puts the phone's notch in a deeper top bezel, before the screen, not inside it", () => {
     const html = render(<WindowFrame variant="phone">x</WindowFrame>)
     // The notch is the bezel's child, before the screen, not inside the screen with the content.
     expect(html).toMatch(
