@@ -174,7 +174,7 @@ describe("Modal", () => {
     expect(render(<Modal open title="Delete" />)).not.toContain("<footer")
   })
 
-  it("stacks the footer's buttons full width on a phone, in order, and keeps its border", () => {
+  it("gives the footer DialogActions' row classes, its border and its buttons in order", () => {
     const html = render(
       <Modal
         open

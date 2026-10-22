@@ -21,7 +21,7 @@ function rootClasses(html: string): string[] {
 }
 
 describe("DialogActions", () => {
-  it("stacks its buttons full width on a phone and right-aligns them in a row from sm", () => {
+  it("carries the classes that stack its buttons on a phone and right-align them from sm", () => {
     const html = render(
       <DialogActions>
         <button type="button">Cancel</button>
