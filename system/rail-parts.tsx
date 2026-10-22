@@ -56,6 +56,27 @@ export const entryCurrent =
   "bg-[var(--color-surface-active,var(--color-accent-100))] dark:bg-[var(--color-surface-active,var(--color-selected-soft))] text-[color:var(--color-nav-active,var(--color-selected-text))] font-semibold forced-colors:outline-2 forced-colors:outline-solid forced-colors:outline-[CanvasText]"
 
 /**
+ * The labels variant's mark on its current entry, on top of {@link entryCurrent}: a 3 px bar in
+ * the current text colour on the entry's inner edge, the left edge of a column cell and the top
+ * edge of a tab. A site's warm dark palette can leave the fill too faint to find the page by. The
+ * bar is an absolutely placed, `aria-hidden` `<span>` ({@link CurrentBar}), so it takes no room and
+ * moves nothing. It is not a pseudo-element or a background image, because axe cannot decide the
+ * label's contrast under either, and it stays clear of the label's box. The icons variant keeps
+ * the fill alone, and the sheet's rows draw no bar.
+ */
+export const entryCurrentBar: Record<Exclude<EntryPlace, "sheet">, string> = {
+  rail:
+    "pointer-events-none absolute inset-y-3 left-0 w-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
+  tab:
+    "pointer-events-none absolute inset-x-3 top-0 h-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
+}
+
+/** The bar {@link entryCurrentBar} describes, as the first child of the current entry's control. */
+export function CurrentBar(props: { place: Exclude<EntryPlace, "sheet"> }): JSX.Element {
+  return <span class={entryCurrentBar[props.place]} aria-hidden="true" data-current-bar="" />
+}
+
+/**
  * The primary action: `Button`'s primary fill. In the dark palettes that fill, step 600, is about
  * 2.7:1 against the rail's surface, so a border in step 400 draws its edge at 3:1 or more.
  */
@@ -335,8 +356,10 @@ export function Entry(props: EntryProps): JSX.Element {
     place === "rail" ? railCell[variant] : entryPlace[place],
     primary ? entryPrimary : current ? entryCurrent : entryIdle,
   )
+  const barred = current !== undefined && !primary && variant === "labels" && place !== "sheet"
   const content = (
     <>
+      {barred && <CurrentBar place={place} />}
       {Icon && (
         <span class="flex shrink-0" aria-hidden="true">
           <Icon class="size-6" />
