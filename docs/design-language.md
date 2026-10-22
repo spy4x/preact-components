@@ -205,7 +205,8 @@ An app chooses only its brand hue, its destinations and its content.
   tables. Screens never set a width.
 - **Phone.** Below `md`, a 64 px tab bar of at most four destinations plus the account slot, which
   opens a sheet with the switcher, the rest, notifications and the account menu. Offline shows as a
-  strip on top of the tab bar.
+  strip on top of the tab bar. The page fades into the bar through a 24 px band that takes no taps,
+  so no page link sits a tap away from a tab.
 - **Counts** sit on the icon's top-right corner and read "99+" above 99.
 
 ### Component patterns

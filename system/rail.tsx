@@ -327,7 +327,9 @@ const TIPS_HIDDEN = "data-tips-hidden"
  *
  * **The tab bar** sticks to the bottom but keeps its place in the flow, pads itself by the device's
  * bottom inset, and below `md` gives the root element the preset's `pc-scroll-pb-tab-bar`, so a
- * control a person tabs to near the bottom scrolls into view above it.
+ * control a person tabs to near the bottom scrolls into view above it. A 24 px band above it, where
+ * the page fades into the bar, takes taps for neither, so a link the dock half covers is never a
+ * tap away from a tab.
  *
  * **The sheet is a modal `<dialog>`** holding `top`, the items that did not fit and the
  * `sheetOnly` ones, and `bottom`, with a hairline between them. The last slot opens it with
@@ -538,6 +540,17 @@ export function Rail(props: RailProps): JSX.Element {
       )}
 
       <div class="sticky bottom-0 z-10 shrink-0 md:hidden" data-e2e="rail-shell-dock">
+        {
+          // A 24 px band where a tap reaches neither the page nor a tab, so a page link partly
+          // under the dock is never a tap away from a tab, which axe's `target-size` asks for. The
+          // page fades into the bar through it, showing that the dock covers what lies behind.
+        }
+        <div
+          // The bar's own surface class, faded in by a mask, so the band and the bar share a source.
+          class={cn("h-6 [mask-image:linear-gradient(transparent,#000)]", surface)}
+          aria-hidden="true"
+          data-e2e="rail-shell-dock-fade"
+        />
         {tabBarNotice}
         <nav
           aria-label={navLabel}

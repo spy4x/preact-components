@@ -685,6 +685,112 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "RailShell below md: a text link half under the dock's top edge passes axe's " +
+      "target-size, because the fade band keeps every tab 24 px from that edge",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      // Lift the demo's 600 px box, as the scroll-padding check above does, so the dock sticks to
+      // the window, and add a text link after the page's last line.
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
+        if (!frame) throw new Error("the RailShell demo frame is missing")
+        frame.className = ""
+        document.documentElement.style.scrollBehavior = "auto"
+        const link = document.createElement("a")
+        link.href = "#half-covered"
+        link.textContent = "Half-covered link"
+        link.setAttribute("data-e2e", "rail-shell-demo-half-covered")
+        // Page under the link, so the dock can stick over it instead of sitting after it.
+        const rest = document.createElement("div")
+        rest.style.height = "400px"
+        document.querySelector(`[data-e2e="rail-shell-demo-last-line"]`)?.after(link, rest)
+      })
+      const link = page.locator(`[data-e2e="rail-shell-demo-half-covered"]`)
+      // The link's top 10 px above the fade band's, so the band covers its lower half.
+      await link.evaluate((element) => {
+        const band = document.querySelector(`#demo-RailShell [data-e2e="rail-shell-dock-fade"]`)
+        if (!band) throw new Error("the RailShell dock has no fade band")
+        const top = element.getBoundingClientRect().top + globalThis.scrollY
+        // Bring the link to mid-window first, so the dock is stuck where it is measured.
+        globalThis.scrollTo({ top: top - globalThis.innerHeight / 2, behavior: "instant" })
+        const wanted = band.getBoundingClientRect().top - 10
+        globalThis.scrollTo({ top: top - wanted, behavior: "instant" })
+      })
+      const [box, band] = await Promise.all([
+        link.boundingBox(),
+        page.locator(`#demo-RailShell [data-e2e="rail-shell-dock-fade"]`).boundingBox(),
+      ])
+      if (!box || !band) throw new Error("the link or the fade band is not drawn")
+      if (!(box.y < band.y && box.y + box.height > band.y)) {
+        throw new Error(`the link spans y ${box.y}–${box.y + box.height}, not the band's top edge`)
+      }
+      const { violations, passes } = await new AxeBuilder({ page })
+        .include(`[data-e2e="rail-shell-demo-half-covered"]`)
+        .withRules(["target-size"])
+        .analyze()
+      if (violations.length > 0) {
+        const messages = violations.flatMap((rule) =>
+          rule.nodes.map((node) => node.failureSummary ?? rule.help)
+        )
+        throw new Error(`link at y ${box.y}: ${messages.join("; ")}`)
+      }
+      if (!passes.some((rule) => rule.id === "target-size")) {
+        throw new Error("axe did not measure the link's target size")
+      }
+      return `link at y ${box.y}–${box.y + box.height}, band from y ${band.y}`
+    },
+  },
+  {
+    name:
+      "RailShell below md: an open listbox in the page's last row hangs past the frame's foot, " +
+      "and its last option can be scrolled to and tapped, because the frame clips nothing",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      // A popup positioned like Listbox's, Combobox's and DateRangePicker's: absolute, under its
+      // trigger, in the last row of the page, so its options hang below the frame's foot.
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
+        if (!frame) throw new Error("the RailShell demo frame is missing")
+        frame.className = ""
+        document.documentElement.style.scrollBehavior = "auto"
+        const row = document.createElement("div")
+        row.style.position = "relative"
+        const list = document.createElement("ul")
+        list.setAttribute("role", "listbox")
+        list.setAttribute("aria-label", "Status")
+        Object.assign(list.style, { position: "absolute", top: "100%", zIndex: "20" })
+        for (let index = 1; index <= 12; index++) {
+          const option = document.createElement("li")
+          option.setAttribute("role", "option")
+          option.setAttribute("data-e2e", `rail-shell-demo-option-${index}`)
+          option.textContent = `Option ${index}`
+          option.style.height = "40px"
+          option.addEventListener("click", () => option.setAttribute("aria-selected", "true"))
+          list.append(option)
+        }
+        row.append("Last row", list)
+        const content = document.querySelector(`#demo-RailShell [data-e2e="rail-shell-content"]`)
+        if (!content) throw new Error("the RailShell demo has no content")
+        content.append(row)
+      })
+      const last = page.locator(`[data-e2e="rail-shell-demo-option-12"]`)
+      await last.evaluate((element) => element.scrollIntoView({ block: "center" }))
+      const hit = await last.evaluate((element) => {
+        const box = element.getBoundingClientRect()
+        const found = document.elementFromPoint(box.left + 10, box.top + box.height / 2)
+        return found === element ? "" : `${found?.tagName}.${found?.className}`.slice(0, 120)
+      })
+      if (hit) throw new Error(`the last option's centre hits ${hit}, not the option`)
+      await last.click()
+      if (await last.getAttribute("aria-selected") !== "true") {
+        throw new Error("tapping the last option did not reach it")
+      }
+      return "the last option is on screen and takes the tap"
+    },
+  },
+  {
     name: "RailShell at 1440 px: the 72 px column with sidebarTop above the items, " +
       "sidebarBottom at its foot, and an item's counter spoken in its name",
     pageId: "system",
