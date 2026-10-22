@@ -621,8 +621,8 @@ describe("Combobox markup", () => {
     const html = render(<Combobox items={items} value="ETH" onChange={() => {}} />)
 
     expect(html).toContain("bg-selected-soft font-medium text-selected")
-    // `cn` resolves last-wins, so the base colour must not survive on an unselected row as a
-    // stray `text-foreground` that the selected row's colour lost to.
+    // Each row gets one text colour: the base colour must not reach the selected row beside the
+    // selected row's own.
     expect(html.match(/text-foreground/g)?.length).toBe(2)
   })
 

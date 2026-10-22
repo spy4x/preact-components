@@ -11,11 +11,15 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twelve exports.** Most components pass a caller's `class` through
-  `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
-  group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  `EnhancedForm` (#511), `DemoVideo` and `ScreenTour` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
-  `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
+- **A `class` is merged, except on twenty-five exports.** Most components pass a caller's
+  `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
+  of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
+  `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `ScreenTour`, `PricingTable`,
+  `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
+  `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
+  `Slider` (#958) use `join`
+  instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
+  `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
   before. Their `class` is appended after their own classes, and replaces one of them only when
   it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
@@ -65,11 +69,12 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                                                                                                       |
 | `ColorField`          | `color-field`          | `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field                                                                                        |
 | `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                                                                                                       |
-| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                                                                                                       |
+| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`            |
 | `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                                                                                                          |
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                                                                                         |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                                                                                        |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                                                                                                              |
+| `DashboardGrid`       | `widget-card`          | `items` (`{ id, size: "stat" \| "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row                                                                                                                                                                                                                                                     |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                                                                                                                     |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                                            |
 | `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link                       |
@@ -79,6 +84,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                                       |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                                               |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                                                                                                                      |
+| `Explorable`          | `explorable`           | `title`, `children` (the result), `lead?`, `controls?` (in a `<fieldset>` disabled until live), `caption?` (`<figcaption>`), `live?` (default: on once hydrated), `noScriptNote?`, `interactiveLabel?`, `id?`, `class?` — a `<figure>` for an interactive figure                                                                                                    |
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                                              |
 | `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                                               |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                                                 |
@@ -86,12 +92,13 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FilterBar`           | `filter-bar`           | `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips                                                                                 |
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                                                  |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                                        |
-| `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                                       |
+| `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                              |
 | `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                         |
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                                                    |
 | `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                                                                                                                                      |
 | `InlineEdit`          | `inline-edit`          | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`                                                                                                                                                                                              |
 | `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; touch or mouse drag, and keyboard moves                                                                                                                                                                                                                |
+| `LayoutCustomiser`    | `layout-customiser`    | `open`, `onClose`, `title`, `items` (`{ id, title, hidden }[]`), `onChange(layout)`, `onReset?`, `error?`, `labels?`                                                                                                                                                                                                                                                |
 | `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                                                                                                                                            |
 | `Link`                | `link`                 | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                                                                                                                                                                                               |
 | `LoadingSkeleton`     | `loading-skeleton`     | `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion                                                                                                                                                                                                                                               |
@@ -119,11 +126,12 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
-| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                                         |
+| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"plain"`, `"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                              |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
 | `ShortcutsDialog`     | `shortcuts-dialog`     | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                                                                                                                                                                                    |
+| `Slider`              | `slider`               | `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`                                                                                                                                         |
 | `SortableList`        | `sortable-list`        | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                                                                                                                                                                                           |
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                                                                                                          |
@@ -132,7 +140,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                                                 |
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                                         |
 | `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                      |
-| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?` — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                                                                |
+| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?`, `inputAttributes?` (per radio, by value) — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                      |
 | `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                                              |
 | `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                                                                                                               |
 | `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                                                                                                            |
@@ -144,7 +152,9 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                                                                                                                |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab                                                                                        |
 | `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                                                                                                         |
-| `WindowFrame`         | `window-frame`         | `variant` (`"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                            |
+| `WidgetCard`          | `widget-card`          | `title`, `status` (`loading`/`error`/`empty`/`ready`), `size?`, `loadingLabel`, `caption?`, `menu?`, `href?`, `errorMessage?`, `onRetry?`, `emptyLabel?`, `skeletonDelay?`                                                                                                                                                                                          |
+| `WidgetStat`          | `widget-card`          | `value`, `valueLabel?`, `lines?`                                                                                                                                                                                                                                                                                                                                    |
+| `WindowFrame`         | `window-frame`         | `variant` (`"plain"`, `"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                 |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                                                                                                                                     |
 
 ## Usage
@@ -776,6 +786,30 @@ The maths is in `date-range.ts`, on top of `resolveWallClock` from `@spy4x/time/
 - `isValidDateTimeRange(range)` orders by `fromInstant`/`toInstant` when the range carries both, and
   by the strings, as it always has, when it does not.
 
+A picker's choice in the page's address (`date-range-search`), one format for every page:
+
+- `rangeFromSearch(search, { now, timeZone, defaultPreset, presets? })` reads `?range=<preset>` or
+  `?from=YYYY-MM-DD&to=YYYY-MM-DD` and answers `{ preset, range }`; an unknown preset, a reversed or
+  malformed range, or a preset the page does not offer reads as `defaultPreset`.
+- `rangeToSearch(search, choice, defaultPreset)` writes the choice into a copy of `search`, every
+  other parameter kept, and leaves the default preset out of the address.
+
+`DateRangePicker`'s `onChange` gets the preset as its second argument (`"custom"` from the panel),
+so a caller keeps the person's choice instead of guessing it with `presetForRange`.
+
+Focus in a dashboard: "Try again" moves focus to its `WidgetCard` (a named group with
+`tabindex="-1"`), where it stays when the data arrives. A card that a caller hides from its own menu
+unmounts with the menu, so the caller moves focus to the next card's heading, or the previous one
+when it was the last.
+
+Dashboard helpers beside `WidgetCard` and `LayoutCustomiser`:
+
+- `dashboardRows(items)` groups widgets into rows the way `DashboardGrid` draws them.
+- `mergeLayout(saved, available)` makes a stored layout valid for the parts that exist now: unknown,
+  repeated and malformed entries dropped, new parts added at the end and shown.
+- `setLayoutHidden(layout, id, hidden)` and `moveLayoutEntry(layout, from, to)` are the two changes
+  a person makes; `defaultLayoutCustomiserLabels` holds the dialog's English words.
+
 `rangeForTimePreset` and `presetForTimeRange` are the two presets' own maths — plain functions of an
 injected `now` and `timeZone`, the same convention `rangeForPreset` and `presetForRange` follow. Both
 subtract a fixed number of _real_ milliseconds from `now` before reading the wall clock, and
@@ -813,12 +847,16 @@ No `<video>` element exists before the press, so the browser requests no video b
 `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
 ignored.
 
+One clip plays at a time. When a clip starts, by the press or by its own controls (its `play`
+event), every other `DemoVideo` on the page pauses where it is, so two soundtracks never overlap.
+
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the
 name. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
 for a clip on the first screen. `class` is joined, not merged, so an island that renders the
 component carries no `tailwind-merge`. Any other attribute, such as `id` or a `data-*` analytics
-attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`.
+attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`,
+whose `plain` variant suits it best.
 
 When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its size
 and shows `errorLabel` ("The video didn't load.") with a link, `openFileLabel` ("Open the video
@@ -838,10 +876,10 @@ the video.
 
 ## ScreenTour
 
-A product walkthrough for a product or case-study page: named steps as tabs beside one browser or
-phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is picked.
-Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View full
-size" link.
+A product walkthrough for a product or case-study page: named steps as tabs beside one plain,
+browser or phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is
+picked. Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View
+full size" link.
 
 The tabs are a column from 1024 px and, below it, a row that scrolls inside itself, so a phone page
 never scrolls sideways. The tab list is one Tab stop: Left/Right and Up/Down move and select (the
@@ -1361,12 +1399,15 @@ carries `loading="lazy"`, so only the image a reader sees first loads up front.
 />
 ```
 
-Five more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
+Six more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
 that sets none renders exactly what it did before they existed.
 
 - `hero` is for a strip that is the page's hero. Its first image loads with `loading="eager"` and
   `fetchpriority="high"`, often the page's largest paint; every later one with `loading="lazy"` and
   `decoding="async"`.
+- `lazy` is for a strip below the page's own first media, such as a separate hero image. Every image
+  in it loads with `loading="lazy"`, the first included, and none carries `fetchpriority`, so the
+  strip does not compete with that hero for bandwidth. `hero` wins when both are set.
 - `captions` shows each image's `alt` under it, in a `<figcaption>`. The image then carries the same
   `alt`, which names its button, and the button drops its `aria-label`: the visible caption and the
   button's accessible name are the same text.
@@ -1685,6 +1726,17 @@ into view as it moves: the listbox is the box that scrolls, so focus stays in th
 phone the button is an icon, the dialog fills the screen, and the close button and every result
 row are at least 44 px tall. A long label stops at two lines and a long `detail` at one.
 
+`trigger="field"` draws the field-shaped button at every width, phones included, with the
+placeholder and the hotkey hint, as wide as its container. It is still a button: Tab reaches it and
+Enter or Space opens the palette. A printable key typed on it opens the palette with that key in
+the field and the caret after it, as a real field would take it; a key that is one of `hotkeys`
+opens it the hotkey's way. `defaultQuery` is the query the field holds each time the palette opens,
+selected, so the first key typed replaces it.
+
+The trigger's `class` is appended after its own classes and not merged into them, so a bundle that
+renders the palette carries no `tailwind-merge`. To replace one of the trigger's own utilities,
+such as its width, mark the replacement important: `class="w-80!"`.
+
 While an input method is still composing a word, the results stay those of the text from before
 and no `search` is asked; they follow once the word is finished. Enter and Escape pressed to
 confirm or cancel the word neither pick a result nor close the dialog.
@@ -1692,9 +1744,14 @@ confirm or cancel the word neither pick a result nor close the dialog.
 It takes its results one of two ways, never both:
 
 - `options`: the palette filters the list itself as the reader types. Its default `filter` is
-  `rankOptions(options, query, limit)`: names equal to the query first, then names starting with
-  it, then names containing it, then options whose `detail` contains it, folding case and accents
-  the way `Combobox` does. Pass `filter` to rank differently.
+  `matchOptions(options, query, limit)`, built on `matchEntry` from
+  `@spy4x/platform/universal/text`. It ignores case, accents and word order, and each query word
+  only has to start a word of the label or of one of the option's `aliases`. A word of four letters
+  or more may carry one typo, and a query typed in the other keyboard layout (ЙЦУКЕН and QWERTY) or
+  the other alphabet (Cyrillic and Latin) is read too: "combobx" finds Combobox, "ещфые" finds
+  Toast. Options whose `detail` alone holds the query come last. Pass `filter` to rank
+  differently; `rankOptions(options, query, limit)` is the plain substring ranking the palette used
+  before.
 - `search(query, signal)`: the palette calls it with the empty query when it opens and then after
   each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
   and the stale answer is ignored even when the function does not listen to it. While a call runs
@@ -1704,8 +1761,13 @@ It takes its results one of two ways, never both:
   waits for its answer and picks the answer's first result, never a row of the previous query. A
   rejection says the search failed.
 
-An option is `{ id, label, detail?, hint?, group? }`, and `onSelect` receives the same object, so
-it can carry whatever the app needs, such as an `href`. Options with a `group` are listed under a
+An option is `{ id, label, detail?, hint?, group?, aliases? }`, and `onSelect` receives the same
+object, so it can carry whatever the app needs, such as an `href`. Every result row carries how the
+query matched it in `data-match`, whichever filter or `search` listed it: `exact`, `prefix`,
+`words`, `alias`, `layout`, `translit`, `typo`, or `detail` when only the `detail` holds the query
+(`CommandPaletteMatchKind`). `showMatch` also says it in words beside the result, such as "Typo
+fixed" or "Other keyboard layout"; `defaultCommandPaletteMatchLabels` holds them and `matchLabels`
+overrides them. `matchOption(query, option)` is that kind for one option. Options with a `group` are listed under a
 heading per group; `groupOptions(options)` is that grouping on its own: the unheaded options first,
 then each group in the order it first appears. `defaultCommandPaletteLabels` holds the English
 words, which `labels` overrides one by one.
@@ -1815,6 +1877,9 @@ imports `@spy4x/preact-theme`'s `theme-preview.css`, which declares the checked 
 the frame alone through `:has()`, so it switches with JavaScript off and the page around it keeps
 its own palette. The preset's `dark` variant follows the frame too, so everything inside it, `dark:`
 utilities included, is drawn in the frame's palette. More in the theme README, "Theme preview".
+`inputAttributes` adds attributes to each radio by its value, such as an analytics event:
+`{ light: { "data-umami-event": "theme-light" } }`; the radio's own `data-preview-theme` wins over
+one of the same name.
 
 ## ToggleChips
 
@@ -2467,6 +2532,11 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### Slider (`./slider`)
+
+- `sliderFraction(value, min, max)` is where a value sits along a `Slider`'s track, from `0` to
+  `1`, clamped; a range with no width or a non-finite bound gives `0`.
 
 ### ScreenTour (`./screen-tour`)
 

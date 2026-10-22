@@ -387,7 +387,45 @@ function recordUnsentStatus(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Each of the `Shell` card's two sign-out form items as `"<role> <tabindex>"`, sign out first.
+ *
+ * @param page A page on the system guide.
+ */
+function shellFormItems(page: Page): Promise<string> {
+  return page.locator(`#demo-Shell [data-e2e="shell-demo"]`).evaluate((shell) =>
+    [`signout`, `signout-everywhere`].map((hook) => {
+      const item = shell.querySelector(`[data-e2e="${hook}"]`)
+      return `${item?.getAttribute("role")} ${item?.getAttribute("tabindex")}`
+    }).join(", ")
+  )
+}
+
 export const specs: readonly Spec[] = [
+  {
+    name: "Shell: after hydration its form items are menu items, and only the focused one is in " +
+      "the tab order, the roving tab stop of Dropdown (#535, #967)",
+    pageId: "system",
+    run: async (page) => {
+      const shell = page.locator(`#demo-Shell [data-e2e="shell-demo"]`)
+      await shell.locator(`[data-e2e="shell-user-menu-button"]`).click()
+      await shell.locator(`[role="menuitem"]`).first().and(page.locator(":focus")).waitFor()
+      for (
+        const [hook, expected] of [
+          ["signout", "menuitem 0, menuitem -1"],
+          ["signout-everywhere", "menuitem -1, menuitem 0"],
+        ] as const
+      ) {
+        await page.keyboard.press("ArrowDown")
+        await shell.locator(`[data-e2e="${hook}"]`).and(page.locator(":focus")).waitFor()
+        const items = await shellFormItems(page)
+        if (items !== expected) {
+          throw new Error(`role and tabindex of sign out, sign out everywhere: ${items}`)
+        }
+      }
+      return "sign out, then sign out everywhere, each the one tab stop in turn"
+    },
+  },
   {
     name: "useRouteAnnouncer with keepPageFocus: a page that focuses its own field as it opens " +
       "keeps focus there, the heading never takes focus, and the tab title is still set",

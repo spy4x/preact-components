@@ -1,12 +1,13 @@
 {
   "name": "@spy4x/preact-charts",
-  "version": "9.0.0",
+  "version": "10.3.0",
   "exports": {
     ".": "./+index.ts",
     "./bars": "./bars.tsx",
     "./change": "./change.ts",
     "./colors": "./colors.ts",
     "./donut-chart": "./donut-chart.tsx",
+    "./dot-plot": "./dot-plot.tsx",
     "./kpi": "./kpi.tsx",
     "./line-chart": "./line-chart.tsx",
     "./payload": "./payload.ts",

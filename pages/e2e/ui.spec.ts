@@ -922,6 +922,85 @@ function colorFieldSpecs(): Spec[] {
     },
     {
       name:
+        "ColorField: an invalid hex refuses the form's submit, focuses the field and shows its error; a preset, a valid hex and None save",
+      pageId: "ui",
+      run: async (page) => {
+        const save = card(page).getByRole("button", { name: "Save", exact: true })
+        const savedIs = (text: string) =>
+          card(page).locator(`[data-e2e="color-field-saves"]`).getByText(text, { exact: true })
+            .waitFor()
+        await save.click()
+        await savedIs("saves: 1, saved: #0369a1, group none")
+
+        await openCustom(page)
+        const hex = group(page).getByRole("textbox", { name: "Hex code" })
+        const message = "Enter # and 6 characters, such as #59168b."
+        const error = group(page).getByText(message)
+        // Enter submits from the field without blurring it, so only the refusal can show the error.
+        // Records the browser's message at the moment it refuses, before the field re-renders.
+        await hex.evaluate((input: HTMLInputElement) =>
+          input.addEventListener(
+            "invalid",
+            () => input.dataset.refusedWith = input.validationMessage,
+            {
+              capture: true,
+            },
+          )
+        )
+        await hex.fill("#zzz")
+        await hex.press("Enter")
+        await savedIs("saves: 1, saved: #0369a1, group none")
+        await error.waitFor()
+        const bubble = await hex.getAttribute("data-refused-with")
+        if (bubble !== message) throw new Error(`the browser's message is "${bubble}"`)
+
+        await hex.fill("#12")
+        await save.click()
+        await hex.and(page.locator(":focus")).waitFor()
+        await savedIs("saves: 1, saved: #0369a1, group none")
+
+        await hex.fill("#59168b")
+        await save.click()
+        await savedIs("saves: 2, saved: #59168b, group none")
+
+        const groupColour = card(page).getByRole("group", { name: "Group colour" })
+        await groupColour.getByTitle("Red").click()
+        await groupColour.getByTitle("No group colour").click()
+        await save.click()
+        await savedIs("saves: 3, saved: #59168b, group none")
+
+        // Custom with nothing typed is no colour, so it refuses the submit too.
+        await groupColour.getByTitle("Pick a custom colour").click()
+        const groupHex = groupColour.getByRole("textbox", { name: "Hex code" })
+        await save.click()
+        await groupHex.and(page.locator(":focus")).waitFor()
+        await groupColour.getByText(message).waitFor()
+        await savedIs("saves: 3, saved: #59168b, group none")
+      },
+    },
+    {
+      name:
+        "ColorField: picking Custom again after the caller changed the value drops the old invalid text",
+      pageId: "ui",
+      run: async (page) => {
+        await openCustom(page)
+        const hex = group(page).getByRole("textbox", { name: "Hex code" })
+        await hex.fill("#59168b")
+        await storedIs(page, "#59168b")
+        await hex.fill("#zzz")
+        // Blur first: the error it shows moves the button, which would make the click miss.
+        await hex.blur()
+        await group(page).getByText("Enter # and 6 characters, such as #59168b.").waitFor()
+        await card(page).getByRole("button", { name: "Reset to Sky" }).click()
+        await storedIs(page, "#0369a1")
+        await hex.waitFor({ state: "detached" })
+        await openCustom(page)
+        const shown = await hex.inputValue()
+        if (shown !== "#0369a1") throw new Error(`the hex field shows ${shown}, not the colour`)
+      },
+    },
+    {
+      name:
         "ColorField: a value the caller changes from outside to a preset checks that preset, unchecks Custom and hides the hex field",
       pageId: "ui",
       run: async (page) => {
@@ -2248,6 +2327,63 @@ function demoVideoSpecs(): Spec[] {
       },
     },
     {
+      name: "DemoVideo: starting a second clip pauses the first where it was, and starting the " +
+        "first from its own controls pauses the second",
+      pageId: "ui",
+      run: async (page) => {
+        const { card, link } = await demoVideoCard(page)
+        const second = card.getByRole("link", {
+          name: "Play video: A second test pattern",
+          exact: true,
+        })
+        const firstVideo = card.locator("video[aria-label='A test pattern']")
+        const secondVideo = card.locator("video[aria-label='A second test pattern']")
+        /** Waits until the video has played past `after` seconds and is still playing. */
+        const playedPast = (video: typeof firstVideo, after: number) =>
+          video.evaluate((element, seconds) =>
+            new Promise<void>((resolve, reject) => {
+              const played = element as HTMLVideoElement
+              const timer = setTimeout(() =>
+                reject(
+                  new Error(
+                    `not past ${seconds}s: paused ${played.paused}, at ${played.currentTime}s`,
+                  ),
+                ), 10_000)
+              const check = () => {
+                if (played.paused || played.currentTime <= seconds) return
+                clearTimeout(timer)
+                played.removeEventListener("timeupdate", check)
+                resolve()
+              }
+              played.addEventListener("timeupdate", check)
+              check()
+            }), after)
+        const state = (video: typeof firstVideo) =>
+          video.evaluate((element) => {
+            const played = element as HTMLVideoElement
+            return { paused: played.paused, time: played.currentTime }
+          })
+
+        await link.click()
+        await firstVideo.waitFor()
+        await playedPast(firstVideo, 0.5)
+        await second.scrollIntoViewIfNeeded()
+        await second.click()
+        await secondVideo.waitFor()
+        await playedPast(secondVideo, 0)
+        const first = await state(firstVideo)
+        if (!first.paused) throw new Error("the first clip still plays beside the second")
+        if (first.time < 0.5) throw new Error(`the first clip went back to ${first.time}s`)
+
+        // The video's own play, as its native controls start it, not the poster's press.
+        await firstVideo.evaluate((element) => (element as HTMLVideoElement).play())
+        await playedPast(firstVideo, first.time)
+        if (!(await state(secondVideo)).paused) {
+          throw new Error("the second clip still plays after the first started again")
+        }
+      },
+    },
+    {
       name: "DemoVideo: with JavaScript off, the play link opens the clip file",
       pageId: "ui",
       run: async (page) => {
@@ -2282,6 +2418,88 @@ function demoVideoSpecs(): Spec[] {
     })),
   ]
 }
+
+/** Specs of the dashboard cards: `WidgetCard`, `LayoutCustomiser`, and the picker's preset. */
+const dashboardSpecs: Spec[] = [
+  {
+    name:
+      "WidgetCard: a load shows its skeleton after the delay; Try again calls the retry and keeps focus on the card",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-WidgetCard")
+      const widget = card.locator(`[data-e2e="widget-card-demo"]`)
+      await card.locator(`[data-e2e="widget-status-loading"]`).click()
+      await widget.and(page.locator(`[aria-busy="true"]`)).waitFor()
+      await widget.locator("[data-widget-skeleton]").waitFor()
+
+      await card.locator(`[data-e2e="widget-status-error"]`).click()
+      await widget.getByRole("alert").filter({ hasText: "We could not load the note count." })
+        .waitFor()
+      const retry = widget.getByRole("button", { name: "Try again", exact: true })
+      await retry.focus()
+      await page.keyboard.press("Enter")
+      await card.locator(`[data-e2e="widget-retries"]`).getByText("Retries: 1", { exact: true })
+        .waitFor()
+      // The button is gone; focus is on the card, not the page, and stays there once data arrives.
+      await widget.and(page.locator(":focus")).waitFor()
+      await widget.and(page.locator(`[data-widget-status="ready"]`)).waitFor()
+      await widget.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name: "LayoutCustomiser: a switch hides a widget from the page at once, Reset brings it back",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-LayoutCustomiser")
+      const order = card.locator(`[data-e2e="layout-order"]`)
+      await card.locator(`[data-e2e="layout-open"]`).click()
+      const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
+      await dialog.waitFor()
+      const toggle = dialog.getByRole("switch", { name: "Show Notes", exact: true })
+      await toggle.click()
+      await toggle.and(page.locator(`[aria-checked="false"]`)).waitFor()
+      await order.getByText("Shown: Notes changed, Notes over time", { exact: true }).waitFor()
+      await card.locator(`#demo-LayoutCustomiser [role="region"] h2`).filter({ hasText: /^Notes$/ })
+        .waitFor({ state: "detached" })
+
+      await dialog.getByRole("button", { name: "Reset to default", exact: true }).click()
+      await order.getByText("Shown: Notes, Notes changed, Notes over time", { exact: true })
+        .waitFor()
+      await dialog.getByRole("button", { name: "Done", exact: true }).click()
+      await dialog.waitFor({ state: "hidden" })
+    },
+  },
+  {
+    name: "LayoutCustomiser: the keyboard moves a widget and the page follows",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-LayoutCustomiser")
+      await card.locator(`[data-e2e="layout-open"]`).click()
+      const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
+      const handle = dialog.getByRole("button", { name: "Reorder Notes over time", exact: true })
+      await handle.focus()
+      await page.keyboard.press("Space")
+      await page.keyboard.press("ArrowUp")
+      await page.keyboard.press("ArrowUp")
+      await page.keyboard.press("Space")
+      await card.locator(`[data-e2e="layout-order"]`)
+        .getByText("Shown: Notes over time, Notes, Notes changed", { exact: true }).waitFor()
+      await card.locator(`[data-e2e="layout-changes"]`).getByText("Changes: 1", { exact: true })
+        .waitFor()
+    },
+  },
+  {
+    name: "DateRangePicker: onChange reports the preset the person chose",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-DateRangePicker")
+      await card.locator("button[aria-controls]").first().click()
+      await card.getByRole("button", { name: "This month", exact: true }).click()
+      await card.locator(`[data-e2e="controlled-preset"]`)
+        .getByText("preset: this-month", { exact: true }).waitFor()
+    },
+  },
+]
 
 /** The parts of the `FilterBar` card a spec drives. */
 function filterBarCard(page: Page) {
@@ -2519,8 +2737,207 @@ function filterBarSpecs(): Spec[] {
   ]
 }
 
+/**
+ * A Dropdown sheet whose items overflow it: at 390 by 480 px the FilterBar's Tags sheet, capped at
+ * 70% of the window's height, scrolls (#967). Throws when it does not, so a taller sheet cannot
+ * turn the specs below into checks of a menu that never scrolls.
+ */
+async function openScrollingTagsSheet(page: Page) {
+  await page.setViewportSize({ width: 390, height: 480 })
+  const bar = filterBarCard(page)
+  await bar.search.scrollIntoViewIfNeeded()
+  await bar.tags.focus()
+  await page.keyboard.press("Enter")
+  await bar.tagsMenu.waitFor()
+  const size = await bar.tagsMenu.evaluate((menu) => ({
+    content: menu.scrollHeight,
+    box: menu.clientHeight,
+    overflow: getComputedStyle(menu).overflowY,
+  }))
+  if (size.content <= size.box || size.overflow !== "auto") {
+    throw new Error(`the Tags sheet does not scroll: ${JSON.stringify(size)}`)
+  }
+  /**
+   * The items in the tab order, by name: the roving tab stop leaves exactly one. Found by CSS, as
+   * a role locator does not match the menu once it is closed and hidden.
+   */
+  const tabStops = () =>
+    page.locator(`#demo-FilterBar [role="menu"][aria-label="Tags"]`).evaluate((menu) =>
+      Array.from(menu.querySelectorAll<HTMLElement>(`[tabindex="0"]`)).map((item) =>
+        item.textContent?.trim()
+      )
+    )
+  return { ...bar, size, tabStops }
+}
+
+/** Dropdown: a menu shown as a phone sheet that scrolls passes axe and keeps its keys (#967). */
+function dropdownSheetSpecs(): Spec[] {
+  return [
+    ...([1440, 390] as const).map((width): Spec => ({
+      name: `Dropdown at ${width} px: with the menu open, Shift+Tab from an item reaches the ` +
+        `trigger and Tab from the trigger goes back to that item, the menu still open, as in ` +
+        `ARIA's menu pattern`,
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.search.scrollIntoViewIfNeeded()
+        await bar.tags.focus()
+        await page.keyboard.press("Enter")
+        const all = bar.tagsMenu.getByRole("menuitemradio", { name: "All of these tags" })
+        await bar.tagsMenu.getByRole("menuitemradio", { name: "Any of these tags" })
+          .and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("ArrowDown")
+        await bar.focusIsOn(all)
+        await page.keyboard.press("Shift+Tab")
+        await bar.focusIsOn(bar.tags)
+        await page.keyboard.press("Tab")
+        await bar.focusIsOn(all)
+        await bar.tagsMenu.waitFor()
+      },
+    })),
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `Dropdown at 390 px, ${colorScheme}: a sheet whose items scroll passes axe, ` +
+        `scrollable-region-focusable included`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const sheet = await openScrollingTagsSheet(page)
+        await axeClean(page, `#demo-FilterBar [role="search"]`)
+        return `${sheet.size.content} px of items in a ${sheet.size.box} px sheet`
+      },
+    })),
+    {
+      name: "Dropdown at 390 px, in a sheet that scrolls: the focused item is the one tab stop; " +
+        "the arrow keys, Home and End move it, Shift+Tab reaches the trigger with the menu " +
+        "open, Escape hands focus back and leaves no tab stop, and Tab leaves and closes the menu",
+      pageId: "ui",
+      run: async (page) => {
+        const sheet = await openScrollingTagsSheet(page)
+        const item = (role: "menuitem" | "menuitemradio" | "menuitemcheckbox", name: string) =>
+          sheet.tagsMenu.getByRole(role, { name, exact: true })
+        const stopIs = async (name: string) => {
+          const stops = await sheet.tabStops()
+          if (stops.length !== 1 || stops[0] !== name) {
+            throw new Error(`tab stops ${JSON.stringify(stops)}, expected only "${name}"`)
+          }
+        }
+        const any = item("menuitemradio", "Any of these tags")
+        await sheet.focusIsOn(any)
+        await stopIs("Any of these tags")
+        await page.keyboard.press("ArrowDown")
+        await sheet.focusIsOn(item("menuitemradio", "All of these tags"))
+        await stopIs("All of these tags")
+        await page.keyboard.press("End")
+        const done = item("menuitem", "Done")
+        await sheet.focusIsOn(done)
+        await stopIs("Done")
+        const scrolled = await sheet.tagsMenu.evaluate((menu) => menu.scrollTop)
+        if (scrolled <= 0) throw new Error("End left the sheet scrolled to the top")
+        await page.keyboard.press("Home")
+        await sheet.focusIsOn(any)
+        await stopIs("Any of these tags")
+
+        await page.keyboard.press("Shift+Tab")
+        await sheet.focusIsOn(sheet.tags)
+        await sheet.tagsMenu.waitFor()
+        // Back into the menu, so Escape has focus to hand back from an item.
+        await page.keyboard.press("ArrowDown")
+        await sheet.focusIsOn(any)
+        await page.keyboard.press("Escape")
+        await sheet.tagsMenu.waitFor({ state: "hidden" })
+        await sheet.focusIsOn(sheet.tags)
+        const closedStops = await sheet.tabStops()
+        if (closedStops.length > 0) {
+          throw new Error(`the closed menu kept tab stops ${JSON.stringify(closedStops)}`)
+        }
+
+        await page.keyboard.press("Enter")
+        await sheet.focusIsOn(any)
+        await page.keyboard.press("Tab")
+        await sheet.tagsMenu.waitFor({ state: "hidden" })
+        const outside = await page.evaluate(() => {
+          const active = document.activeElement
+          const menu = document.querySelector(`[role="menu"][aria-label="Tags"]`)
+          return active !== null && active !== document.body &&
+            !(menu?.parentElement?.contains(active) ?? true)
+        })
+        if (!outside) throw new Error("Tab left focus inside the dropdown")
+        return `scrolled ${scrolled} px to reach Done`
+      },
+    },
+  ]
+}
+
+/**
+ * #958: `Slider` keeps the native range input's keyboard, and `Explorable` turns its controls on
+ * once hydrated. Both read the guide's demos: the "Yearly rate" slider (0 to 10, step 0.5, starting
+ * at 4) and the fee figure, whose "Years" slider runs from 5 to 40.
+ */
+function explorableSpecs(): Spec[] {
+  return [
+    {
+      name: "Slider: the arrow keys move one step, Home and End go to the ends, Page Up and Page " +
+        "Down jump further, and the printed value and aria-valuetext follow each move",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-Slider")
+        const input = card.locator("#slider-rate")
+        const printed = card.locator(`span[aria-hidden="true"].pc-num`).first()
+        const at = async (value: string) => {
+          await input.and(page.locator(`[aria-valuetext="${value} percent a year"]`)).waitFor()
+          await printed.filter({ hasText: new RegExp(`^${value.replace(".", "\\.")}%$`) })
+            .waitFor()
+        }
+        const read = async () => Number(await input.inputValue())
+        await at("4.0")
+        await input.focus()
+        await page.keyboard.press("ArrowRight")
+        await at("4.5")
+        await page.keyboard.press("ArrowLeft")
+        await page.keyboard.press("ArrowLeft")
+        await at("3.5")
+        await page.keyboard.press("PageUp")
+        await input.and(page.locator(`:not([aria-valuetext="3.5 percent a year"])`)).waitFor()
+        const up = await read()
+        if (!(up > 4)) throw new Error(`Page Up from 3.5 went to ${up}, not past one step`)
+        await page.keyboard.press("End")
+        await at("10.0")
+        await page.keyboard.press("PageDown")
+        await input.and(page.locator(`:not([aria-valuetext="10.0 percent a year"])`)).waitFor()
+        const down = await read()
+        if (!(down < 9.5)) throw new Error(`Page Down from 10 went to ${down}, not past one step`)
+        await page.keyboard.press("Home")
+        await at("0.0")
+        return `4 → 4.5 → 3.5 → Page Up ${up} → End 10 → Page Down ${down} → Home 0`
+      },
+    },
+    {
+      name:
+        "Explorable: once hydrated, the Interactive line shows, the controls are enabled, and " +
+        "a control changes the result",
+      pageId: "ui",
+      run: async (page) => {
+        const figure = page.locator(`#explorable-fee[data-live="true"]`)
+        await figure.waitFor()
+        await figure.locator("[data-explorable-badge]").filter({ hasText: "Interactive" })
+          .waitFor({ state: "visible" })
+        await figure.locator("fieldset:not([disabled])").waitFor()
+        const years = figure.getByRole("slider", { name: "Years" })
+        await years.focus()
+        await page.keyboard.press("End")
+        await figure.getByText(/over 40 years\./).waitFor()
+        return "live, enabled, and End on Years shows 40 years"
+      },
+    },
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...filterBarSpecs(),
+  ...dropdownSheetSpecs(),
+  ...dashboardSpecs,
+  ...explorableSpecs(),
   ...demoVideoSpecs(),
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),
@@ -2528,6 +2945,35 @@ export const specs: readonly Spec[] = [
   ...lostInputSpecs(),
   zoomableCropSpec,
   ...comparisonTablePhoneSpecs(),
+  {
+    name: "Notice with onDismiss: at 390 px the close button is a named 44 px target in the " +
+      "top corner, passes axe, and pressing it calls the caller, which hides the notice",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 800 })
+      const notice = page.locator(`[data-e2e="notice-dismissible"]`)
+      const close = notice.getByRole("button", { name: "Hide this message", exact: true })
+      await close.scrollIntoViewIfNeeded()
+      const box = await close.boundingBox()
+      const root = await notice.boundingBox()
+      if (box === null || root === null) {
+        throw new Error("the notice or its close button is not drawn")
+      }
+      if (box.width < 44 || box.height < 44) {
+        throw new Error(`the close button is ${box.width}x${box.height} px, under 44 px`)
+      }
+      if (box.y - root.y > 8) throw new Error(`the close button sits ${box.y - root.y} px down`)
+      const { violations } = await new AxeBuilder({ page })
+        .include(`[data-e2e="notice-dismissible"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(violations.map((v) => `${v.id}: ${v.help}`).join("; "))
+      }
+      await close.click()
+      await notice.waitFor({ state: "detached" })
+      await page.locator(`[data-e2e="notice-show-again"]`).click()
+      await notice.waitFor()
+    },
+  },
   {
     name: "ToggleField: a click on the label flips the switch and tells the caller, both ways",
     pageId: "ui",
@@ -2917,6 +3363,7 @@ export const specs: readonly Spec[] = [
   avatarOnHoveredRowSpec("light"),
   avatarOnHoveredRowSpec("dark"),
   ...remotePaletteSpecs(),
+  ...forgivingPaletteSpecs(),
   ...tabsAndTableKeyboardSpecs(),
   ...feedbackComponentSpecs(),
   ...kanbanDragSpecs(),
@@ -4062,6 +4509,145 @@ async function openRemotePalette(page: Page, width = 1280) {
     shows: (text: string) =>
       status.and(page.locator(":not(.sr-only)")).filter({ hasText: text }).waitFor(),
   }
+}
+
+/**
+ * The forgiving `CommandPalette` on its card: its field trigger, its dialog, and what each of its
+ * results says about how it matched.
+ */
+function forgivingPalette(page: Page) {
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`dialog[data-e2e="palette-forgiving"]`)
+  const field = dialog.getByRole("combobox")
+  return {
+    card,
+    dialog,
+    field,
+    trigger: card.locator(`[data-e2e="palette-forgiving-open"]`),
+    /** Each result's name, its `data-match` and its whole text, in list order. */
+    results: () =>
+      dialog.getByRole("option").evaluateAll((rows) =>
+        rows.map((row) => ({
+          name: row.querySelector("span span")?.textContent ?? "",
+          match: row.getAttribute("data-match"),
+          text: row.textContent ?? "",
+        }))
+      ),
+    /** The field's selection, as `[start, end]`. */
+    selection: () =>
+      field.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd]),
+  }
+}
+
+/**
+ * Throws unless the first result is `name`, matched by `match`, and shows `words` beside it.
+ *
+ * @param palette The open palette.
+ * @param name The result expected first.
+ * @param match Its expected `data-match`.
+ * @param words The match's words it should show.
+ */
+async function firstResultIs(
+  palette: ReturnType<typeof forgivingPalette>,
+  name: string,
+  match: string,
+  words: string,
+): Promise<void> {
+  await palette.dialog.getByRole("option").first().filter({ hasText: name }).waitFor()
+  const [first] = await palette.results()
+  if (first?.match !== match || !first.text.includes(words)) {
+    throw new Error(`the first result is ${JSON.stringify(first)}, not ${name} by ${match}`)
+  }
+}
+
+/** Specs for `CommandPalette`'s field trigger, `defaultQuery` and forgiving default filter. */
+function forgivingPaletteSpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette field trigger at 390 px: shows its placeholder, opens on Enter with " +
+        "the default query selected, a typo finds Combobox and the other layout finds Toast, " +
+        "each saying how it matched, and Enter picks with focus back on the trigger",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 800 })
+        const palette = forgivingPalette(page)
+        await palette.trigger.getByText("Find a component…", { exact: true }).waitFor()
+        await palette.trigger.focus()
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor()
+        await palette.field.and(page.locator(":focus")).waitFor()
+        const query = await palette.field.inputValue()
+        const selected = await palette.selection()
+        if (query !== "combobx" || selected.join() !== "0,7") {
+          throw new Error(`the field holds "${query}", selected ${selected.join("–")}`)
+        }
+        await firstResultIs(palette, "Combobox", "typo", "Typo fixed")
+        // The selected default query is replaced by the first key typed.
+        await page.keyboard.type("ещфые")
+        await firstResultIs(palette, "Toast", "layout", "Other keyboard layout")
+        const names = (await palette.results()).map((result) => result.name)
+        if (names.join() !== "Toast") throw new Error(`"ещфые" lists ${names.join(", ")}`)
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.card.locator(`[data-e2e="palette-forgiving-picked"]`)
+          .getByText("Toast", { exact: true }).waitFor()
+        await palette.trigger.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette field trigger: a letter typed on it opens the palette with that " +
+        "letter, the caret after it, and Escape gives focus back",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 })
+        const palette = forgivingPalette(page)
+        await palette.trigger.focus()
+        await page.keyboard.press("m")
+        await palette.dialog.waitFor()
+        await palette.field.and(page.locator(":focus")).waitFor()
+        const query = await palette.field.inputValue()
+        const caret = await palette.selection()
+        if (query !== "m" || caret.join() !== "1,1") {
+          throw new Error(`the field holds "${query}", caret ${caret.join("–")}`)
+        }
+        await firstResultIs(palette, "Modal", "prefix", "Start of the name")
+        await page.keyboard.press("Escape")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.trigger.and(page.locator(":focus")).waitFor()
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1280].map((width): Spec => ({
+        name: `CommandPalette forgiving at ${width} px in the ${colorScheme} palette: axe finds ` +
+          "no violation on the field trigger or in the dialog with its match words, colour " +
+          "contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          await page.setViewportSize({ width, height: 800 })
+          const palette = forgivingPalette(page)
+          await palette.trigger.scrollIntoViewIfNeeded()
+          const scan = async (selector: string) => {
+            const { violations } = await new AxeBuilder({ page }).include(selector).analyze()
+            if (violations.length > 0) {
+              throw new Error(
+                violations.map(({ id, nodes }) =>
+                  `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+                ).join(" | "),
+              )
+            }
+          }
+          await scan(`[data-e2e="palette-forgiving-open"]`)
+          await palette.trigger.click()
+          // The highlighted row and a plain one both carry match words: "c" starts Combobox's name
+          // and Date picker's alias "calendar".
+          await palette.field.fill("c")
+          await palette.dialog.getByRole("option").nth(1).waitFor()
+          await scan(`dialog[data-e2e="palette-forgiving"]`)
+        },
+      }))
+    ),
+  ]
 }
 
 /** Specs for the remote data mode of `CommandPalette`, and its rows on a phone. */

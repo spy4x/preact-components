@@ -84,6 +84,14 @@ describe("ColorField", () => {
     expect(html).toMatch(/<input type="color"[^>]*aria-label="Colour picker"[^>]*value="#59168b"/)
   })
 
+  it("makes the hex field required to a #rrggbb pattern, so a form cannot submit without a colour", () => {
+    const html = render(<ColorField value="#59168b" onChange={noop} />)
+
+    const hex = html.match(/<input[^>]*placeholder="#59168b"[^>]*>/)?.[0] ?? ""
+    expect(hex).toMatch(/\srequired(\s|\/|>|=)/)
+    expect(hex).toContain(`pattern="#[0-9a-fA-F]{6}"`)
+  })
+
   it("checks None for no colour when allowed, and nothing when not", () => {
     const allowed = render(
       <ColorField value={null} onChange={noop} allowNone noneLabel="No group colour" />,

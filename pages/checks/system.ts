@@ -6511,18 +6511,7 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
         : `focus after open, then ${keys.join(", ")}: ${visited.join(" → ")}`,
     )
 
-    const items = await read(
-      devtools,
-      `[...document.querySelectorAll('${SHELL_SIGN_OUT}, ${SHELL_SIGN_OUT_EVERYWHERE}')]
-        .map((item) => item.getAttribute("role") + " " + item.getAttribute("tabindex"))
-        .join(", ")`,
-      "(page unreadable)",
-    )
-    check(
-      "after hydration Shell's form items are menu items out of the tab order (#535)",
-      items === "menuitem -1, menuitem -1",
-      `role and tabindex of sign out, sign out everywhere: ${items}`,
-    )
+    // The roles and tab stops of the form items (#535) are proven in `e2e/system.spec.ts`.
 
     // Shell names its menu through `Dropdown`'s `menuLabel`, which only the hydrated menu carries
     // (#537); the card passes no `labels`, so the name is the default.

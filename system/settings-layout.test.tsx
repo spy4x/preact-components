@@ -144,4 +144,45 @@ describe("SettingsLayout", () => {
   it("throws when current names no section", () => {
     expect(() => layout({ current: "missing" })).toThrow('no section has the id "missing"')
   })
+
+  it("with defaultSection on the list's address heads children with it from md up only", () => {
+    const html = layout({ defaultSection: "account" })
+    const heading = tag(html, "settings-heading")
+    const id = heading.match(/id="([^"]+)"/)?.[1]
+    expect(id).toBeDefined()
+    expect(html).toContain(">Account</h2>")
+    expect(html).toContain(">Your name.</p>")
+    expect(tag(html, "settings-section")).toContain(`aria-labelledby="${id}"`)
+    expect(classOf(tag(html, "settings-section"))).toContain("max-md:hidden")
+    expect(classOf(tag(html, "settings-nav"))).not.toContain("max-md:hidden")
+    expect(html).not.toContain('data-e2e="settings-back"')
+  })
+
+  it("draws the default section's item current from md up only, with no aria-current", () => {
+    const html = layout({ defaultSection: "account" })
+    const account = classOf(tag(html, "settings-nav-account"))
+    expect(account.some((name) => name.startsWith("md:bg-[var(--color-surface-active"))).toBe(true)
+    expect(account.some((name) => name.startsWith("bg-[var(--color-surface-active"))).toBe(false)
+    expect(account).toContain("max-md:text-foreground")
+    expect(html).not.toContain("aria-current")
+    expect(classOf(tag(html, "settings-nav-security")).join(" ")).not.toContain("surface-active")
+  })
+
+  it("draws a default danger section on the danger tint from md up only", () => {
+    const classes = classOf(tag(layout({ defaultSection: "danger" }), "settings-nav-danger"))
+    expect(classes).toContain("md:bg-danger-soft")
+    expect(classes).not.toContain("bg-danger-soft")
+    expect(classes).toContain("text-danger")
+  })
+
+  it("ignores defaultSection while a section is open", () => {
+    const html = layout({ current: "security", defaultSection: "account" })
+    expect(html).toContain(">Sign-in and security</h2>")
+    expect(html).not.toContain(">Account</h2>")
+    expect(classOf(tag(html, "settings-nav-account")).join(" ")).not.toContain("surface-active")
+  })
+
+  it("throws when defaultSection names no section", () => {
+    expect(() => layout({ defaultSection: "missing" })).toThrow('no section has the id "missing"')
+  })
 })

@@ -170,4 +170,25 @@ describe("Notice", () => {
     const attrs = { role: "note" } as Record<string, string>
     expect(rootTag(render(<Notice title="Plan ends" {...attrs} />))).toContain('role="status"')
   })
+
+  it("draws no close button unless the caller can dismiss it", () => {
+    expect(render(<Notice title="Trial ends soon" />)).not.toContain("<button")
+  })
+
+  it("draws a named close button that does not submit a form when it can be dismissed", () => {
+    const html = render(<Notice title="Trial ends soon" onDismiss={() => {}} />)
+
+    expect(html).toContain('<button type="button"')
+    expect(html).toContain('aria-label="Dismiss"')
+    expect(rootTag(html)).toContain("pr-12")
+  })
+
+  it("names the close button with the caller's label", () => {
+    const html = render(
+      <Notice title="Guest account" onDismiss={() => {}} dismissLabel="Hide this message" />,
+    )
+
+    expect(html).toContain('aria-label="Hide this message"')
+    expect(html).not.toContain('aria-label="Dismiss"')
+  })
 })

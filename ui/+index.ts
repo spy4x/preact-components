@@ -440,11 +440,16 @@ export {
   type CommandPaletteGroup,
   type CommandPaletteLabels,
   type CommandPaletteLocalProps,
+  type CommandPaletteMatchKind,
   type CommandPaletteOption,
   type CommandPaletteProps,
   type CommandPaletteRemoteProps,
   defaultCommandPaletteLabels,
+  defaultCommandPaletteMatchLabels,
   groupOptions,
+  type MatchableOption,
+  matchOption,
+  matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
@@ -510,7 +515,39 @@ export {
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { type StepItem, Steps, type StepsProps } from "./steps.tsx"
+export { Explorable, type ExplorableProps } from "./explorable.tsx"
+export { Slider, sliderFraction, type SliderMark, type SliderProps } from "./slider.tsx"
 export { WindowFrame, type WindowFrameProps, type WindowFrameVariant } from "./window-frame.tsx"
+export {
+  type DateRangeChoice,
+  rangeFromSearch,
+  type RangeFromSearchOptions,
+  rangeToSearch,
+} from "./date-range-search.ts"
+export {
+  defaultLayoutCustomiserLabels,
+  LayoutCustomiser,
+  type LayoutCustomiserItem,
+  type LayoutCustomiserLabels,
+  type LayoutCustomiserProps,
+  type LayoutEntry,
+  mergeLayout,
+  moveLayoutEntry,
+  setLayoutHidden,
+} from "./layout-customiser.tsx"
+export {
+  DashboardGrid,
+  type DashboardGridProps,
+  type DashboardItem,
+  type DashboardRow,
+  dashboardRows,
+  WidgetCard,
+  type WidgetCardProps,
+  type WidgetSize,
+  WidgetStat,
+  type WidgetStatProps,
+  type WidgetStatus,
+} from "./widget-card.tsx"
 export {
   activeFilterChips,
   FilterBar,

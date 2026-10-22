@@ -1,19 +1,14 @@
 // Not exported from the package: the listbox pieces `Combobox` and `TagInput` share, so both popups
 // look and read the same without either component exporting its internals.
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 
 /*
  * `min-h-11` makes every row a 44 px touch target, as tall as the library's other touch targets.
- * Base classes first. `cn` resolves conflicts last-wins, so a state class has to come after the
- * base to win: the highlighted row repaints the background, the selected row repaints the text.
+ * The classes are joined, not merged, so each state picks its own text, fill, weight and cursor
+ * and no two utilities of one group reach a row: the highlighted row repaints the background, the
+ * selected row repaints the text.
  */
-const optionClasses =
-  "flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-hover"
-const activeOptionClasses = "bg-hover font-semibold"
-const selectedOptionClasses =
-  "bg-selected-soft font-medium text-selected hover:bg-selected-soft-hover"
-const activeSelectedOptionClasses = "bg-selected-soft-hover font-semibold"
-const disabledOptionClasses = "cursor-not-allowed opacity-50"
+const optionClasses = "flex min-h-11 items-center gap-2 px-3 py-2 text-sm"
 
 /** Classes of the popup listbox itself, before the caller's own. */
 export const listboxClasses =
@@ -35,11 +30,16 @@ export interface ListboxOptionLook {
  * @param look The states the row is in.
  */
 export function listboxOptionClass({ active, selected, disabled }: ListboxOptionLook): string {
-  return cn(
+  return join(
     optionClasses,
-    active && activeOptionClasses,
-    selected && selectedOptionClasses,
-    active && selected && activeSelectedOptionClasses,
-    disabled && disabledOptionClasses,
+    selected
+      ? active ? "bg-selected-soft-hover" : "bg-selected-soft"
+      : active
+      ? "bg-hover"
+      : undefined,
+    active ? "font-semibold" : selected ? "font-medium" : undefined,
+    selected ? "text-selected" : "text-foreground",
+    active ? undefined : selected ? "hover:bg-selected-soft-hover" : "hover:bg-hover",
+    disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
   )
 }

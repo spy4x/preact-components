@@ -29,6 +29,7 @@ import {
   isValidDateTimeRange,
   OnOffButtons,
   rangeForPreset,
+  Slider,
   Stack,
   TagInput,
   ToggleField,
@@ -95,6 +96,47 @@ function ToggleSwitchDemo() {
         <ToggleSwitch value={false} onToggle={() => {}} disabled label="Disabled" />
         <span class="text-sm text-muted">disabled</span>
       </Cluster>
+    </Stack>
+  )
+}
+
+/**
+ * Controlled: each slider renders `value` and reports every move through `onInput`. The first
+ * shows a format and a spoken value text, two marks and a hint; the second a plain range; the
+ * third is disabled.
+ */
+function SliderDemo() {
+  const rate = useSignal(4)
+  const years = useSignal(10)
+  const percent = (value: number) => `${value.toFixed(1)}%`
+
+  return (
+    <Stack gap="lg">
+      <Slider
+        id="slider-rate"
+        label="Yearly rate"
+        value={rate.value}
+        min={0}
+        max={10}
+        step={0.5}
+        onInput={(next) => rate.value = next}
+        format={percent}
+        valueText={(value) => `${value.toFixed(1)} percent a year`}
+        marks={[{ value: 2, label: "Inflation target" }, {
+          value: 7,
+          label: "Long-run stock average",
+        }]}
+        hint="Arrow keys move half a point; Page Up and Page Down move further."
+      />
+      <Slider
+        id="slider-years"
+        label="Years"
+        value={years.value}
+        min={1}
+        max={40}
+        onInput={(next) => years.value = next}
+      />
+      <Slider id="slider-disabled" label="Disabled" value={30} disabled />
     </Stack>
   )
 }
@@ -590,7 +632,7 @@ function CityCombobox() {
         ariaLabel="City"
         placeholder="Search a city…"
         clearLabel="Clear the city"
-        listboxClass="max-h-48"
+        listboxClass="max-h-48!"
       />
       <Note e2e="controlled-value">
         {comboboxStatusLabel(city.value?.code ?? null, query.value)}
@@ -1053,19 +1095,24 @@ function FileInputDemo() {
  */
 function DateRangePickerDemo() {
   const range = useSignal<DateRange | null>(fixedToday)
+  const preset = useSignal<DateRangePreset>("last-7-days")
 
   return (
     <div class="space-y-3">
       <DateRangePicker
         range={range.value}
-        onChange={(next) => range.value = next}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
         timeZone={fixedZone}
         now={fixedNow}
         presets={datePresetOptions}
         labels={dateLabels}
-        selectedPreset="last-7-days"
+        selectedPreset={preset.value}
         dataE2E="guide-date-range"
       />
+      <Note e2e="controlled-preset">preset: {preset.value}</Note>
       <Note e2e="controlled-value">
         range:{" "}
         <span class="whitespace-nowrap">
@@ -1214,6 +1261,56 @@ export const inputDemos = {
   label="Show archived"
 />`,
     render: () => <ToggleSwitchDemo />,
+  },
+  Slider: {
+    summary:
+      "A labelled range slider on the native range input: the value printed beside the label, a graphite fill up to the thumb, and up to two marks.",
+    wide: false,
+    props: [
+      { name: "label", type: "string", description: "The visible label, which names the input." },
+      { name: "value", type: "number", description: "The current value; the caller stores it." },
+      {
+        name: "min / max / step",
+        type: "number",
+        default: "0 / 100 / 1",
+        description: "The range and the step between values.",
+      },
+      {
+        name: "onInput",
+        type: "(value: number) => void",
+        description: "Called with the new value on every move, by pointer or keyboard.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How the value prints beside the label.",
+      },
+      {
+        name: "valueText",
+        type: "(value: number) => string",
+        default: "format",
+        description: "What a screen reader announces, as `aria-valuetext`.",
+      },
+      {
+        name: "marks",
+        type: "{ value, label }[]",
+        description: "Up to two labelled ticks under the track.",
+      },
+      { name: "hint", type: "string", description: "One line under the slider, read with it." },
+    ],
+    snippet: `<Slider
+  label="Yearly rate"
+  value={rate.value}
+  min={0}
+  max={10}
+  step={0.5}
+  onInput={(next) => rate.value = next}
+  format={(value) => \`\${value.toFixed(1)}%\`}
+  valueText={(value) => \`\${value.toFixed(1)} percent a year\`}
+  marks={[{ value: 2, label: "Inflation target" }]}
+/>`,
+    render: () => <SliderDemo />,
   },
   OnOffButtons: {
     summary:

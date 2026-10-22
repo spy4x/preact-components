@@ -3,7 +3,7 @@ import { IconCheck } from "@spy4x/preact-icons"
 import { isHexColor, readableTextColor } from "@spy4x/platform/universal/color"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
-import { useId } from "preact/hooks"
+import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Field } from "./field.tsx"
 import { Input } from "./input.tsx"
 
@@ -121,6 +121,10 @@ const swatch = join(
  * is a full `#rrggbb`, in lower case. A typed value that is not shows `labels.hexError` once the
  * field loses focus, and `onChange` is not called. A value that is no preset opens on "Custom",
  * with the swatch filled.
+ *
+ * The hex field carries native validity: `required`, a `#rrggbb` `pattern`, and `labels.hexError` as
+ * its custom validity while the typed text is no colour. So the enclosing form refuses to submit,
+ * the browser focuses the field, and the field shows its error.
  */
 export function ColorField(
   {
@@ -148,6 +152,14 @@ export function ColorField(
   /** The hex field's text while it is not a valid colour; `null` shows `value`. */
   const draft = useSignal<string | null>(null)
   const showHexError = useSignal(false)
+  const hexInput = useRef<HTMLInputElement>(null)
+  const hexError = labels.hexError ?? "Enter # and 6 characters, such as #59168b."
+  // Read here, not only inside Field's render callback, so every keystroke re-renders ColorField and
+  // the layout effect gives the input the field's own message before the next event (a submit).
+  const draftText = draft.value
+  useLayoutEffect(() => {
+    hexInput.current?.setCustomValidity(draftText === null ? "" : hexError)
+  })
 
   const color = isHexColor(value) ? value.toLowerCase() : null
   const preset = color === null
@@ -172,6 +184,8 @@ export function ColorField(
   const choose = (next: string) => {
     if (next === CUSTOM) {
       customFor.value = color
+      draft.value = null
+      showHexError.value = false
       return
     }
     customFor.value = undefined
@@ -272,9 +286,7 @@ export function ColorField(
           id={`${id}-hex`}
           label={labels.hexCode ?? "Hex code"}
           class="mt-3"
-          error={showHexError.value
-            ? labels.hexError ?? "Enter # and 6 characters, such as #59168b."
-            : null}
+          error={showHexError.value ? hexError : null}
         >
           {(wiring) => (
             <div class="flex gap-3">
@@ -286,17 +298,24 @@ export function ColorField(
                 onInput={(event) => typeHex(event.currentTarget.value)}
               />
               <Input
+                ref={hexInput}
                 id={wiring.id}
                 aria-describedby={wiring["aria-describedby"]}
                 aria-invalid={showHexError.value || undefined}
-                value={draft.value ?? color ?? ""}
+                value={draftText ?? color ?? ""}
                 placeholder={labels.hexPlaceholder ?? "#59168b"}
                 maxLength={7}
+                required
+                pattern="#[0-9a-fA-F]{6}"
                 autocomplete="off"
                 spellcheck={false}
                 class="w-32 font-mono"
                 onInput={(event) => typeHex(event.currentTarget.value)}
-                onBlur={() => showHexError.value = draft.value !== null}
+                // An empty field is flagged by a refused submit, not by Tab passing through it.
+                onBlur={(event) =>
+                  showHexError.value = draft.value !== null ||
+                    (showHexError.value && event.currentTarget.value === "")}
+                onInvalid={() => showHexError.value = true}
               />
             </div>
           )}

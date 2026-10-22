@@ -48,7 +48,7 @@ Extracted from earlier source applications.
 | `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                               |
 | `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
 | `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
-| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                      |
+| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                   |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -896,7 +896,10 @@ page: 44 px rows in a card, each with a chevron and its optional muted `value` (
 With a section open, only that section shows, under a "Back to {title}" link to `href`
 (`labels.back` replaces the words). The title stays in the document as screen-reader text. From
 `md` up, `null` shows the nav and `children` with no section heading and no current item, so an
-app draws an overview there or sends that address to its first section.
+app draws an overview there, or names a section in `defaultSection`: from `md` up its heading tops
+`children` and its item wears the current look, by `md:` classes alone, while a phone still shows
+the list. That item gets no `aria-current`, since on a phone the address is the list. An id there
+that names no section throws.
 
 **Focus follows the change of section.** When `current` becomes a section, focus moves to its
 heading (`tabindex="-1"`); when it goes back to `null`, to the nav item of the section that was
@@ -1120,7 +1123,8 @@ plain values and callbacks, so they work with any outbox and ship on their own.
 - **`UnsentChangesDialog`** asks before a person signs out while changes wait to reach the
   server: "Send, then sign out" (the one primary action, focused on open), "Sign out anyway", or
   "Cancel" (also Escape, the close control and the backdrop). Mount it to open it, as
-  `ConfirmDialog`. The caller owns the waiting: on `onSend` it starts sending and passes `state`
+  `ConfirmDialog`. Its `class` goes to `Modal`, which appends it after its own classes instead of
+  merging it, so a replacement must be marked important (`max-w-lg!`). The caller owns the waiting: on `onSend` it starts sending and passes `state`
   (`sending`, `offline` or `retrying`) and the counts as they drop, then signs out itself once
   nothing sendable is left. The same dialog shows the wait: the primary stays focused and busy, and
   one polite `role="status"` line with a progress bar ("1 of 3 sent") changes only when the state
