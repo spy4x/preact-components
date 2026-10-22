@@ -187,7 +187,7 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
 
   const item = (section: SettingsSection) => {
     const isCurrent = section.id === current
-    const isDefault = !open && section.id === shown?.id
+    const isDefault = section.id === shown?.id
     return (
       <li key={section.id}>
         <Link
