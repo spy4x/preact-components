@@ -55,6 +55,13 @@ export interface SettingsLayoutProps {
    */
   current: string | null
   /**
+   * A section's `id` to show from `md` up while `current` is `null`: its heading over `children` and
+   * its nav item in the current look, by CSS alone, so a phone still shows the plain list and no
+   * script reads the width. It sets no `aria-current`, since on a phone that address is the list.
+   * Left out, `null` shows `children` with no heading and no current item.
+   */
+  defaultSection?: string
+  /**
    * Port to the app's client router: a plain left click on a nav item or the back link calls it
    * with the `href` instead of loading the page. Left out, every link loads the page.
    */
@@ -88,6 +95,10 @@ const itemDesktop = "md:min-h-9 md:rounded-primary md:px-3 md:py-2"
 const itemCurrent =
   "bg-[var(--color-surface-active,var(--color-accent-100))] dark:bg-[var(--color-surface-active,var(--color-selected-soft))] text-[color:var(--color-nav-active,var(--color-selected-text))] forced-colors:outline-2 forced-colors:outline-solid forced-colors:outline-[CanvasText]"
 
+/** The default section's item: {@link itemCurrent}'s look from `md` up, a plain row on a phone. */
+const itemDefault =
+  "max-md:text-foreground max-md:hover:bg-hover md:bg-[var(--color-surface-active,var(--color-accent-100))] md:dark:bg-[var(--color-surface-active,var(--color-selected-soft))] md:text-[color:var(--color-nav-active,var(--color-selected-text))] md:forced-colors:outline-2 md:forced-colors:outline-solid md:forced-colors:outline-[CanvasText]"
+
 /**
  * A danger item's text. The dark palette's danger falls to 3.6:1 on the hovered row's fill, so a
  * hovered row there takes red-300, as `DropdownItem`'s danger items do.
@@ -97,6 +108,10 @@ const dangerText = "text-danger dark:hover:text-red-300"
 /** The current danger item: the danger tint, keeping its danger text, outlined in forced colours. */
 const dangerCurrent =
   "bg-danger-soft text-danger dark:text-red-300 forced-colors:outline-2 forced-colors:outline-solid forced-colors:outline-[CanvasText]"
+
+/** A default danger item: {@link dangerCurrent}'s look from `md` up, a plain danger row on a phone. */
+const dangerDefault =
+  "text-danger max-md:hover:bg-hover max-md:dark:hover:text-red-300 md:bg-danger-soft md:dark:text-red-300 md:forced-colors:outline-2 md:forced-colors:outline-solid md:forced-colors:outline-[CanvasText]"
 
 /** The list as a card of rows on a phone; a plain column of rows from `md`. */
 const groupClasses = "flex flex-col max-md:divide-y max-md:divide-subtle md:gap-1"
@@ -112,6 +127,9 @@ const groupClasses = "flex flex-col max-md:divide-y max-md:divide-subtle md:gap-
  * chevron and its optional `value`. With a section open, only the section shows, under a "Back to
  * {title}" link to the list, above the section's heading. The title stays in the document for screen readers.
  *
+ * **`defaultSection`** names the section a wide screen shows on the list's own address: from `md`
+ * up its heading tops `children` and its item wears the current look, while a phone shows the list.
+ *
  * **Focus follows the change.** When `current` changes to a section, focus moves to its heading;
  * when it goes back to `null`, to the nav item of the section that was open. The first render moves
  * nothing. An app that runs `useRouteAnnouncer` passes it `keepPageFocus: true`, or the announcer
@@ -123,10 +141,24 @@ const groupClasses = "flex flex-col max-md:divide-y max-md:divide-subtle md:gap-
  * @param props See {@link SettingsLayoutProps}.
  */
 export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
-  const { title, href, sections, current, navigate, headingLevel = 1, intro, children, labels } =
-    props
+  const {
+    title,
+    href,
+    sections,
+    current,
+    defaultSection,
+    navigate,
+    headingLevel = 1,
+    intro,
+    children,
+    labels,
+  } = props
   const SectionHeading = `h${headingLevel + 1}` as "h2"
-  const open = current === null ? undefined : sections.find((section) => section.id === current)
+  const byId = (id: string) => sections.find((section) => section.id === id)
+  const open = current === null ? undefined : byId(current)
+  const fallback = defaultSection === undefined ? undefined : byId(defaultSection)
+  /** The section whose heading shows: the open one, else the default from `md` up. */
+  const shown = open ?? (current === null ? fallback : undefined)
   const headingId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   const nav = useRef<HTMLElement>(null)
@@ -147,11 +179,15 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
   if (current !== null && !open) {
     throw new Error(`SettingsLayout: no section has the id "${current}"`)
   }
+  if (defaultSection !== undefined && !fallback) {
+    throw new Error(`SettingsLayout: no section has the id "${defaultSection}"`)
+  }
   const regular = sections.filter((section) => section.tone !== "danger")
   const danger = sections.filter((section) => section.tone === "danger")
 
   const item = (section: SettingsSection) => {
     const isCurrent = section.id === current
+    const isDefault = !open && section.id === shown?.id
     return (
       <li key={section.id}>
         <Link
@@ -166,6 +202,8 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
             itemDesktop,
             isCurrent
               ? section.tone === "danger" ? dangerCurrent : itemCurrent
+              : isDefault
+              ? section.tone === "danger" ? dangerDefault : itemDefault
               : cn("hover:bg-hover", section.tone === "danger" ? dangerText : "text-foreground"),
           )}
         >
@@ -205,21 +243,23 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
           )}
         </nav>
         <section
-          aria-labelledby={open ? headingId : undefined}
+          aria-labelledby={shown ? headingId : undefined}
           data-e2e="settings-section"
           class={cn("flex min-w-0 max-w-2xl flex-col gap-6", !open && "max-md:hidden")}
         >
-          {open && (
+          {shown && (
             <div class="flex flex-col gap-2">
-              <Link
-                href={href}
-                navigate={navigate}
-                data-e2e="settings-back"
-                class="-ml-2 inline-flex min-h-11 items-center gap-2 self-start rounded-primary px-2 text-sm font-medium text-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-ring) md:hidden"
-              >
-                <IconArrowLeft class="size-4" aria-hidden="true" />
-                {labels?.back ?? `Back to ${title}`}
-              </Link>
+              {open && (
+                <Link
+                  href={href}
+                  navigate={navigate}
+                  data-e2e="settings-back"
+                  class="-ml-2 inline-flex min-h-11 items-center gap-2 self-start rounded-primary px-2 text-sm font-medium text-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-ring) md:hidden"
+                >
+                  <IconArrowLeft class="size-4" aria-hidden="true" />
+                  {labels?.back ?? `Back to ${title}`}
+                </Link>
+              )}
               <header class="flex flex-col gap-1">
                 <SectionHeading
                   ref={heading}
@@ -228,9 +268,9 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
                   data-e2e="settings-heading"
                   class="text-base font-medium text-foreground outline-none lg:text-lg"
                 >
-                  {open.label}
+                  {shown.label}
                 </SectionHeading>
-                {open.description && <p class="text-sm text-muted">{open.description}</p>}
+                {shown.description && <p class="text-sm text-muted">{shown.description}</p>}
               </header>
             </div>
           )}
