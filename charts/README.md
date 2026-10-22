@@ -17,8 +17,8 @@ the axis and loading helpers behind them.
   `class` into their own classes with `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's
   `px-4` instead of competing with it. `Bars` and `DotPlot` add `class` after their own with `join`,
   so an island that renders them carries no `tailwind-merge`; mark an override important
-  (`gap-4!`). `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
-  not on the `<table>`.
+  (`gap-4!`). `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on
+  that wrapper, not on the `<table>`.
 - **Every value is readable without the picture.** `LineChart` prints its points in a visually
   hidden table after the plot, one row per X position and one column per series, captioned with
   the chart's accessible name; `xLabel` names the first column and `dataTable={false}` leaves it
@@ -45,9 +45,9 @@ the axis and loading helpers behind them.
   inside effects and event handlers only. What the server prints, the browser prints too: the time
   axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
   (`timeZone`, `locale`), so hydration never has to replace text.
-- **No sibling package imports.** `charts/` depends on `preact`, `arktype`, `tailwind-merge` and
-  `@spy4x/platform`'s axis maths, and nothing else in the workspace, so it stays independent of
-  `ui/` and `signals/`.
+- **One sibling import.** `charts/` depends on `preact`, `arktype`, `tailwind-merge`,
+  `@spy4x/platform`'s axis maths and `@spy4x/preact-cn`'s `join`, and nothing else in the
+  workspace, so it stays independent of `ui/` and `signals/`.
 
 ## Components
 
