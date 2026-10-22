@@ -619,7 +619,7 @@ ErrorState	component	@spy4x/preact-ui	Message for an expected failure, shown whe
 ExactDateTimeRange	type	@spy4x/preact-ui	A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant.
 Explorable	component	@spy4x/preact-ui	A frame for an interactive figure inside an article: a result and the controls that change it.
 Fact	type	@spy4x/preact-ui	One label and value of a `FactList`.
-FactList	component	@spy4x/preact-ui	Labels and their values, such as the details of a record: a description list (`<dl>`) of rows, the label muted on the left and the value on the right, divided by hairlines.
+FactList	component	@spy4x/preact-ui	Labels and their values, such as the details of a record: a description list (`<dl>`) of rows divided by hairlines.
 FaqItem	type	@spy4x/preact-ui	One question of a `FaqList`.
 FaqList	component	@spy4x/preact-ui	Questions and answers as native `<details>` disclosures: they open and close with no JavaScript, so the list works on a server-rendered page with scripts off.
 FeatureCard	component	@spy4x/preact-ui	One feature of a product on its public site: an optional icon, a heading, a line or two of text, an optional link and an optional picture under them, on a library `Card`.
