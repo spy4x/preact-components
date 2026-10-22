@@ -4,6 +4,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { useBackdropPress } from "./backdrop-press.ts"
+import { DIALOG_ACTIONS } from "./plain-classes.ts"
 import { acquireScrollLock } from "./scroll-lock.ts"
 
 export {
@@ -104,7 +105,10 @@ export interface ModalProps {
   role?: DialogRole
   /** Body content. */
   children?: ComponentChildren
-  /** Footer content, right-aligned below the body. */
+  /**
+   * Footer buttons, below the body, laid out as `DialogActions` lays them out: Cancel first and the
+   * submit last, stacked full width on a phone and right-aligned in one row from `sm`.
+   */
   footer?: ComponentChildren
   /**
    * Accessible name of the header dismiss control, and the control's own switch.
@@ -478,7 +482,7 @@ export function Modal(
       <div class="px-6 py-4">{children}</div>
       {footer
         ? (
-          <footer class="flex justify-end gap-3 border-t border-subtle px-6 py-4">
+          <footer class={join(DIALOG_ACTIONS, "border-t border-subtle px-6 py-4")}>
             {footer}
           </footer>
         )
