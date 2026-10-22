@@ -304,6 +304,25 @@ describe('ImageGallery with layout="strip" and hero', () => {
   })
 })
 
+describe('ImageGallery with layout="strip" and lazy', () => {
+  it("loads every strip image lazily, the first included, with no priority", () => {
+    const imgs = stripImgs(render(<ImageGallery images={IMAGES} layout="strip" lazy />))
+
+    expect(imgs).toHaveLength(3)
+    for (const img of imgs) {
+      expect(img).toContain('loading="lazy"')
+      expect(img).not.toContain("fetchpriority=")
+    }
+  })
+
+  it("lets hero win over lazy, so a hero strip still loads its first image eagerly", () => {
+    const imgs = stripImgs(render(<ImageGallery images={IMAGES} layout="strip" hero lazy />))
+
+    expect(imgs[0]).toContain('loading="eager"')
+    expect(imgs[0]).toContain('fetchpriority="high"')
+  })
+})
+
 describe("ImageGallery strip image attribute order", () => {
   it("writes src before loading on every strip image, so a page-level lazy count can match it", () => {
     const imgs = stripImgs(render(<ImageGallery images={IMAGES} layout="strip" hero />))

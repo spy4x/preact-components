@@ -104,6 +104,12 @@ export interface ImageGalleryProps {
    */
   hero?: boolean
   /**
+   * Strip only: the strip sits below the page's own first media (a separate hero image), so its
+   * first image loads with `loading="lazy"` like every later one, and none carries `fetchpriority`;
+   * it no longer competes with that hero for bandwidth. Ignored with `hero`. Defaults to `false`.
+   */
+  lazy?: boolean
+  /**
    * Strip only: show each image's `alt` as a visible caption (`<figcaption>`) under it. The image
    * then carries the same text as its own `alt`, and that is what names its button. Defaults to
    * `false`: the button is named through `aria-label` and the image is decorative.
@@ -204,7 +210,7 @@ const stripButtonClass = join(thumbButtonClass, "w-full")
  * `h-auto w-full` keeps a strip image responsive. With `width` and `height` on the `<img>`, the
  * browser takes their ratio as the image's aspect ratio, so the row has its final height before any
  * image has loaded. Every image after the first is `loading="lazy"`: only the one a reader sees first
- * loads up front.
+ * loads up front, and with `lazy` not even that one.
  */
 const stripImageClass = "block h-auto w-full"
 
@@ -335,6 +341,7 @@ export function ImageGallery(
     controls,
     layout = "grid",
     hero = false,
+    lazy = false,
     captions = false,
     navigation = false,
     navigationVariant,
@@ -450,7 +457,7 @@ export function ImageGallery(
                 alt={captions ? image.alt : ""}
                 width={image.width}
                 height={image.height}
-                loading={lead ? "eager" : index === 0 ? undefined : "lazy"}
+                loading={lead ? "eager" : index === 0 && !lazy ? undefined : "lazy"}
                 fetchpriority={lead ? "high" : undefined}
                 decoding={hero && !lead ? "async" : undefined}
                 class={stripImageClass}

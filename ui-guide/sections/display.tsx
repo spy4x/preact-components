@@ -183,10 +183,12 @@ function ImageGalleryDemo() {
           snap="center"
           slideWidth="orientation"
           counterLabel={slashCounter}
+          lazy
         />
         <DemoNote>
           With slideWidth="orientation" and portrait images: narrower slides. On a wide screen all
-          three fit, so Previous and Next are not shown.
+          three fit, so Previous and Next are not shown. With lazy, the first image loads lazily
+          too, for a strip below the page's own hero image.
         </DemoNote>
       </Stack>
     </Stack>
@@ -1892,6 +1894,13 @@ export const displayDemos = {
         default: "false",
         description:
           'Strip only: the first image loads eagerly with `fetchpriority="high"`, the rest lazily.',
+      },
+      {
+        name: "lazy",
+        type: "boolean",
+        default: "false",
+        description:
+          "Strip only: every image loads lazily, the first included, for a strip below the page's own hero image. Ignored with `hero`.",
       },
       {
         name: "captions",
