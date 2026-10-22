@@ -502,15 +502,18 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     )
   }, [open, vertical])
 
-  useEffect(() => {
-    if (open) {
-      menuItems(panelRef.current)[0]?.focus()
-      return
-    }
-    // A closed menu has no tab stop, as the server rendered it: the roving one below is undone.
+  // A closed menu has no tab stop, as it hydrated: the roving one below is undone. A layout effect,
+  // so it lands in the same commit that closes the menu and nothing reads a closed menu with one.
+  useLayoutEffect(() => {
+    if (open) return
     for (const item of panelRef.current?.querySelectorAll<HTMLElement>(MENU_ITEM) ?? []) {
       item.tabIndex = -1
     }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    menuItems(panelRef.current)[0]?.focus()
   }, [open])
 
   const close = (returnFocus: boolean) => {
@@ -543,10 +546,11 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   }
 
   // A roving tab stop: the focused item alone is in the tab order. A scrolling menu then holds a
-  // tabbable element, which axe's `scrollable-region-focusable` asks for, and Tab and Shift+Tab
-  // still leave the menu in one press, since every other item stays at `tabindex="-1"`. Set on the
-  // DOM, not through props: the items are the caller's children, rendered before the menu sees
-  // them, and their render writes `-1` again only when that prop itself changes.
+  // tabbable element, which axe's `scrollable-region-focusable` asks for. Tab and Shift+Tab from
+  // an item still leave the menu in one press, since every other item stays at `tabindex="-1"`;
+  // Tab from the trigger of an open menu goes back to that item, as in ARIA's menu pattern. Set
+  // on the DOM, not through props: the items are the caller's children, rendered before the menu
+  // sees them, and their render writes `-1` again only when that prop itself changes.
   const handleFocusIn = (event: FocusEvent) => {
     const focused = event.target as HTMLElement | null
     const panel = panelRef.current
