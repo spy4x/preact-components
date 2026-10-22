@@ -92,7 +92,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FilterBar`           | `filter-bar`           | `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips                                                                                 |
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                                                  |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                                        |
-| `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                                       |
+| `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                              |
 | `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                         |
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                                                    |
 | `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                                                                                                                                      |
@@ -1399,12 +1399,15 @@ carries `loading="lazy"`, so only the image a reader sees first loads up front.
 />
 ```
 
-Five more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
+Six more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
 that sets none renders exactly what it did before they existed.
 
 - `hero` is for a strip that is the page's hero. Its first image loads with `loading="eager"` and
   `fetchpriority="high"`, often the page's largest paint; every later one with `loading="lazy"` and
   `decoding="async"`.
+- `lazy` is for a strip below the page's own first media, such as a separate hero image. Every image
+  in it loads with `loading="lazy"`, the first included, and none carries `fetchpriority`, so the
+  strip does not compete with that hero for bandwidth. `hero` wins when both are set.
 - `captions` shows each image's `alt` under it, in a `<figcaption>`. The image then carries the same
   `alt`, which names its button, and the button drops its `aria-label`: the visible caption and the
   button's accessible name are the same text.

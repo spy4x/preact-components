@@ -136,6 +136,12 @@
   border-color: var(--color-border-subtle, oklch(0.928 0.006 264.531));
 }
 
+/* `WindowFrame`'s edge. An app that does not set --color-border-frame (one that maps its own
+   palette instead of loading tokens.css) gets the subtle border in every theme. */
+@utility border-frame {
+  border-color: var(--color-border-frame, var(--color-border-subtle, oklch(0.928 0.006 264.531)));
+}
+
 @utility border-control {
   border-color: var(--color-border-control, oklch(0.872 0.01 258.338));
 }

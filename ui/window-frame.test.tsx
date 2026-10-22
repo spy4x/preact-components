@@ -63,6 +63,18 @@ describe("WindowFrame", () => {
     expect(html).not.toContain("app.example.com")
   })
 
+  it("draws the plain and browser frames' edge from the border-frame token, never a dark: border", () => {
+    for (const variant of ["plain", "browser"] as const) {
+      const box = render(<WindowFrame variant={variant}>x</WindowFrame>).match(
+        /^<figure [^>]*><div class="([^"]*)"/,
+      )![1].split(" ")
+
+      expect(box).toContain("border")
+      expect(box).toContain("border-frame")
+      expect(box.filter((name) => /^(?:dark:)?border-(?!frame$)/.test(name))).toEqual([])
+    }
+  })
+
   it("merges the caller's class into the figure", () => {
     expect(render(<WindowFrame variant="browser" class="max-w-3xl">x</WindowFrame>)).toMatch(
       /^<figure class="[^"]*max-w-3xl"/,
