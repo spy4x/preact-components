@@ -38,10 +38,12 @@ function Dots(): JSX.Element {
 
 /**
  * The browser's and the plain frame's box. Light: a large soft shadow. Dark: a 1 px border with a
- * faint highlight along the top edge.
+ * faint highlight along the top edge. The border is the `--color-border-frame` token, not a `dark:`
+ * class, so an app that maps its palette through tokens without the `dark` variant still gets the
+ * edge.
  */
-const browserFrame = "overflow-hidden rounded-xl border border-transparent bg-surface shadow-2xl " +
-  "dark:border-subtle dark:shadow-[inset_0_1px_0_var(--color-border-strong)]"
+const browserFrame = "overflow-hidden rounded-xl border border-frame bg-surface shadow-2xl " +
+  "dark:shadow-[inset_0_1px_0_var(--color-border-strong)]"
 
 /*
  * The terminal is dark in both themes: its frame carries the `dark` class, which repaints the theme

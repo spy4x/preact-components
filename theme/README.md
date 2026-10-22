@@ -316,8 +316,9 @@ classes keep their names: no app writes them as ordinary words.
 - **Colour atoms** — `text-primary`, `bg-primary`, `bg-primary-muted` (the accent as a fill,
   which stays visible in dark where `bg-primary` is near-black chrome), `border-primary`,
   `rounded-primary`, `text-muted`, `bg-canvas`, `bg-surface`, `border-subtle`,
-  `border-control`, `bg-danger`, `bg-warning`, `bg-success` and the `text-*`
-  status tones.
+  `border-control`, `border-frame` (`WindowFrame`'s edge: `--color-border-frame`, none in light
+  and the subtle border in dark, or the subtle border in every theme for an app that never sets
+  the token), `bg-danger`, `bg-warning`, `bg-success` and the `text-*` status tones.
 - **Type** — `pc-h1`–`pc-h5`, `pc-link`, `page-layout` (deprecated: use `Page` from
   `@spy4x/preact-ui/layout`), `list-ul`, plus `theme-base` for
   the document-level font, colour and canvas. Nothing is applied to the host
