@@ -2619,7 +2619,7 @@ function youTubeVideoSpecs(): Spec[] {
         "the player, with focus inside it and the page not scrolled",
       pageId: "ui",
       run: async (page) => {
-        const { link, player } = await youTubeVideoCard(page)
+        const { link } = await youTubeVideoCard(page)
         await link.focus()
         const scrolled = () => page.evaluate(() => globalThis.scrollY)
         const before = await scrolled()
