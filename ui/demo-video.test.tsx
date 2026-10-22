@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { DemoVideo, type DemoVideoProps } from "./demo-video.tsx"
-import { DemoVideoClip, playClip } from "./demo-video-clip.tsx"
+import { DemoVideoClip, playClip, playOneAtATime } from "./demo-video-clip.tsx"
 
 const PROPS: DemoVideoProps = {
   title: "Creating an invoice",
@@ -163,6 +163,57 @@ describe("DemoVideo", () => {
       }
       await playClip(video)
       expect(video.muted).toBe(true)
+    })
+  })
+
+  describe("playOneAtATime", () => {
+    /** A clip that keeps a position, which `pause()` must leave alone. */
+    class FakeClip extends EventTarget {
+      paused = false
+      currentTime = 0
+      play() {
+        this.paused = false
+        this.dispatchEvent(new Event("play"))
+      }
+      pause() {
+        this.paused = true
+      }
+    }
+
+    it("pauses the playing clip, at its position, when another one starts", () => {
+      const first = new FakeClip()
+      const second = new FakeClip()
+      const forgetFirst = playOneAtATime(first)
+      const forgetSecond = playOneAtATime(second)
+      try {
+        first.play()
+        first.currentTime = 2.5
+        second.play()
+        expect(first.paused).toBe(true)
+        expect(first.currentTime).toBe(2.5)
+        expect(second.paused).toBe(false)
+        first.play()
+        expect(second.paused).toBe(true)
+        expect(first.paused).toBe(false)
+      } finally {
+        forgetFirst()
+        forgetSecond()
+      }
+    })
+
+    it("leaves a removed clip alone, and a removed clip pauses no one", () => {
+      const kept = new FakeClip()
+      const removed = new FakeClip()
+      const forgetKept = playOneAtATime(kept)
+      playOneAtATime(removed)()
+      try {
+        removed.play()
+        expect(kept.paused).toBe(false)
+        kept.play()
+        expect(removed.paused).toBe(false)
+      } finally {
+        forgetKept()
+      }
     })
   })
 })

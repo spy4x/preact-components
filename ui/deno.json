@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui",
-  "version": "9.1.0",
+  "version": "10.0.0",
   "exports": {
     ".": "./+index.ts",
     "./avatar": "./avatar.tsx",
@@ -26,6 +26,7 @@
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",
+    "./explorable": "./explorable.tsx",
     "./error-boundary": "./error-boundary.tsx",
     "./error-state": "./error-state.tsx",
     "./faq-list": "./faq-list.tsx",
@@ -59,6 +60,7 @@
     "./radio-chips": "./radio-chips.tsx",
     "./theme-preview": "./theme-preview.tsx",
     "./setting-row": "./setting-row.tsx",
+    "./slider": "./slider.tsx",
     "./status-mark": "./status-mark.tsx",
     "./table": "./table.tsx",
     "./tabs": "./tabs.tsx",

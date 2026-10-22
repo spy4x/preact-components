@@ -149,6 +149,12 @@ describe("ScreenTour", () => {
     expect(render(<ScreenTour steps={steps} frame="phone" />)).toContain("aspect-[9/19]")
   })
 
+  it("draws the plain frame with no bar and no address", () => {
+    const html = render(<ScreenTour steps={steps} frame="plain" browserUrl="app.example.com" />)
+    expect(html).toMatch(/<div class="[^"]*rounded-xl[^"]*bg-surface[^"]*"><div class="grid"><img /)
+    expect(html).not.toContain("app.example.com")
+  })
+
   it("keeps the phone 16 rem wide from 1024 px, and leaves the browser frame full width", () => {
     expect(render(<ScreenTour steps={steps} frame="phone" />)).toContain(
       '<div class="w-full lg:mx-auto lg:max-w-64">',

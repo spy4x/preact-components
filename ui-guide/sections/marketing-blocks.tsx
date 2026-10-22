@@ -8,6 +8,7 @@
  */
 
 import { useSignal } from "@preact/signals"
+import { Bars } from "@spy4x/preact-charts/bars"
 import { IconSprout } from "@spy4x/preact-icons"
 import {
   Badge,
@@ -15,6 +16,7 @@ import {
   Button,
   Checkbox,
   DemoVideo,
+  Explorable,
   FaqList,
   FeatureCard,
   Field,
@@ -22,6 +24,7 @@ import {
   PageHero,
   ScreenTour,
   type ScreenTourStep,
+  Slider,
   Steps,
   ThemePreview,
   WindowFrame,
@@ -172,6 +175,81 @@ function ScreenTourDemo() {
   )
 }
 
+/** Whole numbers with thousands separators, the same on every machine. */
+const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 })
+
+/**
+ * What 100 a month grows to over `years` at 6% a year, less a yearly `fee` in percent. Monthly
+ * compounding; plain arithmetic, so the server and the browser print the same numbers.
+ */
+function savingsAfter(years: number, fee: number): number {
+  const monthly = (0.06 - fee / 100) / 12
+  let total = 0
+  for (let month = 0; month < years * 12; month++) total = (total + 100) * (1 + monthly)
+  return Math.round(total)
+}
+
+/**
+ * An article's interactive figure: two sliders change a fee and a horizon, and a `Bars` chart and
+ * a sentence show what the fee takes. `live` is left out, so the frame turns live on hydration.
+ */
+function ExplorableDemo() {
+  const fee = useSignal(1)
+  const years = useSignal(25)
+  const without = savingsAfter(years.value, 0)
+  const withFee = savingsAfter(years.value, fee.value)
+  const paidIn = years.value * 1200
+  return (
+    <Explorable
+      id="explorable-fee"
+      title="What a yearly fee takes from your savings"
+      lead="Change the fee and the horizon; the bars show where 100 a month ends up."
+      caption="Assumes 6% a year before fees, compounded monthly. An illustration, not advice."
+      noScriptNote="The controls need JavaScript; without it, the figure shows a 1% fee over 25 years."
+      controls={
+        <>
+          <Slider
+            label="Yearly fee"
+            value={fee.value}
+            min={0}
+            max={3}
+            step={0.1}
+            onInput={(next) => fee.value = next}
+            format={(value) => `${value.toFixed(1)}%`}
+            valueText={(value) => `${value.toFixed(1)} percent`}
+            marks={[{ value: 0.2, label: "Index fund" }, { value: 2, label: "Managed fund" }]}
+          />
+          <Slider
+            label="Years"
+            value={years.value}
+            min={5}
+            max={40}
+            onInput={(next) => years.value = next}
+          />
+        </>
+      }
+    >
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-foreground">
+          The fee costs <strong class="tabular-nums">{whole.format(without - withFee)}</strong> over
+          {" "}
+          {years.value} years.
+        </p>
+        <Bars
+          data={[
+            // A no-break space keeps each two-word label on one line beside its bar.
+            { label: "No\u00a0fee", value: without },
+            { label: `${fee.value.toFixed(1)}%\u00a0fee`, value: withFee },
+          ]}
+          format={(value) => whole.format(value)}
+          reference={{ value: paidIn, label: "Paid in" }}
+          ariaLabel="Savings at the end"
+        />
+      </div>
+    </Explorable>
+  )
+}
+
 export const marketingBlockDemos: DemoFragment = {
   BrandMark: {
     summary:
@@ -196,7 +274,7 @@ export const marketingBlockDemos: DemoFragment = {
   },
   DemoVideo: {
     summary:
-      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for a muted, inline video with controls.",
+      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for an inline video with sound and controls, one clip at a time.",
     wide: false,
     props: [
       {
@@ -240,7 +318,7 @@ export const marketingBlockDemos: DemoFragment = {
           "Any other attribute, such as `id` or `data-*` for analytics, on the play link.",
       },
     ],
-    snippet: `<WindowFrame variant="browser" title="app.example.com">
+    snippet: `<WindowFrame variant="plain">
   <DemoVideo
     title="Creating an invoice"
     poster={{ src: "/demo.webp", width: 1280, height: 720 }}
@@ -262,8 +340,17 @@ export const marketingBlockDemos: DemoFragment = {
           />
         </WindowFrame>
         <WindowFrame
-          variant="browser"
-          title="app.example.com"
+          variant="plain"
+          caption="A second clip, in the plain frame: starting one pauses the other"
+        >
+          <DemoVideo
+            title="A second test pattern"
+            poster={DEMO_CLIP.poster}
+            sources={DEMO_CLIP.sources}
+          />
+        </WindowFrame>
+        <WindowFrame
+          variant="plain"
           caption="A clip whose file is missing: press it to see the error state"
         >
           <DemoVideo
@@ -404,6 +491,50 @@ export const marketingBlockDemos: DemoFragment = {
 />`,
     render: () => <Steps items={STEPS} orientation="horizontal" />,
   },
+  Explorable: {
+    summary:
+      "A frame for an interactive figure in an article: a title kept out of the table of contents, the result, its controls and a caption; the controls stay disabled until the page's code runs.",
+    wide: true,
+    props: [
+      { name: "title", type: "string", description: "The figure's name, set as a paragraph." },
+      { name: "lead", type: "ComponentChildren", description: "One line on what to try." },
+      {
+        name: "children",
+        type: "ComponentChildren",
+        description: "The result the controls change.",
+      },
+      {
+        name: "controls",
+        type: "ComponentChildren",
+        description: "The controls, in a `<fieldset>` that is disabled until the figure is live.",
+      },
+      {
+        name: "caption",
+        type: "ComponentChildren",
+        description: "The `<figcaption>`, left-aligned under everything.",
+      },
+      {
+        name: "live",
+        type: "boolean",
+        default: "true once hydrated",
+        description: "Whether the controls work; the Interactive line shows only while they do.",
+      },
+      {
+        name: "noScriptNote",
+        type: "ComponentChildren",
+        description: "Shown inside `<noscript>`: what the figure shows without scripts.",
+      },
+    ],
+    snippet: `<Explorable
+  title="What a yearly fee takes from your savings"
+  lead="Change the fee; the bars show where 100 a month ends up."
+  caption="Assumes 6% a year before fees."
+  controls={<Slider label="Yearly fee" value={fee.value} onInput={(next) => fee.value = next} />}
+>
+  <Bars data={rows} reference={{ value: paidIn, label: "Paid in" }} />
+</Explorable>`,
+    render: () => <ExplorableDemo />,
+  },
   ThemePreview: {
     summary:
       "A frame that shows real components in the library's dark or light palette, switched by a Dark / Light pair that works without JavaScript.",
@@ -468,8 +599,9 @@ export const marketingBlockDemos: DemoFragment = {
       },
       {
         name: "frame",
-        type: `"browser" | "phone"`,
-        description: "The device drawn around the screenshot.",
+        type: `"plain" | "browser" | "phone"`,
+        description:
+          "The frame drawn around the screenshot: `plain` for product screens, `browser` when the address matters.",
       },
       { name: "browserUrl", type: "string", description: "The address in the browser's bar." },
       {
@@ -533,13 +665,14 @@ export const marketingBlockDemos: DemoFragment = {
   },
   WindowFrame: {
     summary:
-      "A browser window, a terminal or a phone drawn around a screenshot or a snippet, with an optional caption.",
+      "A plain frame, a browser window, a terminal or a phone drawn around a screenshot or a snippet, with an optional caption.",
     wide: true,
     props: [
       {
         name: "variant",
-        type: `"browser" | "terminal" | "phone"`,
-        description: "The device drawn around the content; the terminal is dark in both themes.",
+        type: `"plain" | "browser" | "terminal" | "phone"`,
+        description:
+          "The frame drawn around the content: `plain` for product media, `browser` when the address matters; the terminal is dark in both themes.",
       },
       {
         name: "title",
@@ -549,8 +682,11 @@ export const marketingBlockDemos: DemoFragment = {
       },
       { name: "caption", type: "ComponentChildren", description: "The figure's caption." },
     ],
-    snippet: `<WindowFrame variant="browser" title="app.example.com" caption="The dashboard">
+    snippet: `<WindowFrame variant="plain" caption="The dashboard">
   <img src="/dashboard.png" alt="The dashboard with this month's totals" />
+</WindowFrame>
+<WindowFrame variant="browser" title="app.example.com/pricing">
+  <img src="/pricing.png" alt="The pricing page" />
 </WindowFrame>
 <WindowFrame variant="terminal" title="Install">
   {"$ docker compose up -d"}
@@ -559,7 +695,12 @@ export const marketingBlockDemos: DemoFragment = {
   <img src="/phone.png" alt="The app on a phone" />
 </WindowFrame>`,
     render: () => (
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <WindowFrame variant="plain" caption="A plain frame, for product media">
+          <div class="flex h-32 items-center justify-center text-sm text-muted">
+            Your screenshot
+          </div>
+        </WindowFrame>
         <WindowFrame variant="browser" title="app.example.com" caption="A browser window">
           <div class="flex h-32 items-center justify-center text-sm text-muted">
             Your screenshot

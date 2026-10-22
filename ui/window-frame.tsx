@@ -6,7 +6,10 @@ export type { WindowFrameVariant }
 
 /** Props of {@link WindowFrame}. */
 export interface WindowFrameProps {
-  /** A browser window, a terminal window or a phone. */
+  /**
+   * A plain frame (the border and surface alone, the default for product media), a browser window
+   * (when the address matters), a terminal window or a phone.
+   */
   variant: WindowFrameVariant
   /**
    * The address in the browser's bar, or the terminal's title. Decorative, so hidden from assistive
@@ -20,8 +23,9 @@ export interface WindowFrameProps {
 }
 
 /**
- * Draws a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing
- * page.
+ * Draws a plain frame, a browser window, a terminal or a phone around a screenshot or a snippet, for
+ * a marketing page. The plain frame suits most product media; the browser's bar is for when the URL
+ * itself matters.
  *
  * The chrome (the window buttons, the address bar, the notch) is decorative and hidden from
  * assistive tech. Server-rendered with no hooks and no JavaScript.

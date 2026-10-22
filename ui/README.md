@@ -11,12 +11,13 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twenty-three exports.** Most components pass a caller's
+- **A `class` is merged, except on twenty-five exports.** Most components pass a caller's
   `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
   of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
   `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `ScreenTour`, `PricingTable`,
   `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
-  `Combobox` (with its `inputClass` and `listboxClass`), `Modal` and `Toastr` (#943) use `join`
+  `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
+  `Slider` (#958) use `join`
   instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
   `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
@@ -83,6 +84,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                                       |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                                               |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                                                                                                                      |
+| `Explorable`          | `explorable`           | `title`, `children` (the result), `lead?`, `controls?` (in a `<fieldset>` disabled until live), `caption?` (`<figcaption>`), `live?` (default: on once hydrated), `noScriptNote?`, `interactiveLabel?`, `id?`, `class?` — a `<figure>` for an interactive figure                                                                                                    |
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                                              |
 | `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                                               |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                                                 |
@@ -124,11 +126,12 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
-| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                                         |
+| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"plain"`, `"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                              |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
 | `ShortcutsDialog`     | `shortcuts-dialog`     | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                                                                                                                                                                                    |
+| `Slider`              | `slider`               | `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`                                                                                                                                         |
 | `SortableList`        | `sortable-list`        | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                                                                                                                                                                                           |
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                                                                                                          |
@@ -151,7 +154,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                                                                                                         |
 | `WidgetCard`          | `widget-card`          | `title`, `status` (`loading`/`error`/`empty`/`ready`), `size?`, `loadingLabel`, `caption?`, `menu?`, `href?`, `errorMessage?`, `onRetry?`, `emptyLabel?`, `skeletonDelay?`                                                                                                                                                                                          |
 | `WidgetStat`          | `widget-card`          | `value`, `valueLabel?`, `lines?`                                                                                                                                                                                                                                                                                                                                    |
-| `WindowFrame`         | `window-frame`         | `variant` (`"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                            |
+| `WindowFrame`         | `window-frame`         | `variant` (`"plain"`, `"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                 |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                                                                                                                                     |
 
 ## Usage
@@ -844,12 +847,16 @@ No `<video>` element exists before the press, so the browser requests no video b
 `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
 ignored.
 
+One clip plays at a time. When a clip starts, by the press or by its own controls (its `play`
+event), every other `DemoVideo` on the page pauses where it is, so two soundtracks never overlap.
+
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the
 name. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
 for a clip on the first screen. `class` is joined, not merged, so an island that renders the
 component carries no `tailwind-merge`. Any other attribute, such as `id` or a `data-*` analytics
-attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`.
+attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`,
+whose `plain` variant suits it best.
 
 When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its size
 and shows `errorLabel` ("The video didn't load.") with a link, `openFileLabel` ("Open the video
@@ -869,10 +876,10 @@ the video.
 
 ## ScreenTour
 
-A product walkthrough for a product or case-study page: named steps as tabs beside one browser or
-phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is picked.
-Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View full
-size" link.
+A product walkthrough for a product or case-study page: named steps as tabs beside one plain,
+browser or phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is
+picked. Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View
+full size" link.
 
 The tabs are a column from 1024 px and, below it, a row that scrolls inside itself, so a phone page
 never scrolls sideways. The tab list is one Tab stop: Left/Right and Up/Down move and select (the
@@ -2522,6 +2529,11 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### Slider (`./slider`)
+
+- `sliderFraction(value, min, max)` is where a value sits along a `Slider`'s track, from `0` to
+  `1`, clamped; a range with no width or a non-finite bound gives `0`.
 
 ### ScreenTour (`./screen-tour`)
 

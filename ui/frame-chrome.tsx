@@ -1,6 +1,6 @@
 /**
- * The device `WindowFrame` draws, without its figure and caption: a browser window, a terminal or a
- * phone around the content. Kept apart from `window-frame.tsx` because that module merges its
+ * The frame `WindowFrame` draws, without its figure and caption: a plain frame, a browser window, a
+ * terminal or a phone around the content. Kept apart from `window-frame.tsx` because that module merges its
  * `class` with `cn`, and `ScreenTour` draws the same device in an island that must not carry
  * `tailwind-merge`. Internal: not one of the package's entry points.
  *
@@ -9,14 +9,18 @@
 
 import type { ComponentChildren, JSX } from "preact"
 
-/** Which device a `WindowFrame` or a `ScreenTour` draws around its content. */
-export type WindowFrameVariant = "browser" | "terminal" | "phone"
+/**
+ * Which frame a `WindowFrame` or a `ScreenTour` draws around its content. `plain` is the rounded
+ * border and surface alone, the default for product media; `browser` adds a window bar with an
+ * address, for when the URL itself matters.
+ */
+export type WindowFrameVariant = "plain" | "browser" | "terminal" | "phone"
 
 /** Props of {@link FrameChrome}. */
 export interface FrameChromeProps {
-  /** A browser window, a terminal window or a phone. */
+  /** A plain frame, a browser window, a terminal window or a phone. */
   variant: WindowFrameVariant
-  /** The address in the browser's bar, or the terminal's title. */
+  /** The address in the browser's bar, or the terminal's title. The plain frame and the phone show none. */
   title?: string
   children?: ComponentChildren
 }
@@ -32,7 +36,10 @@ function Dots(): JSX.Element {
   )
 }
 
-/** Light: a large soft shadow. Dark: a 1 px border with a faint highlight along the top edge. */
+/**
+ * The browser's and the plain frame's box. Light: a large soft shadow. Dark: a 1 px border with a
+ * faint highlight along the top edge.
+ */
 const browserFrame = "overflow-hidden rounded-xl border border-transparent bg-surface shadow-2xl " +
   "dark:border-subtle dark:shadow-[inset_0_1px_0_var(--color-border-strong)]"
 
@@ -88,6 +95,7 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
       </div>
     )
   }
+  if (variant === "plain") return <div class={browserFrame}>{children}</div>
   return (
     <div class={browserFrame}>
       <div
