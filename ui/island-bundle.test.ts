@@ -49,6 +49,8 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   "island-command-palette.tsx": 52_000,
   // A modal over a combobox, with the modal's `Button` and its hotkey code: 45.1 KB (#943).
   "island-modal-combobox.tsx": 48_000,
+  // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 33.6 KB (#958).
+  "island-explorable-bars.tsx": 36_000,
   "island-image-gallery.tsx": 35_000,
   "island-pricing-table.tsx": 33_000,
   "island-screen-tour.tsx": 45_000,
@@ -95,6 +97,7 @@ describe("a browser bundle of a library component", () => {
       "island-command-palette.tsx",
       "island-modal-combobox.tsx",
       "island-toastr.tsx",
+      "island-explorable-bars.tsx",
     ]
   ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {

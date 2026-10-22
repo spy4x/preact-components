@@ -1,5 +1,5 @@
 import type { JSX } from "preact"
-import { twMerge } from "tailwind-merge"
+import { join } from "@spy4x/preact-cn/join"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_TEXT_COLOR,
@@ -66,6 +66,10 @@ export interface BarsProps {
   emptyLabel?: string
   /** A dashed line at one value, named in the legend. The scale grows to keep it inside. */
   reference?: BarReference
+  /**
+   * Added after the chart's own classes, not merged over them (`join`, so an island that renders
+   * it carries no tailwind-merge). To replace one of its own, mark yours important: `gap-4!`.
+   */
   class?: string
 }
 
@@ -139,7 +143,7 @@ export function Bars({
   const heading = title ? <Heading class="text-sm font-medium">{title}</Heading> : null
   if (data.length === 0) {
     return (
-      <div class={twMerge("flex flex-col gap-2", className)}>
+      <div class={join("flex flex-col gap-2", className)}>
         {heading}
         <p class="text-sm" style={{ color: textColor }}>{emptyLabel}</p>
       </div>
@@ -160,7 +164,7 @@ export function Bars({
   const colorOf = (name: string) => seriesColor(series.indexOf(name), colors)
 
   return (
-    <div class={twMerge("flex flex-col gap-2", CHART_PALETTE_CLASS, className)}>
+    <div class={join("flex flex-col gap-2", CHART_PALETTE_CLASS, className)}>
       {heading}
       <table class="w-full bg-transparent text-sm" aria-label={ariaLabel ?? title}>
         <tbody>
