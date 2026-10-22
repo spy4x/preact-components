@@ -1152,13 +1152,16 @@ const RESEND_DEMO_COOLDOWN_MS = 5_000
 const RESEND_DEMO_SEND_MS = 800
 
 /**
- * A "Check your inbox" card whose mail was just sent: the line counts down from 5 seconds, then
- * offers the button. A press is busy for a moment, then restarts the cooldown, as a caller's
- * server round trip would; the line under the card counts the resends.
+ * A "Check your inbox" card that opens with the button ready. A press is busy for a moment, then
+ * starts a 5-second cooldown, as a caller's server round trip would, and the line counts down
+ * until the button comes back; the line under the card counts the resends.
  * `pages/e2e/ui.spec.ts` drives it.
+ *
+ * It opens ready, not counting down, so the card never changes height on its own: a card that
+ * grew a few seconds after load moved every card below it while the page checks scrolled to them.
  */
 function ResendButtonDemo() {
-  const readyAt = useSignal(Date.now() + RESEND_DEMO_COOLDOWN_MS)
+  const readyAt = useSignal<number | undefined>(undefined)
   const busy = useSignal(false)
   const resends = useSignal(0)
 
@@ -1723,6 +1726,9 @@ export const leaveGuard = createLeaveGuard()
 />`,
     render: () => <ToastrDemo />,
   },
+  ...onboardingDemos,
+  // Last in the section: a narrow card placed before the onboarding cards moves each of them to
+  // the other column, and the Coachmark spec needs its card in the left column at 1280 px.
   ResendButton: {
     summary:
       'The "Not there?" line under "Check your inbox": a countdown sentence, then a button that sends the mail again.',
@@ -1791,5 +1797,4 @@ export const leaveGuard = createLeaveGuard()
 />`,
     render: () => <ResendButtonDemo />,
   },
-  ...onboardingDemos,
 } satisfies DemoFragment
