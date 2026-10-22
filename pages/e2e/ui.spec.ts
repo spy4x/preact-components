@@ -2637,6 +2637,29 @@ async function openScrollingTagsSheet(page: Page) {
 /** Dropdown: a menu shown as a phone sheet that scrolls passes axe and keeps its keys (#967). */
 function dropdownSheetSpecs(): Spec[] {
   return [
+    ...([1440, 390] as const).map((width): Spec => ({
+      name: `Dropdown at ${width} px: with the menu open, Shift+Tab from an item reaches the ` +
+        `trigger and Tab from the trigger goes back to that item, the menu still open, as in ` +
+        `ARIA's menu pattern`,
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.search.scrollIntoViewIfNeeded()
+        await bar.tags.focus()
+        await page.keyboard.press("Enter")
+        const all = bar.tagsMenu.getByRole("menuitemradio", { name: "All of these tags" })
+        await bar.tagsMenu.getByRole("menuitemradio", { name: "Any of these tags" })
+          .and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("ArrowDown")
+        await bar.focusIsOn(all)
+        await page.keyboard.press("Shift+Tab")
+        await bar.focusIsOn(bar.tags)
+        await page.keyboard.press("Tab")
+        await bar.focusIsOn(all)
+        await bar.tagsMenu.waitFor()
+      },
+    })),
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
       name: `Dropdown at 390 px, ${colorScheme}: a sheet whose items scroll passes axe, ` +
         `scrollable-region-focusable included`,
