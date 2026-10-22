@@ -553,6 +553,9 @@
   & :where(figcaption) {
     @apply mt-2 text-sm text-muted;
   }
+  & :where(table, thead) {
+    @apply bg-transparent;
+  }
   & :where(table) {
     @apply w-full border-collapse text-sm;
   }
