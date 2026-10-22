@@ -105,6 +105,7 @@ export const documentedClasses: Record<string, string[]> = {
     "pc-link",
     "page-layout",
     "list-ul",
+    "pc-prose",
     "theme-base",
   ],
   Buttons: [

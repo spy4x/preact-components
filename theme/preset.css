@@ -471,6 +471,105 @@
   @apply list-disc list-inside text-sm space-y-1 pl-1;
 }
 
+/*
+ * The type of an article (`Prose` from `@spy4x/preact-ui`): rendered Markdown, which carries no
+ * classes, set from the tokens at a measure of about 65 characters. Every rule reads an element
+ * inside the wrapper through `:where()`, so each weighs one class and a class on the element wins.
+ * Code wraps instead of scrolling, and table cells break long words, so no block needs a scroll box
+ * and its own tab stop on a phone.
+ */
+@utility pc-prose {
+  @apply max-w-2xl text-base/7 text-pretty wrap-break-word;
+  color: var(--color-foreground, oklch(0.13 0.028 261.692));
+
+  & > :where(* + *) {
+    @apply mt-4;
+  }
+  & :where(h2, h3, h4) {
+    @apply scroll-mt-16 font-semibold text-balance;
+    color: var(--color-foreground, oklch(0.13 0.028 261.692));
+  }
+  & :where(h2) {
+    @apply mt-12 text-2xl/8 tracking-tight;
+  }
+  & :where(h3) {
+    @apply mt-8 text-xl/7;
+  }
+  & :where(h4) {
+    @apply mt-6 text-base/7;
+  }
+  & :where(h2, h3, h4) + :where(*) {
+    @apply mt-3;
+  }
+  & > :where(:first-child) {
+    @apply mt-0;
+  }
+  & :where(strong) {
+    @apply font-semibold;
+  }
+  & :where(a) {
+    @apply rounded-sm font-medium text-primary underline underline-offset-4;
+  }
+  & :where(a:hover) {
+    @apply decoration-2;
+  }
+  & :where(a:focus-visible) {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  & :where(:not(pre) > code) {
+    @apply rounded-sm bg-hover px-1 py-px font-mono text-sm;
+  }
+  & :where(ul) {
+    @apply list-disc pl-6;
+  }
+  & :where(ol) {
+    @apply list-decimal pl-6;
+  }
+  & :where(li)::marker {
+    color: var(--color-muted-foreground, oklch(0.446 0.03 256.802));
+  }
+  & :where(li + li, li > ul, li > ol, li > p) {
+    @apply mt-2;
+  }
+  & :where(pre) {
+    @apply rounded-primary border border-subtle bg-canvas p-4 font-mono text-sm/6
+      whitespace-pre-wrap wrap-anywhere;
+  }
+  & :where(blockquote) {
+    @apply border-l-2 border-strong pl-4 text-muted;
+  }
+  & :where(blockquote > * + *) {
+    @apply mt-2;
+  }
+  & :where(hr) {
+    @apply mt-8 border-subtle;
+  }
+  & :where(hr + *) {
+    @apply mt-8;
+  }
+  & :where(img, video) {
+    @apply h-auto max-w-full rounded-primary;
+  }
+  & :where(figcaption) {
+    @apply mt-2 text-sm text-muted;
+  }
+  & :where(table, thead) {
+    @apply bg-transparent;
+  }
+  & :where(table) {
+    @apply w-full border-collapse text-sm;
+  }
+  & :where(th, td) {
+    @apply border-b border-subtle px-3 py-2 text-left align-top wrap-anywhere;
+  }
+  & :where(th) {
+    @apply font-medium;
+  }
+  & :where(thead th) {
+    @apply border-strong;
+  }
+}
+
 /* #endregion Typography */
 
 /* #region Spacing */
