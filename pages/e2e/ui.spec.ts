@@ -937,11 +937,21 @@ function colorFieldSpecs(): Spec[] {
         const message = "Enter # and 6 characters, such as #59168b."
         const error = group(page).getByText(message)
         // Enter submits from the field without blurring it, so only the refusal can show the error.
+        // Records the browser's message at the moment it refuses, before the field re-renders.
+        await hex.evaluate((input: HTMLInputElement) =>
+          input.addEventListener(
+            "invalid",
+            () => input.dataset.refusedWith = input.validationMessage,
+            {
+              capture: true,
+            },
+          )
+        )
         await hex.fill("#zzz")
         await hex.press("Enter")
         await savedIs("saves: 1, saved: #0369a1, group none")
         await error.waitFor()
-        const bubble = await hex.evaluate((input: HTMLInputElement) => input.validationMessage)
+        const bubble = await hex.getAttribute("data-refused-with")
         if (bubble !== message) throw new Error(`the browser's message is "${bubble}"`)
 
         await hex.fill("#12")
@@ -958,6 +968,35 @@ function colorFieldSpecs(): Spec[] {
         await groupColour.getByTitle("No group colour").click()
         await save.click()
         await savedIs("saves: 3, saved: #59168b, group none")
+
+        // Custom with nothing typed is no colour, so it refuses the submit too.
+        await groupColour.getByTitle("Pick a custom colour").click()
+        const groupHex = groupColour.getByRole("textbox", { name: "Hex code" })
+        await save.click()
+        await groupHex.and(page.locator(":focus")).waitFor()
+        await groupColour.getByText(message).waitFor()
+        await savedIs("saves: 3, saved: #59168b, group none")
+      },
+    },
+    {
+      name:
+        "ColorField: picking Custom again after the caller changed the value drops the old invalid text",
+      pageId: "ui",
+      run: async (page) => {
+        await openCustom(page)
+        const hex = group(page).getByRole("textbox", { name: "Hex code" })
+        await hex.fill("#59168b")
+        await storedIs(page, "#59168b")
+        await hex.fill("#zzz")
+        // Blur first: the error it shows moves the button, which would make the click miss.
+        await hex.blur()
+        await group(page).getByText("Enter # and 6 characters, such as #59168b.").waitFor()
+        await card(page).getByRole("button", { name: "Reset to Sky" }).click()
+        await storedIs(page, "#0369a1")
+        await hex.waitFor({ state: "detached" })
+        await openCustom(page)
+        const shown = await hex.inputValue()
+        if (shown !== "#0369a1") throw new Error(`the hex field shows ${shown}, not the colour`)
       },
     },
     {
