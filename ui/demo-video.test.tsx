@@ -142,6 +142,20 @@ describe("DemoVideo", () => {
       expect(video.muted).toBe(true)
     })
 
+    it("leaves the clip unmuted and paused when a pause cancels its play", async () => {
+      const calls: boolean[] = []
+      const video = {
+        muted: false,
+        play() {
+          calls.push(this.muted)
+          return Promise.reject(new DOMException("", "AbortError"))
+        },
+      }
+      await playClip(video)
+      expect(calls).toEqual([false])
+      expect(video.muted).toBe(false)
+    })
+
     it("settles without throwing when even the muted play is refused", async () => {
       const video = {
         muted: false,
