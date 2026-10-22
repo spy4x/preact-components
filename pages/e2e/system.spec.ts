@@ -403,6 +403,29 @@ function shellFormItems(page: Page): Promise<string> {
 
 export const specs: readonly Spec[] = [
   {
+    name: "AuthForm: the login starts as defaultLogin, onLoginInput reports each value typed " +
+      "into the login, and typing the password reports nothing",
+    pageId: "system",
+    run: async (page) => {
+      const demo = page.locator(`[data-e2e="auth-form-login-input-demo"]`)
+      const login = demo.locator(`[data-e2e="auth-form-login"]`)
+      const value = demo.locator(`[data-e2e="auth-form-login-input-value"]`)
+      const reports = demo.locator(`[data-e2e="auth-form-login-input-reports"]`)
+      await login.scrollIntoViewIfNeeded()
+      if (await login.inputValue() !== "ana@example.com") {
+        throw new Error(`the login starts as "${await login.inputValue()}"`)
+      }
+      await login.fill("")
+      await login.pressSequentially("bo@x.io")
+      await value.filter({ hasText: /^bo@x\.io$/ }).waitFor()
+      await reports.filter({ hasText: /^8$/ }).waitFor()
+      await demo.locator(`[data-e2e="auth-form-password"]`).pressSequentially("hunter2")
+      await demo.locator(`[data-e2e="auth-form-password"]`).blur()
+      const after = `${await value.textContent()} ${await reports.textContent()}`
+      if (after !== "bo@x.io 8") throw new Error(`after typing the password: ${after}`)
+    },
+  },
+  {
     name: "Shell: after hydration its form items are menu items, and only the focused one is in " +
       "the tab order, the roving tab stop of Dropdown (#535, #967)",
     pageId: "system",

@@ -245,6 +245,18 @@ export interface AuthFormProps {
    */
   passkeyAutofill?: boolean
   /**
+   * The login field's starting value, so a page that sends a person back to the form can hand
+   * their address back. The field stays uncontrolled: typing replaces it as usual.
+   */
+  defaultLogin?: string
+  /**
+   * Called on every input of the login field with its value as typed, so the page can offer
+   * something that needs the address before the form is submitted, such as "Email me a sign-in
+   * link". Only the login is reported, never the password: the login is not a secret, and the
+   * password still leaves only through `FormData` on submit.
+   */
+  onLoginInput?: (login: string) => void
+  /**
    * The variant of the credentials step's submit button. Defaults to `"primary"`. Pass
    * `"secondary"` when the page already has its one primary action outside the form, such as a
    * "Try it now" button above a sign-up form. The one-time-code step's submit stays primary: it is
@@ -293,6 +305,8 @@ export function AuthForm(
     names,
     action,
     passkeyAutofill = false,
+    defaultLogin,
+    onLoginInput,
     submitVariant = "primary",
     footer,
     class: className,
@@ -385,6 +399,9 @@ export function AuthForm(
                 autocomplete={passkeyAutofill && mode === "sign-in"
                   ? "username webauthn"
                   : "username"}
+                defaultValue={defaultLogin}
+                onInput={onLoginInput &&
+                  ((event) => onLoginInput(event.currentTarget.value))}
                 required
                 data-e2e="auth-form-login"
               />
