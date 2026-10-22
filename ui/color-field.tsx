@@ -154,9 +154,11 @@ export function ColorField(
   const showHexError = useSignal(false)
   const hexInput = useRef<HTMLInputElement>(null)
   const hexError = labels.hexError ?? "Enter # and 6 characters, such as #59168b."
-  // Before the next event, so a submit right after typing meets the field's own message.
+  // Read here, not only inside Field's render callback, so every keystroke re-renders ColorField and
+  // the layout effect gives the input the field's own message before the next event (a submit).
+  const draftText = draft.value
   useLayoutEffect(() => {
-    hexInput.current?.setCustomValidity(draft.value === null ? "" : hexError)
+    hexInput.current?.setCustomValidity(draftText === null ? "" : hexError)
   })
 
   const color = isHexColor(value) ? value.toLowerCase() : null
@@ -182,6 +184,8 @@ export function ColorField(
   const choose = (next: string) => {
     if (next === CUSTOM) {
       customFor.value = color
+      draft.value = null
+      showHexError.value = false
       return
     }
     customFor.value = undefined
@@ -298,7 +302,7 @@ export function ColorField(
                 id={wiring.id}
                 aria-describedby={wiring["aria-describedby"]}
                 aria-invalid={showHexError.value || undefined}
-                value={draft.value ?? color ?? ""}
+                value={draftText ?? color ?? ""}
                 placeholder={labels.hexPlaceholder ?? "#59168b"}
                 maxLength={7}
                 required
