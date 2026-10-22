@@ -1,5 +1,4 @@
 import { join } from "@spy4x/preact-cn/join"
-import { IconPlaySolid } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
@@ -9,6 +8,7 @@ import {
   playClip,
   playOneAtATime,
 } from "./demo-video-clip.tsx"
+import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 
 export type { DemoVideoSource }
 
@@ -74,15 +74,6 @@ export interface DemoVideoProps extends
 /** The box both the poster and the clip fill, so the swap moves nothing. */
 const frameClass = "relative block w-full overflow-hidden"
 
-/** The poster link: the whole frame is the target; its focus ring is on the overlay. */
-const linkClass = join(
-  frameClass,
-  "group cursor-pointer focus-visible:outline-hidden",
-)
-
-/** The poster fills the frame; the clip itself is `object-contain` (see `DemoVideoClip`). */
-const posterClass = "block h-full w-full object-cover"
-
 /** The message that takes the clip's place when no source can play. */
 const failedClass =
   "flex h-full w-full flex-col items-center justify-center gap-2 bg-canvas p-4 text-center text-sm text-foreground"
@@ -95,17 +86,6 @@ type Phase =
   | { kind: "poster" }
   | { kind: "playing"; loop: boolean }
   | { kind: "failed"; hadFocus: boolean }
-
-/**
- * The layer over the poster: it centres the play mark and carries the focus ring, which the link
- * itself would paint under the image.
- */
-const overlayClass =
-  "pointer-events-none absolute inset-0 flex items-center justify-center group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-focus"
-
-/** The play mark: a round dark disc with a white triangle, a little larger under the pointer. */
-const discClass =
-  "flex size-16 items-center justify-center rounded-full bg-scrim text-scrim-foreground shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-(--color-scrim-foreground) motion-safe:transition-transform motion-safe:group-hover:scale-110 motion-safe:group-focus-visible:scale-110"
 
 /** Whether the reader asks for reduced motion. Read in a handler, so never on the server. */
 function prefersReducedMotion(): boolean {
@@ -230,7 +210,7 @@ export function DemoVideo(
       {...rest}
       href={first.src}
       aria-label={`${playLabel}: ${title}`}
-      class={join(linkClass, className)}
+      class={join(playLinkClass, className)}
       style={style}
       onClick={play}
       onKeyUp={() => {
@@ -258,14 +238,7 @@ export function DemoVideo(
         decoding={eager ? undefined : "async"}
         class={posterClass}
       />
-      <span
-        aria-hidden="true"
-        class={overlayClass}
-      >
-        <span class={discClass}>
-          <IconPlaySolid class="size-8 translate-x-px" />
-        </span>
-      </span>
+      <PlayMark />
     </a>
   )
 }
