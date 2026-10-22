@@ -62,7 +62,6 @@ async function settingsAxeClean(page: Page): Promise<string> {
   await view.root.scrollIntoViewIfNeeded()
   const wide = await expectAxeClean(page, DEMO)
   await page.setViewportSize({ width: 390, height: 844 })
-  await view.back.click()
   await view.item("Account").waitFor({ state: "visible" })
   const phone = await expectAxeClean(page, DEMO)
   return `1440 px: ${wide}; 390 px list: ${phone}`
@@ -118,7 +117,8 @@ export const specs: readonly Spec[] = [
       await page.setViewportSize({ width: 390, height: 844 })
       const view = settings(page)
       await view.root.scrollIntoViewIfNeeded()
-      // The demo opens on Account, so the phone shows that section and no list.
+      // The demo opens on the list's address, so the phone shows the list; open Account first.
+      await view.item("Account").click()
       await view.back.waitFor({ state: "visible" })
       if (await view.nav.isVisible()) throw new Error("the list shows beside an open section")
       await view.back.click()
@@ -134,6 +134,33 @@ export const specs: readonly Spec[] = [
       await expectFocused(view.heading, "the section heading")
       if (await view.nav.isVisible()) throw new Error("the list still shows after choosing")
       return `rows ${row.height} px; back focused Account; choosing focused the heading`
+    },
+  },
+  {
+    name: "SettingsLayout with defaultSection on the list's address: 1440 px shows Account's " +
+      "heading and current look with no aria-current, 390 px shows only the list",
+    pageId: "system",
+    run: async (page) => {
+      // Reduced motion turns the items' colour transition off, so a resize repaints at once.
+      await page.emulateMedia({ reducedMotion: "reduce" })
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const view = settings(page)
+      await view.root.scrollIntoViewIfNeeded()
+      await view.heading.filter({ hasText: "Account" }).waitFor({ state: "visible" })
+      const account = view.item("Account")
+      const tint = (locator: Locator) =>
+        locator.evaluate((element) => getComputedStyle(element).backgroundColor)
+      const [current, plain] = await Promise.all([tint(account), tint(view.item("Appearance"))])
+      if (current === plain) throw new Error(`Account is not drawn current: ${current}`)
+      if (await view.root.locator("[aria-current]").count() !== 0) {
+        throw new Error("an item carries aria-current on the list's address")
+      }
+      await page.setViewportSize({ width: 390, height: 844 })
+      await account.waitFor({ state: "visible" })
+      if (await view.section.isVisible()) throw new Error("at 390 px the section shows")
+      const phone = await tint(account)
+      if (phone !== plain) throw new Error(`at 390 px Account is tinted: ${phone}`)
+      return `1440 px: heading shown, Account ${current}; 390 px: list only, Account ${phone}`
     },
   },
   {
