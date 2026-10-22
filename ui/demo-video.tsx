@@ -3,7 +3,12 @@ import { IconPlaySolid } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
-import { DemoVideoClip, type DemoVideoSource, playClip } from "./demo-video-clip.tsx"
+import {
+  DemoVideoClip,
+  type DemoVideoSource,
+  playClip,
+  playOneAtATime,
+} from "./demo-video-clip.tsx"
 
 export type { DemoVideoSource }
 
@@ -119,7 +124,9 @@ function prefersReducedMotion(): boolean {
  * browser still refuses sound, it plays muted. The video is `object-contain`, so in full screen on
  * a screen of another aspect the whole frame shows, with dark bars. No `<video>` element exists
  * before the press, so the browser fetches no video bytes. Under `prefers-reduced-motion: reduce`
- * the clip still plays, since the reader asked for it, but `loop` is ignored. Any other attribute
+ * the clip still plays, since the reader asked for it, but `loop` is ignored. One clip plays at a
+ * time: when one starts, by the press or its own controls, every other `DemoVideo` on the page
+ * pauses where it is, so two soundtracks never overlap. Any other attribute
  * goes onto the play link, so `data-*` analytics attributes count the press.
  *
  * When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its
@@ -154,6 +161,12 @@ export function DemoVideo(
   // The key that pressed the link, until it is released. Focus waits for the release: the key's
   // own keyup or keypress on a focused `<video controls>` toggles playback and pauses the clip.
   const pressingKey = useRef<string | null>(null)
+
+  // One clip at a time: when this clip starts, every other DemoVideo on the page pauses.
+  useEffect(() => {
+    if (current.kind !== "playing" || video.current === null) return
+    return playOneAtATime(video.current)
+  }, [current])
 
   useEffect(() => {
     // Started by the press, not by `autoplay` alone: Chromium pauses a video that `autoplay`

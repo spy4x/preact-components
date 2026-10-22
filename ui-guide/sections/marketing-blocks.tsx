@@ -274,7 +274,7 @@ export const marketingBlockDemos: DemoFragment = {
   },
   DemoVideo: {
     summary:
-      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for a muted, inline video with controls.",
+      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for an inline video with sound and controls, one clip at a time.",
     wide: false,
     props: [
       {
@@ -318,7 +318,7 @@ export const marketingBlockDemos: DemoFragment = {
           "Any other attribute, such as `id` or `data-*` for analytics, on the play link.",
       },
     ],
-    snippet: `<WindowFrame variant="browser" title="app.example.com">
+    snippet: `<WindowFrame variant="plain">
   <DemoVideo
     title="Creating an invoice"
     poster={{ src: "/demo.webp", width: 1280, height: 720 }}
@@ -340,8 +340,17 @@ export const marketingBlockDemos: DemoFragment = {
           />
         </WindowFrame>
         <WindowFrame
-          variant="browser"
-          title="app.example.com"
+          variant="plain"
+          caption="A second clip, in the plain frame: starting one pauses the other"
+        >
+          <DemoVideo
+            title="A second test pattern"
+            poster={DEMO_CLIP.poster}
+            sources={DEMO_CLIP.sources}
+          />
+        </WindowFrame>
+        <WindowFrame
+          variant="plain"
           caption="A clip whose file is missing: press it to see the error state"
         >
           <DemoVideo
@@ -590,8 +599,9 @@ export const marketingBlockDemos: DemoFragment = {
       },
       {
         name: "frame",
-        type: `"browser" | "phone"`,
-        description: "The device drawn around the screenshot.",
+        type: `"plain" | "browser" | "phone"`,
+        description:
+          "The frame drawn around the screenshot: `plain` for product screens, `browser` when the address matters.",
       },
       { name: "browserUrl", type: "string", description: "The address in the browser's bar." },
       {
@@ -655,13 +665,14 @@ export const marketingBlockDemos: DemoFragment = {
   },
   WindowFrame: {
     summary:
-      "A browser window, a terminal or a phone drawn around a screenshot or a snippet, with an optional caption.",
+      "A plain frame, a browser window, a terminal or a phone drawn around a screenshot or a snippet, with an optional caption.",
     wide: true,
     props: [
       {
         name: "variant",
-        type: `"browser" | "terminal" | "phone"`,
-        description: "The device drawn around the content; the terminal is dark in both themes.",
+        type: `"plain" | "browser" | "terminal" | "phone"`,
+        description:
+          "The frame drawn around the content: `plain` for product media, `browser` when the address matters; the terminal is dark in both themes.",
       },
       {
         name: "title",
@@ -671,8 +682,11 @@ export const marketingBlockDemos: DemoFragment = {
       },
       { name: "caption", type: "ComponentChildren", description: "The figure's caption." },
     ],
-    snippet: `<WindowFrame variant="browser" title="app.example.com" caption="The dashboard">
+    snippet: `<WindowFrame variant="plain" caption="The dashboard">
   <img src="/dashboard.png" alt="The dashboard with this month's totals" />
+</WindowFrame>
+<WindowFrame variant="browser" title="app.example.com/pricing">
+  <img src="/pricing.png" alt="The pricing page" />
 </WindowFrame>
 <WindowFrame variant="terminal" title="Install">
   {"$ docker compose up -d"}
@@ -681,7 +695,12 @@ export const marketingBlockDemos: DemoFragment = {
   <img src="/phone.png" alt="The app on a phone" />
 </WindowFrame>`,
     render: () => (
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <WindowFrame variant="plain" caption="A plain frame, for product media">
+          <div class="flex h-32 items-center justify-center text-sm text-muted">
+            Your screenshot
+          </div>
+        </WindowFrame>
         <WindowFrame variant="browser" title="app.example.com" caption="A browser window">
           <div class="flex h-32 items-center justify-center text-sm text-muted">
             Your screenshot
