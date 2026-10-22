@@ -597,7 +597,7 @@ DateRangePickerTimeProps	type	@spy4x/preact-ui	`AnyDateRangePickerProps` with `w
 DateRangePreset	type	@spy4x/preact-ui	Every preset the maths knows.
 DateRangePresetOption	type	@spy4x/preact-ui	One option of the preset list: the maths identifier plus the caller's label for it.
 DateTextLabels	type	@spy4x/preact-ui	The words `OnDay` shows around a date.
-DateTimeField	component	@spy4x/preact-ui	One date and time, typed in a named time zone that the field shows beside the input: the browser's own `datetime-local` picker, read and written as an instant, so the caller stores `2026-10-25T08:30:00.000Z` while the person types 10:30 in Berlin.
+DateTimeField	component	@spy4x/preact-ui	One date and time, typed in a named time zone that the field shows beside the input: the browser's own `datetime-local` picker, read and written as an instant, so the caller stores `2026-10-25T08:30:00.000Z` while the person types 09:30 in Berlin.
 DateTimeOccurrences	type	@spy4x/preact-ui	The occurrence chosen for each end of a range; an end left out means `"earlier"`.
 DateTimeRange	type	@spy4x/preact-ui	Inclusive wall-clock range, minute precision, in the caller's zone.
 DemoVideo	component	@spy4x/preact-ui	A demo clip that costs nothing until it is asked for: a poster with a play mark, swapped for the clip on press.

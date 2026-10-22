@@ -1489,7 +1489,7 @@ export const fieldDemos = {
       {
         name: "labels",
         type: "{ zone? }",
-        description: `The zone line, "Time zone: Berlin, Europe · GMT+2" by default.`,
+        description: `The zone line, "Time zone: Berlin, Europe · GMT+1" by default.`,
       },
     ],
     snippet: `<DateTimeField

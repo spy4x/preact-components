@@ -6,7 +6,7 @@ import { Input } from "./input.tsx"
 
 /** The words a {@link DateTimeField} shows. */
 export interface DateTimeFieldLabels {
-  /** The line naming the zone the time is read in. Default: `"Time zone: Berlin, Europe · GMT+2"`. */
+  /** The line naming the zone the time is read in. Default: `"Time zone: Berlin, Europe · GMT+1"`. */
   zone: (zone: string) => string
 }
 
@@ -48,7 +48,7 @@ export interface DateTimeFieldProps {
 /**
  * One date and time, typed in a named time zone that the field shows beside the input: the
  * browser's own `datetime-local` picker, read and written as an instant, so the caller stores
- * `2026-10-25T08:30:00.000Z` while the person types 10:30 in Berlin.
+ * `2026-10-25T08:30:00.000Z` while the person types 09:30 in Berlin.
  *
  * The zone line carries the offset at the chosen moment (or now, before one is chosen), so a time
  * past a clock change shows its own offset. A time a clock change skips moves forward by the gap,
