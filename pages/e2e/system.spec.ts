@@ -685,6 +685,82 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "RailShell below md: a text link half under the dock's top edge, or peeking out under " +
+      "the bar's foot, passes axe's target-size, and the bar still ends at the window's foot, " +
+      "with no strip showing past the frame",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const bar = page.locator(`#demo-RailShell [data-e2e="rail-shell-tabbar"]`)
+      // Lift the demo's 600 px box, as the scroll-padding check above does, so the dock sticks to
+      // the window, and add a text link after the page's last line.
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
+        if (!frame) throw new Error("the RailShell demo frame is missing")
+        frame.className = ""
+        document.documentElement.style.scrollBehavior = "auto"
+        const link = document.createElement("a")
+        link.href = "#half-covered"
+        link.textContent = "Half-covered link"
+        link.setAttribute("data-e2e", "rail-shell-demo-half-covered")
+        // Page under the link, so the dock can stick over it instead of sitting after it.
+        const rest = document.createElement("div")
+        rest.style.height = "400px"
+        document.querySelector(`[data-e2e="rail-shell-demo-last-line"]`)?.after(link, rest)
+      })
+      const link = page.locator(`[data-e2e="rail-shell-demo-half-covered"]`)
+      const seen: string[] = []
+      // "top": the link's top 10 px above the fade band's, so the band covers its lower half.
+      // "foot": its top 8 px above the window's foot, so it peeks out under the bar's last pixels.
+      for (const where of ["top", "foot"] as const) {
+        await link.evaluate((element, where) => {
+          const band = document.querySelector(`#demo-RailShell [data-e2e="rail-shell-dock-fade"]`)
+          if (!band) throw new Error("the RailShell dock has no fade band")
+          const top = element.getBoundingClientRect().top + globalThis.scrollY
+          // Bring the link to mid-window first, so the dock is stuck where it is measured.
+          globalThis.scrollTo({ top: top - globalThis.innerHeight / 2, behavior: "instant" })
+          const bandTop = band.getBoundingClientRect().top
+          const wanted = where === "top" ? bandTop - 10 : globalThis.innerHeight - 8
+          globalThis.scrollTo({ top: top - wanted, behavior: "instant" })
+        }, where)
+        const [box, barBox] = await Promise.all([link.boundingBox(), bar.boundingBox()])
+        if (!box || !barBox) throw new Error("the link or the tab bar is not drawn")
+        if (Math.abs(barBox.y + barBox.height - 844) > 1) {
+          throw new Error(
+            `with the link at the ${where}, the bar ends at y ${barBox.y + barBox.height}`,
+          )
+        }
+        const { violations, passes } = await new AxeBuilder({ page })
+          .include(`[data-e2e="rail-shell-demo-half-covered"]`)
+          .withRules(["target-size"])
+          .analyze()
+        if (violations.length > 0) {
+          const messages = violations.flatMap((rule) =>
+            rule.nodes.map((node) => node.failureSummary ?? rule.help)
+          )
+          throw new Error(`link at the ${where}, y ${box.y}: ${messages.join("; ")}`)
+        }
+        if (!passes.some((rule) => rule.id === "target-size")) {
+          throw new Error(`axe did not measure the link's target size at the ${where}`)
+        }
+        seen.push(`${where}: link at y ${box.y}, bar ${barBox.y}–${barBox.y + barBox.height}`)
+      }
+      // Past the frame's foot the dock sits in its place in the flow, and the frame clips the
+      // strip that hangs below the bar, so none of it shows under the frame.
+      const stripShows = await page.evaluate(() => {
+        const dockElement = document.querySelector(`#demo-RailShell [data-e2e="rail-shell-dock"]`)
+        const frame = dockElement?.parentElement
+        if (!frame) throw new Error("the RailShell dock has no frame")
+        const foot = frame.getBoundingClientRect().bottom + globalThis.scrollY
+        globalThis.scrollTo({ top: foot - globalThis.innerHeight + 200, behavior: "instant" })
+        const below = document.elementFromPoint(195, frame.getBoundingClientRect().bottom + 12)
+        return below?.closest(`[data-e2e="rail-shell-dock-foot"]`) != null
+      })
+      if (stripShows) throw new Error("the dock's foot strip shows below the frame")
+      return seen.join("; ")
+    },
+  },
+  {
     name: "RailShell at 1440 px: the 72 px column with sidebarTop above the items, " +
       "sidebarBottom at its foot, and an item's counter spoken in its name",
     pageId: "system",
