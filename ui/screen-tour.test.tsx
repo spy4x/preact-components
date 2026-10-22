@@ -64,7 +64,19 @@ describe("ScreenTour", () => {
       expect(panel).toContain("[@media(scripting:enabled)]:invisible")
     }
     // The texts share one cell where scripts run, and stack in a column otherwise.
-    expect(html).toMatch(/<div class="flex flex-col gap-6 \[@media\(scripting:enabled\)\]:grid">/)
+    expect(html).toMatch(
+      /<div class="relative flex flex-col gap-6 \[@media\(scripting:enabled\)\]:grid">/,
+    )
+  })
+
+  it("takes a panel that is not selected out of the flow where scripts run, so a step without text leaves no gap", () => {
+    const panels = render(<ScreenTour steps={steps} frame="browser" />)
+      .match(/<div role="tabpanel"[^>]*>/g) ?? []
+    expect(panels[0]).not.toContain("[@media(scripting:enabled)]:absolute")
+    for (const panel of panels.slice(1)) {
+      expect(panel).toContain("[@media(scripting:enabled)]:absolute")
+      expect(panel).not.toMatch(/[\s"]absolute\b/)
+    }
   })
 
   it("pairs each tab with its panel through derived ids", () => {
@@ -116,11 +128,26 @@ describe("ScreenTour", () => {
   })
 
   it("shows each group's label once, before the first step of its run, hidden from assistive tech", () => {
-    const html = render(<ScreenTour steps={steps} frame="browser" />)
+    const html = render(<ScreenTour steps={steps} frame="browser" />).match(
+      /<div role="tablist"(?:(?!<\/div><div class).)*/,
+    )![0]
     expect(html.match(/aria-hidden="true"[^>]*>Monitor</g)?.length).toBe(1)
     expect(html.match(/aria-hidden="true"[^>]*>Access</g)?.length).toBe(1)
     expect(html.indexOf(">Access<")).toBeLessThan(html.indexOf('id="tour-users-tab"'))
     expect(html.indexOf(">Access<")).toBeGreaterThan(html.indexOf('id="tour-alerts-tab"'))
+  })
+
+  it("shows the selected step's group above the frame below 1024 px, hidden from assistive tech", () => {
+    const html = render(<ScreenTour steps={steps} frame="browser" />)
+    expect(html).toMatch(
+      /<p aria-hidden="true" class="[^"]*\blg:hidden\b[^"]*" data-screen-tour-group>Monitor<\/p>/,
+    )
+    expect(html.indexOf("data-screen-tour-group")).toBeGreaterThan(html.indexOf('role="tablist"'))
+    expect(html.indexOf("data-screen-tour-group")).toBeLessThan(html.indexOf("<img"))
+    const ungrouped = steps.map(({ group: _, ...step }) => step)
+    expect(render(<ScreenTour steps={ungrouped} frame="browser" />)).not.toContain(
+      "data-screen-tour-group",
+    )
   })
 
   it("names each tab's group as its description", () => {
@@ -155,11 +182,19 @@ describe("ScreenTour", () => {
     expect(html).not.toContain("app.example.com")
   })
 
-  it("keeps the phone 16 rem wide from 1024 px, and leaves the browser frame full width", () => {
+  it("keeps the phone and its caption in one 16 rem column from 1024 px, and leaves the browser frame full width", () => {
     expect(render(<ScreenTour steps={steps} frame="phone" />)).toContain(
-      '<div class="w-full lg:mx-auto lg:max-w-64">',
+      '<div class="flex min-w-0 flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-64">',
     )
     expect(render(<ScreenTour steps={steps} frame="browser" />)).not.toContain("lg:max-w-64")
+  })
+
+  it("appends viewFullSizeClass to View full size, after its own classes", () => {
+    const link = render(
+      <ScreenTour steps={steps} frame="browser" viewFullSizeClass="rounded-full" />,
+    ).match(/<a href[^>]*>/)![0]
+    expect(link).toMatch(/class="[^"]*\bsm:min-h-9 rounded-full"/)
+    expect(link).toContain("data-screen-tour-full-size")
   })
 
   it("appends the caller's class to the root", () => {

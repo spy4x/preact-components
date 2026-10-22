@@ -157,8 +157,7 @@ function ScreenTourDemo() {
     <div class="flex flex-col gap-12">
       <ScreenTour
         steps={TOUR_PAGES}
-        frame="browser"
-        browserUrl="app.example.com"
+        frame="plain"
         label="Pages of the app"
         onSelect={(id) => {
           picked.value = { id, calls: (picked.value?.calls ?? 0) + 1 }
@@ -332,7 +331,7 @@ export const marketingBlockDemos: DemoFragment = {
 </WindowFrame>`,
     render: () => (
       <div class="grid gap-6">
-        <WindowFrame variant="browser" title="app.example.com" caption="A four-second test clip">
+        <WindowFrame variant="plain" caption="A four-second test clip">
           <DemoVideo
             title="A test pattern"
             poster={DEMO_CLIP.poster}
@@ -342,7 +341,7 @@ export const marketingBlockDemos: DemoFragment = {
         </WindowFrame>
         <WindowFrame
           variant="plain"
-          caption="A second clip, in the plain frame: starting one pauses the other"
+          caption="A second clip: starting one pauses the other"
         >
           <DemoVideo
             title="A second test pattern"
@@ -682,6 +681,12 @@ export const marketingBlockDemos: DemoFragment = {
         description: "The words of the link that opens the screenshot in the lightbox.",
       },
       {
+        name: "viewFullSizeClass",
+        type: "string",
+        description:
+          "Extra utilities for View full size, appended after its secondary-button classes, for an app's own button look.",
+      },
+      {
         name: "closeLabel",
         type: "string",
         default: `"Close"`,
@@ -690,8 +695,7 @@ export const marketingBlockDemos: DemoFragment = {
       },
     ],
     snippet: `<ScreenTour
-  frame="browser"
-  browserUrl="app.example.com"
+  frame="plain"
   onSelect={(id) => track("tour", { step: id })}
   steps={[
     {
@@ -709,7 +713,7 @@ export const marketingBlockDemos: DemoFragment = {
     },
   ]}
 />
-<ScreenTour frame="phone" numbered steps={steps} />`,
+<ScreenTour frame="phone" numbered steps={steps} viewFullSizeClass="rounded-full" />`,
     render: () => <ScreenTourDemo />,
   },
   WindowFrame: {

@@ -394,7 +394,52 @@ export const specs: readonly Spec[] = [
   ),
   drawerNavigationFocusSpec(),
   cardRowHeightsSpec(),
+  headerNameSpec(),
 ]
+
+/**
+ * The header shows the package's whole name at every width the issue measured (#990): no ellipsis,
+ * no letter under the controls beside it, and every line inside the bar. A name that does not fit
+ * on one line wraps at its hyphen instead of being cut short. The author link, where it shows, stays
+ * on one line.
+ */
+function headerNameSpec(): Spec {
+  return {
+    name: "Guide shell: the header shows the full package name at 390, 640, 900, 1000 and 1280 px",
+    pageId: "overview",
+    run: async (page) => {
+      for (const width of [390, 640, 900, 1000, 1280]) {
+        await page.setViewportSize({ width, height: 800 })
+        const problem = await page.locator(`[data-e2e="ui-guide-title"]`).evaluate((title) => {
+          const name = title.firstElementChild as HTMLElement
+          const header = title.closest("header")!.getBoundingClientRect()
+          const controls = title.nextElementSibling!.getBoundingClientRect()
+          const range = document.createRange()
+          range.selectNodeContents(name)
+          const lines = [...range.getClientRects()]
+          if (name.scrollWidth > name.clientWidth + 0.5) return "the name is cut short"
+          if (getComputedStyle(name).textOverflow === "ellipsis") {
+            return "the name ends in an ellipsis"
+          }
+          const right = Math.max(...lines.map((line) => line.right))
+          if (right > controls.left) {
+            return `the name runs ${right - controls.left}px under the controls`
+          }
+          const outside = lines.find((line) => line.top < header.top || line.bottom > header.bottom)
+          if (outside) return `a line of the name leaves the bar: ${JSON.stringify(outside)}`
+          const author = document.querySelector(`[data-e2e="ui-guide-author"]`) as
+            | HTMLElement
+            | null
+          if (author && author.offsetParent !== null && author.getClientRects().length > 1) {
+            return "the author link wraps"
+          }
+          return null
+        })
+        if (problem) throw new Error(`at ${width}px ${problem}`)
+      }
+    },
+  }
+}
 
 /**
  * A page picked in the phone navigation drawer takes focus to the content column, as the skip link

@@ -3,6 +3,7 @@ import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DemoVideoPoster } from "./demo-video.tsx"
+import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 
 /**
@@ -120,7 +121,10 @@ export function YouTubeVideo(
       aria-label={`${playLabel}: ${title}`}
       class={join(playLinkClass, className)}
       style={style}
-      onClick={play}
+      onClick={(event) => {
+        // Ctrl, Cmd, Shift or Alt, or another button, opens the link the browser's way.
+        if (isPlainClick(event)) play(event)
+      }}
       onKeyDown={(event) => {
         // A link acts on Enter alone; Space is the button's key, and this link acts as one. Its
         // keydown would scroll the page, so it is stopped here and acts on release.

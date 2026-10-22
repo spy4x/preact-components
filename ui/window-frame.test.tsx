@@ -44,7 +44,15 @@ describe("WindowFrame", () => {
   it("hides the phone's notch from assistive tech and keeps a fixed aspect", () => {
     const html = render(<WindowFrame variant="phone">x</WindowFrame>)
     expect(html).toContain("aspect-[9/19]")
-    expect(html).toMatch(/<span aria-hidden="true" class="[^"]*rounded-full bg-foreground"/)
+    expect(html).toMatch(/<span aria-hidden="true" class="[^"]*rounded-full bg-track"/)
+  })
+
+  it("puts the phone's notch in a deeper top bezel, before the screen, not inside it", () => {
+    const html = render(<WindowFrame variant="phone">x</WindowFrame>)
+    // The notch is the bezel's child, before the screen, not inside the screen with the content.
+    expect(html).toMatch(
+      /class="relative [^"]*\bpt-8\b[^"]*"><span aria-hidden="true"[^>]*><\/span><div class="[^"]*overflow-hidden[^"]*">x<\/div>/,
+    )
   })
 
   it("draws the plain frame as the browser's rounded border and surface with no bar", () => {

@@ -1320,6 +1320,12 @@ function screenTourSpecs(): Spec[] {
                 .length,
               stack: Math.round(panels[0].parentElement!.getBoundingClientRect().height),
               tallest: Math.round(Math.max(...panels.map((p) => p.getBoundingClientRect().height))),
+              // The first step is the selected one in the server markup. Its own lines, not its
+              // box: a grid item stretches to the cell, which the tallest panel would set.
+              selected: Math.round(
+                panels[0].lastElementChild!.getBoundingClientRect().bottom -
+                  panels[0].getBoundingClientRect().top,
+              ),
             }))
           } finally {
             await context.close()
@@ -1327,8 +1333,12 @@ function screenTourSpecs(): Spec[] {
         }
         const scripted = await read(true)
         const bare = await read(false)
-        if (scripted.visible !== 1 || scripted.stack !== scripted.tallest) {
-          throw new Error(`with scripts: ${JSON.stringify(scripted)}, expected one panel stacked`)
+        // Where scripts run, the stack is as tall as the selected step's text alone, so a short
+        // step leaves no gap under it (#991).
+        if (scripted.visible !== 1 || scripted.stack !== scripted.selected) {
+          throw new Error(
+            `with scripts: ${JSON.stringify(scripted)}, expected one panel, the stack its height`,
+          )
         }
         if (bare.visible !== 3 || bare.stack <= bare.tallest) {
           throw new Error(`without scripts: ${JSON.stringify(bare)}, expected three in a column`)
@@ -1393,6 +1403,106 @@ function screenTourSpecs(): Spec[] {
         return `transition-duration ${duration}`
       },
     })),
+    {
+      name: "ScreenTour at 390 px: the line above the frame names the selected step's group and " +
+        "follows the selection; from 1024 px the column's labels take over and it hides",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const dashboard = screenTourStep(page, "Dashboard")
+        const tour = dashboard.tab.locator("xpath=../..")
+        const line = tour.locator("[data-screen-tour-group]")
+        await line.scrollIntoViewIfNeeded()
+        await line.filter({ hasText: /^Monitor$/ }).waitFor({ state: "visible" })
+        await screenTourStep(page, "Schedules").tab.click()
+        await line.filter({ hasText: /^Automate$/ }).waitFor({ state: "visible" })
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await line.waitFor({ state: "hidden" })
+      },
+    },
+    ...([390, 1440] as const).map((width): Spec => ({
+      name: `ScreenTour at ${width} px: a step without text leaves no more room above View full ` +
+        "size than a step with text does",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width, height: 900 })
+        const tour = screenTourStep(page, "Dashboard").tab.locator("xpath=../..")
+        const button = tour.locator("[data-screen-tour-full-size]")
+        await button.scrollIntoViewIfNeeded()
+        /**
+         * The space between the selected step's last line and View full size, in px: its lines, not
+         * its box, which a grid cell stretches to the tallest panel.
+         */
+        const space = () =>
+          button.evaluate((link) => {
+            const panel = link.parentElement!.querySelector(
+              `[role="tabpanel"]:not([tabindex="-1"])`,
+            )!
+            return link.getBoundingClientRect().top -
+              panel.lastElementChild!.getBoundingClientRect().bottom
+          })
+        const withText = await space()
+        await screenTourStep(page, "Users").tab.click()
+        await tour.locator(`[role="tabpanel"][id="guide-tour-users-panel"]:not([tabindex="-1"])`)
+          .waitFor()
+        const withoutText = await space()
+        if (Math.abs(withoutText - withText) > 0.5) {
+          throw new Error(`${withoutText}px above the button without text, ${withText}px with`)
+        }
+      },
+    })),
+    {
+      name: "ScreenTour in the phone frame: nothing of the notch covers the screenshot's top 40 px",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const image = page.locator("#demo-ScreenTour").getByRole("tablist", {
+          name: "Steps to a clip",
+        }).locator("xpath=..").locator("img[data-screen-tour-image]").first()
+        await image.scrollIntoViewIfNeeded()
+        const covered = await image.evaluate((element) => {
+          // Centred, so the guide's sticky header covers none of the image's top.
+          element.scrollIntoView({ block: "center" })
+          const box = element.getBoundingClientRect()
+          const misses: string[] = []
+          for (const y of [1, 10, 20, 30, 39]) {
+            for (const x of [0.2, 0.5, 0.8]) {
+              const hit = document.elementFromPoint(box.left + box.width * x, box.top + y)
+              if (hit !== element) misses.push(`${y}px at ${x}: ${hit?.outerHTML.slice(0, 60)}`)
+            }
+          }
+          return misses
+        })
+        if (covered.length > 0) throw new Error(`covered: ${covered.join("; ")}`)
+      },
+    },
+    {
+      name: "ScreenTour in the phone frame at 1440 px: the caption and View full size start at " +
+        "the phone's left edge",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const tour = page.locator("#demo-ScreenTour").getByRole("tablist", {
+          name: "Steps to a clip",
+        }).locator("xpath=..")
+        const image = tour.locator("img[data-screen-tour-image]").first()
+        await image.scrollIntoViewIfNeeded()
+        const edges = await image.evaluate((element) => {
+          const phone = element.closest(`[class*="aspect-"]`)!.getBoundingClientRect()
+          const root = element.closest(`[class*="lg:grid-cols"]`)!
+          const caption = root.querySelector(`[role="tabpanel"]:not([tabindex="-1"]) p`)!
+          const button = root.querySelector("[data-screen-tour-full-size]")!
+          return {
+            phone: phone.left,
+            caption: caption.getBoundingClientRect().left,
+            button: button.getBoundingClientRect().left,
+          }
+        })
+        if (
+          Math.abs(edges.caption - edges.phone) > 0.5 || Math.abs(edges.button - edges.phone) > 0.5
+        ) throw new Error(`left edges: ${JSON.stringify(edges)}`)
+      },
+    },
     ...(["light", "dark"] as const).map((palette): Spec => ({
       name: `ScreenTour: at 390 px the tabs scroll inside their own row, and axe finds no ` +
         `violation at 390 and 1440 px, ${palette}`,
@@ -2112,6 +2222,34 @@ function tabsAndTableKeyboardSpecs(): Spec[] {
   ]
 }
 
+/**
+ * Ctrl-click and Shift-click on a video's play link open its `href` in a new tab or window, the
+ * browser's way, and leave the card's poster in place (`player` stays absent and the page stays
+ * put); a plain click afterwards still plays in place, which `played` waits for.
+ */
+async function modifiedClicksOpenTheLink(
+  page: Page,
+  link: Locator,
+  player: Locator,
+  href: RegExp,
+  played: () => Promise<unknown>,
+) {
+  const before = page.url()
+  for (const modifier of ["Control", "Shift"] as const) {
+    const [opened] = await Promise.all([
+      page.context().waitForEvent("page"),
+      link.click({ modifiers: [modifier] }),
+    ])
+    await opened.waitForURL(href)
+    await opened.close()
+    if (await player.count() > 0) throw new Error(`${modifier}-click also played in place`)
+    if (page.url() !== before) throw new Error(`${modifier}-click navigated to ${page.url()}`)
+  }
+  await link.click()
+  await played()
+  if (page.url() !== before) throw new Error(`the plain click navigated to ${page.url()}`)
+}
+
 /** The parts of the `DemoVideo` card a spec drives, with its poster scrolled into view and loaded. */
 async function demoVideoCard(page: Page) {
   const card = page.locator("#demo-DemoVideo")
@@ -2384,6 +2522,15 @@ function demoVideoSpecs(): Spec[] {
       },
     },
     {
+      name: "DemoVideo: Ctrl-click and Shift-click open the clip file in a new tab and leave " +
+        "the poster; a plain click still plays in place",
+      pageId: "ui",
+      run: async (page) => {
+        const { link, video, playing } = await demoVideoCard(page)
+        await modifiedClicksOpenTheLink(page, link, video, /\/video-demo\/clip\.webm$/, playing)
+      },
+    },
+    {
       name: "DemoVideo: with JavaScript off, the play link opens the clip file",
       pageId: "ui",
       run: async (page) => {
@@ -2612,6 +2759,26 @@ function youTubeVideoSpecs(): Spec[] {
         const { violations } = await new AxeBuilder({ page }).include("#demo-YouTubeVideo")
           .analyze()
         if (violations.length > 0) throw new Error(violations.map(({ id }) => id).join(", "))
+      },
+    },
+    {
+      name: "YouTubeVideo: Ctrl-click and Shift-click open the watch page in a new tab and " +
+        "leave the poster; a plain click still starts the player in place",
+      pageId: "ui",
+      run: async (page) => {
+        await page.context().route(/^https:\/\/www\.youtube\.com\/watch/, (route) =>
+          route.fulfill({
+            contentType: "text/html",
+            body: "<!doctype html><html lang='en'><title>Watch</title><main><h1>Watch</h1></main>",
+          }))
+        const { link, player } = await youTubeVideoCard(page)
+        await modifiedClicksOpenTheLink(
+          page,
+          link,
+          player,
+          /^https:\/\/www\.youtube\.com\/watch\?v=uaqFYlfOZeE$/,
+          () => focusInPlayer(page),
+        )
       },
     },
     ...(["Enter", " "] as const).map((key): Spec => ({
