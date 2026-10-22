@@ -1,8 +1,8 @@
 /**
  * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript;
- * `DemoVideo` uses it to play its clip in place, and without it the play link opens the clip.
- * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `ScreenTour`, `Steps` and `WindowFrame` are
- * spread into the
+ * `DemoVideo` and `YouTubeVideo` use it to play in place, and without it the play link opens the
+ * clip or the video's YouTube page. `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`,
+ * `ScreenTour`, `Steps`, `WindowFrame` and `YouTubeVideo` are spread into the
  * Display section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
@@ -28,6 +28,7 @@ import {
   Steps,
   ThemePreview,
   WindowFrame,
+  YouTubeVideo,
 } from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
@@ -360,6 +361,54 @@ export const marketingBlockDemos: DemoFragment = {
           />
         </WindowFrame>
       </div>
+    ),
+  },
+  YouTubeVideo: {
+    summary:
+      "A YouTube video that asks YouTube for nothing until it is pressed: the caller's own poster with a play button, swapped for the youtube-nocookie.com player.",
+    wide: false,
+    props: [
+      { name: "videoId", type: "string", description: "The video's YouTube id." },
+      {
+        name: "poster",
+        type: "{ src, srcset?, sizes?, width, height }",
+        description:
+          "The caller's own still, shown before the press; its size keeps the box still.",
+      },
+      {
+        name: "title",
+        type: "string",
+        description: "What the video shows; the link is named `Play video: {title}`.",
+      },
+      {
+        name: "eager",
+        type: "boolean",
+        default: "false",
+        description: "Load the poster at once, at high priority, for a video on the first screen.",
+      },
+      {
+        name: "...rest",
+        type: "anchor attributes",
+        description:
+          "Any other attribute, such as `id` or `data-*` for analytics, on the play link.",
+      },
+    ],
+    snippet: `<WindowFrame variant="plain">
+  <YouTubeVideo
+    videoId="uaqFYlfOZeE"
+    title="Code formatting with Prettier"
+    poster={{ src: "/prettier.webp", width: 1280, height: 720 }}
+    data-umami-event="play-video"
+  />
+</WindowFrame>`,
+    render: () => (
+      <WindowFrame variant="plain" caption="The player loads from YouTube only on press">
+        <YouTubeVideo
+          videoId="uaqFYlfOZeE"
+          title="Code formatting with Prettier"
+          poster={DEMO_CLIP.poster}
+        />
+      </WindowFrame>
     ),
   },
   FaqList: {

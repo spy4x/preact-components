@@ -71,6 +71,7 @@
     "./toggle-switch": "./toggle-switch.tsx",
     "./tooltip": "./tooltip.tsx",
     "./tour": "./tour.tsx",
+    "./youtube-video": "./youtube-video.tsx",
     "./zoomable-images": "./zoomable-images.tsx",
     "./hotkeys": "./hotkeys.ts",
     "./use-succeeded": "./use-succeeded.ts",

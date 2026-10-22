@@ -2535,6 +2535,103 @@ async function axeClean(page: Page, selector: string): Promise<void> {
   }
 }
 
+/**
+ * The `YouTubeVideo` card, with every request to a YouTube host answered by a blank local page, so
+ * the specs need no network and can count what the page asked YouTube for.
+ */
+async function youTubeVideoCard(page: Page) {
+  const youTube: string[] = []
+  await page.route(
+    /^https:\/\/([a-z0-9-]+\.)*(youtube|youtube-nocookie|ytimg|googlevideo)\.com\//,
+    (route) => {
+      youTube.push(route.request().url())
+      return route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><html lang='en'><title>Player</title><main><h1>Player</h1></main>",
+      })
+    },
+  )
+  const card = page.locator("#demo-YouTubeVideo")
+  const link = card.getByRole("link", {
+    name: "Play video: Code formatting with Prettier",
+    exact: true,
+  })
+  await link.scrollIntoViewIfNeeded()
+  return { card, link, youTube, player: card.locator("iframe") }
+}
+
+/**
+ * Waits until the card's player holds focus. Read from `document.activeElement`: an `<iframe>` that
+ * holds focus does not always match `:focus` in a headless page.
+ */
+async function focusInPlayer(page: Page) {
+  await page.waitForFunction(() =>
+    document.activeElement !== null &&
+    document.activeElement === document.querySelector("#demo-YouTubeVideo iframe")
+  )
+}
+
+/**
+ * The `YouTubeVideo` card: nothing goes to YouTube before the press; a click, Enter or Space puts
+ * the nocookie player in the poster's box with focus inside it, and the page does not scroll.
+ */
+function youTubeVideoSpecs(): Spec[] {
+  const embed = "https://www.youtube-nocookie.com/embed/uaqFYlfOZeE?autoplay=1"
+  return [
+    {
+      name: "YouTubeVideo: no request to YouTube and no iframe before the press; a click puts " +
+        "the titled nocookie player in the poster's box and moves focus into it",
+      pageId: "ui",
+      run: async (page) => {
+        const { card, link, youTube, player } = await youTubeVideoCard(page)
+        if (await card.locator("iframe").count() > 0) throw new Error("an iframe exists early")
+        if (youTube.length > 0) throw new Error(`requested early: ${youTube.join(", ")}`)
+        const href = await link.getAttribute("href")
+        if (href !== "https://www.youtube.com/watch?v=uaqFYlfOZeE") {
+          throw new Error(`the link goes to ${href}`)
+        }
+        const before = await link.boundingBox()
+        await link.click()
+        await focusInPlayer(page)
+        const src = await player.getAttribute("src")
+        if (src !== embed) throw new Error(`the player loads ${src}`)
+        const title = await player.getAttribute("title")
+        if (title !== "Code formatting with Prettier") {
+          throw new Error(`the player is titled ${title}`)
+        }
+        if (!page.url().includes("#/")) throw new Error(`the click navigated to ${page.url()}`)
+        const after = await player.boundingBox()
+        if (
+          before === null || after === null ||
+          Math.abs(before.width - after.width) > 0.5 || Math.abs(before.height - after.height) > 0.5
+        ) {
+          throw new Error(
+            `the box moved from ${JSON.stringify(before)} to ${JSON.stringify(after)}`,
+          )
+        }
+        const { violations } = await new AxeBuilder({ page }).include("#demo-YouTubeVideo")
+          .analyze()
+        if (violations.length > 0) throw new Error(violations.map(({ id }) => id).join(", "))
+      },
+    },
+    ...(["Enter", " "] as const).map((key): Spec => ({
+      name: `YouTubeVideo: ${key === " " ? "Space" : "Enter"} on the focused play link starts ` +
+        "the player, with focus inside it and the page not scrolled",
+      pageId: "ui",
+      run: async (page) => {
+        const { link, player } = await youTubeVideoCard(page)
+        await link.focus()
+        const scrolled = () => page.evaluate(() => globalThis.scrollY)
+        const before = await scrolled()
+        await page.keyboard.press(key)
+        await focusInPlayer(page)
+        const after = await scrolled()
+        if (Math.abs(after - before) > 1) throw new Error(`the page scrolled ${after - before}px`)
+      },
+    })),
+  ]
+}
+
 /** FilterBar: each control's onChange, the menus' keys, the chips' focus, the phone layout, axe. */
 function filterBarSpecs(): Spec[] {
   const axeSpec = (colorScheme: "light" | "dark"): Spec => ({
@@ -2939,6 +3036,7 @@ export const specs: readonly Spec[] = [
   ...dashboardSpecs,
   ...explorableSpecs(),
   ...demoVideoSpecs(),
+  ...youTubeVideoSpecs(),
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),
   ...escapeInsideModalSpecs(),

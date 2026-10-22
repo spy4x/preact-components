@@ -4796,11 +4796,11 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twenty-five exports.** Most components pass a caller's
+- **A `class` is merged, except on twenty-six exports.** Most components pass a caller's
   `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
   of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
-  `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `ScreenTour`, `PricingTable`,
-  `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
+  `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `YouTubeVideo`, `ScreenTour`,
+  `PricingTable`, `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
   `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
   `Slider` (#958) use `join`
   instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
@@ -4940,6 +4940,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `WidgetCard`          | `widget-card`          | `title`, `status` (`loading`/`error`/`empty`/`ready`), `size?`, `loadingLabel`, `caption?`, `menu?`, `href?`, `errorMessage?`, `onRetry?`, `emptyLabel?`, `skeletonDelay?`                                                                                                                                                                                          |
 | `WidgetStat`          | `widget-card`          | `value`, `valueLabel?`, `lines?`                                                                                                                                                                                                                                                                                                                                    |
 | `WindowFrame`         | `window-frame`         | `variant` (`"plain"`, `"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                 |
+| `YouTubeVideo`        | `youtube-video`        | `videoId`, `poster` (`{ src, srcset?, sizes?, width, height }`, the caller's own file), `title` (names the link "Play video: {title}" and the player), `playLabel?`, `eager?`, `class?`, any other attribute (`id`, `data-*`) on the play link — YouTube's player only after the press                                                                              |
 | `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                                                                                                                                     |
 
 ## Usage
@@ -5656,6 +5657,37 @@ the video.
     { src: "/demo.webm", type: "video/webm" },
     { src: "/demo.mp4", type: "video/mp4" },
   ]}
+/>
+```
+
+## YouTubeVideo
+
+A YouTube video that asks YouTube for nothing until a reader presses it. The server renders the
+caller's own poster `<img>`, with its `width` and `height`, inside a link to the video's watch page
+on youtube.com, and draws the same round play mark as `DemoVideo` over it. Without JavaScript the
+link opens the video on YouTube.
+
+After hydration, a click, Enter or Space on the link stays on the page and swaps the poster for an
+`<iframe>` of `https://www.youtube-nocookie.com/embed/{videoId}?autoplay=1`, titled `title`, in the
+same box: the box keeps the poster's aspect, so nothing below it moves. Focus moves into the player,
+so a keyboard reader can pause it at once. Space acts on its release, as on a button, so the key
+never reaches the player. The poster is the caller's file, so a site can host it itself and needs
+no image origin of YouTube's.
+
+The link is named `"Play video: {title}"` (`playLabel` replaces the first two words). The poster is
+decorative, `alt=""` and `aria-hidden="true"`. The poster is lazy unless `eager` makes it
+`loading="eager"` with `fetchpriority="high"`, for a video on the first screen. `class` is joined,
+not merged. Any other attribute, such as a `data-*` analytics attribute, goes onto the play link.
+
+A page that shows it needs `frame-src https://www.youtube-nocookie.com` in its
+Content-Security-Policy, and a referrer policy that sends at least the origin (the browser default
+does): YouTube's player refuses an embed that sends no referrer.
+
+```tsx
+<YouTubeVideo
+  videoId="uaqFYlfOZeE"
+  title="Code formatting with Prettier"
+  poster={{ src: "/img/prettier-poster.webp", width: 1280, height: 720 }}
 />
 ```
 
