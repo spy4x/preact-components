@@ -56,6 +56,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 
 | Component             | Subpath                | Ports / key props                                                                                                                                                                                                                                                                                                                                                   |
 | --------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AttachmentList`      | `attachment-list`      | `id`, `items` (`{ id, name, size, type?, status, progress?, thumbnailSrc?, src?, detail?, error? }[]`), `onDownload?`, `onRemove?`, `onCancel?`, `onRetry?`, `removingId?`, `focusAfterLast?`, `labels?`, `lightboxLabels?` — a ready image opens in `Lightbox`                                                                                                     |
 | `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                                                                                                                                                                        |
 | `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                                                                                                                                                                      |
 | `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`                                                                                                                                                                                                                                                                         |
@@ -92,7 +93,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                                              |
 | `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                                               |
 | `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                                                 |
-| `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                                                                                                                                              |
+| `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`, `appearance?` (`"button"`: one button, no list), `buttonVariant?`, `busy?`, `busyLabel?`                                                                                                                                                    |
 | `FilterBar`           | `filter-bar`           | `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips                                                                                 |
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                                                  |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                                        |
@@ -1652,6 +1653,66 @@ announced the same way a `maxSize`/`accept` refusal is, rather than silently dro
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
 
+`appearance="button"` draws one `Button` instead of the zone, for a caller that keeps the files
+itself, such as an attachment list that uploads each choice at once or a profile picture's
+"Change". It opens the same chooser and runs the same `classifyFiles` checks, keeps no list, and
+hands each choice to `onFiles` (the accepted files of that choice, only when there are any) and
+`onReject`. The input is hidden and out of the tab order, under the id `${id}-input`; `id` names
+the button. The input is emptied after every choice, so choosing the same file again still counts.
+The button's text is `label`, else `labels.browse`; `busy` and `busyLabel` show an upload in
+progress, and a busy button opens nothing. `hint`, `error`, `required` and `previews` do nothing in
+this mode, and it shows no refusal text: word the refusals from `onReject`.
+
+```tsx
+<FileInput
+  id="attach"
+  appearance="button"
+  label="Attach files"
+  accept="image/*,application/pdf"
+  maxSize={2 * 1024 * 1024}
+  multiple
+  onFiles={upload}
+  onReject={showRefusals}
+/>
+```
+
+## AttachmentList
+
+The files attached to a record, one row each: a 40 px thumbnail (`thumbnailSrc`) or an icon tile,
+the name (two lines at most, broken anywhere), and a line that says where the file stands.
+
+| `status`      | The row shows                                                | Its action                     |
+| ------------- | ------------------------------------------------------------ | ------------------------------ |
+| `"uploading"` | a `Progress` bar and "Uploading, 45%" (`progress`, 0 to 100) | cancel (`onCancel`)            |
+| `"waiting"`   | "Waiting to upload"                                          | remove (`onRemove`)            |
+| `"checking"`  | an indeterminate bar and "Checking…"                         | none                           |
+| `"failed"`    | "Upload failed." in the danger tone, or the item's `error`   | Retry (`onRetry`) and remove   |
+| `"ready"`     | kind, size and `detail`: "Image · 820 KB · Maya Chen"        | a `MoreMenu`: Download, Remove |
+
+A ready image with a `src` opens in `Lightbox`, which pages through every ready image of the list
+in order (`attachmentImages`); a ready file's name calls `onDownload`. That open or download target
+covers the tile, the name and the meta line, and is described by the meta line, so a row has at
+most two tab stops. Every callback left out takes its control with it: a read-only page passes
+`onDownload` alone. The list uploads, downloads and removes nothing; ask before a removal in the
+caller (`ConfirmDialog`), and pass `removingId` while it runs: when that row leaves `items`, focus
+moves to the next row's action (`useFocusAfterRemoval`), and after the last row to
+`focusAfterLast()`. An empty `items` renders nothing, so the caller draws its own empty state, such
+as a `FileInput` drop zone. Every word is in `labels`, with English defaults in
+`ATTACHMENT_LIST_LABELS`; the lightbox's own words go in `lightboxLabels`.
+
+```tsx
+<AttachmentList
+  id="note-files"
+  items={files}
+  removingId={removingId}
+  focusAfterLast={() => attachButton.current}
+  onDownload={download}
+  onRemove={confirmRemove}
+  onCancel={cancelUpload}
+  onRetry={retryUpload}
+/>
+```
+
 ## Keyboard shortcuts
 
 `useHotkeys(bindings, options)` (subpath `hotkeys`) listens for `keydown` on `document` while the
@@ -2389,6 +2450,13 @@ The pure functions and constants behind the components, each importable from the
 from the component's own subpath. Most exist so a rule can be unit-tested without a browser; the
 ones a caller has a use for say when. A line that says a helper is exported for the package's own
 components and tests means exactly that: nothing outside this package should build on it.
+
+### AttachmentList (`./attachment-list`)
+
+- `attachmentImages(items)` lists the files an `AttachmentList`'s lightbox shows, in order: the
+  ready images with a `src`, each named by its file name. Use it to open the lightbox at the same
+  position from a control of your own.
+- `ATTACHMENT_LIST_LABELS` holds the list's English words; spread it to override a few.
 
 ### Avatar (`./avatar`)
 
