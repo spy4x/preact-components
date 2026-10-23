@@ -116,6 +116,7 @@
     // it shipped `sections/demo-decisions.test.ts`. Every package that publishes uses this pair.
     // `testdata/` holds the islands `island-bundle.test.ts` bundles and `page-at.ts`, which puts a
     // test on a page with a `location`; both are for tests alone.
-    "exclude": ["**/*.test.ts", "**/*.test.tsx", "testdata/"]
+    // The catalogs' lock files are for `deno task i18n:stamp` and the catalog test only.
+    "exclude": ["**/*.test.ts", "**/*.test.tsx", "testdata/", "i18n/*.lock"]
   }
 }
