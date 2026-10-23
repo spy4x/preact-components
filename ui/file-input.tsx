@@ -4,7 +4,9 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
 import type { Translator } from "@spy4x/platform/universal/i18n"
+import { Button, type ButtonVariant } from "./button.tsx"
 import { ENGLISH, translate, useT } from "./i18n.tsx"
+import { TOUCH_TARGET } from "./touch-target.ts"
 
 /**
  * One file a {@link FileInput} refused, and why.
@@ -49,9 +51,26 @@ export interface FileInputLabels {
 export interface FileInputProps {
   /**
    * `id` of the native `<input type="file">`. Required and **not generated** — `Field`'s and
-   * `ToggleField`'s own convention — so a caller can point a test or a `<label for>` at it.
+   * `ToggleField`'s own convention — so a caller can point a test or a `<label for>` at it. With
+   * `appearance="button"` it is the button's id, and the input's is `${id}-input`.
    */
   id: string
+  /**
+   * `"zone"` (the default) draws the drop zone and keeps the chosen files in a list of its own.
+   * `"button"` draws one `Button` that opens the file chooser and keeps no list: each choice goes
+   * to `onFiles` (the accepted files of that choice, only when there are any) and `onReject`, and
+   * the input is emptied so the same file can be chosen again. The button's text is `label`, else
+   * `labels.browse`. Inside a `Field`, `id` is the button's, so `Field`'s label names the button
+   * and the button still shows its own text. `hint`, `error`, `required` and `previews` do nothing
+   * in this mode, and it shows no refusal text: the caller words refusals from `onReject`.
+   */
+  appearance?: "zone" | "button"
+  /** The button's variant with `appearance="button"`. Defaults to `"secondary"`. */
+  buttonVariant?: ButtonVariant
+  /** With `appearance="button"`, marks the button busy (`Button`'s `busy`), so it opens nothing. */
+  busy?: boolean
+  /** With `appearance="button"`, the button's text while `busy`, such as `"Uploading…"`. */
+  busyLabel?: ComponentChildren
   /** `name` of the native input, so a plain form post carries the chosen files under this key. */
   name?: string
   /**
@@ -70,9 +89,10 @@ export interface FileInputProps {
   /** Largest accepted file size, in bytes. Omitted accepts any size. */
   maxSize?: number
   /**
-   * Visible label text, above the drop zone. Nested inside `Field`, `Field` supplies the
-   * association and this may be left out. Standalone, it is the input's only accessible name —
-   * pass one, or the control reaches assistive tech with none.
+   * Visible label text, above the drop zone; with `appearance="button"`, the button's text.
+   * Nested inside `Field`, `Field` supplies the association and this may be left out. Standalone,
+   * it is the input's only accessible name — pass one, or the control reaches assistive tech with
+   * none.
    */
   label?: ComponentChildren
   /** Helper text under the file list. */
@@ -199,12 +219,21 @@ const hintText = "mt-2 text-sm text-muted"
  * local `error` prop is never passed and so would never mark the input invalid on its own. A caller
  * using `FileInput` standalone never passes either prop, and nothing here changes for it.
  *
+ * **A button instead of a zone.** `appearance="button"` draws a plain `Button` that opens the same
+ * chooser and runs the same {@link classifyFiles} checks, for a caller that keeps the files itself:
+ * an attachment list that uploads each choice at once, or a profile picture's "Change". It keeps
+ * no list, so every choice reaches `onFiles` alone, and the input is emptied after each one.
+ *
  * `document`, `File`, `DataTransfer` and `URL` are only touched inside effects and event handlers,
  * so the component still server-renders with an empty file list and an empty live region.
  */
 export function FileInput(
   {
     id,
+    appearance = "zone",
+    buttonVariant = "secondary",
+    busy,
+    busyLabel,
     name,
     accept,
     multiple,
@@ -352,6 +381,54 @@ export function FileInput(
   const handleZoneClick = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
     if (disabled || event.target === inputRef.current) return
     inputRef.current?.click()
+  }
+
+  if (appearance === "button") {
+    const handleChoice = (event: JSX.TargetedEvent<HTMLInputElement>) => {
+      const input = event.currentTarget
+      const selected = input.files ? Array.from(input.files) : []
+      // Emptied so choosing the same file again, after a refusal or a failed upload, still fires
+      // `change`: this mode keeps no list, so the input holds nothing worth keeping.
+      input.value = ""
+      const { accepted, rejected } = classifyFiles(selected, { accept, maxSize, multiple })
+      if (accepted.length > 0) onFiles?.(accepted)
+      if (rejected.length > 0) onReject?.(rejected)
+    }
+    return (
+      <>
+        <Button
+          id={id}
+          type="button"
+          variant={buttonVariant}
+          disabled={disabled}
+          busy={busy}
+          busyLabel={busyLabel}
+          class={className === undefined ? TOUCH_TARGET : `${TOUCH_TARGET} ${className}`}
+          aria-describedby={callerDescribedBy}
+          aria-invalid={callerInvalid === true || callerInvalid === "true" ? "true" : undefined}
+          data-e2e="file-input-button"
+          onClick={() => inputRef.current?.click()}
+        >
+          {label ?? resolvedBrowse}
+        </Button>
+        {
+          /* `hidden`, not `sr-only`: the button is the one control a person reaches, and a hidden
+            file input still opens its chooser from `click()`. */
+        }
+        <input
+          ref={inputRef}
+          type="file"
+          id={`${id}-input`}
+          name={name}
+          accept={accept}
+          multiple={multiple}
+          disabled={disabled}
+          hidden
+          tabIndex={-1}
+          onChange={handleChoice}
+        />
+      </>
+    )
   }
 
   return (

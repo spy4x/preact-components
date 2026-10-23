@@ -282,3 +282,69 @@ describe("FileInput", () => {
     expect(neither).not.toContain("aria-invalid")
   })
 })
+
+describe("FileInput appearance button", () => {
+  it("draws one button named by label, and no drop zone, list or refusal region", () => {
+    const html = render(<FileInput id="attach" appearance="button" label="Attach files" />)
+
+    expect(html).toMatch(/<button[^>]*id="attach"[^>]*>Attach files<\/button>/)
+    expect(html).not.toContain("file-input-zone")
+    expect(html).not.toContain('role="status"')
+    expect(html).not.toContain("<label")
+  })
+
+  it("keeps the native input out of reach, under its own id, with the same checks", () => {
+    const html = render(
+      <FileInput id="attach" appearance="button" accept="image/*" multiple name="files" />,
+    )
+
+    expect(html).toMatch(/<input[^>]*type="file"/)
+    expect(html).toMatch(/<input[^>]*id="attach-input"/)
+    expect(html).toMatch(/<input[^>]*\shidden(\s|>|=)/)
+    expect(html).toMatch(/<input[^>]*tabindex="-1"/)
+    expect(html).toContain('accept="image/*"')
+    expect(html).toContain('name="files"')
+  })
+
+  it("says Choose files on the button when no label is given, and labels.browse overrides it", () => {
+    const defaults = render(<FileInput id="attach" appearance="button" />)
+    const overridden = render(
+      <FileInput id="attach" appearance="button" labels={{ browse: "Parcourir" }} />,
+    )
+
+    expect(defaults).toMatch(/<button[^>]*>Choose files<\/button>/)
+    expect(overridden).toMatch(/<button[^>]*>Parcourir<\/button>/)
+  })
+
+  it("shows busyLabel and marks the button busy while busy", () => {
+    const html = render(
+      <FileInput id="attach" appearance="button" label="Change" busy busyLabel="Uploading…" />,
+    )
+
+    expect(html).toContain('aria-busy="true"')
+    expect(html).toContain("Uploading…")
+    expect(html).not.toContain(">Change<")
+  })
+
+  it("draws the secondary variant by default and takes buttonVariant", () => {
+    const secondary = render(<FileInput id="attach" appearance="button" />)
+    const ghost = render(<FileInput id="attach" appearance="button" buttonVariant="ghost" />)
+
+    expect(secondary).toContain("border-button bg-hover")
+    expect(ghost).not.toContain("border-button bg-hover")
+    expect(ghost).toContain("bg-transparent")
+  })
+
+  it("gives the button a 44 px touch target on a phone, keeping the caller's class", () => {
+    const html = render(<FileInput id="attach" appearance="button" class="w-full" />)
+
+    expect(html).toMatch(/<button[^>]*class="[^"]*min-h-11 min-w-11[^"]*w-full"/)
+  })
+
+  it("disables the button and the input together", () => {
+    const html = render(<FileInput id="attach" appearance="button" disabled />)
+
+    expect(html).toMatch(/<button[^>]*\sdisabled(\s|>|=)/)
+    expect(html).toMatch(/<input[^>]*\sdisabled(\s|>|=)/)
+  })
+})

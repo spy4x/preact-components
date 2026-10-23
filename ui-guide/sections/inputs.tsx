@@ -985,8 +985,8 @@ function ToggleFieldDemo() {
 }
 
 /**
- * `FileInput` in five shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
- * at one file, and posting through a plain `<form>`.
+ * `FileInput` in six shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
+ * at one file, as a button that keeps no list, and posting through a plain `<form>`.
  *
  * What a caller reads — `onFiles` and `onReject` — is echoed under the first and fourth pickers.
  * Inside a `Field`, the label and hint go to `Field`, and `FileInput` renders none of its own.
@@ -1005,6 +1005,8 @@ function FileInputDemo() {
   const refused = useSignal<string[]>([])
   const mounted = useSignal(true)
   const singleRefused = useSignal<string[]>([])
+  const buttonChosen = useSignal<string[]>([])
+  const buttonRefused = useSignal<string[]>([])
 
   return (
     <Stack gap="lg">
@@ -1070,6 +1072,27 @@ function FileInputDemo() {
         </Variant>
         <Variant title="Disabled">
           <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
+        </Variant>
+        <Variant title="As a button, keeping no list">
+          <Cluster>
+            <FileInput
+              id="guide-file-input-button"
+              appearance="button"
+              label="Attach files"
+              accept="image/png,image/jpeg,application/pdf"
+              maxSize={2 * 1024 * 1024}
+              multiple
+              onFiles={(files) => buttonChosen.value = files.map((f) => f.name)}
+              onReject={(reasons) =>
+                buttonRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+            />
+          </Cluster>
+          <Note e2e="file-input-button-chosen">
+            last choice: {buttonChosen.value.length === 0 ? "none" : buttonChosen.value.join(", ")}
+          </Note>
+          <Note e2e="file-input-button-refused">
+            refused: {buttonRefused.value.length === 0 ? "none" : buttonRefused.value.join(", ")}
+          </Note>
         </Variant>
       </Grid>
       <Variant title="A plain form post">
@@ -1705,7 +1728,7 @@ export const inputDemos = {
   },
   FileInput: {
     summary:
-      "A file picker with a drop zone that previews images and refuses the wrong type or size, without uploading anything.",
+      "A file picker with a drop zone, or a plain button, that previews images and refuses the wrong type or size, without uploading anything.",
     wide: true,
     props: [
       { name: "id", type: "string", description: "The native input's id." },
@@ -1727,6 +1750,19 @@ export const inputDemos = {
         default: "true",
         description: "Shows a thumbnail beside each image.",
       },
+      {
+        name: "appearance",
+        type: `"zone" | "button"`,
+        default: `"zone"`,
+        description:
+          "`button` draws one button that opens the chooser and hands each choice to `onFiles`, keeping no list.",
+      },
+      {
+        name: "buttonVariant / busy / busyLabel",
+        type: "ButtonVariant / boolean / ComponentChildren",
+        default: `"secondary"`,
+        description: "The button's variant, and its busy state while the caller uploads.",
+      },
     ],
     snippet: `<FileInput
   id="attachments"
@@ -1736,6 +1772,15 @@ export const inputDemos = {
   maxSize={2 * 1024 * 1024}
   multiple
   onFiles={(files) => chosen.value = files}
+  onReject={(reasons) => refused.value = reasons}
+/>
+<FileInput
+  id="attach"
+  appearance="button"
+  label="Attach files"
+  accept="image/*,application/pdf"
+  multiple
+  onFiles={(files) => upload(files)}
   onReject={(reasons) => refused.value = reasons}
 />`,
     render: () => <FileInputDemo />,

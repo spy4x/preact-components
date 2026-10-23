@@ -190,6 +190,8 @@ const CALLER_WORDS: Readonly<Record<string, readonly string[]>> = {
   TagInput: ["Tags"],
   // The DateRangePicker demo passes a whole `labels` object to show the prop.
   DateRangePicker: ["Date range", "From", "To", "Cancel", "Apply"],
+  // The AttachmentList demo's own heading over the list, "Attachments 7 of 10".
+  AttachmentList: ["Attachments"],
 }
 
 /**

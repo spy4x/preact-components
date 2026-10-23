@@ -51,10 +51,12 @@ steps:
       - deno --version
       - deno task --cwd pages build
 
-  # The three parts run one after another, not side by side: three browsers at once would compete
+  # The parts run one after another, not side by side: several browsers at once would compete
   # with the other pipelines on the one agent host, and load slows `e2e` most (`pages/README.md`).
-  # A red part skips the parts after it. `CHROME_PATH` names the image's Chromium, so the browser
-  # `verify` drives is the one it reports.
+  # `e2e` runs as four shards (#975): as one step it ran past its 900-second ceiling whenever other
+  # pipelines shared the agent. `pages/e2e/shard.test.ts` fails when a shard is missing here or
+  # listed twice. A red part skips the parts after it. `CHROME_PATH` names the image's Chromium,
+  # so the browser `verify` drives is the one it reports.
   verify-ui:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
@@ -65,7 +67,7 @@ steps:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=ui
 
-  verify-e2e:
+  verify-e2e-1:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
       event: [push, pull_request]
@@ -73,7 +75,37 @@ steps:
       DENO_DIR: /woodpecker/deno-dir
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
-      - deno task --cwd pages verify --only=e2e
+      - deno task --cwd pages verify --only=e2e --e2e-shard=1/4
+
+  verify-e2e-2:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e --e2e-shard=2/4
+
+  verify-e2e-3:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e --e2e-shard=3/4
+
+  verify-e2e-4:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e --e2e-shard=4/4
 
   verify-rest:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f

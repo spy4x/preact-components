@@ -105,9 +105,10 @@ without anyone listing it. An unknown name, an empty list, a list that names eve
 its own limits (see "How long a run may take"), repeats the static phase and the startup checks,
 and ends with its own `FILTERED:` line. All three green is a full run; one or two are not.
 
-CI runs the three as three steps, one after another. On a workstation, use the parts when other
-browser runs share the machine: run them one after another, or side by side in three terminals. One
-command is still fine on a quiet machine.
+CI runs `ui` and the nine blocks as one step each, and `e2e` as four shards, one after another
+(see "Shards of the e2e part" below). On a workstation, use the parts when other browser runs share
+the machine: run them one after another, or side by side in three terminals. One command is still
+fine on a quiet machine.
 
 Why the split (#696): as one command the run took 779s of the 900s ceiling in CI on 2026-10-11, and
 on a busy workstation it was stopped at 900s with `e2e` not done. In parts, measured from 2026-10-12
@@ -164,6 +165,31 @@ page's axe scan took 46 to 53 seconds alone at a load average near 40, too close
 limit once specs share the processor, and the contrast rule was about half of it; split in two,
 the longest spec took 32 seconds at a load average of 30 to 37.
 
+#### Shards of the e2e part
+
+`--e2e-shard=<index>/<count>` runs one shard of the `e2e` block's specs (#975):
+
+```bash
+deno task --cwd pages verify --only=e2e --e2e-shard=1/4   # and 2/4, 3/4, 4/4
+```
+
+The specs are dealt out by their place in the run order, one to each shard in turn
+(`pages/e2e/shard.ts`), so the split is the same on every run and the shards `1/n` to `n/n`
+together run every spec exactly once. Each shard is a run of its own: its own browser, its own
+limits, the static phase and startup checks again, and a `SHARDED:` line after its `FILTERED:`
+line. A value that is not a shard, a shard passed to a run without the `e2e` block, and a shard
+with no spec are each a failed check. `pages/e2e/shard.test.ts`, part of `deno task check`, fails
+when `.woodpecker.yml` leaves a shard out, lists one twice, or runs `e2e` anywhere unsharded.
+
+Why: as one step the `e2e` part took 506 to 732 seconds on a quiet agent and ran past its
+900-second ceiling whenever other pipelines shared the agent (pipelines 2696, 2797, 2807, 2819).
+Measured on 2026-10-23 on 16 cores at a load average of 2 to 9, with 442 specs:
+
+| Run                       | Time                | Checks                                                                             |
+| ------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `--only=e2e`, unsharded   | 334s                | 482: 442 specs and 40 static and startup checks                                    |
+| `--e2e-shard=1/4` … `4/4` | 88s, 100s, 97s, 97s | 151, 151, 150, 150: 111, 111, 110, 110 specs and 40 static and startup checks each |
+
 ### Running under load
 
 A check that waits a fixed time, or reads before the component has finished, passes on an idle
@@ -197,7 +223,8 @@ or measure a duration with the page's own clock.
 This is also the repository's browser test path, and CI runs it. `.woodpecker.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
-Chromium. `verify` runs there as three steps, one per part (see "Running a full run in parts"). The
+Chromium. `verify` runs there as six steps: `ui`, four shards of `e2e` and the other nine blocks
+(see "Running a full run in parts"). The
 Pages deploy waits for the push build to pass, so a red check, a red publish dry-run or a red part
 of `verify` blocks the publish.
 
@@ -240,7 +267,9 @@ Where they stand on 2026-10-17, with three parts that each get the whole ceiling
 longest part, `ui`, takes about 330s, well under half of it. At a load average of 80 to 90 the
 `ui` part took 728s, four fifths of the ceiling (2026-10-14). `e2e`, which did not fit in it at a
 load average of 20 to 31 when it ran one spec at a time, took 398s at 30 to 37 beside another part
-once it ran four at a time. The tables in "Running a full run in parts" have every time.
+once it ran four at a time. It later ran past the ceiling in CI when other pipelines shared the
+agent, and runs as four shards since (#975). The tables in "Running a full run in parts" have
+every time.
 
 When a run stops on either limit, read the named last check before raising a number: a stall
 after a check that usually takes a second is a hang to fix, not a limit to widen.
@@ -498,7 +527,7 @@ is the number to trust, not one typed here.
 ## Deploy
 
 `.github/workflows/pages.yml` — a GitHub workflow, because Pages can only be deployed by one. It
-deploys and checks nothing: every check, the build and the three parts of `verify` run in
+deploys and checks nothing: every check, the build and the parts of `verify` run in
 Woodpecker (`.woodpecker.yml`) on every pull request and every push to `main`.
 
 The workflow starts on a `status` event. When Woodpecker's push build of `main` ends, Woodpecker

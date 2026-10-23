@@ -1198,7 +1198,7 @@ describe("leavesCombobox", () => {
     expect(leavesCombobox(input, elsewhere)).toBe(true)
   })
 
-  it("leaves for the scrolling listbox itself, which Chrome makes a tab stop", () => {
+  it("leaves for the listbox itself, which a click can focus", () => {
     const scroller = { isSameNode: (other: unknown) => other === input } as unknown as Node
     expect(leavesCombobox(input, scroller)).toBe(true)
   })

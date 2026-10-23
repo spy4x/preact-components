@@ -121,8 +121,8 @@ untouched checks stay in `pages/checks/`. Read [`pages/README.md`](./pages/READM
 browser check", first. Always run `deno task --cwd pages build` before
 `deno task --cwd pages verify`; `--static` and one `--only` run are not full runs. On a busy machine
 run it in its three parts (same file, "Running a full run in parts"), as CI does: Woodpecker runs
-`check`, `publish:dry`, the build and the three parts on every PR and every push to `main`; GitHub
-Actions only deploys `main` to Pages, after that push build is green.
+`check`, `publish:dry`, the build and the parts, `e2e` in four shards, on every PR and every push
+to `main`; GitHub Actions only deploys `main` to Pages, after that push build is green.
 
 ## Releases
 
