@@ -1,11 +1,13 @@
 import { IconDocument, IconImage, IconXMark } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
 import { Button, buttonClasses } from "./button.tsx"
 import { Card } from "./card.tsx"
 import { DropdownItem } from "./dropdown.tsx"
+import { ENGLISH, type LabelParams, labelsFrom, translate, type UiKey, useT } from "./i18n.tsx"
 import { describedImages, Lightbox, type LightboxImage, type LightboxProps } from "./lightbox.tsx"
 import { MoreMenu } from "./page-header.tsx"
 import { Progress } from "./progress.tsx"
@@ -93,27 +95,61 @@ export interface AttachmentListLabels {
   removeItem: string
 }
 
-/** The English words {@link AttachmentList} shows when the caller passes none. */
-export const ATTACHMENT_LIST_LABELS: AttachmentListLabels = {
-  list: "Attachments",
-  kind: (item) => isImage(item) ? "Image" : item.type === "application/pdf" ? "PDF" : "File",
-  uploading: (percent) =>
-    percent === undefined ? "Uploading" : `Uploading, ${Math.round(clampPercent(percent))}%`,
-  waiting: "Waiting to upload",
-  checking: "Checking…",
-  failed: "Upload failed.",
-  retry: "Retry",
-  retryFile: (name) => `Retry ${name}`,
-  progress: (name) => `Uploading ${name}`,
-  checkingProgress: (name) => `Checking ${name}`,
-  open: (name) => `Open ${name}`,
-  downloadFile: (name) => `Download ${name}`,
-  cancel: (name) => `Cancel upload of ${name}`,
-  remove: (name) => `Remove ${name}`,
-  actions: (name) => `Actions for ${name}`,
-  download: "Download",
-  removeItem: "Remove",
+/**
+ * The words {@link AttachmentList} shows by default, through `translator`: the catalog's when it
+ * has them, else English. `kind` and `uploading` pick one of several messages, so they are built
+ * here; every other field is a plain message the component looks up by its `AttachmentList.<field>`
+ * key.
+ *
+ * @param translator The translator to read the messages from.
+ */
+function defaultLabels(translator: Translator<string>): AttachmentListLabels {
+  const t = (key: UiKey, english: string, values?: Record<string, string | number>) =>
+    translate(translator, key, english, values)
+  return {
+    list: "Attachments",
+    kind: (item) =>
+      isImage(item)
+        ? t("AttachmentList.kindImage", "Image")
+        : item.type === "application/pdf"
+        ? t("AttachmentList.kindPdf", "PDF")
+        : t("AttachmentList.kindFile", "File"),
+    uploading: (percent) => {
+      if (percent === undefined) return t("AttachmentList.uploadingUnknown", "Uploading")
+      const rounded = Math.round(clampPercent(percent))
+      return t("AttachmentList.uploading", `Uploading, ${rounded}%`, { percent: rounded })
+    },
+    waiting: "Waiting to upload",
+    checking: "Checking…",
+    failed: "Upload failed.",
+    retry: "Retry",
+    retryFile: (name) => `Retry ${name}`,
+    progress: (name) => `Uploading ${name}`,
+    checkingProgress: (name) => `Checking ${name}`,
+    open: (name) => `Open ${name}`,
+    downloadFile: (name) => `Download ${name}`,
+    cancel: (name) => `Cancel upload of ${name}`,
+    remove: (name) => `Remove ${name}`,
+    actions: (name) => `Actions for ${name}`,
+    download: "Download",
+    removeItem: "Remove",
+  }
 }
+
+/** The fields of {@link AttachmentListLabels} whose message names the file. */
+const NAMED: LabelParams<AttachmentListLabels> = {
+  retryFile: ["name"],
+  progress: ["name"],
+  checkingProgress: ["name"],
+  open: ["name"],
+  downloadFile: ["name"],
+  cancel: ["name"],
+  remove: ["name"],
+  actions: ["name"],
+}
+
+/** The English words {@link AttachmentList} shows when the caller passes none and no catalog. */
+export const ATTACHMENT_LIST_LABELS: AttachmentListLabels = defaultLabels(ENGLISH)
 
 /** Props of {@link AttachmentList}. */
 export interface AttachmentListProps {
@@ -217,7 +253,8 @@ export function AttachmentList({
   lightboxLabels,
   class: className,
 }: AttachmentListProps): JSX.Element | null {
-  const words = { ...ATTACHMENT_LIST_LABELS, ...labels }
+  const translator = useT()
+  const words = labelsFrom(translator, "AttachmentList", defaultLabels(translator), labels, NAMED)
   const list = useRef<HTMLUListElement>(null)
   const viewing = useSignal<number | null>(null)
   useFocusAfterRemoval(list, items.map((item) => item.id), removingId, {
