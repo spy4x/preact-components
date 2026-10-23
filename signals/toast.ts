@@ -1,4 +1,6 @@
 import { type ReadonlySignal, signal } from "@preact/signals"
+import type { Translator } from "@spy4x/platform/universal/i18n"
+import { catalogText } from "./catalog-text.ts"
 import type { ToastAction, ToastId, ToastMessage, ToastVariant } from "./types.ts"
 
 // Re-exported so `@spy4x/preact-signals/toast` alone types the id `remove` takes and the action a
@@ -102,6 +104,12 @@ export interface ToastOptions {
    * no title on its success toasts, so they carry this default.
    */
   titles?: Partial<Record<ToastVariant, string>>
+  /**
+   * The app's translator, read once here: each kind's default title then comes from the catalog key
+   * `Toast.<kind>` (`@spy4x/preact-signals/i18n/<language>`), unless `titles` names it. Without a
+   * translator, or for a key its catalogs lack, the title stays English.
+   */
+  translator?: Translator<string>
 }
 
 /** English default titles, one per kind. */
@@ -129,6 +137,11 @@ function defaultNextId(): string {
  */
 export function createToastStore(options: ToastOptions = {}): ToastStore {
   const nextId = options.nextId ?? defaultNextId
+  const titles: Record<ToastVariant, string> = { ...defaultTitles }
+  for (const kind of Object.keys(titles) as ToastVariant[]) {
+    titles[kind] = options.titles?.[kind] ??
+      catalogText(options.translator, `Toast.${kind}`) ?? defaultTitles[kind]
+  }
 
   const list = signal<ToastEntry[]>([])
 
@@ -149,7 +162,7 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
     const entry: ToastEntry = {
       id,
       // `??`, so an explicit empty title — no heading — is kept rather than replaced by the default.
-      title: message.title ?? options.titles?.[type] ?? defaultTitles[type],
+      title: message.title ?? titles[type],
       body: message.body,
       type,
       // `duration` is the name both sides use; `timeout` is the old one, kept working for a
