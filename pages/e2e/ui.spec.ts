@@ -1447,7 +1447,7 @@ function fileSpecs(): Spec[] {
         await row.getByText("Upload failed.").waitFor()
         await row.getByRole("button", { name: "Retry scan.pdf", exact: true }).click()
         await row.getByText("Checking…").waitFor()
-        await row.getByRole("progressbar", { name: "Uploading scan.pdf" }).waitFor()
+        await row.getByRole("progressbar", { name: "Checking scan.pdf" }).waitFor()
         await row.getByText("PDF · 640 KB").waitFor()
         await row.getByRole("button", { name: "Actions for scan.pdf" }).waitFor()
       },
