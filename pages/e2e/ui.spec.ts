@@ -1348,20 +1348,29 @@ function fileSpecs(): Spec[] {
           chosenFile("clip.gif", "image/gif"),
         ])
         await card.locator(`[data-e2e="file-input-button-chosen"]`)
-          .filter({ hasText: "last choice: a.png" }).waitFor()
+          .filter({ hasText: /^last choice: a\.png$/ }).waitFor()
         await card.locator(`[data-e2e="file-input-button-refused"]`)
-          .filter({ hasText: "refused: big.pdf (too-large), clip.gif (wrong-type)" }).waitFor()
+          .filter({ hasText: /^refused: big\.pdf \(too-large\), clip\.gif \(wrong-type\)$/ })
+          .waitFor()
         const listed = await card.getByRole("button", { name: "Remove a.png" }).count()
         if (listed !== 0) throw new Error("the button appearance drew a list of chosen files")
       },
     },
     {
-      name: "AttachmentList: Attach files adds every choice, the same file chosen twice included",
+      name:
+        "AttachmentList: Attach files adds every choice and empties its input, so the same file can come again",
       pageId: "ui",
       run: async (page) => {
         const button = list(page).getByRole("button", { name: "Attach files", exact: true })
         await chooseThrough(page, button, [chosenFile("notes.pdf", "application/pdf")])
         await last(page, "attached notes.pdf")
+        // A real chooser fires no `change` for the file the input already holds; Playwright's
+        // `setFiles` fires one anyway, so the emptied input is what this reads.
+        const held = await page.locator("#guide-attachments-attach-input")
+          .evaluate((input: HTMLInputElement) => `${input.files?.length ?? 0}:${input.value}`)
+        if (held !== "0:") {
+          throw new Error(`the input still holds a file after the choice (${held})`)
+        }
         await chooseThrough(page, button, [chosenFile("notes.pdf", "application/pdf")])
         await list(page).getByRole("button", { name: "Remove notes.pdf" }).nth(1).waitFor()
         await list(page).getByText("9 of 10").waitFor()
