@@ -114,9 +114,22 @@ describe("ToggleChips", () => {
     expect(html).toMatch(
       /aria-pressed="true"[^>]*style="background-color:#dc2626;border-color:#dc2626;color:#ffffff;"/,
     )
+    expect(html).toMatch(/aria-pressed="false"[^>]*class="[^"]*">/)
     expect(html).toMatch(
       /aria-pressed="false"[^>]*><span aria-hidden="true"[^>]*style="background-color:#FDE047;"><\/span>Ideas</,
     )
+  })
+
+  it("writes a light own colour's pressed text in black", () => {
+    const html = render(
+      <ToggleChips
+        options={[{ value: "ideas", label: "Ideas", color: "#fde047" }]}
+        value={["ideas"]}
+        onChange={() => {}}
+      />,
+    )
+
+    expect(html).toContain("color:#000000;")
   })
 
   it("ignores an option colour that is no hex code", () => {

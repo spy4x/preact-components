@@ -2061,7 +2061,9 @@ one of the same name.
 ## ToggleChips
 
 Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
-chip is a filled badge in `color`, an unpressed one a grey outlined badge. In `mode="single"`,
+chip is a filled badge in `color`, an unpressed one a grey outlined badge. An option with its own
+`color` (`#rrggbb`, such as a tag's) is filled with it when pressed, in black or white text, and
+shows it as a dot before its text when not. In `mode="single"`,
 pressing another chip moves the selection and pressing the pressed chip clears it to `null`.
 
 `toggleChipSelection(options, selected, pressed)` is the multiple-mode press on its own: it adds or
