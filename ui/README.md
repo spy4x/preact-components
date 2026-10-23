@@ -96,6 +96,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `FilterBar`           | `filter-bar`           | `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips                                                                                 |
 | `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                                                  |
 | `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                                        |
+| `I18nContext`         | `i18n`                 | Preact context: `<I18nContext.Provider value={createTranslator({ language, catalogs })}>`; every component reads its words from it through `useLabels`, an app's own screens through `useT()`; without a provider, English                                                                                                                                          |
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                              |
 | `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                         |
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                                                    |
@@ -139,6 +140,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
 | `ShortcutsDialog`     | `shortcuts-dialog`     | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                                                                                                                                                                                    |
+| `Rich`                | `i18n`                 | `parts` (from `useT().parts(key, values)`), `tags?` (a renderer per tag, given its text) — a translated sentence with spans the caller draws; a message or a value never becomes markup                                                                                                                                                                             |
 | `Slider`              | `slider`               | `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`                                                                                                                                         |
 | `SortableList`        | `sortable-list`        | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                                                                                                                                                                                           |
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
@@ -1569,6 +1571,42 @@ never a stale one; a form submitted right after posts what was actually typed, o
 is empty; `aria-invalid` marks it for a reason of the caller's. `Field` sets both, from its own
 `required` and `error`.
 
+## Translations
+
+Every word a component shows comes from the package's catalog, `@spy4x/preact-ui/i18n/<language>`,
+in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. Each key is `<Component>.<field>`, the field of the
+component's `labels` prop or its label prop: `Pagination.nextLabel`. An app builds one translator
+with `createTranslator` from `@spy4x/platform/universal/i18n`, the library's catalog first and its
+own after it, and provides it once with `I18nContext`:
+
+```tsx
+import uiDe from "@spy4x/preact-ui/i18n/de"
+import uiEn from "@spy4x/preact-ui/i18n/en"
+import { I18nContext } from "@spy4x/preact-ui/i18n"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
+
+const translator = createTranslator({
+  language: "de",
+  catalogs: [{ source: uiEn, translation: uiDe }, { source: appEn, translation: appDe }],
+})
+
+<I18nContext.Provider value={translator}>
+  <div lang={translator.language} dir={translator.dir}>{app}</div>
+</I18nContext.Provider>
+```
+
+Without a provider every component renders the English it always has. A word passed as a prop
+still wins over the catalog, and a translator that lacks the library's catalog leaves each word at
+its English default rather than showing the key. Numbers inside a message are written in the
+translator's number format (`1,234`). `When` says its distance in the language of the
+`FormatContext` region format (`vor 3 Tagen`). The layout does not mirror for right-to-left
+languages yet: `dir` is the app's to set.
+
+`Rich` draws a translated sentence whose spans the caller renders, such as a link inside it. Every
+part is text: a message or a value never becomes markup, and an `href` comes only from the `tags`
+the caller passes. Translating the catalogs, and stamping their locks, is in the repository's
+`TRANSLATING.md`.
+
 ## When and OnDay
 
 An app shows every date through one formatter: `Formatters` from `@spy4x/time/format`, built
@@ -1593,9 +1631,9 @@ Both render a `<time>` whose `datetime` is the instant in ISO form and whose `ti
 instant to the second in the person's zone, so hovering answers "when exactly". A missing or
 unreadable date renders `labels.missing` (`-`) in a plain `<span>`, with no `<time>`.
 
-The words are English by default, as everywhere in this library, and the region format changes how
-a date is written, never the language of the app. `labels.relative(at, now)` replaces the distance
-text: pass `(at) => format.relative(at)` for the region format's own words, or your translation.
+The distance is in the region format's own words (`3 days ago`, `vor 3 Tagen`), so it follows the
+person's region format rather than `I18nContext`. `labels.relative(at, now)` replaces it;
+`WHEN_LABELS.relative` is the older English wording (`a moment ago`).
 `now` fixes the present for a render whose text must not depend on the clock (a test, a demo).
 
 ## FileInput
@@ -2524,6 +2562,22 @@ components and tests means exactly that: nothing outside this package should bui
   `"wrong-type"` or, without `multiple`, `"too-many"` for every accepted file after the first.
 - `resolveLabels(labels)` is exported for the package's own components and tests: it fills every
   message label a `FileInput` was not given with its English default.
+
+### I18n (`./i18n`)
+
+- `ENGLISH` is the translator every component reads without an `I18nContext` provider. It knows
+  no key, so each component shows the English written in its own code, and an island bundles only
+  its own words.
+- `useT()` returns the nearest `I18nContext` translator, for an app's own screens
+  (`useT().t("notes.empty")`); called outside a render it returns `ENGLISH`.
+- `useLabels(name, defaults, labels?, params?)` is how a component reads its words: each field of
+  `defaults` from `labels`, else from the catalog key `<name>.<field>`, else from `defaults`.
+  `params` names the arguments of a field that is a function. `labelsFrom(translator, …)` is the
+  same for a given translator, outside a component.
+- `translate(translator, key, english, values?)` returns one `ui` message, or `english` when the
+  translator lacks the key; a component calls it for a word that is not a field of its labels.
+- Each language subpath, `./i18n/de` and the rest, has one `default` export: that language's
+  catalog, to pass to `createTranslator`.
 
 ### Format (`./format`)
 
