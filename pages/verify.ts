@@ -22,6 +22,7 @@
  * deno task verify --only=system               # only the system package's browser checks
  * deno task verify --only=e2e                  # only the Playwright specs under e2e/
  * deno task verify --except=ui,e2e             # every block but those two
+ * deno task verify --only=e2e --e2e-shard=2/4  # the second of four shards of the e2e specs
  * deno task verify --cpu-throttle=6             # the page's CPU six times slower, see below
  * ```
  *
@@ -52,9 +53,10 @@
  * it locally.
  *
  * **A full run may be split into parts** (#696): `--only=ui`, `--only=e2e` and `--except=ui,e2e`
- * together run every block exactly once, each part with its own browser and its own limits. CI
- * runs those three as three steps; `--except` names the blocks the other parts took, so a block
- * added to `PACKAGE_BLOCKS` later lands in the last part without anyone listing it.
+ * together run every block exactly once, each part with its own browser and its own limits.
+ * `--except` names the blocks the other parts took, so a block added to `PACKAGE_BLOCKS` later
+ * lands in the last part without anyone listing it. The `e2e` part may be split further into
+ * shards with `--e2e-shard` (#975), and CI runs it as four: `E2E_SHARD`'s own doc below.
  */
 
 import { dirname, join } from "node:path"
@@ -70,6 +72,7 @@ import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
 import { type E2eTarget, loadSpecs, runSpecs } from "./e2e/runner.ts"
+import { inShard, parseShard } from "./e2e/shard.ts"
 import {
   BlockOutcome,
   centreInView,
@@ -218,6 +221,24 @@ const ONLY = blockNamesOf("--only=")
  * `--only` it marks the run's last line as filtered, and an unknown name is a failed check.
  */
 const EXCEPT = blockNamesOf("--except=")
+
+/**
+ * `--e2e-shard=2/4` runs only the second of four shards of the `e2e` block's specs — `undefined`
+ * when the flag was not passed, `null` when its value is not a shard (`pages/e2e/shard.ts`).
+ *
+ * It exists because the `e2e` part alone ran past the phase ceiling when several pipelines shared
+ * the CI agent (#975). Each shard is a run of its own with its own browser and its own limits, so
+ * the ceiling still stops a stuck shard. `pages/e2e/shard.test.ts` holds `.woodpecker.yml` to
+ * running every shard exactly once. A bad value, a shard passed to a run without the `e2e` block,
+ * and a shard with no spec in it are each a failed check, and the run's last line says it was a
+ * shard. A shard records only its specs' checks, so the shards' spec checks add up to the
+ * unsharded part's.
+ */
+const E2E_SHARD = (() => {
+  const arg = Deno.args.find((value) => value.startsWith("--e2e-shard="))
+  if (!arg) return undefined
+  return parseShard(arg.slice("--e2e-shard=".length)) ?? null
+})()
 
 /**
  * The block names one flag lists, such as `--only=system,ui`.
@@ -829,6 +850,22 @@ async function browserPhase(): Promise<void> {
       return
     }
     activeBlocks = selection.selected
+  }
+  if (E2E_SHARD === null) {
+    check(
+      "--e2e-shard names a shard such as 2/4",
+      false,
+      "the value is not index/count, 1 <= index <= count",
+    )
+    return
+  }
+  if (E2E_SHARD && !activeBlocks.some((block) => block.name === "e2e")) {
+    check(
+      "--e2e-shard is passed only to a run with the e2e block",
+      false,
+      "this run has no e2e block",
+    )
+    return
   }
 
   // Commit to the package blocks before anything can go wrong, so that a phase which dies during
@@ -1488,7 +1525,19 @@ let e2eTarget: E2eTarget | undefined
  */
 async function e2eSpecs(): Promise<void> {
   if (!e2eTarget) throw new Error("the e2e block ran before the browser and the server existed")
-  await runSpecs(e2eTarget, await loadSpecs())
+  const specs = await loadSpecs()
+  if (!E2E_SHARD) return await runSpecs(e2eTarget, specs)
+  const shard = inShard(specs, E2E_SHARD)
+  // A thrown block is one failed check, so an empty shard cannot pass as a spotless short run.
+  if (shard.length === 0) {
+    throw new Error(
+      `e2e shard ${E2E_SHARD.index}/${E2E_SHARD.count} has none of ${specs.length} specs`,
+    )
+  }
+  console.log(
+    `e2e shard ${E2E_SHARD.index}/${E2E_SHARD.count}: ${shard.length} of ${specs.length} specs`,
+  )
+  await runSpecs(e2eTarget, shard)
 }
 
 /**
@@ -1548,8 +1597,13 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
  * which is the defect this replaces.
  */
 function filteredRunNote(): string | undefined {
-  if (!ONLY && !EXCEPT) return undefined
-  return filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
+  const sharded = E2E_SHARD
+    ? `SHARDED: e2e ran shard ${E2E_SHARD.index}/${E2E_SHARD.count} of its specs (--e2e-shard)`
+    : undefined
+  const filtered = ONLY || EXCEPT
+    ? filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
+    : undefined
+  return [filtered, sharded].filter((line) => line !== undefined).join("\n") || undefined
 }
 
 if (!(await checkBuildFingerprint())) {
