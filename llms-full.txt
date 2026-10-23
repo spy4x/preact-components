@@ -2325,6 +2325,21 @@ and its own header says what it does not cover, how many of its cases reach each
 and how to reproduce a failure from the number it prints. It is not a description of the store: read
 the named tests for that.
 
+## Translations
+
+Nothing here renders, so the stores take the app's translator as an option instead of reading
+`I18nContext`. `createToastStore({ translator })` titles each kind from `Toast.info`,
+`Toast.success`, `Toast.error` and `Toast.warning` in this package's catalog,
+`@spy4x/preact-signals/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. Each language
+subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog.
+
+`buildModelStore({ model: "note", translator })` takes each toast from the app's own catalog, one
+full message per model and event: `note.created`, `note.createFailed` and the rest of
+`ModelStoreMessages`' fields, with `{issue}` in `note.malformedUpdate` and `{detail}` in
+`note.malformedResponse`. A translation is then a whole sentence, never "{model}" glued into one. An
+event the app's catalog lacks keeps its English default, and `messages` still wins over the catalog.
+Without a translator both stores say exactly what they always have.
+
 ---
 
 <!-- @spy4x/preact-system — system/README.md -->

@@ -347,6 +347,7 @@ filterSearch	helper	@spy4x/preact-signals/use-url-filters	The query string a set
 filterWrite	helper	@spy4x/preact-signals/use-url-filters	What one field's value means for its parameter.
 readAddress	helper	@spy4x/preact-signals/use-url-filters	Read the address into the filters, and answer with the query string they now agree on.
 restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the write should have left behind, or `undefined` when that is already the address.
+default	helper	@spy4x/preact-signals/i18n/ar	
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
 AccountMenuTheme	type	@spy4x/preact-system	The theme preferences `AccountMenu` offers; `"system"` follows the device.
