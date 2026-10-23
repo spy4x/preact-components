@@ -10,6 +10,8 @@ import { Calendar } from "./calendar.tsx"
 import { ConflictChooser, type ConflictItem } from "./conflict-chooser.tsx"
 import systemDe from "./i18n/de.ts"
 import systemEn from "./i18n/en.ts"
+import systemEs from "./i18n/es.ts"
+import systemPtBr from "./i18n/pt-BR.ts"
 import systemRu from "./i18n/ru.ts"
 import { SyncStatus } from "./sync-status.tsx"
 
@@ -63,6 +65,33 @@ describe("the system components under a translator", () => {
       after: "außerhalb des erlaubten Zeitraums",
     })
     expect(html).toContain(`aria-label="${systemDe["Calendar.nextMonth"]}: `)
+  })
+
+  it("pick the plural form of a counted day and of the unread counter", () => {
+    const spanish = createTranslator({
+      language: "es",
+      catalogs: [{ source: systemEn, translation: systemEs }],
+    })
+    const html = render(
+      <I18nContext.Provider value={spanish}>
+        <Calendar
+          monthAnchor="2026-08-01"
+          minDate="2026-08-03"
+          maxDate="2026-08-20"
+          today="2026-08-03"
+          availableByDate={{ "2026-08-04": 1, "2026-08-05": 2 }}
+        />
+      </I18nContext.Provider>,
+    )
+    const names = dayNames(html)
+    expect([names["2026-08-04"]?.split(": ")[1], names["2026-08-05"]?.split(": ")[1]])
+      .toEqual(["1 disponible", "2 disponibles"])
+    const portuguese = createTranslator({
+      language: "pt-BR",
+      catalogs: [{ source: systemEn, translation: systemPtBr }],
+    })
+    expect([1, 3].map((count) => portuguese.t("AppShell.counter", { count })))
+      .toEqual(["1 não lida", "3 não lidas"])
   })
 
   it("say offline alone, or offline with the waiting count, as two messages", () => {

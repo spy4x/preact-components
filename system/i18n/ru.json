@@ -12,7 +12,12 @@
   "AppShell.connection.idle": "Нет сети",
   "AppShell.connection.open": "В сети",
   "AppShell.connection.reconnecting": "Переподключение…",
-  "AppShell.counter": "непрочитанных: {count}",
+  "AppShell.counter": {
+    "one": "{count} непрочитанное",
+    "few": "{count} непрочитанных",
+    "many": "{count} непрочитанных",
+    "other": "{count} непрочитанного"
+  },
   "AppShell.notifications": "Уведомления",
   "AuthForm.busy": "Минутку…",
   "AuthForm.code": "Одноразовый код",
@@ -28,7 +33,12 @@
   "AuthForm.switchToSignUp": "Нет аккаунта? Зарегистрироваться",
   "Calendar.day.after": "{label} — вне доступного периода",
   "Calendar.day.available": "{label} — свободно",
-  "Calendar.day.availableCount": "{label} — свободно: {count}",
+  "Calendar.day.availableCount": {
+    "one": "{label} — свободно: {count}",
+    "few": "{label} — свободно: {count}",
+    "many": "{label} — свободно: {count}",
+    "other": "{label} — свободно: {count}"
+  },
   "Calendar.day.noneLeft": "{label} — мест нет",
   "Calendar.day.past": "{label} — прошло",
   "Calendar.day.unavailable": "{label} — недоступно",

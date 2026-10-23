@@ -12,7 +12,14 @@
   "AppShell.connection.idle": "غير متصل",
   "AppShell.connection.open": "متصل",
   "AppShell.connection.reconnecting": "جارٍ إعادة الاتصال…",
-  "AppShell.counter": "غير المقروءة: {count}",
+  "AppShell.counter": {
+    "zero": "لا رسائل غير مقروءة",
+    "one": "رسالة واحدة غير مقروءة",
+    "two": "رسالتان غير مقروءتين",
+    "few": "{count} رسائل غير مقروءة",
+    "many": "{count} رسالة غير مقروءة",
+    "other": "{count} رسالة غير مقروءة"
+  },
   "AppShell.notifications": "الإشعارات",
   "AuthForm.busy": "لحظة من فضلك…",
   "AuthForm.code": "رمز لمرة واحدة",
@@ -28,7 +35,14 @@
   "AuthForm.switchToSignUp": "ليس لديك حساب؟ أنشئ حسابًا",
   "Calendar.day.after": "{label} — خارج النطاق المسموح",
   "Calendar.day.available": "{label} — متاح",
-  "Calendar.day.availableCount": "{label} — المتاح: {count}",
+  "Calendar.day.availableCount": {
+    "zero": "{label} — لا شيء متاح",
+    "one": "{label} — متاح: {count}",
+    "two": "{label} — متاح: {count}",
+    "few": "{label} — المتاح: {count}",
+    "many": "{label} — المتاح: {count}",
+    "other": "{label} — المتاح: {count}"
+  },
   "Calendar.day.noneLeft": "{label} — لم يتبقَّ شيء",
   "Calendar.day.past": "{label} — انقضى",
   "Calendar.day.unavailable": "{label} — غير متاح",

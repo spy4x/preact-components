@@ -12,7 +12,11 @@
   "AppShell.connection.idle": "Off-line",
   "AppShell.connection.open": "On-line",
   "AppShell.connection.reconnecting": "Reconectando…",
-  "AppShell.counter": "{count} não lidas",
+  "AppShell.counter": {
+    "one": "{count} não lida",
+    "many": "{count} não lidas",
+    "other": "{count} não lidas"
+  },
   "AppShell.notifications": "Notificações",
   "AuthForm.busy": "Só um momento…",
   "AuthForm.code": "Código de uso único",
@@ -28,7 +32,11 @@
   "AuthForm.switchToSignUp": "Não tem uma conta? Criar conta",
   "Calendar.day.after": "{label}: fora do período permitido",
   "Calendar.day.available": "{label}: disponível",
-  "Calendar.day.availableCount": "{label}: {count} disponíveis",
+  "Calendar.day.availableCount": {
+    "one": "{label}: {count} disponível",
+    "many": "{label}: {count} disponíveis",
+    "other": "{label}: {count} disponíveis"
+  },
   "Calendar.day.noneLeft": "{label}: esgotado",
   "Calendar.day.past": "{label}: já passou",
   "Calendar.day.unavailable": "{label}: indisponível",

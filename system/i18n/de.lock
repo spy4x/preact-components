@@ -11,7 +11,7 @@ AppShell.connection.connecting	72021eb70e91b4d5
 AppShell.connection.idle	a1794783aab72d20
 AppShell.connection.open	0d21bd52022ca7f7
 AppShell.connection.reconnecting	27b80374e1151af6
-AppShell.counter	788425b285937b91
+AppShell.counter	0c32099069d6bff6
 AppShell.notifications	788011833a5a0f22
 AuthForm.busy	5474eef8d0f179c7
 AuthForm.code	1b774f3cfe6aae23
@@ -27,7 +27,7 @@ AuthForm.switchToSignIn	c4e0e7347acde16f
 AuthForm.switchToSignUp	a42c40a7bf7ab311
 Calendar.day.after	c5994e527c6ada3f
 Calendar.day.available	4d80f8335cff4c2a
-Calendar.day.availableCount	686e52901f22079f
+Calendar.day.availableCount	db391fcd51183039
 Calendar.day.noneLeft	c407c2ba84b71aea
 Calendar.day.past	d02f8e4fc77c430c
 Calendar.day.unavailable	5788dad662ed27b4
