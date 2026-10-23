@@ -10,20 +10,21 @@ import { I18nContext } from "../ui/i18n.tsx"
 import { catalogueSections, demoRegistry } from "./registry.ts"
 
 /**
- * Every guide demo of the `ui` and `system` packages rendered three times. It checks only what the demos render: a word no demo
- * shows (an empty `DataTable`'s "No rows", for one) is not checked here.
+ * Every guide demo of the `ui` and `system` packages rendered three times. It checks only what the
+ * demos render: a word no demo shows (an empty `DataTable`'s "No rows", for one) is not checked
+ * here.
  *
  * Under `en-XA`, the pseudo-language that wraps each catalog message in `⟦ ⟧`, a run of text with
- * no brackets that matches a text written in the package's sources is a component word that skipped the
- * catalog, and it is listed. A run the guide's sources write is the caller's and passes, unless it
- * is a word of the demo's own component (its catalog keys `<name>.…`); the few demos that pass
- * their component its own default English are in `CALLER_WORDS`. A subtree marked
- * `translate="no"` (user content, a brand name) is skipped.
+ * no brackets that matches a text written in the package's sources is a component word that skipped
+ * the catalog, and it is listed. A run the guide's sources write is the caller's and passes, unless
+ * it is a word of the demo's own component (its catalog keys `<name>.…`); the few demos that pass
+ * their component its own default English are in `CALLER_WORDS`. A subtree marked `translate="no"`
+ * (user content, a brand name) is skipped.
  *
- * Under the English catalog, every demo must render exactly what it renders without a provider:
- * the English written in each component's code and the package's `i18n/en.json` say the same. Under
- * the German catalogs, with an `onMissing` that throws, no demo may ask for a key the catalogs lack.
- * A `system` demo renders `ui` components too, so every translator holds both packages' catalogs.
+ * Under the English catalog, every demo must render exactly what it renders without a provider: the
+ * English written in each component's code and the package's `i18n/en.json` say the same. Under the
+ * German catalogs, with an `onMissing` that throws, no demo may ask for a key the catalogs lack. A
+ * `system` demo renders `ui` components too, so every translator holds both packages' catalogs.
  */
 
 const FULL_ENGLISH = createTranslator({
@@ -191,7 +192,10 @@ const CALLER_WORDS: Readonly<Record<string, readonly string[]>> = {
   DateRangePicker: ["Date range", "From", "To", "Cancel", "Apply"],
 }
 
-/** The packages whose demos this file guards, each with a section count it must exceed, so a list gone empty fails. */
+/**
+ * The packages whose demos this file guards, each with a section count it must exceed, so a list
+ * gone empty fails.
+ */
 const PACKAGES = [
   { name: "ui", minimum: 50 },
   { name: "system", minimum: 10 },

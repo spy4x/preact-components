@@ -1538,8 +1538,8 @@ test that imports `RailShell` (see "The screen boundary rule").
 
 Every word a component here shows comes from this package's catalog,
 `@spy4x/preact-system/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`, read from the
-same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`). An app adds the
-catalog beside the `ui` one:
+same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`). An app adds
+the catalog beside the `ui` one:
 
 ```ts
 import systemDe from "@spy4x/preact-system/i18n/de"
@@ -1551,7 +1551,8 @@ createTranslator({
 })
 ```
 
-Each language subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog. Each key is `<Component>.<field>`. A label that is a function of a number is a plural message with
+Each language subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog.
+Each key is `<Component>.<field>`. A label that is a function of a number is a plural message with
 `{count}`, and a label that picks between sentences is one key per sentence: `Calendar.day.past`,
 `Calendar.day.availableCount` and the rest for each day's name, `SyncStatus.offline` and
 `SyncStatus.offlineWaiting` for the offline line. Without a provider every component renders the
