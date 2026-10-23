@@ -60,6 +60,7 @@ timeSeriesPointSchema	helper	@spy4x/preact-charts	One bucket of a time series, a
 useInView	hook	@spy4x/preact-charts	Report whether the element behind `ref` has scrolled into view.
 xLabelStride	helper	@spy4x/preact-charts	Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label count without dropping the right-hand end.
 CHART_PALETTE_CLASS	constant	@spy4x/preact-charts/colors	Classes a chart puts on its root so `DEFAULT_CHART_PALETTE` resolves to the light steps, or to the dark ones under a `.dark` ancestor — the theme package's class-based dark mode.
+default	helper	@spy4x/preact-charts/i18n/ar	
 cn	helper	@spy4x/preact-cn	Join conditional class names and resolve conflicting Tailwind utilities.
 join	helper	@spy4x/preact-cn	Join conditional class names, with no Tailwind conflict resolution.
 ArchiveConfig	type	@spy4x/preact-crud	The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form already submits, plus whatever has to be archived first for it to be allowed.
@@ -247,6 +248,7 @@ Map	component	@spy4x/preact-map	See this file's own doc.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.
+default	helper	@spy4x/preact-map/i18n/ar	
 CLIPBOARD_UNAVAILABLE	constant	@spy4x/preact-signals	Reason reported when the runtime has no clipboard at all (an insecure origin, a server render).
 ClipboardPort	type	@spy4x/preact-signals	Write port.
 ClipboardStore	type	@spy4x/preact-signals	A clipboard helper.
