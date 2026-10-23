@@ -246,10 +246,6 @@ Map	component	@spy4x/preact-map	See this file's own doc.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.
-CLIPBOARD_UNAVAILABLE	constant	@spy4x/preact-signals	Reason reported when the runtime has no clipboard at all (an insecure origin, a server render).
-ClipboardPort	type	@spy4x/preact-signals	Write port.
-ClipboardStore	type	@spy4x/preact-signals	A clipboard helper.
-CopyFeedback	type	@spy4x/preact-signals	What to do about the outcome.
 DEFAULT_MODEL_STORE_MESSAGES	constant	@spy4x/preact-signals	English defaults of `ModelStoreMessages`.
 FilterField	type	@spy4x/preact-signals	One filter, bound to one URL parameter.
 INSTALL_DISMISSED_KEY	constant	@spy4x/preact-signals	The storage key `createStoredInstallPrompt` keeps the "dismissed" flag under.
@@ -318,7 +314,6 @@ ToastStore	type	@spy4x/preact-signals	A toast store.
 ToastVariant	type	@spy4x/preact-signals	Kind of a toast, selecting its colour and glyph.
 UrlFilters	type	@spy4x/preact-signals	Result of `useUrlFilters`.
 buildModelStore	helper	@spy4x/preact-signals	Build a CRUD store for one collection.
-createClipboard	helper	@spy4x/preact-signals	Create a clipboard helper.
 createInstallPrompt	helper	@spy4x/preact-signals	Create an install prompt store.
 createNow	helper	@spy4x/preact-signals	Create a store holding the current time.
 createOnboardingState	helper	@spy4x/preact-signals	Create an onboarding store over the app's step facts and a port for the dismissed flag.
@@ -340,13 +335,6 @@ themeBootstrapScript	helper	@spy4x/preact-signals	The source of an inline `<head
 useNow	hook	@spy4x/preact-signals	The current time, on a signal that changes at each midnight in `zone` and whenever the page becomes visible again.
 usePushSubscription	hook	@spy4x/preact-signals	The push state of this device for one component, ready to spread into `PushSettings` from `@spy4x/preact-system`.
 useUrlFilters	hook	@spy4x/preact-signals	Bind filter signals to URL parameters.
-AddressParts	type	@spy4x/preact-signals/use-url-filters	An address as `location` reports it, in the four pieces this hook has to read.
-FilterWrite	type	@spy4x/preact-signals/use-url-filters	What one filter does to its own query parameter: set it, or — with no `value` — remove it.
-clearFilterFields	helper	@spy4x/preact-signals/use-url-filters	Take every field back to its default, as **one** change.
-filterSearch	helper	@spy4x/preact-signals/use-url-filters	The query string a set of filter values implies, starting from the one the address already has.
-filterWrite	helper	@spy4x/preact-signals/use-url-filters	What one field's value means for its parameter.
-readAddress	helper	@spy4x/preact-signals/use-url-filters	Read the address into the filters, and answer with the query string they now agree on.
-restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the write should have left behind, or `undefined` when that is already the address.
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
 AccountMenuTheme	type	@spy4x/preact-system	The theme preferences `AccountMenu` offers; `"system"` follows the device.

@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
 import { createToastStore, type ToastId } from "./toast.ts"
+import type { ToastMessage } from "./types.ts"
 
 /**
  * Run a body with every timer in the process under this test's control.
@@ -113,24 +114,18 @@ describe("createToastStore add", () => {
   })
 })
 
-describe("createToastStore and the old timeout field", () => {
-  it("still accepts the name it used to have", () => {
+describe("createToastStore and the removed timeout field", () => {
+  it("no longer reads timeout as the delay", () => {
     const store = createToastStore({ nextId: counterIds() })
-    store.add({ body: "saved", timeout: 100 })
-    expect(store.list.value[0].duration).toBe(100)
+    // Cast, so this compiles both while `ToastMessage` still declares the field and after it goes.
+    store.add({ body: "saved", timeout: 100 } as ToastMessage)
+    expect(store.list.value[0].duration).toBeUndefined()
   })
 
-  it("lets duration win when a caller gives both", () => {
+  it("carries a zero duration through", () => {
     const store = createToastStore({ nextId: counterIds() })
-    store.add({ body: "saved", duration: 100, timeout: 9000 })
-    expect(store.list.value[0].duration).toBe(100)
-  })
-
-  it("carries a zero through either spelling", () => {
-    const store = createToastStore({ nextId: counterIds() })
-    store.add({ id: "a", body: "sticky", duration: 0 })
-    store.add({ id: "b", body: "also sticky", timeout: 0 })
-    expect(store.list.value.map((entry) => entry.duration)).toEqual([0, 0])
+    store.add({ body: "sticky", duration: 0 })
+    expect(store.list.value[0].duration).toBe(0)
   })
 })
 

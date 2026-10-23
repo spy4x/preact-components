@@ -27,7 +27,6 @@ writes, so they now live in spy4x/ts-libs: import them from `@spy4x/platform/uni
 | `theme`             | `createThemeStore` — light/dark/system, persistence, `matchMedia`; `ThemeValue`, the choice; `themeBootstrapScript` — the inline `<head>` script that paints it before the first paint; `syncThemeWithSettings` — the theme follows a `settings` store across devices                          |
 | `settings`          | `createSettingsStore` — one person's versioned settings from the server, saved optimistically, with conflicts rolled back to the record that won                                                                                                                                               |
 | `toast`             | `createToastStore` — the list behind `Toastr`; runs no timers                                                                                                                                                                                                                                  |
-| `clipboard`         | `createClipboard` — `navigator.clipboard` plus a feedback port; `CLIPBOARD_UNAVAILABLE`                                                                                                                                                                                                        |
 | `online`            | `createOnlineStatus` — `navigator.onLine` on a read-only signal, kept current by the `online` and `offline` events                                                                                                                                                                             |
 | `install-prompt`    | `createInstallPrompt` — whether the app can be installed here (`prompt`, `ios`, `installed`, `unavailable`), the captured `beforeinstallprompt`, and a stored dismissed flag; `createStoredInstallPrompt` — the same store with the flag kept in `localStorage`; `isIosDevice`, `isStandalone` |
 | `push-subscription` | `usePushSubscription` / `createPushSubscription` — whether this device gets push notifications, and turning them on and off against the browser and the server                                                                                                                                 |
@@ -45,9 +44,7 @@ in another language sets them there once, and `buildModelStore`'s success toasts
 title, pick them up. `title: ""` asks for no heading. The rest of `buildModelStore`'s wording
 is set by its `messages` option (below).
 
-`ThemeValue` is what the user picked: `LIGHT`, `DARK` or `SYSTEM`. `CLIPBOARD_UNAVAILABLE` is the
-reason `copy` reports when the runtime has no clipboard at all, on an insecure origin or during a
-server render.
+`ThemeValue` is what the user picked: `LIGHT`, `DARK` or `SYSTEM`.
 
 `types.ts` holds the shapes this package owns (`Model`, `RemoteEvent`, `ToastMessage`,
 `ToastAction`, `ToastPort`) and is re-exported from the barrel. The store's error envelope and
@@ -85,8 +82,7 @@ pin. The two are not drop-in identical, and one of the differences is silent:
 ## Design rules this package follows
 
 - **Ports, not singletons.** `buildModelStore` takes `fetch`, a `toast` port and a `session` flag;
-  `createThemeStore` takes `storage`, `media` and `apply`; `createClipboard` takes the clipboard;
-  `createOnlineStatus` takes `target` and `navigator`; `createNow` takes `clock`, `timers` and
+  `createThemeStore` takes `storage`, `media` and `apply`; `createOnlineStatus` takes `target` and `navigator`; `createNow` takes `clock`, `timers` and
   `visibility`. Every one has a browser default, and every
   one can be a test double. `createOnboardingState` takes a `dismissed` port with no default,
   because only the app knows where that flag is kept.
@@ -707,8 +703,9 @@ socket.on(`settings`, (record) => settings.apply(record))
   address, so the entry the reader returned to is never overwritten. `pages/e2e/signals.spec.ts`
   holds each of these in a browser.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
-  a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch`,
-  `readAddress`, `restoredAddress` and `clearFilterFields` — which between them hold the rules for
+  a query string: `resolveFilterValue`, `shouldPersistFilter`, and the address rules in
+  `use-url-filters-internals.ts`, which is not an entry point (`filterWrite`, `filterSearch`,
+  `readAddress`, `restoredAddress` and `clearFilterFields`) — which between them hold the rules for
   dropping a default, carrying a parameter the filters do not own, answering with the same string
   when nothing changed, keeping a value the reader changed before the first read, putting a fragment
   back on the address a write left behind, and clearing as one change.
