@@ -1,6 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import type { ComponentChildren } from "preact"
 import { render } from "preact-render-to-string"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
+import { I18nContext } from "./i18n.tsx"
 import {
   ATTACHMENT_LIST_LABELS,
   attachmentImages,
@@ -253,6 +258,43 @@ describe("AttachmentList", () => {
         "Doc · 1.5 MB",
       ]
     ) expect(html).toContain(text)
+  })
+})
+
+describe("AttachmentList under a translator", () => {
+  const russian = createTranslator({ language: "ru", catalogs: [{ source: en, translation: ru }] })
+  const inRussian = (node: ComponentChildren) =>
+    render(<I18nContext.Provider value={russian}>{node}</I18nContext.Provider>)
+
+  it("takes every word from the catalog, kind and percentage included", () => {
+    const html = inRussian(
+      <AttachmentList
+        id="files"
+        items={[image, { ...pdf, status: "uploading", progress: 44.6 }]}
+        onCancel={noop}
+      />,
+    )
+
+    for (
+      const text of [
+        'aria-label="Вложения"',
+        "Изображение · 820 KB · Maya Chen",
+        'aria-label="Открыть tickets.png"',
+        "Загрузка, 45 %",
+        'aria-label="Загрузка scan.pdf"',
+        'aria-label="Отменить загрузку scan.pdf"',
+      ]
+    ) expect(html).toContain(text)
+    expect(html).not.toContain("Uploading")
+  })
+
+  it("still lets the caller's labels win over the catalog", () => {
+    const html = inRussian(
+      <AttachmentList id="files" items={[image]} labels={{ open: (name) => `Voir ${name}` }} />,
+    )
+
+    expect(html).toContain('aria-label="Voir tickets.png"')
+    expect(html).toContain('aria-label="Вложения"')
   })
 })
 
