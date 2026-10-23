@@ -1445,11 +1445,31 @@ function fileSpecs(): Spec[] {
       run: async (page) => {
         const row = list(page).locator(`[data-e2e="attachment-row"]`, { hasText: "scan.pdf" })
         await row.getByText("Upload failed.").waitFor()
-        await row.getByRole("button", { name: "Retry", exact: true }).click()
+        await row.getByRole("button", { name: "Retry scan.pdf", exact: true }).click()
         await row.getByText("Checking…").waitFor()
         await row.getByRole("progressbar", { name: "Uploading scan.pdf" }).waitFor()
         await row.getByText("PDF · 640 KB").waitFor()
         await row.getByRole("button", { name: "Actions for scan.pdf" }).waitFor()
+      },
+    },
+    {
+      name:
+        "AttachmentList: Retry from the keyboard keeps focus in its row while checking and after it is ready",
+      pageId: "ui",
+      run: async (page) => {
+        const row = list(page).locator(`[data-e2e="attachment-row"]`, { hasText: "scan.pdf" })
+        const focusInRow = () =>
+          row.evaluate((element) =>
+            element.contains(document.activeElement) && document.activeElement !== document.body
+          )
+        await list(page).getByRole("button", { name: "Remove receipt.pdf" }).focus()
+        await page.keyboard.press("Tab")
+        await focused(page, row.getByRole("button", { name: "Retry scan.pdf", exact: true }))
+        await page.keyboard.press("Enter")
+        await row.getByText("Checking…").waitFor()
+        if (!await focusInRow()) throw new Error("focus left the row while it was checking")
+        await row.getByText("PDF · 640 KB").waitFor()
+        await focused(page, row.getByRole("button", { name: "Download scan.pdf" }))
       },
     },
     ...(["light", "dark"] as const).map((palette): Spec => ({
