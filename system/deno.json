@@ -29,7 +29,14 @@
     "./sync-status": "./sync-status.tsx",
     "./saved-copy-notice": "./saved-copy-notice.tsx",
     "./unsent-changes-dialog": "./unsent-changes-dialog.tsx",
-    "./settings-layout": "./settings-layout.tsx"
+    "./settings-layout": "./settings-layout.tsx",
+    "./i18n": "./i18n.ts",
+    "./i18n/ar": "./i18n/ar.ts",
+    "./i18n/de": "./i18n/de.ts",
+    "./i18n/en": "./i18n/en.ts",
+    "./i18n/es": "./i18n/es.ts",
+    "./i18n/pt-BR": "./i18n/pt-BR.ts",
+    "./i18n/ru": "./i18n/ru.ts"
   },
   "imports": {
     // Fresh is pinned here and nowhere else, for one test file only: `seo-head.fresh.test.tsx`
@@ -40,10 +47,12 @@
   },
   "publish": {
     // Every `*.test.*` here renders to `preact-render-to-string` or drives Deno's fake timers; none
-    // of it is reachable from `exports`, and none of it is anything a consumer runs.
+    // of it is reachable from `exports`, and none of it is anything a consumer runs. The catalogs'
+    // lock files are for `deno task i18n:stamp` and the catalog test only.
     "exclude": [
       "**/*.test.ts",
-      "**/*.test.tsx"
+      "**/*.test.tsx",
+      "i18n/*.lock"
     ]
   }
 }
