@@ -58,8 +58,9 @@ export interface FileInputProps {
    * `"button"` draws one `Button` that opens the file chooser and keeps no list: each choice goes
    * to `onFiles` (the accepted files of that choice, only when there are any) and `onReject`, and
    * the input is emptied so the same file can be chosen again. The button's text is `label`, else
-   * `labels.browse`. `hint`, `error`, `required` and `previews` do nothing in this mode, and it
-   * shows no refusal text: the caller words refusals from `onReject`.
+   * `labels.browse`. Inside a `Field`, `id` is the button's, so `Field`'s label names the button
+   * and the button still shows its own text. `hint`, `error`, `required` and `previews` do nothing
+   * in this mode, and it shows no refusal text: the caller words refusals from `onReject`.
    */
   appearance?: "zone" | "button"
   /** The button's variant with `appearance="button"`. Defaults to `"secondary"`. */
@@ -86,9 +87,10 @@ export interface FileInputProps {
   /** Largest accepted file size, in bytes. Omitted accepts any size. */
   maxSize?: number
   /**
-   * Visible label text, above the drop zone; with `appearance="button"`, the button's text. Nested inside `Field`, `Field` supplies the
-   * association and this may be left out. Standalone, it is the input's only accessible name —
-   * pass one, or the control reaches assistive tech with none.
+   * Visible label text, above the drop zone; with `appearance="button"`, the button's text.
+   * Nested inside `Field`, `Field` supplies the association and this may be left out. Standalone,
+   * it is the input's only accessible name — pass one, or the control reaches assistive tech with
+   * none.
    */
   label?: ComponentChildren
   /** Helper text under the file list. */
