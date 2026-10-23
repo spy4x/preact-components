@@ -1533,3 +1533,29 @@ keep working; it has no `header` slot and no `rail-shell-header` hook, and its h
 `--rail-height`. `tabBarSlots` keeps the primary action in the tab bar's centre slot, and the items
 give way when they overflow. App code draws `AppShell`; the boundary rule fails a
 test that imports `RailShell` (see "The screen boundary rule").
+
+## Translations
+
+Every word a component here shows comes from this package's catalog,
+`@spy4x/preact-system/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`, read from the
+same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`). An app adds the
+catalog beside the `ui` one:
+
+```ts
+import systemDe from "@spy4x/preact-system/i18n/de"
+import systemEn from "@spy4x/preact-system/i18n/en"
+
+createTranslator({
+  language: "de",
+  catalogs: [{ source: uiEn, translation: uiDe }, { source: systemEn, translation: systemDe }],
+})
+```
+
+Each language subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog. Each key is `<Component>.<field>`. A label that is a function of a number is a plural message with
+`{count}`, and a label that picks between sentences is one key per sentence: `Calendar.day.past`,
+`Calendar.day.availableCount` and the rest for each day's name, `SyncStatus.offline` and
+`SyncStatus.offlineWaiting` for the offline line. Without a provider every component renders the
+English it always has, and a word passed in `labels` still wins. The calendar's month, weekday and
+day names follow its `locale`, not the translator. Error messages meant for a developer stay in
+English. `translate` and `SystemKey` from `@spy4x/preact-system/i18n` are what the components use to
+read a word that is not a field of their labels.
