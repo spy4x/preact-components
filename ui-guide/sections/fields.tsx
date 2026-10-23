@@ -781,9 +781,13 @@ function RadioChipsDemo() {
   )
 }
 
-/** A multi-select tag filter and a single-select status filter, each echoing its value. */
+/**
+ * A multi-select tag filter, tags in colours of their own, and a single-select status filter, the
+ * first and last echoing their value.
+ */
 function ToggleChipsDemo() {
   const tags = useSignal<string[]>(["work"])
+  const colored = useSignal<string[]>(["urgent"])
   const status = useSignal<string | null>("open")
   return (
     <Stack gap="md">
@@ -797,6 +801,16 @@ function ToggleChipsDemo() {
         ]}
         value={tags.value}
         onChange={(next) => tags.value = next}
+      />
+      <ToggleChips
+        label="Coloured tags"
+        options={[
+          { value: "urgent", label: "Urgent", color: "#dc2626" },
+          { value: "ideas", label: "Ideas", color: "#fde047" },
+          { value: "q4", label: "Q4", color: "#2563eb" },
+        ]}
+        value={colored.value}
+        onChange={(next) => colored.value = next}
       />
       <ToggleChips
         mode="single"
@@ -1377,8 +1391,9 @@ export const fieldDemos = {
     props: [
       {
         name: "options",
-        type: "{ value, label, disabled? }[]",
-        description: "One chip per option.",
+        type: "{ value, label, disabled?, color? }[]",
+        description:
+          "One chip per option. An option's own `color` (`#rrggbb`, such as a tag's) fills it when pressed and shows as a dot before its text when not.",
       },
       {
         name: "value / onChange",
