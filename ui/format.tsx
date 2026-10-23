@@ -12,6 +12,7 @@ import { type Context, createContext, type JSX } from "preact"
 import { useContext } from "preact/hooks"
 import { createFormatters, type DateInput, type Formatters } from "@spy4x/time/format"
 import { TimeFormatter } from "@spy4x/platform/universal/time"
+import { useT } from "./i18n.tsx"
 
 /**
  * The formatter the components read. An app provides the person's own with
@@ -36,16 +37,16 @@ export interface DateTextLabels {
 /** The words `When` shows: those of `OnDay`, plus the distance from now. */
 export interface WhenLabels extends DateTextLabels {
   /**
-   * The distance from `now` (epoch milliseconds) to `at`. Default: the region format's own words
-   * (`FormatContext`), `"5 minutes ago"`, `"vor 3 Tagen"`. `WHEN_LABELS.relative` is the older
-   * English wording, `"a moment ago"`, for a caller that wants it.
+   * The distance from `now` (epoch milliseconds) to `at`. Default in English, with or without an
+   * `I18nContext` provider: `WHEN_LABELS.relative`, `"a moment ago"`, `"3 days ago"`. Under a
+   * provider of another language: `Intl`'s words in that language, `"vor 3 Tagen"`.
    */
   relative: (at: Date, now: number) => string
 }
 
 /**
- * The English words of `When` and `OnDay`. `When` takes the distance from the region format
- * instead of `relative` here, unless the caller passes this one.
+ * The English words of `When` and `OnDay`. Under an `I18nContext` provider of another language,
+ * `When` takes the distance from `Intl` in that language instead of `relative` here.
  */
 export const WHEN_LABELS: WhenLabels = {
   missing: "-",
@@ -79,9 +80,14 @@ export interface OnDayProps {
  */
 export function When({ at, now, labels, class: className }: WhenProps): JSX.Element {
   const format = useFormat()
+  const language = useT().language
   const words: WhenLabels = {
     ...WHEN_LABELS,
-    relative: (instant, present) => relativeTo(format, instant, present, now === undefined),
+    // English keeps the words it always had; another reading language gets `Intl`'s own.
+    ...(isEnglish(language) ? {} : {
+      relative: (instant: Date, present: number) =>
+        relativeTo(format, language, instant, present, now === undefined),
+    }),
     ...labels,
   }
   const instant = toDate(at)
@@ -109,14 +115,28 @@ export function OnDay({ at, labels, class: className }: OnDayProps): JSX.Element
   )
 }
 
+/** True for English, `en` or `en-GB`: the language whose words `WHEN_LABELS.relative` writes. */
+function isEnglish(language: string): boolean {
+  return language.toLowerCase().split("-")[0] === "en"
+}
+
 /**
- * `at`'s distance from `present` in `format`'s words. With no `now` from the caller, the
- * formatter's own clock decides; otherwise a formatter of the same settings set to that instant.
+ * `at`'s distance from `present` in `language`. When the format already speaks that language and
+ * the caller gave no `now`, the formatter's own clock decides; otherwise a formatter of the same
+ * zone and clock, in `language`, set to that instant.
  */
-function relativeTo(format: Formatters, at: Date, present: number, ownClock: boolean): string {
-  if (ownClock) return format.relative(at)
+function relativeTo(
+  format: Formatters,
+  language: string,
+  at: Date,
+  present: number,
+  ownClock: boolean,
+): string {
+  const sameLanguage =
+    new Intl.Locale(format.locale).language === new Intl.Locale(language).language
+  if (ownClock && sameLanguage) return format.relative(at)
   return createFormatters(
-    { locale: format.locale, timeZone: format.timeZone, hourCycle: format.hourCycle },
+    { locale: language, timeZone: format.timeZone, hourCycle: format.hourCycle },
     { now: () => present },
   ).relative(at)
 }
