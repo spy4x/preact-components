@@ -335,6 +335,12 @@ describe("FileInput appearance button", () => {
     expect(ghost).toContain("bg-transparent")
   })
 
+  it("gives the button a 44 px touch target on a phone, keeping the caller's class", () => {
+    const html = render(<FileInput id="attach" appearance="button" class="w-full" />)
+
+    expect(html).toMatch(/<button[^>]*class="[^"]*min-h-11 min-w-11[^"]*w-full"/)
+  })
+
   it("disables the button and the input together", () => {
     const html = render(<FileInput id="attach" appearance="button" disabled />)
 

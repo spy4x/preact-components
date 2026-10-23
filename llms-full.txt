@@ -6447,7 +6447,7 @@ It does not upload — sending the chosen files is the caller's own form post or
 itself, such as an attachment list that uploads each choice at once or a profile picture's
 "Change". It opens the same chooser and runs the same `classifyFiles` checks, keeps no list, and
 hands each choice to `onFiles` (the accepted files of that choice, only when there are any) and
-`onReject`. The input is hidden and out of the tab order, under the id `${id}-input`; `id` names
+`onReject`. The button keeps the 44 px touch target on a phone. The input is hidden and out of the tab order, under the id `${id}-input`; `id` names
 the button. The input is emptied after every choice, so choosing the same file again still counts.
 The button's text is `label`, else `labels.browse`; `busy` and `busyLabel` show an upload in
 progress, and a busy button opens nothing. `hint`, `error`, `required` and `previews` do nothing in
@@ -6482,7 +6482,10 @@ the name (two lines at most, broken anywhere), and a line that says where the fi
 A ready image with a `src` opens in `Lightbox`, which pages through every ready image of the list
 in order (`attachmentImages`); a ready file's name calls `onDownload`. That open or download target
 covers the tile, the name and the meta line, and is described by the meta line, so a row has at
-most two tab stops. Every callback left out takes its control with it: a read-only page passes
+most two tab stops. The name is cut to two lines and carries the whole of it in a `title`. When
+the control that holds focus goes because its row changed state (Retry gives way to "Checking…",
+Cancel to a finished upload), focus stays in the row: on its first control, else on the row
+itself until a control comes back. Every callback left out takes its control with it: a read-only page passes
 `onDownload` alone. The list uploads, downloads and removes nothing; ask before a removal in the
 caller (`ConfirmDialog`), and pass `removingId` while it runs: when that row leaves `items`, focus
 moves to the next row's action (`useFocusAfterRemoval`), and after the last row to

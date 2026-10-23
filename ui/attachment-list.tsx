@@ -1,7 +1,7 @@
 import { IconDocument, IconImage, IconXMark } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
-import { useRef } from "preact/hooks"
+import { useEffect, useRef } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
 import { Button, buttonClasses } from "./button.tsx"
 import { Card } from "./card.tsx"
@@ -10,7 +10,7 @@ import { describedImages, Lightbox, type LightboxImage, type LightboxProps } fro
 import { MoreMenu } from "./page-header.tsx"
 import { Progress } from "./progress.tsx"
 import { TOUCH_TARGET } from "./touch-target.ts"
-import { useFocusAfterRemoval } from "./use-focus-after-removal.ts"
+import { useFocusAfterRemoval, useFocusFallback } from "./use-focus-after-removal.ts"
 
 /**
  * Where one file of an {@link AttachmentList} stands: `"uploading"` (bytes on the way),
@@ -57,8 +57,10 @@ export interface AttachmentListLabels {
   checking: string
   /** The danger line of a failed row without its own `error`. Default: `"Upload failed."`. */
   failed: string
-  /** The retry button of a failed row. Default: `"Retry"`. */
+  /** The retry button's text. Default: `"Retry"`. */
   retry: string
+  /** Accessible name of the retry button. Default: `"Retry scan.pdf"`. */
+  retryFile: (name: string) => string
   /** Accessible name of the progress bar. Default: `"Uploading scan.pdf"`. */
   progress: (name: string) => string
   /** Accessible name of a ready image's open button. Default: `"Open tickets.png"`. */
@@ -87,6 +89,7 @@ export const ATTACHMENT_LIST_LABELS: AttachmentListLabels = {
   checking: "Checking…",
   failed: "Upload failed.",
   retry: "Retry",
+  retryFile: (name) => `Retry ${name}`,
   progress: (name) => `Uploading ${name}`,
   open: (name) => `Open ${name}`,
   downloadFile: (name) => `Download ${name}`,
@@ -213,36 +216,23 @@ export function AttachmentList({
           const opens = imageIndex >= 0
           const downloads = !opens && item.status === "ready" && onDownload !== undefined &&
             !isImage(item)
-          const body = <RowBody item={item} words={words} metaId={metaId} />
           return (
-            <li
+            <Row
               key={item.id}
-              data-e2e="attachment-row"
-              data-status={item.status}
-              class="flex min-h-14 items-center gap-3 px-4 py-3 sm:px-6"
-            >
-              {opens || downloads
-                ? (
-                  <button
-                    type="button"
-                    class="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
-                    aria-label={opens ? words.open(item.name) : words.downloadFile(item.name)}
-                    aria-describedby={metaId}
-                    onClick={() => opens ? viewing.value = imageIndex : onDownload?.(item)}
-                  >
-                    {body}
-                  </button>
-                )
-                : <div class="flex min-w-0 flex-1 items-center gap-3">{body}</div>}
-              <RowAction
-                item={item}
-                words={words}
-                onDownload={onDownload}
-                onRemove={onRemove}
-                onCancel={onCancel}
-                onRetry={onRetry}
-              />
-            </li>
+              item={item}
+              words={words}
+              metaId={metaId}
+              label={opens
+                ? words.open(item.name)
+                : downloads
+                ? words.downloadFile(item.name)
+                : undefined}
+              onPress={() => opens ? viewing.value = imageIndex : onDownload?.(item)}
+              onDownload={onDownload}
+              onRemove={onRemove}
+              onCancel={onCancel}
+              onRetry={onRetry}
+            />
           )
         })}
       </ul>
@@ -257,6 +247,56 @@ export function AttachmentList({
         />
       )}
     </Card>
+  )
+}
+
+/** The controls a row's focus can land on, in the order Tab reaches them. */
+const ROW_CONTROLS = "button:not([disabled]), a[href]"
+
+/**
+ * One row. When the control that holds focus goes because the row changed state (Retry gives
+ * way to "Checking…", Cancel to a finished upload), focus stays in the row: on its first control,
+ * else on the row itself, and from there on to its first control once it has one again. A row
+ * that leaves the list is `useFocusAfterRemoval`'s, in the list.
+ */
+function Row(
+  { item, words, metaId, label, onPress, ...actions }:
+    & { item: AttachmentItem; words: AttachmentListLabels; metaId: string }
+    & { label: string | undefined; onPress: () => void }
+    & Pick<AttachmentListProps, "onDownload" | "onRemove" | "onCancel" | "onRetry">,
+): JSX.Element {
+  const row = useRef<HTMLLIElement>(null)
+  const firstControl = () => row.current?.querySelector<HTMLElement>(ROW_CONTROLS) ?? row.current
+  useFocusFallback(row, firstControl)
+  useEffect(() => {
+    const element = row.current
+    if (element === null || element.ownerDocument.activeElement !== element) return
+    element.querySelector<HTMLElement>(ROW_CONTROLS)?.focus()
+  }, [item.status])
+  const body = <RowBody item={item} words={words} metaId={metaId} />
+  return (
+    <li
+      ref={row}
+      tabIndex={-1}
+      data-e2e="attachment-row"
+      data-status={item.status}
+      class="flex min-h-14 items-center gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-6"
+    >
+      {label !== undefined
+        ? (
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+            aria-label={label}
+            aria-describedby={metaId}
+            onClick={onPress}
+          >
+            {body}
+          </button>
+        )
+        : <div class="flex min-w-0 flex-1 items-center gap-3">{body}</div>}
+      <RowAction item={item} words={words} {...actions} />
+    </li>
   )
 }
 
@@ -290,7 +330,10 @@ function RowBody(
           </span>
         )}
       <span class="flex min-w-0 flex-1 flex-col gap-1">
-        <span class="line-clamp-2 text-sm font-medium wrap-anywhere text-foreground">
+        <span
+          class="line-clamp-2 text-sm font-medium wrap-anywhere text-foreground"
+          title={item.name}
+        >
           {item.name}
         </span>
         {(item.status === "uploading" || item.status === "checking") && (
@@ -350,6 +393,7 @@ function RowAction(
             size="sm"
             class={TOUCH_TARGET}
             data-attachment-action=""
+            aria-label={words.retryFile(item.name)}
             onClick={() => onRetry(item)}
           >
             {words.retry}

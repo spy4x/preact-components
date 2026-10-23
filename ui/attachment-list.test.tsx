@@ -58,6 +58,18 @@ describe("AttachmentList", () => {
     expect(row(html, "scan.pdf")).toContain("PDF · 1.5 MB")
   })
 
+  it("puts the whole file name in a title, so a name cut to two lines can be read in full", () => {
+    const html = render(<AttachmentList id="files" items={[pdf]} />)
+
+    expect(html).toMatch(/<span[^>]*title="scan.pdf"[^>]*>scan.pdf<\/span>/)
+  })
+
+  it("lets a row hold focus without being a tab stop, so focus can stay when its control goes", () => {
+    const html = render(<AttachmentList id="files" items={[pdf]} />)
+
+    expect(html).toMatch(/<li[^>]*tabindex="-1"/)
+  })
+
   it("draws the thumbnail with an empty alt, and an icon tile for a file without one", () => {
     const html = render(<AttachmentList id="files" items={[image, pdf]} />)
 
@@ -148,7 +160,7 @@ describe("AttachmentList", () => {
     )
 
     expect(html).toContain('class="text-xs text-danger">Upload failed.</span>')
-    expect(html).toMatch(/<button[^>]*>Retry<\/button>/)
+    expect(html).toMatch(/<button[^>]*aria-label="Retry scan.pdf"[^>]*>Retry<\/button>/)
     expect(html).toContain('aria-label="Remove scan.pdf"')
   })
 
@@ -186,6 +198,7 @@ describe("AttachmentList", () => {
           checking: "Vérification",
           failed: "Échec",
           retry: "Réessayer",
+          retryFile: (name) => `Réessayer ${name}`,
           progress: (name) => `Envoi de ${name}`,
           downloadFile: (name) => `Télécharger ${name}`,
           cancel: (name) => `Annuler ${name}`,
@@ -202,6 +215,7 @@ describe("AttachmentList", () => {
         "Vérification",
         ">Échec<",
         ">Réessayer<",
+        'aria-label="Réessayer f.pdf"',
         "Envoi de scan.pdf",
         "Télécharger r.pdf",
         "Annuler scan.pdf",

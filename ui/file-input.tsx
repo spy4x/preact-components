@@ -4,6 +4,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
 import { Button, type ButtonVariant } from "./button.tsx"
+import { TOUCH_TARGET } from "./touch-target.ts"
 
 /**
  * One file a {@link FileInput} refused, and why.
@@ -396,7 +397,7 @@ export function FileInput(
           disabled={disabled}
           busy={busy}
           busyLabel={busyLabel}
-          class={className}
+          class={className === undefined ? TOUCH_TARGET : `${TOUCH_TARGET} ${className}`}
           aria-describedby={callerDescribedBy}
           aria-invalid={callerInvalid === true || callerInvalid === "true" ? "true" : undefined}
           data-e2e="file-input-button"
