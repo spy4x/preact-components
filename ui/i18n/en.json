@@ -6,6 +6,7 @@
   "ColorField.custom": "Pick a custom colour",
   "ColorField.hexCode": "Hex code",
   "ColorField.hexError": "Enter # and 6 characters, such as #59168b.",
+  "ColorField.hexPlaceholder": "#59168b",
   "ColorField.legend": "Colour",
   "ColorField.none": "No colour",
   "ColorField.picker": "Colour picker",

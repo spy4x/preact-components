@@ -6,6 +6,7 @@
   "ColorField.custom": "Выбрать свой цвет",
   "ColorField.hexCode": "HEX-код",
   "ColorField.hexError": "Введите # и 6 символов, например #59168b.",
+  "ColorField.hexPlaceholder": "#59168b",
   "ColorField.legend": "Цвет",
   "ColorField.none": "Без цвета",
   "ColorField.picker": "Палитра",
@@ -223,7 +224,7 @@
   "QuickAdd.submit": "Добавить",
   "QuickAdd.tag": "Тег {name}",
   "ResendButton.busyLabel": "Отправляем…",
-  "ResendButton.label": "Отправить ещё раз",
+  "ResendButton.label": "отправьте ещё раз",
   "ResendButton.readyText": "Не пришло? Проверьте папку «Спам» или",
   "ResendButton.sentText": "Отправили ещё раз. Проверьте почту.",
   "ResendButton.waitingText": {

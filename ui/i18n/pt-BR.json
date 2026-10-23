@@ -6,6 +6,7 @@
   "ColorField.custom": "Escolher uma cor personalizada",
   "ColorField.hexCode": "Código hexadecimal",
   "ColorField.hexError": "Digite # e 6 caracteres, como #59168b.",
+  "ColorField.hexPlaceholder": "#59168b",
   "ColorField.legend": "Cor",
   "ColorField.none": "Sem cor",
   "ColorField.picker": "Seletor de cor",
@@ -222,7 +223,7 @@
   "QuickAdd.submit": "Adicionar",
   "QuickAdd.tag": "Tag {name}",
   "ResendButton.busyLabel": "Enviando…",
-  "ResendButton.label": "Enviar de novo",
+  "ResendButton.label": "envie de novo",
   "ResendButton.readyText": "Não chegou? Confira sua pasta de spam ou",
   "ResendButton.sentText": "Enviado de novo. Confira sua caixa de entrada.",
   "ResendButton.waitingText": {

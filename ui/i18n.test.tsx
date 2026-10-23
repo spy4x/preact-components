@@ -63,6 +63,17 @@ describe("labelsFrom", () => {
     )
   })
 
+  it("asks the translator only for a string field or a function with params", () => {
+    const asked: string[] = []
+    const strict = createTranslator({
+      language: "de",
+      catalogs: [{ source: en, translation: de }],
+      onMissing: (key) => asked.push(key),
+    })
+    labelsFrom(strict, "PlanCard", { status: { 1: "Trial" }, per: () => "", manage: "Manage" })
+    expect(asked).toEqual([])
+  })
+
   it("leaves a function without params at its default", () => {
     const shout = (text: string) => text.toUpperCase()
     expect(labelsFrom(GERMAN, "Pagination", { pageLabel: shout }).pageLabel).toBe(shout)

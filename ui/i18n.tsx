@@ -109,10 +109,13 @@ export function labelsFrom<Labels extends object>(
       result[field] = given
       continue
     }
-    const key = `${name}.${field}`
-    if (!knows(translator, key)) continue
     const names = (params as Record<string, readonly string[] | "values" | undefined> | undefined)
       ?.[field]
+    // Only a string, or a function with named arguments, has a message: look nothing else up, so
+    // an `onMissing` hears only of keys a catalog should have.
+    if (!names && typeof result[field] !== "string") continue
+    const key = `${name}.${field}`
+    if (!knows(translator, key)) continue
     if (names === "values") {
       result[field] = (values: MessageValues) => translator.t(key, values)
     } else if (names) {

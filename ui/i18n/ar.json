@@ -6,6 +6,7 @@
   "ColorField.custom": "اختيار لون مخصص",
   "ColorField.hexCode": "رمز HEX",
   "ColorField.hexError": "أدخل # متبوعة بستة أحرف، مثل #59168b.",
+  "ColorField.hexPlaceholder": "#59168b",
   "ColorField.legend": "اللون",
   "ColorField.none": "بلا لون",
   "ColorField.picker": "منتقي الألوان",
@@ -225,7 +226,7 @@
   "QuickAdd.submit": "إضافة",
   "QuickAdd.tag": "الوسم {name}",
   "ResendButton.busyLabel": "جارٍ الإرسال…",
-  "ResendButton.label": "إعادة الإرسال",
+  "ResendButton.label": "أعد الإرسال",
   "ResendButton.readyText": "لم تصلك الرسالة؟ تحقق من مجلد الرسائل غير المرغوب فيها أو",
   "ResendButton.sentText": "أُعيد الإرسال. تحقق من بريدك الوارد.",
   "ResendButton.waitingText": {
