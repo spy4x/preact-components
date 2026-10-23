@@ -264,9 +264,8 @@ function selectionIndex<T>(
  * Whether a focus change **out of the input** closes the popup.
  *
  * The containment test has to mean "focus is still on the input", not "focus is still somewhere in the
- * component". Two descendants are reachable by one `Tab` in Chrome: the clear button, and — when the
- * option list overflows its `max-h-60` — the popup `<ul>` itself, which is a scrollable box and so a
- * tab stop with `tabIndex === -1`. A root-containment test keeps the list open in both cases, which is
+ * component". The clear button is reachable by one `Tab`, and a click can focus the popup `<ul>`,
+ * which carries `tabIndex={-1}`. A root-containment test keeps the list open in both cases, which is
  * a defect, not a design choice.
  *
  * A `relatedTarget` of `null` is *not* a leave: clicking an option (unfocusable `<li>`) or anything
@@ -951,8 +950,7 @@ export function Combobox<T>({
           }}
           onKeyDown={handleKeyDown}
           // Only one thing counts as "still here": focus staying on the input. A `Tab` from the input
-          // lands on a descendant — the clear button, or the scrolling popup itself — and that is a
-          // leave, not a stay.
+          // can land on a descendant, the clear button, and that is a leave, not a stay.
           onBlur={(event) => {
             if (!leavesCombobox(event.currentTarget, event.relatedTarget as Node | null)) return
             close()
@@ -987,6 +985,10 @@ export function Combobox<T>({
         // The `hidden` attribute, not a `hidden` utility: the popup then disappears on markup alone,
         // without the stylesheet, and cannot be shown by a utility the caller adds.
         hidden={!isOpen.value}
+        // Out of the Tab order. Chrome makes a box that scrolls a tab stop, so a list longer than
+        // its `max-h-60` took the `Tab` meant for the next control; closing on that blur hid the
+        // list, and focus fell to the page body. Focus stays on the input, as the pattern wants.
+        tabIndex={-1}
         class={join(listboxClasses, listboxClass)}
       >
         {content.options.map((item, index) => {
