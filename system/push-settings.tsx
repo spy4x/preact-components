@@ -13,6 +13,7 @@ import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /**
  * What the block shows.
@@ -153,7 +154,7 @@ export function PushSettings(
   { status, busy, failed, sent, onEnable, onDisable, onTest, labels, class: className }:
     PushSettingsProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_PUSH_SETTINGS_LABELS, ...labels }
+  const words = useLabels("PushSettings", DEFAULT_PUSH_SETTINGS_LABELS, labels)
   const block = useRef<HTMLDivElement>(null)
   const description = useRef<HTMLParagraphElement>(null)
   const titleId = useId()

@@ -22,6 +22,8 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** The slice of `ServiceWorker` this package uses. */
 export interface WorkerLike {
@@ -326,9 +328,9 @@ export function SWUpdater(
     scriptUrl,
     scope,
     container,
-    message = "New version available",
-    reloadLabel = "Reload",
-    dismissLabel = "Dismiss",
+    message: messageProp,
+    reloadLabel: reloadLabelProp,
+    dismissLabel: dismissLabelProp,
     updateMessage,
     reload,
     onUpdate,
@@ -337,6 +339,11 @@ export function SWUpdater(
     class: className,
   }: SWUpdaterProps,
 ): JSX.Element {
+  const translator = useT()
+  const message = messageProp ?? translate(translator, "SWUpdater.message", "New version available")
+  const reloadLabel = reloadLabelProp ?? translate(translator, "SWUpdater.reloadLabel", "Reload")
+  const dismissLabel = dismissLabelProp ??
+    translate(translator, "SWUpdater.dismissLabel", "Dismiss")
   const [available, setAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [registration, setRegistration] = useState<RegistrationLike | null>(null)

@@ -43,6 +43,9 @@ import {
   RailCell,
   sectionRule,
 } from "./rail-parts.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 
 /** One destination of {@link AppShellProps.items}: always a link with an icon. */
 export interface AppShellItem extends RailItem {
@@ -172,8 +175,13 @@ function connectionIsNews(connection: AppShellConnection | undefined): boolean {
 }
 
 /** The account button's name: "Account: Ada Lovelace", with ", Admin" for a tag. */
-function defaultTrigger(name: string, tag?: string): string {
-  return tag ? `Account: ${name}, ${tag}` : `Account: ${name}`
+function defaultTrigger(translator: Translator<string>, name: string, tag?: string): string {
+  return tag
+    ? translate(translator, "AppShell.accountTriggerTagged", `Account: ${name}, ${tag}`, {
+      name,
+      tag,
+    })
+    : translate(translator, "AppShell.accountTrigger", `Account: ${name}`, { name })
 }
 
 /** The account cell's trigger: a 48 px cell, taller with a tag under the avatar. */
@@ -306,14 +314,21 @@ export function AppShell(props: AppShellProps): JSX.Element {
     class: className,
   } = props
   const { user, tag } = account
-  const counterWords = labels?.counter ?? ((count: number) => `${count} unread`)
-  const tabLabel = tag ?? labels?.account ?? "Account"
-  const bellLabel = labels?.notifications ?? "Notifications"
-  const connectionWord = connection === undefined
-    ? ""
-    : labels?.connection?.[connection] ?? CONNECTION_WORDS[connection]
+  const translator = useT()
+  const counterWords = labels?.counter ??
+    ((count: number) => translate(translator, "AppShell.counter", `${count} unread`, { count }))
+  const tabLabel = tag ?? labels?.account ?? translate(translator, "AppShell.account", "Account")
+  const bellLabel = labels?.notifications ??
+    translate(translator, "AppShell.notifications", "Notifications")
+  const connectionWord = connection === undefined ? "" : labels?.connection?.[connection] ??
+    translate(translator, `AppShell.connection.${connection}`, CONNECTION_WORDS[connection])
   const news = connectionIsNews(connection)
-  const triggerName = user && (labels?.accountTrigger ?? defaultTrigger)(user.name, tag)
+  const triggerName = user &&
+    (labels?.accountTrigger ??
+      ((name: string, tag?: string) => defaultTrigger(translator, name, tag)))(
+        user.name,
+        tag,
+      )
   const themeId = useId()
 
   const bell: AppShellItem | undefined = notifications && {
@@ -327,9 +342,12 @@ export function AppShell(props: AppShellProps): JSX.Element {
   const navigateLink = navigate && ((_key: string, href: string) => navigate(href))
   const entryPorts = { navigateLink, counterWords, variant: "icons" as const, primary: false }
   const themes: readonly [AccountMenuTheme, string][] = [
-    ["system", labels?.accountMenu?.system ?? "System"],
-    ["light", labels?.accountMenu?.light ?? "Light"],
-    ["dark", labels?.accountMenu?.dark ?? "Dark"],
+    [
+      "system",
+      labels?.accountMenu?.system ?? translate(translator, "AccountMenu.system", "System"),
+    ],
+    ["light", labels?.accountMenu?.light ?? translate(translator, "AccountMenu.light", "Light")],
+    ["dark", labels?.accountMenu?.dark ?? translate(translator, "AccountMenu.dark", "Dark")],
   ]
 
   const railBottom = (
@@ -415,7 +433,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
           {account.onThemeChange && (
             <div role="radiogroup" aria-labelledby={themeId} data-e2e="app-shell-sheet-theme">
               <div id={themeId} class="px-3 pt-2 pb-1 text-xs font-medium text-muted">
-                {labels?.accountMenu?.theme ?? "Theme"}
+                {labels?.accountMenu?.theme ?? translate(translator, "AccountMenu.theme", "Theme")}
               </div>
               <div class="flex gap-1 px-3">
                 {themes.map(([value, label]) => {

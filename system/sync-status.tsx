@@ -13,6 +13,8 @@ import { StatusMark, type StatusMarkStatus } from "@spy4x/preact-ui/status-mark"
 import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import { useLabels, useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** Which of the five states the line shows. */
 export type SyncState = "offline" | "failed" | "syncing" | "waiting" | "synced"
@@ -103,7 +105,25 @@ export interface SyncStatusProps extends SyncStateInput {
 export function SyncStatus(
   { online, pending, syncing, failed, onRetry, labels, class: className }: SyncStatusProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_SYNC_STATUS_LABELS, ...labels }
+  const translator = useT()
+  const words = {
+    ...useLabels("SyncStatus", DEFAULT_SYNC_STATUS_LABELS, labels, {
+      failed: ["count"],
+      syncing: ["count"],
+      waiting: ["count"],
+    }),
+    // "Offline" alone and "Offline, 3 changes waiting" are two messages, not one plural.
+    offline: labels?.offline ??
+      ((pending: number) =>
+        pending > 0
+          ? translate(
+            translator,
+            "SyncStatus.offlineWaiting",
+            DEFAULT_SYNC_STATUS_LABELS.offline(pending),
+            { count: pending },
+          )
+          : translate(translator, "SyncStatus.offline", DEFAULT_SYNC_STATUS_LABELS.offline(0))),
+  }
   const state = syncState({ online, pending, syncing, failed })
   const retrying = useSignal(false)
   const root = useRef<HTMLDivElement>(null)

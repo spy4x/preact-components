@@ -17,6 +17,8 @@ import { Avatar } from "@spy4x/preact-ui/avatar"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
 import type { JSX } from "preact"
 import { AccountEntry, AccountIdentity, AccountTag } from "./account-parts.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 export { AccountTag }
 
@@ -184,12 +186,13 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     labels,
   } = props
   const full = display === "full"
+  const translator = useT()
   const themes: readonly [AccountMenuTheme, string][] = [
-    ["system", labels?.system ?? "System"],
-    ["light", labels?.light ?? "Light"],
-    ["dark", labels?.dark ?? "Dark"],
+    ["system", labels?.system ?? translate(translator, "AccountMenu.system", "System")],
+    ["light", labels?.light ?? translate(translator, "AccountMenu.light", "Light")],
+    ["dark", labels?.dark ?? translate(translator, "AccountMenu.dark", "Dark")],
   ]
-  const themeHeading = labels?.theme ?? "Theme"
+  const themeHeading = labels?.theme ?? translate(translator, "AccountMenu.theme", "Theme")
 
   const trigger = full
     ? (
@@ -221,7 +224,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
       triggerClasses={full ? cn(fullTriggerClasses, triggerClasses) : triggerClasses}
       containerClasses={full ? "flex w-full" : undefined}
       triggerDataE2E={dataE2E}
-      menuLabel={labels?.menu ?? "Account menu"}
+      menuLabel={labels?.menu ?? translate(translator, "AccountMenu.menu", "Account menu")}
       vertical={vertical}
       horizontal={horizontal}
       panelClasses={cn("z-30", full && "min-w-full", panelClasses)}

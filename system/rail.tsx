@@ -43,6 +43,8 @@ import {
   sectionRule,
   surface,
 } from "./rail-parts.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 export { RailCell, type RailCellProps } from "./rail-parts.tsx"
 
@@ -363,12 +365,14 @@ export function Rail(props: RailProps): JSX.Element {
     labels,
     class: className,
   } = props
-  const navLabel = labels?.nav ?? "Main navigation"
-  const sidebarLabel = labels?.sidebar ?? "Sidebar"
-  const moreLabel = labels?.more ?? "More"
+  const translator = useT()
+  const navLabel = labels?.nav ?? translate(translator, "Rail.nav", "Main navigation")
+  const sidebarLabel = labels?.sidebar ?? translate(translator, "Rail.sidebar", "Sidebar")
+  const moreLabel = labels?.more ?? translate(translator, "Rail.more", "More")
   const dialogLabel = labels?.moreDialog ?? moreLabel
-  const closeLabel = labels?.close ?? "Close"
-  const skipLabel = labels?.skipToContent ?? "Skip to content"
+  const closeLabel = labels?.close ?? translate(translator, "Rail.close", "Close")
+  const skipLabel = labels?.skipToContent ??
+    translate(translator, "Rail.skipToContent", "Skip to content")
   const counterWords = labels?.counter ?? String
 
   const contentId = useId()
