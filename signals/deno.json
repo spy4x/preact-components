@@ -16,11 +16,18 @@
     "./theme": "./theme.ts",
     "./toast": "./toast.ts",
     "./types": "./types.ts",
-    "./use-url-filters": "./use-url-filters.ts"
+    "./use-url-filters": "./use-url-filters.ts",
+    "./i18n/ar": "./i18n/ar.ts",
+    "./i18n/de": "./i18n/de.ts",
+    "./i18n/en": "./i18n/en.ts",
+    "./i18n/es": "./i18n/es.ts",
+    "./i18n/pt-BR": "./i18n/pt-BR.ts",
+    "./i18n/ru": "./i18n/ru.ts"
   },
   "publish": {
     // This package's own `*.test.*` suites, none reachable from `exports`; see `ui/deno.json` for
-    // why the glob starts with `**/`.
-    "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+    // why the glob starts with `**/`. The catalogs' lock files are for `deno task i18n:stamp` and
+    // the catalog test only.
+    "exclude": ["**/*.test.ts", "**/*.test.tsx", "i18n/*.lock"]
   }
 }
