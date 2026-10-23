@@ -514,7 +514,7 @@ preactThemeCss	helper	@spy4x/preact-theme/vite	Gives the app's stylesheet the `@
 requireComponentCss	helper	@spy4x/preact-theme/vite	Fails `vite build` when the CSS it wrote lacks the library's classes.
 serviceWorker	helper	@spy4x/preact-theme/vite	Builds the worker at `entry` into the output folder once the app build is written, as one classic script (`iife`).
 webManifest	helper	@spy4x/preact-theme/vite	Writes the manifest into the output folder in `writeBundle`, once the app build is written, and serves it from the dev server at `/<fileName>` (under Vite's `base`).
-ATTACHMENT_LIST_LABELS	constant	@spy4x/preact-ui	The English words `AttachmentList` shows when the caller passes none.
+ATTACHMENT_LIST_LABELS	constant	@spy4x/preact-ui	The English words `AttachmentList` shows when the caller passes none and no catalog.
 AddTagsResult	type	@spy4x/preact-ui	What `addTags` did with the texts it was given.
 AnyDateRangePickerProps	type	@spy4x/preact-ui	Every shape `DateRangePicker` itself accepts, chosen by `withTime`: the default, `DateRangePickerProps`, carries a calendar-day `DateRange`, and `withTime: true` carries a timed `DateTimeRange` instead — see `DateRangePickerTimeProps`.
 AttachmentItem	type	@spy4x/preact-ui	One file of an `AttachmentList`.

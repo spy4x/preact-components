@@ -1743,8 +1743,10 @@ control comes back. Every callback left out takes its control with it: a read-on
 caller (`ConfirmDialog`), and pass `removingId` while it runs: when that row leaves `items`, focus
 moves to the next row's action (`useFocusAfterRemoval`), and after the last row to
 `focusAfterLast()`. An empty `items` renders nothing, so the caller draws its own empty state, such
-as a `FileInput` drop zone. Every word is in `labels`, with English defaults in
-`ATTACHMENT_LIST_LABELS`; the lightbox's own words go in `lightboxLabels`.
+as a `FileInput` drop zone. Every word comes from the catalog (`AttachmentList.*`, the kind
+words `kindImage`, `kindPdf` and `kindFile`, and `uploading` with `uploadingUnknown` for no
+percentage); `labels` overrides any of them, and `ATTACHMENT_LIST_LABELS` holds the English. The
+lightbox's own words go in `lightboxLabels`.
 
 ```tsx
 <AttachmentList
