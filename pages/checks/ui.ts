@@ -6912,7 +6912,6 @@ async function comboboxChecks(devtools: Devtools): Promise<void> {
   await arrivingOptionsCheck(devtools)
   await highlightChecks(devtools)
   await reopenCheck(devtools)
-  await focusLeavesChecks(devtools)
   await fetchingComboboxCheck(devtools)
   await chosenHighlightCheck(devtools)
   await imeComboboxCheck(devtools)
@@ -8424,109 +8423,6 @@ async function fetchingComboboxCheck(devtools: Devtools): Promise<void> {
         `"${walk.describedBy.at(-1)}", not by the region holding it`
       : `${shown}, every change recorded on the region parked before typing`,
   )
-}
-
-/** Where focus went when the parked combobox's input lost it, and what the list did about it. */
-interface FocusLeave {
-  /** `false` when the field could not be read at all. */
-  ok: boolean
-  /** `"clear"`, `"listbox"`, `"none"` for a null `relatedTarget`, or the tag focus went to. */
-  to: string
-  expanded: string | null
-  listHidden: boolean
-}
-
-/**
- * Record, once, where the parked input's focus goes next.
- *
- * `relatedTarget` on the input's own `blur` is the component's own question, so it is the one
- * answered here: which element focus is moving to, named as the clear button, the listbox, or
- * something else.
- */
-const LEAVE_RECORD = `(() => {
-  const { input, list } = globalThis.__verifyCombobox ?? {}
-  globalThis.__verifyLeave = "not yet"
-  if (!input || !list) return null
-  const clear = input.parentElement?.querySelector("button") ?? null
-  input.addEventListener("blur", (event) => {
-    const next = event.relatedTarget
-    globalThis.__verifyLeave = next === null
-      ? "none"
-      : next === clear
-      ? "clear"
-      : next === list
-      ? "listbox"
-      : next.tagName
-  }, { once: true })
-  return null
-})()`
-
-/** What {@link LEAVE_RECORD} saw, with the list's state after it. */
-const LEAVE_STATE = `(() => {
-  const { input, list } = globalThis.__verifyCombobox ?? {}
-  const to = String(globalThis.__verifyLeave ?? "not yet")
-  delete globalThis.__verifyLeave
-  if (!input || !list) return { ok: false, to, expanded: null, listHidden: false }
-  return { ok: true, to, expanded: input.getAttribute("aria-expanded"), listHidden: list.hidden }
-})()`
-
-/**
- * Tab from a Combobox's input onto one of its own descendants closes the list.
- *
- * Two descendants take focus from the input with one real Tab press: the clear button, once there
- * is a selection or a query, and the popup itself when its options overflow it, because Chromium
- * makes a scrolling box a tab stop. Both are inside the component's root, so a focus-out rule that
- * asked "is focus still inside the root?" kept the list open over the page in both cases. The rule
- * is "is focus still on the input?", and these two checks are what hold it now that
- * `ui/combobox.test.tsx` no longer reads the handler's source (#217).
- *
- * The coin field has a selection by the time this runs, so its next tab stop is the clear button;
- * the offset field has none and 27 rows in a six-row popup, so its next tab stop is the popup.
- * Where focus actually went is recorded from the input's own `blur`, so a Tab that went somewhere
- * else reports that rather than passing or failing for the wrong reason.
- *
- * @param devtools The connected session, on a hydrated page.
- */
-async function focusLeavesChecks(devtools: Devtools): Promise<void> {
-  const cases = [
-    { id: "guide-combobox-coin", to: "clear", name: "its clear button" },
-    { id: "guide-combobox-offset", to: "listbox", name: "its scrolling popup" },
-  ] as const
-  for (const { id, to, name } of cases) {
-    await devtools.evaluate<null>(comboboxSetup(id))
-    await scrollToParked(devtools)
-    const field = `globalThis.__verifyCombobox?.input ?? null`
-    const landed = (await clickAt(devtools, await aimAt(devtools, field), field))?.onTarget === true
-    const opened = await poll(
-      () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "true"`),
-      3_000,
-    )
-    await devtools.evaluate<null>(LEAVE_RECORD)
-    await pressKey(devtools, "Tab")
-    await poll(() => devtools.evaluate<boolean>(`globalThis.__verifyLeave !== "not yet"`), 3_000)
-    // A list that stays open never changes, so this poll's timeout is the failing case, not a flake.
-    await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 1_500)
-    const left = await devtools.evaluate<FocusLeave>(LEAVE_STATE)
-
-    check(
-      `a real Tab from a Combobox's input onto ${name} closes the list`,
-      landed && opened && left.ok && left.to === to && left.expanded === "false" &&
-        left.listHidden,
-      !left.ok
-        ? `the Combobox card has no field with id ${id}`
-        : !landed || !opened
-        ? `the press never opened ${id}, so there was no list for Tab to close`
-        : left.to !== to
-        ? `Tab moved focus to ${left.to}, not to ${name}, so this is not the case it is about`
-        : `focus moved from the input to ${name}, and the list reads aria-expanded ` +
-          `"${left.expanded}" with hidden=${left.listHidden}` +
-          (left.expanded === "false" ? "" : ": it stayed open over the page after focus left"),
-    )
-    // Focus may be on the clear button, or nowhere once the popup it moved into was hidden; either
-    // way the next check starts from a closed field and a parked pointer.
-    await pressKey(devtools, "Escape")
-    await pointerToCorner(devtools)
-  }
 }
 
 /**

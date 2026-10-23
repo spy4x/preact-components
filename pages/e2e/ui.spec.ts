@@ -2020,6 +2020,58 @@ function lostInputSpecs(): Spec[] {
       },
     },
     {
+      name: "Combobox: Tab from the input onto its clear button closes the list",
+      pageId: "ui",
+      run: async (page) => {
+        const coin = page.locator("#demo-Combobox #guide-combobox-coin")
+        await coin.click()
+        await coin.and(page.locator(`[aria-expanded="true"]`)).waitFor()
+        await coin.press("Tab")
+        const onClear = await coin.evaluate((input) =>
+          document.activeElement === input.parentElement?.querySelector("button")
+        )
+        if (!onClear) throw new Error(`Tab did not move focus to the clear button`)
+        await coin.and(page.locator(`[aria-expanded="false"]`)).waitFor()
+      },
+    },
+    {
+      name:
+        "Combobox: Tab out of an open list that scrolls lands on the next control, not on the list or the page",
+      pageId: "ui",
+      run: async (page) => {
+        const offset = page.locator("#demo-Combobox #guide-combobox-offset")
+        await offset.click()
+        await offset.and(page.locator(`[aria-expanded="true"]`)).waitFor()
+        const scrolls = await offset.evaluate((input) => {
+          const list = document.getElementById(input.getAttribute("aria-controls") ?? "")
+          return list !== null && list.scrollHeight > list.clientHeight
+        })
+        // Without an overflowing list, Chrome makes no tab stop of it and this proves nothing.
+        if (!scrolls) throw new Error(`the offset list does not scroll`)
+
+        await offset.press("Tab")
+
+        await offset.and(page.locator(`[aria-expanded="false"]`)).waitFor()
+        const open = await page.evaluate(() => {
+          const active = document.activeElement
+          if (!active || active === document.body) return "the page body"
+          if (active.getAttribute("role") === "listbox") return "the list"
+          active.setAttribute("data-spec-tab-target", "")
+          return null
+        })
+        if (open !== null) throw new Error(`Tab from the open list moved focus to ${open}`)
+        // From a closed field, Tab reaches the next control: the open one must reach the same.
+        await offset.focus()
+        await offset.press("Escape")
+        await offset.and(page.locator(`[aria-expanded="false"]`)).waitFor()
+        await offset.press("Tab")
+        const same = await page.evaluate(() =>
+          document.activeElement?.hasAttribute("data-spec-tab-target") === true
+        )
+        if (!same) throw new Error(`Tab from the open list and from the closed field went apart`)
+      },
+    },
+    {
       name:
         "MoneyInput: an amount changed from outside while the field is not focused updates its text",
       pageId: "ui",
