@@ -58,6 +58,19 @@ describe("When", () => {
     expect(inGerman(clocked, <When at={THREE_DAYS_AGO} />)).toContain(">vor 3 Tagen</time>")
   })
 
+  it("says the distance in the translator's language under an English region format, without now", () => {
+    const german = createTranslator({ language: "de", catalogs: [] })
+    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000)
+    const html = render(
+      <I18nContext.Provider value={german}>
+        <FormatContext.Provider value={utc}>
+          <When at={threeDaysAgo} />
+        </FormatContext.Provider>
+      </I18nContext.Provider>,
+    )
+    expect(html).toContain(">vor 3 Tagen</time>")
+  })
+
   it("writes epoch milliseconds or a Date as an ISO datetime", () => {
     const epoch = Date.parse(THREE_DAYS_AGO)
     expect(inZone(utc, <When at={epoch} now={NOW} />)).toContain(`datetime="${THREE_DAYS_AGO}"`)
