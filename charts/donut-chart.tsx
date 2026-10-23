@@ -12,6 +12,7 @@ import {
 import { stepIndex } from "./keys.ts"
 import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 import { formatDecimal } from "@spy4x/platform/universal/format-number"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 export interface DonutDatum {
   label: string
@@ -139,6 +140,13 @@ export interface DonutChartProps {
 /** The hole's radius as a share of the ring's: the centre is inset 15% on every side. */
 const HOLE = 0.7
 
+/** The chart's English words, each a key `DonutChart.<field>` of the catalog. */
+const DONUT_LABELS = {
+  emptyLabel: "No data",
+  keyboardHint: "Arrow keys step through the slices.",
+  chartLabel: (count: number) => `Donut chart of ${count} slices`,
+}
+
 /**
  * Server-rendered donut built from a single CSS `conic-gradient`.
  *
@@ -160,12 +168,18 @@ export function DonutChart({
   surfaceColor = DEFAULT_SURFACE_COLOR,
   axisColor = DEFAULT_AXIS_COLOR,
   showLegend = true,
-  emptyLabel = "No data",
+  emptyLabel: emptyLabelProp,
   ariaLabel,
   valueFormat = String,
-  keyboardHint = "Arrow keys step through the slices.",
+  keyboardHint: keyboardHintProp,
   class: className,
 }: DonutChartProps): JSX.Element {
+  const { emptyLabel, keyboardHint, chartLabel } = useLabels(
+    "DonutChart",
+    DONUT_LABELS,
+    { emptyLabel: emptyLabelProp, keyboardHint: keyboardHintProp },
+    { chartLabel: ["count"] },
+  )
   const rootRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -231,7 +245,7 @@ export function DonutChart({
     setActive(order === null ? null : slices[order])
   }
 
-  const label = ariaLabel ?? title ?? `Donut chart of ${data.length} slices`
+  const label = ariaLabel ?? title ?? chartLabel(data.length)
   const activeSegment = active === null ? undefined : geometry.segments[active]
 
   return (

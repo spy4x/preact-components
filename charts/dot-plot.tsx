@@ -1,5 +1,6 @@
 import type { JSX } from "preact"
 import { join } from "@spy4x/preact-cn/join"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** One row of a {@link DotPlot}: a label, a value and the words around it. */
 export interface DotPlotRow {
@@ -102,9 +103,12 @@ export function DotPlot({
   bands = [],
   format = (value: number) => String(value),
   ariaLabel,
-  missingLabel = "No data",
+  missingLabel: missingLabelProp,
   class: className,
 }: DotPlotProps): JSX.Element {
+  const { missingLabel } = useLabels("DotPlot", { missingLabel: "No data" }, {
+    missingLabel: missingLabelProp,
+  })
   const zeroAt = zero && domain[0] < 0 && domain[1] > 0 ? dotPercent(0, domain) : null
   const track = { domain, zeroAt, bands }
   return (
