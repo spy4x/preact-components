@@ -11,6 +11,7 @@ import { batch, effect, type ReadonlySignal, type Signal, useSignal } from "@pre
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId } from "preact/hooks"
 import { filterRows } from "@spy4x/platform/universal/text"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import { listSettled } from "./list-settled.ts"
 import type { CrudListStore } from "./store.ts"
 import type { CrudModel, CrudStatus, StoreErrorLike } from "./types.ts"
@@ -137,6 +138,19 @@ export interface StatusFilterLabels {
   archived?: string
 }
 
+/** The list's English words, each a key `CrudList.<field>` of the catalog. */
+const CRUD_LIST_LABELS = {
+  actionsLabel: "Actions",
+  addLabel: "Add new",
+  emptyTitle: "Nothing here yet",
+  noMatchTitle: "Nothing matches your search",
+  searchPlaceholder: "Search",
+  searchLabel: "Search",
+  statusLabel: "Status",
+  statusActive: "Active",
+  statusArchived: "Archived",
+}
+
 /** {@link CrudListBaseProps} plus one of the two row sources. */
 export type CrudListProps<M extends CrudModel> = CrudListBaseProps<M> & CrudListSource<M>
 
@@ -221,6 +235,18 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
   const query = props.query ?? ownQuery
   const status = props.status ?? ownStatus
   const page = props.page ?? ownPage
+  const statusWording = props.statusFilter || {}
+  const words = useLabels("CrudList", CRUD_LIST_LABELS, {
+    actionsLabel: props.actionsLabel,
+    addLabel: props.addLabel,
+    emptyTitle: props.emptyTitle,
+    noMatchTitle: props.noMatchTitle,
+    searchPlaceholder: props.searchPlaceholder,
+    searchLabel: props.searchLabel,
+    statusLabel: statusWording.label,
+    statusActive: statusWording.active,
+    statusArchived: statusWording.archived,
+  })
 
   const showStatus = props.statusFilter !== false && "store" in props
   const effectiveStatus: CrudStatus = showStatus ? status.value : "active"
@@ -272,20 +298,26 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
       <div class="flex flex-wrap gap-x-2 gap-y-8 items-center">
         <SearchBox
           value={query}
-          placeholder={props.searchPlaceholder}
+          placeholder={words.searchPlaceholder}
           fieldLabel={props.searchFieldLabel}
-          label={props.searchLabel}
+          label={words.searchLabel}
           delay={props.searchDelay}
           onChange={toFirstPage}
         />
         {showStatus && (
-          <StatusSelect status={status} labels={props.statusFilter} onChange={toFirstPage} />
+          <StatusSelect
+            status={status}
+            label={words.statusLabel}
+            active={words.statusActive}
+            archived={words.statusArchived}
+            onChange={toFirstPage}
+          />
         )}
         {showAdd && (
           <div class="ml-auto">
             <a href={props.addHref} class="btn btn-primary">
               <IconPlus class="size-5 -ml-1 hidden md:block" />
-              {props.addLabel ?? "Add new"}
+              {words.addLabel}
             </a>
           </div>
         )}
@@ -294,9 +326,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
       {showEmpty
         ? (
           <EmptyState
-            title={searching
-              ? props.noMatchTitle ?? "Nothing matches your search"
-              : props.emptyTitle ?? "Nothing here yet"}
+            title={searching ? words.noMatchTitle : words.emptyTitle}
             description={searching ? props.noMatchDescription : props.emptyDescription}
             headingLevel={emptyHeadingLevel}
             class="max-w-none"
@@ -308,7 +338,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
               <>
                 {props.header}
                 {props.actions !== undefined && (
-                  <th class="text-right" scope="col">{props.actionsLabel ?? "Actions"}</th>
+                  <th class="text-right" scope="col">{words.actionsLabel}</th>
                 )}
               </>
             }
@@ -359,9 +389,9 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
 function SearchBox(
   { value, placeholder, fieldLabel, label, delay, onChange }: {
     value: Signal<string>
-    placeholder?: string
+    placeholder: string
     fieldLabel?: string
-    label?: string
+    label: string
     delay?: number
     onChange: () => void
   },
@@ -401,14 +431,14 @@ function SearchBox(
     >
       <input
         type="text"
-        placeholder={placeholder ?? "Search"}
-        aria-label={fieldLabel ?? placeholder ?? "Search"}
+        placeholder={placeholder}
+        aria-label={fieldLabel ?? placeholder}
         class="pc-input pr-12"
         value={draft.value}
         onInput={(event) => draft.value = event.currentTarget.value}
       />
       <div class="absolute right-1.5">
-        <button class="btn-input-icon" type="submit" title={label ?? "Search"}>
+        <button class="btn-input-icon" type="submit" title={label}>
           <IconSearch class="size-4" />
         </button>
       </div>
@@ -421,17 +451,18 @@ function SearchBox(
  * `batch` as the new status.
  */
 function StatusSelect(
-  { status, labels, onChange }: {
+  { status, label, active, archived, onChange }: {
     status: Signal<CrudStatus>
-    labels?: false | StatusFilterLabels
+    label: string
+    active: string
+    archived: string
     onChange: () => void
   },
 ) {
   const id = useId()
-  const wording = labels === undefined || labels === false ? {} : labels
   return (
     <div class="-mt-6 shrink-0">
-      <label class="pc-label" for={id}>{wording.label ?? "Status"}</label>
+      <label class="pc-label" for={id}>{label}</label>
       <div>
         <select
           id={id}
@@ -446,8 +477,8 @@ function StatusSelect(
             })
           }}
         >
-          <option value="active">{wording.active ?? "Active"}</option>
-          <option value="archived">{wording.archived ?? "Archived"}</option>
+          <option value="active">{active}</option>
+          <option value="archived">{archived}</option>
         </select>
       </div>
     </div>

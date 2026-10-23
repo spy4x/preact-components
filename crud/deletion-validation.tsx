@@ -1,6 +1,7 @@
 import { IconAlertTriangle } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import type { DeletionDependency } from "./types.ts"
 
 export interface DeletionValidationProps {
@@ -44,6 +45,14 @@ export interface DeletionValidationProps {
 export function DeletionValidation(
   { dependencies, model, label }: DeletionValidationProps,
 ): JSX.Element {
+  const { heading } = useLabels(
+    "DeletionValidation",
+    {
+      heading: (model: string) => `To archive this ${model}, please first archive:`,
+    },
+    undefined,
+    { heading: ["model"] },
+  )
   const block = useRef<HTMLDivElement>(null)
   const lastScrolledFor = useRef<string | null>(null)
   const hasDependencies = dependencies.length > 0
@@ -78,7 +87,7 @@ export function DeletionValidation(
           </div>
           <div class="ml-3">
             <h3 class="text-sm font-medium">
-              {label ?? `To archive this ${model}, please first archive:`}
+              {label ?? heading(model)}
             </h3>
             <div class="mt-2 text-sm max-w-xl">
               <ul role="list" class="list-disc space-y-1 pl-4">
