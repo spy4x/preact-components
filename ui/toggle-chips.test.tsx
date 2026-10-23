@@ -98,4 +98,41 @@ describe("ToggleChips", () => {
     expect(html).toMatch(/<button[^>]* disabled[ >][^>]*>iOS</)
     expect(html).not.toMatch(/<button[^>]* disabled[ >][^>]*>work</)
   })
+
+  it("fills a pressed chip with its own colour and shows an unpressed one's as a dot", () => {
+    const html = render(
+      <ToggleChips
+        options={[
+          { value: "urgent", label: "Urgent", color: "#dc2626" },
+          { value: "ideas", label: "Ideas", color: "#FDE047" },
+        ]}
+        value={["urgent"]}
+        onChange={() => {}}
+      />,
+    )
+
+    expect(html).toMatch(
+      /aria-pressed="true"[^>]*style="background-color:#dc2626;border-color:#dc2626;color:#ffffff;"/,
+    )
+    expect(html).toMatch(
+      /aria-pressed="false"[^>]*><span aria-hidden="true"[^>]*style="background-color:#FDE047;"><\/span>Ideas</,
+    )
+  })
+
+  it("ignores an option colour that is no hex code", () => {
+    const html = render(
+      <ToggleChips
+        options={[{ value: "a", label: "a", color: "red" }, {
+          value: "b",
+          label: "b",
+          color: "red",
+        }]}
+        value={["a"]}
+        onChange={() => {}}
+      />,
+    )
+
+    expect(html).not.toContain("style=")
+    expect(html).toMatch(/aria-pressed="false"[^>]*>b</)
+  })
 })

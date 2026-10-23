@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconCheck } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
+import { isHexColor, readableTextColor } from "@spy4x/platform/universal/color"
 import { badgeClasses, type BadgeColor } from "./badge.tsx"
 import { translate, useT } from "./i18n.tsx"
 
@@ -11,6 +12,12 @@ export interface ToggleChipOption {
   /** The chip's visible text, and its accessible name. */
   label: string
   disabled?: boolean
+  /**
+   * This chip's own colour as `#rrggbb`, such as a tag's: pressed, the chip is filled with it in
+   * black or white text, whichever reads better; unpressed, it shows as a dot before the text.
+   * It wins over the group's `color`. A value that is no `#rrggbb` is ignored.
+   */
+  color?: string
 }
 
 interface ToggleChipsBase {
@@ -81,7 +88,8 @@ const unpressed = "bg-surface text-foreground border-subtle hover:bg-hover"
  * Each chip is a real `button` with `aria-pressed`, so Space and Enter press it and a screen
  * reader says "pressed" or "not pressed". A pressed chip is a filled badge in `color` with a check
  * before its text, so being pressed does not rest on colour alone; an unpressed one is a plain
- * chip on the surface, in the full text colour. Every chip is 44 px tall on a phone. The group is a `role="group"` named by `label`.
+ * chip on the surface, in the full text colour. An option with a `color` of its own (a tag's) is
+ * filled with it when pressed and shows it as a dot when not. Every chip is 44 px tall on a phone. The group is a `role="group"` named by `label`.
  *
  * Controlled: the chips show `value` and report every press through `onChange`. `mode="single"`
  * holds at most one chip; the default, `"multiple"`, holds any number. A chip's text keeps the
@@ -103,6 +111,7 @@ export function ToggleChips(props: ToggleChipsProps): JSX.Element {
     <div role="group" aria-label={label} class={cn("flex flex-wrap gap-2", className)}>
       {options.map((option) => {
         const pressed = isPressed(option.value)
+        const own = option.color && isHexColor(option.color) ? option.color : undefined
         return (
           <button
             key={option.value}
@@ -114,9 +123,20 @@ export function ToggleChips(props: ToggleChipsProps): JSX.Element {
               pressed ? "filled" : "outline",
               cn(chip, !pressed && unpressed),
             )}
+            style={pressed && own
+              ? { backgroundColor: own, borderColor: own, color: readableTextColor(own) }
+              : undefined}
             onClick={() => press(option.value)}
           >
-            {pressed ? <IconCheck class="size-3.5" /> : null}
+            {pressed ? <IconCheck class="size-3.5" /> : own
+              ? (
+                <span
+                  aria-hidden="true"
+                  class="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: own }}
+                />
+              )
+              : null}
             {option.label}
           </button>
         )
