@@ -52,6 +52,16 @@ function hasDisabledAttr(tag: string): boolean {
 }
 
 describe("AuthForm", () => {
+  it("starts the login field with defaultLogin and leaves the password empty", () => {
+    const html = render(<AuthForm {...base} defaultLogin="ana@example.com" />)
+    expect(attr(inputTag(html, "login"), "value")).toBe("ana@example.com")
+    expect(attr(inputTag(html, "password"), "value")).toBeUndefined()
+  })
+
+  it("starts the login field empty without defaultLogin", () => {
+    expect(attr(inputTag(render(<AuthForm {...base} />), "login"), "value")).toBeUndefined()
+  })
+
   it("renders a real form with a login and a password field in the credentials step", () => {
     const html = render(<AuthForm {...base} />)
     expect(html).toContain("<form")
