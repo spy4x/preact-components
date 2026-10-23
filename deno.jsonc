@@ -36,6 +36,9 @@
     // Rewrites `llms.txt` and `llms-full.txt` from the packages' exports and READMEs
     // (`infra/scripts/llms-txt.ts`). Run after changing an export, a JSDoc summary or a README.
     "llms": "deno run --allow-read --allow-write --allow-run=deno infra/scripts/llms-txt.ts",
+    // Writes `<package>/i18n/<language>.lock` for every translated catalog
+    // (`infra/scripts/i18n-stamp.ts`). Run once the translations match the English: TRANSLATING.md.
+    "i18n:stamp": "deno run --allow-read --allow-write infra/scripts/i18n-stamp.ts",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
