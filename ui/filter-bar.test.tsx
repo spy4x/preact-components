@@ -187,7 +187,6 @@ describe("FilterBar", () => {
   })
 
   it("adds an Order group and the direction to the trigger when the order names its directions", () => {
-    const calls: string[] = []
     const html = render(
       <FilterBar
         sort={{
@@ -199,7 +198,7 @@ describe("FilterBar", () => {
           value: "title",
           onChange: () => {},
           direction: "desc",
-          onDirectionChange: (direction) => calls.push(direction),
+          onDirectionChange: () => {},
         }}
       />,
     )

@@ -529,6 +529,8 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
   const sortCurrent = sort?.options.find((option) => option.value === sort.value)
   // The Order group shows only for an order that names its directions, and a caller that listens.
   const directions = sort?.onDirectionChange && sort.direction ? sortCurrent?.directions : undefined
+  // Every order keeps the menu open while any order has directions, so the group can follow.
+  const sortDirections = sort?.options.some((option) => option.directions) ?? false
   const sortMenu = sort
     ? (
       <Dropdown
@@ -562,7 +564,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           <DropdownItem
             key={option.value}
             checked={option.value === sort.value}
-            keepOpen={directions !== undefined}
+            keepOpen={sortDirections}
             onClick={() => sort.onChange(option.value)}
           >
             {option.label}
@@ -587,10 +589,14 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
                   </DropdownItem>
                 ))}
               </div>
-              <DropdownItem class="mt-2 justify-center border-t border-subtle font-medium text-foreground sm:hidden">
-                {doneLabel}
-              </DropdownItem>
             </>
+          )
+          : null}
+        {sortDirections
+          ? (
+            <DropdownItem class="mt-2 justify-center border-t border-subtle font-medium text-foreground sm:hidden">
+              {doneLabel}
+            </DropdownItem>
           )
           : null}
       </Dropdown>

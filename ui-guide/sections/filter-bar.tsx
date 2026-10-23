@@ -202,7 +202,7 @@ function FilterBarDemo() {
         q: {query.value || "(empty)"} · tags: {tags.value.join(", ") || "(none)"}{" "}
         ({match.value}) · author: {author.value ?? "(anyone)"} · mine: {mine.value ? "on" : "off"}
         {" "}
-        · sort: {sort.value}
+        · sort: {sort.value} {direction.value}
       </DemoNote>
     </div>
   )

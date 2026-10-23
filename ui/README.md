@@ -443,6 +443,10 @@ the URL with `useUrlFilters` from `@spy4x/preact-signals`.
   the sheet; from `sm` up it is not drawn and the arrow keys skip it.
 - Toggles are one `ToggleChips` group named by `togglesLabel`. The sort menu sits at the end,
   pushed right from `sm` up, with its `label` ("Sort by") shown from `sm` up and always in its name.
+  An option with `directions` ("Newest first" / "Oldest first"), with `direction` and
+  `onDirectionChange` given, adds an "Order" group under the orders; the trigger then shows an up
+  or down arrow and names the direction. While any option has directions, the menu stays open on
+  a pick and ends with "Done" on a phone. The caller sets each order's starting direction.
 - Under the bar, every active filter is a chip ("Tag: Design") whose remove button ("Remove the
   Design filter") takes that one filter away and moves focus to the chip that took its place, or to
   the search field when it was the last. "Clear filters" clears every menu and toggle (through

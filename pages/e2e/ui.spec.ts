@@ -3212,10 +3212,18 @@ function filterBarSpecs(): Spec[] {
         await bar.card.getByRole("button", { name: "Created by me" }).click()
         await bar.stateHas("mine: on")
 
+        // An order and its direction in one visit: the menu stays open between the two picks.
         await bar.sort.click()
-        await page.getByRole("menuitemradio", { name: "Title (A–Z)" }).click()
-        await bar.stateHas("sort: title")
-        await page.getByRole("menu", { name: "Sort by" }).waitFor({ state: "hidden" })
+        const sortMenu = page.getByRole("menu", { name: "Sort by" })
+        await sortMenu.getByRole("menuitemradio", { name: "Title" }).click()
+        await bar.stateHas("sort: title asc")
+        await sortMenu.waitFor()
+        await sortMenu.getByRole("group", { name: "Order" })
+          .getByRole("menuitemradio", { name: "Z–A" }).click()
+        await bar.stateHas("sort: title desc")
+        await bar.sort.filter({ hasText: "Z–A" }).waitFor()
+        await page.keyboard.press("Escape")
+        await sortMenu.waitFor({ state: "hidden" })
       },
     },
     {
