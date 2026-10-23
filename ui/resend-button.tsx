@@ -4,6 +4,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { TOUCH_TARGET } from "./touch-target.ts"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 export interface ResendButtonProps {
   /** Called when the person presses the button. The caller sends the mail again. */
@@ -46,6 +47,16 @@ function secondsLeft(readyAt: number | undefined): number {
   return readyAt === undefined ? 0 : Math.max(0, Math.ceil((readyAt - Date.now()) / TICK_MS))
 }
 
+/** The English words of `ResendButton`, each one a prop of its own. */
+const RESEND_BUTTON_LABELS: Required<
+  Pick<ResendButtonProps, "label" | "busyLabel" | "readyText" | "sentText">
+> = {
+  label: "Send it again",
+  busyLabel: "Sending…",
+  readyText: "Not there? Check your spam folder, or",
+  sentText: "Sent again. Check your inbox.",
+}
+
 /**
  * The "Not there?" line under a "Check your inbox" message: a sentence counting down until the
  * mail may be sent again, then a ghost button that sends it.
@@ -64,17 +75,35 @@ export function ResendButton(
     onResend,
     busy = false,
     readyAt,
-    label = "Send it again",
-    busyLabel = "Sending…",
-    waitingText = (seconds) =>
-      `Not there? Check your spam folder. You can send it again in ${seconds} ${
-        seconds === 1 ? "second" : "seconds"
-      }.`,
-    readyText = "Not there? Check your spam folder, or",
-    sentText = "Sent again. Check your inbox.",
+    label: labelProp,
+    busyLabel: busyLabelProp,
+    waitingText: waitingTextProp,
+    readyText: readyTextProp,
+    sentText: sentTextProp,
     class: className,
   }: ResendButtonProps,
 ): JSX.Element {
+  const { label, busyLabel, readyText, sentText } = useLabels(
+    "ResendButton",
+    RESEND_BUTTON_LABELS,
+    {
+      label: labelProp,
+      busyLabel: busyLabelProp,
+      readyText: readyTextProp,
+      sentText: sentTextProp,
+    },
+  )
+  const translator = useT()
+  const waitingText = waitingTextProp ??
+    ((seconds: number) =>
+      translate(
+        translator,
+        "ResendButton.waitingText",
+        `Not there? Check your spam folder. You can send it again in ${seconds} ${
+          seconds === 1 ? "second" : "seconds"
+        }.`,
+        { count: seconds },
+      ))
   const tick = useSignal(0)
   const sent = useSignal(false)
   const pressed = useRef(false)

@@ -12,6 +12,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { MoreMenu } from "./page-header.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** Where a widget's data stands. */
 export type WidgetStatus = "loading" | "error" | "empty" | "ready"
@@ -60,6 +61,11 @@ export interface WidgetCardProps {
 const bar = "animate-pulse rounded bg-track motion-reduce:animate-none"
 const bodyHeight: Record<WidgetSize, string> = { stat: "min-h-16", full: "min-h-60" }
 
+/** The English words of `WidgetCard`, each one a prop of its own. */
+const WIDGET_CARD_LABELS: Required<Pick<WidgetCardProps, "retryLabel">> = {
+  retryLabel: "Try again",
+}
+
 /**
  * One dashboard widget's card: the title (a link when `href` is set), a muted caption, an optional
  * three-dots menu, and a body that shows the widget, a skeleton while it loads, its error with a
@@ -87,7 +93,7 @@ export function WidgetCard(
     loadingLabel,
     errorMessage,
     onRetry,
-    retryLabel = "Try again",
+    retryLabel: retryLabelProp,
     emptyLabel,
     skeletonDelay = 300,
     headingLevel = 2,
@@ -96,6 +102,12 @@ export function WidgetCard(
     class: className,
   }: WidgetCardProps,
 ): JSX.Element {
+  const translator = useT()
+  const { retryLabel } = useLabels(
+    "WidgetCard",
+    WIDGET_CARD_LABELS,
+    { retryLabel: retryLabelProp },
+  )
   const headingId = `widget-${useId()}`
   const root = useRef<HTMLDivElement>(null)
   // The retry button unmounts as the load starts; the card takes focus first, so a keyboard user
@@ -145,7 +157,16 @@ export function WidgetCard(
           </Heading>
           {caption ? <p class="text-sm text-muted">{caption}</p> : null}
         </div>
-        {menu ? <MoreMenu label={menuLabel ?? `Actions for ${title}`}>{menu}</MoreMenu> : null}
+        {menu
+          ? (
+            <MoreMenu
+              label={menuLabel ??
+                translate(translator, "WidgetCard.menuLabel", `Actions for ${title}`, { title })}
+            >
+              {menu}
+            </MoreMenu>
+          )
+          : null}
       </div>
       <div class={cn("flex min-w-0 flex-col", bodyHeight[size])}>
         {status === "loading"

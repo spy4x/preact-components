@@ -8,6 +8,7 @@ import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, useApplePlatform } from "./hotkeys.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
 import { ToggleChips, toggleChipSelection } from "./toggle-chips.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** One choice of a {@link FilterBarMenu}. */
 export interface FilterBarOption {
@@ -371,6 +372,15 @@ interface Refocus {
   chips: number
 }
 
+/** The English words of `FilterBar`, each one a prop of its own. */
+const FILTER_BAR_LABELS = {
+  label: "Search and filters",
+  togglesLabel: "Quick filters",
+  chipsLabel: "Active filters",
+  clearLabel: "Clear filters",
+  doneLabel: "Done",
+}
+
 /**
  * Search, filter menus, one-tap toggles and a sort over a list, with the active filters as
  * removable chips under them and a result count.
@@ -399,14 +409,21 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
     sort,
     count,
     onClear,
-    label = "Search and filters",
-    togglesLabel = "Quick filters",
-    chipsLabel = "Active filters",
-    clearLabel = "Clear filters",
-    doneLabel = "Done",
-    removeLabel = (chip) => `Remove the ${chip.valueLabel} filter`,
     class: className,
   } = props
+  const translator = useT()
+  const { label, togglesLabel, chipsLabel, clearLabel, doneLabel } = useLabels(
+    "FilterBar",
+    FILTER_BAR_LABELS,
+    props,
+  )
+  const removeLabel = props.removeLabel ??
+    ((chip: FilterBarChip) =>
+      translate(translator, "FilterBar.remove", `Remove the ${chip.valueLabel} filter`, {
+        value: chip.valueLabel,
+      }))
+  const searchWord = translate(translator, "FilterBar.search", "Search")
+  const sortWord = translate(translator, "FilterBar.sort", "Sort by")
   const rootRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const refocus = useRef<Refocus | null>(null)
@@ -438,7 +455,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
     else clearEach(filters, toggles)
   }
 
-  const searchLabel = search?.label ?? "Search"
+  const searchLabel = search?.label ?? searchWord
   const searchField = search
     ? (
       <div class="relative w-full sm:w-64 sm:shrink-0">
@@ -462,7 +479,8 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           ? (
             <button
               type="button"
-              aria-label={search.clearLabel ?? "Clear search"}
+              aria-label={search.clearLabel ??
+                translate(translator, "FilterBar.clearSearch", "Clear search")}
               class="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center rounded-primary text-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus sm:w-8"
               onClick={() => {
                 search.onChange("")
@@ -493,7 +511,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
         triggerNamedByContent
         trigger={
           <>
-            <span class="text-muted max-sm:sr-only">{sort.label ?? "Sort by"}</span>
+            <span class="text-muted max-sm:sr-only">{sort.label ?? sortWord}</span>
             {sortCurrent?.label ?? sort.value}
             <IconChevronDown class="size-3.5" />
           </>
@@ -503,9 +521,9 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
         containerClasses="shrink-0 sm:ml-auto"
         panelClasses={sheetPanel}
         horizontal="right"
-        menuLabel={sort.label ?? "Sort by"}
+        menuLabel={sort.label ?? sortWord}
       >
-        <SheetTitle>{sort.label ?? "Sort by"}</SheetTitle>
+        <SheetTitle>{sort.label ?? sortWord}</SheetTitle>
         {sort.options.map((option) => (
           <DropdownItem
             key={option.value}

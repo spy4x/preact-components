@@ -2,6 +2,7 @@ import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { RadioChips } from "./radio-chips.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The words of a {@link ThemePreview}. */
 export interface ThemePreviewLabels {
@@ -36,6 +37,13 @@ export interface ThemePreviewProps {
   inputAttributes?: Partial<Record<"dark" | "light", Record<string, string>>>
 }
 
+/** The English words of `ThemePreview`. */
+const THEME_PREVIEW_LABELS: Required<ThemePreviewLabels> = {
+  legend: "Theme",
+  dark: "Dark",
+  light: "Light",
+}
+
 /**
  * A frame that shows its children in the library's dark or light palette, switched by a Dark /
  * Light `RadioChips` pair, with no script.
@@ -63,12 +71,12 @@ export function ThemePreview(
   }: ThemePreviewProps,
 ): JSX.Element {
   const generated = useId()
-  const dark = labels?.dark ?? "Dark"
-  const light = labels?.light ?? "Light"
+  const words = useLabels("ThemePreview", THEME_PREVIEW_LABELS, labels)
+  const { dark, light } = words
   return (
     <div class={join("flex flex-col gap-3", className)}>
       <RadioChips
-        legend={labels?.legend ?? "Theme"}
+        legend={words.legend}
         hideLegend={hideLegend}
         name={name ?? `theme-preview-${generated}`}
         defaultValue={defaultTheme}

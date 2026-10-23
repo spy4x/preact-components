@@ -1,10 +1,12 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconAlertTriangle, IconCheck, IconLockClosed } from "@spy4x/preact-icons"
 import { formatMoney } from "@spy4x/platform/universal/money"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { EnhancedForm } from "./enhanced-form.tsx"
+import { ENGLISH, translate, useLabels, useT } from "./i18n.tsx"
 import {
   BADGE_BASE,
   BADGE_FILLED_ACCENT,
@@ -119,17 +121,47 @@ export interface PricingTableLabels {
 /** The English words {@link PricingTable} uses when a caller passes none. */
 export const defaultPricingTableLabels: PricingTableLabels = {
   intervalLegend: "Billing period",
-  intervals: { [BillingInterval.Month]: "Monthly", [BillingInterval.Year]: "Yearly" },
-  per: { [BillingInterval.Month]: "per month", [BillingInterval.Year]: "per year" },
-  perUnit: (unit, interval) =>
-    interval === undefined
-      ? `per ${unit}`
-      : `per ${unit} / ${interval === BillingInterval.Month ? "month" : "year"}`,
+  intervals: intervalWords(ENGLISH, "PricingTable.intervals"),
+  per: intervalWords(ENGLISH, "PricingTable.per"),
+  perUnit: (unit, interval) => perUnitWords(ENGLISH, unit, interval),
   highlighted: "Most popular",
   choose: "Choose",
   chooseName: (planName) => `Choose ${planName}`,
   pending: "Please wait…",
   failed: "Something went wrong. Please try again.",
+}
+
+/** One word per interval, from the catalog keys `<prefix>.month` and `<prefix>.year`. */
+function intervalWords(
+  translator: Translator<string>,
+  prefix: "PricingTable.intervals" | "PricingTable.per",
+): Partial<Record<1 | 2, string>> {
+  return {
+    [BillingInterval.Month]: translate(
+      translator,
+      `${prefix}.month`,
+      prefix === "PricingTable.per" ? "per month" : "Monthly",
+    ),
+    [BillingInterval.Year]: translate(
+      translator,
+      `${prefix}.year`,
+      prefix === "PricingTable.per" ? "per year" : "Yearly",
+    ),
+  }
+}
+
+/** The text after a price with a unit, per interval: `per seat / month`. */
+function perUnitWords(
+  translator: Translator<string>,
+  unit: string,
+  interval: BillingIntervalValue | undefined,
+): string {
+  if (interval === undefined) {
+    return translate(translator, "PricingTable.perUnit", `per ${unit}`, { unit })
+  }
+  return interval === BillingInterval.Month
+    ? translate(translator, "PricingTable.perUnitMonth", `per ${unit} / month`, { unit })
+    : translate(translator, "PricingTable.perUnitYear", `per ${unit} / year`, { unit })
 }
 
 /** Heading level of a billing component's own heading. */
@@ -297,14 +329,20 @@ export function PricingTable(
     class: className,
   }: PricingTableProps,
 ): JSX.Element {
+  const translator = useT()
+  const base = useLabels("PricingTable", defaultPricingTableLabels, labels, {
+    chooseName: ["planName"],
+  })
   const words = {
-    ...defaultPricingTableLabels,
-    ...labels,
-    intervals: { ...defaultPricingTableLabels.intervals, ...labels?.intervals },
-    per: { ...defaultPricingTableLabels.per, ...labels?.per },
-    perUnit: labels?.perUnit ?? defaultPricingTableLabels.perUnit,
+    ...base,
+    intervals: { ...intervalWords(translator, "PricingTable.intervals"), ...labels?.intervals },
+    per: { ...intervalWords(translator, "PricingTable.per"), ...labels?.per },
+    perUnit: labels?.perUnit ??
+      ((unit: string, interval?: BillingIntervalValue) => perUnitWords(translator, unit, interval)),
   }
-  const chooseName = labels?.chooseName ?? ((name: string) => `${words.choose} ${name}`)
+  // A caller that renamed "Choose" alone renames the button's accessible name with it.
+  const chooseName = labels?.chooseName ??
+    (labels?.choose === undefined ? base.chooseName : (name: string) => `${words.choose} ${name}`)
   const groupName = useId()
   const [interval, setInterval] = useState<BillingIntervalValue>(defaultInterval)
   // The plan whose "Choose" started the current work: only its form announces `pending`, so a
@@ -452,14 +490,7 @@ export interface PlanCardLabels {
 
 /** The English words {@link PlanCard} uses when a caller passes none. */
 export const defaultPlanCardLabels: PlanCardLabels = {
-  status: {
-    [SubscriptionStatus.Trialing]: "Trial",
-    [SubscriptionStatus.Active]: "Active",
-    [SubscriptionStatus.PastDue]: "Past due",
-    [SubscriptionStatus.Canceled]: "Canceled",
-    [SubscriptionStatus.Incomplete]: "Incomplete",
-    [SubscriptionStatus.Paused]: "Paused",
-  },
+  status: statusWords(ENGLISH),
   per: defaultPricingTableLabels.per,
   trialEnds: (date) => `Trial ends on ${date}`,
   renews: (date) => `Renews on ${date}`,
@@ -470,6 +501,30 @@ export const defaultPlanCardLabels: PlanCardLabels = {
   manage: "Manage billing",
   pending: "Please wait…",
   failed: "Something went wrong. Please try again.",
+}
+
+/** The argument names of {@link PlanCardLabels}' date lines. */
+const PLAN_CARD_PARAMS = {
+  trialEnds: ["date"],
+  renews: ["date"],
+  ends: ["date"],
+  ended: ["date"],
+} as const
+
+/** Each status in words, from the catalog keys `PlanCard.status.<name>`. */
+function statusWords(translator: Translator<string>): PlanCardLabels["status"] {
+  return {
+    [SubscriptionStatus.Trialing]: translate(translator, "PlanCard.status.trialing", "Trial"),
+    [SubscriptionStatus.Active]: translate(translator, "PlanCard.status.active", "Active"),
+    [SubscriptionStatus.PastDue]: translate(translator, "PlanCard.status.pastDue", "Past due"),
+    [SubscriptionStatus.Canceled]: translate(translator, "PlanCard.status.canceled", "Canceled"),
+    [SubscriptionStatus.Incomplete]: translate(
+      translator,
+      "PlanCard.status.incomplete",
+      "Incomplete",
+    ),
+    [SubscriptionStatus.Paused]: translate(translator, "PlanCard.status.paused", "Paused"),
+  }
 }
 
 export interface PlanCardProps {
@@ -580,11 +635,11 @@ export function PlanCard(
     class: className,
   }: PlanCardProps,
 ): JSX.Element {
+  const translator = useT()
   const words = {
-    ...defaultPlanCardLabels,
-    ...labels,
-    status: { ...defaultPlanCardLabels.status, ...labels?.status },
-    per: { ...defaultPlanCardLabels.per, ...labels?.per },
+    ...useLabels("PlanCard", defaultPlanCardLabels, labels, PLAN_CARD_PARAMS),
+    status: { ...statusWords(translator), ...labels?.status },
+    per: { ...intervalWords(translator, "PricingTable.per"), ...labels?.per },
   }
   const Heading = `h${headingLevel}` as "h2"
   const statusWord = words.status[status]
@@ -687,7 +742,7 @@ export interface UpgradePromptProps {
 export function UpgradePrompt(
   { href, navigate, headingLevel = 2, labels, class: className }: UpgradePromptProps,
 ): JSX.Element {
-  const words = { ...defaultUpgradePromptLabels, ...labels }
+  const words = useLabels("UpgradePrompt", defaultUpgradePromptLabels, labels)
   const Heading = `h${headingLevel}` as "h2"
 
   return (

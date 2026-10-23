@@ -51,6 +51,7 @@ import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
 import type { JSX } from "preact"
 import { useSignal } from "@preact/signals"
 import { useEffect, useRef } from "preact/hooks"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * The view of a clicked element this component needs.
@@ -133,7 +134,7 @@ function openedAlt(
 export function resolveImage(
   target: ImageElementLike | null,
   imageSelector = "img",
-  fallbackAlt = "Image",
+  fallbackAlt: string = "Image",
 ): LightboxImage | null {
   if (!target || !target.matches(imageSelector)) return null
 
@@ -253,7 +254,7 @@ export function collectSequence(
   elements: readonly ImageElementLike[],
   target: ImageElementLike | null,
   imageSelector = "img",
-  fallbackAlt = "Image",
+  fallbackAlt: string = "Image",
 ): ImageSequence {
   const resolved: Array<{ element: ImageElementLike; image: LightboxImage }> = []
   for (const element of elements) {
@@ -308,6 +309,16 @@ export interface ZoomableImagesProps {
   class?: string
 }
 
+/** The English words of `ZoomableImages`, each one a prop of its own. */
+const ZOOMABLE_IMAGES_LABELS: Required<
+  Pick<ZoomableImagesProps, "fallbackAlt" | "zoomLabel" | "label" | "closeLabel">
+> = {
+  fallbackAlt: "Image",
+  zoomLabel: "Zoom",
+  label: "Image viewer",
+  closeLabel: "Close",
+}
+
 /**
  * Zoomable images inside a container, opening the shared `Lightbox`.
  *
@@ -320,17 +331,27 @@ export function ZoomableImages(
   {
     containerSelector = "[data-lightbox]",
     imageSelector = "img",
-    fallbackAlt = "Image",
+    fallbackAlt: fallbackAltProp,
     zoomCursor = true,
-    zoomLabel = "Zoom",
-    label = "Image viewer",
-    closeLabel = "Close",
+    zoomLabel: zoomLabelProp,
+    label: labelProp,
+    closeLabel: closeLabelProp,
     previousLabel,
     nextLabel,
     onOpen,
     class: className,
   }: ZoomableImagesProps,
 ): JSX.Element {
+  const { fallbackAlt, zoomLabel, label, closeLabel } = useLabels(
+    "ZoomableImages",
+    ZOOMABLE_IMAGES_LABELS,
+    {
+      fallbackAlt: fallbackAltProp,
+      zoomLabel: zoomLabelProp,
+      label: labelProp,
+      closeLabel: closeLabelProp,
+    },
+  )
   const sequence = useSignal<LightboxImage[]>([])
   const index = useSignal(0)
   const open = useSignal(false)

@@ -2,6 +2,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { Coachmark, type CoachmarkPlacement, type CoachmarkTarget } from "./coachmark.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** One stop of a {@link Tour}. */
 export interface TourStep {
@@ -47,6 +48,17 @@ export interface TourProps {
   goToLabel?: (targetName: string) => string
 }
 
+/** The English words of `Tour`, each one a prop of its own. */
+const TOUR_LABELS: Required<
+  Pick<TourProps, "nextLabel" | "backLabel" | "skipLabel" | "doneLabel" | "stepLabel">
+> = {
+  nextLabel: "Next",
+  backLabel: "Back",
+  skipLabel: "Skip tour",
+  doneLabel: "Done",
+  stepLabel: (step, total) => `Step ${step} of ${total}`,
+}
+
 /**
  * A guided tour: one `Coachmark` for the step at `index`, with the step count, Skip, Back and Next
  * (Done on the last step). The app owns `open` and `index`, so it can also move the tour on when
@@ -60,15 +72,27 @@ export function Tour(
     index,
     onIndexChange,
     onClose,
-    nextLabel = "Next",
-    backLabel = "Back",
-    skipLabel = "Skip tour",
-    doneLabel = "Done",
-    stepLabel = (step, total) => `Step ${step} of ${total}`,
+    nextLabel: nextLabelProp,
+    backLabel: backLabelProp,
+    skipLabel: skipLabelProp,
+    doneLabel: doneLabelProp,
+    stepLabel: stepLabelProp,
     closeLabel,
     goToLabel,
   }: TourProps,
 ): JSX.Element {
+  const { nextLabel, backLabel, skipLabel, doneLabel, stepLabel } = useLabels(
+    "Tour",
+    TOUR_LABELS,
+    {
+      nextLabel: nextLabelProp,
+      backLabel: backLabelProp,
+      skipLabel: skipLabelProp,
+      doneLabel: doneLabelProp,
+      stepLabel: stepLabelProp,
+    },
+    { stepLabel: ["step", "total"] },
+  )
   const countId = `${useId()}-count`
   const step = steps[index] as TourStep | undefined
   const last = index === steps.length - 1

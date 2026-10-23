@@ -36,14 +36,17 @@ export interface DateTextLabels {
 /** The words `When` shows: those of `OnDay`, plus the distance from now. */
 export interface WhenLabels extends DateTextLabels {
   /**
-   * The distance from `now` (epoch milliseconds) to `at`. Default: English, `"a moment ago"`,
-   * `"5 minutes ago"`, `"3 days ago"`. An app that wants the region format's own words passes
-   * `(at) => format.relative(at)`.
+   * The distance from `now` (epoch milliseconds) to `at`. Default: the region format's own words
+   * (`FormatContext`), `"5 minutes ago"`, `"vor 3 Tagen"`. `WHEN_LABELS.relative` is the older
+   * English wording, `"a moment ago"`, for a caller that wants it.
    */
   relative: (at: Date, now: number) => string
 }
 
-/** The English words `When` and `OnDay` show when the caller passes none. */
+/**
+ * The English words of `When` and `OnDay`. `When` takes the distance from the region format
+ * instead of `relative` here, unless the caller passes this one.
+ */
 export const WHEN_LABELS: WhenLabels = {
   missing: "-",
   title: (exact) => exact,
@@ -76,7 +79,11 @@ export interface OnDayProps {
  */
 export function When({ at, now, labels, class: className }: WhenProps): JSX.Element {
   const format = useFormat()
-  const words = { ...WHEN_LABELS, ...labels }
+  const words: WhenLabels = {
+    ...WHEN_LABELS,
+    relative: (instant, present) => relativeTo(format, instant, present, now === undefined),
+    ...labels,
+  }
   const instant = toDate(at)
   if (!instant) return <span class={className}>{words.missing}</span>
   return (
@@ -100,6 +107,18 @@ export function OnDay({ at, labels, class: className }: OnDayProps): JSX.Element
       {format.date(at)}
     </time>
   )
+}
+
+/**
+ * `at`'s distance from `present` in `format`'s words. With no `now` from the caller, the
+ * formatter's own clock decides; otherwise a formatter of the same settings set to that instant.
+ */
+function relativeTo(format: Formatters, at: Date, present: number, ownClock: boolean): string {
+  if (ownClock) return format.relative(at)
+  return createFormatters(
+    { locale: format.locale, timeZone: format.timeZone, hourCycle: format.hourCycle },
+    { now: () => present },
+  ).relative(at)
 }
 
 function toDate(value: DateInput): Date | null {

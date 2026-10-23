@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { Button } from "./button.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 export interface OnOffButtonsProps {
   /** `undefined` renders both halves unselected. */
@@ -40,9 +41,19 @@ const selectedFill =
  * a `role="group"` named by `label`. With `value` undefined both halves read "not pressed".
  */
 export function OnOffButtons(
-  { value, amount, onSwitch, onLabel = "ON", offLabel = "OFF", label, class: className }:
-    OnOffButtonsProps,
+  {
+    value,
+    amount,
+    onSwitch,
+    onLabel: onLabelProp,
+    offLabel: offLabelProp,
+    label,
+    class: className,
+  }: OnOffButtonsProps,
 ): JSX.Element {
+  const translator = useT()
+  const onLabel = onLabelProp ?? translate(translator, "OnOffButtons.onLabel", "ON")
+  const offLabel = offLabelProp ?? translate(translator, "OnOffButtons.offLabel", "OFF")
   return (
     <div role="group" aria-label={label ?? `${onLabel} / ${offLabel}`} class={cn(group, className)}>
       <Button

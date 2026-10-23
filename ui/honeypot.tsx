@@ -19,7 +19,8 @@ import type { JSX } from "preact"
  * @param name Field name a submit handler reads back with `honeypotFilled` from
  * `@spy4x/platform/universal/honeypot`. Defaults to its `HONEYPOT_FIELD_NAME`, the name
  * `honeypotFilled` reads by default.
- * @param label Defaults to `"Leave this field blank"`. Off-screen text for the one assistive technology that does not honour
+ * @param label Defaults to `"Leave this field blank"`; a translated page passes
+ * `useT().t("Honeypot.label")`, since this is a function, not a component that reads the context. Off-screen text for the one assistive technology that does not honour
  * `aria-hidden` on a field it is autofilling — kept short and plain rather than skipped, because
  * "why is there a field with no label" is a worse trap than one extra sentence nobody sees.
  */

@@ -24,6 +24,13 @@ describe("When", () => {
     expect(html).toContain(">3 days ago</time>")
   })
 
+  it("says the distance in the provided format's language", () => {
+    const german = createFormatters({ locale: "de-DE", timeZone: "UTC" })
+    expect(inZone(german, <When at={THREE_DAYS_AGO} now={NOW} />)).toContain(">vor 3 Tagen</time>")
+    const clocked = createFormatters({ locale: "de-DE", timeZone: "UTC" }, { now: () => NOW })
+    expect(inZone(clocked, <When at={THREE_DAYS_AGO} />)).toContain(">vor 3 Tagen</time>")
+  })
+
   it("writes epoch milliseconds or a Date as an ISO datetime", () => {
     const epoch = Date.parse(THREE_DAYS_AGO)
     expect(inZone(utc, <When at={epoch} now={NOW} />)).toContain(`datetime="${THREE_DAYS_AGO}"`)

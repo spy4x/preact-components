@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconArrowRight, type IconProps } from "@spy4x/preact-icons"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { Card } from "./card.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** Props of {@link FeatureCard}. */
 export interface FeatureCardProps {
@@ -29,6 +30,11 @@ export interface FeatureCardProps {
   class?: string
 }
 
+/** The English words of `FeatureCard`, each one a prop of its own. */
+const FEATURE_CARD_LABELS: Required<Pick<FeatureCardProps, "linkLabel">> = {
+  linkLabel: "Learn more",
+}
+
 /**
  * One feature of a product on its public site: an optional icon, a heading, a line or two of text,
  * an optional link and an optional picture under them, on a library {@link Card}.
@@ -49,13 +55,18 @@ export function FeatureCard(
     children,
     Icon,
     href,
-    linkLabel = "Learn more",
+    linkLabel: linkLabelProp,
     media,
     wide = false,
     headingLevel = 3,
     class: className,
   }: FeatureCardProps,
 ): JSX.Element {
+  const { linkLabel } = useLabels(
+    "FeatureCard",
+    FEATURE_CARD_LABELS,
+    { linkLabel: linkLabelProp },
+  )
   const Heading = `h${headingLevel}` as "h3"
   return (
     <Card

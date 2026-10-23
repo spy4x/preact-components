@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
 import type { HotkeyProps } from "./hotkeys.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * The slice of a theme store {@link ThemeToggle} reads, described by shape so this package imports
@@ -101,7 +102,7 @@ export function ThemeToggle(
     kbdLabels,
   }: ThemeToggleProps,
 ): JSX.Element {
-  const text = { ...defaultThemeToggleLabels, ...labels }
+  const text = useLabels("ThemeToggle", defaultThemeToggleLabels, labels)
   // A number rather than a flag: each switch to auto gets a new one, so the effect below restarts
   // the timer even when the previous hint has not gone yet. `0` means no hint.
   const [hint, setHint] = useState(0)

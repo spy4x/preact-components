@@ -1,5 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
+import { useLabels } from "./i18n.tsx"
 
 /** A project or feature's lifecycle state. */
 export type StatusMarkStatus =
@@ -217,12 +218,13 @@ const SHAPES: Record<StatusMarkStatus, (props: { class?: string }) => JSX.Elemen
  */
 export function StatusMark({ status, label, class: className }: StatusMarkProps): JSX.Element {
   const Shape = SHAPES[status]
+  const words = useLabels("StatusMark", DEFAULT_LABELS)
   return (
     <span class={cn("inline-flex items-center gap-1 text-sm font-medium", className)}>
       <span aria-hidden="true" class={cn("shrink-0", TONES[status])}>
         <Shape class="size-4" />
       </span>
-      {label ?? DEFAULT_LABELS[status]}
+      {label ?? words[status]}
     </span>
   )
 }

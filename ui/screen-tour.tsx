@@ -17,6 +17,7 @@ import { buttonClasses } from "./button.tsx"
 import { FrameChrome } from "./frame-chrome.tsx"
 import { Lightbox } from "./lightbox.tsx"
 import { nextTabIndex } from "./tabs.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The screenshot of one {@link ScreenTourStep}. */
 export interface ScreenTourImage {
@@ -162,6 +163,12 @@ export function nextStepIndex(key: string, current: number, count: number): numb
   return nextTabIndex(rowKey, current, count)
 }
 
+/** The English words of `ScreenTour`, each one a prop of its own. */
+const SCREEN_TOUR_LABELS: Required<Pick<ScreenTourProps, "label" | "viewFullSizeLabel">> = {
+  label: "Screens",
+  viewFullSizeLabel: "View full size",
+}
+
 /**
  * A product walkthrough: named steps as tabs, beside one plain, browser or phone frame whose
  * screenshot swaps when a step is picked, with the step's caption and line of text under it.
@@ -186,8 +193,8 @@ export function ScreenTour(
     numbered = false,
     fetchPriority,
     onSelect,
-    label = "Screens",
-    viewFullSizeLabel = "View full size",
+    label: labelProp,
+    viewFullSizeLabel: viewFullSizeLabelProp,
     viewFullSizeClass,
     closeLabel,
     previousLabel,
@@ -196,6 +203,11 @@ export function ScreenTour(
     class: className,
   }: ScreenTourProps,
 ): JSX.Element {
+  const { label, viewFullSizeLabel } = useLabels(
+    "ScreenTour",
+    SCREEN_TOUR_LABELS,
+    { label: labelProp, viewFullSizeLabel: viewFullSizeLabelProp },
+  )
   if (steps.length === 0) throw new Error("ScreenTour needs at least one step")
   for (const step of steps) {
     if (step.image.alt.trim() === "") {

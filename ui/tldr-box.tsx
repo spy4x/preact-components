@@ -1,6 +1,7 @@
 import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { translate, useT } from "./i18n.tsx"
 
 /** Props of {@link TldrBox}. */
 export interface TldrBoxProps {
@@ -24,8 +25,10 @@ export interface TldrBoxProps {
  * @param props The points and options, see {@link TldrBoxProps}.
  */
 export function TldrBox(
-  { items, title = "In short", headingLevel = 2, id, class: className }: TldrBoxProps,
+  { items, title: titleProp, headingLevel = 2, id, class: className }: TldrBoxProps,
 ): JSX.Element | null {
+  const translator = useT()
+  const title = titleProp ?? translate(translator, "TldrBox.title", "In short")
   const generated = useId()
   if (items.length === 0) return null
   const headingId = id ?? `tldr-${generated}`

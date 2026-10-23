@@ -51,9 +51,12 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   "island-modal-combobox.tsx": 48_000,
   // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 33.6 KB (#958).
   "island-explorable-bars.tsx": 36_000,
-  "island-image-gallery.tsx": 35_000,
-  "island-pricing-table.tsx": 33_000,
-  "island-screen-tour.tsx": 45_000,
+  // #524: every component reads its words through `useLabels`, about 1.4 KB per island; the
+  // catalogs themselves stay out of every bundle. Measured 35.5, 31.1, 34.9 and 45.8 KB.
+  "island-image-gallery.tsx": 37_000,
+  "island-lightbox.tsx": 33_000,
+  "island-pricing-table.tsx": 36_000,
+  "island-screen-tour.tsx": 47_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))

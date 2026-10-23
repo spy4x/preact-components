@@ -5,6 +5,7 @@ import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { Card, CardBody, CardFooter, CardHeader } from "./card.tsx"
 import { Progress } from "./progress.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** A step's action that runs in place, such as opening a dialog. */
 export interface OnboardingStepButton {
@@ -81,9 +82,19 @@ export interface OnboardingChecklistProps {
   class?: string
 }
 
-/** The default progress caption: `"2 of 4 done"`. */
-function defaultProgressLabel(done: number, total: number): string {
-  return `${done} of ${total} done`
+/** The English words of `OnboardingChecklist`, each one a prop of its own. */
+const ONBOARDING_CHECKLIST_LABELS: Required<
+  Pick<
+    OnboardingChecklistProps,
+    "title" | "dismissLabel" | "finishLabel" | "doneLabel" | "todoLabel" | "completeMessage"
+  >
+> = {
+  title: "Get started",
+  dismissLabel: "Dismiss",
+  finishLabel: "Finish",
+  doneLabel: "Done",
+  todoLabel: "To do",
+  completeMessage: "All done. You're set up.",
 }
 
 /**
@@ -110,20 +121,39 @@ function defaultProgressLabel(done: number, total: number): string {
 export function OnboardingChecklist(
   {
     steps,
-    title = "Get started",
+    title: titleProp,
     headingLevel = 2,
     headingRef: headingRefProp,
     description,
     onDismiss,
-    dismissLabel = "Dismiss",
-    finishLabel = "Finish",
-    progressLabel = defaultProgressLabel,
-    doneLabel = "Done",
-    todoLabel = "To do",
-    completeMessage = "All done. You're set up.",
+    dismissLabel: dismissLabelProp,
+    finishLabel: finishLabelProp,
+    progressLabel: progressLabelProp,
+    doneLabel: doneLabelProp,
+    todoLabel: todoLabelProp,
+    completeMessage: completeMessageProp,
     class: className,
   }: OnboardingChecklistProps,
 ): JSX.Element {
+  const translator = useT()
+  const progressLabel = progressLabelProp ??
+    ((done: number, total: number) =>
+      translate(translator, "OnboardingChecklist.progressLabel", `${done} of ${total} done`, {
+        done,
+        total,
+      }))
+  const { title, dismissLabel, finishLabel, doneLabel, todoLabel, completeMessage } = useLabels(
+    "OnboardingChecklist",
+    ONBOARDING_CHECKLIST_LABELS,
+    {
+      title: titleProp,
+      dismissLabel: dismissLabelProp,
+      finishLabel: finishLabelProp,
+      doneLabel: doneLabelProp,
+      todoLabel: todoLabelProp,
+      completeMessage: completeMessageProp,
+    },
+  )
   const headingId = useId()
   const progressId = useId()
   const doneCount = steps.filter((step) => step.done).length
