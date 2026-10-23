@@ -576,6 +576,8 @@ function I18nContextDemo() {
     <Stack gap="md">
       <RadioChips
         legend="Language"
+        legendClass="pc-label mb-2 mx-auto"
+        optionsClass="flex flex-wrap justify-center gap-2"
         name="i18n-demo-language"
         value={language.value}
         onChange={(value) => (language.value = value)}
@@ -589,12 +591,15 @@ function I18nContextDemo() {
         <div lang={translator.language} dir={translator.dir}>
           <Stack gap="sm">
             <Pagination page={page.value} pageCount={5} onChange={(next) => (page.value = next)} />
-            <Cluster>
+            <Cluster justify="center">
               <CopyButton textToCopy="INV-0007" />
             </Cluster>
           </Stack>
         </div>
       </I18nContext.Provider>
+      <p class="text-center text-xs text-muted">
+        Dates follow FormatContext, not the language: an app provides both.
+      </p>
     </Stack>
   )
 }

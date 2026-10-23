@@ -1,7 +1,7 @@
 {
   "AvatarGroup.label": "Avatare",
   "Coachmark.closeLabel": "Schließen",
-  "Coachmark.goTo": "Zu {name}",
+  "Coachmark.goTo": "Weiter zu „{name}“",
   "Coachmark.goToHighlighted": "Zum hervorgehobenen Element",
   "ColorField.custom": "Eigene Farbe wählen",
   "ColorField.hexCode": "Hex-Code",
@@ -56,7 +56,7 @@
   "ComparisonTable.method": "Vorgehen",
   "ComparisonTable.no": "Nein",
   "ComparisonTable.noMeaning": "nicht angeboten",
-  "ComparisonTable.ours": "Unseres",
+  "ComparisonTable.ours": "Wir",
   "ComparisonTable.partial": "Teilweise",
   "ComparisonTable.partialMeaning": "mit Einschränkungen oder über ein Add-on",
   "ComparisonTable.yes": "Ja",

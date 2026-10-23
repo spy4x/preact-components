@@ -6385,6 +6385,8 @@ const translator = createTranslator({
 </I18nContext.Provider>
 ```
 
+Dates and numbers outside a message follow `FormatContext`, not the language, so an app provides
+both: `I18nContext` for the words and `FormatContext` for the person's region format and zone.
 Without a provider every component renders the English it always has. A word passed as a prop
 still wins over the catalog, and a translator that lacks the library's catalog leaves each word at
 its English default rather than showing the key. Numbers inside a message are written in the

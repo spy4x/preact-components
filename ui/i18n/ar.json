@@ -1,7 +1,7 @@
 {
   "AvatarGroup.label": "الصور الرمزية",
   "Coachmark.closeLabel": "إغلاق",
-  "Coachmark.goTo": "الانتقال إلى {name}",
+  "Coachmark.goTo": "الانتقال إلى «{name}»",
   "Coachmark.goToHighlighted": "الانتقال إلى العنصر المميَّز",
   "ColorField.custom": "اختيار لون مخصص",
   "ColorField.hexCode": "رمز HEX",

@@ -1,7 +1,7 @@
 {
   "AvatarGroup.label": "Avatares",
   "Coachmark.closeLabel": "Cerrar",
-  "Coachmark.goTo": "Ir a {name}",
+  "Coachmark.goTo": "Ir a «{name}»",
   "Coachmark.goToHighlighted": "Ir al control resaltado",
   "ColorField.custom": "Elige un color personalizado",
   "ColorField.hexCode": "Código hexadecimal",
