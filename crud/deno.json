@@ -9,16 +9,24 @@
     "./deletion-validation": "./deletion-validation.tsx",
     "./field": "./field.tsx",
     "./store": "./store.ts",
-    "./types": "./types.ts"
+    "./types": "./types.ts",
+    "./i18n/ar": "./i18n/ar.ts",
+    "./i18n/de": "./i18n/de.ts",
+    "./i18n/en": "./i18n/en.ts",
+    "./i18n/es": "./i18n/es.ts",
+    "./i18n/pt-BR": "./i18n/pt-BR.ts",
+    "./i18n/ru": "./i18n/ru.ts"
   },
   "publish": {
     // `examples/` demonstrates the package against a real store, in prose the package README
     // links to, but it is not part of `exports` and a consumer imports none of it. The rest are
-    // this package's own `*.test.*` suites, none reachable from `exports` either.
+    // this package's own `*.test.*` suites, none reachable from `exports` either. The catalogs'
+    // lock files are for `deno task i18n:stamp` and the catalog test only.
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "examples/"
+      "examples/",
+      "i18n/*.lock"
     ]
   }
 }

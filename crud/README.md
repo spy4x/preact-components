@@ -565,3 +565,19 @@ rendered to real markup (`field.test.tsx`), the list's status switch, count, err
 actions column, empty state (on the real `buildModelStore` too) and paging (`crud-list.test.tsx`), the two structural interfaces satisfied by the real
 `buildModelStore` (`store.test.ts`), and the ported regions resource
 (`examples/regions.test.tsx`). No network, no timers left running.
+
+## Translations
+
+Every word the list and the editors show comes from this package's catalog,
+`@spy4x/preact-crud/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. It is read from
+the same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`), so an app
+adds it beside the `ui` catalog in one `createTranslator`. Each language subpath, `./i18n/de` and
+the rest, has one `default` export: that language's catalog.
+
+Each key is `<Component>.<field>`: `CrudList.emptyTitle`, `CrudEditor.saveLabel`. A sentence that
+names the entity is one message with `{entity}` (`CrudEditor.addTitle`, "Add {entity}"), so a
+translation puts the caller's word where its grammar needs it. A word the app passes as a prop still
+wins over the catalog, and without a provider every component renders the English it always has.
+How long ago a row was archived or removed is in the translator's language too ("vor 5 Tagen"),
+and in the old English words when that language is English. The entity name, the column headers and
+the rows are the app's words, not the catalog's.

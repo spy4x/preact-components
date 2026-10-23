@@ -8,7 +8,9 @@ import { type ReadonlySignal, type Signal, useSignal, useSignalEffect } from "@p
 import type { Type } from "arktype"
 import { type ComponentChildren, Fragment, type JSX, toChildArray } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
-import { formatTime, timeAgo } from "@spy4x/platform/universal/time"
+import { formatTime } from "@spy4x/platform/universal/time"
+import { useLabels, useT } from "@spy4x/preact-ui/i18n"
+import { agoIn } from "./ago.ts"
 import {
   type FieldIssue,
   FORM_FIELD,
@@ -307,6 +309,17 @@ export interface ArchiveConfig<M extends CrudRow> {
 /** {@link CrudEditorBaseProps} plus the mode. */
 export type CrudEditorProps<M extends CrudRow> = CrudEditorBaseProps<M> & CrudEditorMode
 
+/** The editor's English words, each a key `CrudEditor.<field>` of the catalog. */
+const CRUD_EDITOR_LABELS = {
+  addTitle: (entity: string) => `Add ${entity}`,
+  editTitle: (entity: string) => `Edit ${entity}`,
+  notFoundLabel: (entity: string) => `${entity} not found`,
+  cancelLabel: "Cancel",
+  saveLabel: "Save",
+  saveErrorLabel: "Could not save",
+  archiveLabel: "Is Archived?",
+}
+
 /**
  * Add/edit form for one row of a collection.
  *
@@ -348,6 +361,13 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     archive,
     class: className,
   } = props
+  const translator = useT()
+  const words = useLabels(
+    "CrudEditor",
+    CRUD_EDITOR_LABELS,
+    { cancelLabel, saveLabel, saveErrorLabel, archiveLabel: archive?.label },
+    { addTitle: ["entity"], editTitle: ["entity"], notFoundLabel: ["entity"] },
+  )
 
   const vm = useSignal<M>(structuredClone(blank))
   const vl = useSignal<ValidationModel<M>>({})
@@ -371,7 +391,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       // or failed. A store with no `op.list` cannot tell the two apart, so it is told at once.
       const load = store.op.list?.value
       error.value = load === undefined || listSettled(load) || load.error !== null
-        ? notFoundLabel ?? `${entity} not found`
+        ? notFoundLabel ?? words.notFoundLabel(entity)
         : ""
       return
     }
@@ -531,7 +551,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
     // would read the old `editId` from this render and put that row's values under the new one.
     if (loadedKey.current !== savedKey) return
     if (outcome.error !== null) {
-      const label = saveErrorLabel ?? "Could not save"
+      const label = words.saveErrorLabel
       saveError.value = outcome.error.message ? `${label}: ${outcome.error.message}` : label
     }
     if (outcome.updated) loadFromStore()
@@ -540,7 +560,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   return (
     <Stack as="section" gap="lg" class={cn("mx-auto max-w-6xl", className)}>
       <PageTitle headingLevel={headingLevel}>
-        {title ?? (props.mode === "add" ? `Add ${entity}` : `Edit ${entity}`)}
+        {title ?? (props.mode === "add" ? words.addTitle(entity) : words.editTitle(entity))}
       </PageTitle>
       {error.value !== "" && <p class="text-danger">{error.value}</p>}
 
@@ -605,13 +625,13 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                   onChange={toggleArchive}
                 />
                 <label for={archiveId} class="pc-label">
-                  {archive.label ?? "Is Archived?"} {vm.value.deletedAt
+                  {words.archiveLabel} {vm.value.deletedAt
                     ? (
                       <span
                         title={formatTime(vm.value.deletedAt, { full: true })}
                         class="text-danger"
                       >
-                        ({timeAgo(vm.value.deletedAt)})
+                        ({agoIn(translator, vm.value.deletedAt)})
                       </span>
                     )
                     : ""}
@@ -619,7 +639,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
               </div>
             )}
 
-            <a href={cancelHref} class="btn btn-link ml-auto">{cancelLabel ?? "Cancel"}</a>
+            <a href={cancelHref} class="btn btn-link ml-auto">{words.cancelLabel}</a>
             {editable && (
               <button
                 type="submit"
@@ -628,7 +648,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
                 disabled={!state.saveEnabled}
               >
                 {state.busy && <IconLoading />}
-                {saveLabel ?? "Save"}
+                {words.saveLabel}
               </button>
             )}
           </div>

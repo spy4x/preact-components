@@ -6,7 +6,8 @@ import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
-import { timeAgo } from "@spy4x/platform/universal/time"
+import { useLabels, useT } from "@spy4x/preact-ui/i18n"
+import { agoIn } from "./ago.ts"
 import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
 import {
   CrudEditor,
@@ -218,6 +219,23 @@ export type AssociationEditorProps<M extends CrudRow> =
   & AssociationEditorBaseProps<M>
   & CrudEditorMode
 
+/** The association editor's English words, each the key `AssociationEditor.<field>`. */
+const ASSOCIATION_EDITOR_LABELS = {
+  restoreLabel: "Restore",
+  restoreErrorLabel: "Could not restore",
+  confirmRestoreTitle: (entity: string) => `Restore ${entity}?`,
+  confirmRestore: (entity: string) => `Are you sure you want to restore this ${entity}?`,
+  deleteLabel: "Delete",
+  deleteErrorLabel: "Could not delete",
+  confirmDeleteTitle: (entity: string) => `Delete ${entity}?`,
+  confirmDelete: (entity: string) => `Are you sure you want to delete this ${entity}?`,
+  conflictMessage: (entity: string) => `This ${entity} already exists.`,
+  conflictRemovedMessage: (entity: string) => `This ${entity} existed before and was removed.`,
+  restoreHint:
+    "Restoring it keeps the record that was there before instead of creating a second one.",
+  removedLabel: (ago: string) => `Removed ${ago}`,
+}
+
 /**
  * Add/edit form for a row that exists only to join two entities.
  *
@@ -245,20 +263,41 @@ export function AssociationEditor<M extends CrudRow>(
     children,
     class: className,
   } = props
+  const words = useLabels(
+    "AssociationEditor",
+    ASSOCIATION_EDITOR_LABELS,
+    {
+      restoreLabel,
+      restoreErrorLabel: props.restoreErrorLabel,
+      deleteLabel,
+      deleteErrorLabel: props.deleteErrorLabel,
+      restoreHint: props.restoreHint,
+      removedLabel: props.removedLabel,
+    },
+    {
+      confirmRestoreTitle: ["entity"],
+      confirmRestore: ["entity"],
+      confirmDeleteTitle: ["entity"],
+      confirmDelete: ["entity"],
+      conflictMessage: ["entity"],
+      conflictRemovedMessage: ["entity"],
+      removedLabel: ["ago"],
+    },
+  )
 
   const restoreWording: ConfirmWording = {
-    label: restoreLabel ?? "Restore",
-    errorLabel: props.restoreErrorLabel ?? "Could not restore",
-    title: props.confirmRestoreTitle ?? `Restore ${entity}?`,
-    message: props.confirmRestore ?? `Are you sure you want to restore this ${entity}?`,
+    label: words.restoreLabel,
+    errorLabel: words.restoreErrorLabel,
+    title: props.confirmRestoreTitle ?? words.confirmRestoreTitle(entity),
+    message: props.confirmRestore ?? words.confirmRestore(entity),
     cancelLabel: props.confirmCancelLabel,
     closeLabel: props.confirmCloseLabel,
   }
   const deleteWording: ConfirmWording = {
-    label: deleteLabel ?? "Delete",
-    errorLabel: props.deleteErrorLabel ?? "Could not delete",
-    title: props.confirmDeleteTitle ?? `Delete ${entity}?`,
-    message: props.confirmDelete ?? `Are you sure you want to delete this ${entity}?`,
+    label: words.deleteLabel,
+    errorLabel: words.deleteErrorLabel,
+    title: props.confirmDeleteTitle ?? words.confirmDeleteTitle(entity),
+    message: props.confirmDelete ?? words.confirmDelete(entity),
     cancelLabel: props.confirmCancelLabel,
     closeLabel: props.confirmCloseLabel,
   }
@@ -284,9 +323,8 @@ export function AssociationEditor<M extends CrudRow>(
         rows: store.list.all.value,
         conflict,
         field: conflictField,
-        message: conflictMessage ?? `This ${entity} already exists.`,
-        removedMessage: conflictRemovedMessage ??
-          `This ${entity} existed before and was removed.`,
+        message: conflictMessage ?? words.conflictMessage(entity),
+        removedMessage: conflictRemovedMessage ?? words.conflictRemovedMessage(entity),
       }),
     notice: ({ vm }: CrudEditorSlot<M>) => (
       <RemovedConflict
@@ -294,7 +332,7 @@ export function AssociationEditor<M extends CrudRow>(
         vm={vm}
         conflict={conflict}
         restoreWording={restoreWording}
-        hint={props.restoreHint}
+        hint={words.restoreHint}
       />
     ),
     footerSlot: ({ vm }: CrudEditorSlot<M>) =>
@@ -304,7 +342,7 @@ export function AssociationEditor<M extends CrudRow>(
           vm={vm}
           deleteWording={deleteWording}
           restoreWording={restoreWording}
-          removedLabel={props.removedLabel}
+          removedLabel={words.removedLabel}
         />
       ),
   }
@@ -425,7 +463,7 @@ function RemovedConflict<M extends CrudRow>(
     vm: Signal<M>
     conflict: (row: M, rows: M[]) => M | undefined
     restoreWording: ConfirmWording
-    hint?: string
+    hint: string
   },
 ) {
   const offer = useRef<HTMLDivElement>(null)
@@ -451,8 +489,7 @@ function RemovedConflict<M extends CrudRow>(
   return (
     <div ref={offer} class="mt-4 flex items-center gap-3">
       <p class="text-sm text-danger">
-        {hint ??
-          "Restoring it keeps the record that was there before instead of creating a second one."}
+        {hint}
       </p>
       <ConfirmedAction
         wording={restoreWording}
@@ -490,16 +527,17 @@ function AssociationFooter<M extends CrudRow>(
     vm: Signal<M>
     deleteWording: ConfirmWording
     restoreWording: ConfirmWording
-    removedLabel?: (ago: string) => string
+    removedLabel: (ago: string) => string
   },
 ) {
+  const translator = useT()
   const id = vm.value.id
   const removed = Boolean(vm.value.deletedAt)
   const inProgress = removed
     ? store.op.undelete(id).value?.inProgress === true
     : store.op.delete(id).value?.inProgress === true
   const actions = associationActions(store)
-  const ago = timeAgo(vm.value.deletedAt)
+  const ago = agoIn(translator, vm.value.deletedAt)
 
   return (
     <>
@@ -518,7 +556,7 @@ function AssociationFooter<M extends CrudRow>(
       />
       {removed && (
         <span class="text-danger mr-auto" title={vm.value.deletedAt?.toString()}>
-          {removedLabel?.(ago) ?? `Removed ${ago}`}
+          {removedLabel(ago)}
         </span>
       )}
     </>
