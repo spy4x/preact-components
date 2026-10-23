@@ -82,6 +82,7 @@ import { IconChevronLeft, IconChevronRight, IconXMark } from "@spy4x/preact-icon
 import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** One image a {@link Lightbox} can show. */
 export interface LightboxImage {
@@ -254,6 +255,14 @@ interface LatestState {
   onIndexChange: (index: number) => void
 }
 
+/** The English words of `Lightbox`, each one a prop of its own. */
+const LIGHTBOX_LABELS: Required<Pick<LightboxProps, "closeLabel" | "previousLabel" | "nextLabel">> =
+  {
+    closeLabel: "Close",
+    previousLabel: "Previous image",
+    nextLabel: "Next image",
+  }
+
 /**
  * The shared image dialog — see the module doc for what it is built on and why.
  */
@@ -264,16 +273,30 @@ export function Lightbox(
     open,
     onClose,
     onIndexChange,
-    label = "Image viewer",
-    closeLabel = "Close",
-    previousLabel = "Previous image",
-    nextLabel = "Next image",
-    counterLabel = counterText,
+    label: labelProp,
+    closeLabel: closeLabelProp,
+    previousLabel: previousLabelProp,
+    nextLabel: nextLabelProp,
+    counterLabel: counterLabelProp,
     controls = "overlay",
     caption = true,
     class: className,
   }: LightboxProps,
 ): JSX.Element {
+  const translator = useT()
+  const viewerLabel = translate(translator, "Lightbox.label", "Image viewer")
+  const label = labelProp ?? viewerLabel
+  const counterLabel = counterLabelProp ??
+    ((position: number, total: number) =>
+      translate(translator, "Lightbox.counterLabel", `${position} of ${total}`, {
+        position,
+        total,
+      }))
+  const { closeLabel, previousLabel, nextLabel } = useLabels(
+    "Lightbox",
+    LIGHTBOX_LABELS,
+    { closeLabel: closeLabelProp, previousLabel: previousLabelProp, nextLabel: nextLabelProp },
+  )
   const shown = describedImages(images)
   const total = shown.length
   const clampedIndex = total > 0 ? Math.min(Math.max(Math.trunc(index), 0), total - 1) : 0
@@ -385,7 +408,7 @@ export function Lightbox(
     <dialog
       ref={dialogRef}
       aria-label={typeof label === "function"
-        ? current ? label(current, clampedIndex + 1, total) : "Image viewer"
+        ? current ? label(current, clampedIndex + 1, total) : viewerLabel
         : label}
       onClose={handleClose}
       onClick={(event) => {

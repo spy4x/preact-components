@@ -10,6 +10,7 @@ import { EmptyState } from "./empty-state.tsx"
 import { Stack } from "./layout.tsx"
 import { Pagination } from "./pagination.tsx"
 import { Table } from "./table.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 /** Horizontal alignment of one column's header and cells. Defaults to `"left"`. */
 export type DataTableColumnAlign = "left" | "center" | "right"
@@ -392,6 +393,7 @@ export const rowKeyAttribute = "data-row-key"
 export function DataTable<T, K extends Extract<keyof T, string>>(
   props: DataTableProps<T, K>,
 ): JSX.Element {
+  const translator = useT()
   const {
     columns,
     rows,
@@ -437,7 +439,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     )
     : [
       <td key="empty" colspan={columns.length}>
-        {empty ?? <EmptyState title="No rows" />}
+        {empty ?? <EmptyState title={translate(translator, "DataTable.empty", "No rows")} />}
       </td>,
     ]
 

@@ -8,6 +8,7 @@ import {
 } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { TOUCH_TARGET } from "./touch-target.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * What a {@link Notice} is about: news (`info`), something to act on soon (`warning`), a success,
@@ -93,6 +94,11 @@ function isEmpty(children: ComponentChildren): boolean {
     children === ""
 }
 
+/** The English words of `Notice`, each one a prop of its own. */
+const NOTICE_LABELS: Required<Pick<NoticeProps, "dismissLabel">> = {
+  dismissLabel: "Dismiss",
+}
+
 /**
  * A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with
  * `tone="danger"`, a failure the reader must act on, such as a payment that failed.
@@ -117,11 +123,16 @@ export function Notice(
     urgent = false,
     live = true,
     onDismiss,
-    dismissLabel = "Dismiss",
+    dismissLabel: dismissLabelProp,
     class: className,
     ...rest
   }: NoticeProps,
 ): JSX.Element | null {
+  const { dismissLabel } = useLabels(
+    "Notice",
+    NOTICE_LABELS,
+    { dismissLabel: dismissLabelProp },
+  )
   const hasBody = !isEmpty(children)
   const hasAction = !isEmpty(action)
   if (!title && !hasBody && !hasAction) return null

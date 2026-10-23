@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconSpinner } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
+import { translate, useT } from "./i18n.tsx"
 
 /** Rendered size of a {@link LoadingSpinner}. */
 export type SpinnerSize = "sm" | "md" | "lg"
@@ -36,8 +37,11 @@ const sizeClasses: Record<SpinnerSize, string> = {
  * primitive stays presentational.
  */
 export function LoadingSpinner(
-  { label, loadingLabel = "Loading", size = "md", class: className }: LoadingSpinnerProps,
+  { label, loadingLabel, size = "md", class: className }: LoadingSpinnerProps,
 ): JSX.Element {
+  const translator = useT()
+  const loadingText = loadingLabel ??
+    translate(translator, "LoadingSpinner.loadingLabel", "Loading")
   return (
     <div
       class={cn("flex flex-col items-center justify-center gap-3 py-8", className)}
@@ -47,7 +51,7 @@ export function LoadingSpinner(
       <IconSpinner class={cn("text-selected", sizeClasses[size])} />
       {label
         ? <p class="text-sm text-muted">{label}</p>
-        : <span class="sr-only">{loadingLabel}</span>}
+        : <span class="sr-only">{loadingText}</span>}
     </div>
   )
 }

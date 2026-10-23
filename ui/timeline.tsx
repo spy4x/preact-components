@@ -1,5 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
+import { useLabels } from "./i18n.tsx"
 
 /** The colour of an entry's dot. */
 export type TimelineTone = "neutral" | "success" | "warning" | "danger"
@@ -40,6 +41,12 @@ const DOTS: Record<TimelineTone, string> = {
   danger: "bg-danger",
 }
 
+/** The English words of `Timeline`, each one a prop of its own. */
+const TIMELINE_LABELS: Required<Pick<TimelineProps, "label" | "empty">> = {
+  label: "Timeline",
+  empty: "Nothing yet.",
+}
+
 /**
  * A vertical list of events: a dot per entry on a line that joins them, the title and its time on
  * the first line, and an optional description under them. For an audit trail, an order's history
@@ -54,12 +61,17 @@ const DOTS: Record<TimelineTone, string> = {
 export function Timeline(
   {
     items,
-    label = "Timeline",
-    empty = "Nothing yet.",
+    label: labelProp,
+    empty: emptyProp,
     class: className,
     dataE2E,
   }: TimelineProps,
 ): JSX.Element {
+  const { label, empty } = useLabels(
+    "Timeline",
+    TIMELINE_LABELS,
+    { label: labelProp, empty: emptyProp },
+  )
   if (items.length === 0) {
     return <p class={cn("text-sm text-muted", className)} data-e2e={dataE2E}>{empty}</p>
   }

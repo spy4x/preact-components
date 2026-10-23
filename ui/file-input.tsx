@@ -3,7 +3,9 @@ import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 import { Button, type ButtonVariant } from "./button.tsx"
+import { ENGLISH, translate, useT } from "./i18n.tsx"
 import { TOUCH_TARGET } from "./touch-target.ts"
 
 /**
@@ -301,14 +303,16 @@ export function FileInput(
     ? "true"
     : undefined
 
-  const resolvedBrowse = labels.browse ?? "Choose files"
-  const resolvedDropHint = labels.dropHint ?? "or drag and drop"
+  const translator = useT()
+  const resolvedBrowse = labels.browse ?? translate(translator, "FileInput.browse", "Choose files")
+  const resolvedDropHint = labels.dropHint ??
+    translate(translator, "FileInput.dropHint", "or drag and drop")
   const {
     removeFile: removeFileLabel,
     tooLarge: tooLargeLabel,
     wrongType: wrongTypeLabel,
     tooMany: tooManyLabel,
-  } = resolveLabels(labels)
+  } = resolveLabels(labels, translator)
 
   const announceRejection = (text: string) => {
     // Cleared, then set on the next tick, so a second refusal with the exact same text is a real
@@ -517,42 +521,41 @@ export function FileInput(
   )
 }
 
-/** Default {@link FileInputLabels.removeFile}. */
-function defaultRemoveFileLabel(name: string): string {
-  return `Remove ${name}`
-}
-
-/** Default {@link FileInputLabels.tooLarge}. */
-function defaultTooLarge(name: string, maxSize: number): string {
-  return `${name} is larger than ${formatBytes(maxSize)}`
-}
-
-/** Default {@link FileInputLabels.wrongType}. */
-function defaultWrongType(name: string): string {
-  return `${name} is not an accepted file type`
-}
-
-/** Default {@link FileInputLabels.tooMany}. */
-function defaultTooMany(name: string): string {
-  return `${name} was not chosen — only one file is allowed`
-}
-
 /**
  * Fills in every message-building label {@link FileInputLabels} leaves unset with its default,
  * exported so a caller's override — or the fallback it replaces — can be checked directly, without
  * driving a real file chooser to reach the code that would otherwise call it.
  */
-export function resolveLabels(labels: FileInputLabels): {
+export function resolveLabels(labels: FileInputLabels, translator: Translator<string> = ENGLISH): {
   removeFile: (name: string) => string
   tooLarge: (name: string, maxSize: number) => string
   wrongType: (name: string) => string
   tooMany: (name: string) => string
 } {
   return {
-    removeFile: labels.removeFile ?? defaultRemoveFileLabel,
-    tooLarge: labels.tooLarge ?? defaultTooLarge,
-    wrongType: labels.wrongType ?? defaultWrongType,
-    tooMany: labels.tooMany ?? defaultTooMany,
+    removeFile: labels.removeFile ??
+      ((name) => translate(translator, "FileInput.removeFile", `Remove ${name}`, { name })),
+    tooLarge: labels.tooLarge ??
+      ((name, maxSize) =>
+        translate(
+          translator,
+          "FileInput.tooLarge",
+          `${name} is larger than ${formatBytes(maxSize)}`,
+          { name, size: formatBytes(maxSize) },
+        )),
+    wrongType: labels.wrongType ??
+      ((name) =>
+        translate(translator, "FileInput.wrongType", `${name} is not an accepted file type`, {
+          name,
+        })),
+    tooMany: labels.tooMany ??
+      ((name) =>
+        translate(
+          translator,
+          "FileInput.tooMany",
+          `${name} was not chosen — only one file is allowed`,
+          { name },
+        )),
   }
 }
 

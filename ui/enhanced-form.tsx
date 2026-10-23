@@ -1,6 +1,7 @@
 import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * Where one {@link EnhancedForm} is in its submit cycle.
@@ -226,7 +227,7 @@ export function EnhancedForm(
     class: className,
   }: EnhancedFormProps,
 ): JSX.Element {
-  const copy = { ...defaultLabels, ...labels }
+  const copy = useLabels("EnhancedForm", defaultLabels, labels)
   const [ownStatus, setStatus] = useState<EnhancedFormStatus>("idle")
   const status = controlledStatus ?? ownStatus
   // Checked synchronously, before either branch of `handleSubmit` runs, so two submits that arrive

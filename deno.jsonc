@@ -36,6 +36,9 @@
     // Rewrites `llms.txt` and `llms-full.txt` from the packages' exports and READMEs
     // (`infra/scripts/llms-txt.ts`). Run after changing an export, a JSDoc summary or a README.
     "llms": "deno run --allow-read --allow-write --allow-run=deno infra/scripts/llms-txt.ts",
+    // Writes `<package>/i18n/<language>.lock` for every translated catalog
+    // (`infra/scripts/i18n-stamp.ts`). Run once the translations match the English: TRANSLATING.md.
+    "i18n:stamp": "deno run --allow-read --allow-write infra/scripts/i18n-stamp.ts",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
@@ -116,10 +119,10 @@
     // entries map every subpath of a package (`@spy4x/platform/universal/csv`) to the same release;
     // `deno publish` rewrites each import to that exact `jsr:` version, so only a package that
     // imports one of these gains it as a dependency.
-    "@spy4x/platform/": "jsr:/@spy4x/platform@1.88.0/",
-    "@spy4x/time/": "jsr:/@spy4x/time@1.88.0/",
-    "@spy4x/validation": "jsr:@spy4x/validation@1.88.0",
-    "@spy4x/validation/": "jsr:/@spy4x/validation@1.88.0/",
+    "@spy4x/platform/": "jsr:/@spy4x/platform@1.90.0/",
+    "@spy4x/time/": "jsr:/@spy4x/time@1.90.0/",
+    "@spy4x/validation": "jsr:@spy4x/validation@1.90.0",
+    "@spy4x/validation/": "jsr:/@spy4x/validation@1.90.0/",
 
     // Test-only HTML renderer every package's suite imports. One pin here (#133) replaces six
     // identical per-package copies that all resolved the same version. Unlike `leaflet`, this is

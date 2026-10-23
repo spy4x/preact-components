@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconCheck } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { badgeClasses, type BadgeColor } from "./badge.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 /** One chip of a {@link ToggleChips} group. */
 export interface ToggleChipOption {
@@ -87,7 +88,9 @@ const unpressed = "bg-surface text-foreground border-subtle hover:bg-hover"
  * caller's case, unlike `Badge`, because a tag's case is part of its name.
  */
 export function ToggleChips(props: ToggleChipsProps): JSX.Element {
-  const { options, label = "Filters", color = "purple", class: className } = props
+  const { options, color = "purple", class: className } = props
+  const translator = useT()
+  const label = props.label ?? translate(translator, "ToggleChips.label", "Filters")
   const isPressed = (value: string): boolean =>
     props.mode === "single" ? props.value === value : props.value.includes(value)
 

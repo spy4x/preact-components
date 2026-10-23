@@ -4,6 +4,7 @@ import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { CopyButton } from "./copy-button.tsx"
 import type { CopyPort } from "./copy-button-body.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** Props of `CopyBlock`, the one block of copyable text this package ships. */
 export interface CopyBlockProps {
@@ -94,6 +95,12 @@ function OneLineText({ text, label }: { text: string; label: string }): JSX.Elem
   )
 }
 
+/** The English words of `CopyBlock`, each one a prop of its own. */
+const COPY_BLOCK_LABELS: Required<Pick<CopyBlockProps, "textLabel" | "copyLabel">> = {
+  textLabel: "Text to copy",
+  copyLabel: "Copy",
+}
+
 /**
  * A box of monospace text with a copy control beside it: an install command, an API key, an id.
  *
@@ -114,15 +121,20 @@ export function CopyBlock(
   {
     text,
     singleLine = false,
-    textLabel = "Text to copy",
+    textLabel: textLabelProp,
     copy,
-    copyLabel = "Copy",
+    copyLabel: copyLabelProp,
     copiedLabel,
     failedLabel,
     copiedForMs,
     class: className,
   }: CopyBlockProps,
 ): JSX.Element {
+  const { textLabel, copyLabel } = useLabels(
+    "CopyBlock",
+    COPY_BLOCK_LABELS,
+    { textLabel: textLabelProp, copyLabel: copyLabelProp },
+  )
   return (
     <div
       class={cn(

@@ -8,6 +8,8 @@ import {
 } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
+import type { Translator } from "@spy4x/platform/universal/i18n"
+import { ENGLISH, translate, useT } from "./i18n.tsx"
 
 export interface MoneyInputBounds {
   /** Smallest-unit lower bound, when one is set. */
@@ -64,17 +66,43 @@ export type MoneyInputRangeMessage = (
 ) => string
 
 function defaultRangeMessage(
+  bounds: MoneyInputBounds,
+  currency: string,
+  locale: string,
+): string {
+  return rangeWords(ENGLISH, bounds, currency, locale)
+}
+
+/** The range message in `translator`'s words, the amounts in `locale`'s money format. */
+function rangeWords(
+  translator: Translator<string>,
   { min, max }: MoneyInputBounds,
   currency: string,
   locale: string,
 ): string {
+  const money = (amount: number) => formatMoney(amount, currency, locale)
   if (min !== undefined && max !== undefined) {
-    return `Enter an amount between ${formatMoney(min, currency, locale)} and ${
-      formatMoney(max, currency, locale)
-    }`
+    return translate(
+      translator,
+      "MoneyInput.rangeBetween",
+      `Enter an amount between ${money(min)} and ${money(max)}`,
+      { min: money(min), max: money(max) },
+    )
   }
-  if (min !== undefined) return `Enter an amount of at least ${formatMoney(min, currency, locale)}`
-  return `Enter an amount of at most ${formatMoney(max as number, currency, locale)}`
+  if (min !== undefined) {
+    return translate(
+      translator,
+      "MoneyInput.rangeMin",
+      `Enter an amount of at least ${money(min)}`,
+      { min: money(min) },
+    )
+  }
+  return translate(
+    translator,
+    "MoneyInput.rangeMax",
+    `Enter an amount of at most ${money(max as number)}`,
+    { max: money(max as number) },
+  )
 }
 
 /** What one edit of {@link MoneyInput}'s text resolves to — see {@link resolveMoneyInputEdit}. */
@@ -199,13 +227,18 @@ export function MoneyInput(
     disabled,
     required,
     placeholder,
-    invalidMessage = "Enter a valid amount",
-    rangeMessage = defaultRangeMessage,
+    invalidMessage: invalidMessageProp,
+    rangeMessage: rangeMessageProp,
     class: className,
     "aria-describedby": callerDescribedBy,
     "aria-invalid": callerInvalid,
   }: MoneyInputProps,
 ): JSX.Element {
+  const translator = useT()
+  const invalidMessage = invalidMessageProp ??
+    translate(translator, "MoneyInput.invalidMessage", "Enter a valid amount")
+  const rangeMessage: MoneyInputRangeMessage = rangeMessageProp ??
+    ((bounds, code, format) => rangeWords(translator, bounds, code, format))
   const generatedId = useId()
   const id = callerId ?? generatedId
   const statusId = `${id}-status`

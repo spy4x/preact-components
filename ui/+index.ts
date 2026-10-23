@@ -228,6 +228,18 @@ export {
   type WhenProps,
 } from "./format.tsx"
 export { honeypotField } from "./honeypot.tsx"
+export {
+  ENGLISH,
+  I18nContext,
+  type LabelParams,
+  labelsFrom,
+  Rich,
+  type RichProps,
+  translate,
+  type UiKey,
+  useLabels,
+  useT,
+} from "./i18n.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
 export {
   Input,

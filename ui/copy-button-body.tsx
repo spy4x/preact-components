@@ -3,6 +3,7 @@ import { IconCheck, IconXMark } from "@spy4x/preact-icons"
 import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
 import { Button } from "./button.tsx"
 import type { HotkeyProps } from "./hotkeys.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * A clipboard port. It fails by throwing, by rejecting or by returning `false`; anything else,
@@ -112,6 +113,15 @@ function StatusIcon({ status }: { status: CopyStatus }): JSX.Element {
   )
 }
 
+/** The English words of `CopyButton`, each one a prop of its own. */
+const COPY_BUTTON_LABELS: Required<
+  Pick<CopyButtonBodyProps, "copyLabel" | "copiedLabel" | "failedLabel">
+> = {
+  copyLabel: "Copy",
+  copiedLabel: "Copied",
+  failedLabel: "Copy failed",
+}
+
 /**
  * The markup of `CopyButton`, with the status handed in.
  *
@@ -129,9 +139,9 @@ export function CopyButtonBody(
   {
     textToCopy: _textToCopy,
     title,
-    copyLabel = "Copy",
-    copiedLabel = "Copied",
-    failedLabel = "Copy failed",
+    copyLabel: copyLabelProp,
+    copiedLabel: copiedLabelProp,
+    failedLabel: failedLabelProp,
     onClick,
     class: className,
     status,
@@ -140,6 +150,11 @@ export function CopyButtonBody(
     ...rest
   }: CopyButtonBodyProps,
 ): JSX.Element {
+  const { copyLabel, copiedLabel, failedLabel } = useLabels(
+    "CopyButton",
+    COPY_BUTTON_LABELS,
+    { copyLabel: copyLabelProp, copiedLabel: copiedLabelProp, failedLabel: failedLabelProp },
+  )
   const message = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : ""
   return (
     <>

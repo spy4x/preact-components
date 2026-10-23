@@ -3,7 +3,9 @@ import { describe, it } from "@std/testing/bdd"
 import type { ComponentChild } from "preact"
 import { render } from "preact-render-to-string"
 import { createFormatters, type Formatters } from "@spy4x/time/format"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
 import { FormatContext, OnDay, useFormat, When } from "./format.tsx"
+import { I18nContext } from "./i18n.tsx"
 
 const NOW = Date.parse("2026-10-17T12:00:00.000Z")
 const THREE_DAYS_AGO = "2026-10-14T12:00:00.000Z"
@@ -22,6 +24,51 @@ describe("When", () => {
     const html = inZone(utc, <When at={THREE_DAYS_AGO} now={NOW} />)
     expect(html).toContain(`<time datetime="${THREE_DAYS_AGO}"`)
     expect(html).toContain(">3 days ago</time>")
+  })
+
+  it("keeps its English words without a provider, whatever the region format", () => {
+    const german = createFormatters({ locale: "de-DE", timeZone: "UTC" })
+    const at = (ms: number) => new Date(NOW - ms).toISOString()
+    const text = (ms: number) => inZone(german, <When at={at(ms)} now={NOW} />)
+    expect(text(5_000)).toContain(">a moment ago</time>")
+    expect(text((2 * 60 + 55) * 60_000)).toContain(">2 hours ago</time>")
+    expect(text(3 * 86_400_000)).toContain(">3 days ago</time>")
+  })
+
+  it("keeps its English words under an English translator", () => {
+    const english = createTranslator({ language: "en-GB", catalogs: [] })
+    const html = render(
+      <I18nContext.Provider value={english}>
+        <When at="2026-10-17T11:59:55.000Z" now={NOW} />
+      </I18nContext.Provider>,
+    )
+    expect(html).toContain(">a moment ago</time>")
+  })
+
+  it("says the distance in the translator's language", () => {
+    const german = createTranslator({ language: "de", catalogs: [] })
+    const inGerman = (format: Formatters, node: ComponentChild) =>
+      render(
+        <I18nContext.Provider value={german}>
+          <FormatContext.Provider value={format}>{node}</FormatContext.Provider>
+        </I18nContext.Provider>,
+      )
+    expect(inGerman(utc, <When at={THREE_DAYS_AGO} now={NOW} />)).toContain(">vor 3 Tagen</time>")
+    const clocked = createFormatters({ locale: "de-DE", timeZone: "UTC" }, { now: () => NOW })
+    expect(inGerman(clocked, <When at={THREE_DAYS_AGO} />)).toContain(">vor 3 Tagen</time>")
+  })
+
+  it("says the distance in the translator's language under an English region format, without now", () => {
+    const german = createTranslator({ language: "de", catalogs: [] })
+    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000)
+    const html = render(
+      <I18nContext.Provider value={german}>
+        <FormatContext.Provider value={utc}>
+          <When at={threeDaysAgo} />
+        </FormatContext.Provider>
+      </I18nContext.Provider>,
+    )
+    expect(html).toContain(">vor 3 Tagen</time>")
   })
 
   it("writes epoch milliseconds or a Date as an ISO datetime", () => {

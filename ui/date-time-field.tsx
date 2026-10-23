@@ -3,6 +3,7 @@ import { hhmmInTz, isoDateInTz, validTimeZoneOr, zonedDateTime, zoneLabel } from
 import type { ComponentChildren, JSX } from "preact"
 import { Field } from "./field.tsx"
 import { Input } from "./input.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The words a {@link DateTimeField} shows. */
 export interface DateTimeFieldLabels {
@@ -77,7 +78,7 @@ export function DateTimeField(
     class: className,
   }: DateTimeFieldProps,
 ): JSX.Element {
-  const words = { ...DATE_TIME_FIELD_LABELS, ...labels }
+  const words = useLabels("DateTimeField", DATE_TIME_FIELD_LABELS, labels, { zone: ["zone"] })
   const zone = validTimeZoneOr(timeZone, "UTC")
   const instant = toInstant(value)
   const zoneId = `${id}-zone`

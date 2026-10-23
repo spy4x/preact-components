@@ -10,6 +10,7 @@ import {
 } from "./demo-video-clip.tsx"
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
+import { useLabels } from "./i18n.tsx"
 
 export type { DemoVideoSource }
 
@@ -93,6 +94,15 @@ function prefersReducedMotion(): boolean {
   return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 }
 
+/** The English words of `DemoVideo`, each one a prop of its own. */
+const DEMO_VIDEO_LABELS: Required<
+  Pick<DemoVideoProps, "playLabel" | "errorLabel" | "openFileLabel">
+> = {
+  playLabel: "Play video",
+  errorLabel: "The video didn't load.",
+  openFileLabel: "Open the video file",
+}
+
 /**
  * A demo clip that costs nothing until it is asked for: a poster with a play mark, swapped for the
  * clip on press.
@@ -123,15 +133,20 @@ export function DemoVideo(
     poster,
     sources,
     title,
-    playLabel = "Play video",
+    playLabel: playLabelProp,
     eager = false,
     loop = false,
-    errorLabel = "The video didn't load.",
-    openFileLabel = "Open the video file",
+    errorLabel: errorLabelProp,
+    openFileLabel: openFileLabelProp,
     class: className,
     ...rest
   }: DemoVideoProps,
 ): JSX.Element {
+  const { playLabel, errorLabel, openFileLabel } = useLabels(
+    "DemoVideo",
+    DEMO_VIDEO_LABELS,
+    { playLabel: playLabelProp, errorLabel: errorLabelProp, openFileLabel: openFileLabelProp },
+  )
   const first = sources[0]
   if (first === undefined) throw new Error("DemoVideo needs at least one source")
   const phase = useSignal<Phase>({ kind: "poster" })

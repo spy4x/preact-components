@@ -19,6 +19,7 @@ import { IconBars3 } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 import { scrollPageNearEdge, useKeptFocus, usePointerDrag } from "./pointer-drag.ts"
+import { useLabels } from "./i18n.tsx"
 
 export { edgeScrollStep } from "./pointer-drag.ts"
 
@@ -189,7 +190,13 @@ function orderOf(items: readonly SortableItem[]): string {
 export function SortableList<Item extends SortableItem>(
   { items, renderItem, itemLabel, onMove, labels, class: className }: SortableListProps<Item>,
 ): JSX.Element {
-  const text: SortableListLabels = { ...defaultSortableListLabels, ...labels }
+  const text: SortableListLabels = useLabels("SortableList", defaultSortableListLabels, labels, {
+    handle: ["item"],
+    pickedUp: "values",
+    moved: "values",
+    dropped: "values",
+    cancelled: "values",
+  })
   const instructionsId = `sortable-${useId()}-instructions`
   const listRef = useRef<HTMLUListElement>(null)
   const [held, setHeldState] = useState<Held | null>(null)
