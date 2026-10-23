@@ -1886,6 +1886,8 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-LayoutCustomiser": 3,
   // Its Tags and Author menus and the sort.
   "demo-FilterBar": 3,
+  // One "Actions for …" menu per ready file: tickets.png, the booking PDF and beach.jpg.
+  "demo-AttachmentList": 3,
 }
 
 /** The part of a Chromium accessibility node the trigger check reads. */
