@@ -2,32 +2,41 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { createTranslator, pseudoLocalize } from "@spy4x/platform/universal/i18n"
+import systemDe from "../system/i18n/de.ts"
+import systemEn from "../system/i18n/en.ts"
 import uiDe from "../ui/i18n/de.ts"
 import uiEn from "../ui/i18n/en.ts"
 import { I18nContext } from "../ui/i18n.tsx"
 import { catalogueSections, demoRegistry } from "./registry.ts"
 
 /**
- * Every `ui` guide demo rendered three times. It checks only what the demos render: a word no demo
+ * Every guide demo of the `ui` and `system` packages rendered three times. It checks only what the demos render: a word no demo
  * shows (an empty `DataTable`'s "No rows", for one) is not checked here.
  *
  * Under `en-XA`, the pseudo-language that wraps each catalog message in `⟦ ⟧`, a run of text with
- * no brackets that matches a text written in the `ui` sources is a component word that skipped the
+ * no brackets that matches a text written in the package's sources is a component word that skipped the
  * catalog, and it is listed. A run the guide's sources write is the caller's and passes, unless it
  * is a word of the demo's own component (its catalog keys `<name>.…`); the few demos that pass
  * their component its own default English are in `CALLER_WORDS`. A subtree marked
  * `translate="no"` (user content, a brand name) is skipped.
  *
  * Under the English catalog, every demo must render exactly what it renders without a provider:
- * the English written in each component's code and `ui/i18n/en.json` say the same. Under the German
- * catalog, with an `onMissing` that throws, no demo may ask for a key the catalog lacks.
+ * the English written in each component's code and the package's `i18n/en.json` say the same. Under
+ * the German catalogs, with an `onMissing` that throws, no demo may ask for a key the catalogs lack.
+ * A `system` demo renders `ui` components too, so every translator holds both packages' catalogs.
  */
 
-const FULL_ENGLISH = createTranslator({ language: "en", catalogs: [{ source: uiEn }] })
+const FULL_ENGLISH = createTranslator({
+  language: "en",
+  catalogs: [{ source: uiEn }, { source: systemEn }],
+})
 
 const PSEUDO = createTranslator({
   language: "en-XA",
-  catalogs: [{ source: uiEn, translation: pseudoLocalize(uiEn) }],
+  catalogs: [
+    { source: uiEn, translation: pseudoLocalize(uiEn) },
+    { source: systemEn, translation: pseudoLocalize(systemEn) },
+  ],
 })
 
 /** The attributes a person reads or hears, besides the text itself. */
@@ -163,7 +172,7 @@ export function writtenTexts(source: string): Set<string> {
 /** The English of every message of the component `name`: the catalog keys `<name>.…`. */
 function ownWords(name: string): Set<string> {
   return new Set(
-    Object.entries(uiEn)
+    Object.entries({ ...uiEn, ...systemEn })
       .filter(([key]) => key.startsWith(`${name}.`))
       .flatMap(([, message]) => typeof message === "string" ? [message] : Object.values(message)),
   )
@@ -182,78 +191,96 @@ const CALLER_WORDS: Readonly<Record<string, readonly string[]>> = {
   DateRangePicker: ["Date range", "From", "To", "Cancel", "Apply"],
 }
 
-const uiNames = catalogueSections
-  .filter((section) => section.package === "ui")
-  .flatMap((section) => section.names)
+/** The packages whose demos this file guards, each with a section count it must exceed, so a list gone empty fails. */
+const PACKAGES = [
+  { name: "ui", minimum: 50 },
+  { name: "system", minimum: 10 },
+] as const
 
-describe("the ui demos under en-XA", () => {
-  it("show no component text that skipped the catalog", async () => {
-    const component = (await sourcesOf(new URL("../ui/", import.meta.url))).flatMap(literalPatterns)
-    const guide = new Set(
-      [
-        ...await sourcesOf(new URL("./", import.meta.url)),
-        ...await sourcesOf(new URL("./sections/", import.meta.url)),
-      ].flatMap((source) => [...writtenTexts(source)]),
-    )
-    const found: string[] = []
-    for (const name of uiNames) {
-      const html = render(
-        <I18nContext.Provider value={PSEUDO}>{demoRegistry[name].render()}</I18nContext.Provider>,
+for (const pkg of PACKAGES) {
+  const names = catalogueSections
+    .filter((section) => section.package === pkg.name)
+    .flatMap((section) => section.names)
+
+  describe(`the ${pkg.name} demos under en-XA`, () => {
+    it("show no component text that skipped the catalog", async () => {
+      const component = (await sourcesOf(new URL(`../${pkg.name}/`, import.meta.url))).flatMap(
+        literalPatterns,
       )
-      for (const text of readableTexts(html)) {
-        for (const run of untranslatedRuns(text)) {
-          // A text the guide writes is the caller's, unless it is a word of the demo's own component.
-          if (guide.has(run) && !ownWords(name).has(run)) continue
-          if (CALLER_WORDS[name]?.includes(run)) continue
-          const pattern = component.find((candidate) => candidate.test(run))
-          if (pattern) found.push(`${name}: ${JSON.stringify(run)} (ui source ${pattern.source})`)
+      const guide = new Set(
+        [
+          ...await sourcesOf(new URL("./", import.meta.url)),
+          ...await sourcesOf(new URL("./sections/", import.meta.url)),
+        ].flatMap((source) => [...writtenTexts(source)]),
+      )
+      const found: string[] = []
+      for (const name of names) {
+        const html = render(
+          <I18nContext.Provider value={PSEUDO}>{demoRegistry[name].render()}</I18nContext.Provider>,
+        )
+        for (const text of readableTexts(html)) {
+          for (const run of untranslatedRuns(text)) {
+            // A text the guide writes is the caller's, unless it is a word of the demo's own
+            // component.
+            if (guide.has(run) && !ownWords(name).has(run)) continue
+            if (CALLER_WORDS[name]?.includes(run)) continue
+            const pattern = component.find((candidate) => candidate.test(run))
+            if (pattern) {
+              found.push(`${name}: ${JSON.stringify(run)} (${pkg.name} source ${pattern.source})`)
+            }
+          }
         }
       }
-    }
-    expect([...new Set(found)]).toEqual([])
-  })
-
-  it("render the same English with the English catalog as without a provider", () => {
-    const differ: string[] = []
-    for (const name of uiNames) {
-      const bare = render(<>{demoRegistry[name].render()}</>)
-      const english = render(
-        <I18nContext.Provider value={FULL_ENGLISH}>
-          {demoRegistry[name].render()}
-        </I18nContext.Provider>,
-      )
-      if (bare !== english) differ.push(`${name}: ${firstDifference(bare, english)}`)
-    }
-    expect(differ).toEqual([])
-  })
-
-  it("render under a full German catalog without asking for a key it lacks", () => {
-    const missing: string[] = []
-    const german = createTranslator({
-      language: "de",
-      catalogs: [{ source: uiEn, translation: uiDe }],
-      onMissing: (key) => {
-        missing.push(key)
-        throw new Error(`no message for ${key}`)
-      },
+      expect([...new Set(found)]).toEqual([])
     })
-    const failed: string[] = []
-    for (const name of uiNames) {
-      try {
-        render(
-          <I18nContext.Provider value={german}>{demoRegistry[name].render()}</I18nContext.Provider>,
-        )
-      } catch (error) {
-        failed.push(`${name}: ${String(error)}`)
-      }
-    }
-    expect({ missing: [...new Set(missing)], failed }).toEqual({ missing: [], failed: [] })
-  })
 
-  it("covers every ui section", () => {
-    expect(uiNames.length).toBeGreaterThan(50)
+    it("render the same English with the English catalog as without a provider", () => {
+      const differ: string[] = []
+      for (const name of names) {
+        const bare = render(<>{demoRegistry[name].render()}</>)
+        const english = render(
+          <I18nContext.Provider value={FULL_ENGLISH}>
+            {demoRegistry[name].render()}
+          </I18nContext.Provider>,
+        )
+        if (bare !== english) differ.push(`${name}: ${firstDifference(bare, english)}`)
+      }
+      expect(differ).toEqual([])
+    })
+
+    it("render under the full German catalogs without asking for a key they lack", () => {
+      const missing: string[] = []
+      const german = createTranslator({
+        language: "de",
+        catalogs: [
+          { source: uiEn, translation: uiDe },
+          { source: systemEn, translation: systemDe },
+        ],
+        onMissing: (key) => {
+          missing.push(key)
+          throw new Error(`no message for ${key}`)
+        },
+      })
+      const failed: string[] = []
+      for (const name of names) {
+        try {
+          render(
+            <I18nContext.Provider value={german}>
+              {demoRegistry[name].render()}
+            </I18nContext.Provider>,
+          )
+        } catch (error) {
+          failed.push(`${name}: ${String(error)}`)
+        }
+      }
+      expect({ missing: [...new Set(missing)], failed }).toEqual({ missing: [], failed: [] })
+    })
+
+    it(`covers every ${pkg.name} section`, () => {
+      expect(names.length).toBeGreaterThan(pkg.minimum)
+    })
   })
-})
+}
 
 describe("readableTexts", () => {
   it("reads text and the read attributes, and skips a translate=no subtree", () => {
