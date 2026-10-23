@@ -2,8 +2,12 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { createTranslator, pseudoLocalize } from "@spy4x/platform/universal/i18n"
+import chartsDe from "../charts/i18n/de.ts"
+import chartsEn from "../charts/i18n/en.ts"
 import crudDe from "../crud/i18n/de.ts"
 import crudEn from "../crud/i18n/en.ts"
+import mapDe from "../map/i18n/de.ts"
+import mapEn from "../map/i18n/en.ts"
 import systemDe from "../system/i18n/de.ts"
 import systemEn from "../system/i18n/en.ts"
 import uiDe from "../ui/i18n/de.ts"
@@ -12,9 +16,9 @@ import { I18nContext } from "../ui/i18n.tsx"
 import { catalogueSections, demoRegistry } from "./registry.ts"
 
 /**
- * Every guide demo of the `ui`, `system` and `crud` packages rendered three times. It checks only
- * what the demos render: a word no demo shows (an empty `DataTable`'s "No rows", for one) is not
- * checked here.
+ * Every guide demo of the `ui`, `system`, `crud`, `charts` and `map` packages rendered three times.
+ * It checks only what the demos render: a word no demo shows (an empty `DataTable`'s "No rows", for
+ * one) is not checked here.
  *
  * Under `en-XA`, the pseudo-language that wraps each catalog message in `⟦ ⟧`, a run of text with
  * no brackets that matches a text written in the package's sources is a component word that skipped
@@ -26,12 +30,18 @@ import { catalogueSections, demoRegistry } from "./registry.ts"
  * Under the English catalog, every demo must render exactly what it renders without a provider: the
  * English written in each component's code and the package's `i18n/en.json` say the same. Under the
  * German catalogs, with an `onMissing` that throws, no demo may ask for a key the catalogs lack. A
- * `system` or `crud` demo renders `ui` components too, so every translator holds every catalog.
+ * demo of another package renders `ui` components too, so every translator holds every catalog.
  */
 
 const FULL_ENGLISH = createTranslator({
   language: "en",
-  catalogs: [{ source: uiEn }, { source: systemEn }, { source: crudEn }],
+  catalogs: [
+    { source: uiEn },
+    { source: systemEn },
+    { source: crudEn },
+    { source: chartsEn },
+    { source: mapEn },
+  ],
 })
 
 const PSEUDO = createTranslator({
@@ -40,6 +50,8 @@ const PSEUDO = createTranslator({
     { source: uiEn, translation: pseudoLocalize(uiEn) },
     { source: systemEn, translation: pseudoLocalize(systemEn) },
     { source: crudEn, translation: pseudoLocalize(crudEn) },
+    { source: chartsEn, translation: pseudoLocalize(chartsEn) },
+    { source: mapEn, translation: pseudoLocalize(mapEn) },
   ],
 })
 
@@ -176,7 +188,7 @@ export function writtenTexts(source: string): Set<string> {
 /** The English of every message of the component `name`: the catalog keys `<name>.…`. */
 function ownWords(name: string): Set<string> {
   return new Set(
-    Object.entries({ ...uiEn, ...systemEn, ...crudEn })
+    Object.entries({ ...uiEn, ...systemEn, ...crudEn, ...chartsEn, ...mapEn })
       .filter(([key]) => key.startsWith(`${name}.`))
       .flatMap(([, message]) => typeof message === "string" ? [message] : Object.values(message)),
   )
@@ -205,6 +217,8 @@ const PACKAGES = [
   { name: "ui", minimum: 50 },
   { name: "system", minimum: 10 },
   { name: "crud", minimum: 2 },
+  { name: "charts", minimum: 2 },
+  { name: "map", minimum: 0 },
 ] as const
 
 for (const pkg of PACKAGES) {
@@ -266,6 +280,8 @@ for (const pkg of PACKAGES) {
           { source: uiEn, translation: uiDe },
           { source: systemEn, translation: systemDe },
           { source: crudEn, translation: crudDe },
+          { source: chartsEn, translation: chartsDe },
+          { source: mapEn, translation: mapDe },
         ],
         onMissing: (key) => {
           missing.push(key)

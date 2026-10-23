@@ -1,6 +1,7 @@
 import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks"
 import { twMerge } from "tailwind-merge"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_AXIS_COLOR,
@@ -139,6 +140,16 @@ interface Line {
   values: (number | null | undefined)[]
 }
 
+/** The chart's English words, each a key `LineChart.<field>` of the catalog. */
+const LINE_CHART_LABELS = {
+  missingValuesLabel: "Dashed grey segments bridge missing values.",
+  loadingLabel: "Loading…",
+  emptyLabel: "No data",
+  keyboardHint: "Arrow keys step through the points.",
+  xLabel: "Point",
+  chartLabel: (count: number) => `Line chart with ${count} series`,
+}
+
 /**
  * The line chart: drawn complete on the server, interactive once it runs in a browser.
  *
@@ -176,15 +187,23 @@ export function LineChart({
   referenceLabel,
   referenceColor,
   ignoreZeroes = false,
-  missingValuesLabel = "Dashed grey segments bridge missing values.",
+  missingValuesLabel: missingValuesLabelProp,
   isLoading = false,
-  loadingLabel = "Loading…",
-  emptyLabel = "No data",
-  keyboardHint = "Arrow keys step through the points.",
+  loadingLabel: loadingLabelProp,
+  emptyLabel: emptyLabelProp,
+  keyboardHint: keyboardHintProp,
   dataTable = true,
-  xLabel = "Point",
+  xLabel: xLabelProp,
   class: className,
 }: LineChartProps): JSX.Element {
+  const { missingValuesLabel, loadingLabel, emptyLabel, keyboardHint, xLabel, chartLabel } =
+    useLabels("LineChart", LINE_CHART_LABELS, {
+      missingValuesLabel: missingValuesLabelProp,
+      loadingLabel: loadingLabelProp,
+      emptyLabel: emptyLabelProp,
+      keyboardHint: keyboardHintProp,
+      xLabel: xLabelProp,
+    }, { chartLabel: ["count"] })
   const rootRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -236,7 +255,7 @@ export function LineChart({
   const plotted = lines.flatMap((line) => line.values.filter(isDefined))
   const hasReference = referenceValue !== undefined && Number.isFinite(referenceValue)
   const bounds = extent(hasReference ? [...plotted, referenceValue] : plotted)
-  const label = ariaLabel ?? title ?? `Line chart with ${series.length} series`
+  const label = ariaLabel ?? title ?? chartLabel(series.length)
 
   const y = resolveYDomain(yDomain, bounds ?? [0, 1], yTicks)
   const toFraction = (value: number) => y.max === y.min ? 0.5 : (y.max - value) / (y.max - y.min)

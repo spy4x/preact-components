@@ -243,3 +243,19 @@ its chart and the viewport at 375 and 1440 pixels wide.
 `MetricsList` (domain-coupled to metric catalogs and device ids — the layout idea lives on in
 `Bars`), `DateTimeFilter` (a range picker belongs with the app or `ui/`), `Export` (drags in
 `xlsx`), and `chooseChartRoute`, which is a proposal rather than implemented code.
+
+## Translations
+
+Every word the charts components show by default comes from this package's catalog,
+`@spy4x/preact-charts/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. It is read from
+the same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`), so an app
+adds it beside the `ui` catalog in one `createTranslator`. Each language subpath, `./i18n/de` and
+the rest, has one `default` export: that language's catalog. Each key is `<Component>.<field>`, the
+prop it fills (`LineChart.emptyLabel`). A word passed as a prop still wins, and without a provider
+every component renders the English it always has.
+
+A chart's default name counts its slices or series, so `DonutChart.chartLabel` and
+`LineChart.chartLabel` are plural messages. `changeText` is a plain function, not a component: pass
+the app's translator as its fourth argument (`changeText(change, period, locale, useT())`) to word it
+from `changeText.none` and `changeText.delta`. Numbers and dates on the axes follow `locale`, not the
+translator.

@@ -1,5 +1,6 @@
 import type { JSX } from "preact"
 import { join } from "@spy4x/preact-cn/join"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_TEXT_COLOR,
@@ -135,10 +136,13 @@ export function Bars({
   title,
   headingLevel = 3,
   ariaLabel,
-  emptyLabel = "No data",
+  emptyLabel: emptyLabelProp,
   reference,
   class: className,
 }: BarsProps): JSX.Element {
+  const { emptyLabel } = useLabels("Bars", { emptyLabel: "No data" }, {
+    emptyLabel: emptyLabelProp,
+  })
   const Heading = `h${headingLevel}` as "h3"
   const heading = title ? <Heading class="text-sm font-medium">{title}</Heading> : null
   if (data.length === 0) {

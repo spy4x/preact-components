@@ -1,0 +1,9 @@
+{
+  "Map.label": "Карта",
+  "Map.listLabel": "Места",
+  "Map.zoomInLabel": "Приблизить",
+  "Map.zoomOutLabel": "Отдалить",
+  "MapStatus.off": "не работает",
+  "MapStatus.on": "работает",
+  "MapStatus.unknown": "статус неизвестен"
+}
