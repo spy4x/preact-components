@@ -42,20 +42,25 @@ const ISLAND_CEILING_BYTES = 31_000
  * form's busy guard, live region and focus recovery into its island: 29.6 KB became 31.6 KB.
  * `ScreenTour` renders `Lightbox` (29.5 KB on its own) and keeps its state in signals, as the
  * library's rule for local state asks: `@preact/signals` is about 7.3 KB minified, which a Fresh
- * app already ships for its islands. It measured 43.4 KB.
+ * app already ships for its islands. It measured 43.4 KB. The sizes in this paragraph are from
+ * those changes; each entry's comment below has its size today.
  */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
-  // A palette and a toaster, the forgiving matcher and the hotkeys included: 49.2 KB (#943).
+  // A palette and a toaster, the forgiving matcher and the hotkeys included: 50.8 KB (#943, #524).
   "island-command-palette.tsx": 52_000,
-  // A modal over a combobox, with the modal's `Button` and its hotkey code: 45.1 KB (#943).
+  // A modal over a combobox, with the modal's `Button` and its hotkey code: 46.6 KB (#943, #524).
   "island-modal-combobox.tsx": 48_000,
-  // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 33.6 KB (#958).
+  // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 34.9 KB (#958, #524).
   "island-explorable-bars.tsx": 36_000,
-  // #524: every component reads its words through `useLabels`, about 1.4 KB per island; the
-  // catalogs themselves stay out of every bundle. Measured 35.5, 31.1, 34.9 and 45.8 KB.
+  // #524 put `useLabels` and the translated defaults into every island, about 1.4 KB each; the
+  // catalogs themselves stay out of every bundle. These four then passed their old ceilings.
+  // 35.5 KB.
   "island-image-gallery.tsx": 37_000,
+  // 31.1 KB.
   "island-lightbox.tsx": 33_000,
+  // 34.9 KB.
   "island-pricing-table.tsx": 36_000,
+  // 45.8 KB.
   "island-screen-tour.tsx": 47_000,
 }
 

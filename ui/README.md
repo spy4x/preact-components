@@ -133,6 +133,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `RadioChips`          | `radio-chips`          | `legend`, `name`, `options` (`id?`, `inputAttributes?` each), `defaultValue?` or `value?`, `onChange?`, `hideLegend?` — `ToggleChips`' look on native radios; works without JavaScript                                                                                                                                                                              |
 | `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
 | `ResendButton`        | `resend-button`        | `onResend`, `readyAt?` (ms since the epoch), `busy?`, `label?`, `busyLabel?`, `waitingText?` (seconds → text), `readyText?`, `sentText?` — the "Not there?" line under "Check your inbox": a countdown sentence out of live regions, then a ghost button; focus goes to a status line after a resend                                                                |
+| `Rich`                | `i18n`                 | `parts` (from `useT().parts(key, values)`), `tags?` (a renderer per tag, given its text) — a translated sentence with spans the caller draws; a message or a value never becomes markup                                                                                                                                                                             |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
 | `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"plain"`, `"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                              |
@@ -140,7 +141,6 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
 | `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
 | `ShortcutsDialog`     | `shortcuts-dialog`     | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                                                                                                                                                                                    |
-| `Rich`                | `i18n`                 | `parts` (from `useT().parts(key, values)`), `tags?` (a renderer per tag, given its text) — a translated sentence with spans the caller draws; a message or a value never becomes markup                                                                                                                                                                             |
 | `Slider`              | `slider`               | `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`                                                                                                                                         |
 | `SortableList`        | `sortable-list`        | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                                                                                                                                                                                           |
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
@@ -1598,8 +1598,8 @@ const translator = createTranslator({
 Without a provider every component renders the English it always has. A word passed as a prop
 still wins over the catalog, and a translator that lacks the library's catalog leaves each word at
 its English default rather than showing the key. Numbers inside a message are written in the
-translator's number format (`1,234`). `When` says its distance in the language of the
-`FormatContext` region format (`vor 3 Tagen`). The layout does not mirror for right-to-left
+translator's number format (`1.234` in German). `When` says its distance in the translator's
+language (`vor 3 Tagen`), and in its old English words when that language is English. The layout does not mirror for right-to-left
 languages yet: `dir` is the app's to set.
 
 `Rich` draws a translated sentence whose spans the caller renders, such as a link inside it. Every
@@ -1631,9 +1631,10 @@ Both render a `<time>` whose `datetime` is the instant in ISO form and whose `ti
 instant to the second in the person's zone, so hovering answers "when exactly". A missing or
 unreadable date renders `labels.missing` (`-`) in a plain `<span>`, with no `<time>`.
 
-The distance is in the region format's own words (`3 days ago`, `vor 3 Tagen`), so it follows the
-person's region format rather than `I18nContext`. `labels.relative(at, now)` replaces it;
-`WHEN_LABELS.relative` is the older English wording (`a moment ago`).
+The distance is English (`a moment ago`, `3 days ago`, from `WHEN_LABELS.relative`) without an
+`I18nContext` provider and under an English one. Under a provider of another language it is
+`Intl`'s words in that language (`vor 3 Tagen`), in the person's zone. The region format alone
+never changes the language. `labels.relative(at, now)` replaces the distance text.
 `now` fixes the present for a render whose text must not depend on the clock (a test, a demo).
 
 ## FileInput

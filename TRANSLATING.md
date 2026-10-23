@@ -61,7 +61,7 @@ The English length is the budget. A longer translation must still fit:
 ## Messages that need care
 
 - `ResendButton.readyText` ends where the button starts: "Not there? Check your spam folder, or
-  [Send it again]". Write it so that it runs into `ResendButton.label`.
+  [Send it again]". Write it so that it runs into `ResendButton.label`, and start that label in lower case where the language does so mid-sentence ("oder erneut senden").
 - `PageHero.by` comes before the author's name, and `PageHero.updated` before a date.
 - `KanbanBoard.*` and `SortableList.*` are read aloud to a person moving a card with the keyboard:
   keep each one a full sentence.
