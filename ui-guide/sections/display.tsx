@@ -66,6 +66,7 @@ import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
 import { contentBlockDemos } from "./content-blocks.tsx"
+import { attachmentDemos } from "./attachments.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
@@ -2026,6 +2027,7 @@ export const displayDemos = {
 />`,
     render: () => <LightboxDemo />,
   },
+  ...attachmentDemos,
   ZoomableImages: {
     summary:
       "Lets a reader open any image inside a container at full size, by click or keyboard, and page through the others.",

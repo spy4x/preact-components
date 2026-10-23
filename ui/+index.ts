@@ -7,6 +7,15 @@
  */
 
 export {
+  ATTACHMENT_LIST_LABELS,
+  attachmentImages,
+  type AttachmentItem,
+  AttachmentList,
+  type AttachmentListLabels,
+  type AttachmentListProps,
+  type AttachmentStatus,
+} from "./attachment-list.tsx"
+export {
   Avatar,
   type AvatarFace,
   avatarFace,

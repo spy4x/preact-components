@@ -3,6 +3,7 @@
   "version": "10.8.0",
   "exports": {
     ".": "./+index.ts",
+    "./attachment-list": "./attachment-list.tsx",
     "./avatar": "./avatar.tsx",
     "./badge": "./badge.tsx",
     "./billing": "./billing.tsx",
