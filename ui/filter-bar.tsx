@@ -530,7 +530,9 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
   // The Order group shows only for an order that names its directions, and a caller that listens.
   const directions = sort?.onDirectionChange && sort.direction ? sortCurrent?.directions : undefined
   // Every order keeps the menu open while any order has directions, so the group can follow.
-  const sortDirections = sort?.options.some((option) => option.directions) ?? false
+  const sortDirections = sort?.onDirectionChange && sort.direction
+    ? sort.options.some((option) => option.directions)
+    : false
   const sortMenu = sort
     ? (
       <Dropdown
