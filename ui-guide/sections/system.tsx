@@ -1014,6 +1014,36 @@ function AuthFormModeLinkDemo() {
   )
 }
 
+/**
+ * One instance that opens with a login handed back through `defaultLogin` and reports the login
+ * as typed through `onLoginInput`, the way a page offers "Email me a sign-in link" once the field
+ * holds an address. The line below shows the last value reported, and that the password never is.
+ */
+function AuthFormLoginInputDemo() {
+  const login = useSignal("ana@example.com")
+  const reports = useSignal(0)
+
+  return (
+    <Stack gap="sm" class="max-w-sm" data-e2e="auth-form-login-input-demo">
+      <AuthForm
+        mode="sign-in"
+        step="credentials"
+        action="/auth/sign-in"
+        defaultLogin="ana@example.com"
+        onLoginInput={(typed) => {
+          login.value = typed
+          reports.value += 1
+        }}
+      />
+      <p class={NOTE}>
+        login as typed: <span data-e2e="auth-form-login-input-value">{login.value}</span>, reports:
+        {" "}
+        <span data-e2e="auth-form-login-input-reports">{reports.value}</span>
+      </p>
+    </Stack>
+  )
+}
+
 /** The two errors this card's buttons can set, kept next to each other for that reason. */
 const FORM_ERROR = "Wrong login or password"
 const FIELD_ERROR: AuthFormError = { message: "No account with that login", field: "login" }
@@ -2947,6 +2977,18 @@ useEffect(() => {
           'On sign-in, the login field\'s autofill also offers saved passkeys (autocomplete "username webauthn"). Your page starts the conditional WebAuthn request.',
       },
       {
+        name: "defaultLogin",
+        type: "string",
+        description:
+          "The login field's starting value, so a page that sends a person back can hand their address back. Typing replaces it.",
+      },
+      {
+        name: "onLoginInput",
+        type: "(login: string) => void",
+        description:
+          'Called on every input of the login field with its value as typed, for an action that needs the address first, such as "Email me a sign-in link". Never the password.',
+      },
+      {
         name: "submitVariant",
         type: "ButtonVariant",
         default: `"primary"`,
@@ -2973,6 +3015,8 @@ useEffect(() => {
   busy={pending}
   error={error} // string, or { message, field: "login" | "password" | "code" }
   names={{ login: "username", code: "otp" }} // what a post without script sends
+  defaultLogin={address} // handed back by a page that sent the person here
+  onLoginInput={(login) => typedLogin = login} // the login as typed, never the password
   action="/auth/sign-in"
   footer={<a class="pc-link" href="/sign-in">Back to sign in</a>}
 />
@@ -2993,6 +3037,9 @@ useEffect(() => {
         </Part>
         <Part title="With the mode switch as a link">
           <AuthFormModeLinkDemo />
+        </Part>
+        <Part title="With a login handed back, and reported as typed">
+          <AuthFormLoginInputDemo />
         </Part>
         <Part title="With passkeys offered in the login field's autofill">
           <div class="max-w-sm" data-e2e="auth-form-passkey-demo">

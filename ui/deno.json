@@ -59,6 +59,7 @@
     "./progress": "./progress.tsx",
     "./radio": "./radio.tsx",
     "./radio-chips": "./radio-chips.tsx",
+    "./resend-button": "./resend-button.tsx",
     "./theme-preview": "./theme-preview.tsx",
     "./setting-row": "./setting-row.tsx",
     "./slider": "./slider.tsx",
