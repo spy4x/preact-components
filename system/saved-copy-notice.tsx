@@ -12,6 +12,7 @@ import { IconAlertTriangle } from "@spy4x/preact-icons"
 import { formatTime as formatClockTime } from "@spy4x/platform/universal/time"
 import type { JSX } from "preact"
 import { useMemo } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Every word {@link SavedCopyNotice} shows. */
 export interface SavedCopyNoticeLabels {
@@ -83,7 +84,9 @@ function clockTime(savedAt: Date): string {
 export function SavedCopyNotice(
   { savedAt, formatTime = clockTime, labels, class: className, ...rest }: SavedCopyNoticeProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_SAVED_COPY_NOTICE_LABELS, ...labels }
+  const words = useLabels("SavedCopyNotice", DEFAULT_SAVED_COPY_NOTICE_LABELS, labels, {
+    body: ["time"],
+  })
   const time = copyTime(savedAt)
   // Worded once for each copy: text that changed between two renders would be announced again.
   const worded = useMemo(() => time === null ? "" : formatTime(new Date(time)), [time])

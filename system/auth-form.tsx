@@ -98,6 +98,7 @@ import { Input } from "@spy4x/preact-ui/input"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Which screen {@link AuthForm} draws. */
 export type AuthMode = "sign-in" | "sign-up"
@@ -312,7 +313,7 @@ export function AuthForm(
     class: className,
   }: AuthFormProps,
 ): JSX.Element {
-  const copy = { ...defaultLabels, ...labels }
+  const copy = useLabels("AuthForm", defaultLabels, labels)
   const fieldNames = { ...defaultNames, ...names }
   const problem = normalizeError(error)
   const baseId = useId()

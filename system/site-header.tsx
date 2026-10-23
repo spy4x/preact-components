@@ -17,6 +17,8 @@ import { IconBars3, IconExternalLink, type IconProps, IconXMark } from "@spy4x/p
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** One entry of {@link SiteHeaderProps.links}. */
 export interface SiteHeaderLink {
@@ -156,8 +158,9 @@ function SiteHeaderNavLink(
 export function SiteHeader(props: SiteHeaderProps): JSX.Element {
   const { links = [], currentPath, brand, actions, labels, class: className } = props
   const hasLinks = links.length > 0
-  const menuLabel = labels?.menu ?? "Menu"
-  const navLabel = labels?.nav ?? "Main navigation"
+  const translator = useT()
+  const menuLabel = labels?.menu ?? translate(translator, "SiteHeader.menu", "Menu")
+  const navLabel = labels?.nav ?? translate(translator, "SiteHeader.nav", "Main navigation")
   const panelId = useId()
 
   const { open, detailsRef, triggerRef, handleToggle, close } = useMobilePanel()

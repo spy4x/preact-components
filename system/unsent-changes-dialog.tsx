@@ -12,6 +12,7 @@ import { Modal } from "@spy4x/preact-ui/modal"
 import { Progress } from "@spy4x/preact-ui/progress"
 import type { JSX } from "preact"
 import { useId } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /**
  * Where the dialog stands. `ask` is before the person chose; the other three are while the caller
@@ -152,7 +153,13 @@ export function UnsentChangesDialog(
     class: className,
   }: UnsentChangesDialogProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_UNSENT_CHANGES_DIALOG_LABELS, ...labels }
+  const words = useLabels("UnsentChangesDialog", DEFAULT_UNSENT_CHANGES_DIALOG_LABELS, labels, {
+    title: ["count"],
+    conflicts: ["count"],
+    needsChoiceTitle: ["count"],
+    needsChoiceBody: ["count"],
+    progress: ["sent", "total"],
+  })
   const id = useId()
   const bodyId = `unsent-body-${id}`
   const statusId = `unsent-status-${id}`

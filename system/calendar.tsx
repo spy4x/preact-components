@@ -34,6 +34,9 @@ import { monthFirstWeekday, shiftMonth, startOfMonth } from "@spy4x/time/date"
 import { dayLabel, localeFirstWeekday, monthLabel, weekdayLabels } from "@spy4x/time/locale"
 import { addDays, todayInTz, validTimeZoneOr } from "@spy4x/time/tz"
 import { monthShown, useCalendarFocus, WEEK, WEEKS } from "./calendar-focus.ts"
+import { useLabels, useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 
 /** Why a day cannot be picked. */
 export type CalendarDayReason = "past" | "after" | "none-left" | "unavailable"
@@ -78,6 +81,29 @@ export function describeCalendarDay(day: CalendarDay): string {
       return typeof day.availableCount === "number"
         ? `${day.label} — ${day.availableCount} available`
         : `${day.label} — available`
+  }
+}
+
+/** {@link describeCalendarDay} in the reader's language: one catalog key per reason. */
+function calendarDayWords(translator: Translator<string>, day: CalendarDay): string {
+  const english = describeCalendarDay(day)
+  const values = { label: day.label }
+  switch (day.reason) {
+    case "past":
+      return translate(translator, "Calendar.day.past", english, values)
+    case "after":
+      return translate(translator, "Calendar.day.after", english, values)
+    case "none-left":
+      return translate(translator, "Calendar.day.noneLeft", english, values)
+    case "unavailable":
+      return translate(translator, "Calendar.day.unavailable", english, values)
+    default:
+      return typeof day.availableCount === "number"
+        ? translate(translator, "Calendar.day.availableCount", english, {
+          ...values,
+          count: day.availableCount,
+        })
+        : translate(translator, "Calendar.day.available", english, values)
   }
 }
 
@@ -202,7 +228,11 @@ export function Calendar(
     class: className,
   }: CalendarProps,
 ): JSX.Element {
-  const copy = { ...defaultLabels, ...labels }
+  const translator = useT()
+  const copy = {
+    ...useLabels("Calendar", defaultLabels, labels),
+    day: labels?.day ?? ((day: CalendarDay) => calendarDayWords(translator, day)),
+  }
   const firstOfMonth = startOfMonth(monthAnchor)
   const firstWeekday = localeFirstWeekday(locale)
   const headingId = `${useId()}-month`

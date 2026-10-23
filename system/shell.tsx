@@ -30,6 +30,8 @@ import { useId } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
 import { AccountMenu, type AccountMenuItem, type AccountMenuUser } from "./account-menu.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** One entry of {@link ShellProps.navItems}, or of one entry's own `children`. */
 export interface ShellNavItem {
@@ -350,11 +352,14 @@ export function Shell(props: ShellProps): JSX.Element {
     labels,
     class: className,
   } = props
-  const menuLabel = labels?.menu ?? "Menu"
-  const navLabel = labels?.nav ?? "Main navigation"
-  const skipLabel = labels?.skipToContent ?? "Skip to content"
-  const userMenuLabel = labels?.userMenu ?? "Account menu"
-  const sidebarToggleLabel = labels?.sidebarToggle ?? "Toggle sidebar"
+  const translator = useT()
+  const menuLabel = labels?.menu ?? translate(translator, "Shell.menu", "Menu")
+  const navLabel = labels?.nav ?? translate(translator, "Shell.nav", "Main navigation")
+  const skipLabel = labels?.skipToContent ??
+    translate(translator, "Shell.skipToContent", "Skip to content")
+  const userMenuLabel = labels?.userMenu ?? translate(translator, "Shell.userMenu", "Account menu")
+  const sidebarToggleLabel = labels?.sidebarToggle ??
+    translate(translator, "Shell.sidebarToggle", "Toggle sidebar")
   const panelId = useId()
   const contentId = useId()
   const sidebarId = useId()

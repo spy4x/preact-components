@@ -13,6 +13,8 @@ import { Link } from "@spy4x/preact-ui/link"
 import { PageHeader } from "@spy4x/preact-ui/page-header"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** One entry of {@link SettingsLayoutProps.sections}: a sub-page of the settings. */
 export interface SettingsSection {
@@ -153,6 +155,7 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
     children,
     labels,
   } = props
+  const translator = useT()
   const SectionHeading = `h${headingLevel + 1}` as "h2"
   const byId = (id: string) => sections.find((section) => section.id === id)
   const open = current === null ? undefined : byId(current)
@@ -257,7 +260,8 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
                   class="-ml-2 inline-flex min-h-11 items-center gap-2 self-start rounded-primary px-2 text-sm font-medium text-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-ring) md:hidden"
                 >
                   <IconArrowLeft class="size-4" aria-hidden="true" />
-                  {labels?.back ?? `Back to ${title}`}
+                  {labels?.back ??
+                    translate(translator, "SettingsLayout.back", `Back to ${title}`, { title })}
                 </Link>
               )}
               <header class="flex flex-col gap-1">
