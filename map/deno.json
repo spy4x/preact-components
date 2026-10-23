@@ -2,7 +2,13 @@
   "name": "@spy4x/preact-map",
   "version": "10.9.0",
   "exports": {
-    ".": "./+index.ts"
+    ".": "./+index.ts",
+    "./i18n/ar": "./i18n/ar.ts",
+    "./i18n/de": "./i18n/de.ts",
+    "./i18n/en": "./i18n/en.ts",
+    "./i18n/es": "./i18n/es.ts",
+    "./i18n/pt-BR": "./i18n/pt-BR.ts",
+    "./i18n/ru": "./i18n/ru.ts"
   },
   "imports": {
     // Leaflet is pinned here and nowhere else in the workspace: a map is one product's need, not every package's, and a component that never
@@ -31,7 +37,8 @@
     "exclude": [
       "**/*.test.ts",
       "**/*.test.tsx",
-      "leaflet-css.ts"
+      "leaflet-css.ts",
+      "i18n/*.lock"
     ]
   }
 }
