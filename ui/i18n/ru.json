@@ -128,6 +128,7 @@
   "FilterBar.clearSearch": "Очистить поиск",
   "FilterBar.doneLabel": "Готово",
   "FilterBar.label": "Поиск и фильтры",
+  "FilterBar.order": "Порядок",
   "FilterBar.remove": "Убрать фильтр «{value}»",
   "FilterBar.search": "Поиск",
   "FilterBar.sort": "Сортировка",

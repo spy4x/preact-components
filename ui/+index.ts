@@ -605,8 +605,10 @@ export {
   type FilterBarSearch,
   type FilterBarSingleMenu,
   type FilterBarSort,
+  type FilterBarSortOption,
   type FilterBarToggle,
   filterTriggerLabel,
+  type SortDirection,
 } from "./filter-bar.tsx"
 export {
   ScreenTour,

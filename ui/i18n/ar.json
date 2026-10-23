@@ -130,6 +130,7 @@
   "FilterBar.clearSearch": "مسح البحث",
   "FilterBar.doneLabel": "تم",
   "FilterBar.label": "البحث والتصفية",
+  "FilterBar.order": "الاتجاه",
   "FilterBar.remove": "إزالة عامل التصفية {value}",
   "FilterBar.search": "بحث",
   "FilterBar.sort": "الترتيب",
