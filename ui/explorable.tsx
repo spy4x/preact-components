@@ -3,6 +3,7 @@ import { IconAdjustmentsHorizontal } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useSignal } from "@preact/signals"
 import { useEffect, useId } from "preact/hooks"
+import { useLabels } from "./i18n.tsx"
 
 /** Props of {@link Explorable}. */
 export interface ExplorableProps {
@@ -29,6 +30,11 @@ export interface ExplorableProps {
   /** The words of the line above the title. Defaults to `"Interactive"`. */
   interactiveLabel?: string
   class?: string
+}
+
+/** The English words of `Explorable`, each one a prop of its own. */
+const EXPLORABLE_LABELS: Required<Pick<ExplorableProps, "interactiveLabel">> = {
+  interactiveLabel: "Interactive",
 }
 
 /**
@@ -61,9 +67,14 @@ export function Explorable({
   caption,
   live,
   noScriptNote,
-  interactiveLabel = "Interactive",
+  interactiveLabel: interactiveLabelProp,
   class: className,
 }: ExplorableProps): JSX.Element {
+  const { interactiveLabel } = useLabels(
+    "Explorable",
+    EXPLORABLE_LABELS,
+    { interactiveLabel: interactiveLabelProp },
+  )
   const generated = useId()
   const figureId = id ?? `explorable-${generated}`
   const titleId = `${figureId}-title`

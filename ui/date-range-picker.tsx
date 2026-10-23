@@ -21,6 +21,8 @@ import {
   type WallClockOccurrence,
 } from "./date-range.ts"
 import { tzOffsetMinutes, WallClockKind } from "@spy4x/time/tz"
+import type { Translator } from "@spy4x/platform/universal/i18n"
+import { ENGLISH, translate, useLabels, useT } from "./i18n.tsx"
 
 /** One option of the preset list: the maths identifier plus the caller's label for it. */
 export interface DateRangePresetOption {
@@ -97,9 +99,19 @@ const defaultLabels: Required<DateRangePickerLabels> = {
   repeatedTime: "This time happens twice that day",
   earlierOccurrence: "First, before the clocks go back",
   laterOccurrence: "Second, after the clocks go back",
-  skippedTime: (readsAs) =>
-    `The clocks skip this time that day, so it is read as ${readsAs.replace("T", " ")}.`,
+  skippedTime: (readsAs) => skippedTime(ENGLISH, readsAs),
   outOfOrder: "From comes after To, so there is nothing to apply.",
+}
+
+/** The note under a skipped time, with the `T` of the value it is read as shown as a space. */
+function skippedTime(translator: Translator<string>, readsAs: string): string {
+  const time = readsAs.replace("T", " ")
+  return translate(
+    translator,
+    "DateRangePicker.skippedTime",
+    `The clocks skip this time that day, so it is read as ${time}.`,
+    { time },
+  )
 }
 
 /** Props shared by both of {@link AnyDateRangePickerProps}'s two shapes. */
@@ -297,22 +309,12 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   const fromId = `${id}-from`
   const toId = `${id}-to`
 
-  // Read entry by entry rather than with a spread, so a caller that passes `{ from: undefined }`
-  // gets the English default for that key instead of nothing at all.
+  // `useLabels` skips a key the caller set to `undefined`, so `{ from: undefined }` keeps the
+  // default for that key instead of nothing at all.
+  const translator = useT()
   const text: Required<DateRangePickerLabels> = {
-    menuLabel: labels?.menuLabel ?? defaultLabels.menuLabel,
-    placeholder: labels?.placeholder ?? defaultLabels.placeholder,
-    from: labels?.from ?? defaultLabels.from,
-    to: labels?.to ?? defaultLabels.to,
-    apply: labels?.apply ?? defaultLabels.apply,
-    cancel: labels?.cancel ?? defaultLabels.cancel,
-    lastHour: labels?.lastHour ?? defaultLabels.lastHour,
-    last24Hours: labels?.last24Hours ?? defaultLabels.last24Hours,
-    repeatedTime: labels?.repeatedTime ?? defaultLabels.repeatedTime,
-    earlierOccurrence: labels?.earlierOccurrence ?? defaultLabels.earlierOccurrence,
-    laterOccurrence: labels?.laterOccurrence ?? defaultLabels.laterOccurrence,
-    skippedTime: labels?.skippedTime ?? defaultLabels.skippedTime,
-    outOfOrder: labels?.outOfOrder ?? defaultLabels.outOfOrder,
+    ...useLabels("DateRangePicker", defaultLabels, labels),
+    skippedTime: labels?.skippedTime ?? ((readsAs) => skippedTime(translator, readsAs)),
   }
 
   // Time mode has no caller-supplied preset list — see `DateRangePickerTimeProps` — so its custom

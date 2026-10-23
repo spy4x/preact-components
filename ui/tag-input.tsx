@@ -17,6 +17,7 @@ import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 import { useDismiss } from "./use-dismiss.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * The comparison key of a tag: trimmed, composed to NFC and lower-cased, so `" Work"` and `"work"`
@@ -253,6 +254,30 @@ const removeClasses =
 const inputClasses =
   "h-11 min-w-32 flex-1 bg-transparent px-2 text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
 
+/** The English words of `TagInput`, each one a prop of its own. */
+const TAG_INPUT_LABELS: Required<
+  Pick<
+    TagInputProps,
+    | "placeholder"
+    | "requiredMessage"
+    | "removeLabel"
+    | "tagsLabel"
+    | "suggestionsLabel"
+    | "addedMessage"
+    | "removedMessage"
+    | "duplicateMessage"
+  >
+> = {
+  placeholder: "Add a tag…",
+  requiredMessage: "Add at least one tag",
+  removeLabel: (tag) => `Remove tag ${tag}`,
+  tagsLabel: "Tags",
+  suggestionsLabel: "Suggestions",
+  addedMessage: (tag) => `Added tag ${tag}`,
+  removedMessage: (tag) => `Removed tag ${tag}`,
+  duplicateMessage: (tag) => `${tag} is already added`,
+}
+
 /**
  * A text field that collects several tags: type one and press Enter or a comma, or pick one of the
  * suggestions; each tag shows as a chip with its own remove button.
@@ -282,21 +307,50 @@ export function TagInput({
   id: callerId,
   label,
   ariaLabel,
-  placeholder = "Add a tag…",
+  placeholder: placeholderProp,
   disabled = false,
   error,
   "aria-describedby": callerDescribedBy,
   "aria-invalid": callerInvalid,
   required = false,
-  requiredMessage = "Add at least one tag",
-  removeLabel = (tag) => `Remove tag ${tag}`,
-  tagsLabel = "Tags",
-  suggestionsLabel = "Suggestions",
-  addedMessage = (tag) => `Added tag ${tag}`,
-  removedMessage = (tag) => `Removed tag ${tag}`,
-  duplicateMessage = (tag) => `${tag} is already added`,
+  requiredMessage: requiredMessageProp,
+  removeLabel: removeLabelProp,
+  tagsLabel: tagsLabelProp,
+  suggestionsLabel: suggestionsLabelProp,
+  addedMessage: addedMessageProp,
+  removedMessage: removedMessageProp,
+  duplicateMessage: duplicateMessageProp,
   class: className,
 }: TagInputProps): JSX.Element {
+  const {
+    placeholder,
+    requiredMessage,
+    removeLabel,
+    tagsLabel,
+    suggestionsLabel,
+    addedMessage,
+    removedMessage,
+    duplicateMessage,
+  } = useLabels(
+    "TagInput",
+    TAG_INPUT_LABELS,
+    {
+      placeholder: placeholderProp,
+      requiredMessage: requiredMessageProp,
+      removeLabel: removeLabelProp,
+      tagsLabel: tagsLabelProp,
+      suggestionsLabel: suggestionsLabelProp,
+      addedMessage: addedMessageProp,
+      removedMessage: removedMessageProp,
+      duplicateMessage: duplicateMessageProp,
+    },
+    {
+      removeLabel: ["tag"],
+      addedMessage: ["tag"],
+      removedMessage: ["tag"],
+      duplicateMessage: ["tag"],
+    },
+  )
   const generatedId = useId()
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)

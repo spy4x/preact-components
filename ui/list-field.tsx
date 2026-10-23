@@ -6,6 +6,7 @@ import { Button } from "./button.tsx"
 import { isImeKeyPress } from "./ime.ts"
 import { Input } from "./input.tsx"
 import { TOUCH_TARGET } from "./touch-target.ts"
+import { useLabels } from "./i18n.tsx"
 
 /** The words a {@link ListField} shows. */
 export interface ListFieldLabels {
@@ -91,7 +92,11 @@ export function ListField(
     class: className,
   }: ListFieldProps,
 ): JSX.Element {
-  const words = { ...LIST_FIELD_LABELS, ...labels }
+  const words = useLabels("ListField", LIST_FIELD_LABELS, labels, {
+    item: ["position"],
+    remove: ["position"],
+    count: ["count", "max"],
+  })
   const list = useRef<HTMLOListElement>(null)
   const addButton = useRef<HTMLButtonElement>(null)
   const focusNext = useRef<FocusTarget>(null)

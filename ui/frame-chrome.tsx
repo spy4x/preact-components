@@ -8,6 +8,7 @@
  */
 
 import type { ComponentChildren, JSX } from "preact"
+import { translate, useT } from "./i18n.tsx"
 
 /**
  * Which frame a `WindowFrame` or a `ScreenTour` draws around its content. `plain` is the rounded
@@ -69,6 +70,7 @@ const phoneFrame =
  * @returns The device's outer `<div>`.
  */
 export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX.Element {
+  const translator = useT()
   if (variant === "terminal") {
     return (
       <div class={terminalFrame}>
@@ -79,7 +81,7 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
         {/* It may overflow sideways, so it is focusable and named for keyboard scrolling. */}
         <div
           role="group"
-          aria-label={title ?? "Terminal"}
+          aria-label={title ?? translate(translator, "FrameChrome.terminal", "Terminal")}
           tabIndex={0}
           class="overflow-x-auto p-4 font-mono text-sm whitespace-pre focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
         >

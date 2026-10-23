@@ -8,6 +8,7 @@ import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
 import { useDismiss } from "./use-dismiss.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * Keys the combobox acts on, and what each does. Everything else falls through to the platform,
@@ -591,16 +592,17 @@ function Chevron() {
 }
 
 /**
- * English default for {@link ComboboxProps.countMessage}: `"1 match"`, `"12 matches"`.
- *
- * Deliberately unexported, like {@link itemIndex}: `ui-guide`'s subpath guard wants every `ui` value
- * export either barrelled or declared a helper, and a default string belongs to the component rather
- * than to a caller. The component's tests pin the wording.
- *
- * @param count How many options the query left; never negative.
+ * The English words of `Combobox`, each one a prop of its own; `count` is the default
+ * {@link ComboboxProps.countMessage}, `"1 match"`, `"12 matches"`. Unexported, like
+ * {@link itemIndex}: a default string belongs to the component rather than to a caller.
  */
-function defaultCountMessage(count: number): string {
-  return count === 1 ? "1 match" : `${count} matches`
+const COMBOBOX_LABELS = {
+  placeholder: "Select…",
+  empty: "No matches",
+  count: (count: number) => count === 1 ? "1 match" : `${count} matches`,
+  loading: "Loading…",
+  clear: "Clear selection",
+  required: "Select an option",
 }
 
 /**
@@ -667,26 +669,39 @@ export function Combobox<T>({
   filter,
   renderOption,
   isItemDisabled,
-  placeholder = "Select…",
-  emptyMessage = "No matches",
-  countMessage = defaultCountMessage,
+  placeholder: placeholderProp,
+  emptyMessage: emptyMessageProp,
+  countMessage: countMessageProp,
   loading = false,
-  loadingMessage = "Loading…",
+  loadingMessage: loadingMessageProp,
   id: callerId,
   ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   showClearButton = true,
-  clearLabel = "Clear selection",
+  clearLabel: clearLabelProp,
   query: controlledQuery,
   onQueryChange,
   required = false,
-  requiredMessage = "Select an option",
+  requiredMessage: requiredMessageProp,
   "aria-describedby": callerDescribedBy,
   "aria-invalid": callerInvalid,
   class: className,
   inputClass,
   listboxClass,
 }: ComboboxProps<T>): JSX.Element {
+  const text = useLabels("Combobox", COMBOBOX_LABELS, {
+    placeholder: placeholderProp,
+    count: countMessageProp,
+    loading: loadingMessageProp,
+    clear: clearLabelProp,
+    required: requiredMessageProp,
+  }, { count: ["count"] })
+  const placeholder = text.placeholder
+  const emptyMessage = emptyMessageProp ?? text.empty
+  const countMessage = text.count
+  const loadingMessage = text.loading
+  const clearLabel = text.clear
+  const requiredMessage = text.required
   const generatedId = useId()
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)

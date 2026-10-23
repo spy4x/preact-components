@@ -1,6 +1,7 @@
 import { join } from "@spy4x/preact-cn/join"
 import type { JSX } from "preact"
 import { useFormat } from "./format.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** One post of a {@link PostList}. */
 export interface PostListItem {
@@ -62,7 +63,7 @@ export function PostList(
 ): JSX.Element | null {
   const format = useFormat().utc()
   if (posts.length === 0) return null
-  const words = { ...POST_LIST_LABELS, ...labels }
+  const words = useLabels("PostList", POST_LIST_LABELS, labels, { readTime: ["minutes"] })
   const Heading = `h${headingLevel}` as const
   return (
     <ul aria-label={label} class={join("border-t border-subtle", className)} data-e2e="post-list">

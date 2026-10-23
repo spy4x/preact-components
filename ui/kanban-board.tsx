@@ -19,6 +19,7 @@ import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 import { edgeScrollStep, scrollPageNearEdge, useKeptFocus, usePointerDrag } from "./pointer-drag.ts"
+import { useLabels } from "./i18n.tsx"
 
 /** One column of the board. */
 export interface KanbanColumn {
@@ -293,7 +294,12 @@ export function KanbanBoard<Item extends KanbanItem>(
     class: className,
   }: KanbanBoardProps<Item>,
 ): JSX.Element {
-  const text: KanbanBoardLabels = { ...defaultKanbanLabels, ...labels }
+  const text: KanbanBoardLabels = useLabels("KanbanBoard", defaultKanbanLabels, labels, {
+    pickedUp: "values",
+    moved: "values",
+    dropped: "values",
+    cancelled: "values",
+  })
   const id = useId()
   const instructionsId = `kanban-${id}-instructions`
   const rootRef = useRef<HTMLDivElement>(null)

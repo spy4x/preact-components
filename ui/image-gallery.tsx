@@ -32,13 +32,8 @@ import { IconChevronLeft, IconChevronRight } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
-import {
-  counterText,
-  describedImages,
-  Lightbox,
-  type LightboxImage,
-  type LightboxProps,
-} from "./lightbox.tsx"
+import { describedImages, Lightbox, type LightboxImage, type LightboxProps } from "./lightbox.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** One image a gallery's strip can show, and hand to the lightbox it opens. */
 export interface ImageGalleryImage extends LightboxImage {
@@ -323,6 +318,12 @@ export function thumbnailKey(images: readonly { src: string }[], index: number):
   return `${src}#${occurrence}`
 }
 
+/** The English words of `ImageGallery`, each one a prop of its own. */
+const IMAGE_GALLERY_LABELS: Required<Pick<ImageGalleryProps, "previousLabel" | "nextLabel">> = {
+  previousLabel: "Previous image",
+  nextLabel: "Next image",
+}
+
 /**
  * Thumbnails that open the shared {@link Lightbox} on the one pressed: a wrapping grid by default,
  * or a sideways-scrolling, snapping row of large images with `layout="strip"`.
@@ -332,12 +333,12 @@ export function ImageGallery(
     images,
     label,
     closeLabel,
-    previousLabel = "Previous image",
-    nextLabel = "Next image",
-    counterLabel = counterText,
+    previousLabel: previousLabelProp,
+    nextLabel: nextLabelProp,
+    counterLabel: counterLabelProp,
     lightboxCaption,
-    stripPreviousLabel = previousLabel,
-    stripNextLabel = nextLabel,
+    stripPreviousLabel: stripPreviousLabelProp,
+    stripNextLabel: stripNextLabelProp,
     controls,
     layout = "grid",
     hero = false,
@@ -350,6 +351,20 @@ export function ImageGallery(
     class: className,
   }: ImageGalleryProps,
 ): JSX.Element {
+  const { previousLabel, nextLabel } = useLabels(
+    "ImageGallery",
+    IMAGE_GALLERY_LABELS,
+    { previousLabel: previousLabelProp, nextLabel: nextLabelProp },
+  )
+  const translator = useT()
+  const counterLabel = counterLabelProp ??
+    ((position: number, total: number) =>
+      translate(translator, "Lightbox.counterLabel", `${position} of ${total}`, {
+        position,
+        total,
+      }))
+  const stripPreviousLabel = stripPreviousLabelProp ?? previousLabel
+  const stripNextLabel = stripNextLabelProp ?? nextLabel
   const shown = describedImages(images)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const strip = layout === "strip"

@@ -10,7 +10,9 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import { Badge } from "./badge.tsx"
 import { Button } from "./button.tsx"
 import { Input } from "./input.tsx"
-import { quickAddParts } from "./quick-add-internals.ts"
+import { quickAddDueLabel, quickAddParts } from "./quick-add-internals.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
+import { ENGLISH, translate, type UiKey, useLabels, useT } from "./i18n.tsx"
 
 /** Every string {@link QuickAdd} shows or speaks apart from its `label`, `placeholder` and `hint`. */
 export interface QuickAddLabels {
@@ -30,10 +32,18 @@ export interface QuickAddLabels {
   priority: (priority: QuickAddPriority) => string
 }
 
-const PRIORITY_LABEL: Record<QuickAddPriority, string> = {
-  [QuickAddPriority.High]: "High priority",
-  [QuickAddPriority.Medium]: "Medium priority",
-  [QuickAddPriority.Low]: "Low priority",
+/** The catalog key of each priority's badge. */
+const PRIORITY_KEY: Record<QuickAddPriority, readonly [UiKey, string]> = {
+  [QuickAddPriority.High]: ["QuickAdd.priorityHigh", "High priority"],
+  [QuickAddPriority.Medium]: ["QuickAdd.priorityMedium", "Medium priority"],
+  [QuickAddPriority.Low]: ["QuickAdd.priorityLow", "Low priority"],
+}
+
+/** The due badge in `translator`'s words: with the time as typed when there is one. */
+function dueWords(translator: Translator<string>, day: string, time?: string): string {
+  return time === undefined
+    ? translate(translator, "QuickAdd.due", `Due ${day}`, { day })
+    : translate(translator, "QuickAdd.dueAt", `Due ${day} ${time}`, { day, time })
 }
 
 /** The English defaults of {@link QuickAddLabels}. */
@@ -43,8 +53,8 @@ export const defaultQuickAddLabels: QuickAddLabels = {
   noTitle: "Add a title first",
   tag: (name) => `Tag ${name}`,
   context: (name) => `Context ${name}`,
-  due: (day, time) => time === undefined ? `Due ${day}` : `Due ${day} ${time}`,
-  priority: (priority) => PRIORITY_LABEL[priority],
+  due: (day, time) => dueWords(ENGLISH, day, time),
+  priority: (priority) => PRIORITY_KEY[priority][1],
 }
 
 /**
@@ -113,8 +123,8 @@ export function QuickAdd(
     onAdd,
     zone = Intl.DateTimeFormat().resolvedOptions().timeZone,
     now = () => new Date(),
-    label = "New item",
-    placeholder = "Add an item",
+    label: labelProp,
+    placeholder: placeholderProp,
     hint,
     busy = false,
     labels,
@@ -122,12 +132,27 @@ export function QuickAdd(
     dataE2E = "quick-add",
   }: QuickAddProps,
 ): JSX.Element {
-  const text: QuickAddLabels = { ...defaultQuickAddLabels, ...labels }
+  const translator = useT()
+  const text: QuickAddLabels = {
+    ...useLabels("QuickAdd", defaultQuickAddLabels, labels, {
+      tag: ["name"],
+      context: ["name"],
+    }),
+    due: labels?.due ?? ((day, time) => dueWords(translator, day, time)),
+    priority: labels?.priority ?? ((priority) => translate(translator, ...PRIORITY_KEY[priority])),
+  }
+  const label = labelProp ?? translate(translator, "QuickAdd.label", "New item")
+  const placeholder = placeholderProp ??
+    translate(translator, "QuickAdd.placeholder", "Add an item")
+  // The day's words follow the reader's language once an app provides one.
+  const dayLabel: QuickAddDueLabel = dueLabel ??
+    ((date, at, zone) =>
+      quickAddDueLabel(date, at, zone, translator === ENGLISH ? undefined : translator.language))
   const field = useRef<HTMLInputElement>(null)
   const line = useSignal("")
   const id = useId()
   const parsed = parseQuickAdd(line.value, { now: now(), timeZone: zone })
-  const parts = quickAddParts(parsed, { now: now(), zone, labels: text, dueLabel })
+  const parts = quickAddParts(parsed, { now: now(), zone, labels: text, dueLabel: dayLabel })
   const hintText = typeof hint === "function" ? hint(parsed) : hint
   const hintId = hintText ? `${id}-hint` : undefined
   const noticeId = `${id}-notice`

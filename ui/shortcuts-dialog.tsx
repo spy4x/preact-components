@@ -1,6 +1,7 @@
 import type { ComponentChildren, JSX } from "preact"
 import { Kbd, type KbdLabels } from "./kbd.tsx"
 import { Modal } from "./modal.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** One row of {@link ShortcutsDialog}. A `HotkeyBinding` from `useHotkeys` is one already. */
 export interface Shortcut {
@@ -73,6 +74,15 @@ export interface ShortcutsDialogProps {
   class?: string
 }
 
+/** The English words of `ShortcutsDialog`, each one a prop of its own. */
+const SHORTCUTS_DIALOG_LABELS: Required<
+  Pick<ShortcutsDialogProps, "title" | "closeLabel" | "defaultGroup">
+> = {
+  title: "Keyboard shortcuts",
+  closeLabel: "Close",
+  defaultGroup: "General",
+}
+
 /**
  * A dialog that lists keyboard shortcuts, each with what it does and its keys, under group
  * headings. Headings show only when there is more than one group.
@@ -88,15 +98,20 @@ export function ShortcutsDialog(
     open,
     onClose,
     shortcuts,
-    title = "Keyboard shortcuts",
-    closeLabel = "Close",
-    defaultGroup = "General",
+    title: titleProp,
+    closeLabel: closeLabelProp,
+    defaultGroup: defaultGroupProp,
     apple,
     kbdLabels,
     footer,
     class: className,
   }: ShortcutsDialogProps,
 ): JSX.Element {
+  const { title, closeLabel, defaultGroup } = useLabels(
+    "ShortcutsDialog",
+    SHORTCUTS_DIALOG_LABELS,
+    { title: titleProp, closeLabel: closeLabelProp, defaultGroup: defaultGroupProp },
+  )
   const groups = groupShortcuts(shortcuts, defaultGroup)
   return (
     <Modal

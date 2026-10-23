@@ -6,6 +6,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Field } from "./field.tsx"
 import { Input } from "./input.tsx"
+import { translate, type UiKey, useLabels, useT } from "./i18n.tsx"
 
 /** One swatch of a {@link ColorField}: a `#rrggbb` colour and its name. */
 export interface ColorPreset {
@@ -84,6 +85,37 @@ export interface ColorFieldProps {
   class?: string
 }
 
+/** The catalog name of each of {@link COLOR_PRESETS}, in order: `ColorField.preset.<name>`. */
+const PRESET_KEYS = [
+  "gray",
+  "red",
+  "orange",
+  "amber",
+  "yellow",
+  "lime",
+  "green",
+  "emerald",
+  "teal",
+  "cyan",
+  "sky",
+  "blue",
+  "indigo",
+  "violet",
+  "purple",
+  "pink",
+] as const
+
+/** The English words of `ColorField`; `none` is its `noneLabel`, `legend` its default legend. */
+const COLOR_FIELD_LABELS: Required<ColorFieldLabels> & { none: string; legend: string } = {
+  legend: "Colour",
+  none: "No colour",
+  custom: "Pick a custom colour",
+  picker: "Colour picker",
+  hexCode: "Hex code",
+  hexPlaceholder: "#59168b",
+  hexError: "Enter # and 6 characters, such as #59168b.",
+}
+
 /** The radio value of the "None" swatch; never a hex, so it cannot meet a preset. */
 const NONE = "none"
 /** The radio value of the "Custom" swatch. */
@@ -130,10 +162,10 @@ export function ColorField(
   {
     value,
     onChange,
-    presets = COLOR_PRESETS,
+    presets: givenPresets,
     allowNone = false,
-    noneLabel = "No colour",
-    legend = "Colour",
+    noneLabel,
+    legend,
     hint,
     error,
     preview,
@@ -142,6 +174,18 @@ export function ColorField(
     class: className,
   }: ColorFieldProps,
 ): JSX.Element {
+  const translator = useT()
+  const text = useLabels("ColorField", COLOR_FIELD_LABELS, { ...labels, none: noneLabel })
+  // The library's own presets are named in the reader's language; a caller's are its own words.
+  const presets = givenPresets ??
+    COLOR_PRESETS.map((preset, index) => ({
+      ...preset,
+      label: translate(
+        translator,
+        `ColorField.preset.${PRESET_KEYS[index]}` as UiKey,
+        preset.label,
+      ),
+    }))
   const id = useId()
   /**
    * The colour "Custom" was chosen on, or the last one it sent, so it stays checked on a colour a
@@ -153,7 +197,7 @@ export function ColorField(
   const draft = useSignal<string | null>(null)
   const showHexError = useSignal(false)
   const hexInput = useRef<HTMLInputElement>(null)
-  const hexError = labels.hexError ?? "Enter # and 6 characters, such as #59168b."
+  const hexError = text.hexError
   // Read here, not only inside Field's render callback, so every keystroke re-renders ColorField and
   // the layout effect gives the input the field's own message before the next event (a submit).
   const draftText = draft.value
@@ -249,11 +293,11 @@ export function ColorField(
 
   return (
     <fieldset class={className} aria-describedby={describedBy} data-e2e="color-field">
-      <legend class="pc-label mb-2">{legend}</legend>
+      <legend class="pc-label mb-2">{legend ?? text.legend}</legend>
       <div class="flex flex-wrap gap-1">
         {allowNone && option(
           NONE,
-          noneLabel,
+          text.none,
           selected === NONE
             ? <IconCheck class="size-4 text-foreground" />
             : <span class="block h-0.5 w-6 -rotate-45 rounded-full bg-current" />,
@@ -268,7 +312,7 @@ export function ColorField(
         )}
         {option(
           CUSTOM,
-          labels.custom ?? "Pick a custom colour",
+          text.custom,
           customColor === null ? null : check(customColor, true),
           customColor ?? WHEEL,
           customColor === null ? undefined : (
@@ -284,7 +328,7 @@ export function ColorField(
       {selected === CUSTOM && (
         <Field
           id={`${id}-hex`}
-          label={labels.hexCode ?? "Hex code"}
+          label={text.hexCode}
           class="mt-3"
           error={showHexError.value ? hexError : null}
         >
@@ -293,8 +337,8 @@ export function ColorField(
               <input
                 type="color"
                 class="h-11 w-14 shrink-0 cursor-pointer rounded-md border border-subtle bg-surface p-1"
-                aria-label={labels.picker ?? "Colour picker"}
-                value={color ?? labels.hexPlaceholder ?? "#59168b"}
+                aria-label={text.picker}
+                value={color ?? text.hexPlaceholder}
                 onInput={(event) => typeHex(event.currentTarget.value)}
               />
               <Input
@@ -303,7 +347,7 @@ export function ColorField(
                 aria-describedby={wiring["aria-describedby"]}
                 aria-invalid={showHexError.value || undefined}
                 value={draftText ?? color ?? ""}
-                placeholder={labels.hexPlaceholder ?? "#59168b"}
+                placeholder={text.hexPlaceholder}
                 maxLength={7}
                 required
                 pattern="#[0-9a-fA-F]{6}"

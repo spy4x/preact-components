@@ -31,6 +31,7 @@ const CARDS: CardInput[] = Object.entries(demoRegistry)
 const OPEN_COMPONENTS: Record<string, string> = {
   FormatContext:
     "A Preact context: its card renders `FormatContext.Provider`, typed by Preact itself.",
+  I18nContext: "A Preact context: its card renders `I18nContext.Provider`, typed by Preact itself.",
 }
 
 /** Every declaration of the catalogued packages, read once with `deno doc`. */

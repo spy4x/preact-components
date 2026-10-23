@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconCheck, IconMinus, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { useLabels } from "./i18n.tsx"
 
 /** How far a product covers one capability. */
 export type ComparisonValue = "yes" | "partial" | "no"
@@ -169,7 +170,9 @@ export function ComparisonTable(
     class: className,
   }: ComparisonTableProps,
 ): JSX.Element {
-  const words = { ...defaultComparisonTableLabels, ...labels }
+  const words = useLabels("ComparisonTable", defaultComparisonTableLabels, labels, {
+    checkedOn: ["date"],
+  })
   const titleId = useId()
   for (const row of rows) {
     if (row.values.length !== products.length) {

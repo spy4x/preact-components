@@ -37,6 +37,13 @@
     "./filter-bar": "./filter-bar.tsx",
     "./format": "./format.tsx",
     "./honeypot": "./honeypot.tsx",
+    "./i18n": "./i18n.tsx",
+    "./i18n/ar": "./i18n/ar.ts",
+    "./i18n/de": "./i18n/de.ts",
+    "./i18n/en": "./i18n/en.ts",
+    "./i18n/es": "./i18n/es.ts",
+    "./i18n/pt-BR": "./i18n/pt-BR.ts",
+    "./i18n/ru": "./i18n/ru.ts",
     "./image-gallery": "./image-gallery.tsx",
     "./input": "./input.tsx",
     "./input-button": "./input-button.tsx",
@@ -109,6 +116,7 @@
     // it shipped `sections/demo-decisions.test.ts`. Every package that publishes uses this pair.
     // `testdata/` holds the islands `island-bundle.test.ts` bundles and `page-at.ts`, which puts a
     // test on a page with a `location`; both are for tests alone.
-    "exclude": ["**/*.test.ts", "**/*.test.tsx", "testdata/"]
+    // The catalogs' lock files are for `deno task i18n:stamp` and the catalog test only.
+    "exclude": ["**/*.test.ts", "**/*.test.tsx", "testdata/", "i18n/*.lock"]
   }
 }

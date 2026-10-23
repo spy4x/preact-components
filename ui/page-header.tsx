@@ -4,6 +4,7 @@ import { Button, buttonClasses, type ButtonVariant } from "./button.tsx"
 import { Dropdown } from "./dropdown.tsx"
 import type { HotkeyProps } from "./hotkeys.ts"
 import { TOUCH_TARGET } from "./touch-target.ts"
+import { useLabels } from "./i18n.tsx"
 
 export { TOUCH_TARGET }
 
@@ -46,6 +47,11 @@ export interface PageHeaderProps {
   subtitleDataE2E?: string
 }
 
+/** The English words of `PageHeader`, each one a prop of its own. */
+const PAGE_HEADER_LABELS: Required<Pick<PageHeaderProps, "menuLabel">> = {
+  menuLabel: "More actions",
+}
+
 /**
  * The header a page starts with: an optional back arrow, the title (and a subtitle) on the left,
  * the primary action and an optional "More actions" menu on the right.
@@ -66,12 +72,17 @@ export function PageHeader(
     navigate,
     action,
     menu,
-    menuLabel = "More actions",
+    menuLabel: menuLabelProp,
     menuDataE2E,
     titleDataE2E,
     subtitleDataE2E,
   }: PageHeaderProps,
 ): JSX.Element {
+  const { menuLabel } = useLabels(
+    "PageHeader",
+    PAGE_HEADER_LABELS,
+    { menuLabel: menuLabelProp },
+  )
   const Heading = `h${headingLevel}` as "h1"
   return (
     <header class="flex min-w-0 items-center gap-3" data-e2e="page-header">

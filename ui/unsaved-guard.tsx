@@ -21,6 +21,7 @@ import {
   type LeaveGuard,
   leaveGuardInternals,
 } from "./unsaved-guard-internals.ts"
+import { useLabels } from "./i18n.tsx"
 
 /** The parts of a click that decide whether the browser would follow a link in this tab. */
 export interface UnsavedClick extends ClickModifiers {
@@ -180,7 +181,7 @@ export interface UnsavedGuardProps {
 export function UnsavedGuard(
   { when, navigate, owns, onDiscard, labels, leaveGuard }: UnsavedGuardProps,
 ): JSX.Element | null {
-  const words = { ...defaultUnsavedGuardLabels, ...labels }
+  const words = useLabels("UnsavedGuard", defaultUnsavedGuardLabels, labels)
   const own = useMemo(createLeaveGuard, [])
   const guard = leaveGuard ?? own
   const asking = leaveGuardInternals(guard)

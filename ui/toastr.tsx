@@ -3,6 +3,7 @@ import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { TOUCH_TARGET } from "./touch-target.ts"
+import { useLabels } from "./i18n.tsx"
 
 /** The window corner a {@link Toastr} stack sits in. */
 export type ToastCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right"
@@ -252,6 +253,12 @@ export function resolveDuration(toast: Pick<ToastItem, "duration" | "action">): 
     (toast.action === undefined ? defaultToastDuration : defaultToastActionDuration)
 }
 
+/** The English words of `Toastr`, each one a prop of its own. */
+const TOASTR_LABELS: Required<Pick<ToastrProps, "label" | "dismissLabel">> = {
+  label: "Notifications",
+  dismissLabel: "Dismiss",
+}
+
 /**
  * Stack of transient notifications in a corner of the window — top right unless `corner` says
  * otherwise.
@@ -291,12 +298,17 @@ export function Toastr(
     toasts,
     onDismiss,
     corner = "top-right",
-    label = "Notifications",
-    dismissLabel = "Dismiss",
+    label: labelProp,
+    dismissLabel: dismissLabelProp,
     dataE2E,
     class: className,
   }: ToastrProps,
 ): JSX.Element {
+  const { label, dismissLabel } = useLabels(
+    "Toastr",
+    TOASTR_LABELS,
+    { label: labelProp, dismissLabel: dismissLabelProp },
+  )
   const [paused, setPaused] = useState(false)
   // Where focus was before it entered the stack, so dismissing the toast that holds focus can hand
   // it back instead of dropping it on the page body.

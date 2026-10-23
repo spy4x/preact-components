@@ -5,6 +5,7 @@ import { useEffect, useRef } from "preact/hooks"
 import type { DemoVideoPoster } from "./demo-video.tsx"
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * Props of {@link YouTubeVideo}. Any other attribute, such as `id` or a `data-*` attribute for
@@ -50,6 +51,11 @@ const frameClass = "relative block w-full overflow-hidden"
 /** The player fills the box. */
 const playerClass = "absolute inset-0 block h-full w-full border-0"
 
+/** The English words of `YouTubeVideo`, each one a prop of its own. */
+const YOU_TUBE_VIDEO_LABELS: Required<Pick<YouTubeVideoProps, "playLabel">> = {
+  playLabel: "Play video",
+}
+
 /**
  * A YouTube video that costs nothing until it is asked for: the caller's own poster with a play
  * mark, swapped for YouTube's player on press.
@@ -76,12 +82,17 @@ export function YouTubeVideo(
     videoId,
     poster,
     title,
-    playLabel = "Play video",
+    playLabel: playLabelProp,
     eager = false,
     class: className,
     ...rest
   }: YouTubeVideoProps,
 ): JSX.Element {
+  const { playLabel } = useLabels(
+    "YouTubeVideo",
+    YOU_TUBE_VIDEO_LABELS,
+    { playLabel: playLabelProp },
+  )
   if (videoId === "") throw new Error("YouTubeVideo needs a videoId")
   const id = encodeURIComponent(videoId)
   const playing = useSignal(false)

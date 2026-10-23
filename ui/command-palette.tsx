@@ -6,6 +6,7 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
+import { useLabels } from "./i18n.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
 import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
@@ -350,8 +351,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
     trigger: triggerShape = "button",
     showMatch = false,
   } = props
-  const labels = { ...defaultCommandPaletteLabels, ...props.labels }
-  const matchLabels = { ...defaultCommandPaletteMatchLabels, ...props.matchLabels }
+  const labels = useLabels("CommandPalette", defaultCommandPaletteLabels, props.labels)
+  const matchLabels = useLabels(
+    "CommandPalette.match",
+    defaultCommandPaletteMatchLabels,
+    props.matchLabels,
+  )
   const field = triggerShape === "field"
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)

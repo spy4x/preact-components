@@ -10,6 +10,7 @@ import { Button } from "./button.tsx"
 import { Modal } from "./modal.tsx"
 import { SortableList } from "./sortable-list.tsx"
 import { ToggleSwitch } from "./toggle-switch.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** One part's place in a saved layout: its id and whether the person hid it. */
 export interface LayoutEntry {
@@ -131,7 +132,9 @@ export function LayoutCustomiser(
   { open, onClose, title, description, items, onChange, onReset, error, labels, dataE2E }:
     LayoutCustomiserProps,
 ): JSX.Element {
-  const text = { ...defaultLayoutCustomiserLabels, ...labels }
+  const text = useLabels("LayoutCustomiser", defaultLayoutCustomiserLabels, labels, {
+    show: ["title"],
+  })
   const layout = items.map(({ id, hidden }) => ({ id, hidden }))
   return (
     <Modal

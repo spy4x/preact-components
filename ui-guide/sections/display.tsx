@@ -20,12 +20,14 @@ import {
   Checkbox,
   Cluster,
   CopyBlock,
+  CopyButton,
   DataTable,
   describedImages,
   Field,
   FormatContext,
   Grid,
   type HotkeyBinding,
+  I18nContext,
   ImageGallery,
   type ImageGalleryImage,
   Input,
@@ -39,6 +41,8 @@ import {
   Pagination,
   Progress,
   type ProgressTone,
+  RadioChips,
+  Rich,
   type Shortcut,
   ShortcutsDialog,
   Stack,
@@ -51,8 +55,13 @@ import {
   type TooltipPlacement,
   useFormat,
   useHotkeys,
+  useT,
   When,
 } from "@spy4x/preact-ui"
+import uiAr from "@spy4x/preact-ui/i18n/ar"
+import uiDe from "@spy4x/preact-ui/i18n/de"
+import uiEn from "@spy4x/preact-ui/i18n/en"
+import { createTranslator, type Translator } from "@spy4x/platform/universal/i18n"
 import { createFormatters } from "@spy4x/time/format"
 import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
@@ -547,6 +556,68 @@ function FormatContextDemo() {
         </FormatContext.Provider>
       ))}
     </Stack>
+  )
+}
+
+/** The library's own catalog in two more languages; English is whatever the page around it speaks. */
+const demoLanguages: Record<string, Translator<string> | undefined> = {
+  en: undefined,
+  de: createTranslator({ language: "de", catalogs: [{ source: uiEn, translation: uiDe }] }),
+  ar: createTranslator({ language: "ar", catalogs: [{ source: uiEn, translation: uiAr }] }),
+}
+
+/** One provider switches every component inside it, its words and its text direction. */
+function I18nContextDemo() {
+  const language = useSignal("de")
+  const outer = useT()
+  const translator = demoLanguages[language.value] ?? outer
+  const page = useSignal(2)
+  return (
+    <Stack gap="md">
+      <RadioChips
+        legend="Language"
+        legendClass="pc-label mb-2 mx-auto"
+        optionsClass="flex flex-wrap justify-center gap-2"
+        name="i18n-demo-language"
+        value={language.value}
+        onChange={(value) => (language.value = value)}
+        options={[
+          { value: "en", label: <span lang="en">English</span> },
+          { value: "de", label: <span lang="de">Deutsch</span> },
+          { value: "ar", label: <span lang="ar">العربية</span> },
+        ]}
+      />
+      <I18nContext.Provider value={translator}>
+        <div lang={translator.language} dir={translator.dir}>
+          <Stack gap="sm">
+            <Pagination page={page.value} pageCount={5} onChange={(next) => (page.value = next)} />
+            <Cluster justify="center">
+              <CopyButton textToCopy="INV-0007" />
+            </Cluster>
+          </Stack>
+        </div>
+      </I18nContext.Provider>
+      <p class="text-center text-xs text-muted">
+        Dates follow FormatContext, not the language: an app provides both.
+      </p>
+    </Stack>
+  )
+}
+
+const termsTranslator = createTranslator({
+  language: "en",
+  catalogs: [{ source: { "signup.terms": "I agree to the <terms>terms of use</terms>, {name}." } }],
+})
+
+/** A sentence whose link the caller draws: the message never carries markup or an address. */
+function RichDemo() {
+  return (
+    <p class="text-sm">
+      <Rich
+        parts={termsTranslator.parts("signup.terms", { name: "Ada" })}
+        tags={{ terms: (text) => <a class="pc-link" href="#terms">{text}</a> }}
+      />
+    </p>
   )
 }
 
@@ -1393,6 +1464,47 @@ export const displayDemos = {
     snippet: `<MoneyDisplay amount={12345} currency="EUR" />
 <MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
     render: () => <MoneyDisplayDemo />,
+  },
+  I18nContext: {
+    summary:
+      "Hands one translator to every component below it: their words, in the reader's language, and its text direction.",
+    wide: false,
+    snippet: `import uiEn from "@spy4x/preact-ui/i18n/en"
+import uiDe from "@spy4x/preact-ui/i18n/de"
+
+const translator = createTranslator({
+  language: "de",
+  catalogs: [{ source: uiEn, translation: uiDe }, { source: appEn, translation: appDe }],
+})
+
+<I18nContext.Provider value={translator}>
+  <div dir={translator.dir}>{app}</div>
+</I18nContext.Provider>`,
+    render: () => <I18nContextDemo />,
+  },
+  Rich: {
+    summary:
+      "A translated sentence with a span the caller draws, such as a link, while the message itself stays plain text.",
+    wide: false,
+    props: [
+      {
+        name: "parts",
+        type: "readonly MessagePart[]",
+        description: "The message as spans, from `useT().parts(key, values)`.",
+      },
+      {
+        name: "tags",
+        type: "Readonly<Record<string, (text: string) => ComponentChildren>>",
+        default: "{}",
+        description: "How each tag renders, given its text; a tag with no renderer shows as text.",
+      },
+    ],
+    snippet: `// "signup.terms": "I agree to the <terms>terms of use</terms>, {name}."
+<Rich
+  parts={useT().parts("signup.terms", { name })}
+  tags={{ terms: (text) => <a href="/terms">{text}</a> }}
+/>`,
+    render: () => <RichDemo />,
   },
   FormatContext: {
     summary:
