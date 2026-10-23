@@ -149,6 +149,35 @@ describe("AttachmentList", () => {
     expect(html).not.toContain("<button")
   })
 
+  it("names the checking bar Checking, not Uploading, and takes an override", () => {
+    const item: AttachmentItem = { ...pdf, status: "checking" }
+    const html = render(<AttachmentList id="files" items={[item]} />)
+    const renamed = render(
+      <AttachmentList
+        id="files"
+        items={[item]}
+        labels={{ checkingProgress: (name) => `Vérification de ${name}` }}
+      />,
+    )
+
+    expect(html).toContain('aria-label="Checking scan.pdf"')
+    expect(html).not.toContain("Uploading scan.pdf")
+    expect(renamed).toContain('aria-label="Vérification de scan.pdf"')
+  })
+
+  it("describes a ready row's button by its error too, so the error is heard with it", () => {
+    const html = render(
+      <AttachmentList
+        id="files"
+        items={[{ ...pdf, error: "This link expired. Try again." }]}
+        onDownload={noop}
+      />,
+    )
+
+    expect(html).toContain('aria-describedby="files-a2-meta files-a2-meta-error"')
+    expect(html).toMatch(/id="files-a2-meta-error"[^>]*>This link expired. Try again.</)
+  })
+
   it("shows a failed upload in the danger tone with Retry and remove", () => {
     const html = render(
       <AttachmentList

@@ -31,7 +31,10 @@ export interface AttachmentItem {
   type?: string
   /** Where the file stands. */
   status: AttachmentStatus
-  /** Upload progress from 0 to 100, read while `status` is `"uploading"`. Left out, the bar is indeterminate. */
+  /**
+   * Upload progress from 0 to 100, read while `status` is `"uploading"`. Left out, the bar is
+   * indeterminate.
+   */
   progress?: number
   /** A small image for the 40 px tile. Left out, the tile shows an icon. */
   thumbnailSrc?: string
@@ -39,7 +42,10 @@ export interface AttachmentItem {
   src?: string
   /** Extra text after the kind and size on the meta line, such as who added the file. */
   detail?: string
-  /** A message in the danger tone under the name, in any state. A failed row without one shows `labels.failed`. */
+  /**
+   * A message in the danger tone under the name, in any state. A failed row without one shows
+   * `labels.failed`.
+   */
   error?: string
 }
 
@@ -49,7 +55,9 @@ export interface AttachmentListLabels {
   list: string
   /** The kind word on the meta line. Default: `"Image"`, `"PDF"` or `"File"` by MIME type. */
   kind: (item: AttachmentItem) => string
-  /** The meta line while uploading. Default: `"Uploading, 45%"`, or `"Uploading"` with no progress. */
+  /**
+   * The meta line while uploading. Default: `"Uploading, 45%"`, or `"Uploading"` with no progress.
+   */
   uploading: (percent: number | undefined) => string
   /** The meta line while waiting. Default: `"Waiting to upload"`. */
   waiting: string
@@ -61,15 +69,21 @@ export interface AttachmentListLabels {
   retry: string
   /** Accessible name of the retry button. Default: `"Retry scan.pdf"`. */
   retryFile: (name: string) => string
-  /** Accessible name of the progress bar. Default: `"Uploading scan.pdf"`. */
+  /** Accessible name of the progress bar while uploading. Default: `"Uploading scan.pdf"`. */
   progress: (name: string) => string
+  /** Accessible name of the progress bar while checking. Default: `"Checking scan.pdf"`. */
+  checkingProgress: (name: string) => string
   /** Accessible name of a ready image's open button. Default: `"Open tickets.png"`. */
   open: (name: string) => string
   /** Accessible name of a ready file's download button. Default: `"Download scan.pdf"`. */
   downloadFile: (name: string) => string
-  /** Accessible name of the cancel button while uploading. Default: `"Cancel upload of scan.pdf"`. */
+  /**
+   * Accessible name of the cancel button while uploading. Default: `"Cancel upload of scan.pdf"`.
+   */
   cancel: (name: string) => string
-  /** Accessible name of the remove button of a waiting or failed row. Default: `"Remove scan.pdf"`. */
+  /**
+   * Accessible name of the remove button of a waiting or failed row. Default: `"Remove scan.pdf"`.
+   */
   remove: (name: string) => string
   /** Accessible name of a ready row's menu. Default: `"Actions for scan.pdf"`. */
   actions: (name: string) => string
@@ -91,6 +105,7 @@ export const ATTACHMENT_LIST_LABELS: AttachmentListLabels = {
   retry: "Retry",
   retryFile: (name) => `Retry ${name}`,
   progress: (name) => `Uploading ${name}`,
+  checkingProgress: (name) => `Checking ${name}`,
   open: (name) => `Open ${name}`,
   downloadFile: (name) => `Download ${name}`,
   cancel: (name) => `Cancel upload of ${name}`,
@@ -104,11 +119,17 @@ export const ATTACHMENT_LIST_LABELS: AttachmentListLabels = {
 export interface AttachmentListProps {
   /** Prefix of the rows' element ids. Required and not generated, as `Field`'s `id` is. */
   id: string
-  /** The files, in the order shown. An empty list renders nothing, so the caller draws its own empty state. */
+  /**
+   * The files, in the order shown. An empty list renders nothing, so the caller draws its own empty
+   * state.
+   */
   items: readonly AttachmentItem[]
   /** Downloads a ready file. Left out, a ready file has no download. */
   onDownload?: (item: AttachmentItem) => void
-  /** Removes a file: a ready one from its menu, a waiting or failed one from its button. Left out, the list is read-only. */
+  /**
+   * Removes a file: a ready one from its menu, a waiting or failed one from its button. Left out,
+   * the list is read-only.
+   */
   onRemove?: (item: AttachmentItem) => void
   /** Cancels an upload. Left out, an uploading row has no button. */
   onCancel?: (item: AttachmentItem) => void
@@ -288,7 +309,7 @@ function Row(
             type="button"
             class="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
             aria-label={label}
-            aria-describedby={metaId}
+            aria-describedby={item.error === undefined ? metaId : `${metaId} ${metaId}-error`}
             onClick={onPress}
           >
             {body}
@@ -342,7 +363,9 @@ function RowBody(
               ? clampPercent(item.progress)
               : null}
             showValue={false}
-            ariaLabel={words.progress(item.name)}
+            ariaLabel={item.status === "uploading"
+              ? words.progress(item.name)
+              : words.checkingProgress(item.name)}
           />
         )}
         {item.status !== "failed" && (
@@ -351,7 +374,10 @@ function RowBody(
           </span>
         )}
         {error !== undefined && (
-          <span id={item.status === "failed" ? metaId : undefined} class="text-xs text-danger">
+          <span
+            id={item.status === "failed" ? metaId : `${metaId}-error`}
+            class="text-xs text-danger"
+          >
             {error}
           </span>
         )}
