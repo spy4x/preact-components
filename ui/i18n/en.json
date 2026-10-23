@@ -126,6 +126,7 @@
   "FilterBar.clearSearch": "Clear search",
   "FilterBar.doneLabel": "Done",
   "FilterBar.label": "Search and filters",
+  "FilterBar.order": "Order",
   "FilterBar.remove": "Remove the {value} filter",
   "FilterBar.search": "Search",
   "FilterBar.sort": "Sort by",

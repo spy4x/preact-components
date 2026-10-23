@@ -6,7 +6,7 @@
  * sideways at 390 px — is driven by `pages/e2e/ui.spec.ts`.
  */
 
-import { DropdownItem, FilterBar } from "@spy4x/preact-ui"
+import { DropdownItem, FilterBar, type SortDirection } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { DemoNote } from "./demo-note.tsx"
 import type { DemoFragment } from "../registry.ts"
@@ -47,11 +47,15 @@ const AUTHORS = [
   { value: "maya", label: "Maya Chen" },
 ]
 
+const DATES = { asc: "Oldest first", desc: "Newest first" }
 const SORTS = [
-  { value: "updated", label: "Last updated" },
-  { value: "created", label: "Date created" },
-  { value: "title", label: "Title (A–Z)" },
+  { value: "updated", label: "Last updated", directions: DATES },
+  { value: "created", label: "Date created", directions: DATES },
+  { value: "title", label: "Title", directions: { asc: "A–Z", desc: "Z–A" } },
 ]
+
+/** The direction each order starts in: dates newest first, titles A to Z. */
+const defaultDirection = (sort: string): SortDirection => sort === "title" ? "asc" : "desc"
 
 /** The notes the bar's values let through, in the chosen order. */
 function visibleNotes(
@@ -61,6 +65,7 @@ function visibleNotes(
   author: string | null,
   mine: boolean,
   sort: string,
+  direction: SortDirection,
 ): DemoNoteRow[] {
   const needle = query.trim().toLowerCase()
   const shown = NOTES.filter((note) =>
@@ -72,12 +77,14 @@ function visibleNotes(
     (author === null || note.author === author) &&
     (!mine || note.author === "you")
   )
+  const sign = direction === defaultDirection(sort) ? 1 : -1
   return shown.sort((a, b) =>
-    sort === "title"
+    sign *
+    (sort === "title"
       ? a.title.localeCompare(b.title)
       : sort === "created"
       ? b.created - a.created
-      : b.updated - a.updated
+      : b.updated - a.updated)
   )
 }
 
@@ -89,6 +96,7 @@ function FilterBarDemo() {
   const author = useSignal<string | null>(null)
   const mine = useSignal(false)
   const sort = useSignal("updated")
+  const direction = useSignal<SortDirection>("desc")
   const notes = visibleNotes(
     query.value,
     tags.value,
@@ -96,10 +104,12 @@ function FilterBarDemo() {
     author.value,
     mine.value,
     sort.value,
+    direction.value,
   )
   // Counts within the other filters, so a number says what choosing the tag would show.
   const tagCount = (tag: string) =>
-    visibleNotes(query.value, [tag], "any", author.value, mine.value, sort.value).length
+    visibleNotes(query.value, [tag], "any", author.value, mine.value, sort.value, direction.value)
+      .length
 
   return (
     <div class="flex flex-col gap-4">
@@ -156,7 +166,17 @@ function FilterBarDemo() {
             onChange: (next) => mine.value = next,
           },
         ]}
-        sort={{ options: SORTS, value: sort.value, onChange: (next) => sort.value = next }}
+        sort={{
+          options: SORTS,
+          value: sort.value,
+          // A new order starts in its own direction, so Title after a date is not Z–A.
+          onChange: (next) => {
+            sort.value = next
+            direction.value = defaultDirection(next)
+          },
+          direction: direction.value,
+          onDirectionChange: (next) => direction.value = next,
+        }}
         count={`${notes.length} ${notes.length === 1 ? "note" : "notes"}`}
       />
       {notes.length > 0
@@ -182,7 +202,7 @@ function FilterBarDemo() {
         q: {query.value || "(empty)"} · tags: {tags.value.join(", ") || "(none)"}{" "}
         ({match.value}) · author: {author.value ?? "(anyone)"} · mine: {mine.value ? "on" : "off"}
         {" "}
-        · sort: {sort.value}
+        · sort: {sort.value} {direction.value}
       </DemoNote>
     </div>
   )

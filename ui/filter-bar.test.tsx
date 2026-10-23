@@ -186,6 +186,54 @@ describe("FilterBar", () => {
     )
   })
 
+  it("adds an Order group and the direction to the trigger when the order names its directions", () => {
+    const html = render(
+      <FilterBar
+        sort={{
+          options: [{
+            value: "title",
+            label: "Title",
+            directions: { asc: "A–Z", desc: "Z–A" },
+          }],
+          value: "title",
+          onChange: () => {},
+          direction: "desc",
+          onDirectionChange: () => {},
+        }}
+      />,
+    )
+
+    expect(html).toMatch(
+      />Title<svg[^>]*aria-hidden="true"[^>]*>.*?<\/svg><span class="sr-only">, Z–A<\/span>/,
+    )
+    expect(html).toMatch(/role="group" aria-labelledby="([^"]+)"><div id="\1"[^>]*>Order<\/div>/)
+    expect(html).toMatch(/data-keep-open><span[^>]*><\/span>A–Z</)
+    expect(html).toMatch(/aria-current="true" data-keep-open><svg.*?<\/svg>Z–A</)
+  })
+
+  it("draws no Order group for an order without directions or a caller that does not listen", () => {
+    const options = [{ value: "title", label: "Title", directions: { asc: "A–Z", desc: "Z–A" } }]
+    const unheard = render(
+      <FilterBar sort={{ options, value: "title", onChange: () => {}, direction: "asc" }} />,
+    )
+    const plain = render(
+      <FilterBar
+        sort={{
+          options: [{ value: "title", label: "Title" }],
+          value: "title",
+          onChange: () => {},
+          direction: "asc",
+          onDirectionChange: () => {},
+        }}
+      />,
+    )
+
+    for (const html of [unheard, plain]) {
+      expect(html).not.toContain(">Order<")
+      expect(html).not.toContain('sr-only">, ')
+    }
+  })
+
   it("lists every active filter as a chip with a named remove button, then Clear filters", () => {
     const html = render(
       <FilterBar filters={[tags(["design"]), author("maya")]} toggles={[mine(true)]} />,

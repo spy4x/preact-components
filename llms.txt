@@ -649,6 +649,7 @@ FilterBarOption	type	@spy4x/preact-ui	One choice of a `FilterBarMenu`.
 FilterBarSearch	type	@spy4x/preact-ui	The search field of a `FilterBar`.
 FilterBarSingleMenu	type	@spy4x/preact-ui	A menu with at most one choice; choosing closes the menu.
 FilterBarSort	type	@spy4x/preact-ui	The sort menu of a `FilterBar`.
+FilterBarSortOption	type	@spy4x/preact-ui	One order of a `FilterBarSort`.
 FilterBarToggle	type	@spy4x/preact-ui	A one-tap filter of a `FilterBar`, such as "Created by me".
 FocusAfterRemovalOptions	type	@spy4x/preact-ui	Options of `useFocusAfterRemoval`.
 FocusableElement	type	@spy4x/preact-ui	Anything the browser can move focus to.
@@ -758,6 +759,7 @@ ShortcutGroup	type	@spy4x/preact-ui	A heading of `ShortcutsDialog` and the short
 ShortcutsDialog	component	@spy4x/preact-ui	A dialog that lists keyboard shortcuts, each with what it does and its keys, under group headings.
 Slider	component	@spy4x/preact-ui	A labelled range slider on the native `<input type="range">`.
 SliderMark	type	@spy4x/preact-ui	One labelled point under a `Slider`'s track, such as "Typical" or "Today".
+SortDirection	type	@spy4x/preact-ui	Which way a sorted list runs: ascending or descending.
 SortableBox	type	@spy4x/preact-ui	One row's place inside the list, measured when an item is picked up.
 SortableItem	type	@spy4x/preact-ui	The one field the list reads off an item.
 SortableList	component	@spy4x/preact-ui	A list whose items are reordered by dragging a handle, by touch or mouse, or from the keyboard.

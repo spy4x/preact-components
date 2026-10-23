@@ -126,6 +126,7 @@
   "FilterBar.clearSearch": "Suche löschen",
   "FilterBar.doneLabel": "Fertig",
   "FilterBar.label": "Suche und Filter",
+  "FilterBar.order": "Reihenfolge",
   "FilterBar.remove": "Filter {value} entfernen",
   "FilterBar.search": "Suchen",
   "FilterBar.sort": "Sortieren nach",

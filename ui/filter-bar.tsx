@@ -1,5 +1,11 @@
 import { cn } from "@spy4x/preact-cn"
-import { IconChevronDown, IconSearch, IconXMark } from "@spy4x/preact-icons"
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconChevronDown,
+  IconSearch,
+  IconXMark,
+} from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { badgeClasses } from "./badge.tsx"
@@ -102,9 +108,23 @@ export interface FilterBarSearch {
 export interface FilterBarSort {
   /** Shown before the current order from `sm` up, and part of the trigger's name. Defaults to `"Sort by"`. */
   label?: string
-  options: { value: string; label: string }[]
+  options: FilterBarSortOption[]
   value: string
   onChange: (value: string) => void
+  /** Which way the list runs. With `onDirectionChange`, an option with `directions` gets an Order group. */
+  direction?: SortDirection
+  onDirectionChange?: (direction: SortDirection) => void
+}
+
+/** Which way a sorted list runs: ascending or descending. */
+export type SortDirection = `asc` | `desc`
+
+/** One order of a {@link FilterBarSort}. */
+export interface FilterBarSortOption {
+  value: string
+  label: string
+  /** The words of each direction for this order, such as "Newest first" and "Oldest first". */
+  directions?: Record<SortDirection, string>
 }
 
 /** One active filter, drawn as a removable chip under the bar. */
@@ -424,6 +444,8 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
       }))
   const searchWord = translate(translator, "FilterBar.search", "Search")
   const sortWord = translate(translator, "FilterBar.sort", "Sort by")
+  const orderWord = translate(translator, "FilterBar.order", "Order")
+  const orderId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const refocus = useRef<Refocus | null>(null)
@@ -505,6 +527,12 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
     : null
 
   const sortCurrent = sort?.options.find((option) => option.value === sort.value)
+  // The Order group shows only for an order that names its directions, and a caller that listens.
+  const directions = sort?.onDirectionChange && sort.direction ? sortCurrent?.directions : undefined
+  // Every order keeps the menu open while any order has directions, so the group can follow.
+  const sortDirections = sort?.onDirectionChange && sort.direction
+    ? sort.options.some((option) => option.directions)
+    : false
   const sortMenu = sort
     ? (
       <Dropdown
@@ -513,6 +541,16 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           <>
             <span class="text-muted max-sm:sr-only">{sort.label ?? sortWord}</span>
             {sortCurrent?.label ?? sort.value}
+            {directions && sort.direction
+              ? (
+                <>
+                  {sort.direction === `asc`
+                    ? <IconArrowUp class="size-3.5" aria-hidden="true" />
+                    : <IconArrowDown class="size-3.5" aria-hidden="true" />}
+                  <span class="sr-only">, {directions[sort.direction]}</span>
+                </>
+              )
+              : null}
             <IconChevronDown class="size-3.5" />
           </>
         }
@@ -528,11 +566,41 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           <DropdownItem
             key={option.value}
             checked={option.value === sort.value}
+            keepOpen={sortDirections}
             onClick={() => sort.onChange(option.value)}
           >
             {option.label}
           </DropdownItem>
         ))}
+        {directions
+          ? (
+            <>
+              {divider}
+              <div role="group" aria-labelledby={orderId}>
+                <div id={orderId} class="px-4 pt-2 pb-1 text-xs font-medium text-muted">
+                  {orderWord}
+                </div>
+                {([`asc`, `desc`] as const).map((direction) => (
+                  <DropdownItem
+                    key={direction}
+                    checked={direction === sort.direction}
+                    keepOpen
+                    onClick={() => sort.onDirectionChange?.(direction)}
+                  >
+                    {directions[direction]}
+                  </DropdownItem>
+                ))}
+              </div>
+            </>
+          )
+          : null}
+        {sortDirections
+          ? (
+            <DropdownItem class="mt-2 justify-center border-t border-subtle font-medium text-foreground sm:hidden">
+              {doneLabel}
+            </DropdownItem>
+          )
+          : null}
       </Dropdown>
     )
     : null
