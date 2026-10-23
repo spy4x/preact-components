@@ -33,3 +33,22 @@ Deno.test("finds a missing, a repeated and a miscounted shard", () => {
   ])
   assertEquals(shardGaps([]), [`no shard is listed`])
 })
+
+Deno.test("the Woodpecker pipeline runs every e2e shard exactly once and e2e nowhere else", async () => {
+  const pipeline = await Deno.readTextFile(new URL(`../../.woodpecker.yml`, import.meta.url))
+  const runs = pipeline.split(`\n`).filter((line) => /deno task --cwd pages verify\b/.test(line))
+  const shards: Shard[] = []
+  const unsharded: string[] = []
+  for (const run of runs) {
+    const only = /--only=(\S+)/.exec(run)?.[1].split(`,`)
+    const except = /--except=(\S+)/.exec(run)?.[1].split(`,`)
+    const runsE2e = only ? only.includes(`e2e`) : !except?.includes(`e2e`)
+    if (!runsE2e) continue
+    const text = /--e2e-shard=(\S+)/.exec(run)?.[1]
+    const shard = text === undefined ? undefined : parseShard(text)
+    if (shard) shards.push(shard)
+    else unsharded.push(run.trim())
+  }
+  assertEquals(unsharded, [], `a verify step runs e2e without a valid --e2e-shard`)
+  assertEquals(shardGaps(shards), [])
+})
