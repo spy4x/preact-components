@@ -38,6 +38,7 @@ import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts
 import { demoElementId } from "./src/deep-link.ts"
 import { renderDocument } from "./src/document.tsx"
 import { renderMapPage } from "./src/map-page/page.tsx"
+import { renderTypePage, TYPE_DEMO_DIRECTORY } from "./src/type-page.ts"
 import { renderApp } from "./src/prerender.tsx"
 import { routeTableFromHtml } from "./src/route-echo.ts"
 import { catalogueNames } from "@spy4x/preact-ui-guide/registry"
@@ -90,6 +91,12 @@ const MAP_DEMO_DIRECTORY = "map-demo"
  * clips before the play button is pressed.
  */
 const VIDEO_DEMO_DIRECTORY = "video-demo"
+/**
+ * Directory copied verbatim into the artefact for the stylesheet's `@font-face`: Noto Sans Arabic's
+ * Arabic subset and its licence (`styles.css` says where it came from). The stylesheet asks for it
+ * by a path relative to `assets/`.
+ */
+const FONTS_DIRECTORY = "fonts"
 
 /** Sources `deno check` must accept before a single byte is emitted. */
 const CHECKED_ENTRIES = [
@@ -414,6 +421,22 @@ async function main(): Promise<void> {
     ["clip.webm", "clip.mp4", "poster.webp"],
     "the DemoVideo card",
   )
+  const fonts = await copyDemoDirectory(
+    FONTS_DIRECTORY,
+    ["noto-sans-arabic-arabic-wght-normal.woff2", "OFL.txt"],
+    "the stylesheet's Arabic @font-face",
+  )
+  // The Arabic type pages (`src/type-page.ts`): one in Arabic, one in English with no Arabic letter.
+  const cssHref = `${BASE}assets/${assetNames.css}`
+  await Deno.mkdir(join(DIST_DIRECTORY, TYPE_DEMO_DIRECTORY), { recursive: true })
+  await Deno.writeTextFile(
+    join(DIST_DIRECTORY, TYPE_DEMO_DIRECTORY, "index.html"),
+    renderTypePage(cssHref, "ar"),
+  )
+  await Deno.writeTextFile(
+    join(DIST_DIRECTORY, TYPE_DEMO_DIRECTORY, "latin.html"),
+    renderTypePage(cssHref, "en"),
+  )
   // The page that hydrates a server-rendered `Map` (`src/map-page/page.tsx`), beside the tile it
   // requests. Its island and chunks sit in the same directory, so they never mix with the
   // catalogue's `assets/`.
@@ -459,6 +482,10 @@ async function main(): Promise<void> {
       `  ${VIDEO_DEMO_DIRECTORY}/ ${
         videoDemo.join(", ")
       } — the DemoVideo card's clip and poster\n` +
+      `  ${FONTS_DIRECTORY}/ ${
+        fonts.join(", ")
+      } — the Arabic face, fetched only for Arabic text\n` +
+      `  ${TYPE_DEMO_DIRECTORY}/index.html, latin.html — the Arabic type rule, and a page without it\n` +
       `  ${LLMS_FILES.join(", ")} — the generated plain-text maps of the library\n` +
       `  served from ${ORIGIN}${BASE}`,
   )
