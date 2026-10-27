@@ -104,10 +104,14 @@ export interface LanguagePickerProps {
 const ROW =
   "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-start text-sm text-foreground hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus disabled:cursor-default disabled:hover:bg-transparent"
 
-/** A language's own name, in its own language and direction. */
+/**
+ * A language's own name, in its own language and direction. `notranslate` keeps page translators
+ * (Google Translate honours the class) from translating it; the `translate` attribute cannot be
+ * used, because Preact sets it as a property and the string `"no"` becomes `true`.
+ */
 function Name({ tag }: { tag: string }): JSX.Element {
   return (
-    <span lang={tag} dir={textDirection(tag)}>
+    <span lang={tag} dir={textDirection(tag)} class="notranslate">
       {languageName(tag)}
     </span>
   )
@@ -151,6 +155,11 @@ export function LanguagePicker(
   const previous = useRef(current)
   const errorId = useId()
 
+  // A new load starts with an empty region, so a failure is never followed by the old name.
+  useEffect(() => {
+    if (pending !== undefined) announced.value = null
+  }, [pending])
+
   // Announce the new language once it is in use, in its own language.
   useEffect(() => {
     if (previous.current === current) return
@@ -175,7 +184,7 @@ export function LanguagePicker(
                 dir={textDirection(tag)}
                 aria-current={tag === current ? "page" : undefined}
                 class={join(
-                  "inline-flex items-center gap-1 rounded-sm underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus",
+                  "notranslate inline-flex items-center gap-1 rounded-sm underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus",
                   tag === current ? "font-medium text-foreground" : "text-muted",
                 )}
               >
@@ -227,7 +236,7 @@ export function LanguagePicker(
   const loading = pending !== undefined && nameOf(pending) !== ""
 
   return (
-    <div class={join("flex flex-col gap-2", className)}>
+    <div class={join("flex flex-col gap-3", className)}>
       <div
         role="radiogroup"
         aria-labelledby={labelledBy}

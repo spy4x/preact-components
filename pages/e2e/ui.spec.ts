@@ -3793,7 +3793,7 @@ function languagePickerSpecs(): Spec[] {
     })),
     {
       name:
-        "LanguagePicker: offline, the arrow keys skip the languages that cannot load; a failed load names the language in an alert and keeps the old one checked",
+        "LanguagePicker: offline, the arrow keys skip the languages that cannot load; a failed load names the language in an alert, keeps the old one checked and leaves the live region empty",
       pageId: "ui",
       run: async (page) => {
         const card = page.locator("#demo-LanguagePicker")
@@ -3819,6 +3819,8 @@ function languagePickerSpecs(): Spec[] {
           hasText: "Could not load Deutsch. Check your connection and try again.",
         }).waitFor()
         await radio("English", true).waitFor()
+        // The live region was cleared when Deutsch began to load, so "English" is not said again.
+        await card.locator(`p[role="status"]:empty`).waitFor({ state: "attached" })
         await radio("Deutsch", false).and(focused).waitFor()
         // The next row down is Русский: Español and Português (Brasil) are skipped.
         await page.keyboard.press("ArrowDown")

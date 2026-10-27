@@ -102,7 +102,7 @@ describe("LanguagePicker list mode", () => {
     expect(radios[0]).toContain(`aria-checked="true"`)
     expect(radios[0]).toContain(`data-value="automatic"`)
     expect(html).toContain(
-      `Automatic: same as this device — <span lang="de" dir="ltr">Deutsch</span>`,
+      `Automatic: same as this device — <span lang="de" dir="ltr" class="notranslate">Deutsch</span>`,
     )
   })
 
@@ -164,6 +164,15 @@ describe("LanguagePicker list mode", () => {
     expect(html).toContain(`aria-label="Sprache"`)
     expect(html).toContain(`Automatisch: wie auf diesem Gerät — <span lang="en"`)
     expect(html).toContain("Nur mit Verbindung")
-    expect(html).toContain(`<span lang="es" dir="ltr">Español</span>`)
+    expect(html).toContain(`<span lang="es" dir="ltr" class="notranslate">Español</span>`)
+  })
+
+  it("keeps page translators off every language name, in the list and the links", () => {
+    const list = render(<LanguagePicker languages={LANGUAGES} current="en" onSelect={() => {}} />)
+    expect(list.match(/<span lang="[^"]+" dir="[a-z]+" class="notranslate">/g)?.length).toBe(6)
+    const html = render(
+      <LanguagePicker mode="links" languages={LANGUAGES} current="en" href={(tag) => `/${tag}/`} />,
+    )
+    for (const tag of links(html)) expect(tag).toMatch(/class="notranslate /)
   })
 })
