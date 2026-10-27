@@ -394,17 +394,17 @@ export const marketingBlockDemos: DemoFragment = {
     ],
     snippet: `<WindowFrame variant="plain">
   <YouTubeVideo
-    videoId="uaqFYlfOZeE"
-    title="Code formatting with Prettier"
-    poster={{ src: "/prettier.webp", width: 1280, height: 720 }}
+    videoId="aqz-KE-bpKQ"
+    title="Big Buck Bunny"
+    poster={{ src: "/big-buck-bunny.webp", width: 1280, height: 720 }}
     data-umami-event="play-video"
   />
 </WindowFrame>`,
     render: () => (
       <WindowFrame variant="plain" caption="The player loads from YouTube only on press">
         <YouTubeVideo
-          videoId="uaqFYlfOZeE"
-          title="Code formatting with Prettier"
+          videoId="aqz-KE-bpKQ"
+          title="Big Buck Bunny"
           poster={DEMO_CLIP.poster}
         />
       </WindowFrame>

@@ -3055,7 +3055,7 @@ async function youTubeVideoCard(page: Page) {
   )
   const card = page.locator("#demo-YouTubeVideo")
   const link = card.getByRole("link", {
-    name: "Play video: Code formatting with Prettier",
+    name: "Play video: Big Buck Bunny",
     exact: true,
   })
   await link.scrollIntoViewIfNeeded()
@@ -3078,7 +3078,7 @@ async function focusInPlayer(page: Page) {
  * the nocookie player in the poster's box with focus inside it, and the page does not scroll.
  */
 function youTubeVideoSpecs(): Spec[] {
-  const embed = "https://www.youtube-nocookie.com/embed/uaqFYlfOZeE?autoplay=1"
+  const embed = "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1"
   return [
     {
       name: "YouTubeVideo: no request to YouTube and no iframe before the press; a click puts " +
@@ -3089,7 +3089,7 @@ function youTubeVideoSpecs(): Spec[] {
         if (await card.locator("iframe").count() > 0) throw new Error("an iframe exists early")
         if (youTube.length > 0) throw new Error(`requested early: ${youTube.join(", ")}`)
         const href = await link.getAttribute("href")
-        if (href !== "https://www.youtube.com/watch?v=uaqFYlfOZeE") {
+        if (href !== "https://www.youtube.com/watch?v=aqz-KE-bpKQ") {
           throw new Error(`the link goes to ${href}`)
         }
         const before = await link.boundingBox()
@@ -3098,7 +3098,7 @@ function youTubeVideoSpecs(): Spec[] {
         const src = await player.getAttribute("src")
         if (src !== embed) throw new Error(`the player loads ${src}`)
         const title = await player.getAttribute("title")
-        if (title !== "Code formatting with Prettier") {
+        if (title !== "Big Buck Bunny") {
           throw new Error(`the player is titled ${title}`)
         }
         if (!page.url().includes("#/")) throw new Error(`the click navigated to ${page.url()}`)
@@ -3131,7 +3131,7 @@ function youTubeVideoSpecs(): Spec[] {
           page,
           link,
           player,
-          /^https:\/\/www\.youtube\.com\/watch\?v=uaqFYlfOZeE$/,
+          /^https:\/\/www\.youtube\.com\/watch\?v=aqz-KE-bpKQ$/,
           () => focusInPlayer(page),
         )
       },

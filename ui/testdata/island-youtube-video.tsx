@@ -4,7 +4,7 @@ import { YouTubeVideo } from "@spy4x/preact-ui/youtube-video"
 
 render(
   <YouTubeVideo
-    videoId="uaqFYlfOZeE"
+    videoId="aqz-KE-bpKQ"
     title="A video"
     poster={{ src: "/poster.webp", width: 1280, height: 720 }}
   />,
