@@ -24,7 +24,8 @@ export interface MoneyInputProps {
   onChange: (value: number | null) => void
   /** ISO 4217 code, e.g. `"EUR"`, `"JPY"`, `"KWD"`. */
   currency: string
-  /** BCP 47 locale used to format the shown text and to parse what is typed. Defaults to `"en"`. */
+  /** BCP 47 locale used to format the shown text and to parse what is typed. Defaults to the language of the nearest
+   * `I18nContext`, which is `"en"` without one. */
   locale?: string
   /** Smallest-unit lower bound. A parsed amount below it is refused, like unparsable text. */
   min?: number
@@ -219,7 +220,7 @@ export function MoneyInput(
     value,
     onChange,
     currency,
-    locale = "en",
+    locale: localeProp,
     min,
     max,
     name,
@@ -235,6 +236,7 @@ export function MoneyInput(
   }: MoneyInputProps,
 ): JSX.Element {
   const translator = useT()
+  const locale = localeProp ?? translator.language
   const invalidMessage = invalidMessageProp ??
     translate(translator, "MoneyInput.invalidMessage", "Enter a valid amount")
   const rangeMessage: MoneyInputRangeMessage = rangeMessageProp ??

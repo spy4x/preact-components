@@ -1,6 +1,10 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
+import { I18nContext } from "./i18n.tsx"
 import { MoneyDisplay } from "./money-display.tsx"
 
 describe("MoneyDisplay", () => {
@@ -12,6 +16,19 @@ describe("MoneyDisplay", () => {
 
   it("formats through the given locale", () => {
     expect(render(<MoneyDisplay amount={1250} currency="EUR" locale="de" />)).toContain("12,50")
+  })
+
+  it("formats in the translator's language when no locale is given", () => {
+    const russian = createTranslator({
+      language: "ru",
+      catalogs: [{ source: en, translation: ru }],
+    })
+    const html = render(
+      <I18nContext.Provider value={russian}>
+        <MoneyDisplay amount={1250} currency="EUR" />
+      </I18nContext.Provider>,
+    )
+    expect(html).toContain("12,50\u00a0€")
   })
 
   it("colours a negative amount only when colorNegative is set", () => {

@@ -186,9 +186,10 @@ export function ComparisonTable(
       )
     }
   }
+  // The sentence ends in its own full stop, so a date that ends in one ("1 октября 2026 г.") drops it.
   const date = new Intl.DateTimeFormat(locale ?? language, { dateStyle: "long", timeZone }).format(
     checkedOn,
-  )
+  ).replace(/\.$/, "")
 
   return (
     <div class={cn("flex min-w-0 max-w-full flex-col gap-4", className)}>
