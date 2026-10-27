@@ -353,6 +353,7 @@ restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the wri
 default	helper	@spy4x/preact-signals/i18n/ar	
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
+AccountMenuLanguage	type	@spy4x/preact-system	The language choice `AccountMenu` offers: `LanguageDialog`'s props without its open state, which the menu owns.
 AccountMenuTheme	type	@spy4x/preact-system	The theme preferences `AccountMenu` offers; `"system"` follows the device.
 AccountMenuUser	type	@spy4x/preact-system	The signed-in person `AccountMenu` names and draws.
 AccountTag	component	@spy4x/preact-system	The neutral role badge `AccountMenuProps.tag` draws.
@@ -477,7 +478,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1241 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1243 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
