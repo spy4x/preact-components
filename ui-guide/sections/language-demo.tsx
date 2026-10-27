@@ -1,5 +1,5 @@
 /**
- * The language state the language cards share: the
+ * The language state the `LanguagePicker`, `LanguageDialog` and `AccountMenu` cards share: the
  * library's own catalogs in every language it ships, a loading step that takes a moment, and the
  * offline and failure states a card can turn on.
  *

@@ -87,6 +87,44 @@ describe("AccountMenu", () => {
     expect(item("system")).not.toContain("aria-current")
   })
 
+  it("puts the Language item after the caller's items and before the theme, naming the language in use in itself", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        items={[{ label: "Profile", href: "/profile" }]}
+        language={{ languages: ["en", "ru"], current: "ru", onSelect: () => undefined }}
+        onThemeChange={() => undefined}
+      />,
+    )
+    const profile = html.indexOf(">Profile<")
+    const item = html.indexOf('data-e2e="account-menu-language"')
+    const theme = html.indexOf('data-e2e="account-menu-theme"')
+    expect(item).toBeGreaterThan(profile)
+    expect(theme).toBeGreaterThan(item)
+    const row = html.slice(item, html.indexOf("</button>", item))
+    expect(row).toContain("<span>Language</span>")
+    expect(row).toContain(
+      `<span class="notranslate ms-auto ps-4 text-muted" lang="ru" dir="ltr">Русский</span>`,
+    )
+    // The dialog is closed until the item is chosen.
+    expect(html).not.toContain("<dialog")
+  })
+
+  it("names the device language on the Language item while the language is automatic", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        language={{ languages: ["en", "ar"], current: null, automatic: "ar" }}
+      />,
+    )
+    expect(html).toContain(`lang="ar" dir="rtl">العربية</span>`)
+  })
+
+  it("draws no Language item without language", () => {
+    const html = render(<AccountMenu user={user} />)
+    expect(html).not.toContain('data-e2e="account-menu-language"')
+  })
+
   it("draws no theme choice and no sign out when their props are left out", () => {
     const html = render(<AccountMenu user={user} />)
     expect(html).not.toContain('data-e2e="account-menu-theme"')
