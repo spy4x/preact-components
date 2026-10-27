@@ -266,7 +266,7 @@ describe("AttachmentList under a translator", () => {
   const inRussian = (node: ComponentChildren) =>
     render(<I18nContext.Provider value={russian}>{node}</I18nContext.Provider>)
 
-  it("takes every word from the catalog, kind and percentage included", () => {
+  it("takes every word from the catalog, kind, size and percentage included", () => {
     const html = inRussian(
       <AttachmentList
         id="files"
@@ -278,7 +278,7 @@ describe("AttachmentList under a translator", () => {
     for (
       const text of [
         'aria-label="Вложения"',
-        "Изображение · 820 KB · Maya Chen",
+        "Изображение · 820 кБ · Maya Chen",
         'aria-label="Открыть tickets.png"',
         "Загрузка, 45 %",
         'aria-label="Загрузка scan.pdf"',
@@ -286,6 +286,7 @@ describe("AttachmentList under a translator", () => {
       ]
     ) expect(html).toContain(text)
     expect(html).not.toContain("Uploading")
+    expect(html).not.toContain("820 KB")
   })
 
   it("still lets the caller's labels win over the catalog", () => {

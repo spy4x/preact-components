@@ -497,7 +497,7 @@ export function FileInput(
                 {file.name}
               </span>
               <span class="shrink-0 text-xs text-muted">
-                {formatBytes(file.size)}
+                {formatBytes(file.size, translator.language)}
               </span>
               <button
                 type="button"
@@ -541,7 +541,7 @@ export function resolveLabels(labels: FileInputLabels, translator: Translator<st
           translator,
           "FileInput.tooLarge",
           `${name} is larger than ${formatBytes(maxSize)}`,
-          { name, size: formatBytes(maxSize) },
+          { name, size: formatBytes(maxSize, translator.language) },
         )),
     wrongType: labels.wrongType ??
       ((name) =>
