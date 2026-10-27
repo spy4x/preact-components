@@ -166,7 +166,7 @@
   "Kbd.then": "dann",
   "Kbd.up": "Pfeil nach oben",
   "LanguageDialog.closeLabel": "Schließen",
-  "LanguageDialog.description": "Die Sprache von Menüs, Schaltflächen und Meldungen. Datum und Zahlen richten sich nach „Formate“.",
+  "LanguageDialog.description": "Die Sprache von Menüs, Schaltflächen und Meldungen. Datumsangaben und Zahlen richten sich nach der Einstellung „Formate“.",
   "LanguageDialog.done": "Fertig",
   "LanguageDialog.title": "Sprache",
   "LanguagePicker.automatic": "Automatisch: wie auf diesem Gerät — {language}",

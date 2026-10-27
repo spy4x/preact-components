@@ -167,7 +167,7 @@
   "Kbd.then": "luego",
   "Kbd.up": "Flecha arriba",
   "LanguageDialog.closeLabel": "Cerrar",
-  "LanguageDialog.description": "El idioma de los menús, botones y mensajes. Las fechas y los números siguen «Formatos».",
+  "LanguageDialog.description": "El idioma de los menús, botones y mensajes. Las fechas y los números siguen el ajuste «Formatos».",
   "LanguageDialog.done": "Listo",
   "LanguageDialog.title": "Idioma",
   "LanguagePicker.automatic": "Automático: el de este dispositivo — {language}",
