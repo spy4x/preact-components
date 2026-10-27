@@ -566,7 +566,10 @@ export interface PlanCardProps {
    * ```
    */
   pending?: boolean
-  /** BCP 47 locale for the price and the date. Defaults to `"en"`. */
+  /**
+   * BCP 47 locale for the price and the date. Defaults to the language of the nearest
+   * `I18nContext`, which is `"en"` without a provider.
+   */
   locale?: string
   /**
    * Time zone the date is shown in. Defaults to `"UTC"`, so the server and the browser print the
@@ -631,7 +634,7 @@ export function PlanCard(
     manageAction,
     onSubmit,
     pending = false,
-    locale = "en",
+    locale,
     timeZone = "UTC",
     headingLevel = 2,
     labels,
@@ -639,6 +642,7 @@ export function PlanCard(
   }: PlanCardProps,
 ): JSX.Element {
   const translator = useT()
+  const formatLocale = locale ?? translator.language
   const words = {
     ...useLabels("PlanCard", defaultPlanCardLabels, labels, PLAN_CARD_PARAMS),
     status: { ...statusWords(translator), ...labels?.status },
@@ -651,7 +655,7 @@ export function PlanCard(
       words,
       status,
       cancelAtPeriodEnd,
-      new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone }).format(periodEnd),
+      new Intl.DateTimeFormat(formatLocale, { dateStyle: "long", timeZone }).format(periodEnd),
     )
   const warning = status === SubscriptionStatus.PastDue
     ? words.pastDue
@@ -669,7 +673,7 @@ export function PlanCard(
         {price && (
           <p class="flex flex-wrap items-baseline gap-1">
             <span class="text-xl font-semibold">
-              {formatMoney(price.amount, price.currency, locale)}
+              {formatMoney(price.amount, price.currency, formatLocale)}
             </span>
             {price.interval !== undefined && words.per[price.interval] && (
               <span class="text-sm text-muted">{words.per[price.interval]}</span>

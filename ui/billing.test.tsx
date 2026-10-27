@@ -572,3 +572,33 @@ describe("UpgradePrompt", () => {
     expect(html).toMatch(/<a [^>]*>Pläne<\/a>/)
   })
 })
+
+describe("PlanCard under a translator", () => {
+  const russian = createTranslator({ language: "ru", catalogs: [{ source: en, translation: ru }] })
+  const card = (locale?: string) =>
+    render(
+      <I18nContext.Provider value={russian}>
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Active}
+          price={{ amount: 1200, currency: "EUR", interval: BillingInterval.Month }}
+          periodEnd={periodEnd}
+          manageAction="/billing/portal"
+          locale={locale}
+        />
+      </I18nContext.Provider>,
+    )
+
+  it("formats the price and the date in the translator's language when no locale is given", () => {
+    const html = card()
+    expect(html).toContain("12,00 €")
+    expect(html).toContain("31 октября 2026 г.")
+    expect(html).not.toContain("October")
+  })
+
+  it("formats the price and the date in the caller's locale over the translator's language", () => {
+    const html = card("en")
+    expect(html).toContain("€12.00")
+    expect(html).toContain("October 31, 2026")
+  })
+})
