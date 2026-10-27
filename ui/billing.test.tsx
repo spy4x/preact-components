@@ -2,6 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { IconAlertTriangle } from "@spy4x/preact-icons"
 import { render } from "preact-render-to-string"
+import type { ComponentChildren } from "preact"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
 import {
   BillingInterval,
   PlanCard,
@@ -10,6 +12,9 @@ import {
   SubscriptionStatus,
   UpgradePrompt,
 } from "./billing.tsx"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
+import { I18nContext } from "./i18n.tsx"
 
 /** Another package's enums with the same values, the way `@spy4x/billing` would declare its own. */
 enum ForeignStatus {
@@ -293,6 +298,23 @@ describe("PricingTable", () => {
   })
 })
 
+describe("PricingTable under a translator", () => {
+  const russian = createTranslator({ language: "ru", catalogs: [{ source: en, translation: ru }] })
+  const inRussian = (node: ComponentChildren) =>
+    render(<I18nContext.Provider value={russian}>{node}</I18nContext.Provider>)
+
+  it("formats prices in the translator's language when no locale is given", () => {
+    const html = inRussian(<PricingTable plans={[proMonth]} />)
+    expect(html).toContain("Выбрать")
+    expect(html).toContain("12,00\u00a0€")
+    expect(html).not.toContain("€12.00")
+  })
+
+  it("formats prices in the caller's locale over the translator's language", () => {
+    expect(inRussian(<PricingTable plans={[proMonth]} locale="en" />)).toContain("€12.00")
+  })
+})
+
 /** 23:30 UTC on 31 October 2026: already 1 November east of UTC. */
 const periodEnd = new Date(Date.UTC(2026, 9, 31, 23, 30))
 
@@ -548,5 +570,35 @@ describe("UpgradePrompt", () => {
     expect(html).toContain("Upgrade nötig")
     expect(html).toContain("Exporte gibt es ab Pro.")
     expect(html).toMatch(/<a [^>]*>Pläne<\/a>/)
+  })
+})
+
+describe("PlanCard under a translator", () => {
+  const russian = createTranslator({ language: "ru", catalogs: [{ source: en, translation: ru }] })
+  const card = (locale?: string) =>
+    render(
+      <I18nContext.Provider value={russian}>
+        <PlanCard
+          planName="Pro"
+          status={SubscriptionStatus.Active}
+          price={{ amount: 1200, currency: "EUR", interval: BillingInterval.Month }}
+          periodEnd={periodEnd}
+          manageAction="/billing/portal"
+          locale={locale}
+        />
+      </I18nContext.Provider>,
+    )
+
+  it("formats the price and the date in the translator's language when no locale is given", () => {
+    const html = card()
+    expect(html).toContain("12,00 €")
+    expect(html).toContain("31 октября 2026 г.")
+    expect(html).not.toContain("October")
+  })
+
+  it("formats the price and the date in the caller's locale over the translator's language", () => {
+    const html = card("en")
+    expect(html).toContain("€12.00")
+    expect(html).toContain("October 31, 2026")
   })
 })

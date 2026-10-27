@@ -1,7 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
 import { type ComparisonRow, ComparisonTable } from "./comparison-table.tsx"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
+import { I18nContext } from "./i18n.tsx"
 
 const products = ["Our app", "Product A", "Product B"]
 const rows: ComparisonRow[] = [
@@ -10,8 +14,10 @@ const rows: ComparisonRow[] = [
 ]
 const checkedOn = new Date("2026-10-01T00:00:00Z")
 
-function table(extra: Partial<Parameters<typeof ComparisonTable>[0]> = {}): string {
-  return render(
+type Extra = Partial<Parameters<typeof ComparisonTable>[0]>
+
+function element(extra: Extra = {}) {
+  return (
     <ComparisonTable
       caption="How our app compares"
       products={products}
@@ -20,8 +26,12 @@ function table(extra: Partial<Parameters<typeof ComparisonTable>[0]> = {}): stri
       method="against each product's public pages."
       fit="Not for teams over fifty."
       {...extra}
-    />,
+    />
   )
+}
+
+function table(extra: Extra = {}): string {
+  return render(element(extra))
 }
 
 /** The `<td>`s of the table body, each as its markup. */
@@ -132,5 +142,26 @@ describe("ComparisonTable", () => {
     expect(() => table({ rows: [{ capability: "Sync", values: ["yes", "no"] }] })).toThrow(
       '"Sync" has 2 values for 3 products',
     )
+  })
+})
+
+describe("ComparisonTable under a translator", () => {
+  const russian = createTranslator({ language: "ru", catalogs: [{ source: en, translation: ru }] })
+  const inRussian = (extra: Extra = {}) =>
+    render(<I18nContext.Provider value={russian}>{element(extra)}</I18nContext.Provider>)
+
+  it("dates the method in the translator's language when no locale is given", () => {
+    const html = inRussian()
+    expect(html).toContain("Проверено 1 октября 2026 г.")
+    expect(html).not.toContain("October")
+  })
+
+  it("ends the Russian sentence in one full stop", () => {
+    expect(inRussian({})).toContain("Проверено 1 октября 2026 г. ")
+    expect(inRussian({})).not.toContain("г..")
+  })
+
+  it("dates the method in the caller's locale over the translator's language", () => {
+    expect(inRussian({ locale: "en" })).toContain("Проверено October 1, 2026.")
   })
 })

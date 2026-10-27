@@ -2,7 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconCheck, IconMinus, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
-import { useLabels } from "./i18n.tsx"
+import { useLabels, useT } from "./i18n.tsx"
 
 /** How far a product covers one capability. */
 export type ComparisonValue = "yes" | "partial" | "no"
@@ -77,7 +77,10 @@ export interface ComparisonTableProps {
   method: ComponentChildren
   /** Who the caller's product is not for. Omitted, no fit paragraph is drawn. */
   fit?: ComponentChildren
-  /** BCP 47 locale the date is formatted in. Defaults to `"en"`. */
+  /**
+   * BCP 47 locale the date is formatted in. Defaults to the language of the nearest `I18nContext`,
+   * which is `"en"` without a provider.
+   */
   locale?: string
   /**
    * Time zone the date is formatted in. Defaults to `"UTC"`, so the server and the browser print
@@ -164,7 +167,7 @@ export function ComparisonTable(
     checkedOn,
     method,
     fit,
-    locale = "en",
+    locale,
     timeZone = "UTC",
     labels,
     class: className,
@@ -174,6 +177,7 @@ export function ComparisonTable(
     checkedOn: ["date"],
   })
   const titleId = useId()
+  const language = useT().language
   for (const row of rows) {
     if (row.values.length !== products.length) {
       throw new Error(
@@ -182,7 +186,11 @@ export function ComparisonTable(
       )
     }
   }
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone }).format(checkedOn)
+  // The sentence ends in its own full stop, so a date that ends in one drops it:
+  // "1 октября 2026 г." → "1 октября 2026 г".
+  const date = new Intl.DateTimeFormat(locale ?? language, { dateStyle: "long", timeZone }).format(
+    checkedOn,
+  ).replace(/\.$/, "")
 
   return (
     <div class={cn("flex min-w-0 max-w-full flex-col gap-4", className)}>

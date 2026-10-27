@@ -1,8 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
 import { Field } from "./field.tsx"
 import { classifyFiles, FileInput, matchesAccept, resolveLabels } from "./file-input.tsx"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
 
 /** A minimal real `File`, the same platform primitive the browser hands the component. */
 function file(name: string, size: number, type = ""): File {
@@ -120,6 +123,16 @@ describe("resolveLabels", () => {
     expect(tooLarge("a.png", 1024)).toBe("a.png is larger than 1 KB")
     expect(wrongType("a.png")).toBe("a.png is not an accepted file type")
     expect(tooMany("a.png")).toBe("a.png was not chosen — only one file is allowed")
+  })
+
+  it("words the size limit in the translator's language", () => {
+    const russian = createTranslator({
+      language: "ru",
+      catalogs: [{ source: en, translation: ru }],
+    })
+    const { tooLarge } = resolveLabels({}, russian)
+
+    expect(tooLarge("a.png", 2 * 1024 * 1024)).toBe("a.png больше 2 МБ")
   })
 })
 

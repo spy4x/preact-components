@@ -6,13 +6,13 @@
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2.3.3": "2.3.3",
     "jsr:@hono/hono@4.13.8": "4.13.8",
-    "jsr:@spy4x/email@^1.90.0": "1.91.0",
-    "jsr:@spy4x/net@^1.90.0": "1.91.0",
-    "jsr:@spy4x/platform@1.90.0": "1.90.0",
-    "jsr:@spy4x/time@1.90.0": "1.90.0",
-    "jsr:@spy4x/time@^1.90.0": "1.90.0",
-    "jsr:@spy4x/validation@1.90.0": "1.90.0",
-    "jsr:@spy4x/validation@^1.90.0": "1.90.0",
+    "jsr:@spy4x/email@^1.95.0": "1.95.0",
+    "jsr:@spy4x/net@^1.95.0": "1.95.0",
+    "jsr:@spy4x/platform@1.95.0": "1.95.0",
+    "jsr:@spy4x/time@1.95.0": "1.95.0",
+    "jsr:@spy4x/time@^1.95.0": "1.95.0",
+    "jsr:@spy4x/validation@1.95.0": "1.95.0",
+    "jsr:@spy4x/validation@^1.95.0": "1.95.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.1",
@@ -48,8 +48,8 @@
     "jsr:@std/uuid@^1.0.9": "1.1.2",
     "npm:@axe-core/playwright@4.13.0": "4.13.0_playwright-core@1.64.0",
     "npm:@opentelemetry/api@^1.9.0": "1.10.0",
-    "npm:@preact/signals-core@^1.12.1": "1.14.4",
-    "npm:@preact/signals@^2.5.1": "2.11.3_preact@10.29.8",
+    "npm:@preact/signals-core@^1.12.1": "1.14.5",
+    "npm:@preact/signals@^2.5.1": "2.11.4_preact@10.29.8",
     "npm:@tailwindcss/oxide@4.1.12": "4.1.12",
     "npm:@types/leaflet@1.9.22": "1.9.22",
     "npm:arktype@2.2.3": "2.2.3",
@@ -114,20 +114,20 @@
     "@hono/hono@4.13.8": {
       "integrity": "bbb566d9ebb81e74c0d7eeff1f9221ba9f3fda6f1832e5ca66cbddcecb2f7fec"
     },
-    "@spy4x/email@1.91.0": {
-      "integrity": "e9525a772048e867edbcf22f84cbfd15247be25608eabefa45e6c6d5bc16626f"
+    "@spy4x/email@1.95.0": {
+      "integrity": "4409dca0486ae020b430a378c684ad0967ff14f09a418a3d4ab27e745523abf2"
     },
-    "@spy4x/net@1.91.0": {
-      "integrity": "2d4789d5bbe5b918d7e578408c2b407abc4144e04cc398364ce53414eacf7118"
+    "@spy4x/net@1.95.0": {
+      "integrity": "0d57ad488a6ad2bf19e96eabeff47065918a98630236e8c7bab83724308b6e06"
     },
-    "@spy4x/platform@1.90.0": {
-      "integrity": "c57a9be67348c3b29fc43d27c9c4b61edfef5b68413c6fa857d41a1e95383481",
+    "@spy4x/platform@1.95.0": {
+      "integrity": "5c7c96794d4c8b3ddb183d1ad2a9970c53a993e49dbab463de6bb632d33e59a5",
       "dependencies": [
         "jsr:@hono/hono",
         "jsr:@spy4x/email",
         "jsr:@spy4x/net",
-        "jsr:@spy4x/time@^1.90.0",
-        "jsr:@spy4x/validation@^1.90.0",
+        "jsr:@spy4x/time@^1.95.0",
+        "jsr:@spy4x/validation@^1.95.0",
         "jsr:@std/crypto",
         "jsr:@std/encoding@1.0.11",
         "jsr:@std/path@1.1.6",
@@ -137,11 +137,11 @@
         "npm:marked"
       ]
     },
-    "@spy4x/time@1.90.0": {
-      "integrity": "d8fd4fefa98a737b4d17cc8c52f2c06d56066f2258c959ed1c83edf3dddc291e"
+    "@spy4x/time@1.95.0": {
+      "integrity": "249aba2a12b4d1431a055f709cffccfe8f524d9b6c36de87879e854dd5cd3113"
     },
-    "@spy4x/validation@1.90.0": {
-      "integrity": "362215eac932634b28b8ec2feeac2e84cc6f18a645a944d3432e0158d06c30c2",
+    "@spy4x/validation@1.95.0": {
+      "integrity": "9e3d9a28df5965de379a6752c9bcf5426ad7a290cae12ff5963cf40e7f249fa5",
       "dependencies": [
         "npm:arktype"
       ]
@@ -397,11 +397,11 @@
     "@opentelemetry/api@1.10.0": {
       "integrity": "sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ=="
     },
-    "@preact/signals-core@1.14.4": {
-      "integrity": "sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA=="
+    "@preact/signals-core@1.14.5": {
+      "integrity": "sha512-vcRv7Ityz5JVmeiVqIluLFzT/PDS/AlhHUpw3/aUWqcVUs6bDGIPXE/6RSC4evBNWYvnniozg5Syfj33al3gkg=="
     },
-    "@preact/signals@2.11.3_preact@10.29.8": {
-      "integrity": "sha512-mttwFM98G/JiriTgMwU+UWygL6sfVmYEiNcPSKkUnv4PxPpZhmP2ugGC4qi360+ZIHyQ8NY05bfJT3b4RUIGlw==",
+    "@preact/signals@2.11.4_preact@10.29.8": {
+      "integrity": "sha512-Rb+5RPo9gWSaHtzJeauhHxiC8KP/IF2DEPkHPEOGOnuy2wnJzRqyeLRankUCYd6ADqtxS6GnWGv6Ie343d8aYw==",
       "dependencies": [
         "@preact/signals-core",
         "preact"
@@ -629,9 +629,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@spy4x/platform@1.90.0",
-      "jsr:@spy4x/time@1.90.0",
-      "jsr:@spy4x/validation@1.90.0",
+      "jsr:@spy4x/platform@1.95.0",
+      "jsr:@spy4x/time@1.95.0",
+      "jsr:@spy4x/validation@1.95.0",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/encoding@1.0.11",
       "jsr:@std/expect@1.0.20",

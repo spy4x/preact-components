@@ -1,13 +1,14 @@
 import { cn } from "@spy4x/preact-cn"
 import { formatMoney } from "@spy4x/platform/universal/money"
 import type { JSX } from "preact"
+import { useT } from "./i18n.tsx"
 
 export interface MoneyDisplayProps {
   /** Amount in `currency`'s smallest unit — `12345` is `€123.45` for `EUR`, `¥12,345` for `JPY`. */
   amount: number
   /** ISO 4217 code, e.g. `"EUR"`, `"JPY"`, `"KWD"`. */
   currency: string
-  /** BCP 47 locale for `Intl.NumberFormat`. Defaults to `"en"`. */
+  /** BCP 47 locale for `Intl.NumberFormat`. Defaults to the nearest `I18nContext`'s language. */
   locale?: string
   /** Colours a negative amount red instead of the surrounding text colour. Defaults to `false`. */
   colorNegative?: boolean
@@ -29,8 +30,9 @@ const negativeClass = "text-red-600 dark:text-red-400"
  * else — size, weight, alignment — is `class`, the same as every other primitive here.
  */
 export function MoneyDisplay(
-  { amount, currency, locale = "en", colorNegative = false, class: className }: MoneyDisplayProps,
+  { amount, currency, locale, colorNegative = false, class: className }: MoneyDisplayProps,
 ): JSX.Element {
-  const text = formatMoney(amount, currency, locale)
+  const language = useT().language
+  const text = formatMoney(amount, currency, locale ?? language)
   return <span class={cn(colorNegative && amount < 0 && negativeClass, className)}>{text}</span>
 }

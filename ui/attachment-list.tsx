@@ -2,7 +2,7 @@ import { IconDocument, IconImage, IconXMark } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { Translator } from "@spy4x/platform/universal/i18n"
 import type { JSX } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useRef, useState } from "preact/hooks"
 import { formatBytes } from "@spy4x/platform/universal/format-number"
 import { Button, buttonClasses } from "./button.tsx"
 import { Card } from "./card.tsx"
@@ -363,23 +363,27 @@ function RowBody(
   { item, words, metaId }: { item: AttachmentItem; words: AttachmentListLabels; metaId: string },
 ): JSX.Element {
   const Icon = isImage(item) ? IconImage : IconDocument
+  const language = useT().language
   const meta = item.status === "uploading"
     ? words.uploading(item.progress)
     : item.status === "waiting"
     ? words.waiting
     : item.status === "checking"
     ? words.checking
-    : [words.kind(item), formatBytes(item.size), item.detail].filter(Boolean).join(" · ")
+    : [words.kind(item), formatBytes(item.size, language), item.detail].filter(Boolean).join(" · ")
   const error = item.error ?? (item.status === "failed" ? words.failed : undefined)
+  // A thumbnail that failed to load gives way to the icon; a new `thumbnailSrc` gets its own try.
+  const [brokenSrc, setBrokenSrc] = useState<string>()
   return (
     <>
-      {item.thumbnailSrc
+      {item.thumbnailSrc && item.thumbnailSrc !== brokenSrc
         ? (
           <img
             src={item.thumbnailSrc}
             alt=""
             class="size-10 shrink-0 rounded-md object-cover"
             loading="lazy"
+            onError={() => setBrokenSrc(item.thumbnailSrc)}
           />
         )
         : (
