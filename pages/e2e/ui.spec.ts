@@ -1413,6 +1413,22 @@ function fileSpecs(): Spec[] {
       },
     },
     {
+      name: "AttachmentList: a thumbnail that fails to load gives way to the file icon",
+      pageId: "ui",
+      run: async (page) => {
+        const row = list(page).locator(`[data-e2e="attachment-row"]`, { hasText: "tickets.png" })
+        const thumbnail = row.locator("img")
+        // The thumbnail loads lazily: off screen, a new source is not even tried.
+        await thumbnail.scrollIntoViewIfNeeded()
+        // An image that cannot be decoded fails in the browser itself, with no request to answer.
+        await thumbnail.evaluate((img: HTMLImageElement) => {
+          img.src = "data:image/png;base64,AA=="
+        })
+        await thumbnail.waitFor({ state: "detached" })
+        await row.locator("span.size-10 > svg").waitFor()
+      },
+    },
+    {
       name: "AttachmentList: Download in a ready row's menu calls onDownload with that file",
       pageId: "ui",
       run: async (page) => {
