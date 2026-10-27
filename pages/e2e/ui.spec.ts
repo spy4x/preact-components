@@ -3703,6 +3703,132 @@ function dialogRowSpecs(): Spec[] {
   ]
 }
 
+/**
+ * `LanguageDialog` and `LanguagePicker`: a radio group with one tab stop that the arrow keys move
+ * and choose in, a page that switches language while the dialog stays open with focus on the
+ * chosen row, a live region that says the new language in that language, Left and Right swapped in
+ * Arabic, rows at least 44 px, and the offline and failure states.
+ */
+function languagePickerSpecs(): Spec[] {
+  /** The open dialog of the LanguageDialog card, and the parts a spec drives. */
+  const openDialog = async (page: Page) => {
+    const card = page.locator("#demo-LanguageDialog")
+    const opener = card.locator(`[data-e2e="language-dialog-open"]`)
+    await opener.scrollIntoViewIfNeeded()
+    await opener.click()
+    const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+    await dialog.waitFor()
+    const focused = page.locator(":focus")
+    return {
+      opener,
+      dialog,
+      focused,
+      /** The row named `name`, checked or not. */
+      radio: (name: string | RegExp, checked?: boolean) =>
+        dialog.getByRole("radio", { name, checked, exact: typeof name === "string" }),
+    }
+  }
+  return [
+    {
+      name:
+        "LanguageDialog: opens on the chosen row; the arrow keys move and choose within one tab stop; the dialog stays open in the new language with focus on the chosen row; the live region says the language in itself; Escape returns focus to the opener",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const { opener, dialog, focused, radio } = await openDialog(page)
+        await radio(/^Automatic: same as this device/, true).and(focused).waitFor()
+
+        for (const row of await dialog.getByRole("radio").all()) {
+          const box = await row.boundingBox()
+          if (box === null || box.height < 44) throw new Error(`a row is ${box?.height} px tall`)
+        }
+
+        await page.keyboard.press("ArrowDown")
+        await radio("English", true).and(focused).waitFor()
+        await page.keyboard.press("ArrowDown")
+        await radio("Deutsch", true).and(focused).waitFor()
+        // Loading, then the whole card in German, the dialog still open, focus still on the row.
+        await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+        await radio("Deutsch", true).and(focused).waitFor()
+        await dialog.locator(`[role="status"] [lang="de"]`).filter({ hasText: "Deutsch" }).waitFor()
+
+        await page.keyboard.press("Tab")
+        await dialog.locator(`[data-e2e="language-dialog-done"]`).and(focused).waitFor()
+        await page.keyboard.press("Shift+Tab")
+        await radio("Deutsch", true).and(focused).waitFor()
+
+        await page.keyboard.press("End")
+        await dialog.getByRole("heading", { name: "اللغة" }).waitFor()
+        await radio("العربية", true).and(focused).waitFor()
+        const direction = await dialog.evaluate((element) => getComputedStyle(element).direction)
+        if (direction !== "rtl") throw new Error(`the Arabic dialog runs ${direction}`)
+        // Right goes back up the list in a right-to-left page.
+        await page.keyboard.press("ArrowRight")
+        await radio("Русский", true).and(focused).waitFor()
+        await dialog.getByRole("heading", { name: "Язык" }).waitFor()
+
+        await page.keyboard.press("Home")
+        await dialog.getByRole("heading", { name: "Language" }).waitFor()
+        await radio(/^Automatic/, true).and(focused).waitFor()
+
+        await page.keyboard.press("Escape")
+        await dialog.waitFor({ state: "detached" })
+        await opener.and(focused).waitFor()
+        return "Automatic → English → Deutsch → العربية → Русский → Automatic, Escape back to the opener"
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name:
+        `LanguageDialog: axe finds no violation in the open dialog, in Arabic too, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const { dialog, radio } = await openDialog(page)
+        const english = await axePasses(page, [`dialog[data-e2e="language-dialog"]`])
+        await radio("العربية").click()
+        await dialog.getByRole("heading", { name: "اللغة" }).waitFor()
+        await axePasses(page, [`dialog[data-e2e="language-dialog"]`])
+        return english
+      },
+    })),
+    {
+      name:
+        "LanguagePicker: offline, the arrow keys skip the languages that cannot load; a failed load names the language in an alert and keeps the old one checked",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-LanguagePicker")
+        const focused = page.locator(":focus")
+        const radio = (name: string | RegExp, checked?: boolean) =>
+          card.getByRole("radio", { name, checked, exact: typeof name === "string" })
+        await card.scrollIntoViewIfNeeded()
+        await card.getByRole("button", { name: "Offline" }).click()
+        await radio(/^Español/).and(page.locator(":disabled")).waitFor()
+        await card.getByText("Needs a connection").first().waitFor()
+
+        // English loads, and the live region says so.
+        await radio(/^Automatic/, true).focus()
+        await page.keyboard.press("ArrowDown")
+        await radio("English", true).and(focused).waitFor()
+        await card.locator(`[role="status"] [lang="en"]`).filter({ hasText: "English" }).waitFor()
+
+        // Deutsch fails: an alert names it, English stays checked, focus stays on Deutsch.
+        await card.getByRole("button", { name: "Loading fails" }).click()
+        await radio("English", true).focus()
+        await page.keyboard.press("ArrowDown")
+        await card.getByRole("alert").filter({
+          hasText: "Could not load Deutsch. Check your connection and try again.",
+        }).waitFor()
+        await radio("English", true).waitFor()
+        await radio("Deutsch", false).and(focused).waitFor()
+        // The next row down is Русский: Español and Português (Brasil) are skipped.
+        await page.keyboard.press("ArrowDown")
+        await radio("Русский").and(focused).waitFor()
+        return "Español and Português (Brasil) skipped; Deutsch failed and English stayed"
+      },
+    },
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...dialogRowSpecs(),
   ...filterBarSpecs(),
@@ -4159,6 +4285,7 @@ export const specs: readonly Spec[] = [
     },
   })),
   ...radioChipsSpecs(),
+  ...languagePickerSpecs(),
   ...colorFieldSpecs(),
   ...themePreviewSpecs(),
   ...unsavedHistorySpecs(),
