@@ -280,6 +280,43 @@ function invalidFieldSpec(what: string, selector: string, colorScheme: "light" |
   }
 }
 
+/** What a type page's elements draw with, and whether the page loaded the Arabic face. */
+interface TypeProbe {
+  /** `FontFace.status` of every face named "Noto Sans Arabic" on the page. */
+  arabicFace: string[]
+  /** Whether the browser fetched the face's file, by the page's resource timing. */
+  fetched: boolean
+  headingTracking: string
+  bodyLineHeight: string
+  emphasisStyle: string
+  slantedStyle: string
+}
+
+/**
+ * Open a type page (`pages/src/type-page.ts`) and read it once every font it asked for is in.
+ *
+ * @param page The spec's page, on the guide.
+ * @param path `type-demo/` or `type-demo/latin.html`.
+ */
+async function probeTypePage(page: Page, path: string): Promise<TypeProbe> {
+  await page.goto(new URL(path, page.url()).href)
+  return await page.evaluate(async () => {
+    await document.fonts.ready
+    const style = (e2e: string) =>
+      getComputedStyle(document.querySelector(`[data-e2e="${e2e}"]`) as Element)
+    return {
+      arabicFace: [...document.fonts].filter((face) => face.family.includes("Noto Sans Arabic"))
+        .map((face) => face.status),
+      fetched: performance.getEntriesByType("resource")
+        .some((entry) => entry.name.includes("noto-sans-arabic")),
+      headingTracking: style("type-heading").letterSpacing,
+      bodyLineHeight: style("type-body").lineHeight,
+      emphasisStyle: style("type-emphasis").fontStyle,
+      slantedStyle: style("type-slanted").fontStyle,
+    }
+  })
+}
+
 export const specs: readonly Spec[] = [
   scrollRegionSpec({
     what: "the `.pc-scrollbar` card's row of months",
@@ -426,6 +463,49 @@ export const specs: readonly Spec[] = [
     },
   },
   inputIconHoverSpec(),
+  {
+    name: "an Arabic page draws in the Arabic face, with no tracking, a taller line and no italic",
+    pageId: "theme",
+    run: async (page) => {
+      const seen = await probeTypePage(page, "type-demo/")
+      const wrong = [
+        !seen.arabicFace.includes("loaded") && `the Arabic face is ${seen.arabicFace.join(", ")}`,
+        !seen.fetched && "the Arabic face's file was not fetched",
+        !["normal", "0px"].includes(seen.headingTracking) &&
+        `a tracking-tight heading is spaced ${seen.headingTracking}`,
+        seen.bodyLineHeight !== "28px" && `a text-base line is ${seen.bodyLineHeight}, not 28px`,
+        seen.emphasisStyle !== "normal" && `em is ${seen.emphasisStyle}`,
+        seen.slantedStyle !== "normal" && `the italic class is ${seen.slantedStyle}`,
+      ].filter(Boolean)
+      if (wrong.length > 0) throw new Error(wrong.join("; "))
+      const axe = await new AxeBuilder({ page }).analyze()
+      if (axe.violations.length > 0) {
+        throw new Error(
+          `axe: ${axe.violations.map((v) => `${v.id} (${v.nodes.length})`).join(", ")}`,
+        )
+      }
+      return `face ${seen.arabicFace.join(", ")}, line ${seen.bodyLineHeight}, tracking ` +
+        `${seen.headingTracking}, axe clean`
+    },
+  },
+  {
+    name: "a page with no Arabic letter never downloads the Arabic face, and keeps its tracking",
+    pageId: "theme",
+    run: async (page) => {
+      const seen = await probeTypePage(page, "type-demo/latin.html")
+      const wrong = [
+        seen.arabicFace.length === 0 && "the page declares no Arabic face to leave unloaded",
+        seen.arabicFace.some((status) => status !== "unloaded") &&
+        `the Arabic face is ${seen.arabicFace.join(", ")}`,
+        seen.fetched && "the Arabic face's file was fetched",
+        ["normal", "0px"].includes(seen.headingTracking) &&
+        "a tracking-tight heading lost its tracking outside Arabic",
+        seen.emphasisStyle !== "italic" && `em is ${seen.emphasisStyle} outside Arabic`,
+      ].filter(Boolean)
+      if (wrong.length > 0) throw new Error(wrong.join("; "))
+      return `face ${seen.arabicFace.join(", ")}, tracking ${seen.headingTracking}`
+    },
+  },
 ]
 
 /**

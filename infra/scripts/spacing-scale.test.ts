@@ -1,5 +1,5 @@
 /**
- * Holds this repository's own packages to the spacing scale (#331): every padding, margin, gap,
+ * Holds this repository's own packages to the spacing scale (#331), and to logical sides (#876): every padding, margin, gap,
  * `space-x/y` and scroll margin/padding class in them uses a step from `SPACING_STEPS`, never an
  * arbitrary value. There is no allow-list: a component that needs an off-scale value takes the
  * nearest step. `docs/spacing.md` has the rule; `@spy4x/preact-theme/spacing` has the checker.
@@ -12,7 +12,7 @@
 
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { findOffScaleSpacing } from "../../theme/spacing.ts"
+import { findOffScaleSpacing, findPhysicalDirection } from "../../theme/spacing.ts"
 import { guardFiles } from "../../theme/spacing-runner.ts"
 import { ROOT, workspaceMembers } from "./workspace.ts"
 
@@ -104,5 +104,110 @@ describe("spacing scale", () => {
       .toEqual([
         "ui/b.tsx:2:28 sm:mt-5 — step 5 is not on the scale (0 px 1 2 3 4 6 8 12 16)",
       ])
+  })
+})
+
+/**
+ * Files that still name a physical side (`ml-`, `left-`, `text-right`, `border-l` and the rest),
+ * which do not flip on a right-to-left page. Steps 3 and 4 of #876 convert them to logical classes
+ * and delete each file from this list as they go; the list only shrinks, and #876 closes with it
+ * empty. Every other file is held to logical sides now.
+ */
+const PHYSICAL_SIDES_LEFT = [
+  "charts/bars.tsx",
+  "charts/donut-chart.tsx",
+  "charts/dot-plot.tsx",
+  "charts/line-chart.tsx",
+  "crud/association-editor.tsx",
+  "crud/crud-editor.tsx",
+  "crud/crud-list.tsx",
+  "crud/deletion-validation.tsx",
+  "crud/examples/regions.tsx",
+  "map/map.tsx",
+  "pages/src/crud-list-url.tsx",
+  "system/account-menu.tsx",
+  "system/app-shell.tsx",
+  "system/auth-form.tsx",
+  "system/calendar.tsx",
+  "system/rail-parts.tsx",
+  "system/rail.tsx",
+  "system/settings-layout.tsx",
+  "system/shell.tsx",
+  "system/sw-updater.tsx",
+  "ui/attachment-list.tsx",
+  "ui/checkbox.tsx",
+  "ui/color-field.tsx",
+  "ui/combobox.tsx",
+  "ui/command-palette.tsx",
+  "ui/comparison-table.tsx",
+  "ui/data-table.tsx",
+  "ui/date-range-picker.tsx",
+  "ui/dropdown.tsx",
+  "ui/explorable.tsx",
+  "ui/field.tsx",
+  "ui/file-input.tsx",
+  "ui/filter-bar.tsx",
+  "ui/frame-chrome.tsx",
+  "ui-guide/card.tsx",
+  "ui-guide/instructions.tsx",
+  "ui-guide/mini-app.tsx",
+  "ui-guide/overview.tsx",
+  "ui-guide/sections/crud.tsx",
+  "ui-guide/sections/display.tsx",
+  "ui-guide/sections/forms.tsx",
+  "ui-guide/sections/surfaces.tsx",
+  "ui-guide/sections/system.tsx",
+  "ui-guide/shell.tsx",
+  "ui/hotkey-hint.tsx",
+  "ui/input-button.tsx",
+  "ui/lightbox.tsx",
+  "ui/list-field.tsx",
+  "ui/notice.tsx",
+  "ui/on-off-buttons.tsx",
+  "ui/page-header.tsx",
+  "ui/screen-tour.tsx",
+  "ui/slider.tsx",
+  "ui/sortable-list.tsx",
+  "ui/steps.tsx",
+  "ui/tag-input.tsx",
+  "ui/timeline.tsx",
+  "ui/tldr-box.tsx",
+  "ui/toastr.tsx",
+  "ui/toggle-field.tsx",
+  "ui/tooltip.tsx",
+  "ui/tour.tsx",
+]
+
+/** One line per class in `files` that names a physical side: `path:line:column class → logical`. */
+async function physicalSides(files: string[]): Promise<string[]> {
+  const found: string[] = []
+  for (const path of files) {
+    for (
+      const { line, column, className, logical } of findPhysicalDirection(await readSource(path))
+    ) {
+      found.push(`${path}:${line}:${column} ${className} → ${logical}`)
+    }
+  }
+  return found
+}
+
+describe("logical sides", () => {
+  it("finds no class naming a physical side outside the files #876 has yet to convert", async () => {
+    const files = await sourceFiles()
+    expect(await physicalSides(files.filter((path) => !PHYSICAL_SIDES_LEFT.includes(path))))
+      .toEqual([])
+    const left = await physicalSides(PHYSICAL_SIDES_LEFT)
+    console.log(
+      `${left.length} physical side(s) left in ${PHYSICAL_SIDES_LEFT.length} file(s), #876`,
+    )
+  })
+
+  it("lists only files that exist and still name a physical side", async () => {
+    const files = await sourceFiles()
+    const stale: string[] = []
+    for (const path of PHYSICAL_SIDES_LEFT) {
+      if (!files.includes(path) || (await physicalSides([path])).length === 0) stale.push(path)
+    }
+    expect(stale).toEqual([])
   })
 })

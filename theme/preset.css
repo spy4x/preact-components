@@ -66,6 +66,51 @@
   }
 }
 
+/*
+ * Arabic type (#876, docs/design-language.md → "Type"). Arabic letters join, so any tracking pulls
+ * a word apart: every `tracking-*` step reads 0 here, and so does the inherited letter-spacing.
+ * Arabic's marks sit above and below the line, so each `text-*` size gets a line about a quarter
+ * rem taller, and the body 1.75rem. Arabic has no italic: a slanted Arabic face is a synthetic
+ * oblique that reads as broken, so `em`, `i` and the `italic` class stay upright. The variables
+ * apply because Tailwind's `tracking-*` and `text-*` read them where they are used.
+ */
+@layer base {
+  :where(.theme-base, .theme-base *):lang(ar) {
+    letter-spacing: 0;
+    font-style: normal;
+    --tracking-tighter: 0em;
+    --tracking-tight: 0em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0em;
+    --tracking-wider: 0em;
+    --tracking-widest: 0em;
+    --text-xs--line-height: calc(1.25 / 0.75);
+    --text-sm--line-height: calc(1.5 / 0.875);
+    --text-base--line-height: 1.75;
+    --text-lg--line-height: calc(2 / 1.125);
+    --text-xl--line-height: calc(2 / 1.25);
+    --text-2xl--line-height: calc(2.25 / 1.5);
+    --text-3xl--line-height: calc(2.5 / 1.875);
+    --text-4xl--line-height: calc(2.75 / 2.25);
+    --text-5xl--line-height: 1.15;
+    --text-6xl--line-height: 1.15;
+    --text-7xl--line-height: 1.15;
+    --text-8xl--line-height: 1.15;
+    --text-9xl--line-height: 1.15;
+  }
+
+  .theme-base:lang(ar) {
+    line-height: 1.75rem;
+  }
+}
+
+/* The `italic` class sits in the utilities layer, so only a rule there keeps Arabic upright. */
+@layer utilities {
+  :where(.theme-base, .theme-base *):lang(ar) {
+    font-style: normal;
+  }
+}
+
 /* #region Colour atoms */
 
 /*
@@ -468,7 +513,7 @@
 }
 
 @utility list-ul {
-  @apply list-disc list-inside text-sm space-y-1 pl-1;
+  @apply list-disc list-inside text-sm space-y-1 ps-1;
 }
 
 /*
@@ -520,10 +565,10 @@
     @apply rounded-sm bg-hover px-1 py-px font-mono text-sm;
   }
   & :where(ul) {
-    @apply list-disc pl-6;
+    @apply list-disc ps-6;
   }
   & :where(ol) {
-    @apply list-decimal pl-6;
+    @apply list-decimal ps-6;
   }
   & :where(li)::marker {
     color: var(--color-muted-foreground, oklch(0.446 0.03 256.802));
@@ -536,7 +581,7 @@
       whitespace-pre-wrap wrap-anywhere;
   }
   & :where(blockquote) {
-    @apply border-l-2 border-strong pl-4 text-muted;
+    @apply border-s-2 border-strong ps-4 text-muted;
   }
   & :where(blockquote > * + *) {
     @apply mt-2;
@@ -560,7 +605,7 @@
     @apply w-full border-collapse text-sm;
   }
   & :where(th, td) {
-    @apply border-b border-subtle px-3 py-2 text-left align-top wrap-anywhere;
+    @apply border-b border-subtle px-3 py-2 text-start align-top wrap-anywhere;
   }
   & :where(th) {
     @apply font-medium;
