@@ -4888,12 +4888,12 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twenty-seven exports.** Most components pass a caller's
+- **A `class` is merged, except on twenty-eight exports.** Most components pass a caller's
   `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
   of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
   `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `DialogActions`, `YouTubeVideo`,
   `ScreenTour`, `PricingTable`, `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its
-  `optionsClass`), `CommandPalette`,
+  `optionsClass`), `CommandPalette`, `LanguagePicker`,
   `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
   `Slider` (#958) use `join`
   instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
@@ -4905,11 +4905,11 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
   the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Fourteen of this package's exports load it — counted once, by hand, by walking
+  component itself. Fifteen of this package's exports load it — counted once, by hand, by walking
   each subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four
   components themselves — `./button`'s only other export is `buttonClasses`, so a caller who imports
   that alone still installs the hook; the package root (`.`), which carries every export;
-  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./modal`, `./on-off-buttons` and
+  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./language-picker`, `./modal`, `./on-off-buttons` and
   `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses
   `buttonClasses` without ever rendering a `Button`; and `./copy-block` and `./data-table`, which
   load it transitively — through `./copy-button` and `./pagination` respectively.
@@ -4985,6 +4985,8 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                                                                                                                                            |
 | `Link`                | `link`                 | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                                                                                                                                                                                               |
 | `ListField`           | `list-field`           | `id`, `label` (the `<legend>`), `value` (`string[]`), `onChange`, `max?`, `maxLength?`, `name?`, `placeholder?`, `hint?`, `error?`, `disabled?`, `labels?` — Enter adds a line, Backspace in an empty one removes it                                                                                                                                                |
+| `LanguageDialog`      | `language-picker`      | `open`, `onClose`, `languages`, `current`, `onSelect`, `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?`, `pickerLabels?` — a `Modal` holding the list; a choice applies at once and the dialog stays open                                                                                                                                             |
+| `LanguagePicker`      | `language-picker`      | `languages` (tags), `current` (`null` = automatic), `mode?` (`"list"` radio group or `"links"`), `href?` (links), `onSelect?` (list), `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?` — each language by its own name; links work without JavaScript                                                                                                 |
 | `LoadingSkeleton`     | `loading-skeleton`     | `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion                                                                                                                                                                                                                                               |
 | `LoadingSpinner`      | `loading-spinner`      | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion                                                                                                                                                                                                                                            |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`                                                                                                                                                                                                                                |
@@ -6928,6 +6930,29 @@ so the markup works server-rendered with JavaScript off. `defaultValue` checks a
 markup; an island can pass `value` and `onChange` instead. An option's `id` lets page CSS read
 `:has(#id:checked)`, and its `inputAttributes` (analytics `data-*`, say) go on the radio.
 
+## LanguagePicker and LanguageDialog
+
+Every language is named in itself, from `Intl.DisplayNames`, with its first letter capitalised the
+way that language does it ("русский" becomes "Русский") and `lang` and `dir` on the name, so a
+person who landed in a language they cannot read still finds their own.
+
+`mode="list"` is a radio group for an app: one tab stop on the chosen row, the arrow keys move and
+choose (Left and Right swap in a right-to-left page), Home and End go to the ends. `onSelect` gets
+the tag, or `null` for the "Automatic" row that `automatic` (the device's language) adds first.
+While the app loads a language, `pending` puts a spinner on its row and a live region says
+"Loading …"; once `current` changes, the region says the new language's name in that language.
+`unavailable` disables languages that cannot load now, with "Needs a connection" under each, and
+`failed` names one that could not load under the list. Rows are at least 44 px and wrap.
+
+`mode="links"` is a `<nav>` of plain `<a href hreflang lang>` links, `href(tag)` giving each
+address, with `aria-current="page"` on the current one: a website's footer, working with JavaScript
+off.
+
+`LanguageDialog` puts the list in a `Modal`. A choice applies at once and the dialog stays open in
+the new language, so a wrong tap is undone with one more; Done closes it. It opens with focus on
+the chosen row, which keeps focus through every switch. `AccountMenu` (`system/`) opens it from its
+`language` item.
+
 ## ThemePreview
 
 A Dark / Light `RadioChips` pair, dark by default, over a frame whose children are a slot. The app
@@ -7588,6 +7613,11 @@ components and tests means exactly that: nothing outside this package should bui
 - `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage)` is exported
   for the package's own components and tests: the value and message one edit of a `MoneyInput`
   produces.
+
+### LanguagePicker (`./language-picker`)
+
+- `languageName(tag)` is a language's name in that language, first letter capitalised for it:
+  `"Русский"` for `"ru"`; a tag `Intl` cannot read comes back unchanged.
 
 ### Link (`./link`)
 
