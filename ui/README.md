@@ -2073,8 +2073,7 @@ off.
 
 `LanguageDialog` puts the list in a `Modal`. A choice applies at once and the dialog stays open in
 the new language, so a wrong tap is undone with one more; Done closes it. It opens with focus on
-the chosen row, which keeps focus through every switch. `AccountMenu` (`system/`) opens it from its
-`language` item.
+the chosen row, which keeps focus through every switch.
 
 ## ThemePreview
 
