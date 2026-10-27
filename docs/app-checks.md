@@ -23,6 +23,11 @@ registerSpacingTests({
 })
 ```
 
+An app whose pages can be right to left adds `logicalDirection: true`: a second test then fails on
+every class that names a physical side (`ml-`, `left-`, `text-right`, `border-l` and the rest) and
+names the logical class to write instead ([`theme/README.md`](../theme/README.md), "Logical
+sides").
+
 ## The screen boundary guard
 
 `registerBoundaryTests` from `@spy4x/preact-system/boundary-runner` registers a test that holds

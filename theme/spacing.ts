@@ -165,3 +165,88 @@ export function findOffScaleSpacing(source: string): SpacingViolation[] {
   })
   return violations
 }
+
+/** One class that names a physical side, and the logical class that replaces it. */
+export interface DirectionViolation extends SpacingViolation {
+  /** The class to write instead, with the variants, `!` and `-` kept. */
+  logical: string
+}
+
+/**
+ * Each physical utility and the logical one that follows the page's `dir` instead. Built from parts,
+ * so this file holds no class-shaped word for Tailwind's scanner to emit CSS for.
+ */
+const LOGICAL: Readonly<Record<string, string>> = Object.fromEntries([
+  ...["m", "p", "scroll-m", "scroll-p"].flatMap((base) => [
+    [`${base}l`, `${base}s`],
+    [`${base}r`, `${base}e`],
+  ]),
+  ["left", "start"],
+  ["right", "end"],
+  ...["text", "float", "clear"].flatMap((base) => [
+    [`${base}-left`, `${base}-start`],
+    [`${base}-right`, `${base}-end`],
+  ]),
+  ...Object.entries({ l: "s", r: "e", tl: "ss", tr: "se", bl: "es", br: "ee" })
+    .map(([side, logical]) => [`rounded-${side}`, `rounded-${logical}`]),
+  ...[["l", "s"], ["r", "e"]].map(([side, logical]) => [`border-${side}`, `border-${logical}`]),
+])
+
+/** A spacing value: a number, `px`, `auto` or an arbitrary one. */
+const SPACING_VALUE = String.raw`\d+(?:\.\d+)?|px|auto|\[[^\]\s]*\]|\([^)\s]*\)`
+
+/** An inset value: a spacing value, `full` or a fraction such as `1/2`. */
+const INSET_VALUE = String.raw`\d+\/\d+|full|${SPACING_VALUE}`
+
+/** Any value a radius or border class takes: `lg`, `2`, `red-500/50`, `[3px]`. */
+const ANY_VALUE = String.raw`[\w.]+(?:[\-\/][\w.]+)*|\[[^\]\s]*\]|\([^)\s]*\)`
+
+/**
+ * A class that names a left or right side, with {@link VARIANTS}, `!` and `-` as in {@link CLASS}.
+ * Group 4 is the utility. Margin, padding and inset need a value, so prose such as "left-hand" or
+ * "right-click" is not a class.
+ */
+const PHYSICAL_CLASS = new RegExp(
+  START + VARIANTS + String.raw`(!?)(-?)(` +
+    String.raw`(?:scroll-)?[mp][lr](?=-(?:${SPACING_VALUE})(?![\w\-%\/\[(]|\.\d))` +
+    String.raw`|(?:left|right)(?=-(?:${INSET_VALUE})(?![\w\-%\/\[(]|\.\d))` +
+    String.raw`|(?:text|float|clear)-(?:left|right)(?![\w\-%\/\[(])` +
+    String.raw`|rounded-[tb]?[lr](?=(?:-(?:${ANY_VALUE}))?(?![\w\-%\/\[(]))` +
+    String.raw`|border-[lr](?=(?:-(?:${ANY_VALUE}))?(?![\w\-%\/\[(]))` +
+    String.raw`)((?:-(?:${ANY_VALUE}))?)(!?)(?![\w\-%\/\[(]|\.\d)`,
+  "g",
+)
+
+/** A variant chain that already picks a direction: `rtl:` or `ltr:`. */
+const DIRECTION_VARIANT = /(?:^|:)(?:rtl|ltr):/
+
+/**
+ * Finds every class in `source` that names a physical side, so it stays on the left or right
+ * whatever the page's `dir` is: left and right margin and padding and their scroll forms, the
+ * `left` and `right` insets, left and right text alignment, `float` and `clear`, a radius on a left
+ * or right side or corner, and a left or right border. Each finding names the logical class that
+ * follows `dir` instead: `ms-`, `pe-`, `start-`, `end-`, `text-start`, `rounded-s`, `border-e`.
+ *
+ * A class behind an `rtl:` or `ltr:` variant is left alone: it already says which direction it is
+ * for. `source` is read the way {@link findOffScaleSpacing} reads it, comments included. Like it,
+ * it cannot see a raw CSS declaration, an inline `style` or a class built at run time.
+ */
+export function findPhysicalDirection(source: string): DirectionViolation[] {
+  const violations: DirectionViolation[] = []
+  source.split("\n").forEach((text, index) => {
+    for (const match of text.matchAll(PHYSICAL_CLASS)) {
+      const [className, variants, important, negative, utility, value, trailing] = match
+      if (DIRECTION_VARIANT.test(variants)) continue
+      const logical = `${variants}${important}${negative}${LOGICAL[utility]}${value}${trailing}`
+      violations.push({
+        line: index + 1,
+        column: (match.index ?? 0) + 1,
+        className,
+        logical,
+        reason:
+          `${utility} is a physical side, which does not flip under dir="rtl"; use ${logical}`,
+      })
+    }
+  })
+  return violations
+}

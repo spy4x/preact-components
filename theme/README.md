@@ -362,11 +362,12 @@ Padding, margin, gap, `space-x`/`space-y` and scroll margin/padding use one fixe
 the named gaps, the no-outer-margin rule and a page built from the layout components — is in
 [`docs/spacing.md`](../docs/spacing.md).
 
-| Export                        | What it is                                                                                                |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `SPACING_STEPS`               | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                                              |
-| `SPACING_GAPS`                | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12`                     |
-| `findOffScaleSpacing(source)` | every off-scale or arbitrary spacing class, spacing arbitrary property and `--spacing()` call in `source` |
+| Export                          | What it is                                                                                                |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `SPACING_STEPS`                 | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                                              |
+| `SPACING_GAPS`                  | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12`                     |
+| `findOffScaleSpacing(source)`   | every off-scale or arbitrary spacing class, spacing arbitrary property and `--spacing()` call in `source` |
+| `findPhysicalDirection(source)` | every class in `source` that names a physical side, with the logical class to write instead               |
 
 `findOffScaleSpacing` returns one `{ line, column, className, reason }` per finding, with the
 variant prefix and any `-` kept in `className` (`sm:-mt-4`). Besides spacing classes it reports an
@@ -406,6 +407,29 @@ imports no test framework: you pass your own `test` function, and a failure is a
   `DEFAULT_SPACING_EXTENSIONS` is `.ts`, `.tsx`, `.css` and `.html`.
 - `SpacingRunnerOptions` and `GuardWalkOptions` type the options, `GuardTest` the test function and
   `GuardFileSystem` the reader passed as `fs` (Deno's file system by default).
+
+### Logical sides
+
+A class that names a left or right side stays there when the page is right to left (`dir="rtl"`,
+for Arabic or Hebrew). Write the logical class instead; under `dir="ltr"` it draws exactly the same:
+
+| Physical                                      | Logical                                |
+| --------------------------------------------- | -------------------------------------- |
+| `ml-` `mr-` `pl-` `pr-` (and `scroll-` forms) | `ms-` `me-` `ps-` `pe-`                |
+| `left-` `right-`                              | `start-` `end-`                        |
+| `text-left` `text-right`                      | `text-start` `text-end`                |
+| `float-left`, `clear-right` and the like      | `float-start`, `clear-end`             |
+| `rounded-l` `rounded-r` `rounded-tl` …        | `rounded-s` `rounded-e` `rounded-ss` … |
+| `border-l` `border-r`                         | `border-s` `border-e`                  |
+
+`findPhysicalDirection(source)` returns one `{ line, column, className, logical, reason }` per
+physical class (`DirectionViolation`), reading text the way `findOffScaleSpacing` does. A class
+behind an `rtl:` or `ltr:` variant is not reported: it already says which direction it is for.
+`registerSpacingTests({ ..., logicalDirection: true })` registers a second test that fails on each
+one; it is off by default, because an app that only ever renders left to right loses nothing.
+
+This repository holds its own packages to it in `infra/scripts/spacing-scale.test.ts`, with a list
+of the files that still have physical classes until #876 converts them.
 
 Leave test files out: they spell out classes to assert on. Comments are read, because Tailwind's
 own scanner reads them and emits CSS for a class it finds there; a word counts only when it has the

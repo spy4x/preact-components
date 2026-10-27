@@ -1,6 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { findOffScaleSpacing, SPACING_GAPS, SPACING_STEPS } from "./spacing.ts"
+import {
+  findOffScaleSpacing,
+  findPhysicalDirection,
+  SPACING_GAPS,
+  SPACING_STEPS,
+} from "./spacing.ts"
 
 /** The classes `findOffScaleSpacing` reports in `source`, in order. */
 function flagged(source: string): string[] {
@@ -188,5 +193,104 @@ describe("findOffScaleSpacing", () => {
     const source = 'const sizes = { sm: `px-2.5 py-1.5`, md: "px-4 py-2" }\n' +
       '<div class={`flex ${open ? "gap-5" : "gap-4"}`} />'
     expect(flagged(source)).toEqual(["px-2.5", "py-1.5", "gap-5"])
+  })
+})
+
+/** Each physical class `findPhysicalDirection` reports in `source`, beside its logical class. */
+function physical(source: string): string[] {
+  return findPhysicalDirection(source).map((v) => `${v.className} → ${v.logical}`)
+}
+
+describe("findPhysicalDirection", () => {
+  it("names the logical class for every physical margin, padding and scroll side", () => {
+    expect(physical(`<div class="ml-2 mr-auto pl-4 pr-px scroll-ml-4 scroll-pr-2">`)).toEqual([
+      "ml-2 → ms-2",
+      "mr-auto → me-auto",
+      "pl-4 → ps-4",
+      "pr-px → pe-px",
+      "scroll-ml-4 → scroll-ms-4",
+      "scroll-pr-2 → scroll-pe-2",
+    ])
+  })
+
+  it("names the logical class for every left and right inset", () => {
+    expect(physical(`<i class="left-0 right-1.5 left-1/2 right-full left-[3px] right-(--x)">`))
+      .toEqual([
+        "left-0 → start-0",
+        "right-1.5 → end-1.5",
+        "left-1/2 → start-1/2",
+        "right-full → end-full",
+        "left-[3px] → start-[3px]",
+        "right-(--x) → end-(--x)",
+      ])
+  })
+
+  it("names the logical class for text alignment, float and clear", () => {
+    expect(physical(`<p class="text-left text-right float-left float-right clear-left">`))
+      .toEqual([
+        "text-left → text-start",
+        "text-right → text-end",
+        "float-left → float-start",
+        "float-right → float-end",
+        "clear-left → clear-start",
+      ])
+  })
+
+  it("names the logical class for a one-sided radius and border, with or without a value", () => {
+    expect(
+      physical(`<b class="rounded-l rounded-r-lg rounded-tl-none rounded-br-[4px] rounded-bl">`),
+    ).toEqual([
+      "rounded-l → rounded-s",
+      "rounded-r-lg → rounded-e-lg",
+      "rounded-tl-none → rounded-ss-none",
+      "rounded-br-[4px] → rounded-ee-[4px]",
+      "rounded-bl → rounded-es",
+    ])
+    expect(physical(`<b class="border-l border-r-2 border-l-red-500/50 border-r-transparent">`))
+      .toEqual([
+        "border-l → border-s",
+        "border-r-2 → border-e-2",
+        "border-l-red-500/50 → border-s-red-500/50",
+        "border-r-transparent → border-e-transparent",
+      ])
+  })
+
+  it("keeps variants, a negative sign and the important mark in the logical class", () => {
+    expect(physical(`<a class="sm:-ml-4 hover:!pr-2 lg:last:pr-0 focus:left-4! @max-md:pr-0">`))
+      .toEqual([
+        "sm:-ml-4 → sm:-ms-4",
+        "hover:!pr-2 → hover:!pe-2",
+        "lg:last:pr-0 → lg:last:pe-0",
+        "focus:left-4! → focus:start-4!",
+        "@max-md:pr-0 → @max-md:pe-0",
+      ])
+  })
+
+  it("accepts logical classes, both-sides classes and other words that share a prefix", () => {
+    const source = `<div class="ms-2 me-auto ps-4 pe-px start-0 end-full text-start text-end ` +
+      `rounded-s rounded-ee-lg border-s border-e-2 px-4 mx-auto inset-x-0 rounded-lg ` +
+      `border-lime-500 text-lg space-x-2 float-start">`
+    expect(physical(source)).toEqual([])
+  })
+
+  it("accepts prose that names a side without a class's value", () => {
+    expect(physical(`// a left-hand menu; right-click it; the left-to-right order; top-left`))
+      .toEqual([])
+  })
+
+  it("accepts a physical class behind an rtl or ltr variant, which already picks a direction", () => {
+    expect(physical(`<i class="rtl:mr-2 ltr:ml-2 md:rtl:left-0 rtl:text-right">`)).toEqual([])
+  })
+
+  it("reports the line, the column and a reason naming the logical class", () => {
+    expect(findPhysicalDirection(`const a = 1\n  <p class="text-sm pl-4">`)).toEqual([
+      {
+        line: 2,
+        column: 21,
+        className: "pl-4",
+        logical: "ps-4",
+        reason: `pl is a physical side, which does not flip under dir="rtl"; use ps-4`,
+      },
+    ])
   })
 })

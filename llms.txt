@@ -482,12 +482,14 @@ INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
+DirectionViolation	type	@spy4x/preact-theme/spacing	One class that names a physical side, and the logical class that replaces it.
 SPACING_GAPS	constant	@spy4x/preact-theme/spacing	The named gaps a layout component offers, and the step each one stands for: 0, 4, 8, 16, 24, 32 and 48 px.
 SPACING_STEPS	constant	@spy4x/preact-theme/spacing	Every spacing step a class may use, smallest first: 0, 1 px, then 4, 8, 12, 16, 24, 32, 48 and 64 px (Tailwind's step times 4 px).
 SpacingGap	type	@spy4x/preact-theme/spacing	A named gap: a key of `SPACING_GAPS`.
 SpacingStep	type	@spy4x/preact-theme/spacing	One of `SPACING_STEPS`.
 SpacingViolation	type	@spy4x/preact-theme/spacing	One spacing class that breaks the scale, and where it is.
 findOffScaleSpacing	helper	@spy4x/preact-theme/spacing	Finds every spacing class in `source` that uses a step outside `SPACING_STEPS` or an arbitrary value, written in square brackets or as a custom property in parentheses; every arbitrary property that sets padding, margin, a gap or their scroll forms; and every use of Tailwind's spacing function whose argument is not a numeric step.
+findPhysicalDirection	helper	@spy4x/preact-theme/spacing	Finds every class in `source` that names a physical side, so it stays on the left or right whatever the page's `dir` is: left and right margin and padding and their scroll forms, the `left` and `right` insets, left and right text alignment, `float` and `clear`, a radius on a left or right side or corner, and a left or right border.
 DEFAULT_SKIPPED_DIRECTORIES	constant	@spy4x/preact-theme/spacing-runner	Directory names a guard does not descend into by default: installed packages, build output and caches, which hold compiled classes and bundled code rather than source.
 DEFAULT_SPACING_EXTENSIONS	constant	@spy4x/preact-theme/spacing-runner	The file extensions the spacing guard reads by default.
 GuardFileSystem	type	@spy4x/preact-theme/spacing-runner	The file access a guard needs: the three reading methods of `FileSystemPort` from `@spy4x/platform/server/ports`.
