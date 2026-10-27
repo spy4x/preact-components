@@ -523,6 +523,11 @@ preactThemeCss	helper	@spy4x/preact-theme/vite	Gives the app's stylesheet the `@
 requireComponentCss	helper	@spy4x/preact-theme/vite	Fails `vite build` when the CSS it wrote lacks the library's classes.
 serviceWorker	helper	@spy4x/preact-theme/vite	Builds the worker at `entry` into the output folder once the app build is written, as one classic script (`iife`).
 webManifest	helper	@spy4x/preact-theme/vite	Writes the manifest into the output folder in `writeBundle`, once the app build is written, and serves it from the dev server at `/<fileName>` (under Vite's `base`).
+TRANSLATED_ATTRIBUTES	constant	@spy4x/preact-theme/lint	The attributes whose literal text the rule flags: each is read or heard by a person.
+UiTextLintNode	type	@spy4x/preact-theme/lint	One node of Deno's lint syntax tree, as much of it as the rule reads.
+UiTextLintPlugin	type	@spy4x/preact-theme/lint	A Deno lint plugin, typed as far as this module builds one.
+UiTextRuleContext	type	@spy4x/preact-theme/lint	What the rule gets from Deno's linter: the source, its comments and a way to report.
+default	helper	@spy4x/preact-theme/lint	The `ui-text` plugin for `deno lint`, with its one rule, `no-literal`.
 ATTACHMENT_LIST_LABELS	constant	@spy4x/preact-ui	The English words `AttachmentList` shows when the caller passes none and no catalog.
 AddTagsResult	type	@spy4x/preact-ui	What `addTags` did with the texts it was given.
 AnyDateRangePickerProps	type	@spy4x/preact-ui	Every shape `DateRangePicker` itself accepts, chosen by `withTime`: the default, `DateRangePickerProps`, carries a calendar-day `DateRange`, and `withTime: true` carries a timed `DateTimeRange` instead — see `DateRangePickerTimeProps`.

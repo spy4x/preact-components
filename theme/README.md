@@ -435,6 +435,46 @@ Leave test files out: they spell out classes to assert on. Comments are read, be
 own scanner reads them and emits CSS for a class it finds there; a word counts only when it has the
 exact shape of a spacing class, so "a gap-free layout" or "top-5 results" is never reported.
 
+## Untranslated text
+
+`@spy4x/preact-theme/lint` exports a `deno lint` plugin as its `default`, named `ui-text`, with one rule, `no-literal`, for an
+app that translates its UI. It flags text a person reads or hears that is written into the JSX
+instead of taken from the app's translations:
+
+- JSX text with a letter in it, in any script (`<p>Saved</p>`), and a string or template literal
+  written as a child (`<p>{"Saved"}</p>`);
+- a literal `aria-label`, `title`, `placeholder`, `alt` or `label` attribute with a letter in it,
+  on an element or a component (`<Field label="Email" />`). `TRANSLATED_ATTRIBUTES` lists them.
+
+Spaces, punctuation, digits and symbols alone are never flagged, and neither is the code inside
+`<style>` and `<script>`. A literal may stay in two cases only:
+
+- **`translate="no"`** on the element or an ancestor, for text no language changes: a brand, a
+  code, a key name. Browsers' page translators skip it too.
+- **An ignore comment** on the line before: `// deno-lint-ignore ui-text/no-literal`, or inside
+  JSX `{/* deno-lint-ignore ui-text/no-literal */}`, which also works earlier on the same line.
+
+An app lists the subpath under `lint.plugins` in its `deno.json`, at the version its import of
+`@spy4x/preact-theme` uses. `deno lint` resolves a plugin by its full specifier and does not read
+the import map, so the version is written out here:
+
+```json
+{
+  "lint": {
+    "plugins": ["jsr:@spy4x/preact-theme@^10.11.0/lint"]
+  }
+}
+```
+
+A file the app has yet to translate starts with `// deno-lint-ignore-file ui-text/no-literal`.
+That keeps every other lint rule on the file, unlike `lint.exclude`, and once the file has no
+literal left, `deno lint` reports the comment as unused (`ban-unused-ignore`), so the list of
+untranslated files can only shrink.
+
+The plugin runs on `deno lint` with no flag; this repository checks it on Deno 2.9.7. This
+repository does not turn it on for itself: the guide's demos and the tests spell out their sample
+text in English on purpose.
+
 ## Theming
 
 Every colour, radius and font in `preset.css` is read as

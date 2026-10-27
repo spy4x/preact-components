@@ -18,7 +18,10 @@
     // walk the boundary runner in `system/` shares. Apart from `./spacing` because it reads files.
     "./spacing-runner": "./spacing-runner.ts",
     // Build-time Vite plugins for an app that imports these packages; see `vite.ts`.
-    "./vite": "./vite.ts"
+    "./vite": "./vite.ts",
+    // The `deno lint` plugin with the `ui-text/no-literal` rule; an app lists this subpath under
+    // `lint.plugins` in its own `deno.json` (README → "Untranslated text").
+    "./lint": "./lint.ts"
   },
   "imports": {
     // Tailwind's Rust class scanner, at the version the root `tailwindcss` pin resolves to, and the

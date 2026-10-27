@@ -44,6 +44,7 @@ describe("entryPoints", () => {
       "./spacing",
       "./spacing-runner",
       "./vite",
+      "./lint",
     ])
     expect(points[0].href).toMatch(/\/theme\/\+index\.ts$/)
   })
