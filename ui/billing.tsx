@@ -203,7 +203,10 @@ export interface PricingTableProps {
   fieldName?: string
   /** The interval shown first, when the plans have both. Defaults to monthly. */
   defaultInterval?: BillingIntervalValue
-  /** BCP 47 locale the prices are formatted in. Defaults to `"en"`. */
+  /**
+   * BCP 47 locale the prices are formatted in. Defaults to the language of the nearest
+   * `I18nContext`, which is `"en"` without a provider.
+   */
   locale?: string
   /** Level of each plan's name heading. Defaults to `3`. */
   headingLevel?: BillingHeadingLevel
@@ -323,7 +326,7 @@ export function PricingTable(
     action,
     fieldName = "planId",
     defaultInterval = BillingInterval.Month,
-    locale = "en",
+    locale,
     headingLevel = 3,
     labels,
     class: className,
@@ -406,7 +409,7 @@ export function PricingTable(
               </div>
               <p class="flex flex-wrap items-baseline gap-1">
                 <span class="text-3xl font-semibold">
-                  {formatMoney(plan.amount, plan.currency, locale)}
+                  {formatMoney(plan.amount, plan.currency, locale ?? translator.language)}
                 </span>
                 {plan.unit
                   ? (

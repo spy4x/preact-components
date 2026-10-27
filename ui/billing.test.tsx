@@ -2,6 +2,8 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { IconAlertTriangle } from "@spy4x/preact-icons"
 import { render } from "preact-render-to-string"
+import type { ComponentChildren } from "preact"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
 import {
   BillingInterval,
   PlanCard,
@@ -10,6 +12,9 @@ import {
   SubscriptionStatus,
   UpgradePrompt,
 } from "./billing.tsx"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
+import { I18nContext } from "./i18n.tsx"
 
 /** Another package's enums with the same values, the way `@spy4x/billing` would declare its own. */
 enum ForeignStatus {
@@ -290,6 +295,23 @@ describe("PricingTable", () => {
   it("levels each plan's name heading as asked", () => {
     expect(render(<PricingTable plans={[free]} />)).toContain("<h3")
     expect(render(<PricingTable plans={[free]} headingLevel={2} />)).toContain("<h2")
+  })
+})
+
+describe("PricingTable under a translator", () => {
+  const russian = createTranslator({ language: "ru", catalogs: [{ source: en, translation: ru }] })
+  const inRussian = (node: ComponentChildren) =>
+    render(<I18nContext.Provider value={russian}>{node}</I18nContext.Provider>)
+
+  it("formats prices in the translator's language when no locale is given", () => {
+    const html = inRussian(<PricingTable plans={[proMonth]} />)
+    expect(html).toContain("Выбрать")
+    expect(html).toContain("12,00\u00a0€")
+    expect(html).not.toContain("€12.00")
+  })
+
+  it("formats prices in the caller's locale over the translator's language", () => {
+    expect(inRussian(<PricingTable plans={[proMonth]} locale="en" />)).toContain("€12.00")
   })
 })
 
