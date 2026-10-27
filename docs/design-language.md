@@ -44,6 +44,38 @@ language fixes both: the apps feel related, and the work of making one look good
 
 - **Weights:** 400 body, 500 labels, buttons and in-app headings, 600 marketing headings, 700 a
   marketing hero only.
+- **Arabic: Noto Sans Arabic, loaded only for Arabic letters.** Geist has no Arabic letters, and
+  a system fallback draws them in whatever face the device has. Noto Sans Arabic is a variable
+  face under the OFL with a weight axis, so 400 to 700 cost one file, and its plain, open shapes
+  sit well beside Geist; IBM Plex Sans Arabic was the alternative, but it ships one file per
+  weight. Self-host the Arabic subset (`noto-sans-arabic-arabic-wght-normal.woff2` from the pinned
+  `@fontsource-variable/noto-sans-arabic` npm package, about 166 kB, with its `LICENSE` beside it)
+  and declare it with a `unicode-range` of the Arabic blocks alone, so a page without an Arabic
+  letter never downloads it. List it right after Geist, before any fallback that has Arabic
+  letters of its own, and do not preload it:
+
+  ```css
+  @font-face {
+    font-family: "Noto Sans Arabic";
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/noto-sans-arabic-arabic-wght-normal.woff2") format("woff2");
+    unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF,
+      U+102E0-102FF, U+10E60-10E7F, U+10EC0-10EFF, U+1EE00-1EEFF;
+  }
+
+  @theme {
+    --font-sans: "Geist", "Noto Sans Arabic", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  }
+  ```
+
+  The range leaves out the punctuation the upstream file also covers (U+200C-200E, U+2010-2011,
+  U+204F, U+2E41), which an English page can hold. Under `:lang(ar)` the preset (`theme/preset.css`)
+  sets letter-spacing to 0 and every `tracking-*` step with it, because tracking pulls joined
+  letters apart; gives each `text-*` size a line about a quarter rem taller, for the marks above
+  and below the letters; and keeps `em`, `i` and `italic` upright, because Arabic has no italic.
+  The rule needs `lang="ar"` on the page or the element, and `.theme-base` on `<body>`.
+
 - **Scale.** Tailwind's own sizes only, never an arbitrary `text-[17px]`:
 
   | Role                                | Phone       | From `lg`   | Weight and tracking    |

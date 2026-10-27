@@ -638,6 +638,13 @@ won over an app's own `@theme --font-sans` (#470). An app that wants that font s
 }
 ```
 
+**Arabic.** Under `:lang(ar)`, inside `.theme-base`, the preset sets letter-spacing to 0 (every
+`tracking-*` step reads 0 there), gives each `text-*` size a line about a quarter rem taller and the
+body 1.75rem, and keeps `em`, `i` and `italic` upright. The face is the app's to self-host, like
+Geist: [`docs/design-language.md`](../docs/design-language.md) → "Type" has the `@font-face` with
+its `unicode-range`, so a page without an Arabic letter never downloads it. The guide does the same
+in `pages/styles.css`, and `pages/e2e/theme.spec.ts` checks it on `pages/src/type-page.ts`'s pages.
+
 ### Headings, weights, shapes and shadows
 
 - **Headings.** `--font-heading` is not declared: unset, a heading inherits its font like any other
