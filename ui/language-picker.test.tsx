@@ -139,7 +139,7 @@ describe("LanguagePicker list mode", () => {
     const described = html.match(/aria-describedby="([^"]+)"/)?.[1]
     expect(described).toBeDefined()
     expect(html).toContain(
-      `<p id="${described}" role="alert" class="text-sm text-danger">Could not load Русский. Check your connection and try again.</p>`,
+      `<p id="${described}" role="alert" class="text-sm text-danger">Could not load <bdi>Русский</bdi>. Check your connection and try again.</p>`,
     )
   })
 

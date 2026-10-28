@@ -7,7 +7,10 @@ import { forwardRef } from "./forward-ref.ts"
  *
  * A real `<input>` with `.pc-input` on it: every native attribute (`type`, `name`, `placeholder`,
  * `required`, `autocomplete`, `disabled`, `aria-*`, …) passes straight through, so nothing the
- * platform already does is reimplemented here.
+ * platform already does is reimplemented here. An e-mail, URL or password input is `dir="ltr"`
+ * unless `dir` says otherwise, so an address keeps its order in a right-to-left page. So is one
+ * whose `autocomplete` names an e-mail, a URL, a username or a password, which keeps a password
+ * left to right while a show-password toggle makes it `type="text"`.
  */
 export interface InputProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "class"> {
   /**
@@ -39,6 +42,19 @@ export interface SelectProps extends Omit<JSX.SelectHTMLAttributes<HTMLSelectEle
   placeholder?: string
 }
 
+/** Input types whose value is always written left to right, whatever the page's direction. */
+const LEFT_TO_RIGHT_TYPES: readonly string[] = ["email", "url", "password"]
+
+/** `autocomplete` tokens of a value written left to right, whatever the input's `type`. */
+const LEFT_TO_RIGHT_AUTOCOMPLETE = /\b(?:email|url|username|current-password|new-password)\b/
+
+/** Whether an input's value is an address or a password, by its `type` or its `autocomplete`. */
+function writtenLeftToRight(props: InputProps): boolean {
+  const autocomplete = String(props.autocomplete ?? props.autoComplete ?? "")
+  return LEFT_TO_RIGHT_TYPES.includes(String(props.type)) ||
+    LEFT_TO_RIGHT_AUTOCOMPLETE.test(autocomplete)
+}
+
 /**
  * Controlled text input.
  *
@@ -59,7 +75,8 @@ export const Input: (
   { class: className, ...rest },
   ref,
 ) {
-  return <input {...rest} ref={ref} class={join("pc-input", className)} />
+  const dir = rest.dir ?? (writtenLeftToRight(rest) ? "ltr" : undefined)
+  return <input {...rest} dir={dir} ref={ref} class={join("pc-input", className)} />
 })
 
 /**
