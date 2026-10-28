@@ -2416,30 +2416,30 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component             | Subpath                 | Ports / key props                                                                                                                                                                           |
-| --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
-| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                  |
-| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                          |
-| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                 |
-| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
-| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
-| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                    |
-| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
-| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
-| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`    |
-| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                       |
-| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                        |
-| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                              |
-| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
-| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
-| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
-| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                               |
-| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
-| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
-| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                   |
+| Component             | Subpath                 | Ports / key props                                                                                                                                                                                        |
+| --------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccountMenu`         | `account-menu`          | `user`, `items?`, `language?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
+| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                               |
+| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                       |
+| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                              |
+| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
+| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                     |
+| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                  |
+| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                                 |
+| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                                        |
+| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?`              |
+| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                                |
+| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`                 |
+| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                                    |
+| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                                     |
+| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                                           |
+| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                              |
+| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                                  |
+| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                                            |
+| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                                            |
+| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                                    |
+| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                                           |
+| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -3231,8 +3231,13 @@ Escape-scoping proof and the Shell-vs-Dropdown one testing the same code path.
 `AccountMenu` (#756) is the signed-in person's menu, taken out of `Shell` so `AppShell`'s rail
 carries the same one at its foot. It is `ui/`'s `Dropdown`, so the keyboard, the no-JavaScript
 fallback and the focus moves are that component's. The menu holds, in order: the caller's `items`
-(a link, a button, or a form post through `action`), the theme choice when `onThemeChange` is
-given, and `signOut` after a divider.
+(a link, a button, or a form post through `action`), the language item when `language` is given,
+the theme choice when `onThemeChange` is given, and `signOut` after a divider.
+
+**The language item opens `LanguageDialog`** (`ui/`), because a submenu does not fit a phone. It
+shows `IconGlobe`, "Language" and the language in use, named in itself ("Deutsch"), at the row's
+end. `language` takes the dialog's props without `open` and `onClose`: the menu owns those, and
+closes the dialog on Done, Escape or its close control, focus going back to the trigger.
 
 **`navigate` is the client-router port, as on `DropdownItem`.** Without it, a link item is an
 ordinary link and choosing it loads the page. With it, a plain left click on a link item (an `href`
@@ -7030,7 +7035,8 @@ off.
 
 `LanguageDialog` puts the list in a `Modal`. A choice applies at once and the dialog stays open in
 the new language, so a wrong tap is undone with one more; Done closes it. It opens with focus on
-the chosen row, which keeps focus through every switch.
+the chosen row, which keeps focus through every switch. `AccountMenu` (`system/`) opens it from its
+`language` item.
 
 ## ThemePreview
 

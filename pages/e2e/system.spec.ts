@@ -1596,6 +1596,38 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AccountMenu: the Language item names the language in use and opens LanguageDialog on " +
+      "the chosen row; a choice there switches the menu's words, and Done returns focus to the " +
+      "trigger",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`[data-e2e="account-menu-demo"]`)
+      const trigger = card.locator(`[data-e2e="account-menu-button"]`)
+      const item = card.locator(`[data-e2e="account-menu-language"]`)
+      const focused = page.locator(":focus")
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      await item.filter({ hasText: "Language" }).locator(`[lang="en"]`)
+        .filter({ hasText: "English" }).waitFor()
+      await item.click()
+      const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+      await dialog.getByRole("radio", { name: /^Automatic/, checked: true }).and(focused).waitFor()
+      await dialog.getByRole("radio", { name: "Deutsch", exact: true }).click()
+      await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+      await dialog.getByRole("radio", { name: "Deutsch", checked: true, exact: true }).and(focused)
+        .waitFor()
+      await dialog.locator(`[data-e2e="language-dialog-done"]`).click()
+      await dialog.waitFor({ state: "detached" })
+      await trigger.and(focused).waitFor()
+      await trigger.click()
+      await item.filter({ hasText: "Sprache" }).locator(`[lang="de"]`)
+        .filter({ hasText: "Deutsch" }).waitFor()
+      await card.getByRole("group", { name: "Design" }).waitFor()
+      await expectAxeClean(page, `[data-e2e="account-menu-demo"]`)
+      return "English → Deutsch; the menu reads Sprache and Design; focus back on the trigger"
+    },
+  },
+  {
     name:
       "AccountMenu: a plain click on a link item calls navigate instead of following the link, " +
       "and a Ctrl-click leaves the link to the browser",

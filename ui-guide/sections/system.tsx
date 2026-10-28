@@ -110,6 +110,7 @@ import { type } from "arktype"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
+import { DEMO_LANGUAGES, InDemoLanguage, useDemoLanguage } from "./language-demo.tsx"
 
 /** One captioned part of a card whose demo shows several things side by side. */
 function Part({ title, children }: { title: string; children: ComponentChildren }) {
@@ -1442,32 +1443,43 @@ const railShellItems: RailShellItem[] = [
  * `AccountMenu` at the foot of a sidebar-width column, opening upward, with the chosen theme and the
  * last address `navigate` took printed under it, so a choice and a routed "Profile" click show.
  * "Keyboard shortcuts" shows its `?` at the right and prints "shortcuts" as the route when chosen.
+ * "Language" opens `LanguageDialog`, and a choice there switches the menu's own words.
  */
 function AccountMenuDemo() {
   const theme = useSignal<AccountMenuTheme>("system")
   const route = useSignal("none")
+  const language = useDemoLanguage()
   return (
     <div
       class="flex min-h-96 w-60 max-w-full flex-col justify-end gap-4"
       data-e2e="account-menu-demo"
     >
-      <AccountMenu
-        user={railShellUser}
-        headerHref="#account-you"
-        items={[
-          { label: "Profile", href: "#account-profile" },
-          {
-            label: "Keyboard shortcuts",
-            onClick: () => route.value = "shortcuts",
-            keyshortcuts: ["?"],
-            dataE2E: "account-menu-demo-shortcuts",
-          },
-        ]}
-        navigate={(href) => route.value = href}
-        theme={theme.value}
-        onThemeChange={(value) => theme.value = value}
-        signOut={{ label: "Sign out", action: "#account-sign-out", onClick: () => undefined }}
-      />
+      <InDemoLanguage language={language}>
+        <AccountMenu
+          user={railShellUser}
+          headerHref="#account-you"
+          items={[
+            { label: "Profile", href: "#account-profile" },
+            {
+              label: "Keyboard shortcuts",
+              onClick: () => route.value = "shortcuts",
+              keyshortcuts: ["?"],
+              dataE2E: "account-menu-demo-shortcuts",
+            },
+          ]}
+          navigate={(href) => route.value = href}
+          language={{
+            languages: DEMO_LANGUAGES,
+            current: language.current,
+            automatic: language.automatic,
+            pending: language.pending,
+            onSelect: language.select,
+          }}
+          theme={theme.value}
+          onThemeChange={(value) => theme.value = value}
+          signOut={{ label: "Sign out", action: "#account-sign-out", onClick: () => undefined }}
+        />
+      </InDemoLanguage>
       <p class="text-sm text-muted">
         Theme: <strong data-e2e="account-menu-demo-theme">{theme.value}</strong>
       </p>
@@ -2795,7 +2807,7 @@ useEffect(() => {
   },
   AccountMenu: {
     summary:
-      "The signed-in person's menu: who is signed in on the trigger, then the caller's items, a theme choice and **Sign out**.",
+      "The signed-in person's menu: who is signed in on the trigger, then the caller's items, a Language item, a theme choice and **Sign out**.",
     wide: true,
     props: [
       {
@@ -2808,6 +2820,12 @@ useEffect(() => {
         type: "AccountMenuItem[]",
         description:
           "The caller's entries first: a link, a form post (`action`) or a button. `keyshortcuts` announces the keys the app binds to the same action and shows the first at the item's right.",
+      },
+      {
+        name: "language",
+        type: "AccountMenuLanguage",
+        description:
+          "`LanguageDialog`'s props without `open` and `onClose`. Given, a Language item with the language in use, named in itself, opens that dialog.",
       },
       {
         name: "theme / onThemeChange",
@@ -2846,6 +2864,7 @@ useEffect(() => {
     { label: "Keyboard shortcuts", onClick: openShortcuts, keyshortcuts: ["?"] },
   ]}
   navigate={(href) => router.navigate(href)}
+  language={{ languages: ["en", "de", "ar"], current: language, onSelect: switchLanguage }}
   theme={theme}
   onThemeChange={setTheme}
   signOut={{ label: "Sign out", action: "/sign-out" }}

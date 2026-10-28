@@ -62,6 +62,7 @@ export {
   AccountMenu,
   type AccountMenuItem,
   type AccountMenuLabels,
+  type AccountMenuLanguage,
   type AccountMenuProps,
   type AccountMenuTheme,
   type AccountMenuUser,
