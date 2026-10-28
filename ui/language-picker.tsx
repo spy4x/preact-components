@@ -430,6 +430,7 @@ export function LanguageButton(
     <>
       <Button
         variant="ghost"
+        class="min-h-11 sm:min-h-9"
         aria-haspopup="dialog"
         data-e2e={buttonDataE2E}
         onClick={() => open.value = true}

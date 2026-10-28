@@ -190,6 +190,11 @@ describe("LanguageButton", () => {
     )
   })
 
+  it("is a 44 px touch target on a phone, 36 px with a pointer", () => {
+    const html = button(render(<LanguageButton languages={LANGUAGES} current="en" />))
+    expect(html).toMatch(/^<button [^>]*class="[^"]*\bmin-h-11 sm:min-h-9\b/)
+  })
+
   it("shows the device's language while current follows it", () => {
     const html = button(
       render(<LanguageButton languages={LANGUAGES} current={null} automatic="ru" />),
