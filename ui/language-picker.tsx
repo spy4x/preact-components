@@ -439,8 +439,7 @@ export function LanguageButton(
         {inUse
           ? (
             <>
-              <span class="sr-only">{labels.title}</span>
-              <Name tag={inUse} />
+              <span class="sr-only">{labels.title}</span> <Name tag={inUse} />
             </>
           )
           : labels.title}

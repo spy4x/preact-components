@@ -186,7 +186,7 @@ describe("LanguageButton", () => {
     expect(html).toMatch(/^<button [^>]*aria-haspopup="dialog"[^>]*data-e2e="language-button"/)
     expect(html).toContain(`<svg`)
     expect(html).toContain(
-      `<span class="sr-only">Language</span><span lang="ar" dir="rtl" class="notranslate">العربية</span>`,
+      `<span class="sr-only">Language</span> <span lang="ar" dir="rtl" class="notranslate">العربية</span>`,
     )
   })
 
