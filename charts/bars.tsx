@@ -7,7 +7,11 @@ import {
   DEFAULT_TRACK_COLOR,
   seriesColor,
 } from "./colors.ts"
+import { barPercent, barTop, barTotal, barTrack, isStacked } from "./bar-parts.tsx"
 
+export { barPercent, barTotal } from "./bar-parts.tsx"
+
+/** One row of {@link Bars}: a label and the value its bar draws. */
 export interface BarDatum {
   label: string
   value: number
@@ -74,38 +78,6 @@ export interface BarsProps {
   class?: string
 }
 
-/** Whether a row is drawn as stacked segments. */
-function isStacked(datum: BarDatum | StackedBarDatum): datum is StackedBarDatum {
-  return "segments" in datum && Array.isArray(datum.segments)
-}
-
-/**
- * A row's total: its value, or the sum of its segments' finite, positive values.
- *
- * A negative or non-finite segment adds nothing, as it would draw nothing.
- */
-export function barTotal(datum: BarDatum | StackedBarDatum): number {
-  if (!isStacked(datum)) return datum.value
-  return datum.segments.reduce(
-    (sum, segment) =>
-      Number.isFinite(segment.value) && segment.value > 0 ? sum + segment.value : sum,
-    0,
-  )
-}
-
-/**
- * Percentage of the longest bar, clamped to `[0, 100]`.
- *
- * Non-finite values, negatives and a non-positive maximum all collapse to `0`, so a dirty dataset
- * renders an empty bar instead of a `NaN%` width or a bar wider than its track.
- */
-export function barPercent(value: number, top: number): number {
-  if (!Number.isFinite(value) || !Number.isFinite(top) || top <= 0) return 0
-  const percent = (value / top) * 100
-  if (!Number.isFinite(percent)) return 0
-  return Math.round(Math.min(100, Math.max(0, percent)) * 100) / 100
-}
-
 /**
  * Server-rendered horizontal bar list — the "Top N" chart.
  *
@@ -154,12 +126,7 @@ export function Bars({
     )
   }
 
-  const largest = data.reduce((most, datum) => {
-    const total = barTotal(datum)
-    return Number.isFinite(total) ? Math.max(most, total) : most
-  }, 0)
-  const top = max ??
-    (reference && Number.isFinite(reference.value) ? Math.max(largest, reference.value) : largest)
+  const top = barTop(data, max, reference)
   const series = [
     ...new Set(
       data.flatMap((datum) => isStacked(datum) ? datum.segments.map((s) => s.series) : []),
@@ -175,39 +142,7 @@ export function Bars({
           {data.map((datum, index) => {
             const stacked = isStacked(datum)
             const total = barTotal(datum)
-            const bar = (
-              <span
-                class="h-2 flex-1 overflow-hidden rounded-sm"
-                style={{ background: trackColor }}
-              >
-                {stacked
-                  ? (
-                    <span class="flex h-full" style={{ width: `${barPercent(total, top)}%` }}>
-                      {datum.segments.map((segment) => (
-                        <span
-                          key={segment.series}
-                          data-series={segment.series}
-                          class="block h-full"
-                          style={{
-                            width: `${barPercent(segment.value, total)}%`,
-                            background: colorOf(segment.series),
-                          }}
-                        />
-                      ))}
-                    </span>
-                  )
-                  : (
-                    <span
-                      class="block h-full rounded-sm"
-                      style={{
-                        width: `${barPercent(datum.value, top)}%`,
-                        background: datum.color ?? seriesColor(index, colors),
-                      }}
-                    >
-                    </span>
-                  )}
-              </span>
-            )
+            const bar = barTrack(datum, index, { top, colors, trackColor, colorOf })
             return (
               <tr
                 key={`${datum.label}-${index}`}

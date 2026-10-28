@@ -11,6 +11,7 @@
     "./kpi": "./kpi.tsx",
     "./line-chart": "./line-chart.tsx",
     "./payload": "./payload.ts",
+    "./ranked-bars": "./ranked-bars.tsx",
     "./scales": "./scales.ts",
     "./time-series": "./time-series.ts",
     "./use-in-view": "./use-in-view.ts",
