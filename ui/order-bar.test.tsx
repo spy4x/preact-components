@@ -83,6 +83,17 @@ describe("OrderBar", () => {
     expect(html).toContain('role="status" class="text-sm font-medium empty:hidden">Sold out</p>')
   })
 
+  it("shows a short note under the actions, outside the live region, only when given", () => {
+    const note = "Same-day delivery in Da Nang if you order before 16:00"
+    const html = render(<OrderBar message={MESSAGE} actions={[TELEGRAM]} note={note} />)
+    expect(html).toMatch(
+      /<\/a><\/div><p class="text-sm text-muted text-pretty" data-e2e="order-bar-note">Same-day delivery in Da Nang if you order before 16:00<\/p><\/aside>$/,
+    )
+    expect(render(<OrderBar message={MESSAGE} actions={[TELEGRAM]} />)).not.toContain(
+      "order-bar-note",
+    )
+  })
+
   it("takes its words", () => {
     const html = render(
       <OrderBar

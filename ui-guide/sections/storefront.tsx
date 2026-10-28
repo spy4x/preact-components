@@ -225,6 +225,12 @@ export const storefrontDemos: DemoFragment = {
         description: "A quieter action, such as “Add to list”: its icon alone on a phone.",
       },
       {
+        name: "note",
+        type: "ComponentChildren",
+        description:
+          "One short muted line under the actions at every width, such as a delivery promise.",
+      },
+      {
         name: "status / form / labels",
         type: "ComponentChildren / string / object",
         description:
@@ -239,6 +245,7 @@ export const storefrontDemos: DemoFragment = {
     { label: "Order on Zalo", shortLabel: "Zalo", name: "via", value: "zalo" },
   ]}
   secondary={{ label: "Add to list", icon: <IconPlus />, name: "add", value: item.id }}
+  note="Same-day delivery in Da Nang if you order before 16:00."
 />`,
     render: () => (
       <div class="grid gap-6 lg:grid-cols-2">
@@ -287,6 +294,7 @@ export const storefrontDemos: DemoFragment = {
             />
           </form>
           <OrderBar
+            note="Same-day delivery in Da Nang if you order before 16:00."
             form="guide-order"
             message={MESSAGE}
             actions={[

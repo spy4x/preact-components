@@ -55,6 +55,11 @@ export interface OrderBarProps {
    * sits in a live region, so a line set after a click is announced.
    */
   status?: ComponentChildren
+  /**
+   * One short line under the actions, at every width, that helps a shopper decide, such as
+   * "Same-day delivery in Da Nang if you order before 16:00". Muted, and not a live region.
+   */
+  note?: ComponentChildren
   /** The `id` of the form the submit buttons send, when the bar sits outside it. */
   form?: string
   /** The words; see {@link ORDER_BAR_LABELS}. */
@@ -141,7 +146,7 @@ function Action(
  * @param props The message, the actions and options, see {@link OrderBarProps}.
  */
 export function OrderBar(
-  { message, actions, secondary, status, form, labels, class: className }: OrderBarProps,
+  { message, actions, secondary, status, note, form, labels, class: className }: OrderBarProps,
 ): JSX.Element {
   const words = useLabels("OrderBar", ORDER_BAR_LABELS, labels)
   return (
@@ -165,6 +170,9 @@ export function OrderBar(
         ))}
         {secondary && <Action action={secondary} variant="ghost" secondary form={form} />}
       </div>
+      {note !== undefined && (
+        <p class="text-sm text-muted text-pretty" data-e2e="order-bar-note">{note}</p>
+      )}
     </aside>
   )
 }
