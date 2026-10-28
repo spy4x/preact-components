@@ -1515,9 +1515,13 @@ draws no brand mark and no top bar: the page starts with its own `PageHeader`.
   once.
 - **The phone.** At most four destinations reach the tab bar; the last slot is the account, the
   avatar with the unread count, opening a sheet with the switcher, the destinations that did not
-  fit, Notifications, then the account: the header row, the menu's items, the theme as three
-  pressed buttons, and **Sign out** last. While the connection is news, a strip above the tab bar
-  shows it.
+  fit, Notifications, then the account: the header row, the menu's items, the language, the theme as
+  three pressed buttons, and **Sign out** last. While the connection is news, a strip above the tab
+  bar shows it.
+- **The language.** `account.language` (`AccountMenuLanguage`) draws the Language row, with the
+  language in use named in itself, in the rail's menu (`AccountMenu`'s own item) and in the phone
+  sheet. The sheet's row closes the sheet and opens `LanguageDialog`; closing it returns focus to
+  the account tab. Left out, neither draws the row.
 - **The page column** is centred in the space beside the rail, `px-4 md:px-8` and `py-6 sm:py-8`
   outside it: 48 rem by default, 64 rem with `width="wide"`, for tables. `banner` sits above the
   page in the same column. Nothing else sets a width.
@@ -1527,7 +1531,7 @@ draws no brand mark and no top bar: the page starts with its own `PageHeader`.
 `app-shell.test.tsx` proves the bell's name, the account's name with and without a tag, the badge's
 neutral colour in the column, the tab and the sheet, the one live region, the connection cell and
 strip, the bottom zone's order, the column widths and the banner, the phone split and the sheet's
-order, the theme buttons, the placeholder, the absence of a top bar, and every label's override.
+order, the language row in the menu and the sheet, the theme buttons, the placeholder, the absence of a top bar, and every label's override.
 
 ## `RailShell`, kept for the move
 
