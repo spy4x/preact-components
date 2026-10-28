@@ -59,7 +59,7 @@ export function OnOffButtons(
       <Button
         aria-pressed={value === true ? "true" : "false"}
         variant={value === true ? "primary" : "outline"}
-        class={cn("flex-col rounded-r-none", value === true && selectedFill)}
+        class={cn("flex-col rounded-e-none", value === true && selectedFill)}
         onClick={() =>
           onSwitch(true)}
       >
@@ -69,7 +69,7 @@ export function OnOffButtons(
       <Button
         aria-pressed={value === false ? "true" : "false"}
         variant={value === false ? "primary" : "outline"}
-        class={cn("-ml-px flex-col rounded-l-none", value === false && selectedFill)}
+        class={cn("-ms-px flex-col rounded-s-none", value === false && selectedFill)}
         onClick={() =>
           onSwitch(false)}
       >

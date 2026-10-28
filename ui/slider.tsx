@@ -84,8 +84,10 @@ const input = [
   "disabled:cursor-not-allowed",
   "[&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full",
   "[&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
+  "[&:dir(rtl)]:[&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_left,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
   "[&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full",
   "[&::-moz-range-track]:bg-[linear-gradient(to_right,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
+  "[&:dir(rtl)]:[&::-moz-range-track]:bg-[linear-gradient(to_left,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
   "[&::-webkit-slider-thumb]:-mt-2 [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none",
   "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-foreground",
   "[&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-foreground",
@@ -183,7 +185,7 @@ export function Slider({
 /**
  * One mark: a tick under the thumb's position and its label below it.
  *
- * Both marks share one grid cell and are shifted along it with `left`, so the row is as tall as the
+ * Both marks share one grid cell and are shifted along it with `inset-inline-start`, so the row is as tall as the
  * taller label and nothing is measured. A label near an end is aligned to that end instead of
  * centred, so it never spills past the track; elsewhere it is centred on its tick. Each wraps
  * within a third of the width.
@@ -197,11 +199,12 @@ function SliderTick(
     <span
       class={join(
         "relative col-start-1 row-start-1 flex w-1/3 flex-col gap-1",
-        align === "start" && "items-start text-left",
-        align === "center" && "-translate-x-1/2 items-center text-center",
-        align === "end" && "-translate-x-full items-end text-right",
+        align === "start" && "items-start text-start",
+        align === "center" &&
+          "-translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 items-center text-center",
+        align === "end" && "-translate-x-full [&:dir(rtl)]:translate-x-full items-end text-end",
       )}
-      style={{ left: thumbCentre(fraction) }}
+      style={{ insetInlineStart: thumbCentre(fraction) }}
     >
       <span
         aria-hidden="true"

@@ -74,7 +74,7 @@ describe("Slider", () => {
     expect(html).toContain(">None<")
     expect(html).toContain(">Typical<")
     expect(html).not.toContain("Dropped")
-    expect(html).toContain("left:calc(0.625rem + (100% - 1.25rem) * 0.5)")
+    expect(html).toContain("inset-inline-start:calc(0.625rem + (100% - 1.25rem) * 0.5)")
     expect(html).toMatch(/<p id="rate-hint"[^>]*>Drag or use the arrow keys\.<\/p>/)
   })
 
@@ -86,8 +86,10 @@ describe("Slider", () => {
         marks={[{ value: 0, label: "Low" }, { value: 100, label: "High" }]}
       />,
     )
-    expect(html).toMatch(/class="[^"]*items-start text-left"[^>]*>(?:(?!<\/span><\/span>).)*Low/)
-    expect(html).toMatch(/class="[^"]*-translate-x-full items-end text-right"[^>]*>.*High/)
+    expect(html).toMatch(/class="[^"]*items-start text-start"[^>]*>(?:(?!<\/span><\/span>).)*Low/)
+    expect(html).toMatch(
+      /class="[^"]*-translate-x-full \[&amp;:dir\(rtl\)\]:translate-x-full items-end text-end"[^>]*>.*High/,
+    )
   })
 
   it("describes nothing when it has neither marks nor a hint", () => {

@@ -1862,12 +1862,15 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
       })()`,
       null as { x: number; y: number } | null,
     )
-    if (target) await clickAt(devtools, target)
-
-    settled = await poll(
-      () => read(devtools, `document.readyState === "complete"`, false),
-      8_000,
-    )
+    // The submit replaces the document. Its load event is waited for from before the press, so
+    // `location.search` is read on the page the submit landed on. Polling `readyState` instead
+    // answered "complete" from the old document before the navigation started, and a reading
+    // that met the navigation mid-way threw "Inspected target navigated or closed" (#1067).
+    if (target) {
+      const landed = waitForLoad(devtools)
+      await clickAt(devtools, target)
+      settled = await landed
+    }
     after = await read(devtools, "location.search", "(page unreadable)")
   } finally {
     await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
@@ -1915,7 +1918,7 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
       : !target
       ? "no submit button was found on the unhydrated, prerendered page"
       : `location.search ${JSON.stringify(before)} → ${JSON.stringify(after)}` +
-        (settled ? "" : " (the page never reached readyState complete)"),
+        (settled ? "" : " (the submit never finished loading a page)"),
   )
 
   const rehydrated = await poll(

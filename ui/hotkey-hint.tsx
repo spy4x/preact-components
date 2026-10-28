@@ -17,7 +17,7 @@ export interface HotkeyHintProps {
   apple: boolean
   /** The words the keys show. */
   labels?: Partial<KbdLabels>
-  /** Utilities added to the hint's own, such as `ml-auto` to push it to the end of a row. */
+  /** Utilities added to the hint's own, such as `ms-auto` to push it to the end of a row. */
   class?: string
 }
 

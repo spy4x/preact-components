@@ -219,9 +219,9 @@ export type DataTableProps<T, K extends Extract<keyof T, string>> =
   | DataTableServerProps<T, K>
 
 const alignClasses: Record<DataTableColumnAlign, string> = {
-  left: "text-left",
+  left: "text-start",
   center: "text-center",
-  right: "text-right",
+  right: "text-end",
 }
 
 /** `class` for one column's header and cells. */

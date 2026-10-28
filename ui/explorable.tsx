@@ -121,7 +121,7 @@ export function Explorable({
         </noscript>
       )}
       {caption !== undefined && (
-        <figcaption class="text-left text-sm text-muted">{caption}</figcaption>
+        <figcaption class="text-start text-sm text-muted">{caption}</figcaption>
       )}
     </figure>
   )

@@ -539,15 +539,15 @@ function DropdownDemo() {
         </Dropdown>
       </DropdownRow>
 
-      <DropdownRow title="Lines up on the left">
+      <DropdownRow title="Lines up at the start">
         <Dropdown
           trigger={<IconEllipsisVertical class="size-5" />}
-          triggerLabel="Left-anchored actions"
-          menuLabel="Left-anchored actions"
-          horizontal="left"
+          triggerLabel="Start-anchored actions"
+          menuLabel="Start-anchored actions"
+          horizontal="start"
         >
           <div class="py-1" role="none">
-            <DropdownItem onClick={() => {}}>Left action</DropdownItem>
+            <DropdownItem onClick={() => {}}>Start action</DropdownItem>
           </div>
         </Dropdown>
       </DropdownRow>
@@ -1729,10 +1729,10 @@ export const inputDemos = {
       { name: "menuLabel", type: "string", description: "The menu's accessible name." },
       {
         name: "vertical / horizontal",
-        type: `"auto" | "up" | "down" / "left" | "right"`,
-        default: `"auto" / "right"`,
+        type: `"auto" | "up" | "down" / "start" | "end" | "left" | "right"`,
+        default: `"auto" / "end"`,
         description:
-          "Which way the menu opens and which edge it lines up with. `auto` opens up when there is no room below.",
+          "Which way the menu opens and which edge it lines up with. `auto` opens up when there is no room below. `start` and `end` follow the reading direction; `left` and `right` are their old names.",
       },
     ],
     snippet: `<Dropdown

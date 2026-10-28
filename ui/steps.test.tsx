@@ -28,7 +28,7 @@ describe("Steps", () => {
 
   it("draws a hidden connector between steps, none after the last", () => {
     const html = render(<Steps items={ITEMS} />)
-    expect(html.match(/<span aria-hidden="true" class="[^"]*border-l border-subtle/g)?.length)
+    expect(html.match(/<span aria-hidden="true" class="[^"]*border-s border-subtle/g)?.length)
       .toBe(2)
   })
 

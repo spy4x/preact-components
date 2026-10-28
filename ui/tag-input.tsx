@@ -248,7 +248,7 @@ export interface TagInputProps {
 const fieldClasses =
   "flex min-h-12 w-full flex-wrap items-center gap-1 rounded-primary border border-control bg-surface p-1 focus-within:ring-2 focus-within:ring-focus"
 const chipClasses =
-  "inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft pl-3 text-sm text-selected"
+  "inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft ps-3 text-sm text-selected"
 const removeClasses =
   "inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-selected-soft-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed"
 const inputClasses =
