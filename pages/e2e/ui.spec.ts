@@ -4027,6 +4027,69 @@ function storefrontSpecs(): Spec[] {
     },
     {
       name:
+        "OrderBar: at 390x667 the size chip reached by Tab stops fully above the bar stuck to the bottom of the screen",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 667 })
+        const card = page.locator("#demo-OrderBar")
+        const bar = card.locator(`[data-e2e="order-bar"]`)
+        // `has` is matched inside each label, so it takes a locator from the page, not the card.
+        const chip = card.locator("label").filter({
+          has: page.getByRole("radio", { name: "M", exact: true, checked: true }),
+        })
+        // The card's top at the top of the screen (under the guide's header), where the size chips
+        // start under the bar. Cards above draw late and push it down, so it is scrolled there
+        // again until a scroll no longer moves it.
+        await page.waitForFunction(
+          () => {
+            const card = document.getElementById("demo-OrderBar")
+            if (card === null) return false
+            const top = card.getBoundingClientRect().top
+            card.scrollIntoView({ block: "start", behavior: "instant" })
+            return Math.abs(card.getBoundingClientRect().top - top) < 1
+          },
+          undefined,
+          { polling: "raf" },
+        )
+        const before = await chip.evaluate((label) =>
+          Math.round(label.getBoundingClientRect().bottom)
+        )
+        await card.getByRole("radio", { name: "Brown", exact: true }).focus()
+        await page.keyboard.press("Tab")
+        const size = card.getByRole("radio", { name: "M", exact: true, checked: true })
+        await size.and(page.locator(":focus")).waitFor()
+        const read = async () => {
+          const [chipBox, barBox] = [await chip.boundingBox(), await bar.boundingBox()]
+          if (chipBox === null || barBox === null) {
+            throw new Error("the chip or the bar is not drawn")
+          }
+          return {
+            chipTop: Math.round(chipBox.y),
+            chipBottom: Math.round(chipBox.y + chipBox.height),
+            barTop: Math.round(barBox.y),
+          }
+        }
+        await page.waitForFunction(() => {
+          const bar = document.querySelector(`#demo-OrderBar [data-e2e="order-bar"]`)
+          return bar !== null && Math.round(bar.getBoundingClientRect().bottom) === innerHeight
+        })
+        if (before <= (await read()).barTop) throw new Error("the chip did not start under the bar")
+        // The guide scrolls smoothly, so the chip is waited for until it is fully above the bar.
+        await page.waitForFunction(() => {
+          const card = document.getElementById("demo-OrderBar")
+          const bar = card?.querySelector(`[data-e2e="order-bar"]`)
+          const chip = card?.querySelector(`input[value="M"]`)?.closest("label")
+          if (!bar || !chip) return false
+          const box = chip.getBoundingClientRect()
+          return box.top >= 0 && box.bottom <= bar.getBoundingClientRect().top
+        }).catch(async () => {
+          throw new Error(`the focused chip stays under the bar: ${JSON.stringify(await read())}`)
+        })
+        return `chip bottom ${before} before Tab, then ${JSON.stringify(await read())}`
+      },
+    },
+    {
+      name:
         "SwatchChips and OrderBar: with JavaScript off, a picked colour and the order button's value are sent with the form",
       pageId: "ui",
       run: async (page) => {

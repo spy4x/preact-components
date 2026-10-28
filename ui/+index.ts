@@ -628,7 +628,6 @@ export {
   type ScreenTourStep,
 } from "./screen-tour.tsx"
 export {
-  LOOK_GRID_SIZES,
   LOOK_TILE_LABELS,
   type LookColor,
   type LookPhoto,

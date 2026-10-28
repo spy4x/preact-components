@@ -28,7 +28,7 @@ export interface LookPhoto {
   variants: readonly ResponsiveImageVariant[]
   /** What the photo shows. `""` when the name says it all. */
   alt: string
-  /** How wide the photo is drawn. Defaults to {@link LOOK_GRID_SIZES}, its width in a `LookGrid`. */
+  /** How wide the photo is drawn. Defaults to its width in a `LookGrid`: a third, a half or all. */
   sizes?: string
 }
 
@@ -56,7 +56,7 @@ export const LOOK_TILE_LABELS: LookTileLabels = {
 }
 
 /** The width of a tile in a `LookGrid`: one column on a phone, two from `md`, three from `lg`. */
-export const LOOK_GRID_SIZES = "(min-width: 64rem) 33vw, (min-width: 48rem) 50vw, 100vw"
+const LOOK_GRID_SIZES = "(min-width: 64rem) 33vw, (min-width: 48rem) 50vw, 100vw"
 
 /** Props of {@link LookTile}. */
 export interface LookTileProps {
@@ -174,7 +174,9 @@ export function LookTile(
                         "rounded-sm px-1 tabular-nums",
                         chosen
                           ? "bg-selected font-semibold text-selected-foreground"
-                          : "text-muted",
+                          : size.soldOut
+                          ? "text-muted"
+                          : "text-foreground",
                       )}
                     >
                       {size.soldOut ? <s>{size.label}</s> : size.label}

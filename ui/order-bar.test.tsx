@@ -75,12 +75,12 @@ describe("OrderBar", () => {
     )
   })
 
-  it("announces a status line in a live region that is in the page from the start", () => {
+  it("announces a status line in a live region that is in the page, and the accessibility tree, from the start", () => {
     expect(render(<OrderBar message={MESSAGE} actions={[TELEGRAM]} />)).toContain(
-      '<p role="status" class="text-sm font-medium empty:hidden"></p>',
+      '<p role="status" class="text-sm font-medium empty:sr-only"></p>',
     )
     const html = render(<OrderBar message={MESSAGE} actions={[TELEGRAM]} status="Sold out" />)
-    expect(html).toContain('role="status" class="text-sm font-medium empty:hidden">Sold out</p>')
+    expect(html).toContain('role="status" class="text-sm font-medium empty:sr-only">Sold out</p>')
   })
 
   it("shows a short note under the actions, outside the live region, only when given", () => {

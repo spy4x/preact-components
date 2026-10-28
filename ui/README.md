@@ -1049,8 +1049,16 @@ and `OrderBar`'s actions are links or submit buttons, so the catalog works with 
 A photo's `variants` are what `responsiveImage` of `@spy4x/platform/universal/srcset` takes: the
 widths it is stored at, cropped to 3:4. For the photo to grow from the tile into the item page,
 give the item page's photo the tile's `viewTransitionName` and put
-`@view-transition { navigation: auto; }` in both pages' CSS. Place `OrderBar` last in the page's
-main column on a phone, outside its side padding, so the bar spans the screen.
+`@view-transition { navigation: auto; }` in both pages' CSS.
+
+What the page does for `OrderBar` on a phone, below `lg`:
+
+- Put it last in the main column, outside the page's side padding, so the bar spans the screen,
+  and not inside an element that scrolls on its own: it sticks to the page's scroll.
+- Leave room under the controls above it. Once scripts run, the bar sets the page's
+  `scroll-padding-bottom` to its own height, so a control Tab reaches stops above the bar. For a
+  page that also works without scripts, set a starting value in the page's CSS, about the bar's
+  height: `@media (width < 64rem) { html { scroll-padding-bottom: 14rem; } }`.
 
 ## ListField and DateTimeField
 
@@ -2773,8 +2781,6 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 
 - `LOOK_TILE_LABELS` holds the English words of `LookTile`: `sizes`, `colors`, `sizeSoldOut`,
   `chosenSize` and `soldOut`.
-- `LOOK_GRID_SIZES` is the `sizes` of a photo drawn in a `LookGrid`, a tile's default. Pass it to
-  `responsiveImage` when another element shows the same photo at a tile's width.
 
 ### OrderBar (`./order-bar`)
 

@@ -29,7 +29,8 @@ export interface SwatchChipsProps extends Omit<RadioChipsProps, "options"> {
  * It is {@link RadioChips} with a swatch in each label: a `<fieldset>` named by its `<legend>`,
  * one tab stop, arrow keys, and the checked chip filled with the accent and marked with a check.
  * The name is always written out, so no choice rests on telling colours apart. The swatch has a
- * border, so white and near-black still show on both palettes.
+ * border, so white and near-black still show on both palettes, and on the checked chip's accent
+ * fill a ring in the fill's label colour keeps it apart from the fill.
  *
  * @param props The colours and options, see {@link SwatchChipsProps}.
  */
@@ -46,7 +47,7 @@ export function SwatchChips({ options, ...props }: SwatchChipsProps): JSX.Elemen
           <>
             <span
               aria-hidden="true"
-              class="size-4 shrink-0 rounded-full border border-strong"
+              class="size-4 shrink-0 rounded-full border border-strong group-has-[:checked]/chip:ring-2 group-has-[:checked]/chip:ring-selected-foreground"
               style={{ backgroundColor: option.color }}
             />
             {option.name}

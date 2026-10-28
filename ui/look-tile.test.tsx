@@ -1,7 +1,10 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { LOOK_GRID_SIZES, LookTile, type LookTileProps } from "./look-tile.tsx"
+import { LookTile, type LookTileProps } from "./look-tile.tsx"
+
+/** A tile's photo width in a `LookGrid`, as the component writes it. */
+const GRID_SIZES = "(min-width: 64rem) 33vw, (min-width: 48rem) 50vw, 100vw"
 
 const PHOTO: LookTileProps["photo"] = {
   alt: "A brown zip jacket, worn open",
@@ -38,7 +41,7 @@ describe("LookTile", () => {
   it("draws the photo from a srcset per type, widest fallback first sized for the grid", () => {
     const html = render(<LookTile {...TILE} />)
     expect(html).toContain(
-      `<source type="image/avif" srcset="/p/zip-480.avif 480w, /p/zip-960.avif 960w" sizes="${LOOK_GRID_SIZES}"`,
+      `<source type="image/avif" srcset="/p/zip-480.avif 480w, /p/zip-960.avif 960w" sizes="${GRID_SIZES}"`,
     )
     expect(html).toMatch(
       /<img src="\/p\/zip-960.webp" srcset="\/p\/zip-480.webp 480w, \/p\/zip-960.webp 960w"[^>]* width="960" height="1280" alt="A brown zip jacket, worn open"/,
@@ -56,8 +59,10 @@ describe("LookTile", () => {
 
   it("strikes a sold-out size through and also says it is sold out", () => {
     const html = render(<LookTile {...TILE} />)
-    expect(html).toMatch(/<li[^>]*><s>L<\/s><span class="sr-only">, sold out<\/span><\/li>/)
-    expect(html).toMatch(/<li[^>]*>S<\/li>/)
+    expect(html).toMatch(
+      /<li class="[^"]*text-muted"><s>L<\/s><span class="sr-only">, sold out<\/span><\/li>/,
+    )
+    expect(html).toMatch(/<li class="[^"]*text-foreground">S<\/li>/)
   })
 
   it("marks the chosen size in the accent and says so", () => {

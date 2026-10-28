@@ -1,5 +1,6 @@
 import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
+import { useEffect, useRef } from "preact/hooks"
 import { buttonClasses, type ButtonVariant } from "./button.tsx"
 import { useLabels } from "./i18n.tsx"
 
@@ -76,10 +77,65 @@ const BAR =
   "sticky bottom-0 z-10 flex flex-col gap-3 border-t border-subtle bg-surface px-4 py-3 " +
   "lg:top-6 lg:bottom-auto lg:gap-4 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
 
-/** An outgoing chat bubble in the track grey, which stands off the canvas and the surface alike: rounded, with the corner nearest the sender cut. */
+/**
+ * An outgoing chat bubble in the track grey, which stands off the canvas and the surface alike:
+ * rounded, with the corner nearest the sender cut.
+ */
 const BUBBLE =
   "rounded-2xl rounded-ee-sm bg-track px-4 py-2 text-sm text-foreground whitespace-pre-line " +
   "break-words select-text"
+
+/** Below this width the bar sticks to the bottom of the screen: Tailwind's `lg` breakpoint. */
+const PHONE = "(width < 64rem)"
+
+/** Room left under a control scrolled out from under the bar: its 4 px focus ring, and a gap. */
+const FOCUS_ROOM = 8
+
+/**
+ * Keeps controls out from under the bar while it is stuck to the bottom of a phone's screen.
+ *
+ * The page's `scroll-padding-bottom` follows the bar's height, so a link to an anchor or a
+ * script's `scrollIntoView` stops above the bar. Chromium does not scroll for a focused control
+ * that is already partly on screen, so a control Tab reaches under the bar is also scrolled up by
+ * the part the bar covers. A control drawn on its `<label>`, such as a chip's hidden radio, is
+ * measured by the label. The page's own padding comes back when the bar goes away or grows to the
+ * desktop panel.
+ */
+function useScrollRoomFor(bar: { current: HTMLElement | null }): void {
+  useEffect(() => {
+    const element = bar.current
+    if (element === null) return
+    const root = document.documentElement
+    const own = root.style.scrollPaddingBottom
+    const phone = matchMedia(PHONE)
+    const update = () => {
+      root.style.scrollPaddingBottom = phone.matches
+        ? `${Math.ceil(element.getBoundingClientRect().height)}px`
+        : own
+    }
+    update()
+    const focused = (event: FocusEvent) => {
+      const target = event.target
+      if (!phone.matches || !(target instanceof Element) || element.contains(target)) return
+      const bar = element.getBoundingClientRect()
+      if (Math.round(bar.bottom) < innerHeight) return // Not stuck: the bar covers nothing.
+      const control = (target.closest("label") ?? target).getBoundingClientRect()
+      // 8 px more than the bar covers, so the control's focus ring clears the bar too.
+      const covered = control.bottom - bar.top + FOCUS_ROOM
+      if (covered > FOCUS_ROOM && control.top < innerHeight) scrollBy({ top: covered })
+    }
+    const resized = new ResizeObserver(update)
+    resized.observe(element)
+    phone.addEventListener("change", update)
+    document.addEventListener("focusin", focused)
+    return () => {
+      resized.disconnect()
+      phone.removeEventListener("change", update)
+      document.removeEventListener("focusin", focused)
+      root.style.scrollPaddingBottom = own
+    }
+  }, [])
+}
 
 /** A button's look, a 44 px target on a phone, by its role in the bar. */
 function actionClasses(variant: ButtonVariant, iconOnly: boolean): string {
@@ -143,21 +199,27 @@ function Action(
  * it by hand, and each action is a link to the chat or a submit button whose form the server
  * turns into a redirect. One action is accent-filled, as one view has one primary action.
  *
+ * On a phone, once scripts run, it keeps the page's `scroll-padding-bottom` at its own height and
+ * scrolls a control Tab reaches out from under the bar. Without scripts the page sets the padding
+ * itself.
+ *
  * @param props The message, the actions and options, see {@link OrderBarProps}.
  */
 export function OrderBar(
   { message, actions, secondary, status, note, form, labels, class: className }: OrderBarProps,
 ): JSX.Element {
   const words = useLabels("OrderBar", ORDER_BAR_LABELS, labels)
+  const bar = useRef<HTMLElement>(null)
+  useScrollRoomFor(bar)
   return (
-    <aside aria-label={words.region} class={join(BAR, className)} data-e2e="order-bar">
+    <aside ref={bar} aria-label={words.region} class={join(BAR, className)} data-e2e="order-bar">
       <figure class="flex flex-col gap-1">
         <figcaption class="text-xs font-medium text-muted max-lg:sr-only">
           {words.message}
         </figcaption>
         <blockquote class={BUBBLE} data-e2e="order-bar-message">{message}</blockquote>
       </figure>
-      <p role="status" class="text-sm font-medium empty:hidden">{status}</p>
+      <p role="status" class="text-sm font-medium empty:sr-only">{status}</p>
       <div class="flex gap-2 lg:flex-col">
         {actions.map((action, index) => (
           <Action
