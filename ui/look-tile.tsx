@@ -1,7 +1,9 @@
 import { join } from "@spy4x/preact-cn/join"
-import { responsiveImage, type ResponsiveImageVariant } from "@spy4x/platform/universal/srcset"
 import type { ComponentChildren, JSX } from "preact"
 import { useLabels } from "./i18n.tsx"
+import { type LookPhoto, LookPicture, TILE_LINK } from "./look-picture.tsx"
+
+export type { LookPhoto } from "./look-picture.tsx"
 
 /** One size of a {@link LookTile}'s item, such as `"M"`. */
 export interface LookSize {
@@ -17,19 +19,6 @@ export interface LookColor {
   name: string
   /** Any CSS colour, such as `"#7a5230"`. */
   color: string
-}
-
-/** The photo of a {@link LookTile}. */
-export interface LookPhoto {
-  /**
-   * The widths the photo is stored at, preferred type first (AVIF before WebP), as
-   * `responsiveImage` of `@spy4x/platform/universal/srcset` takes them. Crop them to 3:4.
-   */
-  variants: readonly ResponsiveImageVariant[]
-  /** What the photo shows. `""` when the name says it all. */
-  alt: string
-  /** How wide the photo is drawn. Defaults to its width in a `LookGrid`: a third, a half or all. */
-  sizes?: string
 }
 
 /** The words a {@link LookTile} shows or announces. */
@@ -54,9 +43,6 @@ export const LOOK_TILE_LABELS: LookTileLabels = {
   chosenSize: "your size",
   soldOut: "Sold out",
 }
-
-/** The width of a tile in a `LookGrid`: one column on a phone, two from `md`, three from `lg`. */
-const LOOK_GRID_SIZES = "(min-width: 64rem) 33vw, (min-width: 48rem) 50vw, 100vw"
 
 /** Props of {@link LookTile}. */
 export interface LookTileProps {
@@ -92,13 +78,6 @@ export interface LookTileProps {
   class?: string
 }
 
-/** The name's link: the whole tile is its target, through a stretched `::after`. */
-const LINK =
-  "rounded-sm text-foreground underline-offset-4 hover:underline focus-visible:outline-hidden " +
-  "after:absolute after:inset-0 after:rounded-primary focus-visible:after:ring-2 " +
-  "focus-visible:after:ring-focus focus-visible:after:ring-offset-2 " +
-  "focus-visible:after:ring-offset-focus"
-
 /**
  * One look of a shop's catalog: a tall 3:4 photo as the whole card, and under it the name, the
  * price, the sizes and the colours.
@@ -129,32 +108,14 @@ export function LookTile(
   }: LookTileProps,
 ): JSX.Element {
   const words = useLabels("LookTile", LOOK_TILE_LABELS, labels)
-  const image = responsiveImage(photo.variants, photo.sizes ?? LOOK_GRID_SIZES)
   const Heading = `h${headingLevel}` as const
   return (
     <div class={join("relative flex flex-col gap-3", className)} data-e2e="look-tile">
-      <picture class="block overflow-hidden rounded-primary bg-hover">
-        {image.sources.map((source) => (
-          <source key={source.type} type={source.type} srcset={source.srcset} sizes={image.sizes} />
-        ))}
-        <img
-          src={image.src}
-          srcset={image.srcset}
-          sizes={image.sizes}
-          width={image.width}
-          height={image.height}
-          alt={photo.alt}
-          loading={priority ? "eager" : "lazy"}
-          fetchpriority={priority ? "high" : undefined}
-          decoding="async"
-          class="block aspect-3/4 w-full object-cover"
-          style={viewTransitionName ? { viewTransitionName } : undefined}
-        />
-      </picture>
+      <LookPicture photo={photo} priority={priority} viewTransitionName={viewTransitionName} />
       <div class="flex flex-col gap-1">
         <div class="flex items-baseline justify-between gap-3">
           <Heading class="min-w-0 text-base font-medium text-balance sm:text-lg">
-            <a href={href} class={LINK}>{name}</a>
+            <a href={href} class={TILE_LINK}>{name}</a>
           </Heading>
           <p class="shrink-0 text-lg font-bold tabular-nums">
             {soldOut ? <s class="text-muted">{price}</s> : price}
