@@ -11,14 +11,14 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twenty-eight exports.** Most components pass a caller's
+- **A `class` is merged, except on thirty-two exports.** Most components pass a caller's
   `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
   of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
   `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `DialogActions`, `YouTubeVideo`,
   `ScreenTour`, `PricingTable`, `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its
   `optionsClass`), `CommandPalette`, `LanguagePicker`,
   `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
-  `Slider` (#958) use `join`
+  `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips` and `OrderBar` use `join`
   instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
   `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
@@ -113,6 +113,8 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `LanguagePicker`      | `language-picker`      | `languages` (tags), `current` (`null` = automatic), `mode?` (`"list"` radio group or `"links"`), `href?` (links), `onSelect?` (list), `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?` — each language by its own name; links work without JavaScript                                                                                                 |
 | `LoadingSkeleton`     | `loading-skeleton`     | `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion                                                                                                                                                                                                                                               |
 | `LoadingSpinner`      | `loading-spinner`      | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion                                                                                                                                                                                                                                            |
+| `LookGrid`            | `look-grid`            | `children` (the looks), `label?` — staggered columns: one on a phone, two from `md`, three from `lg`; no JavaScript                                                                                                                                                                                                                                                 |
+| `LookTile`            | `look-tile`            | `href`, `name`, `price`, `photo` (`{ variants, alt, sizes? }`), `sizes?` (`{ label, soldOut? }[]`), `chosenSize?`, `colors?`, `soldOut?`, `viewTransitionName?`, `priority?`, `headingLevel?`, `labels?` — a 3:4 photo as the card, one link; no JavaScript                                                                                                         |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`                                                                                                                                                                                                                                |
 | `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                                                                                                         |
 | `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                                                                                                               |
@@ -121,6 +123,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                                                                                                       |
 | `OnDay`               | `format`               | `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`                                                                                                                                                                                                         |
 | `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`                                                                                                                                                                                                                                                                  |
+| `OrderBar`            | `order-bar`            | `message`, `actions` (one or two `{ label, shortLabel?, icon?, href?, name?, value?, attributes? }`), `secondary?`, `status?`, `note?`, `form?`, `labels?` — sticky bar on a phone, sticky panel from `lg`; links or submit buttons                                                                                                                                 |
 | `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                                                                                                                 |
 | `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                                                                                                           |
 | `PageHeader`          | `page-header`          | `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`                                                                                                                     |
@@ -150,6 +153,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                                                                                                          |
 | `Steps`               | `steps`                | `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter                                                                                                                                                                                              |
+| `SwatchChips`         | `swatch-chips`         | `legend`, `name`, `options` (`{ value, name, color, disabled?, id? }[]`), `defaultValue?` or `value?`, `onChange?` — `RadioChips` with a colour swatch before each name; works without JavaScript                                                                                                                                                                   |
 | `Table`               | `table`                | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                                                                                                                       |
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                                                 |
 | `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                                         |
@@ -1002,6 +1006,61 @@ draws the `h1`.
 
 `PostList` reads each `publishedAt` as its UTC day, through the nearest `FormatContext`, so a post
 shows the same date to every reader and on the server.
+
+## Storefront: LookTile, LookGrid, SwatchChips and OrderBar
+
+The patterns of a shop's catalog that takes orders by chat ("Storefront" in
+`docs/design-language.md`). `LookTile`, `LookGrid` and `SwatchChips` are plain markup and CSS,
+and `OrderBar`'s actions are links or submit buttons, so the catalog works with no JavaScript.
+
+```tsx
+<LookGrid label="New in">
+  {items.map((item, index) => (
+    <LookTile
+      key={item.id}
+      href={item.href}
+      name={item.name}
+      price={item.price}
+      photo={{ variants: item.photoVariants, alt: item.photoAlt }}
+      sizes={item.sizes}
+      chosenSize={size}
+      viewTransitionName={`look-${item.id}`}
+      priority={index === 0}
+    />
+  ))}
+</LookGrid>
+
+<form id="order" method="post" action="/order">
+  <SwatchChips legend="Colour" name="colour" options={colours} defaultValue={colour} />
+  <RadioChips legend="Size" name="size" options={sizes} defaultValue={size} />
+</form>
+<OrderBar
+  form="order"
+  message={message}
+  actions={[
+    { label: "Order on Telegram", shortLabel: "Telegram", href: telegramLink },
+    { label: "Order on Zalo", shortLabel: "Zalo", name: "via", value: "zalo" },
+  ]}
+  secondary={{ label: "Add to list", icon: <IconPlus />, name: "add", value: item.id }}
+  note="Same-day delivery in Da Nang if you order before 16:00."
+/>
+```
+
+A photo's `variants` are what `responsiveImage` of `@spy4x/platform/universal/srcset` takes: the
+widths it is stored at, cropped to 3:4. For the photo to grow from the tile into the item page,
+give the item page's photo the tile's `viewTransitionName` and put
+`@view-transition { navigation: auto; }` in both pages' CSS.
+
+What the page does for `OrderBar` on a phone, below `lg`:
+
+- Put it last in the main column, outside the page's side padding, so the bar spans the screen,
+  and not inside an element that scrolls on its own: it sticks to the page's scroll.
+- Leave room under the controls above it. Once scripts run, while the bar is stuck to the bottom
+  of the screen and focus is in its form (the `form` it names, else the form or the element around
+  it), the bar sets the page's `scroll-padding-bottom` to its own height and scrolls the focused
+  control above it. Focus elsewhere leaves the page as it was. For a page that also works without
+  scripts, set a starting value in the page's CSS, about the bar's height:
+  `@media (width < 64rem) { html { scroll-padding-bottom: 14rem; } }`.
 
 ## ListField and DateTimeField
 
@@ -2719,6 +2778,19 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 ### PostList (`./post-list`)
 
 - `POST_LIST_LABELS` holds the English words of `PostList`: `readTime`.
+
+### LookTile (`./look-tile`)
+
+- `LOOK_TILE_LABELS` holds the English words of `LookTile`: `sizes`, `colors`, `sizeSoldOut`,
+  `chosenSize` and `soldOut`.
+
+### OrderBar (`./order-bar`)
+
+- `ORDER_BAR_LABELS` holds the English words of `OrderBar`: `region` and `message`.
+- `bindScrollRoom(bar, scope, page)` is exported for the package's own components and tests: it
+  listens on `page` (a `ScrollRoomPage`, `window` in a browser) for focus in `scope` and keeps a focused
+  control above the bar while the bar is stuck to the bottom of a phone's screen. It returns the
+  unbind, which removes the listener and restores the page's `scroll-padding-bottom`.
 
 ### ImageGallery (`./image-gallery`)
 

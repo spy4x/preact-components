@@ -478,7 +478,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1243 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1272 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -686,6 +686,7 @@ KanbanSlot	type	@spy4x/preact-ui	A place on the board by indices: which column, 
 Kbd	component	@spy4x/preact-ui	One key, a combination of keys or a sequence of presses, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key.
 KeyFace	type	@spy4x/preact-ui	How one key of a combination is drawn: what is on the key, and its name when that is a glyph.
 LIST_FIELD_LABELS	constant	@spy4x/preact-ui	The English words `ListField` shows when the caller passes none.
+LOOK_TILE_LABELS	constant	@spy4x/preact-ui	The English words `LookTile` shows when the caller passes none.
 LabelParams	type	@spy4x/preact-ui	For a label that is a function, the names its arguments take in the message, in order: `{ page: ["page"] }` turns `"Page {page}"` into `(page) => "Page 3"`.
 LanguageButton	component	@spy4x/preact-ui	A ghost button with `IconGlobe` and the language in use, named in itself, that opens `LanguageDialog`: the language switch of a signed-out header, so a visitor who landed in a language they cannot read finds their own before signing in.
 LanguageDialog	component	@spy4x/preact-ui	A `Modal` holding the `LanguagePicker` list.
@@ -703,6 +704,11 @@ LinkClickTarget	type	@spy4x/preact-ui	The anchor a click landed on, as `followLi
 ListField	component	@spy4x/preact-ui	An ordered list of short lines, such as an article's key points: one input per line, a remove button on each, and an "Add item" button under them, up to `max` lines.
 LoadingSkeleton	component	@spy4x/preact-ui	Placeholder layout shown while a result loads.
 LoadingSpinner	component	@spy4x/preact-ui	Inline spinner with an accessible live region.
+LookColor	type	@spy4x/preact-ui	One colour of a `LookTile`'s item, drawn as a dot.
+LookGrid	component	@spy4x/preact-ui	The looks of a shop's catalog in staggered columns: one per screen width on a phone, two from 768 px and three from 1024 px, with the middle column lowered.
+LookPhoto	type	@spy4x/preact-ui	The photo of a `LookTile`.
+LookSize	type	@spy4x/preact-ui	One size of a `LookTile`'s item, such as `"M"`.
+LookTile	component	@spy4x/preact-ui	One look of a shop's catalog: a tall 3:4 photo as the whole card, and under it the name, the price, the sizes and the colours.
 MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read of an option.
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
 MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals.
@@ -713,6 +719,7 @@ MoneyInputRangeMessage	type	@spy4x/preact-ui	A `MoneyInputProps.rangeMessage` fu
 MoreMenu	component	@spy4x/preact-ui	A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list.
 Notice	component	@spy4x/preact-ui	A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed.
 NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`).
+ORDER_BAR_LABELS	constant	@spy4x/preact-ui	The English words `OrderBar` shows when the caller passes none.
 OnDay	component	@spy4x/preact-ui	A calendar day in the person's format (`FormatContext`), `17 Oct 2026`, in a `<time datetime>` whose hover text is the exact instant.
 OnOffButtons	component	@spy4x/preact-ui	Segmented ON/OFF pair, optionally annotated with counts.
 OnboardingChecklist	component	@spy4x/preact-ui	A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one primary button, and Dismiss.
@@ -720,6 +727,8 @@ OnboardingStep	type	@spy4x/preact-ui	One step of an `OnboardingChecklist`.
 OnboardingStepAction	type	@spy4x/preact-ui	What a step offers to get it done: a button, or a link.
 OnboardingStepButton	type	@spy4x/preact-ui	A step's action that runs in place, such as opening a dialog.
 OnboardingStepLink	type	@spy4x/preact-ui	A step's action that goes to another page, such as the form that creates a first project.
+OrderBar	component	@spy4x/preact-ui	The order step of a shop that takes orders by chat: the message about to be sent, in a chat bubble, above the buttons that send it.
+OrderBarAction	type	@spy4x/preact-ui	One button of an `OrderBar`: a link to a chat, or a submit button of the page's form.
 PAGE_HERO_LABELS	constant	@spy4x/preact-ui	The English words `PageHero` shows when the caller passes none.
 POST_LIST_LABELS	constant	@spy4x/preact-ui	The English words `PostList` shows when the caller passes none.
 Page	component	@spy4x/preact-ui	The content column of a page: a readable maximum width, centred, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and the `xl` gap (32 px) between its sections.
@@ -783,6 +792,8 @@ StatusMarkStatus	type	@spy4x/preact-ui	A project or feature's lifecycle state.
 StepItem	type	@spy4x/preact-ui	One step of a `Steps` list.
 Steps	component	@spy4x/preact-ui	A numbered "how it works" list: each step a heading and a line of text, joined by a thin line.
 SubscriptionStatus	type	@spy4x/preact-ui	Where a subscription stands.
+SwatchChips	component	@spy4x/preact-ui	A choice of colour drawn as chips with a swatch before each colour's name, on native radios, so it works before, or without, any JavaScript.
+SwatchOption	type	@spy4x/preact-ui	One colour of a `SwatchChips` group.
 TOUCH_TARGET	constant	@spy4x/preact-ui	A touch target of 44 px on a phone and the library's own 36 px from `sm` up, for a small button a thumb has to hit.
 TabItem	type	@spy4x/preact-ui	One tab and the panel it controls.
 Table	component	@spy4x/preact-ui	Table shell with header, body and optional footer slots.
@@ -989,6 +1000,8 @@ ImageSequence	type	@spy4x/preact-ui/zoomable-images	What `collectSequence` hands
 collectSequence	helper	@spy4x/preact-ui/zoomable-images	Build the sequence a lightbox pages through, and the position of the image that was opened.
 zoomableAlt	helper	@spy4x/preact-ui/zoomable-images	The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`, not treated as a real name because a non-empty string happens to be truthy.
 nextStepIndex	helper	@spy4x/preact-ui/screen-tour	Index of the step a key press on the tab at `current` moves to: `Tabs`' `nextTabIndex`, with Up and Down stepping like Left and Right, because the list is a column from 1024 px and a row below it.
+ScrollRoomPage	type	@spy4x/preact-ui/order-bar	The parts of the page `bindScrollRoom` reads and changes: `window` passes as one.
+bindScrollRoom	helper	@spy4x/preact-ui/order-bar	Keeps the controls of an `OrderBar`'s form out from under the bar while it is stuck to the bottom of a phone's screen.
 CLASS_PACKAGE	constant	@spy4x/preact-ui-guide	The package the class sections document.
 CatalogueSection	type	@spy4x/preact-ui-guide	One rendered section: its identity, its copy, the package it documents and its cards.
 ClassDemo	type	@spy4x/preact-ui-guide	One card of a class section: the same shape as `Demo`, plus what only a class card has.

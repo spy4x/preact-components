@@ -185,6 +185,11 @@ ListField.count	60ed39d6ebb6de57
 ListField.item	a5c57ae3b1e7a395
 ListField.remove	a7a03fd0a9c31767
 LoadingSpinner.loadingLabel	dc380888c4e2c776
+LookTile.chosenSize	24205e6141e1d712
+LookTile.colors	88f20221cac178c4
+LookTile.sizeSoldOut	dcbe3413cdd26c04
+LookTile.sizes	74a3978d10045c73
+LookTile.soldOut	1a27eedbc636ee6b
 MoneyInput.invalidMessage	617dd68ca7c08390
 MoneyInput.rangeBetween	c6a6d8602e09a1c1
 MoneyInput.rangeMax	286a9c5531847333
@@ -199,6 +204,8 @@ OnboardingChecklist.finishLabel	a6c7a84baa6750fc
 OnboardingChecklist.progressLabel	1df05863c938754c
 OnboardingChecklist.title	61e8d44ad423a4a0
 OnboardingChecklist.todoLabel	100ec1bc78a4cc83
+OrderBar.message	7a057bd996a32915
+OrderBar.region	6be090825c997103
 PageHeader.menuLabel	f8d46c2570e70736
 PageHero.by	125466b821c6448a
 PageHero.updated	3a5ecca188c0579c

@@ -43,7 +43,7 @@ language fixes both: the apps feel related, and the work of making one look good
   ```
 
 - **Weights:** 400 body, 500 labels, buttons and in-app headings, 600 marketing headings, 700 a
-  marketing hero only.
+  marketing hero only, 800 a storefront's display headline only ("Storefront" below).
 - **Arabic: Noto Sans Arabic, loaded only for Arabic letters.** Geist has no Arabic letters, and
   a system fallback draws them in whatever face the device has. Noto Sans Arabic is a variable
   face under the OFL with a weight axis, so 400 to 700 cost one file, and its plain, open shapes
@@ -78,19 +78,21 @@ language fixes both: the apps feel related, and the work of making one look good
 
 - **Scale.** Tailwind's own sizes only, never an arbitrary `text-[17px]`:
 
-  | Role                                | Phone       | From `lg`   | Weight and tracking    |
-  | ----------------------------------- | ----------- | ----------- | ---------------------- |
-  | Marketing hero `h1`                 | `text-4xl`  | `text-6xl`  | 700, `tracking-tight`  |
-  | Marketing page `h1`                 | `text-3xl`  | `text-5xl`  | 600, `tracking-tight`  |
-  | Marketing section `h2`              | `text-2xl`  | `text-4xl`  | 600, `tracking-tight`  |
-  | App page title (`PageHeader`)       | `text-xl`   | `text-2xl`  | 500                    |
-  | App section title (`Section`, card) | `text-base` | `text-lg`   | 500                    |
-  | Lead paragraph                      | `text-lg`   | `text-xl`   | 400, muted             |
-  | Body                                | `text-base` | `text-base` | 400                    |
-  | Secondary, table cell               | `text-sm`   | `text-sm`   | 400, muted where quiet |
-  | Rail and tab bar label              | `text-xs`   | `text-xs`   | 500                    |
-  | Eyebrow above a marketing `h2`      | `text-sm`   | `text-sm`   | 500, mono, accent text |
-  | Code                                | `text-sm`   | `text-sm`   | Geist Mono 400         |
+  | Role                                | Phone       | From `lg`   | Weight and tracking     |
+  | ----------------------------------- | ----------- | ----------- | ----------------------- |
+  | Storefront display `h1`             | `text-6xl`  | `text-9xl`  | 800, `tracking-tighter` |
+  | Storefront item name                | `text-4xl`  | `text-4xl`  | 800, `tracking-tighter` |
+  | Marketing hero `h1`                 | `text-4xl`  | `text-6xl`  | 700, `tracking-tight`   |
+  | Marketing page `h1`                 | `text-3xl`  | `text-5xl`  | 600, `tracking-tight`   |
+  | Marketing section `h2`              | `text-2xl`  | `text-4xl`  | 600, `tracking-tight`   |
+  | App page title (`PageHeader`)       | `text-xl`   | `text-2xl`  | 500                     |
+  | App section title (`Section`, card) | `text-base` | `text-lg`   | 500                     |
+  | Lead paragraph                      | `text-lg`   | `text-xl`   | 400, muted              |
+  | Body                                | `text-base` | `text-base` | 400                     |
+  | Secondary, table cell               | `text-sm`   | `text-sm`   | 400, muted where quiet  |
+  | Rail and tab bar label              | `text-xs`   | `text-xs`   | 500                     |
+  | Eyebrow above a marketing `h2`      | `text-sm`   | `text-sm`   | 500, mono, accent text  |
+  | Code                                | `text-sm`   | `text-sm`   | Geist Mono 400          |
 
 - **Measure.** Paragraphs at most `max-w-2xl` (about 65 characters). Headings use `text-balance`,
   paragraphs `text-pretty`.
@@ -297,6 +299,33 @@ Dark first and checked, over a frame that takes the chosen palette while the pag
 Use it on a page that sells or documents the library; never repaint a whole page to show light and
 dark.
 
+### Storefront
+
+A shop's public catalog, where people look at clothes or goods on a phone and order by chat (the
+owner approved the bold display headline on 2026-10-28). It is a website, so it takes
+`SiteHeader` and `SiteFooter`, works without JavaScript, and keeps the house type, spacing,
+tokens and both palettes. The photos carry the page; words sit beside them in big, tight type.
+
+| Need                          | Use                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One item in a list            | `LookTile`: a tall 3:4 photo as the whole card, with no border, then the name, the price set heavy in the text colour (never a coloured sticker), the sizes and the colour dots. One link, named by the item. A sold-out size is struck through and says "sold out"; the chosen size is marked in the accent.                                                                                                                                                                                                                                                                                                             |
+| A list of items               | `LookGrid`: staggered columns, one on a phone, two from `md`, three from `lg`. Put a size row (`RadioChips` in a `GET` form) above it when the shop sells sizes, so a shopper picks a size once and the list shows only what fits. An empty list says so in one line, with a link that clears the filter.                                                                                                                                                                                                                                                                                                                 |
+| A choice of colour            | `SwatchChips`: a swatch and the colour's written name on each chip. A size is plain `RadioChips`; for a size with none left the page passes the label struck through (`<s>L</s>` with a screen-reader "sold out") and `disabled`, since `RadioChips` only dims it.                                                                                                                                                                                                                                                                                                                                                        |
+| Ordering by chat              | `OrderBar`: the message about to be sent, in a chat bubble, above the order buttons. One accent-filled order button (the main messenger), a second outlined, and a quiet "Add to list", then at most one short muted note that helps the shopper decide (a delivery promise). A sticky bar at the bottom of a phone, a sticky panel beside the photos from `lg`. On a phone the page puts it last in the main column, outside its side padding, and keeps `scroll-padding-bottom` at the bar's height (the bar sets it once scripts run; the page's CSS sets a starting value), so no focused control sits under the bar. |
+| The photo grows into the item | `LookTile`'s `viewTransitionName`, with the same name on the item page's photo and `@view-transition { navigation: auto; }` on both pages. It is the one motion a storefront adds; a photo strip may also snap.                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+**Display type.** The home headline and a category's name are Geist 800 with `tracking-tighter`
+and `leading-tight`, `text-6xl` on a phone and `text-9xl` from `lg`, `text-balance`; the item
+page's name is `text-4xl` in the same weight. At `leading-none`, Vietnamese tone marks stacked
+above a letter (`ể`, `ỗ`, `ữ`) and dots below (`ặ`, `ộ`) meet across lines at `text-9xl`, so the
+line height stays at `leading-tight`. Geist's variable file draws the stacked marks at 800
+(`ặ ữ ỗ`, `Ặ Ữ Ỗ` and sample headlines were checked on screen at 60 and 128 px). Only these
+headlines use 800; everything else keeps the weights above.
+
+**Colour.** The brand hue fills the primary order button, the selected size and colour, the brand
+mark and the favicon, and nothing else. Photos are never filtered or recoloured, so the colour a
+shopper sees is the colour that arrives.
+
 ### Words
 
 - **Plain, short, sentence case.** "Create note", not "Submit"; "Delete group", not "Confirm".
@@ -361,12 +390,14 @@ Hues assigned (most apps have not moved to theirs yet):
 | oko                            | azure, 228°             | `oklch(0.5 0.095 228)` `#0a6d8e`   |
 | mig                            | teal, 178°              | `oklch(0.5 0.09 178)` `#097463`    |
 | caldav-tasks-web               | raspberry, 350°         | `oklch(0.5 0.19 350)` `#ab1d72`    |
+| Vi shop                        | chartreuse, 105°        | `oklch(0.5 0.105 105)` `#6d6603`   |
 | The owner's personal sites     | orange, 47° (see below) | `#f97316` with a dark label        |
 
-The wheel is nearly full. The one gap left that keeps 30° from every hue above and from the status
-hues is about 105° (chartreuse, at a lightness of 0.5 or less so the white label still works). An app after that
-shares a neighbour's hue at a clearly different lightness, which is the owner's call. Add a row
-here in the same change that gives an app its hue.
+The wheel is full: Vi shop took the last gap that keeps 30° from every hue above and from the
+status hues. At 105° and lightness 0.5, sRGB holds a chroma of about 0.106, so the accent is an
+olive chartreuse; its white label reads at 5.9:1. An app after this one shares a neighbour's hue
+at a clearly different lightness, which is the owner's call. Add a row here in the same change
+that gives an app its hue.
 
 ### 2. Neutral temperature (the owner's personal sites only)
 

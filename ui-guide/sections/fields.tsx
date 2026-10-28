@@ -36,6 +36,7 @@ import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
 import { DemoNote } from "./demo-note.tsx"
+import { swatchChipsDemo } from "./storefront.tsx"
 
 /** One profile form: a labelled field per control, plus the two that carry their own label. */
 function FieldDemo() {
@@ -1384,6 +1385,7 @@ export const fieldDemos = {
 />`,
     render: () => <RadioChipsDemo />,
   },
+  ...swatchChipsDemo,
   ToggleChips: {
     summary:
       "A row of pressable chips for filtering a list, in the colours of `Badge`, one or many pressed at once.",
