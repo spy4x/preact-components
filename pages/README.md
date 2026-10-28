@@ -23,6 +23,9 @@ Static files only. `index.html` ships the whole catalogue prerendered, so it rea
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the
 usage blocks copy, the toasts fire and the deep links scroll.
 
+`?dir=rtl` before the hash, as in `/?dir=rtl#/ui`, sets `dir="rtl"` on the page once the island
+loads, so every demo can be checked mirrored, the way an Arabic page lays it out.
+
 ## Files
 
 | File                      | Contents                                                                                                  |

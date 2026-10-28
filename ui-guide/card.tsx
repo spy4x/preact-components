@@ -184,10 +184,13 @@ export function DemoCard(
       <div class="relative" data-e2e="usage">
         <details class="group/code min-w-0">
           <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-muted select-none hover:text-foreground sm:px-6 [&::-webkit-details-marker]:hidden">
-            <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90" />
+            <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90 [&:dir(rtl)]:group-open/code:-rotate-90" />
             {labels.code}
           </summary>
-          <pre class="mx-4 mb-4 overflow-x-auto rounded-lg bg-scrim-strong p-4 text-xs leading-relaxed text-scrim-foreground sm:mx-6 sm:mb-6">
+          <pre
+            dir="ltr"
+            class="mx-4 mb-4 overflow-x-auto rounded-lg bg-scrim-strong p-4 text-xs leading-relaxed text-scrim-foreground sm:mx-6 sm:mb-6"
+          >
             <code>{snippet}</code>
           </pre>
         </details>
@@ -195,7 +198,7 @@ export function DemoCard(
           textToCopy={snippet}
           copy={copy}
           copyLabel={copyLabel ?? labels.copySnippet(label)}
-          class="absolute top-1 right-2 sm:right-4"
+          class="absolute top-1 end-2 sm:end-4"
         />
       </div>
     </article>
@@ -221,8 +224,8 @@ function PropsSummary(
         `bg-transparent`: the preset paints a table in the dark palette with the surface colour
         (`theme/preset.css`, "Chrome the popup is painted by"), which would box the summary. */
       }
-      <table class="w-full bg-transparent text-left text-sm">
-        <caption class="pb-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
+      <table class="w-full bg-transparent text-start text-sm">
+        <caption class="pb-2 text-start text-xs font-semibold tracking-wide text-muted uppercase">
           {labels.props}
         </caption>
         <thead class="sr-only">
@@ -240,15 +243,16 @@ function PropsSummary(
             >
               <th
                 scope="row"
-                class="py-2 pr-4 font-mono text-xs font-semibold break-words text-foreground @max-md:min-w-0"
+                class="py-2 pe-4 font-mono text-xs font-semibold break-words text-foreground @max-md:min-w-0"
               >
                 <NameWithBreaks name={prop.name} />
               </th>
-              <td class="py-2 pr-4 font-mono text-xs break-words text-accent-800 @max-md:min-w-0 @max-md:pr-0 dark:text-accent-200">
-                {prop.type}
+              <td class="py-2 pe-4 font-mono text-xs break-words text-accent-800 @max-md:min-w-0 @max-md:pe-0 dark:text-accent-200">
+                {/* Code reads left to right in any page; `dir` isolates it from an Arabic one. */}
+                <span dir="ltr">{prop.type}</span>
                 {prop.default === undefined
                   ? null
-                  : <span class="block text-muted">= {prop.default}</span>}
+                  : <span dir="ltr" class="block text-muted">= {prop.default}</span>}
               </td>
               <td class="py-2 text-muted @max-md:col-span-2 @max-md:pt-0">
                 <InlineMarkdown text={prop.description} />
