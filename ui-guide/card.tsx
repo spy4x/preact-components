@@ -184,7 +184,7 @@ export function DemoCard(
       <div class="relative" data-e2e="usage">
         <details class="group/code min-w-0">
           <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-muted select-none hover:text-foreground sm:px-6 [&::-webkit-details-marker]:hidden">
-            <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90 [&:dir(rtl)]:group-open/code:-rotate-90" />
+            <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90 group-open/code:[&:dir(rtl)]:-rotate-90" />
             {labels.code}
           </summary>
           <pre

@@ -54,6 +54,27 @@ export interface IconProps {
   ```
 - The icons are server-renderable: nothing touches `document` or `window`.
 
+## Right to left
+
+The glyphs that point along the reading direction flip left to right when the page, or the nearest
+ancestor, is `dir="rtl"`. An app passes nothing: the glyph carries
+`[&:dir(rtl)]:[transform:scaleX(-1)]` whatever `class` it gets. `:dir(rtl)` reads the nearest
+`dir`, so a glyph inside a `dir="ltr"` block of an Arabic page (a code sample, an English quote)
+stays as drawn; Tailwind's `rtl:` variant would flip it.
+
+- **Mirror:** `IconChevronLeft`, `IconChevronRight`, `IconArrowLeft`, `IconArrowRight`,
+  `IconArrowUturnLeft`, `IconArrowUturnRight` (undo and redo), `IconLogout`, `IconList`,
+  `IconExternal`, `IconExternalLink` and `IconArrowUpRight`.
+- **Never mirror:** every other glyph, among them the check, the x-mark, search, the globe, play,
+  the up and down arrows, refresh, the clock and the brand marks.
+
+So `IconChevronLeft` means "back" in both directions: on an Arabic page it points right. The flip is
+a `transform`, not Tailwind's `-scale-x-100`, so a caller's `scale-*` (a hover grow) keeps it. A
+caller's `rotate-*` turns the flipped drawing: a disclosure chevron that turns `rotate-90` when open
+needs `[&:dir(rtl)]:-rotate-90` too, or it points up on a right-to-left page.
+
+A new glyph goes in one of the two lists in `+index.test.ts`, or the suite fails.
+
 ## Style families
 
 Every glyph is a published pack's own drawing, copied exactly (see "Provenance" below), but the

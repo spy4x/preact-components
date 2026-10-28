@@ -154,6 +154,9 @@ Tailwind's `duration-150` and `ease-out` express all of this; there are no motio
   in `currentColor` so it takes the text colour. A filled glyph only for a selected state.
 - **An icon never stands alone without a name:** a label beside it, or an accessible name on the
   icon-only button and a tooltip for sighted users.
+- **Directional glyphs mirror on their own:** chevrons, side arrows, undo and redo, logout, list
+  and external link flip under `dir="rtl"`; every other glyph keeps its drawing (the icons README,
+  "Right to left").
 
 ### Colour, apart from the brand hue
 
