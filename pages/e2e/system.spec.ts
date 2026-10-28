@@ -128,41 +128,46 @@ async function appShellAdmin(page: Page): Promise<void> {
   await inCard(page, APP, "app-shell-connection").waitFor({ state: "attached" })
 }
 
+/** The four frames {@link frameAxeSpecs} measures: a card, and how its demo is set before. */
+const AXE_FRAMES = [
+  { card: RAIL_CARD, label: "Rail labels" },
+  { card: RAIL_CARD, label: "Rail icons", icons: true },
+  { card: APP, label: "AppShell product" },
+  { card: APP, label: "AppShell admin, reconnecting", admin: true },
+] as const
+
 /**
- * Axe over the `Rail` card (both variants) and the `AppShell` card (product, then the admin panel
- * reconnecting), each made the whole page, at 390 and 1440 px. Every case is measured before the
- * check fails, so a failure names each case it holds in.
+ * One spec per frame of {@link AXE_FRAMES} in `colorScheme`: the card's demo made the whole page,
+ * then axe over it at 390 and 1440 px. Both widths are measured before the check fails, so a
+ * failure names each width it holds in.
+ *
+ * Each spec measures one frame on the page the runner loaded and never reloads it, because eight
+ * loads of the guide page in one spec overran its 60 seconds on a loaded CI agent (#1050).
  */
-async function shellsAxeClean(page: Page): Promise<string> {
-  const results: string[] = []
-  const failures: string[] = []
-  const measure = async (where: string) => {
-    try {
-      results.push(`${where}: ${await expectPageAxeClean(page)}`)
-    } catch (error) {
-      failures.push(`${where}: ${error instanceof Error ? error.message : error}`)
-    }
-  }
-  const cases = [
-    [RAIL_CARD, "labels"],
-    [RAIL_CARD, "icons"],
-    [APP, "product"],
-    [APP, "admin"],
-  ] as const
-  for (const [card, name] of cases) {
-    for (const width of [390, 1440]) {
-      // Each case starts from a fresh guide page, since the last one replaced the body.
-      await page.reload()
-      await page.locator(`html[data-hydrated="true"]`).waitFor()
-      await page.setViewportSize({ width, height: 900 })
-      if (name === "icons") await inCard(page, card, "rail-demo-variant-icons").check()
-      if (name === "admin") await appShellAdmin(page)
-      await demoFrameAlone(page, card)
-      await measure(`${card} ${name} at ${width} px`)
-    }
-  }
-  if (failures.length > 0) throw new Error(failures.join(" | "))
-  return results.join("; ")
+function frameAxeSpecs(colorScheme: "light" | "dark"): Spec[] {
+  return AXE_FRAMES.map((frame) => ({
+    name: `${frame.label} as the page frame passes axe at 390 and 1440 px in ${colorScheme}, ` +
+      "colour contrast and landmarks included",
+    pageId: "system",
+    colorScheme,
+    run: async (page: Page) => {
+      if ("icons" in frame) await inCard(page, frame.card, "rail-demo-variant-icons").check()
+      if ("admin" in frame) await appShellAdmin(page)
+      await demoFrameAlone(page, frame.card)
+      const results: string[] = []
+      const failures: string[] = []
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 900 })
+        try {
+          results.push(`${width} px: ${await expectPageAxeClean(page)}`)
+        } catch (error) {
+          failures.push(`${width} px: ${error instanceof Error ? error.message : error}`)
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join(" | "))
+      return results.join("; ")
+    },
+  }))
 }
 
 /** The `useRouteAnnouncer` demo's page region, its heading, and the tab title it sets. */
@@ -1614,19 +1619,8 @@ export const specs: readonly Spec[] = [
       return `badge ${fill}, channel spread ${chroma}; last tab "${words}"`
     },
   },
-  {
-    name: "Rail and AppShell as the page frame pass axe at 390 and 1440 px in light, colour " +
-      "contrast and landmarks included",
-    pageId: "system",
-    run: shellsAxeClean,
-  },
-  {
-    name: "Rail and AppShell as the page frame pass axe at 390 and 1440 px in dark, colour " +
-      "contrast and landmarks included",
-    pageId: "system",
-    colorScheme: "dark",
-    run: shellsAxeClean,
-  },
+  ...frameAxeSpecs("light"),
+  ...frameAxeSpecs("dark"),
   {
     name: "AccountMenu: the menu opens upward, marks the current theme as a checked radio item, " +
       "announces and shows an item's key, and choosing another theme reports it",
