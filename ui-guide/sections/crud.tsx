@@ -44,6 +44,7 @@ import { type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
 import { useMemo } from "preact/hooks"
 import type { DemoFragment, DemoProp } from "../registry.ts"
+import { ArabicSwitch } from "./arabic-demo.tsx"
 
 /** The row every editor in this section edits. */
 interface Team extends CrudRow {
@@ -408,9 +409,9 @@ function CrudEditorDemo() {
           </p>
         )}
         footerSlot={() => (
-          // `footerSlot` renders first in the component's footer row; `mr-auto` pushes the buttons
+          // `footerSlot` renders first in the component's footer row; `me-auto` pushes the buttons
           // to the far end, as the footer's own layout expects.
-          <span class="mr-auto text-xs text-muted">
+          <span class="me-auto text-xs text-muted">
             <code>footerSlot</code> sits before Cancel and Save
           </span>
         )}
@@ -803,8 +804,8 @@ function CrudListDemo() {
         canAdd={() => true}
         header={
           <>
-            <th scope="col" class="text-left">Name</th>
-            <th scope="col" class="text-left">Members</th>
+            <th scope="col" class="text-start">Name</th>
+            <th scope="col" class="text-start">Members</th>
           </>
         }
         row={(row) => (
@@ -1022,7 +1023,11 @@ export const crudDemos = {
     </Dropdown>
   )}
 />`,
-    render: () => <CrudListDemo />,
+    render: () => (
+      <ArabicSwitch name="crud-list">
+        <CrudListDemo />
+      </ArabicSwitch>
+    ),
   },
   CrudEditor: {
     summary:
@@ -1120,10 +1125,12 @@ export const crudDemos = {
   {({ vm, vl }) => <TextField vm={vm} vl={vl} name="name" label="Name" />}
 </CrudEditor>`,
     render: () => (
-      <Stack gap="lg">
-        <CrudEditorDemo />
-        <CrudEditorArchiveDemo />
-      </Stack>
+      <ArabicSwitch name="crud-editor">
+        <Stack gap="lg">
+          <CrudEditorDemo />
+          <CrudEditorArchiveDemo />
+        </Stack>
+      </ArabicSwitch>
     ),
   },
   AssociationEditor: {
@@ -1232,7 +1239,11 @@ export const crudDemos = {
 >
   {({ vm, vl }) => <SelectField vm={vm} vl={vl} name="supplierId" label="Supplier" options={…} />}
 </AssociationEditor>`,
-    render: () => <AssociationEditorDemo />,
+    render: () => (
+      <ArabicSwitch name="association-editor">
+        <AssociationEditorDemo />
+      </ArabicSwitch>
+    ),
   },
   TextField: {
     summary:
@@ -1320,6 +1331,10 @@ export const crudDemos = {
   model="Team"
   label="This team is still used by:"
 />`,
-    render: () => <DeletionValidationDemo />,
+    render: () => (
+      <ArabicSwitch name="deletion-validation">
+        <DeletionValidationDemo />
+      </ArabicSwitch>
+    ),
   },
 } satisfies DemoFragment

@@ -1996,4 +1996,136 @@ export const specs: readonly Spec[] = [
       return "card absent at mount; after the unmount, focus is on the returnFocus line"
     },
   },
+  {
+    name: "Calendar right to left: ArrowLeft moves to the next day and ArrowRight to the day " +
+      "before, as the grid's columns run",
+    pageId: "system",
+    run: async (page) => {
+      await page.locator(`[data-e2e="calendar-arabic"]`).check()
+      const grid = page.locator(
+        `[data-e2e="calendar-direction"][dir="rtl"] [data-e2e="calendar-interactive"] [role="grid"]`,
+      )
+      const day = (date: string) => grid.locator(`[data-calendar-date="${date}"]`)
+      const focusedDay = () =>
+        page.evaluate(() => document.activeElement?.getAttribute("data-calendar-date"))
+      await day("2026-03-11").focus()
+      await page.keyboard.press("ArrowLeft")
+      const left = await focusedDay()
+      await page.keyboard.press("ArrowRight")
+      await page.keyboard.press("ArrowRight")
+      const right = await focusedDay()
+      if (left !== "2026-03-12" || right !== "2026-03-10") {
+        throw new Error(`from 11 March, ArrowLeft reached ${left} and two ArrowRights ${right}`)
+      }
+      return `ArrowLeft → ${left}, then ArrowRight twice → ${right}`
+    },
+  },
+  {
+    name: "Calendar in Arabic: at 390 px each weekday header shows its one-letter name, at " +
+      "1440 px the full name",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`#demo-Calendar`)
+      await card.locator(`[data-e2e="calendar-locale-ar-EG"]`).first().click()
+      const row = card.locator(`[role="row"][lang="ar-EG"]`).first()
+      await row.waitFor()
+      const read = () =>
+        row.evaluate((element) =>
+          [...element.children].map((header) => ({
+            letter: getComputedStyle(header, "::before").content,
+            word: (header.firstElementChild as HTMLElement).checkVisibility(),
+            text: header.textContent,
+          }))
+        )
+      await page.setViewportSize({ width: 390, height: 900 })
+      const phone = await read()
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const desktop = await read()
+      const letters = phone.map((header) => header.letter.replaceAll(`"`, ""))
+      if (
+        phone.length !== 7 || phone.some((header) => header.word) ||
+        letters.some((letter) => [...letter].length !== 1) || new Set(letters).size !== 7 ||
+        desktop.some((header) => !header.word || header.letter !== "none")
+      ) {
+        throw new Error(`390 px: ${JSON.stringify(phone)}; 1440 px: ${JSON.stringify(desktop)}`)
+      }
+      return `390 px: ${letters.join(" ")}; 1440 px: ${desktop.map((h) => h.text).join(" ")}`
+    },
+  },
+  {
+    name: "RailShell right to left from md: the column stands on the right edge, its tooltip " +
+      "opens 8 px to its left, and the skip link shows at the right",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 900 })
+      await page.locator(`[data-e2e="rail-shell-arabic"]`).check()
+      const frame = page.locator(`[data-e2e="rail-shell-direction"][dir="rtl"]`)
+      const column = frame.locator(`[data-e2e="rail-shell-column"]`)
+      await column.scrollIntoViewIfNeeded()
+      const entry = frame.locator(`[data-e2e="rail-shell-rail"] [data-e2e="rail-shell-entry"]`)
+        .first()
+      const tip = tipOf(entry)
+      await entry.focus()
+      await page.keyboard.press("Shift+Tab")
+      await page.keyboard.press("Tab")
+      await tip.waitFor({ state: "visible" })
+      const skip = frame.locator(`[data-e2e="rail-shell-skip-link"]`)
+      await skip.focus()
+      const [columnBox, tipBox, skipBox, frameBox] = await Promise.all([
+        column.boundingBox(),
+        tip.boundingBox(),
+        skip.boundingBox(),
+        frame.boundingBox(),
+      ])
+      if (!columnBox || !tipBox || !skipBox || !frameBox) throw new Error("a box is not drawn")
+      const frameEnd = frameBox.x + frameBox.width
+      const columnEnd = columnBox.x + columnBox.width
+      const tipEnd = tipBox.x + tipBox.width
+      const viewport = page.viewportSize()?.width ?? 0
+      if (
+        Math.abs(columnEnd - frameEnd) > 1 || Math.abs(tipEnd - (columnBox.x - 8)) > 1 ||
+        Math.abs(skipBox.x + skipBox.width - (viewport - 16)) > 1
+      ) {
+        throw new Error(
+          `column ${columnBox.x}–${columnEnd} in a frame ending at ${frameEnd}; tooltip ends at ` +
+            `${tipEnd}, column starts at ${columnBox.x}; skip link ends at ` +
+            `${skipBox.x + skipBox.width} of ${viewport}`,
+        )
+      }
+      return `column ends at ${columnEnd}; tooltip ends at ${tipEnd}; skip link ends at ` +
+        `${skipBox.x + skipBox.width}`
+    },
+  },
+  {
+    name: "AuthForm right to left: the password box stays left to right with its toggle inside " +
+      "the right padding, before and after the password is shown",
+    pageId: "system",
+    run: async (page) => {
+      await page.locator(`[data-e2e="auth-form-arabic"]`).check()
+      const frame = page.locator(`[data-e2e="auth-form-direction"][dir="rtl"]`)
+      const password = frame.locator(`[data-e2e="auth-form-password"]`).first()
+      const toggle = frame.locator(`[data-e2e="auth-form-password-toggle"]`).first()
+      await password.scrollIntoViewIfNeeded()
+      const measure = async () => {
+        const [box, toggleBox, direction, padding] = await Promise.all([
+          password.boundingBox(),
+          toggle.boundingBox(),
+          password.evaluate((input) => getComputedStyle(input).direction),
+          password.evaluate((input) => parseFloat(getComputedStyle(input).paddingRight)),
+        ])
+        if (!box || !toggleBox) throw new Error("the password box is not drawn")
+        return { direction, padding, toggleStart: toggleBox.x - (box.x + box.width - padding) }
+      }
+      const hidden = await measure()
+      await toggle.click()
+      await password.and(page.locator(`[type="text"]`)).waitFor()
+      const shown = await measure()
+      for (const state of [hidden, shown]) {
+        if (state.direction !== "ltr" || state.padding < 40 || state.toggleStart < 0) {
+          throw new Error(`hidden ${JSON.stringify(hidden)}; shown ${JSON.stringify(shown)}`)
+        }
+      }
+      return `ltr both times; the toggle starts ${hidden.toggleStart} px into the right padding`
+    },
+  },
 ]
