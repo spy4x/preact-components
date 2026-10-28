@@ -102,6 +102,12 @@ describe("SiteFooter", () => {
     expect(link).toMatch(/class="[^"]*\blg:py-1\b/)
   })
 
+  it("breaks a long label with no spaces, such as an e-mail address, inside its column", () => {
+    const html = render(<SiteFooter groups={groups} />)
+
+    expect(linkTo(html, "/pricing")).toMatch(/class="[^"]*\bwrap-anywhere\b/)
+  })
+
   it("renders the brand, aside and bottom slots as given", () => {
     const html = render(
       <SiteFooter
