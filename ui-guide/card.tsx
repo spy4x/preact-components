@@ -252,7 +252,11 @@ function PropsSummary(
                 <span dir="ltr">{prop.type}</span>
                 {prop.default === undefined
                   ? null
-                  : <span dir="ltr" class="block text-muted">= {prop.default}</span>}
+                  : (
+                    <span dir="ltr" class="block text-muted [text-align:match-parent]">
+                      = {prop.default}
+                    </span>
+                  )}
               </td>
               <td class="py-2 text-muted @max-md:col-span-2 @max-md:pt-0">
                 <InlineMarkdown text={prop.description} />
