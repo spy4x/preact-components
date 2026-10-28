@@ -1,5 +1,11 @@
 import { join } from "@spy4x/preact-cn/join"
-import { type ComponentChildren, isValidElement, type JSX, toChildArray } from "preact"
+import {
+  type ComponentChild,
+  type ComponentChildren,
+  isValidElement,
+  type JSX,
+  toChildArray,
+} from "preact"
 
 /** Props of {@link LookGrid}. */
 export interface LookGridProps {
@@ -12,26 +18,18 @@ export interface LookGridProps {
 }
 
 /**
- * The columns, and room under them for the lowered column: one column on a phone, two from `md`,
- * three from `lg`.
+ * The columns: one on a phone, two from `md`, three from `lg`. Every look in a row starts at the
+ * same height, so the columns line up.
  */
-const GRID = "grid grid-cols-1 gap-x-6 gap-y-12 md:grid-cols-2 md:pb-16 lg:grid-cols-3"
+const GRID = "grid grid-cols-1 gap-x-6 gap-y-12 md:grid-cols-2 lg:grid-cols-3"
 
 /**
- * Every second tile is lowered in two columns, and the middle one in three, so the columns are
- * staggered like a contact sheet. A translate moves the drawing only: the row order, the reading
- * order and the tab order stay the order of the list. A tile marked `data-lead` (a lead
- * `StoryTile`) spans two columns from `lg`.
- */
-const STAGGER =
-  "md:max-lg:even:translate-y-16 lg:nth-[3n+2]:translate-y-16 lg:has-[[data-lead]]:col-span-2"
-
-/**
- * The looks of a shop's catalog in staggered columns: one per screen width on a phone, two from
- * 768 px and three from 1024 px, with the middle column lowered.
+ * The looks of a shop's catalog in aligned columns: one per screen width on a phone, two from
+ * 768 px and three from 1024 px.
  *
  * Server-rendered CSS grid with no script. Each child becomes one item of a `<ul>`, in order,
- * read row by row. A lead `StoryTile` spans two of the three columns.
+ * read row by row. A child with `lead` set, such as a lead `StoryTile`, spans two columns from
+ * `lg`; the grid reads that prop off the child itself, so pass the tile directly, not wrapped.
  *
  * @param props The looks and options, see {@link LookGridProps}.
  */
@@ -41,10 +39,18 @@ export function LookGrid({ children, label, class: className }: LookGridProps): 
   return (
     <ul aria-label={label} class={join(GRID, className)} data-e2e="look-grid">
       {items.map((item, index) => (
-        <li key={isValidElement(item) && item.key != null ? item.key : index} class={STAGGER}>
+        <li
+          key={isValidElement(item) && item.key != null ? item.key : index}
+          class={leads(item) ? "lg:col-span-2" : undefined}
+        >
           {item}
         </li>
       ))}
     </ul>
   )
+}
+
+/** Whether a child is an element with `lead` set, which spans two columns from `lg`. */
+function leads(item: ComponentChild): boolean {
+  return isValidElement(item) && (item.props as { lead?: unknown }).lead === true
 }

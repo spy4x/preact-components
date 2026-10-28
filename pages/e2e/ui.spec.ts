@@ -3962,7 +3962,8 @@ function languagePickerSpecs(): Spec[] {
 
 /**
  * `LookTile`, `StoryTile`, `LookGrid`, `SwatchChips` and `OrderBar`: the storefront patterns. The
- * grid's columns and stagger follow the width, a lead story spans two columns from 1440 px, the colour choice moves with the arrow keys, the order bar
+ * grid's columns follow the width and line up, a lead story spans two columns from 1440 px, the
+ * colour choice moves with the arrow keys, the order bar
  * sticks to a phone's screen, the order form submits its choices with JavaScript off, and axe
  * passes in both palettes.
  */
@@ -3977,7 +3978,7 @@ function storefrontSpecs(): Spec[] {
   return [
     {
       name:
-        "StoryTile: one link per post, named by its title; the lead fills the width at 390 px and spans two of three columns at 1440 px",
+        "StoryTile: one link per post, named by its title; the lead fills the width at 390 px and spans two of three columns at 1440 px, level with the post beside it",
       pageId: "ui",
       run: async (page) => {
         const card = page.locator("#demo-StoryTile")
@@ -3985,13 +3986,17 @@ function storefrontSpecs(): Spec[] {
         if (await links.count() !== 5) throw new Error(`${await links.count()} links in 5 tiles`)
         await card.getByRole("link", { name: "How we choose our fabrics", exact: true }).waitFor()
         const items = card.locator(`[data-e2e="look-grid"] > li`)
-        /** The grid's width, and each of the first two posts' left edge and width, rounded. */
+        /** The grid's width, and each of the first two posts' left edge, top and width, rounded. */
         const read = () =>
           items.evaluateAll((all) => ({
             grid: Math.round(all[0].parentElement!.getBoundingClientRect().width),
             posts: all.slice(0, 2).map((item) => {
               const box = item.getBoundingClientRect()
-              return { x: Math.round(box.left), width: Math.round(box.width) }
+              return {
+                x: Math.round(box.left),
+                y: Math.round(box.top),
+                width: Math.round(box.width),
+              }
             }),
           }))
         const seen: string[] = []
@@ -4001,7 +4006,7 @@ function storefrontSpecs(): Spec[] {
           const { grid, posts: [lead, next] } = await read()
           const fits = width === 390
             ? lead.width === grid
-            : lead.width > 1.9 * next.width && next.x > lead.x + lead.width
+            : lead.width > 1.9 * next.width && next.x > lead.x + lead.width && next.y === lead.y
           if (!fits) {
             throw new Error(
               `at ${width} px the lead does not fit: ${JSON.stringify({ grid, lead, next })}`,
@@ -4014,7 +4019,7 @@ function storefrontSpecs(): Spec[] {
     },
     {
       name:
-        "LookGrid: one column at 390 px, two at 768 px with every second look lowered, three at 1440 px with the middle one lowered",
+        "LookGrid: one column at 390 px, two at 768 px and three at 1440 px, every look of the first row at the same height",
       pageId: "ui",
       run: async (page) => {
         const items = page.locator(`#demo-LookGrid [data-e2e="look-grid"] > li`)
@@ -4027,9 +4032,7 @@ function storefrontSpecs(): Spec[] {
             })
           )
         const seen: string[] = []
-        for (
-          const [width, columns, lowered] of [[390, 1, -1], [768, 2, 1], [1440, 3, 1]] as const
-        ) {
+        for (const [width, columns] of [[390, 1], [768, 2], [1440, 3]] as const) {
           await page.setViewportSize({ width, height: 900 })
           await items.first().scrollIntoViewIfNeeded()
           const looks = await read()
@@ -4039,14 +4042,12 @@ function storefrontSpecs(): Spec[] {
               `at ${width} px the looks sit in ${lefts} columns: ${JSON.stringify(looks)}`,
             )
           }
-          if (lowered >= 0 && looks[lowered].y - looks[0].y < 32) {
+          const tops = new Set(looks.slice(0, columns).map((look) => look.y)).size
+          if (tops !== 1) {
             throw new Error(
-              `at ${width} px look ${lowered + 1} is not lowered: ${JSON.stringify(looks)}`,
-            )
-          }
-          if (columns === 3 && looks[2].y !== looks[0].y) {
-            throw new Error(
-              `at ${width} px the third look is lowered too: ${JSON.stringify(looks)}`,
+              `at ${width} px the first row's looks start at ${tops} heights: ${
+                JSON.stringify(looks)
+              }`,
             )
           }
           seen.push(`${width}: ${JSON.stringify(looks)}`)

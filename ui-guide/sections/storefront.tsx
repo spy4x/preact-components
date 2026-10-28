@@ -276,14 +276,14 @@ export const storefrontDemos: DemoFragment = {
   },
   LookGrid: {
     summary:
-      "A catalog's looks in staggered columns, one on a phone, two from 768 px and three from 1024 px, with no script.",
+      "A catalog's looks in aligned columns, one on a phone, two from 768 px and three from 1024 px, with no script.",
     wide: true,
     props: [
       {
         name: "children",
         type: "ComponentChildren",
         description:
-          "The looks, usually `LookTile`s, each put in its own list item. None renders nothing.",
+          "The looks, usually `LookTile`s or `StoryTile`s, each put in its own list item; one with `lead` spans two columns from 1024 px. None renders nothing.",
       },
       {
         name: "label",

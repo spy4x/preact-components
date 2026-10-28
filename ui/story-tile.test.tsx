@@ -122,23 +122,24 @@ describe("StoryTile", () => {
     expect(html.match(/<a /g)?.length).toBe(1)
   })
 
-  it("marks a lead tile for the grid, crops its cover 4:3 from lg and sizes it for two columns", () => {
+  it("crops a lead tile's cover 4:3 from lg and sizes it for two columns", () => {
     const html = render(<StoryTile {...POST} lead />)
-    expect(html).toMatch(/^<div class="relative flex[^"]*" data-e2e="story-tile" data-lead/)
     expect(html).toContain('class="block aspect-3/4 w-full object-cover lg:aspect-4/3"')
     expect(html).toContain('sizes="(min-width: 64rem) 67vw, (min-width: 48rem) 50vw, 100vw"')
-    expect(render(<StoryTile {...POST} />)).not.toContain("data-lead")
+    expect(render(<StoryTile {...POST} />)).not.toContain("lg:aspect-4/3")
     expect(render(<StoryTile {...POST} cover={undefined} lead />)).toContain("lg:aspect-4/3")
   })
 
-  it("spans two columns of a LookGrid from lg when it leads", () => {
+  it("spans two columns of a LookGrid from lg when it leads, and the rest one", () => {
     const html = render(
       <LookGrid>
         <StoryTile {...POST} lead />
         <StoryTile {...POST} href="/blog/b" />
       </LookGrid>,
     )
-    expect(html).toContain("lg:has-[[data-lead]]:col-span-2")
+    expect(html.match(/<li class="lg:col-span-2">/g)?.length).toBe(1)
+    expect(html.indexOf('<li class="lg:col-span-2">')).toBe(html.indexOf("<li"))
+    expect(html.match(/<li>/g)?.length).toBe(1)
   })
 
   it("follows a plain click through navigate, and leaves a Ctrl click to the browser", () => {

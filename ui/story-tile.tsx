@@ -24,8 +24,9 @@ export interface StoryTileProps {
    */
   cover?: LookPhoto
   /**
-   * The post the list opens with: a larger title and, in a `LookGrid` from `lg`, two columns
-   * with a 4:3 cover. A phone shows it at full width like the rest.
+   * The post the list opens with: a larger title and, from `lg`, a 4:3 cover. A `LookGrid` reads
+   * this prop and gives the tile two columns from `lg`. A phone shows it at full width like the
+   * rest.
    */
   lead?: boolean
   /** Load the cover at once and first, for the tiles above the fold. Lazy otherwise. */
@@ -83,11 +84,7 @@ export function StoryTile(
   const Heading = `h${headingLevel}` as const
   const aspect = lead ? "lg:aspect-4/3" : undefined
   return (
-    <div
-      class={join("relative flex flex-col gap-3", className)}
-      data-e2e="story-tile"
-      data-lead={lead ? "" : undefined}
-    >
+    <div class={join("relative flex flex-col gap-3", className)} data-e2e="story-tile">
       {cover
         ? (
           <LookPicture
