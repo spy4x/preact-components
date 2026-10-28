@@ -7469,6 +7469,27 @@ function rightToLeftSpecs(): Spec[] {
       },
     },
     {
+      name: "Slider in a right-to-left page: a mark's tick sits under its value, measured from " +
+        "the track's right end, and its label stays inside the card",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const card = await rightToLeft(page, "Slider")
+        const input = await edges(card.locator("#slider-rate"))
+        const mark = card.locator("#slider-rate-marks > span").first()
+        const tick = await edges(mark.locator("span").first())
+        // The mark is at 2 of 0 to 10: a fifth of the way along the thumb's travel.
+        const expected = input.right - (10 + (input.right - input.left - 20) * 0.2)
+        nearly("the tick's centre", Math.round((tick.left + tick.right) / 2), Math.round(expected))
+        const label = await edges(mark)
+        const box = await edges(card)
+        if (label.left < box.left || label.right > box.right) {
+          throw new Error(`the label spans [${label.left}, ${label.right}], outside the card`)
+        }
+        return `tick at ${Math.round(tick.left)}, expected ${Math.round(expected)}`
+      },
+    },
+    {
       name: "KanbanBoard in a right-to-left page: a lifted card moves to the next column with " +
         "ArrowLeft",
       pageId: "ui",
