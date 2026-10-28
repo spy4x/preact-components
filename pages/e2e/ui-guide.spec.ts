@@ -165,8 +165,10 @@ const CONTRAST_SHARE: RuleShare = { what: "colour-contrast violation", rules: [C
 const REST_SHARE: RuleShare = { what: "violation of another rule" }
 
 /**
- * The rules of axe's ARIA category (its `cat.aria` tag) and `aria-hidden-focus`, by id. A rule axe
- * adds later runs in the page's other share until it is listed here, so it is never left out.
+ * The `aria-*` rules by id: most of axe's `cat.aria` category, plus `aria-hidden-focus`.
+ * `presentation-role-conflict` stays in the other share. `aria-roledescription` is off by default
+ * in axe, so naming it here makes the ui page run it as well. A rule axe adds later runs in the
+ * page's other share until it is listed here, so it is never left out.
  */
 const ARIA_RULES = [
   "aria-allowed-attr",
