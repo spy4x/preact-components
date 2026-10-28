@@ -7450,6 +7450,25 @@ function rightToLeftSpecs(): Spec[] {
       },
     },
     {
+      name: "FileInput: a refused file's name is announced inside a bidi isolate, so an Arabic " +
+        "message keeps it whole",
+      pageId: "ui",
+      run: async (page) => {
+        await page.locator("#demo-FileInput #guide-file-input").setInputFiles({
+          name: "notes.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("notes"),
+        })
+        const region = page.locator("#guide-file-input-rejection")
+        await region.getByText("not an accepted file type").waitFor()
+        const text = (await region.textContent()) ?? ""
+        if (!text.includes("\u2068notes.txt\u2069")) {
+          throw new Error(`the name is not isolated: ${JSON.stringify(text)}`)
+        }
+        return JSON.stringify(text)
+      },
+    },
+    {
       name: "KanbanBoard in a right-to-left page: a lifted card moves to the next column with " +
         "ArrowLeft",
       pageId: "ui",
