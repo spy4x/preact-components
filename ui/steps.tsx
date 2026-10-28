@@ -26,11 +26,11 @@ export interface StepsProps {
  * `role="list"` keeps the list semantics Safari drops from a list with `list-style: none`.
  */
 const circle =
-  "absolute left-0 top-0 flex size-8 items-center justify-center rounded-full bg-selected " +
+  "absolute start-0 top-0 flex size-8 items-center justify-center rounded-full bg-selected " +
   "text-sm font-semibold text-selected-foreground before:content-[counter(step)]"
 
-const connectorVertical = "absolute left-4 top-8 bottom-0 border-l border-subtle"
-const connectorHorizontal = "lg:left-8 lg:right-0 lg:top-4 lg:bottom-auto lg:border-l-0 lg:border-t"
+const connectorVertical = "absolute start-4 top-8 bottom-0 border-s border-subtle"
+const connectorHorizontal = "lg:start-8 lg:end-0 lg:top-4 lg:bottom-auto lg:border-s-0 lg:border-t"
 
 /**
  * A numbered "how it works" list: each step a heading and a line of text, joined by a thin line.
@@ -59,8 +59,8 @@ export function Steps(
         <li
           key={step.title}
           class={cn(
-            "relative pb-8 pl-12 last:pb-0 [counter-increment:step]",
-            horizontal && "lg:flex-1 lg:pb-0 lg:pl-0 lg:pr-6 lg:pt-12 lg:last:pr-0",
+            "relative pb-8 ps-12 last:pb-0 [counter-increment:step]",
+            horizontal && "lg:flex-1 lg:pb-0 lg:ps-0 lg:pe-6 lg:pt-12 lg:last:pe-0",
           )}
         >
           <span aria-hidden="true" class={circle} />

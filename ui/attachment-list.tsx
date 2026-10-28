@@ -344,7 +344,7 @@ function Row(
         ? (
           <button
             type="button"
-            class="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-md text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
             aria-label={label}
             aria-describedby={item.error === undefined ? metaId : `${metaId} ${metaId}-error`}
             onClick={onPress}

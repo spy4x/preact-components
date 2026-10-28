@@ -180,7 +180,7 @@ describe("Notice", () => {
 
     expect(html).toContain('<button type="button"')
     expect(html).toContain('aria-label="Dismiss"')
-    expect(rootTag(html)).toContain("pr-12")
+    expect(rootTag(html)).toContain("pe-12")
   })
 
   it("names the close button with the caller's label", () => {

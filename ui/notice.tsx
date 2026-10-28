@@ -144,7 +144,7 @@ export function Notice(
       class={cn(
         "flex flex-wrap items-start gap-3 rounded-lg border p-4 text-sm text-foreground",
         toneClasses[tone],
-        onDismiss && "relative pr-12",
+        onDismiss && "relative pe-12",
         className,
       )}
     >
@@ -158,12 +158,12 @@ export function Notice(
         // Pinned to the top-right corner rather than placed in the row, so it stays on the first
         // line when a narrow row wraps the action under the text. `TOUCH_TARGET` makes it 44 px on
         // a phone and 36 px from `sm` up; either way the 16 px cross is centred on the first line
-        // of text, and the root's `pr-12` keeps the text clear of it.
+        // of text, and the root's `pe-12` keeps the text clear of it.
       }
       {onDismiss && (
         <button
           type="button"
-          class={`absolute right-1 top-1 inline-flex items-center rounded-md cursor-pointer transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden sm:right-2 sm:top-2 ${TOUCH_TARGET}`}
+          class={`absolute end-1 top-1 inline-flex items-center rounded-md cursor-pointer transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden sm:end-2 sm:top-2 ${TOUCH_TARGET}`}
           aria-label={dismissLabel}
           data-e2e="notice-dismiss"
           onClick={onDismiss}

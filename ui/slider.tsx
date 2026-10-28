@@ -197,9 +197,9 @@ function SliderTick(
     <span
       class={join(
         "relative col-start-1 row-start-1 flex w-1/3 flex-col gap-1",
-        align === "start" && "items-start text-left",
+        align === "start" && "items-start text-start",
         align === "center" && "-translate-x-1/2 items-center text-center",
-        align === "end" && "-translate-x-full items-end text-right",
+        align === "end" && "-translate-x-full items-end text-end",
       )}
       style={{ left: thumbCentre(fraction) }}
     >

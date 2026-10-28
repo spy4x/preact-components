@@ -128,7 +128,7 @@ export function ToggleField({
         >
           {label}
           {required && (
-            <span aria-hidden="true" class="ml-1 text-danger">
+            <span aria-hidden="true" class="ms-1 text-danger">
               *
             </span>
           )}

@@ -317,7 +317,7 @@ export function ColorField(
           customColor ?? WHEEL,
           customColor === null ? undefined : (
             <span
-              class="absolute right-0.5 bottom-0.5 size-3.5 rounded-full border-2 border-surface"
+              class="absolute end-0.5 bottom-0.5 size-3.5 rounded-full border-2 border-surface"
               style={{ background: WHEEL }}
               aria-hidden="true"
               data-e2e="color-field-custom-mark"

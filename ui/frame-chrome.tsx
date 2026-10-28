@@ -95,7 +95,7 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
       <div class={phoneFrame}>
         <span
           aria-hidden="true"
-          class="absolute left-1/2 top-3 h-2 w-16 -translate-x-1/2 rounded-full bg-track"
+          class="absolute start-1/2 top-3 h-2 w-16 -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 rounded-full bg-track"
         />
         <div class="relative h-full overflow-hidden rounded-[2rem] bg-surface">{children}</div>
       </div>
