@@ -32,6 +32,7 @@ import { IconChevronLeft, IconChevronRight } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
+import { isRightToLeft } from "./direction.ts"
 import { describedImages, Lightbox, type LightboxImage, type LightboxProps } from "./lightbox.tsx"
 import { translate, useLabels, useT } from "./i18n.tsx"
 
@@ -232,7 +233,7 @@ function revealInStrip(
 
 /** Where a strip's row has scrolled to, as {@link stripPosition} reads it. */
 export interface StripScroll {
-  /** The row's `scrollLeft`. */
+  /** How far the row is scrolled from its start edge: `scrollLeft`, with its sign turned in a right-to-left row. */
   scrollLeft: number
   /** How far the row can scroll: its `scrollWidth` minus its `clientWidth`. */
   maxScroll: number
@@ -240,6 +241,14 @@ export interface StripScroll {
   step: number
   /** How many slides the row holds. */
   total: number
+}
+
+/**
+ * How far `row` is scrolled from its start edge, in CSS pixels, from `0` up. A right-to-left row
+ * starts on the right and reports a `scrollLeft` from `0` down, so its sign is turned.
+ */
+function startOffset(row: HTMLElement): number {
+  return isRightToLeft(row) ? -row.scrollLeft : row.scrollLeft
 }
 
 /**
@@ -265,7 +274,8 @@ function stripStep(row: HTMLElement): number {
   const [first, second] = Array.from(row.children)
   if (!first) return row.clientWidth
   if (!second) return first.getBoundingClientRect().width
-  return second.getBoundingClientRect().left - first.getBoundingClientRect().left
+  // `abs`: in a right-to-left row the second slide sits left of the first.
+  return Math.abs(second.getBoundingClientRect().left - first.getBoundingClientRect().left)
 }
 
 /** What the strip's navigation shows: which slide, whether the row scrolls, and at which end. */
@@ -391,16 +401,17 @@ export function ImageGallery(
     const row = rowRef.current
     if (!row) return
     const maxScroll = row.scrollWidth - row.clientWidth
+    const offset = startOffset(row)
     const next: StripNavState = {
       position: stripPosition({
-        scrollLeft: row.scrollLeft,
+        scrollLeft: offset,
         maxScroll,
         step: stripStep(row),
         total: row.children.length,
       }),
       overflows: maxScroll > 1,
-      atStart: row.scrollLeft <= 1,
-      atEnd: row.scrollLeft >= maxScroll - 1,
+      atStart: offset <= 1,
+      atEnd: offset >= maxScroll - 1,
     }
     setNav((was) =>
       was.position === next.position && was.overflows === next.overflows &&
@@ -429,9 +440,8 @@ export function ImageGallery(
     const row = rowRef.current
     if (!row) return
     const maxScroll = row.scrollWidth - row.clientWidth
-    row.scrollTo({
-      left: Math.min(maxScroll, Math.max(0, row.scrollLeft + direction * stripStep(row))),
-    })
+    const offset = Math.min(maxScroll, Math.max(0, startOffset(row) + direction * stripStep(row)))
+    row.scrollTo({ left: isRightToLeft(row) ? -offset : offset })
   }
 
   const list = (

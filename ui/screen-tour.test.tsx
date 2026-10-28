@@ -219,6 +219,13 @@ describe("nextStepIndex", () => {
     expect(nextStepIndex("ArrowDown", 2, 3)).toBe(0)
   })
 
+  it("swaps Left and Right in a right-to-left page and keeps Down as the next step", () => {
+    expect(nextStepIndex("ArrowLeft", 0, 3, true)).toBe(1)
+    expect(nextStepIndex("ArrowRight", 0, 3, true)).toBe(2)
+    expect(nextStepIndex("ArrowDown", 0, 3, true)).toBe(1)
+    expect(nextStepIndex("ArrowUp", 0, 3, true)).toBe(2)
+  })
+
   it("jumps with Home and End, and leaves every other key alone", () => {
     expect(nextStepIndex("Home", 2, 3)).toBe(0)
     expect(nextStepIndex("End", 0, 3)).toBe(2)

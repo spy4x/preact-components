@@ -20,6 +20,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useId, useLayoutEffect, useRef, useState } from "preact/hooks"
 import { edgeScrollStep, scrollPageNearEdge, useKeptFocus, usePointerDrag } from "./pointer-drag.ts"
 import { useLabels } from "./i18n.tsx"
+import { inlineStep, isRightToLeft } from "./direction.ts"
 
 /** One column of the board. */
 export interface KanbanColumn {
@@ -143,32 +144,36 @@ export interface KanbanSlot {
  * Where an arrow key sends a picked-up card.
  *
  * Up and Down step within the column; Left and Right go to the next column over at the same index,
- * or its bottom when it is shorter. A card at an edge stays where it is. Pure and exported so the
- * key map is testable without a browser.
+ * or its bottom when it is shorter. In a right-to-left board, where the first column is on the
+ * right, Left goes to the next column and Right to the previous one. A card at an edge stays where
+ * it is. Pure and exported so the key map is testable without a browser.
  *
  * @param key `KeyboardEvent.key`.
  * @param from Where the card is now.
  * @param lengths How many cards each column holds without the card being moved.
+ * @param rtl Whether the board lays out right to left. Defaults to `false`.
  * @returns The new slot, the same slot at an edge, or `undefined` for a key the board does not use.
  */
 export function nextKanbanSlot(
   key: string,
   from: KanbanSlot,
   lengths: readonly number[],
+  rtl = false,
 ): KanbanSlot | undefined {
   const clampIn = (column: number, index: number) => ({
     column,
     index: Math.min(Math.max(index, 0), lengths[column] ?? 0),
   })
+  const step = inlineStep(key, rtl)
+  if (step !== 0) {
+    const column = from.column + step
+    return column >= 0 && column < lengths.length ? clampIn(column, from.index) : from
+  }
   switch (key) {
     case "ArrowUp":
       return clampIn(from.column, from.index - 1)
     case "ArrowDown":
       return clampIn(from.column, from.index + 1)
-    case "ArrowLeft":
-      return from.column > 0 ? clampIn(from.column - 1, from.index) : from
-    case "ArrowRight":
-      return from.column < lengths.length - 1 ? clampIn(from.column + 1, from.index) : from
     default:
       return undefined
   }
@@ -416,7 +421,8 @@ export function KanbanBoard<Item extends KanbanItem>(
       cancel(lifted)
       return
     }
-    const next = nextKanbanSlot(event.key, lifted.at, lengthsWithout(itemId))
+    const rtl = isRightToLeft(event.currentTarget as Element)
+    const next = nextKanbanSlot(event.key, lifted.at, lengthsWithout(itemId), rtl)
     if (next === undefined) return
     event.preventDefault()
     if (next.column === lifted.at.column && next.index === lifted.at.index) return

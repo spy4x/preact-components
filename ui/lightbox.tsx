@@ -71,7 +71,8 @@
  * sideways on a page with it.
  *
  * **A horizontal swipe on a touch screen pages through the images**, the same as Left and Right:
- * leftward for the next image, rightward for the previous one. It counts only a single finger that
+ * leftward for the next image, rightward for the previous one. In a right-to-left page, where the
+ * previous button sits on the right, both swap: Left and a rightward swipe go to the next image. It counts only a single finger that
  * travels at least {@link SWIPE_MIN_PX} sideways and more sideways than up or down, so a pinch or a
  * vertical drag does nothing. Touch events rather than pointer events: the browser cancels a pointer
  * the moment it starts a pan of its own, and a touch still ends.
@@ -83,6 +84,7 @@ import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { type FocusableElement, restoreFocus, shouldRetargetFocus } from "./modal.tsx"
 import { translate, useLabels, useT } from "./i18n.tsx"
+import { inlineStep, isRightToLeft } from "./direction.ts"
 
 /** One image a {@link Lightbox} can show. */
 export interface LightboxImage {
@@ -151,14 +153,15 @@ export const SWIPE_MIN_PX = 50
 
 /**
  * The step a finished touch asks for: `1` for a leftward swipe (next image), `-1` for a rightward
- * one (previous image), `0` for anything that is not a swipe.
+ * one (previous image), `0` for anything that is not a swipe. In a right-to-left page the two swap.
  *
  * @param dx Horizontal travel from touch start to touch end, in CSS pixels; negative is leftward.
  * @param dy Vertical travel over the same touch.
+ * @param rtl Whether the lightbox lays out right to left. Defaults to `false`.
  */
-export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
+export function swipeStep(dx: number, dy: number, rtl = false): -1 | 0 | 1 {
   if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return 0
-  return dx < 0 ? 1 : -1
+  return (dx < 0) !== rtl ? 1 : -1
 }
 
 export interface LightboxProps {
@@ -219,13 +222,17 @@ const buttonClass =
 const controlClass = join("absolute z-10", buttonClass)
 // `max(1rem, env(safe-area-inset-*))`: today's `1rem` wherever there is no inset to clear.
 const safeTop = "top-[max(--spacing(4),env(safe-area-inset-top,0px))]"
-const safeRight = "right-[max(--spacing(4),env(safe-area-inset-right,0px))]"
-const safeLeft = "left-[max(--spacing(4),env(safe-area-inset-left,0px))]"
+// The sides are logical, so they mirror in a right-to-left page, and each clears the larger of the
+// two side insets: a logical side has no `env()` of its own.
+const safeEnd =
+  "end-[max(--spacing(4),env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]"
+const safeStart =
+  "start-[max(--spacing(4),env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]"
 const safeBottom = "bottom-[max(--spacing(4),env(safe-area-inset-bottom,0px))]"
 // Positioned rather than stretched, exactly like `ZoomableImages`'s own image: a child
 // that fills the dialog is a backdrop no click can ever land on.
 const imageClass =
-  "absolute top-1/2 left-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 -translate-y-1/2 object-contain"
+  "absolute top-1/2 start-1/2 max-h-[90vh] max-w-[90vw] -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 -translate-y-1/2 object-contain"
 const captionClass =
   `pointer-events-none absolute inset-x-0 ${safeBottom} mx-auto max-w-[90vw] text-center text-sm text-on-scrim-muted`
 const chipClass = "rounded-full bg-scrim px-3 py-1 text-xs text-on-scrim-muted"
@@ -237,9 +244,9 @@ const counterClass = `pointer-events-none absolute inset-x-0 ${safeTop} mx-auto 
 const columnClass = join(
   "pointer-events-none absolute flex flex-col items-center gap-3",
   "top-[calc(max(--spacing(4),env(safe-area-inset-top,0px))+--spacing(12))]",
-  safeRight,
+  safeEnd,
   safeBottom,
-  safeLeft,
+  safeStart,
 )
 const stageClass = "relative min-h-0 w-full flex-1"
 const stageImageClass =
@@ -344,13 +351,10 @@ export function Lightbox(
     const onKeyDown = (event: KeyboardEvent) => {
       const state = latest.current
       if (!state.open || state.total <= 1) return
-      if (event.key === "ArrowLeft") {
-        event.preventDefault()
-        state.onIndexChange(wrapIndex(state.index, state.total, -1))
-      } else if (event.key === "ArrowRight") {
-        event.preventDefault()
-        state.onIndexChange(wrapIndex(state.index, state.total, 1))
-      }
+      const step = inlineStep(event.key, isRightToLeft(dialog))
+      if (step === 0) return
+      event.preventDefault()
+      state.onIndexChange(wrapIndex(state.index, state.total, step))
     }
 
     // A swipe, tracked from the first finger down to the last one up. A second finger at any point
@@ -365,7 +369,11 @@ export function Lightbox(
       const state = latest.current
       const touch = event.changedTouches[0]
       if (!start || !touch || event.touches.length > 0) return
-      const step = swipeStep(touch.clientX - start.x, touch.clientY - start.y)
+      const step = swipeStep(
+        touch.clientX - start.x,
+        touch.clientY - start.y,
+        isRightToLeft(dialog),
+      )
       start = null
       if (!state.open || state.total <= 1 || step === 0) return
       state.onIndexChange(wrapIndex(state.index, state.total, step))
@@ -428,7 +436,7 @@ export function Lightbox(
             type="button"
             onClick={() => dialogRef.current?.close()}
             aria-label={closeLabel}
-            class={join(controlClass, safeTop, safeRight)}
+            class={join(controlClass, safeTop, safeEnd)}
           >
             <IconXMark class="size-8" />
           </button>
@@ -468,7 +476,7 @@ export function Lightbox(
                       type="button"
                       onClick={() => onIndexChange(wrapIndex(clampedIndex, total, -1))}
                       aria-label={previousLabel}
-                      class={join(controlClass, "top-1/2 -translate-y-1/2", safeLeft)}
+                      class={join(controlClass, "top-1/2 -translate-y-1/2", safeStart)}
                     >
                       <IconChevronLeft class="size-8" />
                     </button>
@@ -476,7 +484,7 @@ export function Lightbox(
                       type="button"
                       onClick={() => onIndexChange(wrapIndex(clampedIndex, total, 1))}
                       aria-label={nextLabel}
-                      class={join(controlClass, "top-1/2 -translate-y-1/2", safeRight)}
+                      class={join(controlClass, "top-1/2 -translate-y-1/2", safeEnd)}
                     >
                       <IconChevronRight class="size-8" />
                     </button>
