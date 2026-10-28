@@ -108,8 +108,8 @@ export interface ToastOptions {
    * The app's translator: each kind's default title comes from the catalog key `Toast.<kind>`
    * (`@spy4x/preact-signals/i18n/<language>`), unless `titles` names it. Without a translator, or
    * for a key its catalogs lack, the title stays English. Pass a function returning the current
-   * translator when the language can change while the app runs: it is called for every toast, so
-   * each takes the language in use when it is shown.
+   * translator when the language can change while the app runs: it is called for every toast it
+   * titles, so each takes the language in use when it is shown.
    */
   translator?: Translator<string> | (() => Translator<string> | undefined)
 }
