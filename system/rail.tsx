@@ -324,8 +324,9 @@ const TIPS_HIDDEN = "data-tips-hidden"
  *
  * **The current entry is a filled cell,** with `aria-current="page"` or `"true"` (see
  * {@link RailProps.currentPath}); under forced colours a 2 px outline marks it instead. In the
- * labels variant it also carries a 3 px bar in the current colour on its inner edge: the left edge
- * of a column cell, the top edge of a tab, "More" included when its sheet holds the page.
+ * labels variant it also carries a 3 px bar in the current colour on its inner edge: the start
+ * edge of a column cell (its right edge on a right-to-left page), the top edge of a tab, "More"
+ * included when its sheet holds the page.
  *
  * **The tab bar** sticks to the bottom but keeps its place in the flow, pads itself by the device's
  * bottom inset, and below `md` gives the root element the preset's `pc-scroll-pb-tab-bar`, so a
@@ -450,7 +451,7 @@ export function Rail(props: RailProps): JSX.Element {
     >
       <a
         href={`#${contentId}`}
-        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-surface,oklch(1_0_0))] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
+        class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-surface,oklch(1_0_0))] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
         data-e2e="rail-shell-skip-link"
       >
         {skipLabel}
@@ -459,7 +460,7 @@ export function Rail(props: RailProps): JSX.Element {
       <aside
         ref={columnRef}
         aria-label={sidebarLabel}
-        class={cn("group/rail hidden shrink-0 border-r pl-safe md:block", rule, surface)}
+        class={cn("group/rail hidden shrink-0 border-e ps-safe md:block", rule, surface)}
         onFocusIn={(event) => {
           placeTip(event.target, columnRef.current)
           showTips()
@@ -565,7 +566,7 @@ export function Rail(props: RailProps): JSX.Element {
             {tabs.map((item, index) => (
               <li
                 key={`${index}-${item.key}`}
-                class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1"
+                class="min-w-0 flex-1 px-px py-1 first:ps-1 last:pe-1"
               >
                 <Entry
                   item={item}
@@ -577,7 +578,7 @@ export function Rail(props: RailProps): JSX.Element {
               </li>
             ))}
             {hasSheet && (
-              <li class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1">
+              <li class="min-w-0 flex-1 px-px py-1 first:ps-1 last:pe-1">
                 <button
                   ref={moreRef}
                   type="button"

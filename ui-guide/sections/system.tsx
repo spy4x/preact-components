@@ -110,6 +110,7 @@ import { type } from "arktype"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
+import { ArabicSwitch } from "./arabic-demo.tsx"
 import { DEMO_LANGUAGES, InDemoLanguage, useDemoLanguage } from "./language-demo.tsx"
 
 /** One captioned part of a card whose demo shows several things side by side. */
@@ -1527,7 +1528,7 @@ function RailShellDemoSwitcher(
       trigger={compact ? mark : (
         <>
           {mark}
-          <span class="flex min-w-0 flex-1 flex-col text-left">
+          <span class="flex min-w-0 flex-1 flex-col text-start">
             <span class="truncate text-sm font-medium text-foreground">{workspace.name}</span>
             <span class="truncate text-xs text-muted">{workspace.role}</span>
           </span>
@@ -1587,7 +1588,7 @@ function RailShellDemoAccount(
         <span class={compact ? "sr-only" : "min-w-0 flex-1 truncate"}>Notifications</span>
         <span
           class={compact
-            ? "absolute top-1 left-1/2 ml-2 h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"
+            ? "absolute top-1 start-1/2 ms-2 h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"
             : "h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"}
           aria-hidden="true"
         >
@@ -2053,7 +2054,7 @@ function SavedCopyNoticeDemo() {
         formatTime={(time) =>
           renders.value === 0 ? clock(time) : `${clock(time)}, render ${renders.value}`}
       />
-      <ul class="list-disc pl-6 text-sm">
+      <ul class="list-disc ps-6 text-sm">
         <li>Laptop, signed in on 3 October</li>
         <li>Phone, signed in on 9 October</li>
       </ul>
@@ -2563,7 +2564,11 @@ useEffect(() => {
 >
   <PageContent />
 </Shell>`,
-    render: () => <ShellDemo />,
+    render: () => (
+      <ArabicSwitch name="shell">
+        <ShellDemo />
+      </ArabicSwitch>
+    ),
   },
   Rail: {
     summary:
@@ -2650,7 +2655,11 @@ useEffect(() => {
 >
   <Page />
 </Rail>`,
-    render: () => <RailDemo />,
+    render: () => (
+      <ArabicSwitch name="rail">
+        <RailDemo />
+      </ArabicSwitch>
+    ),
   },
   AppShell: {
     summary:
@@ -2817,7 +2826,11 @@ useEffect(() => {
 >
   <Page />
 </RailShell>`,
-    render: () => <RailShellDemo />,
+    render: () => (
+      <ArabicSwitch name="rail-shell">
+        <RailShellDemo />
+      </ArabicSwitch>
+    ),
   },
   AccountMenu: {
     summary:
@@ -3058,49 +3071,51 @@ useEffect(() => {
 <Button onClick={tryAsGuest}>Try it now</Button>
 <AuthForm mode="sign-up" step="credentials" onSignUp={signUp} submitVariant="secondary" />`,
     render: () => (
-      <Stack gap="xl">
-        <Part title="Sign in and sign up, side by side">
-          <AuthFormAutofillDemo />
-        </Part>
-        <Part title="Driven by buttons in place of a server">
-          <AuthFormInteractiveDemo />
-        </Part>
-        <Part title="With the field names your API expects">
-          <AuthFormNamesDemo />
-        </Part>
-        <Part title="With the mode switch as a link">
-          <AuthFormModeLinkDemo />
-        </Part>
-        <Part title="With a login handed back, and reported as typed">
-          <AuthFormLoginInputDemo />
-        </Part>
-        <Part title="With passkeys offered in the login field's autofill">
-          <div class="max-w-sm" data-e2e="auth-form-passkey-demo">
-            <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" passkeyAutofill />
-          </div>
-        </Part>
-        <Part title="With a secondary submit, under the page's one primary action">
-          <div class="flex max-w-sm flex-col gap-4" data-e2e="auth-form-submit-variant-demo">
-            <Button type="button" class="w-full">Try it now</Button>
-            <AuthForm
-              mode="sign-up"
-              step="credentials"
-              action="/auth/sign-up"
-              submitVariant="secondary"
-            />
-          </div>
-        </Part>
-        <Part title="With a link below the form">
-          <div class="max-w-sm" data-e2e="auth-form-footer-demo">
-            <AuthForm
-              mode="sign-up"
-              step="credentials"
-              action="/auth/sign-up"
-              footer={<a class="pc-link" href="#system">Back to sign in</a>}
-            />
-          </div>
-        </Part>
-      </Stack>
+      <ArabicSwitch name="auth-form">
+        <Stack gap="xl">
+          <Part title="Sign in and sign up, side by side">
+            <AuthFormAutofillDemo />
+          </Part>
+          <Part title="Driven by buttons in place of a server">
+            <AuthFormInteractiveDemo />
+          </Part>
+          <Part title="With the field names your API expects">
+            <AuthFormNamesDemo />
+          </Part>
+          <Part title="With the mode switch as a link">
+            <AuthFormModeLinkDemo />
+          </Part>
+          <Part title="With a login handed back, and reported as typed">
+            <AuthFormLoginInputDemo />
+          </Part>
+          <Part title="With passkeys offered in the login field's autofill">
+            <div class="max-w-sm" data-e2e="auth-form-passkey-demo">
+              <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" passkeyAutofill />
+            </div>
+          </Part>
+          <Part title="With a secondary submit, under the page's one primary action">
+            <div class="flex max-w-sm flex-col gap-4" data-e2e="auth-form-submit-variant-demo">
+              <Button type="button" class="w-full">Try it now</Button>
+              <AuthForm
+                mode="sign-up"
+                step="credentials"
+                action="/auth/sign-up"
+                submitVariant="secondary"
+              />
+            </div>
+          </Part>
+          <Part title="With a link below the form">
+            <div class="max-w-sm" data-e2e="auth-form-footer-demo">
+              <AuthForm
+                mode="sign-up"
+                step="credentials"
+                action="/auth/sign-up"
+                footer={<a class="pc-link" href="#system">Back to sign in</a>}
+              />
+            </div>
+          </Part>
+        </Stack>
+      </ArabicSwitch>
     ),
   },
   Calendar: {
@@ -3157,20 +3172,22 @@ useEffect(() => {
   onSelectDate={(date) => picked.value = date}
 />`,
     render: () => (
-      <Grid minColumnWidth="md" gap="lg" class="sm:grid-cols-2">
-        <Part title="Links, in three locales">
-          <CalendarLocaleDemo />
-        </Part>
-        <Part title="Buttons and the keyboard">
-          <CalendarInteractiveDemo />
-        </Part>
-        <Part title="An owner that refuses every month">
-          <CalendarRefusingDemo />
-        </Part>
-        <Part title="An owner that answers late">
-          <CalendarLateDemo />
-        </Part>
-      </Grid>
+      <ArabicSwitch name="calendar">
+        <Grid minColumnWidth="md" gap="lg" class="sm:grid-cols-2">
+          <Part title="Links, in three locales">
+            <CalendarLocaleDemo />
+          </Part>
+          <Part title="Buttons and the keyboard">
+            <CalendarInteractiveDemo />
+          </Part>
+          <Part title="An owner that refuses every month">
+            <CalendarRefusingDemo />
+          </Part>
+          <Part title="An owner that answers late">
+            <CalendarLateDemo />
+          </Part>
+        </Grid>
+      </ArabicSwitch>
     ),
   },
   StateInit: {
@@ -3291,17 +3308,19 @@ const tags = seoHeadTags(head)`,
 // Only when the worker speaks another dialect — the default is { action: "skipWaiting" }:
 <SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
     render: () => (
-      <Stack gap="xl">
-        <Part title="Mounted with nothing waiting">
-          <SwUpdaterQuietDemo />
-        </Part>
-        <Part title="The function underneath, on a fake registration">
-          <SwUpdaterDemo />
-        </Part>
-        <Part title="Against a real service worker">
-          <SwUpdaterLiveDemo />
-        </Part>
-      </Stack>
+      <ArabicSwitch name="sw-updater">
+        <Stack gap="xl">
+          <Part title="Mounted with nothing waiting">
+            <SwUpdaterQuietDemo />
+          </Part>
+          <Part title="The function underneath, on a fake registration">
+            <SwUpdaterDemo />
+          </Part>
+          <Part title="Against a real service worker">
+            <SwUpdaterLiveDemo />
+          </Part>
+        </Stack>
+      </ArabicSwitch>
     ),
   },
   SyncStatus: {

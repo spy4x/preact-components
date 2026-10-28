@@ -605,7 +605,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
               failure; the rule above is for polite `role="status"` regions.
             */
             }
-            <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-left" />
+            <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-start" />
           </div>
           {
             /*
@@ -639,7 +639,7 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
               </div>
             )}
 
-            <a href={cancelHref} class="btn btn-link ml-auto">{words.cancelLabel}</a>
+            <a href={cancelHref} class="btn btn-link ms-auto">{words.cancelLabel}</a>
             {editable && (
               <button
                 type="submit"

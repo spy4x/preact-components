@@ -414,7 +414,9 @@ export function AuthForm(
               error={problem?.field === "password" ? problem.message : undefined}
             >
               {(wiring) => (
-                <div class="relative">
+                // A password is typed left to right in every language, shown or hidden, so the box
+                // and its toggle keep that direction on a right-to-left page too.
+                <div class="relative" dir="ltr">
                   <Input
                     id={wiring.id}
                     aria-describedby={wiring["aria-describedby"]}
@@ -423,12 +425,12 @@ export function AuthForm(
                     type={showPassword ? "text" : "password"}
                     autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
                     required
-                    class="pr-12"
+                    class="pe-12"
                     data-e2e="auth-form-password"
                   />
                   {
                     /* An icon-only toggle, 32 px square at 4 px from the edge, so the field's
-                      `pr-12` (48 px) keeps a shown password clear of it; a word-sized button
+                      `pe-12` (48 px) keeps a shown password clear of it; a word-sized button
                       needed more room than any step on the spacing scale. */
                   }
                   <Button
@@ -437,7 +439,7 @@ export function AuthForm(
                     size="sm"
                     aria-pressed={showPassword}
                     aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                    class="absolute top-1/2 right-1 -translate-y-1/2"
+                    class="absolute top-1/2 end-1 -translate-y-1/2"
                     data-e2e="auth-form-password-toggle"
                     onClick={(event) => {
                       // Keeps the toggle itself the Tab stop after the type swap re-renders it,

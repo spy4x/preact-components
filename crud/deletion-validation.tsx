@@ -85,16 +85,16 @@ export function DeletionValidation(
           <div class="shrink-0">
             <IconAlertTriangle class="size-5" />
           </div>
-          <div class="ml-3">
+          <div class="ms-3">
             <h3 class="text-sm font-medium">
               {label ?? heading(model)}
             </h3>
             <div class="mt-2 text-sm max-w-xl">
-              <ul role="list" class="list-disc space-y-1 pl-4">
+              <ul role="list" class="list-disc space-y-1 ps-4">
                 {dependencies.map((dependency) => (
                   <li key={dependency.kind}>
                     <div>{dependency.kind}:</div>
-                    <div class="my-2 ml-4 space-x-2">
+                    <div class="my-2 ms-4 space-x-2">
                       {dependency.values.map((item) => (
                         <div key={item.url} class="inline-block">
                           <a class="pc-link text-primary" href={item.url}>{item.title}</a>

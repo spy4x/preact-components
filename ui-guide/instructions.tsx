@@ -127,7 +127,7 @@ export const documentedClasses: Record<string, string[]> = {
   Surfaces: ["pc-card", "pc-card-header", "pc-card-body", "pc-card-footer", "pc-scrollbar"],
   "Data display": ["pc-num", "pc-kpi", "pc-kpi-label", "pc-kpi-value", "pc-bar"],
   Map: ["map-marker", "status-on", "status-off", "status-unknown"],
-  Spacing: ["pb-safe", "pb-safe-3", "pl-safe"],
+  Spacing: ["pb-safe", "pb-safe-3", "ps-safe"],
 }
 
 /**

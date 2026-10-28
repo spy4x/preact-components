@@ -162,7 +162,7 @@ export interface AccountMenuProps {
 }
 
 const fullTriggerClasses =
-  "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
+  "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-start text-sm hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
 
 /**
  * The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's

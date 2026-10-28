@@ -46,7 +46,8 @@ function cellClass(html: string, date: string): string | undefined {
 
 /** The text of every column header, in column order. */
 function columnHeaders(html: string): string[] {
-  return [...html.matchAll(/role="columnheader"[^>]*>([^<]+)</g)].map((match) => match[1])
+  return [...html.matchAll(/role="columnheader"[^>]*>(?:<span[^>]*>)?([^<]+)</g)]
+    .map((match) => match[1])
 }
 
 /**
@@ -453,6 +454,21 @@ describe("Calendar, as the locale shapes it", () => {
     expect(headers).toHaveLength(7)
     expect(new Set(headers).size).toBe(7)
     expect(headers).toEqual(weekdayLabels("ar-EG").map((weekday) => weekday.short))
+  })
+
+  it("gives Arabic headers their language and distinct one-letter names for phones, and English none", () => {
+    const narrow = (html: string) =>
+      [...html.matchAll(/role="columnheader"[^>]*data-narrow="([^"]*)"/g)].map((match) => match[1])
+    const arabic = render(<Calendar {...base} locale="ar-EG" />)
+    expect(narrow(arabic)).toEqual(["س", "ح", "ن", "ث", "ر", "خ", "ج"])
+    expect(arabic).toContain("max-sm:before:content-[attr(data-narrow)]")
+    expect(arabic).toContain('<span class="max-sm:hidden">')
+    // In the locale's language, so the Arabic type rule keeps the letters joined on any page.
+    expect(arabic).toContain('<div role="row" lang="ar-EG"')
+    // T and S repeat in English, so a header keeps its abbreviation at every width.
+    const english = render(<Calendar {...base} locale="en-US" />)
+    expect(narrow(english)).toEqual([])
+    expect(english).not.toContain("max-sm:hidden")
   })
 
   it("writes the day labels in the locale's language", () => {

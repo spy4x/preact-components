@@ -2696,6 +2696,11 @@ The whole grid is one Tab stop, and the focus moves inside it:
 | Home / End          | the first and last day of the week on screen, clipped to the month |
 | Page Up / Page Down | the neighbouring month, through `onSelectMonth`, same day number   |
 
+The grid's columns run the way the page reads, and the arrows follow them: on a right-to-left page
+(`dir="rtl"` on the page or any ancestor) the left arrow moves a day on and the right arrow a day
+back. Below the `sm` width, a locale whose one-letter weekday names all differ (Arabic, Persian,
+Hebrew) shows those in the header instead of its abbreviations, which are whole words there.
+
 Every key the grid answers is cancelled, so paging a month does not scroll the page. Without
 `onSelectMonth`, Page Up and Page Down do nothing: in link mode the month lives in the URL, and the
 arrows are links that Tab reaches.
@@ -3785,8 +3790,12 @@ draw `AppShell`, which builds on it; a site whose first-time visitors do not kno
 `Rail` with `variant="labels"` itself. `Shell` (a header, a sidebar and a `<details>` drawer) and
 `SiteHeader` (a public site's top bar) are different in kind: neither has a rail or a tab bar.
 
+**It follows the page's direction.** The column stands on the inline-start edge: the left, or the
+right under `dir="rtl"` on the page or an ancestor. Its tooltips open toward the page, the current
+entry's bar sits on the column cell's start edge, and the skip link shows at the start corner.
+
 **Two variants, two widths.** The column is 72 px (`w-18`) in the icons variant and 88 px
-(`w-22`) in the labels variant, plus the device's left safe-area inset (`pl-safe`), so a landscape
+(`w-22`) in the labels variant, plus the device's safe-area inset on its start side (`ps-safe`), so a landscape
 phone's notch never covers a cell. The page beside it is the rest of the row, so it follows either
 width. `"icons"`, the default, draws a 48 px square per destination with the label as visually
 hidden text. `"labels"` draws an 80 × 56 px cell with 4 px of side padding and a `text-xs` label
@@ -4365,7 +4374,7 @@ classes keep their names: no app writes them as ordinary words.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`
-  (step 3 plus that inset) and `pl-safe` (left padding that clears a landscape phone's notch). The inset is the device's, not a step, so it gets a name here instead
+  (step 3 plus that inset) and `ps-safe` (inline-start padding that clears a landscape phone's notch, from the left or right inset as `dir` says). The inset is the device's, not a step, so it gets a name here instead
   of an arbitrary value in a component.
 
 ## Spacing

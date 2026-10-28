@@ -384,12 +384,15 @@ export function useCalendarFocus(input: CalendarFocusInput): CalendarFocus {
     const from = cursorDate.current
     if (!from || event.altKey || event.ctrlKey || event.metaKey) return
 
+    // The grid's columns run the way the page reads, so on a right-to-left page the day after is
+    // to the left and ArrowLeft moves forward.
+    const ahead = getComputedStyle(event.currentTarget as Element).direction === "rtl" ? -1 : 1
     switch (event.key) {
       case "ArrowLeft":
-        moveTo(addDays(from, -1))
+        moveTo(addDays(from, -ahead))
         break
       case "ArrowRight":
-        moveTo(addDays(from, 1))
+        moveTo(addDays(from, ahead))
         break
       case "ArrowUp":
         moveTo(addDays(from, -WEEK))

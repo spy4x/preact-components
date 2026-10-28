@@ -289,6 +289,7 @@ export function Calendar(
   // name that reads `9 February 2026`, nor a `9` in `٩ فبراير ٢٠٢٦`, and a speech-input user saying
   // the number they see would miss the cell.
   const dayDigits = new Intl.NumberFormat(locale, { useGrouping: false })
+  const narrow = narrowWeekdays(days.slice(0, WEEK).map((day) => day.date), locale)
   const cell = (day: CalendarDay) =>
     day.inMonth && dayCell(day, {
       number: dayDigits.format(Number(day.date.slice(8, 10))),
@@ -330,16 +331,21 @@ export function Calendar(
         onFocusOut={focus.onFocusOut}
         class="space-y-px px-2 pb-2"
       >
-        <div role="row" class="grid grid-cols-7 gap-px">
+        {/* In the locale's language, so a page in another one still sets it as that language. */}
+        <div role="row" lang={locale} class="grid grid-cols-7 gap-px">
           {weekdayLabels(locale).map((weekday, column) => (
             <div
               key={weekday.long}
               role="columnheader"
               aria-colindex={column + 1}
               aria-label={weekday.long}
-              class="py-1 text-center text-xs font-medium tracking-wider text-placeholder uppercase"
+              data-narrow={narrow?.[column]}
+              class={cn(
+                "py-1 text-center text-xs font-medium tracking-wider text-placeholder uppercase",
+                narrow && "max-sm:before:content-[attr(data-narrow)]",
+              )}
             >
-              {weekday.short}
+              <span class={narrow && "max-sm:hidden"}>{weekday.short}</span>
             </div>
           ))}
         </div>
@@ -397,6 +403,18 @@ const noneLeftClass = "line-through decoration-control"
 const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-selected-hover"
 const todayClass = "bg-selected-soft font-semibold text-selected hover:bg-selected-soft-hover"
 const selectableClass = "text-foreground hover:bg-hover"
+
+/**
+ * The locale's one-letter weekday names for the dates of one week, or `undefined` when two of them
+ * read alike. Below the `sm` width a header shows these instead of the abbreviation: Arabic and
+ * Persian abbreviate a weekday to its whole name, and seven whole names touch at 390 px (#840).
+ * English, whose one-letter forms repeat (T, S), keeps its abbreviations.
+ */
+function narrowWeekdays(dates: string[], locale: string): string[] | undefined {
+  const format = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" })
+  const names = dates.map((date) => format.format(new Date(`${date}T00:00:00Z`)))
+  return new Set(names).size === names.length ? names : undefined
+}
 
 /**
  * The grid's 42 cells: six weeks, weekday-aligned. The leading cells step back into the previous
@@ -530,7 +548,7 @@ function dayCell(day: CalendarDay, cell: DayCell): JSX.Element {
       {scarce && (
         <span
           aria-hidden="true"
-          class="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-accent-600 dark:bg-accent-400"
+          class="absolute inset-x-0 bottom-1 mx-auto size-1 rounded-full bg-accent-600 dark:bg-accent-400"
         />
       )}
     </>
