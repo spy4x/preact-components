@@ -682,6 +682,9 @@ async function launchOnce(
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--no-first-run",
+        // Keep the checks silent: a demo such as `YouTubeVideo` autoplays once it is pressed, and
+        // headless Chromium plays its sound through the machine's speakers.
+        "--mute-audio",
         // Keep every browser's viewport the same height. Chrome for Testing, the build in
         // Playwright's CI image, shows an info bar that took 56px off the page (780×437 against
         // 780×493), and a Combobox's last row fell below the fold.

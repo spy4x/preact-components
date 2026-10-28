@@ -5864,9 +5864,9 @@ does): YouTube's player refuses an embed that sends no referrer.
 
 ```tsx
 <YouTubeVideo
-  videoId="uaqFYlfOZeE"
-  title="Code formatting with Prettier"
-  poster={{ src: "/img/prettier-poster.webp", width: 1280, height: 720 }}
+  videoId="aqz-KE-bpKQ"
+  title="Big Buck Bunny"
+  poster={{ src: "/img/big-buck-bunny-poster.webp", width: 1280, height: 720 }}
 />
 ```
 
