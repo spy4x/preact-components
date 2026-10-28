@@ -16,6 +16,7 @@ import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
 import { LineChart, type LineSeries } from "@spy4x/preact-charts/line-chart"
+import { type RankedBarColumns, RankedBars } from "@spy4x/preact-charts/ranked-bars"
 import { useInView } from "@spy4x/preact-charts/use-in-view"
 import { useSignal } from "@preact/signals"
 import { useEffect } from "preact/hooks"
@@ -91,6 +92,111 @@ function KpiToneMatrix() {
         <Kpi key={tone} label={label} value={42} sub={`tone="${tone}"`} tone={tone} />
       ))}
     </KpiGrid>
+  )
+}
+
+/** A ranked list's columns: visits draw the bar, order clicks and the rate follow it. */
+const sourceColumns: RankedBarColumns = {
+  label: "Source",
+  value: "Visits",
+  extra: [{ label: "Order clicks" }, {
+    label: "Order rate",
+    format: (value) => `${value.toFixed(1)}%`,
+  }],
+}
+
+/** Visits per source with their order clicks; a source with too few visits has no rate. */
+const sourceRows = [
+  { label: "Zalo group A", value: 480, values: [24, 5] },
+  { label: "Facebook: Da Nang market, second-hand and handmade", value: 310, values: [14, 4.5] },
+  { label: "Instagram", value: 90, values: [2, 2.2] },
+  { label: "Friends", value: 8, values: [0, null], lowSample: true },
+  { label: "No source", value: 360, values: [12, 3.3] },
+]
+
+/** A 40 px square of one colour, standing in for an item's photo. */
+function swatch(fill: string): string {
+  return `data:image/svg+xml,${
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="${fill}"/></svg>`,
+    )
+  }`
+}
+
+/**
+ * `RankedBars` two ways: sources whose rows are buttons that set a filter, and items with a photo
+ * and a note whose rows are links. The filter line under the first says which source was chosen.
+ */
+function RankedBarsDemo() {
+  const source = useSignal<string | null>(null)
+  return (
+    <div class="flex flex-col gap-6" data-e2e="bars-ranked">
+      <div class="flex flex-col gap-2">
+        <RankedBars
+          title="Where visits come from"
+          columns={sourceColumns}
+          data={sourceRows.map((row) => ({ ...row, onSelect: () => source.value = row.label }))}
+        />
+        <p class="text-xs text-muted" data-e2e="bars-ranked-filter">
+          Chart shows: {source.value ?? "All sources"}
+        </p>
+      </div>
+      <RankedBars
+        title="Most ordered"
+        columns={{ label: "Item", value: "Order clicks", extra: [{ label: "Views" }] }}
+        data={[
+          {
+            label: "Linen shirt, sand",
+            value: 9,
+            values: [210],
+            href: "?item=linen-shirt",
+            image: { src: swatch("#d6c3a1"), alt: "" },
+            note: "mostly Zalo A",
+          },
+          {
+            label: "Áo dài lụa hoa sen",
+            value: 6,
+            values: [150],
+            href: "?item=ao-dai",
+            image: { src: swatch("#e7a1b0"), alt: "" },
+            note: "mostly Facebook",
+          },
+          {
+            label: "Cotton dress",
+            value: 4,
+            values: [96],
+            href: "?item=cotton-dress",
+            image: { src: swatch("#8fb3c9"), alt: "" },
+          },
+        ]}
+      />
+    </div>
+  )
+}
+
+/** Three key figures with their change against the period before, as a stats page draws them. */
+function KpiChangeDemo() {
+  return (
+    <div data-e2e="kpi-change">
+      <KpiGrid minWidth="9rem">
+        <Kpi
+          label="Visits"
+          value="1,240"
+          change={{ text: "+120 vs previous 30 days", direction: "up", tone: "positive" }}
+        />
+        <Kpi
+          label="Order clicks"
+          value={52}
+          change={{ text: "−3 vs previous 30 days", direction: "down", tone: "negative" }}
+        />
+        <Kpi
+          label="Order rate"
+          value="4.2%"
+          sub="52 of 1,240 visits"
+          change={{ text: "No change vs previous 30 days", direction: "flat" }}
+        />
+      </KpiGrid>
+    </div>
   )
 }
 
@@ -416,10 +522,36 @@ export const chartsDemos = {
   },
   Kpi: {
     summary:
-      "One key figure with its label and caption, in five tones that say what the number is for.",
+      "One key figure with its label and caption, in five tones that say what the number is for, or with a change line that alone takes the tone.",
     wide: true,
-    snippet: `<Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />`,
-    render: () => <KpiToneMatrix />,
+    props: [
+      { name: "label", type: "string", description: "What the number counts." },
+      { name: "value", type: "string | number", description: "The number, in tabular figures." },
+      {
+        name: "tone",
+        type: `"accent" | "positive" | "warning" | "negative" | "neutral"`,
+        default: `"accent"`,
+        description: "The value's colour; with `change` the value stays the foreground colour.",
+      },
+      {
+        name: "change",
+        type: `{ text, direction: "up" | "down" | "flat", tone? }`,
+        description:
+          "A line under the value with a trend icon and the change in words; only it takes `tone`, muted by default.",
+      },
+    ],
+    snippet: `<Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />
+<Kpi
+  label="Visits"
+  value="1,240"
+  change={{ text: "+120 vs previous 30 days", direction: "up", tone: "positive" }}
+/>`,
+    render: () => (
+      <div class="flex flex-col gap-6">
+        <KpiToneMatrix />
+        <KpiChangeDemo />
+      </div>
+    ),
   },
   KpiGrid: {
     summary:
@@ -450,5 +582,37 @@ export const chartsDemos = {
         </KpiGrid>
       </div>
     ),
+  },
+  RankedBars: {
+    summary:
+      "A ranked list with several numbers per row, such as visits per source: a bar under each label, one to three more right-aligned columns, and rows that are links or buttons.",
+    wide: true,
+    props: [
+      {
+        name: "data",
+        type: "{ label, value, values?, href?, onSelect?, lowSample?, image?, note? }[]",
+        description:
+          "The rows, ranked by the caller; `values` fills the extra columns, `null` printing a dash. `image` (`{ src, alt }`) draws a 40 px thumbnail before the label, `note` a muted line under it. A row with `onSelect` needs JavaScript.",
+      },
+      {
+        name: "columns",
+        type: "{ label, value, extra }",
+        description:
+          "The headers of the label, the bar's number and one to three `extra` columns, each with an optional `format`.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How the bar's own number is printed.",
+      },
+      { name: "title", type: "string", description: "The heading, and the table's name." },
+    ],
+    snippet: `<RankedBars
+  title="Where visits come from"
+  columns={{ label: "Source", value: "Visits", extra: [{ label: "Order clicks" }] }}
+  data={[{ label: "Zalo group A", value: 480, values: [24], onSelect: () => filter("zalo") }]}
+/>`,
+    render: () => <RankedBarsDemo />,
   },
 } satisfies DemoFragment
