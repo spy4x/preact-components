@@ -63,6 +63,16 @@ describe("OnboardingChecklist", () => {
     expect(footer).not.toContain("Invite")
   })
 
+  it("draws the footer's button as a secondary one when asked, and as the primary by default", () => {
+    const primary = footerOf(render(<OnboardingChecklist steps={steps} />))
+    const secondary = footerOf(
+      render(<OnboardingChecklist steps={steps} actionVariant="secondary" />),
+    )
+    expect(primary).toContain("bg-accent-900")
+    expect(secondary).not.toContain("bg-accent-900")
+    expect(secondary).toContain("bg-hover")
+  })
+
   it("renders a step's link action as a real link", () => {
     const linked = steps.map((step) =>
       step.id === "budget"

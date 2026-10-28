@@ -2,7 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconCheckCircle } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, RefObject } from "preact"
 import { useId, useLayoutEffect, useRef } from "preact/hooks"
-import { Button } from "./button.tsx"
+import { Button, type ButtonVariant } from "./button.tsx"
 import { Card, CardBody, CardFooter, CardHeader } from "./card.tsx"
 import { Progress } from "./progress.tsx"
 import { translate, useLabels, useT } from "./i18n.tsx"
@@ -78,6 +78,11 @@ export interface OnboardingChecklistProps {
   todoLabel?: string
   /** Shown and announced once every step is done. Defaults to `"All done. You're set up."` */
   completeMessage?: ComponentChildren
+  /**
+   * How the footer's button looks. Defaults to `"primary"`; pass `"secondary"` when the page
+   * already shows its own primary action, so the screen keeps one.
+   */
+  actionVariant?: ButtonVariant
   /** Extra utilities for the card. */
   class?: string
 }
@@ -132,6 +137,7 @@ export function OnboardingChecklist(
     doneLabel: doneLabelProp,
     todoLabel: todoLabelProp,
     completeMessage: completeMessageProp,
+    actionVariant = "primary",
     class: className,
   }: OnboardingChecklistProps,
 ): JSX.Element {
@@ -274,10 +280,14 @@ export function OnboardingChecklist(
           }}
         >
           {action?.href !== undefined
-            ? <Button href={action.href} navigate={action.navigate}>{action.label}</Button>
+            ? (
+              <Button variant={actionVariant} href={action.href} navigate={action.navigate}>
+                {action.label}
+              </Button>
+            )
             : action
-            ? <Button onClick={action.onClick}>{action.label}</Button>
-            : <Button onClick={onDismiss}>{finishLabel}</Button>}
+            ? <Button variant={actionVariant} onClick={action.onClick}>{action.label}</Button>
+            : <Button variant={actionVariant} onClick={onDismiss}>{finishLabel}</Button>}
         </CardFooter>
       )}
     </Card>
