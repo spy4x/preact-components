@@ -540,7 +540,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
 
   return (
     <div
-      class={cn("relative inline-flex text-left", className)}
+      class={cn("relative inline-flex text-start", className)}
       ref={rootRef}
       onFocusOut={handleFocusOut}
       onKeyDown={handleKeyDown}

@@ -644,7 +644,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
       >
         <IconSearch class={field ? "size-4 shrink-0" : "size-5 shrink-0 sm:size-4"} />
         <span
-          class={field ? "min-w-0 flex-1 truncate text-left" : "hidden flex-1 text-left sm:inline"}
+          class={field
+            ? "min-w-0 flex-1 truncate text-start"
+            : "hidden flex-1 text-start sm:inline"}
         >
           {labels.placeholder}
         </span>
@@ -729,7 +731,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-label={labels.close}
             data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-close`}
             onClick={close}
-            class="-mr-2 flex size-11 shrink-0 sm:size-9 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
+            class="-me-2 flex size-11 shrink-0 sm:size-9 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
           >
             <IconXMark class="size-5" />
           </button>

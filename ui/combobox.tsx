@@ -914,7 +914,7 @@ export function Combobox<T>({
         <input
           ref={inputRef}
           id={id}
-          class={join("pc-input font-normal tracking-normal pr-16", inputClass)}
+          class={join("pc-input font-normal tracking-normal pe-16", inputClass)}
           type="text"
           role="combobox"
           value={inputValue}
@@ -971,7 +971,7 @@ export function Combobox<T>({
             close()
           }}
         />
-        <div class="absolute inset-y-0 right-3 flex items-center gap-1">
+        <div class="absolute inset-y-0 end-3 flex items-center gap-1">
           {showClearButton && (hasSelection || hasText) && (
             <button
               type="button"

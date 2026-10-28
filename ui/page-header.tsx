@@ -93,7 +93,7 @@ export function PageHeader(
           variant="icon"
           size="md"
           aria-label={back.label}
-          class={`-ml-2 ${TOUCH_TARGET}`}
+          class={`-ms-2 ${TOUCH_TARGET}`}
           data-e2e="page-back"
         >
           <IconArrowLeft class="size-5" aria-hidden="true" />
@@ -103,17 +103,21 @@ export function PageHeader(
       <div class="flex min-w-0 flex-1 flex-col gap-1">
         {
           /* The plain title truncates in its own span: `truncate` on the heading would clip the focus
-            ring of whatever the heading slot puts there. */
+            ring of whatever the heading slot puts there. `dir="auto"` gives the span the direction
+            of its own words, so a long Latin title in an Arabic page keeps its start and loses its
+            end to the ellipsis; `match-parent` still lines a short one up with the page's start. */
         }
         <Heading
           class="min-w-0 text-xl font-semibold text-foreground sm:text-2xl"
           title={title}
           data-e2e={titleDataE2E}
         >
-          {heading ?? <span class="block truncate">{title}</span>}
+          {heading ?? <span dir="auto" class={OWN_DIRECTION}>{title}</span>}
         </Heading>
         {subtitle && (
-          <p class="truncate text-sm text-muted" data-e2e={subtitleDataE2E}>{subtitle}</p>
+          <p dir="auto" class={`${OWN_DIRECTION} text-sm text-muted`} data-e2e={subtitleDataE2E}>
+            {subtitle}
+          </p>
         )}
       </div>
       {(action || menu) && (
@@ -138,6 +142,12 @@ export interface MoreMenuProps {
   /** The menu's `DropdownItem`s. */
   children: ComponentChildren
 }
+
+/**
+ * A line of text in its own direction that truncates at its own end, lined up with the page's start
+ * whatever that direction is.
+ */
+const OWN_DIRECTION = "block truncate [text-align:match-parent]"
 
 /**
  * A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or

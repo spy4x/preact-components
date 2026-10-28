@@ -367,12 +367,15 @@ const progressTones: Record<ProgressTone, string> = {
   danger: "Danger",
 }
 
-/** Every placement — the record is the coverage guard for `TooltipPlacement`. */
-const tooltipPlacements: Record<TooltipPlacement, string> = {
+/**
+ * Every placement — the record is the coverage guard for `TooltipPlacement`, less `left` and
+ * `right`, the old names of `start` and `end`.
+ */
+const tooltipPlacements: Record<Exclude<TooltipPlacement, "left" | "right">, string> = {
   top: "top (default)",
-  right: "right",
+  end: "end",
   bottom: "bottom",
-  left: "left",
+  start: "start",
 }
 
 /**
@@ -462,7 +465,7 @@ function MoneyDisplayDemo() {
     <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
       {moneyRows.map((row) => (
         <Fragment key={`${row.currency}${row.amount}`}>
-          <span class="text-right tabular-nums">
+          <span class="text-end tabular-nums">
             <MoneyDisplay
               amount={row.amount}
               currency={row.currency}
@@ -644,10 +647,10 @@ function TableDemo() {
       captionClass="sr-only"
       headerSlot={
         <>
-          <th scope="col" class="text-left">Date</th>
-          <th scope="col" class="text-left">Merchant</th>
+          <th scope="col" class="text-start">Date</th>
+          <th scope="col" class="text-start">Merchant</th>
           <th scope="col" class="text-center">Status</th>
-          <th scope="col" class="text-right">Amount</th>
+          <th scope="col" class="text-end">Amount</th>
         </>
       }
       bodyKeys={tableRows.map((row) => row.date)}
@@ -666,13 +669,13 @@ function TableDemo() {
               color={row.status ? "green" : "gray"}
             />
           </td>
-          <td class="text-right tabular-nums">{row.amount}</td>
+          <td class="text-end tabular-nums">{row.amount}</td>
         </>
       ))}
       footerSlot={
         <tr class="text-sm font-medium">
-          <td colspan={3} class="px-6 py-3 text-right">Net</td>
-          <td class="px-6 py-3 text-right tabular-nums">
+          <td colspan={3} class="px-6 py-3 text-end">Net</td>
+          <td class="px-6 py-3 text-end tabular-nums">
             {tableRows.reduce((total, row) => total + row.amount, 0)}
           </td>
         </tr>
@@ -1968,9 +1971,10 @@ const translator = createTranslator({
       { name: "label", type: "string", description: "The trigger's accessible name." },
       {
         name: "placement",
-        type: `"top" | "right" | "bottom" | "left"`,
+        type: `"top" | "end" | "bottom" | "start" | "right" | "left"`,
         default: `"top"`,
-        description: "Which side of the trigger the hint appears on.",
+        description:
+          "Which side of the trigger the hint appears on. `end` opens toward the end of the line, so it mirrors in a right-to-left page; `right` and `left` are the old names of `end` and `start`.",
       },
       {
         name: "focusable",
@@ -1979,7 +1983,7 @@ const translator = createTranslator({
         description: "Pass `false` when the trigger is already a button or a link.",
       },
     ],
-    snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
+    snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="end">
   <span>Revenue</span>
 </Tooltip>
 

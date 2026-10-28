@@ -18,6 +18,7 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { useLabels } from "./i18n.tsx"
 import { Modal } from "./modal.tsx"
+import { Isolated } from "./bdi.tsx"
 
 /**
  * The name of a language in that language, first letter capitalised the way the language does it:
@@ -285,7 +286,7 @@ export function LanguagePicker(
       </div>
       {failed && (
         <p id={errorId} role="alert" class="text-sm text-danger">
-          {labels.error(languageName(failed))}
+          <Isolated message={labels.error} value={languageName(failed)} />
         </p>
       )}
       <p role="status" aria-live="polite" class="sr-only">

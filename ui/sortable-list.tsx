@@ -165,7 +165,7 @@ interface Held {
 
 const listClass = "flex flex-col gap-2"
 const rowClass =
-  "relative flex items-center gap-2 rounded-md border border-subtle bg-surface p-1 pr-3 text-sm text-foreground"
+  "relative flex items-center gap-2 rounded-md border border-subtle bg-surface p-1 pe-3 text-sm text-foreground"
 const rowSlideClass = "transition-transform duration-150 motion-reduce:transition-none"
 const rowHeldClass = "z-10 shadow-popover ring-2 ring-(--color-selected-text)"
 const handleClass =

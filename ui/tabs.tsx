@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useRef } from "preact/hooks"
+import { inlineStep, isRightToLeft } from "./direction.ts"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import {
   ariaKeyShortcuts,
@@ -126,12 +127,14 @@ function rovingIndex(flags: readonly boolean[], activeIndex: number): number {
  * Pure and exported so the keyboard map is unit-testable: the DOM wiring that calls it can only
  * be checked in a real browser, this decision table cannot. Focus wraps around both ends, and a
  * disabled tab is skipped rather than landed on. `Home`/`End` answer the first/last *enabled* tab;
- * only Left/Right step, so Up/Down stay with the page and its panels.
+ * only Left/Right step, so Up/Down stay with the page and its panels. In a right-to-left tablist,
+ * where the first tab is on the right, Left steps to the next tab and Right to the previous one.
  *
  * @param key Value of `KeyboardEvent.key`.
  * @param current Index of the tab that has focus; out-of-range values wrap.
  * @param count Number of tabs in the tablist.
  * @param disabled One entry per tab: `true` when that tab is disabled.
+ * @param rtl Whether the tablist lays out right to left. Defaults to `false`.
  * @returns Index to focus, or `undefined` when the key is not one this tablist owns — which
  * includes "the tablist has no tabs" and "every tab is disabled".
  */
@@ -140,6 +143,7 @@ export function nextTabIndex(
   current: number,
   count: number,
   disabled: readonly boolean[] = [],
+  rtl = false,
 ): number | undefined {
   if (count <= 0) return undefined
 
@@ -154,7 +158,7 @@ export function nextTabIndex(
     return lastEnabled === -1 ? undefined : lastEnabled
   }
 
-  const step = key === "ArrowRight" ? 1 : key === "ArrowLeft" ? -1 : 0
+  const step = inlineStep(key, rtl)
   if (step === 0) return undefined
 
   // Walk one tab at a time, wrapping past both ends, until an enabled tab comes back around.
@@ -238,7 +242,8 @@ export function Tabs(
    * traversal keep working.
    */
   const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextTabIndex(event.key, index, tabs.length, flags)
+    const rtl = isRightToLeft(event.currentTarget as Element)
+    const next = nextTabIndex(event.key, index, tabs.length, flags, rtl)
     if (next === undefined) return
     event.preventDefault()
     moveTo(next)

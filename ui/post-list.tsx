@@ -15,6 +15,18 @@ export interface PostListItem {
   publishedAt: string
   /** The reading time in whole minutes. Left out, the row shows the date alone. */
   readMinutes?: number
+  /**
+   * The language of the title and the description, such as `"en"` for an English post on an
+   * Arabic page, so a screen reader reads them in that language's voice. The date and the reading
+   * time stay in the page's language. Left out, both are in the page's language.
+   */
+  lang?: string
+  /**
+   * The direction of the title and the description. Defaults to `"auto"` when `lang` is given, so
+   * an English title keeps its punctuation at its end on a right-to-left page, and to the page's
+   * direction otherwise.
+   */
+  dir?: "ltr" | "rtl" | "auto"
 }
 
 /** The words a {@link PostList} shows. */
@@ -67,20 +79,29 @@ export function PostList(
   const Heading = `h${headingLevel}` as const
   return (
     <ul aria-label={label} class={join("border-t border-subtle", className)} data-e2e="post-list">
-      {posts.map((post) => (
-        <li key={post.href} class="relative border-b border-subtle py-6">
-          <p class="text-sm text-muted tabular-nums">
-            <time dateTime={post.publishedAt}>{format.date(post.publishedAt)}</time>
-            {post.readMinutes !== undefined && ` · ${words.readTime(post.readMinutes)}`}
-          </p>
-          <Heading class="mt-1 text-lg font-semibold text-balance sm:text-xl">
-            <a href={post.href} class={LINK}>{post.title}</a>
-          </Heading>
-          {post.description && (
-            <p class="mt-1 line-clamp-2 text-base text-muted text-pretty">{post.description}</p>
-          )}
-        </li>
-      ))}
+      {posts.map((post) => {
+        // Only the post's own words take its language; the line about it is the page's.
+        const own = { lang: post.lang, dir: post.dir ?? (post.lang ? "auto" : undefined) }
+        return (
+          <li key={post.href} class="relative border-b border-subtle py-6">
+            <p class="text-sm text-muted tabular-nums">
+              <time dateTime={post.publishedAt}>{format.date(post.publishedAt)}</time>
+              {post.readMinutes !== undefined && ` · ${words.readTime(post.readMinutes)}`}
+            </p>
+            <Heading class="mt-1 text-lg font-semibold text-balance sm:text-xl">
+              <a href={post.href} class={LINK} {...own}>{post.title}</a>
+            </Heading>
+            {post.description && (
+              <p
+                class="mt-1 line-clamp-2 text-base text-muted text-pretty [text-align:match-parent]"
+                {...own}
+              >
+                {post.description}
+              </p>
+            )}
+          </li>
+        )
+      })}
     </ul>
   )
 }

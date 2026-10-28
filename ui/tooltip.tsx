@@ -4,8 +4,12 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
 
-/** Side of the trigger the tooltip is anchored to. */
-export type TooltipPlacement = "top" | "right" | "bottom" | "left"
+/**
+ * Side of the trigger the tooltip is anchored to. `start` and `end` are the ends of a line in the
+ * reading direction, so they mirror in a right-to-left page; `left` and `right` are their old
+ * names and mirror the same way.
+ */
+export type TooltipPlacement = "top" | "end" | "bottom" | "start" | "right" | "left"
 
 export interface TooltipProps {
   /** Visible content of the trigger. It also carries the trigger's accessible name. */
@@ -19,7 +23,10 @@ export interface TooltipProps {
    * the tooltip only as the description.
    */
   label: string
-  /** Side of the trigger the tooltip is anchored to. Defaults to `"top"`. */
+  /**
+   * Side of the trigger the tooltip is anchored to. Defaults to `"top"`. A side placement opens
+   * toward the inline end with `"end"` (`"right"`) and toward the start with `"start"` (`"left"`).
+   */
   placement?: TooltipPlacement
   /**
    * Makes the trigger a `<button>`, so the tooltip is reachable without a pointer.
@@ -69,6 +76,9 @@ const bubbleBase = hintBubbleClasses
 const controlSelector =
   "button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])"
 
+/** Centred on the trigger in either direction: the half-width shift swaps sign under `rtl:`. */
+const centred = "start-1/2 -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2"
+
 /**
  * Where the surface sits, and which of its sides carries the bridge back to the trigger.
  *
@@ -77,10 +87,12 @@ const controlSelector =
  * touch and the pointer never leaves the wrapper on its way from one to the other.
  */
 const placementClasses: Record<TooltipPlacement, string> = {
-  top: "bottom-full left-1/2 -translate-x-1/2 pb-2",
-  right: "top-1/2 left-full -translate-y-1/2 pl-2",
-  bottom: "top-full left-1/2 -translate-x-1/2 pt-2",
-  left: "top-1/2 right-full -translate-y-1/2 pr-2",
+  top: `bottom-full ${centred} pb-2`,
+  end: "top-1/2 start-full -translate-y-1/2 ps-2",
+  bottom: `top-full ${centred} pt-2`,
+  start: "top-1/2 end-full -translate-y-1/2 pe-2",
+  right: "top-1/2 start-full -translate-y-1/2 ps-2",
+  left: "top-1/2 end-full -translate-y-1/2 pe-2",
 }
 
 /**

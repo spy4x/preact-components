@@ -330,7 +330,7 @@ function FilterMenuButton(
       triggerDataE2E={`filter-${menu.id}`}
       containerClasses="shrink-0"
       panelClasses={sheetPanel}
-      horizontal="left"
+      horizontal="start"
       menuLabel={menu.label}
     >
       <SheetTitle>{menu.label}</SheetTitle>
@@ -370,7 +370,7 @@ function FilterMenuButton(
         >
           <span class="min-w-0 flex-1 truncate">{option.label}</span>
           {option.count !== undefined
-            ? <span class="pl-4 text-xs text-muted tabular-nums">{option.count}</span>
+            ? <span class="ps-4 text-xs text-muted tabular-nums">{option.count}</span>
             : null}
         </DropdownItem>
       ))}
@@ -482,7 +482,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
     ? (
       <div class="relative w-full sm:w-64 sm:shrink-0">
         <label for={searchId} class="sr-only">{searchLabel}</label>
-        <IconSearch class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
+        <IconSearch class="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-muted" />
         <input
           ref={searchRef}
           id={searchId}
@@ -494,7 +494,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
             ? undefined
             : ariaKeyShortcuts(search.hotkeyHint, apple)}
           onInput={(event) => search.onChange((event.currentTarget as HTMLInputElement).value)}
-          class="pc-input h-11 pr-12 pl-8 text-sm sm:h-8 [&::-webkit-search-cancel-button]:appearance-none"
+          class="pc-input h-11 pe-12 ps-8 text-sm sm:h-8 [&::-webkit-search-cancel-button]:appearance-none"
           data-e2e="filter-search"
         />
         {search.value !== ""
@@ -503,7 +503,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
               type="button"
               aria-label={search.clearLabel ??
                 translate(translator, "FilterBar.clearSearch", "Clear search")}
-              class="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center rounded-primary text-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus sm:w-8"
+              class="absolute inset-y-0 end-0 flex w-11 cursor-pointer items-center justify-center rounded-primary text-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus sm:w-8"
               onClick={() => {
                 search.onChange("")
                 searchRef.current?.focus()
@@ -518,7 +518,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
               keys={search.hotkeyHint}
               apple={apple}
               labels={search.kbdLabels}
-              class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
+              class="pointer-events-none absolute top-1/2 end-3 -translate-y-1/2"
             />
           )
           : null}
@@ -556,9 +556,9 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
         }
         triggerClasses={triggerClasses(false)}
         triggerDataE2E="filter-sort"
-        containerClasses="shrink-0 sm:ml-auto"
+        containerClasses="shrink-0 sm:ms-auto"
         panelClasses={sheetPanel}
-        horizontal="right"
+        horizontal="end"
         menuLabel={sort.label ?? sortWord}
       >
         <SheetTitle>{sort.label ?? sortWord}</SheetTitle>
@@ -657,7 +657,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
                     {chips.map((chip, index) => (
                       <li
                         key={chip.key}
-                        class="inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft pl-3 text-sm text-selected"
+                        class="inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft ps-3 text-sm text-selected"
                       >
                         <span class="truncate">{chip.label}</span>
                         <button
@@ -688,7 +688,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
               : null}
             {count !== undefined
               ? (
-                <p aria-live="polite" class="text-sm text-muted tabular-nums sm:ml-auto">
+                <p aria-live="polite" class="text-sm text-muted tabular-nums sm:ms-auto">
                   {count}
                 </p>
               )
