@@ -2081,7 +2081,9 @@ export const specs: readonly Spec[] = [
       const frameEnd = frameBox.x + frameBox.width
       const columnEnd = columnBox.x + columnBox.width
       const tipEnd = tipBox.x + tipBox.width
-      const viewport = page.viewportSize()?.width ?? 0
+      // The skip link is `fixed`, so its `end-4` is measured from the layout viewport, which stops
+      // short of a classic scrollbar: `clientWidth`, not the window's width.
+      const viewport = await page.evaluate(() => document.documentElement.clientWidth)
       if (
         Math.abs(columnEnd - frameEnd) > 1 || Math.abs(tipEnd - (columnBox.x - 8)) > 1 ||
         Math.abs(skipBox.x + skipBox.width - (viewport - 16)) > 1
