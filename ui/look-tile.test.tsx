@@ -57,7 +57,7 @@ describe("LookTile", () => {
     expect(html).toContain('sizes="50vw"')
   })
 
-  it("strikes a sold-out size through and also says it is sold out", () => {
+  it("strikes a sold-out size through, mutes it and says it is sold out, and draws the rest in the text colour", () => {
     const html = render(<LookTile {...TILE} />)
     expect(html).toMatch(
       /<li class="[^"]*text-muted"><s>L<\/s><span class="sr-only">, sold out<\/span><\/li>/,
