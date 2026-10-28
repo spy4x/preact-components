@@ -91,50 +91,71 @@ const PHONE = "(width < 64rem)"
 /** Room left under a control scrolled out from under the bar: its 4 px focus ring, and a gap. */
 const FOCUS_ROOM = 8
 
+/** The parts of the page {@link bindScrollRoom} reads and changes: `window` passes as one. */
+export interface ScrollRoomPage {
+  document: {
+    documentElement: { style: { scrollPaddingBottom: string } }
+    addEventListener(type: "focusin", listener: (event: Event) => void): void
+    removeEventListener(type: "focusin", listener: (event: Event) => void): void
+  }
+  innerHeight: number
+  matchMedia(query: string): { matches: boolean }
+  scrollBy(options: ScrollToOptions): void
+}
+
 /**
- * Keeps controls out from under the bar while it is stuck to the bottom of a phone's screen.
+ * Keeps the controls of an {@link OrderBar}'s form out from under the bar while it is stuck to the
+ * bottom of a phone's screen.
  *
- * The page's `scroll-padding-bottom` follows the bar's height, so a link to an anchor or a
- * script's `scrollIntoView` stops above the bar. Chromium does not scroll for a focused control
- * that is already partly on screen, so a control Tab reaches under the bar is also scrolled up by
- * the part the bar covers. A control drawn on its `<label>`, such as a chip's hidden radio, is
- * measured by the label. The page's own padding comes back when the bar goes away or grows to the
- * desktop panel.
+ * It acts only on focus that lands in `scope` (the bar's form, or the element around the bar) and
+ * only while the bar's bottom is at the bottom of the screen, so the rest of the page scrolls as it
+ * always did. Then it sets the page's `scroll-padding-bottom` to the bar's height, so the next
+ * control Tab reaches stops above the bar. Chromium does not scroll for a focused control that is
+ * already partly on screen, so the control under the bar is also scrolled up by the part the bar
+ * covers. A control drawn on its `<label>`, such as a chip's hidden radio, is measured by the
+ * label. Focus anywhere else, and the returned unbind, put the page's own padding back.
+ *
+ * @param bar The bar.
+ * @param scope The element whose controls the bar must not cover.
+ * @param page The page, `window` in a browser.
+ * @returns A function that removes the listener and restores the page's padding.
  */
-function useScrollRoomFor(bar: { current: HTMLElement | null }): void {
+export function bindScrollRoom(bar: Element, scope: Element, page: ScrollRoomPage): () => void {
+  const style = page.document.documentElement.style
+  const own = style.scrollPaddingBottom
+  const restore = () => {
+    style.scrollPaddingBottom = own
+  }
+  const focused = (event: Event) => {
+    const target = event.target as Element | null
+    const box = bar.getBoundingClientRect()
+    const stuck = Math.round(box.bottom) >= page.innerHeight && box.top < page.innerHeight
+    if (
+      target === null || !scope.contains(target) || bar.contains(target) || !stuck ||
+      !page.matchMedia(PHONE).matches
+    ) return restore()
+    style.scrollPaddingBottom = `${Math.ceil(box.height)}px`
+    const control = (target.closest("label") ?? target).getBoundingClientRect()
+    // 8 px more than the bar covers, so the control's focus ring clears the bar too.
+    const covered = control.bottom - box.top + FOCUS_ROOM
+    if (covered > FOCUS_ROOM && control.top < page.innerHeight) page.scrollBy({ top: covered })
+  }
+  page.document.addEventListener("focusin", focused)
+  return () => {
+    page.document.removeEventListener("focusin", focused)
+    restore()
+  }
+}
+
+/** Binds {@link bindScrollRoom} to the bar's form, or to the element around the bar. */
+function useScrollRoomFor(bar: { current: HTMLElement | null }, form?: string): void {
   useEffect(() => {
     const element = bar.current
     if (element === null) return
-    const root = document.documentElement
-    const own = root.style.scrollPaddingBottom
-    const phone = matchMedia(PHONE)
-    const update = () => {
-      root.style.scrollPaddingBottom = phone.matches
-        ? `${Math.ceil(element.getBoundingClientRect().height)}px`
-        : own
-    }
-    update()
-    const focused = (event: FocusEvent) => {
-      const target = event.target
-      if (!phone.matches || !(target instanceof Element) || element.contains(target)) return
-      const bar = element.getBoundingClientRect()
-      if (Math.round(bar.bottom) < innerHeight) return // Not stuck: the bar covers nothing.
-      const control = (target.closest("label") ?? target).getBoundingClientRect()
-      // 8 px more than the bar covers, so the control's focus ring clears the bar too.
-      const covered = control.bottom - bar.top + FOCUS_ROOM
-      if (covered > FOCUS_ROOM && control.top < innerHeight) scrollBy({ top: covered })
-    }
-    const resized = new ResizeObserver(update)
-    resized.observe(element)
-    phone.addEventListener("change", update)
-    document.addEventListener("focusin", focused)
-    return () => {
-      resized.disconnect()
-      phone.removeEventListener("change", update)
-      document.removeEventListener("focusin", focused)
-      root.style.scrollPaddingBottom = own
-    }
-  }, [])
+    const scope = (form ? document.getElementById(form) : element.closest("form")) ??
+      element.parentElement
+    return scope === null ? undefined : bindScrollRoom(element, scope, window)
+  }, [form])
 }
 
 /** A button's look, a 44 px target on a phone, by its role in the bar. */
@@ -199,9 +220,9 @@ function Action(
  * it by hand, and each action is a link to the chat or a submit button whose form the server
  * turns into a redirect. One action is accent-filled, as one view has one primary action.
  *
- * On a phone, once scripts run, it keeps the page's `scroll-padding-bottom` at its own height and
- * scrolls a control Tab reaches out from under the bar. Without scripts the page sets the padding
- * itself.
+ * On a phone, once scripts run, it scrolls a control of its form that Tab reaches out from under
+ * the bar while the bar is stuck, see {@link bindScrollRoom}. Without scripts the page sets
+ * `scroll-padding-bottom` itself.
  *
  * @param props The message, the actions and options, see {@link OrderBarProps}.
  */
@@ -210,7 +231,7 @@ export function OrderBar(
 ): JSX.Element {
   const words = useLabels("OrderBar", ORDER_BAR_LABELS, labels)
   const bar = useRef<HTMLElement>(null)
-  useScrollRoomFor(bar)
+  useScrollRoomFor(bar, form)
   return (
     <aside ref={bar} aria-label={words.region} class={join(BAR, className)} data-e2e="order-bar">
       <figure class="flex flex-col gap-1">

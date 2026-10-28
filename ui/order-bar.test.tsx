@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { OrderBar, type OrderBarAction } from "./order-bar.tsx"
+import { bindScrollRoom, OrderBar, type OrderBarAction, type ScrollRoomPage } from "./order-bar.tsx"
 
 const TELEGRAM: OrderBarAction = {
   label: "Order on Telegram",
@@ -104,5 +104,94 @@ describe("OrderBar", () => {
     )
     expect(html).toContain('aria-label="Đặt hàng"')
     expect(html).toContain(">Tin nhắn của bạn</figcaption>")
+  })
+})
+
+describe("bindScrollRoom", () => {
+  /** A box with only what the binder measures. */
+  function box(top: number, bottom: number, inside: object[] = []) {
+    const element = {
+      getBoundingClientRect: () => ({ top, bottom, height: bottom - top }),
+      contains: (other: object) => other === element || inside.includes(other),
+      closest: () => null,
+    }
+    return element as unknown as Element
+  }
+
+  /** A 390x667 phone page that records its focus listeners and its scrolls. */
+  function phonePage(phone = true) {
+    const listeners = new Set<(event: Event) => void>()
+    const scrolls: number[] = []
+    const page: ScrollRoomPage = {
+      document: {
+        documentElement: { style: { scrollPaddingBottom: "56px" } },
+        addEventListener: (_type, listener) => listeners.add(listener),
+        removeEventListener: (_type, listener) => listeners.delete(listener),
+      },
+      innerHeight: 667,
+      matchMedia: () => ({ matches: phone }),
+      scrollBy: ({ top }) => scrolls.push(top ?? 0),
+    }
+    const focus = (target: Element) =>
+      listeners.forEach((listen) => listen({ target } as unknown as Event))
+    return { page, listeners, scrolls, focus }
+  }
+
+  const chip = box(446, 490)
+  const outside = box(446, 490)
+  const stuck = box(458, 667)
+  const form = box(0, 900, [chip])
+
+  it("scrolls a control of the bar's form out from under the bar stuck to the bottom", () => {
+    const { page, scrolls, focus } = phonePage()
+    bindScrollRoom(stuck, form, page)
+
+    focus(chip)
+
+    // The chip's bottom at 490 is 32 px below the bar's top at 458, plus 8 px for its focus ring.
+    expect(scrolls).toEqual([40])
+    expect(page.document.documentElement.style.scrollPaddingBottom).toBe("209px")
+  })
+
+  it("leaves focus outside the bar's form alone, so the rest of the page scrolls as before", () => {
+    const { page, scrolls, focus } = phonePage()
+    bindScrollRoom(stuck, form, page)
+
+    focus(outside)
+
+    expect(scrolls).toEqual([])
+    expect(page.document.documentElement.style.scrollPaddingBottom).toBe("56px")
+  })
+
+  it("leaves the page alone while the bar is not stuck to the bottom of the screen", () => {
+    const { page, scrolls, focus } = phonePage()
+    bindScrollRoom(box(300, 509), form, page)
+
+    focus(chip)
+
+    expect(scrolls).toEqual([])
+    expect(page.document.documentElement.style.scrollPaddingBottom).toBe("56px")
+  })
+
+  it("leaves the page alone on a desktop, where the bar is a panel beside the photos", () => {
+    const { page, scrolls, focus } = phonePage(false)
+    bindScrollRoom(stuck, form, page)
+
+    focus(chip)
+
+    expect(scrolls).toEqual([])
+  })
+
+  it("on unbind removes its focus listener and puts the page's own padding back", () => {
+    const { page, listeners, scrolls, focus } = phonePage()
+    const unbind = bindScrollRoom(stuck, form, page)
+    focus(chip)
+
+    unbind()
+    focus(chip)
+
+    expect(listeners.size).toBe(0)
+    expect(scrolls).toEqual([40])
+    expect(page.document.documentElement.style.scrollPaddingBottom).toBe("56px")
   })
 })
