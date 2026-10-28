@@ -344,7 +344,7 @@ describe("Rail", () => {
   const link = (href: string) => new RegExp(`<a [^>]*href="${href}"`)
   const moreButton = /<button [^>]*data-e2e="rail-shell-more"/
 
-  it("adds a 3 px left-edge bar to the labels variant's current cell, a RailEntry's included", () => {
+  it("adds a 3 px start-edge bar to the labels variant's current cell, a RailEntry's included", () => {
     const html = render(
       <Rail
         variant="labels"
