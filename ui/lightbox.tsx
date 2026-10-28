@@ -72,10 +72,11 @@
  *
  * **A horizontal swipe on a touch screen pages through the images**, the same as Left and Right:
  * leftward for the next image, rightward for the previous one. In a right-to-left page, where the
- * previous button sits on the right, both swap: Left and a rightward swipe go to the next image. It counts only a single finger that
- * travels at least {@link SWIPE_MIN_PX} sideways and more sideways than up or down, so a pinch or a
- * vertical drag does nothing. Touch events rather than pointer events: the browser cancels a pointer
- * the moment it starts a pan of its own, and a touch still ends.
+ * previous button sits on the right, both swap: Left and a rightward swipe go to the next image. It
+ * counts only a single finger that travels at least {@link SWIPE_MIN_PX} sideways and more sideways
+ * than up or down, so a pinch or a vertical drag does nothing. Touch events rather than pointer
+ * events: the browser cancels a pointer the moment it starts a pan of its own, and a touch still
+ * ends.
  */
 
 import { join } from "@spy4x/preact-cn/join"

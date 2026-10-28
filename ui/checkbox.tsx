@@ -7,15 +7,16 @@ export type CheckboxShape = "square" | "round"
 
 /**
  * The round box, drawn by these utilities rather than by the browser: a native checkbox ignores
- * `border-radius`. The input stays a real checkbox — only its paint is replaced — so its role,
- * name, keyboard and form value are the browser's own. Keyboard focus draws `.btn`'s 2 px
- * outline, set off by 2 px, in `--color-ring`, the colour of every component's focus ring. The
- * tick is the box's `::after`, a rotated corner of two borders; while indeterminate it is a flat
- * bar instead. The tick's own direction is fixed left to right, so its inline-end border stays on
- * the right and a check mark never mirrors in a right-to-left page. The empty ring is drawn in `--color-border-strong`, the token for a checkbox's
- * edge: gray-400 in the light palette, the square box's colour, and gray-500 in the dark ones,
- * where it clears 3:1. The tick is drawn in the surface colour, which clears 3:1 against the
- * accent fill in every palette. Every class is written out whole, so Tailwind's scanner finds it.
+ * `border-radius`. The input stays a real checkbox — only its paint is replaced — so its role, name,
+ * keyboard and form value are the browser's own. Keyboard focus draws `.btn`'s 2 px outline, set
+ * off by 2 px, in `--color-ring`, the colour of every component's focus ring. The tick is the box's
+ * `::after`, a rotated corner of two borders; while indeterminate it is a flat bar instead. The
+ * tick's own direction is fixed left to right, so its inline-end border stays on the right and a
+ * check mark never mirrors in a right-to-left page. The empty ring is drawn in
+ * `--color-border-strong`, the token for a checkbox's edge: gray-400 in the light palette, the
+ * square box's colour, and gray-500 in the dark ones, where it clears 3:1. The tick is drawn in the
+ * surface colour, which clears 3:1 against the accent fill in every palette. Every class is written
+ * out whole, so Tailwind's scanner finds it.
  */
 const roundBox = [
   "grid size-5 shrink-0 cursor-pointer appearance-none place-content-center rounded-full border-2",
