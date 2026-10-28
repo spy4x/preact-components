@@ -32,6 +32,7 @@ import {
   LanguagePicker,
   OnOffButtons,
   rangeForPreset,
+  SegmentedControl,
   Slider,
   Stack,
   TagInput,
@@ -263,6 +264,44 @@ function OnOffButtonsDemo() {
           label="Rows to show"
         />
         <span class="text-sm text-muted">with counts and custom labels</span>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/** The period picker a stats page puts in its header, then a three-way view switch. */
+function SegmentedControlDemo() {
+  const days = useSignal("30")
+  const view = useSignal("list")
+
+  return (
+    <Stack gap="md">
+      <Cluster gap="sm" data-e2e="segmented-period">
+        <SegmentedControl
+          ariaLabel="Period"
+          options={[
+            { value: "7", label: "7 days" },
+            { value: "30", label: "30 days" },
+            { value: "90", label: "90 days" },
+          ]}
+          value={days.value}
+          onChange={(value) => days.value = value}
+        />
+        <span class="text-sm text-muted" data-e2e="segmented-period-value">
+          days: {days.value}
+        </span>
+      </Cluster>
+      <Cluster gap="sm" data-e2e="segmented-view">
+        <SegmentedControl
+          ariaLabel="View"
+          options={[
+            { value: "list", label: "List" },
+            { value: "board", label: "Board" },
+            { value: "calendar", label: "Calendar" },
+          ]}
+          value={view.value}
+          onChange={(value) => view.value = value}
+        />
       </Cluster>
     </Stack>
   )
@@ -1611,6 +1650,40 @@ export const inputDemos = {
   onSwitch={(on) => showActive.value = on}
 />`,
     render: () => <OnOffButtonsDemo />,
+  },
+  SegmentedControl: {
+    summary:
+      "One choice among a few short options, drawn as joined segments that the arrow keys move through, such as a period picker in a page header.",
+    wide: false,
+    props: [
+      {
+        name: "options",
+        type: "{ value, label }[]",
+        description: "The segments, in order.",
+      },
+      { name: "value", type: "string", description: "The chosen segment's value." },
+      {
+        name: "onChange",
+        type: "(value: string) => void",
+        description: "Called with the segment a click or an arrow key chose.",
+      },
+      {
+        name: "ariaLabel",
+        type: "string",
+        description: "The group's name for a screen reader; required.",
+      },
+    ],
+    snippet: `<SegmentedControl
+  ariaLabel="Period"
+  options={[
+    { value: "7", label: "7 days" },
+    { value: "30", label: "30 days" },
+    { value: "90", label: "90 days" },
+  ]}
+  value={days.value}
+  onChange={(value) => days.value = value}
+/>`,
+    render: () => <SegmentedControlDemo />,
   },
   ToggleField: {
     summary:

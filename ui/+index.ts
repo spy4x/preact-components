@@ -372,6 +372,11 @@ export {
 } from "./radio.tsx"
 export { type RadioChipOption, RadioChips, type RadioChipsProps } from "./radio-chips.tsx"
 export { ResendButton, type ResendButtonProps } from "./resend-button.tsx"
+export {
+  SegmentedControl,
+  type SegmentedControlProps,
+  type SegmentedOption,
+} from "./segmented-control.tsx"
 export { ThemePreview, type ThemePreviewLabels, type ThemePreviewProps } from "./theme-preview.tsx"
 export {
   acquireScrollLock,
