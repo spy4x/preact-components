@@ -53,6 +53,15 @@ describe("the signals words under a translator", () => {
     expect(english.list.value[0].title).toBe("Error")
   })
 
+  it("title each toast in the language in use when it is shown", () => {
+    let current: Translator<string> | undefined = undefined
+    const store = createToastStore({ translator: () => current })
+    store.error({ body: "x" })
+    current = GERMAN
+    store.error({ body: "x" })
+    expect(store.list.value.map((entry) => entry.title)).toEqual(["Error", "Fehler"])
+  })
+
   it("send the app's full message for the model and event", async () => {
     const messages: ToastMessage[] = []
     const store = noteStore(messages, GERMAN)
