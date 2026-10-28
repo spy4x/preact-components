@@ -2376,7 +2376,9 @@ Nothing here renders, so the stores take the app's translator as an option inste
 `I18nContext`. `createToastStore({ translator })` titles each kind from `Toast.info`,
 `Toast.success`, `Toast.error` and `Toast.warning` in this package's catalog,
 `@spy4x/preact-signals/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. Each language
-subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog.
+subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog. An app whose
+language can change after the store is made passes a function instead,
+`translator: () => current`, and each toast takes the language in use when it is shown.
 
 `buildModelStore({ model: "note", translator })` takes each toast from the app's own catalog, one
 full message per model and event: `note.created`, `note.createFailed` and the rest of
