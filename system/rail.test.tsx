@@ -478,10 +478,10 @@ describe("Rail", () => {
     expect(html).toContain('data-rail-variant="labels"')
   })
 
-  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the left safe-area inset", () => {
+  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the inline-start safe-area inset", () => {
     const html = render(<Rail items={itemsOf(3)}>page</Rail>)
     const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
-    expect(aside).toContain("pl-safe")
+    expect(aside).toContain("ps-safe")
     const column = columnClasses(html)
     expect(column).toContain("w-18")
     expect(column).not.toContain("w-22")

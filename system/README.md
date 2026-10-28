@@ -1367,7 +1367,7 @@ right under `dir="rtl"` on the page or an ancestor. Its tooltips open toward the
 entry's bar sits on the column cell's start edge, and the skip link shows at the start corner.
 
 **Two variants, two widths.** The column is 72 px (`w-18`) in the icons variant and 88 px
-(`w-22`) in the labels variant, plus the device's left safe-area inset (`pl-safe`), so a landscape
+(`w-22`) in the labels variant, plus the device's safe-area inset on its start side (`ps-safe`), so a landscape
 phone's notch never covers a cell. The page beside it is the rest of the row, so it follows either
 width. `"icons"`, the default, draws a 48 px square per destination with the label as visually
 hidden text. `"labels"` draws an 80 × 56 px cell with 4 px of side padding and a `text-xs` label

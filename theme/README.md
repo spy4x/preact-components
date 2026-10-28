@@ -361,7 +361,7 @@ classes keep their names: no app writes them as ordinary words.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`
-  (step 3 plus that inset) and `pl-safe` (left padding that clears a landscape phone's notch). The inset is the device's, not a step, so it gets a name here instead
+  (step 3 plus that inset) and `ps-safe` (inline-start padding that clears a landscape phone's notch, from the left or right inset as `dir` says). The inset is the device's, not a step, so it gets a name here instead
   of an arbitrary value in a component.
 
 ## Spacing

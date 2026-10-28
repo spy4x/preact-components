@@ -460,7 +460,7 @@ export function Rail(props: RailProps): JSX.Element {
       <aside
         ref={columnRef}
         aria-label={sidebarLabel}
-        class={cn("group/rail hidden shrink-0 border-e pl-safe md:block", rule, surface)}
+        class={cn("group/rail hidden shrink-0 border-e ps-safe md:block", rule, surface)}
         onFocusIn={(event) => {
           placeTip(event.target, columnRef.current)
           showTips()
