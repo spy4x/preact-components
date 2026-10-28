@@ -1,4 +1,5 @@
 /** Playwright specs for `charts/` components, on the guide's charts page. */
+import { axeCleanIn } from "./axe-clean.ts"
 import type { Spec } from "./runner.ts"
 
 /** The left and right edge of one X label, in pixels, with its text. */
@@ -132,6 +133,124 @@ function hiddenTableSpec(): Spec {
   }
 }
 
+/** `RankedBars` and `Kpi`'s change line, both drawn for spy4x/seed#485. */
+function statsPieceSpecs(): Spec[] {
+  const axeSpec = (colorScheme: "light" | "dark"): Spec => ({
+    name: "RankedBars and Kpi's change line: axe finds no violation at 390 and 1440 px " +
+      `in the ${colorScheme} palette`,
+    pageId: "charts",
+    colorScheme,
+    run: async (page) => {
+      const said: string[] = []
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 })
+        for (const selector of [`[data-e2e="bars-ranked"]`, `[data-e2e="kpi-change"]`]) {
+          await page.locator(selector).scrollIntoViewIfNeeded()
+          said.push(`${width} px ${selector}: ${await axeCleanIn(page, selector)}`)
+        }
+      }
+      return said.join("; ")
+    },
+  })
+
+  return [
+    {
+      name: "RankedBars: a row's button sets the filter by Enter and by a click anywhere " +
+        "on its row, and its focus ring is drawn",
+      pageId: "charts",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const ranked = page.locator(`[data-e2e="bars-ranked"]`)
+        const filter = ranked.locator(`[data-e2e="bars-ranked-filter"]`)
+        const shows = (name: string) =>
+          filter.getByText(`Chart shows: ${name}`, { exact: true }).waitFor()
+        await ranked.scrollIntoViewIfNeeded()
+        const zalo = ranked.getByRole("button", { name: "Zalo group A", exact: true })
+        await zalo.focus()
+        await page.keyboard.press("Enter")
+        await shows("Zalo group A")
+        // Tailwind always sets a shadow list; the ring is the one shadow with a colour and a spread.
+        const ring = await zalo.evaluate((button) =>
+          getComputedStyle(button, "::after").boxShadow.split(/,(?![^(]*\))/)
+            .map((shadow) => shadow.trim())
+            .find((shadow) => !shadow.startsWith("rgba(0, 0, 0, 0)") && /\b[1-9]\d*px/.test(shadow))
+        )
+        if (!ring) throw new Error("the focused row draws no ring")
+        // The last cell of Instagram's row, "2.2%", is outside the button but inside its hit area.
+        // A real pointer press at the cell's centre: Playwright's own click would refuse a cell
+        // whose point the row's button takes, which is the behaviour proven here.
+        const row = ranked.getByRole("row").filter({ hasText: "Instagram" })
+        const box = await row.getByRole("cell").last().boundingBox()
+        if (!box) throw new Error("Instagram's last cell has no box")
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+        await shows("Instagram")
+        return `ring ${ring}`
+      },
+    },
+    {
+      name: "RankedBars: at 390 px each row shows its extra numbers as a muted second " +
+        "line, and the page does not scroll sideways",
+      pageId: "charts",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const ranked = page.locator(`[data-e2e="bars-ranked"]`)
+        await ranked.scrollIntoViewIfNeeded()
+        const row = ranked.getByRole("row").filter({ hasText: "Zalo group A" })
+        await row.getByText("Order clicks 24 · Order rate 5.0%", { exact: true }).waitFor()
+        const hidden = await row.getByRole("cell").count()
+        if (hidden !== 1) throw new Error(`${hidden} number cells show at 390 px, expected 1`)
+        const sideways = await page.evaluate(() =>
+          document.documentElement.scrollWidth - globalThis.innerWidth
+        )
+        if (sideways > 0) throw new Error(`the page scrolls ${sideways} px sideways`)
+        return "two lines, one number cell"
+      },
+    },
+    {
+      name: "RankedBars: an item's 40 px photo leads its row and its note follows the extra " +
+        "numbers on one muted line, at 390 and 1440 px without sideways scroll",
+      pageId: "charts",
+      run: async (page) => {
+        const said: string[] = []
+        const widths: [number, string][] = [[390, "Views 210 · mostly Zalo A"], [
+          1440,
+          "mostly Zalo A",
+        ]]
+        for (const [width, line] of widths) {
+          await page.setViewportSize({ width, height: 900 })
+          const ranked = page.locator(`[data-e2e="bars-ranked"]`)
+          await ranked.scrollIntoViewIfNeeded()
+          const row = ranked.getByRole("row").filter({ hasText: "Linen shirt, sand" })
+          await row.waitFor()
+          const read = await row.evaluate((tr) => {
+            const image = tr.querySelector("img")!.getBoundingClientRect()
+            const link = tr.querySelector("a")!
+            // The muted line follows the label's own; innerText leaves out what CSS hides.
+            const muted = link.parentElement!.nextElementSibling as HTMLElement
+            return {
+              image: [image.width, image.height],
+              before: image.right <= link.getBoundingClientRect().left,
+              line: muted.innerText,
+              sideways: document.documentElement.scrollWidth - globalThis.innerWidth,
+            }
+          })
+          const found =
+            `${width} px: photo ${read.image.join("×")}, before label ${read.before}, ` +
+            `line "${read.line}", sideways ${read.sideways}`
+          if (
+            read.image[0] !== 40 || read.image[1] !== 40 || !read.before ||
+            read.line !== line || read.sideways > 0
+          ) throw new Error(found)
+          said.push(found)
+        }
+        return said.join("; ")
+      },
+    },
+    axeSpec("light"),
+    axeSpec("dark"),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   labelsApartSpec(320),
   labelsApartSpec(1280),
@@ -139,4 +258,5 @@ export const specs: readonly Spec[] = [
   arrowDownSpec("DonutChart", "[data-chart-ring]"),
   deferredChartSpec(),
   hiddenTableSpec(),
+  ...statsPieceSpecs(),
 ]
