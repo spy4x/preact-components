@@ -76,6 +76,8 @@ export interface IconGalleryLabels {
   noMatch: (query: string) => string
   /** The code row's copy control. Defaults to `"Copy the icon example"`. */
   copyCode: string
+  /** The line over the left-to-right and right-to-left rows of directional glyphs. */
+  mirrored: string
 }
 
 /** The gallery's English words. */
@@ -88,7 +90,24 @@ export const DEFAULT_ICON_GALLERY_LABELS: IconGalleryLabels = {
     `${shown} of ${total} shown${copied ? ` · copied ${copied}` : ""}`,
   noMatch: (query) => `No glyph matches “${query}”.`,
   copyCode: "Copy the icon example",
+  mirrored:
+    "Under a right-to-left page, the glyphs that point along the line flip; the others stay as drawn.",
 }
+
+/**
+ * Glyphs the gallery shows twice, once in each direction: five that mirror under `dir="rtl"` and
+ * three that never do, so a reader sees which flip.
+ */
+const DIRECTION_SAMPLE: IconComponent[] = [
+  icons.IconChevronRight,
+  icons.IconArrowRight,
+  icons.IconArrowUturnLeft,
+  icons.IconLogout,
+  icons.IconExternalLink,
+  icons.IconCheck,
+  icons.IconSearch,
+  icons.IconArrowUp,
+]
 
 /** The code row of the gallery's card: how an app uses one glyph. */
 const GALLERY_SNIPPET = `import { IconSearch, IconStar } from "@spy4x/preact-icons"
@@ -180,8 +199,18 @@ export function IconGallery(
         <Cluster gap="sm" class="text-muted" data-star-variants>
           <icons.IconStar class="size-6" />
           <icons.IconStar filled class="size-6" />
-          <code class="text-xs">{"<IconStar filled />"}</code>
+          <code dir="ltr" class="text-xs">{"<IconStar filled />"}</code>
         </Cluster>
+
+        <Stack gap="sm" class="text-muted" data-direction-sample>
+          <p class="text-sm">{labels.mirrored}</p>
+          {(["ltr", "rtl"] as const).map((dir) => (
+            <Cluster key={dir} gap="sm" dir={dir} data-dir={dir}>
+              <code dir="ltr" class="w-20 text-xs">{`dir="${dir}"`}</code>
+              {DIRECTION_SAMPLE.map((Icon, index) => <Icon key={index} class="size-6" />)}
+            </Cluster>
+          ))}
+        </Stack>
 
         {matches.length === 0
           ? (
