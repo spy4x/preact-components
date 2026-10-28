@@ -323,7 +323,7 @@ describe("Rail", () => {
   })
 
   const barColour = "bg-[var(--color-nav-active,var(--color-selected-text))]"
-  const columnBar = ["absolute", "left-0", "w-[3px]", barColour]
+  const columnBar = ["absolute", "start-0", "w-[3px]", barColour]
   const tabBar = ["absolute", "top-0", "h-[3px]", barColour]
 
   /**
@@ -617,7 +617,7 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(sheetTop).toMatch(/<button data-rail-close type="button"/)
     // A button centres its text by default; its label starts at the left like a link row's.
     const [buttonRow] = sheetTop.match(/<button data-rail-close[^>]*>/) ?? [``]
-    expect(controlClass(buttonRow).split(` `)).toContain(`text-left`)
+    expect(controlClass(buttonRow).split(` `)).toContain(`text-start`)
   })
 
   it("draws sheet-only items as sheet rows alone, never in the column or as tabs", () => {

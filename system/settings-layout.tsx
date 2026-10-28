@@ -121,8 +121,9 @@ const groupClasses = "flex flex-col max-md:divide-y max-md:divide-subtle md:gap-
 /**
  * A settings page with sub-pages, such as a profile split into Account, Security and Danger zone.
  *
- * **From `md` up** the page is a 200 px sticky nav on the left and the open section on the right,
- * in a `max-w-2xl` column under its own heading. The current item carries `aria-current="page"` and
+ * **From `md` up** the page is a 200 px sticky nav at the inline start (the left, or the right on a
+ * right-to-left page) and the open section beside it, in a `max-w-2xl` column under its own
+ * heading. The current item carries `aria-current="page"` and
  * the accent tint. Danger items sit last, after a divider, in danger text.
  *
  * **Below `md`** the list is the page while `current` is `null`: 44 px rows in a card, each with a
@@ -257,7 +258,7 @@ export function SettingsLayout(props: SettingsLayoutProps): JSX.Element {
                   href={href}
                   navigate={navigate}
                   data-e2e="settings-back"
-                  class="-ml-2 inline-flex min-h-11 items-center gap-2 self-start rounded-primary px-2 text-sm font-medium text-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-ring) md:hidden"
+                  class="-ms-2 inline-flex min-h-11 items-center gap-2 self-start rounded-primary px-2 text-sm font-medium text-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-ring) md:hidden"
                 >
                   <IconArrowLeft class="size-4" aria-hidden="true" />
                   {labels?.back ??

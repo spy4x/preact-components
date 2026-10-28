@@ -206,15 +206,15 @@ const accountTrigger = cn(
 )
 
 /**
- * The account menu beside the rail: its bottom on the avatar's, its left edge 8 px past the rail's
+ * The account menu beside the rail: its bottom on the avatar's, its start edge 8 px past the rail's
  * border (the cell ends 12 px before it), 240 px wide.
  */
 const accountPanel =
-  "bottom-0 left-[calc(100%+1.25rem)] mb-0 w-60 rounded-[var(--radius-card,0.75rem)]"
+  "bottom-0 start-[calc(100%+1.25rem)] mb-0 w-60 rounded-[var(--radius-card,0.75rem)]"
 
 /** A row of the sheet's account section. */
 const sheetRow = cn(
-  "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[var(--radius-primary,0.5rem)] px-3 py-2 text-left text-sm font-medium",
+  "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[var(--radius-primary,0.5rem)] px-3 py-2 text-start text-sm font-medium",
   focusRing,
   entryIdle,
 )
@@ -250,7 +250,7 @@ function SheetControl(
     <span
       aria-hidden="true"
       data-account-key-hint=""
-      class="ml-auto hidden pointer-fine:inline-flex"
+      class="ms-auto hidden pointer-fine:inline-flex"
     >
       <Kbd keys={first} apple={apple} />
     </span>

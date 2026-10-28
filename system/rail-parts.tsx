@@ -57,7 +57,7 @@ export const entryCurrent =
 
 /**
  * The labels variant's mark on its current entry, on top of {@link entryCurrent}: a 3 px bar in
- * the current text colour on the entry's inner edge, the left edge of a column cell and the top
+ * the current text colour on the entry's inner edge, the start edge of a column cell and the top
  * edge of a tab. A site's warm dark palette can leave the fill too faint to find the page by. The
  * bar is an absolutely placed, `aria-hidden` `<span>` ({@link CurrentBar}), so it takes no room and
  * moves nothing. It is not a pseudo-element or a background image, because axe cannot decide the
@@ -66,7 +66,7 @@ export const entryCurrent =
  */
 export const entryCurrentBar: Record<Exclude<EntryPlace, "sheet">, string> = {
   rail:
-    "pointer-events-none absolute inset-y-3 left-0 w-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
+    "pointer-events-none absolute inset-y-3 start-0 w-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
   tab:
     "pointer-events-none absolute inset-x-3 top-0 h-[3px] rounded-full bg-[var(--color-nav-active,var(--color-selected-text))]",
 }
@@ -110,8 +110,8 @@ const entryPlace: Record<Exclude<EntryPlace, "rail">, string> = {
   // a nine-letter label such as "Dashboard" truncate in a fifth of a 390 px bar. The bar's two
   // outer ends keep 4 px, so the first and last tabs' focus ring stays on screen.
   tab: "h-full w-full flex-col justify-center gap-1 px-0 py-1 text-center",
-  // `text-left`: a `<button>` centres its text by default, unlike a link in the next row.
-  sheet: "min-h-11 w-full gap-3 px-3 py-2 text-left text-sm",
+  // `text-start`: a `<button>` centres its text by default, unlike a link in the next row.
+  sheet: "min-h-11 w-full gap-3 px-3 py-2 text-start text-sm",
 }
 
 /**
@@ -147,16 +147,16 @@ const badgeRing = "ring-2 ring-surface"
 
 /** Where the badge sits: on the icon's top-right corner, or at the end of a sheet row. */
 function badgeClasses(place: EntryPlace, variant: RailVariant): string {
-  if (place === "sheet") return cn(badge, "ml-auto")
+  if (place === "sheet") return cn(badge, "ms-auto")
   if (place === "tab" || variant === "labels") {
-    return cn(badge, badgeRing, "absolute top-1 left-1/2 ml-2")
+    return cn(badge, badgeRing, "absolute top-1 start-1/2 ms-2")
   }
-  return cn(badge, badgeRing, "absolute top-1 right-1")
+  return cn(badge, badgeRing, "absolute top-1 end-1")
 }
 
 /**
  * The tooltip of a desktop cell. It is `fixed`, so the scrolling list does not clip it, at the
- * column's right edge plus 8 px and the cell's vertical middle, which {@link placeTip} writes onto it
+ * column's inline-end edge plus 8 px and the cell's vertical middle, which {@link placeTip} writes onto it
  * as `--rail-tip-x` and `--rail-tip-y`; until then (`data-placed` missing) it is not drawn at all.
  *
  * It shows 300 ms after the pointer comes to rest on the cell, or at once when the cell's control
@@ -167,7 +167,7 @@ function badgeClasses(place: EntryPlace, variant: RailVariant): string {
  * the hint (WCAG 1.4.13).
  */
 export const tooltip =
-  "fixed top-[var(--rail-tip-y)] left-[var(--rail-tip-x)] z-40 block -translate-y-1/2 invisible opacity-0 transition-[visibility] duration-0 motion-safe:transition-[opacity,visibility] motion-safe:duration-150 group-hover/cell:visible group-hover/cell:opacity-100 group-hover/cell:delay-300 group-has-[:focus-visible]/cell:visible group-has-[:focus-visible]/cell:opacity-100 group-has-[:focus-visible]/cell:delay-0 not-data-[placed]:hidden group-has-[[aria-expanded=true]]/cell:hidden group-data-[tips-hidden]/rail:hidden [@media(hover:none)]:hidden before:absolute before:inset-y-0 before:right-full before:w-6"
+  "fixed top-[var(--rail-tip-y)] start-[var(--rail-tip-x)] z-40 block -translate-y-1/2 invisible opacity-0 transition-[visibility] duration-0 motion-safe:transition-[opacity,visibility] motion-safe:duration-150 group-hover/cell:visible group-hover/cell:opacity-100 group-hover/cell:delay-300 group-has-[:focus-visible]/cell:visible group-has-[:focus-visible]/cell:opacity-100 group-has-[:focus-visible]/cell:delay-0 not-data-[placed]:hidden group-has-[[aria-expanded=true]]/cell:hidden group-data-[tips-hidden]/rail:hidden [@media(hover:none)]:hidden before:absolute before:inset-y-0 before:end-full before:w-6"
 const tooltipBubble =
   "block max-w-xs rounded-control bg-foreground px-2 py-1 text-xs font-medium text-canvas shadow-popover"
 
@@ -424,16 +424,23 @@ export function Entry(props: EntryProps): JSX.Element {
 }
 
 /**
- * Write where a cell's tooltip goes: 8 px past the column's right edge, so every tooltip starts on
- * the same line, and at the cell's vertical middle in the window. Read when the hint is about to
- * show, so a scrolled list or page never leaves it behind. `data-placed` lets it show.
+ * Write where a cell's tooltip goes: 8 px past the column's inline-end edge (its right edge, or its
+ * left edge on a right-to-left page, where the column stands on the right), so every tooltip starts
+ * on the same line, and at the cell's vertical middle in the window. `--rail-tip-x` is measured from
+ * the window's inline-start side, which is where the tooltip's `start-` inset counts from. Read when
+ * the hint is about to show, so a scrolled list or page never leaves it behind. `data-placed` lets
+ * it show.
  */
 export function placeTip(target: EventTarget | null, column: Element | null): void {
   const cell = (target as Element | null)?.closest?.("[data-rail-cell]")
   const tip = cell?.querySelector(":scope > [data-rail-tip]")
   if (!cell || !column || !(tip instanceof HTMLElement)) return
   const box = cell.getBoundingClientRect()
-  tip.style.setProperty("--rail-tip-x", `${column.getBoundingClientRect().right + 8}px`)
+  const edge = column.getBoundingClientRect()
+  const x = getComputedStyle(column).direction === "rtl"
+    ? document.documentElement.clientWidth - edge.left
+    : edge.right
+  tip.style.setProperty("--rail-tip-x", `${x + 8}px`)
   tip.style.setProperty("--rail-tip-y", `${box.top + box.height / 2}px`)
   tip.setAttribute("data-placed", "")
 }

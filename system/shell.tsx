@@ -296,7 +296,7 @@ function ShellNavList(
         <li key={`${index}-${item.name}`}>
           <ShellNavLink item={item} currentPath={currentPath} ports={ports} />
           {item.children && item.children.length > 0 && (
-            <ul class="mt-1 space-y-1 pl-6">
+            <ul class="mt-1 space-y-1 ps-6">
               {item.children.map((child, childIndex) => (
                 <li key={`${childIndex}-${child.name}`}>
                   <ShellNavLink item={child} currentPath={currentPath} ports={ports} />
@@ -372,7 +372,7 @@ export function Shell(props: ShellProps): JSX.Element {
     <div class={cn("flex min-h-screen flex-col", className)}>
       <a
         href={`#${contentId}`}
-        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-popover dark:focus:bg-canvas"
+        class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-popover dark:focus:bg-canvas"
         data-e2e="shell-skip-link"
       >
         {skipLabel}
@@ -467,7 +467,7 @@ export function Shell(props: ShellProps): JSX.Element {
         <aside
           id={sidebarId}
           class={cn(
-            "hidden shrink-0 flex-col border-r border-subtle lg:w-64",
+            "hidden shrink-0 flex-col border-e border-subtle lg:w-64",
             !collapsed && "lg:flex",
           )}
           data-e2e="shell-sidebar"
