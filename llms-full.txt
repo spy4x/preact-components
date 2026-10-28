@@ -29,19 +29,19 @@ More: live guide https://spy4x.github.io/preact-components/ · the full package 
 Charts for Preact that render complete on the server and become interactive in the browser, plus
 the axis and loading helpers behind them.
 
-- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DotPlot`, `DonutChart`,
-  `Kpi`, `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
+- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `RankedBars`, `DotPlot`,
+  `DonutChart`, `Kpi`, `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
   native tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
   tooltip with its label, value and share, by pointer and by keyboard. In both, ArrowDown and
   ArrowRight go to the next item and ArrowUp and ArrowLeft to the previous one. Both tooltips stay
   inside the chart and the viewport, flipping to the other side of the point near an edge.
-- **Titles fit the page's outline.** `LineChart`, `Bars` and `DonutChart` print `title` as an `<h3>`,
+- **Titles fit the page's outline.** `LineChart`, `Bars`, `RankedBars` and `DonutChart` print `title` as an `<h3>`,
   with data and without; `headingLevel` picks another level.
 - **A caller's `class` wins on most components.** `LineChart`, `DonutChart` and `Kpi` merge
   `class` into their own classes with `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's
-  `px-4` instead of competing with it. `Bars` and `DotPlot` add `class` after their own with `join`,
+  `px-4` instead of competing with it. `Bars`, `RankedBars` and `DotPlot` add `class` after their own with `join`,
   so an island that renders them carries no `tailwind-merge`; mark an override important
   (`gap-4!`). `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on
   that wrapper, not on the `<table>`.
@@ -77,14 +77,15 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                     |
-| ------------ | ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel` |
-| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                  |
-| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                   |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                              |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                                       |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                                  |
+| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`              |
+| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                               |
+| `RankedBars` | `ranked-bars` | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `format` |
+| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                                |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                           |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                      |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                             |
 
 Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
 period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a
@@ -219,7 +220,20 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   behind a bar or an empty donut. Each is a theme variable with an inline fallback, so it works with
   or without `theme/`'s stylesheet.
 
-### Bars, DotPlot and DonutChart (`./bars`, `./dot-plot`, `./donut-chart`)
+### Bars, RankedBars, DotPlot and DonutChart (`./bars`, `./ranked-bars`, `./dot-plot`, `./donut-chart`)
+
+`RankedBars` is a ranked list with several numbers per row, such as visits per source, built on
+`Bars`' scale and bars: a header row, then per row an optional 40 px `image` (`{ src, alt }`,
+lazy-loaded), the label (a link with `href`, a button with `onSelect`, either covering the row), an
+optional muted `note` under it and the bar, then the bar's number and one to three more from the
+row's `values`, right-aligned in tabular figures. A missing or non-finite number prints "–". On a
+phone the extra numbers join the note's muted line under the label, each after its header, so the
+table keeps two columns. `lowSample` mutes a row. It shares `Bars`' empty label. A page that renders
+only `Bars` carries none of its markup.
+
+A row with `href` is a real link and works without JavaScript. A row with `onSelect` is a button
+whose handler runs only once the page is hydrated, so it needs JavaScript: on a server-rendered page
+that must work without it, give the row an `href` instead.
 
 - `barPercent(value, top)` is a bar's width as a percentage of the longest bar, clamped to
   `0…100`; a non-finite or negative value, or a `top` of `0` or less, gives `0`.
