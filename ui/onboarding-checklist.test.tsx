@@ -71,6 +71,20 @@ describe("OnboardingChecklist", () => {
     expect(primary).toContain("bg-accent-900")
     expect(secondary).not.toContain("bg-accent-900")
     expect(secondary).toContain("bg-hover")
+    const linkSteps: OnboardingStep[] = [{
+      id: "budget",
+      title: "Set a budget",
+      done: false,
+      action: { label: "Set a budget", href: "/budget" },
+    }]
+    const link = render(<OnboardingChecklist steps={linkSteps} actionVariant="secondary" />)
+    expect(footerOf(link)).not.toContain("bg-accent-900")
+    const done = steps.map((step) => ({ ...step, done: true }))
+    const finish = render(
+      <OnboardingChecklist steps={done} onDismiss={noop} actionVariant="secondary" />,
+    )
+    expect(footerOf(finish)).toContain(">Finish</button>")
+    expect(footerOf(finish)).not.toContain("bg-accent-900")
   })
 
   it("renders a step's link action as a real link", () => {

@@ -2,7 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconCheckCircle } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, RefObject } from "preact"
 import { useId, useLayoutEffect, useRef } from "preact/hooks"
-import { Button, type ButtonVariant } from "./button.tsx"
+import { Button } from "./button.tsx"
 import { Card, CardBody, CardFooter, CardHeader } from "./card.tsx"
 import { Progress } from "./progress.tsx"
 import { translate, useLabels, useT } from "./i18n.tsx"
@@ -68,7 +68,7 @@ export interface OnboardingChecklistProps {
   onDismiss?: () => void
   /** The Dismiss button's text. Defaults to `"Dismiss"`. */
   dismissLabel?: string
-  /** The primary button once every step is done; it calls `onDismiss`. Defaults to `"Finish"`. */
+  /** The footer's button once every step is done; it calls `onDismiss`. Defaults to `"Finish"`. */
   finishLabel?: string
   /** The progress caption. Defaults to `"2 of 4 done"`. */
   progressLabel?: (done: number, total: number) => string
@@ -82,7 +82,7 @@ export interface OnboardingChecklistProps {
    * How the footer's button looks. Defaults to `"primary"`; pass `"secondary"` when the page
    * already shows its own primary action, so the screen keeps one.
    */
-  actionVariant?: ButtonVariant
+  actionVariant?: "primary" | "secondary"
   /** Extra utilities for the card. */
   class?: string
 }
@@ -104,14 +104,15 @@ const ONBOARDING_CHECKLIST_LABELS: Required<
 
 /**
  * A card of first steps for a new user: each step with its state, a progress bar, the next open
- * step's action as the card's one primary button, and Dismiss.
+ * step's action as the card's one footer button (primary unless `actionVariant` says otherwise),
+ * and Dismiss.
  *
  * Completion comes from the app. The checklist stores nothing: it reads `done` off each step, so a
  * step ticks itself off when the app's own data says it happened, and Dismiss is a port the app
  * persists. The next open step is the first one, in order, that is not done; it carries
  * `aria-current="step"`.
  *
- * Focus survives progress. The primary action is one control in the footer that changes its text
+ * Focus survives progress. The footer's action is one control in the footer that changes its text
  * and its target from step to step, rather than a button inside each step's row. While consecutive
  * actions are buttons it is the same element, so focus simply stays on it. When the control has to
  * change element — a button followed by a link — an effect moves focus to the new control, and
