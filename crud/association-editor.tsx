@@ -441,7 +441,7 @@ function ConfirmedAction(
         >
           <Stack>
             <p class="text-sm text-muted">{wording.message}</p>
-            <ErrorState focusOnAppear message={failure.value} class="mx-0 max-w-none text-left" />
+            <ErrorState focusOnAppear message={failure.value} class="mx-0 max-w-none text-start" />
           </Stack>
         </ConfirmDialog>
       )}
@@ -543,7 +543,7 @@ function AssociationFooter<M extends CrudRow>(
     <>
       <ConfirmedAction
         wording={removed ? restoreWording : deleteWording}
-        class={removed ? "btn btn-primary-outline mr-auto" : "btn btn-danger mr-auto"}
+        class={removed ? "btn btn-primary-outline me-auto" : "btn btn-danger me-auto"}
         inProgress={inProgress}
         danger={!removed}
         run={async () => {
@@ -555,7 +555,7 @@ function AssociationFooter<M extends CrudRow>(
         }}
       />
       {removed && (
-        <span class="text-danger mr-auto" title={vm.value.deletedAt?.toString()}>
+        <span class="text-danger me-auto" title={vm.value.deletedAt?.toString()}>
           {removedLabel(ago)}
         </span>
       )}
