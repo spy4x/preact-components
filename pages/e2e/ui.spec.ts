@@ -3921,7 +3921,7 @@ function languagePickerSpecs(): Spec[] {
 
 /**
  * `LookTile`, `LookGrid`, `SwatchChips` and `OrderBar`: the storefront patterns. The grid's
- * columns and stagger follow the width, the colour choice moves with the arrow keys, the order bar
+ * columns follow the width and line up, the colour choice moves with the arrow keys, the order bar
  * sticks to a phone's screen, the order form submits its choices with JavaScript off, and axe
  * passes in both palettes.
  */
@@ -3930,7 +3930,7 @@ function storefrontSpecs(): Spec[] {
   return [
     {
       name:
-        "LookGrid: one column at 390 px, two at 768 px with every second look lowered, three at 1440 px with the middle one lowered",
+        "LookGrid: one column at 390 px, two at 768 px and three at 1440 px, every look of the first row at the same height",
       pageId: "ui",
       run: async (page) => {
         const items = page.locator(`#demo-LookGrid [data-e2e="look-grid"] > li`)
@@ -3943,9 +3943,7 @@ function storefrontSpecs(): Spec[] {
             })
           )
         const seen: string[] = []
-        for (
-          const [width, columns, lowered] of [[390, 1, -1], [768, 2, 1], [1440, 3, 1]] as const
-        ) {
+        for (const [width, columns] of [[390, 1], [768, 2], [1440, 3]] as const) {
           await page.setViewportSize({ width, height: 900 })
           await items.first().scrollIntoViewIfNeeded()
           const looks = await read()
@@ -3955,14 +3953,12 @@ function storefrontSpecs(): Spec[] {
               `at ${width} px the looks sit in ${lefts} columns: ${JSON.stringify(looks)}`,
             )
           }
-          if (lowered >= 0 && looks[lowered].y - looks[0].y < 32) {
+          const tops = new Set(looks.slice(0, columns).map((look) => look.y)).size
+          if (tops !== 1) {
             throw new Error(
-              `at ${width} px look ${lowered + 1} is not lowered: ${JSON.stringify(looks)}`,
-            )
-          }
-          if (columns === 3 && looks[2].y !== looks[0].y) {
-            throw new Error(
-              `at ${width} px the third look is lowered too: ${JSON.stringify(looks)}`,
+              `at ${width} px the first row's looks start at ${tops} heights: ${
+                JSON.stringify(looks)
+              }`,
             )
           }
           seen.push(`${width}: ${JSON.stringify(looks)}`)

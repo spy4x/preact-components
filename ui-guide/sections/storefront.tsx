@@ -168,7 +168,7 @@ export const storefrontDemos: DemoFragment = {
   },
   LookGrid: {
     summary:
-      "A catalog's looks in staggered columns, one on a phone, two from 768 px and three from 1024 px, with no script.",
+      "A catalog's looks in aligned columns, one on a phone, two from 768 px and three from 1024 px, with no script.",
     wide: true,
     props: [
       {
