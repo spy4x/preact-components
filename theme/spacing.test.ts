@@ -225,6 +225,16 @@ describe("findPhysicalDirection", () => {
       ])
   })
 
+  it("names the logical class for a padding or inset that clears one side's safe area", () => {
+    expect(physical(`<aside class="pl-safe pr-safe-3 ml-safe left-safe right-safe-2">`)).toEqual([
+      "pl-safe → ps-safe",
+      "pr-safe-3 → pe-safe-3",
+      "ml-safe → ms-safe",
+      "left-safe → start-safe",
+      "right-safe-2 → end-safe-2",
+    ])
+  })
+
   it("names the logical class for text alignment, float and clear", () => {
     expect(physical(`<p class="text-left text-right float-left float-right clear-left">`))
       .toEqual([
@@ -269,7 +279,8 @@ describe("findPhysicalDirection", () => {
   it("accepts logical classes, both-sides classes and other words that share a prefix", () => {
     const source = `<div class="ms-2 me-auto ps-4 pe-px start-0 end-full text-start text-end ` +
       `rounded-s rounded-ee-lg border-s border-e-2 px-4 mx-auto inset-x-0 rounded-lg ` +
-      `border-lime-500 text-lg space-x-2 float-start">`
+      `border-lime-500 text-lg space-x-2 float-start ps-safe pb-safe pb-safe-3 ` +
+      `motion-safe:transition-colors">`
     expect(physical(source)).toEqual([])
   })
 

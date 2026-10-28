@@ -198,6 +198,9 @@ const SPACING_VALUE = String.raw`\d+(?:\.\d+)?|px|auto|\[[^\]\s]*\]|\([^)\s]*\)`
 /** An inset value: a spacing value, `full` or a fraction such as `1/2`. */
 const INSET_VALUE = String.raw`\d+\/\d+|full|${SPACING_VALUE}`
 
+/** A safe-area value, `safe` or `safe-3`: the device's inset on that side, or a step plus it. */
+const SAFE_VALUE = String.raw`safe(?:-\d+)?`
+
 /** Any value a radius or border class takes: `lg`, `2`, `red-500/50`, `[3px]`. */
 const ANY_VALUE = String.raw`[\w.]+(?:[\-\/][\w.]+)*|\[[^\]\s]*\]|\([^)\s]*\)`
 
@@ -208,8 +211,8 @@ const ANY_VALUE = String.raw`[\w.]+(?:[\-\/][\w.]+)*|\[[^\]\s]*\]|\([^)\s]*\)`
  */
 const PHYSICAL_CLASS = new RegExp(
   START + VARIANTS + String.raw`(!?)(-?)(` +
-    String.raw`(?:scroll-)?[mp][lr](?=-(?:${SPACING_VALUE})(?![\w\-%\/\[(]|\.\d))` +
-    String.raw`|(?:left|right)(?=-(?:${INSET_VALUE})(?![\w\-%\/\[(]|\.\d))` +
+    String.raw`(?:scroll-)?[mp][lr](?=-(?:${SPACING_VALUE}|${SAFE_VALUE})(?![\w\-%\/\[(]|\.\d))` +
+    String.raw`|(?:left|right)(?=-(?:${INSET_VALUE}|${SAFE_VALUE})(?![\w\-%\/\[(]|\.\d))` +
     String.raw`|(?:text|float|clear)-(?:left|right)(?![\w\-%\/\[(])` +
     String.raw`|rounded-[tb]?[lr](?=(?:-(?:${ANY_VALUE}))?(?![\w\-%\/\[(]))` +
     String.raw`|border-[lr](?=(?:-(?:${ANY_VALUE}))?(?![\w\-%\/\[(]))` +
@@ -223,9 +226,10 @@ const DIRECTION_VARIANT = /(?:^|:)(?:rtl|ltr):/
 /**
  * Finds every class in `source` that names a physical side, so it stays on the left or right
  * whatever the page's `dir` is: left and right margin and padding and their scroll forms, the
- * `left` and `right` insets, left and right text alignment, `float` and `clear`, a radius on a left
- * or right side or corner, and a left or right border. Each finding names the logical class that
- * follows `dir` instead: `ms-`, `pe-`, `start-`, `end-`, `text-start`, `rounded-s`, `border-e`.
+ * `left` and `right` insets, a left or right padding or inset by the `safe` area, left and right
+ * text alignment, `float` and `clear`, a radius on a left or right side or corner, and a left or
+ * right border. Each finding names the logical class that follows `dir` instead: `ms-`, `pe-`,
+ * `start-`, `end-`, `text-start`, `rounded-s`, `border-e`.
  *
  * A class behind an `rtl:` or `ltr:` variant is left alone: it already says which direction it is
  * for. `source` is read the way {@link findOffScaleSpacing} reads it, comments included. Like it,
