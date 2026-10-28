@@ -33,6 +33,26 @@ describe("PostList", () => {
     expect(html).toContain('class="mt-1 line-clamp-2')
   })
 
+  it("marks a post's title and description with its language and direction, not its date", () => {
+    const html = renderList(<PostList posts={[{ ...POSTS[0], lang: "en" }]} />)
+    expect(html).toContain('<a href="/blog/second"')
+    expect(html).toMatch(/<a href="\/blog\/second"[^>]* lang="en" dir="auto">Second post<\/a>/)
+    expect(html).toMatch(
+      /<p class="mt-1 line-clamp-2[^"]*" lang="en" dir="auto">What changed\.<\/p>/,
+    )
+    expect(html.match(/lang="en"/g)?.length).toBe(2)
+    expect(html).toMatch(/<p class="text-sm text-muted tabular-nums"><time/)
+  })
+
+  it("takes a post's own dir over auto, and marks nothing when it names no language", () => {
+    const ltr = renderList(<PostList posts={[{ ...POSTS[0], lang: "en", dir: "ltr" }]} />)
+    expect(ltr.match(/dir="ltr"/g)?.length).toBe(2)
+    expect(ltr).not.toContain('dir="auto"')
+    const plain = renderList(<PostList posts={POSTS} />)
+    expect(plain).not.toContain("lang=")
+    expect(plain).not.toContain("dir=")
+  })
+
   it("dates a post by its UTC day, whatever zone the formatter reads in", () => {
     const html = renderList(<PostList posts={POSTS} />)
     expect(html).toContain('<time datetime="2026-10-02T23:30:00.000Z">2 Oct 2026</time>')
