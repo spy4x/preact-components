@@ -403,3 +403,48 @@ export function LanguageDialog(
     </Modal>
   )
 }
+
+/** Props of {@link LanguageButton}: {@link LanguageDialogProps} without the open state it owns. */
+export interface LanguageButtonProps extends Omit<LanguageDialogProps, "open" | "onClose"> {
+  /** `data-e2e` on the button. Defaults to `"language-button"`. */
+  buttonDataE2E?: string
+}
+
+/**
+ * A ghost button with `IconGlobe` and the language in use, named in itself, that opens
+ * {@link LanguageDialog}: the language switch of a signed-out header, so a visitor who landed in a
+ * language they cannot read finds their own before signing in.
+ *
+ * The language in use is `current`, or `automatic` while it follows the device. A screen reader
+ * hears the dialog's title before it ("Language Deutsch"), from a visually hidden word, so the
+ * name keeps its own `lang`. With neither given, the button shows the title instead. Closing the
+ * dialog (Done, Escape, the close control, the backdrop) returns focus to the button.
+ */
+export function LanguageButton(
+  { buttonDataE2E = "language-button", ...dialog }: LanguageButtonProps,
+): JSX.Element {
+  const labels = useLabels("LanguageDialog", DEFAULT_DIALOG_LABELS, dialog.labels)
+  const open = useSignal(false)
+  const inUse = dialog.current ?? dialog.automatic
+  return (
+    <>
+      <Button
+        variant="ghost"
+        class="min-h-11 sm:min-h-9"
+        aria-haspopup="dialog"
+        data-e2e={buttonDataE2E}
+        onClick={() => open.value = true}
+      >
+        <IconGlobe class="size-4" aria-hidden="true" />
+        {inUse
+          ? (
+            <>
+              <span class="sr-only">{labels.title}</span> <Name tag={inUse} />
+            </>
+          )
+          : labels.title}
+      </Button>
+      <LanguageDialog {...dialog} open={open.value} onClose={() => open.value = false} />
+    </>
+  )
+}

@@ -27,6 +27,7 @@ import {
   FileInput,
   Grid,
   isValidDateTimeRange,
+  LanguageButton,
   LanguageDialog,
   LanguagePicker,
   OnOffButtons,
@@ -126,6 +127,32 @@ function LanguageDialogDemo() {
           failed={language.failed}
           onSelect={language.select}
         />
+      </InDemoLanguage>
+    </Stack>
+  )
+}
+
+/**
+ * The button a signed-out header carries, switching the card's language from the dialog it opens.
+ * It sits at the card's end, as it would in a header.
+ */
+function LanguageButtonDemo() {
+  const language = useDemoLanguage()
+  return (
+    <Stack gap="md">
+      <SimulateLanguageStates language={language} />
+      <InDemoLanguage language={language}>
+        <div class="flex justify-end rounded-md border border-subtle px-3 py-2">
+          <LanguageButton
+            languages={DEMO_LANGUAGES}
+            current={language.current}
+            automatic={language.automatic}
+            pending={language.pending}
+            unavailable={language.unavailable}
+            failed={language.failed}
+            onSelect={language.select}
+          />
+        </div>
       </InDemoLanguage>
     </Stack>
   )
@@ -1503,6 +1530,44 @@ export const inputDemos = {
   onSelect={(tag) => switchLanguage(tag)}
 />`,
     render: () => <LanguageDialogDemo />,
+  },
+  LanguageButton: {
+    summary:
+      "A globe and the language in use, named in itself, that opens `LanguageDialog`: the language switch of a signed-out header.",
+    wide: false,
+    props: [
+      {
+        name: "languages / current / onSelect",
+        type: "string[] / string | null / (tag | null) => void",
+        description:
+          "As on `LanguageDialog`. The button shows `current`, or `automatic` while it follows the device.",
+      },
+      {
+        name: "automatic / pending / unavailable / failed",
+        type: "string / string | null / string[] / string",
+        description: "Passed to the dialog, as on `LanguagePicker`.",
+      },
+      {
+        name: "labels / pickerLabels",
+        type: "{ title?, description?, done?, closeLabel? } / LanguagePickerLabels",
+        description:
+          "The dialog's words and the list's. `title` is also read aloud before the language's name.",
+      },
+      {
+        name: "buttonDataE2E",
+        type: "string",
+        default: `"language-button"`,
+        description: "`data-e2e` on the button; `dataE2E` stays the dialog's.",
+      },
+    ],
+    snippet: `<LanguageButton
+  languages={["en", "de", "es", "pt-BR", "ru", "ar"]}
+  current={language}
+  automatic={navigator.language}
+  pending={loading}
+  onSelect={(tag) => switchLanguage(tag)}
+/>`,
+    render: () => <LanguageButtonDemo />,
   },
   OnOffButtons: {
     summary:

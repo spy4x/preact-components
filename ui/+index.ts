@@ -289,6 +289,8 @@ export {
   type LinkProps,
 } from "./link.tsx"
 export {
+  LanguageButton,
+  type LanguageButtonProps,
   LanguageDialog,
   type LanguageDialogLabels,
   type LanguageDialogProps,
