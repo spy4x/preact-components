@@ -65,6 +65,7 @@ describe("StoryTile", () => {
     const html = render(<StoryTile {...POST} />)
     expect(html.match(/<a /g)?.length).toBe(1)
     expect(html).toMatch(/<h2[^>]*><a href="\/blog\/linen"[^>]*>How to wash linen<\/a><\/h2>/)
+    expect(html).toContain('<p class="font-mono text-sm font-medium text-primary">Fabrics</p>')
     expect(html.indexOf(">Fabrics<")).toBeLessThan(html.indexOf("How to wash linen"))
     expect(html).toContain('<time datetime="2026-10-28T23:30:00Z">')
     expect(html.indexOf("How to wash linen")).toBeLessThan(html.indexOf("<time"))
