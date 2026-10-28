@@ -485,7 +485,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1285 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1310 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -635,6 +635,7 @@ DialogRect	type	@spy4x/preact-ui	Rectangle in viewport coordinates: a structural
 DialogRole	type	@spy4x/preact-ui	How a `Modal` announces itself to assistive technology.
 DialogTone	type	@spy4x/preact-ui	Visual register of a `Modal`: a plain surface or a destructive one.
 Dropdown	component	@spy4x/preact-ui	Trigger plus a real menu: opening moves focus into it, the arrow keys move between its items, Escape closes it and gives the trigger its focus back, and it closes as soon as focus leaves.
+DropdownAlign	type	@spy4x/preact-ui	The edge of the trigger a `Dropdown` menu lines up with; `left` and `right` are aliases.
 DropdownBaseProps	type	@spy4x/preact-ui	Everything about a dropdown except how its trigger is named.
 DropdownItem	component	@spy4x/preact-ui	One item of a `Dropdown`'s menu.
 DropdownTriggerName	type	@spy4x/preact-ui	How the trigger button gets its accessible name.
