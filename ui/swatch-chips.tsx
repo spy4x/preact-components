@@ -47,7 +47,7 @@ export function SwatchChips({ options, ...props }: SwatchChipsProps): JSX.Elemen
           <>
             <span
               aria-hidden="true"
-              class="size-4 shrink-0 rounded-full border border-strong group-has-[:checked]/chip:ring-2 group-has-[:checked]/chip:ring-selected-foreground"
+              class="size-4 shrink-0 rounded-full border border-strong group-has-[:checked]/chip:ring-2 group-has-[:checked]/chip:ring-current"
               style={{ backgroundColor: option.color }}
             />
             {option.name}

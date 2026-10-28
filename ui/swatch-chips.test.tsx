@@ -40,7 +40,7 @@ describe("SwatchChips", () => {
     expect(swatches.length).toBe(3)
     for (const swatch of swatches) {
       expect(swatch).toContain(
-        "group-has-[:checked]/chip:ring-2 group-has-[:checked]/chip:ring-selected-foreground",
+        "group-has-[:checked]/chip:ring-2 group-has-[:checked]/chip:ring-current",
       )
     }
   })
