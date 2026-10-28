@@ -155,6 +155,29 @@ describe("AppShell", () => {
     expect(sheet).toMatch(/<button type="submit"[^>]*data-rail-close[^>]*>Sign out</)
   })
 
+  it("passes account.language to the rail's menu and draws the same Language row in the sheet", () => {
+    const language = { languages: ["en", "ar"], current: "ar", onSelect: () => {} }
+    const html = shell({ account: { user, items: [{ label: "Profile" }], language } })
+    const name =
+      `<span class="notranslate ms-auto ps-4 text-muted" lang="ar" dir="rtl">العربية</span>`
+    expect(html).toMatch(
+      new RegExp(`data-e2e="account-menu-language"[^>]*>(?:(?!</button>).)*Language</span>${name}`),
+    )
+    const sheet = whole(html, "app-shell-sheet-account", "dialog")
+    expect(sheet).toMatch(
+      new RegExp(
+        `<button type="button"[^>]*data-rail-close[^>]*data-e2e="app-shell-sheet-language">(?:(?!</button>).)*<span>Language</span>${name}</button>`,
+      ),
+    )
+    expect(sheet.indexOf("app-shell-sheet-language")).toBeGreaterThan(sheet.indexOf(">Profile<"))
+  })
+
+  it("draws no Language row without account.language", () => {
+    const html = shell()
+    expect(html).not.toContain("account-menu-language")
+    expect(html).not.toContain("app-shell-sheet-language")
+  })
+
   it("announces an account item's keyshortcuts in the sheet and hints the first on a fine pointer", () => {
     const html = shell({
       account: {

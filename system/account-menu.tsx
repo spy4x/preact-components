@@ -13,18 +13,13 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconChevronDown, IconGlobe } from "@spy4x/preact-icons"
+import { IconChevronDown } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
-import {
-  LanguageDialog,
-  type LanguageDialogProps,
-  languageName,
-} from "@spy4x/preact-ui/language-picker"
-import { textDirection } from "@spy4x/platform/universal/i18n"
+import { LanguageDialog, type LanguageDialogProps } from "@spy4x/preact-ui/language-picker"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
-import { AccountEntry, AccountIdentity, AccountTag } from "./account-parts.tsx"
+import { AccountEntry, AccountIdentity, AccountLanguage, AccountTag } from "./account-parts.tsx"
 import { useT } from "@spy4x/preact-ui/i18n"
 import { translate } from "./i18n.ts"
 
@@ -220,7 +215,6 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
   ]
   const themeHeading = labels?.theme ?? translate(translator, "AccountMenu.theme", "Theme")
   const languageOpen = useSignal(false)
-  const languageInUse = language ? language.current ?? language.automatic : undefined
 
   const trigger = full
     ? (
@@ -290,19 +284,11 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
             onClick={() => languageOpen.value = true}
             dataE2E="account-menu-language"
           >
-            <IconGlobe class="size-4 shrink-0" aria-hidden="true" />
-            <span>
-              {labels?.language ?? translate(translator, "AccountMenu.language", "Language")}
-            </span>
-            {languageInUse && (
-              <span
-                class="notranslate ms-auto ps-4 text-muted"
-                lang={languageInUse}
-                dir={textDirection(languageInUse)}
-              >
-                {languageName(languageInUse)}
-              </span>
-            )}
+            <AccountLanguage
+              label={labels?.language ??
+                translate(translator, "AccountMenu.language", "Language")}
+              language={language}
+            />
           </DropdownItem>
         )}
         {onThemeChange && (

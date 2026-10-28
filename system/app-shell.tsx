@@ -20,17 +20,25 @@ import { IconAlertTriangle, IconBell, type IconProps } from "@spy4x/preact-icons
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { useApplePlatform } from "@spy4x/preact-ui/hotkeys"
 import { Kbd, type KbdLabels } from "@spy4x/preact-ui/kbd"
+import { LanguageDialog } from "@spy4x/preact-ui/language-picker"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { useSignal } from "@preact/signals"
 import {
   AccountMenu,
   type AccountMenuItem,
   type AccountMenuLabels,
+  type AccountMenuLanguage,
   type AccountMenuTheme,
   type AccountMenuUser,
 } from "./account-menu.tsx"
-import { type AccountControlProps, AccountEntry, AccountIdentity } from "./account-parts.tsx"
+import {
+  type AccountControlProps,
+  AccountEntry,
+  AccountIdentity,
+  AccountLanguage,
+} from "./account-parts.tsx"
 import { Rail, type RailItem, type RailPlace } from "./rail.tsx"
 import {
   currentStates,
@@ -79,6 +87,12 @@ export interface AppShellAccount {
   headerHref?: string
   /** The menu's own items, first, such as "Profile". */
   items?: readonly AccountMenuItem[]
+  /**
+   * Given, a "Language" row after {@link items}, in the rail's menu and in the phone sheet, with the
+   * language in use named in itself; it opens `LanguageDialog` with these props, as
+   * `AccountMenuProps.language` does.
+   */
+  language?: AccountMenuLanguage
   /** The current theme preference. Defaults to `"system"`. */
   theme?: AccountMenuTheme
   /** Called with the chosen preference; the theme choice is drawn only when this is given. */
@@ -293,7 +307,9 @@ function SheetControl(
  * **On a phone** the last tab is the account: the 24 px avatar, the unread count, and "Account"
  * (the `tag`, such as "Admin", in its place). Its sheet, headed the same, holds the switcher, the
  * destinations that did not fit, Notifications, then the account: a header row, the menu's items,
- * the theme as a radio group of three segments, and the sign-out last. Every row is at least 44 px.
+ * the language, the theme as a radio group of three segments, and the sign-out last. Every row is at
+ * least 44 px. The language row closes the sheet and opens `LanguageDialog`, whose closing returns
+ * focus to the tab.
  * Choosing a row closes the sheet, unless the click opens it elsewhere (a modifier held) or picks a
  * theme, and closing returns focus to the tab.
  */
@@ -330,6 +346,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
         tag,
       )
   const themeId = useId()
+  const languageOpen = useSignal(false)
 
   const bell: AppShellItem | undefined = notifications && {
     key: "notifications",
@@ -374,6 +391,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               user={user}
               headerHref={account.headerHref}
               items={account.items}
+              language={account.language}
               theme={account.theme}
               onThemeChange={account.onThemeChange}
               signOut={account.signOut}
@@ -430,6 +448,18 @@ export function AppShell(props: AppShellProps): JSX.Element {
               Control={SheetControl}
             />
           ))}
+          {account.language && (
+            <SheetControl
+              onClick={() => languageOpen.value = true}
+              dataE2E="app-shell-sheet-language"
+            >
+              <AccountLanguage
+                label={labels?.accountMenu?.language ??
+                  translate(translator, "AccountMenu.language", "Language")}
+                language={account.language}
+              />
+            </SheetControl>
+          )}
           {account.onThemeChange && (
             <div role="radiogroup" aria-labelledby={themeId} data-e2e="app-shell-sheet-theme">
               <div id={themeId} class="px-3 pt-2 pb-1 text-xs font-medium text-muted">
@@ -523,6 +553,13 @@ export function AppShell(props: AppShellProps): JSX.Element {
           </div>
         </div>
       </Rail>
+      {account.language && (
+        <LanguageDialog
+          {...account.language}
+          open={languageOpen.value}
+          onClose={() => languageOpen.value = false}
+        />
+      )}
     </>
   )
 }

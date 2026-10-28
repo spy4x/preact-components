@@ -1855,6 +1855,7 @@ const appShellConnections: readonly AppShellConnection[] = [
  * shows a warning cell and a phone shows a strip above the tab bar, and the live region speaks it
  * either way. Every link goes through `navigate`, which moves the current marker. The button opens
  * a page inside the second section, whose entry then reads as the current section, not the page.
+ * The account's Language row, in the menu and the phone sheet, switches the whole card's language.
  */
 function AppShellDemo() {
   const app = useSignal<"product" | "admin">("product")
@@ -1863,82 +1864,94 @@ function AppShellDemo() {
   const items = appShellApps[app.value]
   const current = useSignal(items[0].href)
   const admin = app.value === "admin"
+  const language = useDemoLanguage()
   return (
-    <div
-      class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
-      data-e2e="app-shell-demo"
-    >
-      <AppShell
-        class="min-h-full"
-        labels={{ nav: "AppShell demo navigation", sidebar: "AppShell demo sidebar" }}
-        items={items}
-        currentPath={current.value}
-        navigate={(href) => current.value = href}
-        notifications={{ href: "#app-notifications", unread: admin ? 0 : 3 }}
-        account={{
-          user: railShellUser,
-          tag: admin ? "Admin" : undefined,
-          items: [{ label: "Profile", href: "#app-profile" }],
-          theme: theme.value,
-          onThemeChange: (value) => theme.value = value,
-          signOut: { label: "Sign out", action: "#app-sign-out", onClick: () => undefined },
-        }}
-        connection={connection.value}
-        width={admin ? "wide" : "default"}
+    <InDemoLanguage language={language}>
+      <div
+        class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+        data-e2e="app-shell-demo"
       >
-        <div class="flex flex-col gap-4 text-sm">
-          <fieldset class="flex flex-wrap gap-4">
-            <legend class="mb-2 font-medium">App</legend>
-            {(["product", "admin"] as const).map((value) => (
-              <label key={value} class="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="app-shell-demo-app"
-                  checked={app.value === value}
-                  onChange={() => {
-                    app.value = value
-                    current.value = appShellApps[value][0].href
-                  }}
-                  data-e2e={`app-shell-demo-${value}`}
-                />
-                {value === "product" ? "Product" : "Admin panel"}
-              </label>
-            ))}
-          </fieldset>
-          <label class="flex flex-col gap-1">
-            Connection
-            <select
-              class="w-48 rounded-md border border-subtle bg-surface px-2 py-1"
-              value={connection.value}
-              onChange={(event) =>
-                connection.value = event.currentTarget.value as AppShellConnection}
-              data-e2e="app-shell-demo-connection"
-            >
-              {appShellConnections.map((value) => <option key={value} value={value}>{value}
-              </option>)}
-            </select>
-          </label>
-          <p>
-            Current: <strong data-e2e="app-shell-demo-current">{current.value}</strong>, theme:{" "}
-            <strong>{theme.value}</strong>
-          </p>
-          <p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => current.value = `${items[1].href}/42`}
-              data-e2e="app-shell-demo-inside"
-            >
-              Open a page inside {items[1].label}
-            </Button>
-          </p>
-          <p class="text-muted">
-            The page starts here, in a column centred in the space beside the rail:{" "}
-            {admin ? "64 rem wide, for tables" : "48 rem wide by default"}.
-          </p>
-        </div>
-      </AppShell>
-    </div>
+        <AppShell
+          class="min-h-full"
+          labels={{ nav: "AppShell demo navigation", sidebar: "AppShell demo sidebar" }}
+          items={items}
+          currentPath={current.value}
+          navigate={(href) => current.value = href}
+          notifications={{ href: "#app-notifications", unread: admin ? 0 : 3 }}
+          account={{
+            user: railShellUser,
+            tag: admin ? "Admin" : undefined,
+            items: [{ label: "Profile", href: "#app-profile" }],
+            theme: theme.value,
+            onThemeChange: (value) => theme.value = value,
+            language: {
+              languages: DEMO_LANGUAGES,
+              current: language.current,
+              automatic: language.automatic,
+              pending: language.pending,
+              onSelect: language.select,
+            },
+            signOut: { label: "Sign out", action: "#app-sign-out", onClick: () => undefined },
+          }}
+          connection={connection.value}
+          width={admin ? "wide" : "default"}
+        >
+          <div class="flex flex-col gap-4 text-sm">
+            <fieldset class="flex flex-wrap gap-4">
+              <legend class="mb-2 font-medium">App</legend>
+              {(["product", "admin"] as const).map((value) => (
+                <label key={value} class="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="app-shell-demo-app"
+                    checked={app.value === value}
+                    onChange={() => {
+                      app.value = value
+                      current.value = appShellApps[value][0].href
+                    }}
+                    data-e2e={`app-shell-demo-${value}`}
+                  />
+                  {value === "product" ? "Product" : "Admin panel"}
+                </label>
+              ))}
+            </fieldset>
+            <label class="flex flex-col gap-1">
+              Connection
+              <select
+                class="w-48 rounded-md border border-subtle bg-surface px-2 py-1"
+                value={connection.value}
+                onChange={(event) =>
+                  connection.value = event.currentTarget.value as AppShellConnection}
+                data-e2e="app-shell-demo-connection"
+              >
+                {appShellConnections.map((value) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </select>
+            </label>
+            <p>
+              Current: <strong data-e2e="app-shell-demo-current">{current.value}</strong>, theme:
+              {" "}
+              <strong>{theme.value}</strong>
+            </p>
+            <p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => current.value = `${items[1].href}/42`}
+                data-e2e="app-shell-demo-inside"
+              >
+                Open a page inside {items[1].label}
+              </Button>
+            </p>
+            <p class="text-muted">
+              The page starts here, in a column centred in the space beside the rail:{" "}
+              {admin ? "64 rem wide, for tables" : "48 rem wide by default"}.
+            </p>
+          </div>
+        </AppShell>
+      </div>
+    </InDemoLanguage>
   )
 }
 
@@ -2654,7 +2667,7 @@ useEffect(() => {
         name: "account",
         type: "AppShellAccount",
         description:
-          'The signed-in person, the menu\'s items, the theme, **Sign out**, and an optional `tag` such as `"Admin"`, drawn as a neutral badge.',
+          'The signed-in person, the menu\'s items, the `language` (`AccountMenuLanguage`: a Language row in the menu and the phone sheet, opening `LanguageDialog`), the theme, **Sign out**, and an optional `tag` such as `"Admin"`, drawn as a neutral badge.',
       },
       {
         name: "notifications",
@@ -2701,6 +2714,7 @@ useEffect(() => {
     user: { name: session.name, email: session.email },
     tag: isAdminApp ? "Admin" : undefined,
     items: [{ label: "Profile", href: "/profile" }],
+    language: { languages: ["en", "de", "ar"], current: language, onSelect: switchLanguage },
     theme,
     onThemeChange: setTheme,
     signOut: { label: "Sign out", action: "/sign-out" },

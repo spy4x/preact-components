@@ -1506,6 +1506,77 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AppShell below md: the sheet's Language row names the language in use, closes the " +
+      "sheet and opens LanguageDialog; Escape returns focus to the account tab, and the row then " +
+      "reads in the new language; axe passes on the sheet in Arabic",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tab = inCard(page, APP, "rail-shell-more")
+      const sheet = inCard(page, APP, "rail-shell-dialog")
+      const row = inCard(page, APP, "app-shell-sheet-language")
+      const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+      const focused = page.locator(":focus")
+      await tab.scrollIntoViewIfNeeded()
+      await tab.click()
+      await sheet.waitFor({ state: "visible" })
+      await row.filter({ hasText: "Language" }).locator(`[lang="en"].notranslate`)
+        .filter({ hasText: "English" }).waitFor()
+      const box = await row.boundingBox()
+      if (box === null || box.height < 44) throw new Error(`the row is ${box?.height} px tall`)
+      await row.click()
+      await sheet.waitFor({ state: "hidden" })
+      await dialog.getByRole("radio", { name: /^Automatic/, checked: true }).and(focused).waitFor()
+      await dialog.getByRole("radio", { name: "Deutsch", exact: true }).click()
+      await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "detached" })
+      await tab.and(focused).waitFor()
+
+      await tab.click()
+      await sheet.waitFor({ state: "visible" })
+      await row.filter({ hasText: "Sprache" }).locator(`[lang="de"]`).filter({ hasText: "Deutsch" })
+        .waitFor()
+      await row.click()
+      await dialog.getByRole("radio", { name: "العربية", exact: true }).click()
+      await dialog.getByRole("heading", { name: "اللغة" }).waitFor()
+      await dialog.locator(`[data-e2e="language-dialog-done"]`).click()
+      await dialog.waitFor({ state: "detached" })
+      await tab.and(focused).waitFor()
+      await tab.click()
+      await sheet.waitFor({ state: "visible" })
+      await row.locator(`[lang="ar"][dir="rtl"]`).filter({ hasText: "العربية" }).waitFor()
+      const axe = await expectAxeClean(page, `${APP} [data-e2e="rail-shell-dialog"]`)
+      return `English → Deutsch (Escape) → العربية (Done), focus back on the tab; ${axe}`
+    },
+  },
+  {
+    name: "AppShell at 1440 px: the rail's account menu carries the Language item from " +
+      "account.language, and closing its dialog returns focus to the account button",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const trigger = inCard(page, APP, "account-menu-button")
+      const item = inCard(page, APP, "account-menu-language")
+      const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+      const focused = page.locator(":focus")
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      await item.filter({ hasText: "Language" }).locator(`[lang="en"]`)
+        .filter({ hasText: "English" }).waitFor()
+      await item.click()
+      await dialog.getByRole("radio", { name: "Deutsch", exact: true }).click()
+      await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "detached" })
+      await trigger.and(focused).waitFor()
+      await trigger.click()
+      await item.filter({ hasText: "Sprache" }).locator(`[lang="de"]`)
+        .filter({ hasText: "Deutsch" }).waitFor()
+      return "English → Deutsch from the rail's menu, focus back on the account button"
+    },
+  },
+  {
     name: 'AppShell admin: a neutral "Admin" badge under the avatar, spoken in the account ' +
       "button's name and printed as the phone's last tab",
     pageId: "system",
