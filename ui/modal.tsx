@@ -461,7 +461,14 @@ export function Modal(
     >
       {title
         ? (
-          <header class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4">
+          // `role="none"` on the header and the footer: a `Modal` opened from a page's `<header>`
+          // (a language switch, an account button) sits inside its banner, and a `<header>` or
+          // `<footer>` there is a nested banner or contentinfo landmark (axe's
+          // `landmark-banner-is-top-level`). A dialog's title row and button row are no landmarks.
+          <header
+            role="none"
+            class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4"
+          >
             <h2 id={headingId} class="text-lg font-semibold">{title}</h2>
             {cancelLabel
               ? (
@@ -482,7 +489,7 @@ export function Modal(
       <div class="px-6 py-4">{children}</div>
       {footer
         ? (
-          <footer class={join(DIALOG_ACTIONS, "border-t border-subtle px-6 py-4")}>
+          <footer role="none" class={join(DIALOG_ACTIONS, "border-t border-subtle px-6 py-4")}>
             {footer}
           </footer>
         )

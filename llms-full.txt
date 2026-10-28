@@ -5074,6 +5074,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                                                                                                                                            |
 | `Link`                | `link`                 | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                                                                                                                                                                                               |
 | `ListField`           | `list-field`           | `id`, `label` (the `<legend>`), `value` (`string[]`), `onChange`, `max?`, `maxLength?`, `name?`, `placeholder?`, `hint?`, `error?`, `disabled?`, `labels?` — Enter adds a line, Backspace in an empty one removes it                                                                                                                                                |
+| `LanguageButton`      | `language-picker`      | The `LanguageDialog` props without `open` and `onClose`, plus `buttonDataE2E?` — a ghost button with `IconGlobe` and the language in use named in itself, opening the dialog; focus returns to it on close                                                                                                                                                          |
 | `LanguageDialog`      | `language-picker`      | `open`, `onClose`, `languages`, `current`, `onSelect`, `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?`, `pickerLabels?` — a `Modal` holding the list; a choice applies at once and the dialog stays open                                                                                                                                             |
 | `LanguagePicker`      | `language-picker`      | `languages` (tags), `current` (`null` = automatic), `mode?` (`"list"` radio group or `"links"`), `href?` (links), `onSelect?` (list), `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?` — each language by its own name; links work without JavaScript                                                                                                 |
 | `LoadingSkeleton`     | `loading-skeleton`     | `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion                                                                                                                                                                                                                                               |
@@ -7019,7 +7020,7 @@ so the markup works server-rendered with JavaScript off. `defaultValue` checks a
 markup; an island can pass `value` and `onChange` instead. An option's `id` lets page CSS read
 `:has(#id:checked)`, and its `inputAttributes` (analytics `data-*`, say) go on the radio.
 
-## LanguagePicker and LanguageDialog
+## LanguagePicker, LanguageDialog and LanguageButton
 
 Every language is named in itself, from `Intl.DisplayNames`, with its first letter capitalised the
 way that language does it ("русский" becomes "Русский") and `lang` and `dir` on the name, so a
@@ -7041,6 +7042,12 @@ off.
 the new language, so a wrong tap is undone with one more; Done closes it. It opens with focus on
 the chosen row, which keeps focus through every switch. `AccountMenu` (`system/`) opens it from its
 `language` item.
+
+`LanguageButton` is the switch for a signed-out header: a ghost button with `IconGlobe` and the
+language in use (`current`, else `automatic`) named in itself, that opens `LanguageDialog` with the
+props it is given and returns focus to itself when the dialog closes. A screen reader hears the
+dialog's title before the name ("Language Deutsch"); with neither `current` nor `automatic` the
+title is shown instead. `buttonDataE2E` names the button for tests; `dataE2E` stays the dialog's.
 
 ## ThemePreview
 
@@ -7549,6 +7556,10 @@ components and tests means exactly that: nothing outside this package should bui
   anything that renders.
 
 ### Modal (`./modal`)
+
+The title row and the button row are a `<header>` and a `<footer>` with `role="none"`: a `Modal`
+opened from a page's `<header>` (`LanguageButton`, an account button) sits inside that banner, and a
+landmark there would be a nested banner or contentinfo (axe's `landmark-banner-is-top-level`).
 
 - `backdropDismissesByDefault` is `true`: a click on the backdrop dismisses a `Modal` whose
   `closeOnBackdrop` is left out.

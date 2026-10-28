@@ -166,6 +166,13 @@ describe("Modal", () => {
     expect(render(<Modal open title="Delete" />)).not.toContain("<svg")
   })
 
+  it("draws its title row and button row as no landmarks, so a header around it stays one banner", () => {
+    const html = render(<Modal open title="Delete" footer={<span>actions</span>} />)
+
+    expect(html).toMatch(/<header role="none"/)
+    expect(html).toMatch(/<footer role="none"/)
+  })
+
   it("renders footer content only when given", () => {
     const html = render(<Modal open title="Delete" footer={<span>actions</span>} />)
 
@@ -187,7 +194,7 @@ describe("Modal", () => {
         }
       />,
     )
-    const footer = /<footer class="([^"]*)">/.exec(html)?.[1].split(" ") ?? []
+    const footer = /<footer role="none" class="([^"]*)">/.exec(html)?.[1].split(" ") ?? []
     for (const cls of ["flex-col", "sm:flex-row", "sm:justify-end"]) {
       expect(footer).toContain(cls)
     }
