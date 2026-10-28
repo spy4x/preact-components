@@ -29,7 +29,8 @@ const GRID = "grid grid-cols-1 gap-x-6 gap-y-12 md:grid-cols-2 lg:grid-cols-3"
  *
  * Server-rendered CSS grid with no script. Each child becomes one item of a `<ul>`, in order,
  * read row by row. A child with `lead` set, such as a lead `StoryTile`, spans two columns from
- * `lg`; the grid reads that prop off the child itself, so pass the tile directly, not wrapped.
+ * `lg`; the grid reads that prop off the child itself, so pass the tile directly, not wrapped,
+ * and put it first, or the row before it ends with an empty cell.
  *
  * @param props The looks and options, see {@link LookGridProps}.
  */

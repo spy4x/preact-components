@@ -6070,7 +6070,7 @@ give the item page's photo the tile's `viewTransitionName` and put
 `@view-transition { navigation: auto; }` in both pages' CSS.
 
 A shop's blog lists its posts as `StoryTile`s in the same `LookGrid`, so a post looks like an item.
-Mark the newest one `lead`: from `lg` it spans two columns with a 4:3 cover. A post with no cover
+Mark the newest one `lead`: from `lg` it spans two columns with a 3:2 cover. A post with no cover
 gets its title, large, on a plain panel. The date and the reading time use `PostList`'s words.
 
 ```tsx

@@ -194,7 +194,7 @@ export const storefrontDemos: DemoFragment = {
         type: "boolean",
         default: "false",
         description:
-          "The post the list opens with: a larger title, and from 1024 px two columns of a `LookGrid` with a 4:3 cover.",
+          "The post the list opens with: a larger title, and from 1024 px two columns of a `LookGrid` with a 3:2 cover.",
       },
       {
         name: "navigate",

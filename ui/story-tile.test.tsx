@@ -122,12 +122,12 @@ describe("StoryTile", () => {
     expect(html.match(/<a /g)?.length).toBe(1)
   })
 
-  it("crops a lead tile's cover 4:3 from lg and sizes it for two columns", () => {
+  it("crops a lead tile's cover 3:2 from lg and sizes it for two columns", () => {
     const html = render(<StoryTile {...POST} lead />)
-    expect(html).toContain('class="block aspect-3/4 w-full object-cover lg:aspect-4/3"')
+    expect(html).toContain('class="block aspect-3/4 w-full object-cover lg:aspect-3/2"')
     expect(html).toContain('sizes="(min-width: 64rem) 67vw, (min-width: 48rem) 50vw, 100vw"')
-    expect(render(<StoryTile {...POST} />)).not.toContain("lg:aspect-4/3")
-    expect(render(<StoryTile {...POST} cover={undefined} lead />)).toContain("lg:aspect-4/3")
+    expect(render(<StoryTile {...POST} />)).not.toContain("lg:aspect-3/2")
+    expect(render(<StoryTile {...POST} cover={undefined} lead />)).toContain("lg:aspect-3/2")
   })
 
   it("spans two columns of a LookGrid from lg when it leads, and the rest one", () => {

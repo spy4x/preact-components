@@ -24,7 +24,7 @@ export interface StoryTileProps {
    */
   cover?: LookPhoto
   /**
-   * The post the list opens with: a larger title and, from `lg`, a 4:3 cover. A `LookGrid` reads
+   * The post the list opens with: a larger title and, from `lg`, a 3:2 cover. A `LookGrid` reads
    * this prop and gives the tile two columns from `lg`. A phone shows it at full width like the
    * rest.
    */
@@ -82,7 +82,7 @@ export function StoryTile(
   const format = useFormat().utc()
   const words = useLabels("PostList", POST_LIST_LABELS, labels, { readTime: ["minutes"] })
   const Heading = `h${headingLevel}` as const
-  const aspect = lead ? "lg:aspect-4/3" : undefined
+  const aspect = lead ? "lg:aspect-3/2" : undefined
   return (
     <div class={join("relative flex flex-col gap-3", className)} data-e2e="story-tile">
       {cover
