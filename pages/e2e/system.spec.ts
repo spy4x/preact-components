@@ -1726,7 +1726,9 @@ export const specs: readonly Spec[] = [
     run: async (page) => {
       const shell = page.locator(`[data-e2e="shell-demo"]`)
       const trigger = shell.locator(`[data-e2e="shell-user-menu-button"]`)
-      await trigger.scrollIntoViewIfNeeded()
+      // Centred, so the menu has room to open down inside the demo: near the window's bottom edge
+      // it opens up, out of the demo's clipped frame, and nothing in it can be clicked.
+      await trigger.evaluate((element) => element.scrollIntoView({ block: "center" }))
       await trigger.click()
       const profile = shell.getByRole("menuitem", { name: "Your profile", exact: true })
       if (!await clickCancelled(profile)) {
