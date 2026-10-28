@@ -109,7 +109,7 @@ export function Tour(
       onClose={(reason) => onClose(reason === "escape" ? "escape" : "skip")}
       footer={
         <>
-          <p id={countId} class="mr-auto text-xs text-muted">
+          <p id={countId} class="me-auto text-xs text-muted">
             {stepLabel(index + 1, steps.length)}
           </p>
           <Button variant="ghost" size="sm" onClick={() => onClose("skip")}>{skipLabel}</Button>

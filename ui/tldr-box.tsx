@@ -40,7 +40,7 @@ export function TldrBox(
       data-e2e="tldr-box"
     >
       <Heading id={headingId} class="text-base font-semibold text-foreground">{title}</Heading>
-      <ul class="mt-2 list-disc pl-6 text-base leading-7 text-foreground marker:text-muted">
+      <ul class="mt-2 list-disc ps-6 text-base leading-7 text-foreground marker:text-muted">
         {items.map((item, index) => (
           <li key={index} class={index > 0 ? "mt-1" : undefined}>{item}</li>
         ))}

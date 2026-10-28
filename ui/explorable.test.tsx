@@ -6,7 +6,7 @@ import { Explorable } from "./explorable.tsx"
 const controls = <input aria-label="Rate" type="range" />
 
 describe("Explorable", () => {
-  it("renders a figure named by its title, with the result and a left-aligned caption", () => {
+  it("renders a figure named by its title, with the result and a caption aligned to the start", () => {
     const html = render(
       <Explorable id="rates" title="What a rate does" lead="Move the slider." caption="Source: X">
         <p>Result</p>
@@ -16,7 +16,7 @@ describe("Explorable", () => {
     expect(html).toMatch(/<p id="rates-title"[^>]*>What a rate does<\/p>/)
     expect(html).toContain("Move the slider.")
     expect(html).toContain("<p>Result</p>")
-    expect(html).toMatch(/<figcaption class="[^"]*\btext-left\b[^"]*">Source: X<\/figcaption>/)
+    expect(html).toMatch(/<figcaption class="[^"]*\btext-start\b[^"]*">Source: X<\/figcaption>/)
   })
 
   it("sets the title as a paragraph, not a heading, so a table of contents skips it", () => {

@@ -244,7 +244,7 @@ export function Field(
       <label for={labelTarget(labelFor, id)} class={join("pc-label", disabled && "opacity-50")}>
         {label}
         {(required === true || asksRequired(control)) && (
-          <span aria-hidden="true" class="ml-1 text-danger">*</span>
+          <span aria-hidden="true" class="ms-1 text-danger">*</span>
         )}
       </label>
     )

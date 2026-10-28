@@ -119,6 +119,8 @@ export interface ToastrProps {
    * The window corner the stack sits in, 2rem from both edges. Defaults to `"top-right"`. In a
    * window narrower than `sm` (640 px) the stack spans the width instead, 1rem from the left, the
    * right and the corner's top or bottom edge, so a toast never leaves a narrow phone's screen.
+   * The names are those of a left-to-right page: in a right-to-left one the corners mirror, so
+   * `"top-right"` sits top left, at the end of a line.
    *
    * The toasts keep the order of {@link ToastrProps.toasts} in every corner, top to bottom, and each
    * one slides in from the corner's side: from the right in a right corner, from the left in a left
@@ -153,7 +155,7 @@ export interface ToastrProps {
  * (`auto`), and the width is capped at 20rem, 24rem from `md`.
  *
  * The values switch, not the classes: every offset and width class below is unprefixed, so a
- * caller's own important `top-20!`, `left-4!`, `w-auto!` or `max-w-sm!` in `class` wins over it at
+ * caller's own important `top-20!`, `start-4!`, `w-auto!` or `max-w-sm!` in `class` wins over it at
  * every window width.
  */
 const stackSizing = "[--toastr-gap:1rem] [--toastr-far:1rem] [--toastr-width:auto] " +
@@ -163,25 +165,26 @@ const stackSizing = "[--toastr-gap:1rem] [--toastr-far:1rem] [--toastr-width:aut
 /**
  * Where each corner puts the stack: `--toastr-gap` from the corner's two edges and `--toastr-far`
  * from the opposite side, which is the same gutter on a phone and `auto` from `sm` up. `top-right`
- * is the default.
+ * is the default. The sides are logical, so a right-to-left page mirrors every corner.
  */
 const cornerClasses: Record<ToastCorner, string> = {
-  "top-left": "top-(--toastr-gap) right-(--toastr-far) left-(--toastr-gap)",
-  "top-right": "top-(--toastr-gap) right-(--toastr-gap) left-(--toastr-far)",
-  "bottom-left": "right-(--toastr-far) bottom-(--toastr-gap) left-(--toastr-gap)",
-  "bottom-right": "right-(--toastr-gap) bottom-(--toastr-gap) left-(--toastr-far)",
+  "top-left": "top-(--toastr-gap) end-(--toastr-far) start-(--toastr-gap)",
+  "top-right": "top-(--toastr-gap) end-(--toastr-gap) start-(--toastr-far)",
+  "bottom-left": "end-(--toastr-far) bottom-(--toastr-gap) start-(--toastr-gap)",
+  "bottom-right": "end-(--toastr-gap) bottom-(--toastr-gap) start-(--toastr-far)",
 }
 
 /**
  * How a new toast enters: from the corner's side, fading in, through `@starting-style`, so there is
- * no keyframe to ship and a toast already on screen never moves. Skipped under
+ * no keyframe to ship and a toast already on screen never moves. The side mirrors with the corner
+ * in a right-to-left page. Skipped under
  * `prefers-reduced-motion: reduce`.
  */
 const enterClasses: Record<"left" | "right", string> = {
   left:
-    "transition-[translate,opacity] duration-300 motion-safe:starting:-translate-x-8 motion-safe:starting:opacity-0",
+    "transition-[translate,opacity] duration-300 motion-safe:starting:-translate-x-8 motion-safe:[&:dir(rtl)]:starting:translate-x-8 motion-safe:starting:opacity-0",
   right:
-    "transition-[translate,opacity] duration-300 motion-safe:starting:translate-x-8 motion-safe:starting:opacity-0",
+    "transition-[translate,opacity] duration-300 motion-safe:starting:translate-x-8 motion-safe:[&:dir(rtl)]:starting:-translate-x-8 motion-safe:starting:opacity-0",
 }
 
 const variantClasses: Record<ToastVariant, string> = {
@@ -486,7 +489,7 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
               <button
                 type="button"
                 data-e2e={action.dataE2E}
-                class={`mt-1 rounded py-1 text-left font-semibold underline underline-offset-4 break-words ${TOUCH_TARGET}`}
+                class={`mt-1 rounded py-1 text-start font-semibold underline underline-offset-4 break-words ${TOUCH_TARGET}`}
                 onClick={runAction}
               >
                 {action.label}
@@ -503,7 +506,7 @@ function Toast({ toast, paused, onDismiss, returnFocus, dismissLabel, enterFrom 
         }
         <button
           type="button"
-          class={`-my-3 -mr-3 inline-flex shrink-0 items-center self-start rounded sm:-my-2 sm:-mr-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current ${TOUCH_TARGET}`}
+          class={`-my-3 -me-3 inline-flex shrink-0 items-center self-start rounded sm:-my-2 sm:-me-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current ${TOUCH_TARGET}`}
           onClick={dismissHere}
           aria-label={dismissLabel}
         >

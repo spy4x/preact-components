@@ -13,6 +13,7 @@ import { useSignal } from "@preact/signals"
 import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import { isRightToLeft } from "./direction.ts"
 import { buttonClasses } from "./button.tsx"
 import { FrameChrome } from "./frame-chrome.tsx"
 import { Lightbox } from "./lightbox.tsx"
@@ -102,7 +103,7 @@ const listClass =
   "flex min-w-0 gap-2 overflow-x-auto p-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:p-0"
 
 const tabBase =
-  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-3 whitespace-nowrap rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors lg:w-full lg:whitespace-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-3 whitespace-nowrap rounded-md border px-3 py-2 text-start text-sm font-medium transition-colors lg:w-full lg:whitespace-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 const tabSelected = "border-selected bg-selected-soft text-selected lg:border-transparent"
 const tabIdle =
   "border-subtle text-muted hover:bg-hover hover:text-foreground lg:border-transparent"
@@ -151,16 +152,24 @@ function panelId(id: string): string {
 /**
  * Index of the step a key press on the tab at `current` moves to: `Tabs`' {@link nextTabIndex},
  * with Up and Down stepping like Left and Right, because the list is a column from 1024 px and a
- * row below it. Wraps at both ends; Home and End jump.
+ * row below it. Wraps at both ends; Home and End jump. In a right-to-left page Left and Right swap,
+ * and Up and Down still go to the previous and the next step.
  *
  * @param key Value of `KeyboardEvent.key`.
  * @param current Index of the focused tab.
  * @param count Number of steps.
+ * @param rtl Whether the list lays out right to left. Defaults to `false`.
  * @returns The index to move to, or `undefined` for a key the tour does not own.
  */
-export function nextStepIndex(key: string, current: number, count: number): number | undefined {
-  const rowKey = key === "ArrowUp" ? "ArrowLeft" : key === "ArrowDown" ? "ArrowRight" : key
-  return nextTabIndex(rowKey, current, count)
+export function nextStepIndex(
+  key: string,
+  current: number,
+  count: number,
+  rtl = false,
+): number | undefined {
+  const [back, forward] = rtl ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"]
+  const rowKey = key === "ArrowUp" ? back : key === "ArrowDown" ? forward : key
+  return nextTabIndex(rowKey, current, count, [], rtl)
 }
 
 /** The English words of `ScreenTour`, each one a prop of its own. */
@@ -250,7 +259,8 @@ export function ScreenTour(
   }
 
   const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextStepIndex(event.key, index, steps.length)
+    const rtl = isRightToLeft(event.currentTarget as Element)
+    const next = nextStepIndex(event.key, index, steps.length, rtl)
     if (next === undefined) return
     event.preventDefault()
     moveTo(next)

@@ -202,7 +202,7 @@ describe("Field", () => {
       </Field>,
     )
 
-    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+    expect(html).toContain('<span aria-hidden="true" class="ms-1 text-danger">*</span>')
     expect(labelFors(html)).toEqual(["email"])
   })
 
@@ -243,7 +243,7 @@ describe("Field", () => {
       </Field>,
     )
 
-    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+    expect(html).toContain('<span aria-hidden="true" class="ms-1 text-danger">*</span>')
   })
 
   it("draws the star for a required control that a function child returns", () => {
@@ -253,7 +253,7 @@ describe("Field", () => {
       </Field>,
     )
 
-    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+    expect(html).toContain('<span aria-hidden="true" class="ms-1 text-danger">*</span>')
   })
 
   it("draws the star for a control whose own required is a signal holding true", () => {
@@ -263,7 +263,7 @@ describe("Field", () => {
       </Field>,
     )
 
-    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+    expect(html).toContain('<span aria-hidden="true" class="ms-1 text-danger">*</span>')
   })
 
   it("draws no star for a control whose own required is a signal holding false", () => {

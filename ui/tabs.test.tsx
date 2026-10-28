@@ -209,6 +209,13 @@ describe("Tabs", () => {
 })
 
 describe("nextTabIndex", () => {
+  it("swaps Left and Right in a right-to-left tablist, where the first tab is on the right", () => {
+    expect(nextTabIndex("ArrowLeft", 0, 3, [], true)).toBe(1)
+    expect(nextTabIndex("ArrowRight", 0, 3, [], true)).toBe(2)
+    expect(nextTabIndex("ArrowLeft", 2, 3, [false, true, false], true)).toBe(0)
+    expect(nextTabIndex("Home", 2, 3, [], true)).toBe(0)
+  })
+
   it("steps right and wraps past the end", () => {
     expect(nextTabIndex("ArrowRight", 0, 3)).toBe(1)
     expect(nextTabIndex("ArrowRight", 2, 3)).toBe(0)

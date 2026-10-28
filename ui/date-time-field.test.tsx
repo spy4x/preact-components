@@ -40,9 +40,9 @@ describe("DateTimeField", () => {
       />,
     )
     expect(summer).toContain(
-      '<span id="at-zone" class="text-sm text-muted">Time zone: Berlin, Europe · GMT+2</span>',
+      '<span id="at-zone" class="text-sm text-muted">Time zone: <bdi>Berlin, Europe · GMT+2</bdi></span>',
     )
-    expect(winter).toContain("Time zone: Berlin, Europe · GMT+1")
+    expect(winter).toContain("Time zone: <bdi>Berlin, Europe · GMT+1</bdi>")
   })
 
   it("describes the input by its zone line, then the field's messages", () => {
@@ -89,14 +89,14 @@ describe("DateTimeField", () => {
       />,
     )
     expect(html).toContain('value="2026-10-25T08:30"')
-    expect(html).toContain("Time zone: UTC")
+    expect(html).toContain("Time zone: <bdi>UTC")
   })
 
   it("marks a required field on its label and its input", () => {
     const html = render(
       <DateTimeField id="at" label="At" value={null} timeZone="UTC" onChange={noop} required />,
     )
-    expect(html).toContain('<span aria-hidden="true" class="ml-1 text-danger">*</span>')
+    expect(html).toContain('<span aria-hidden="true" class="ms-1 text-danger">*</span>')
     expect(html).toContain("required")
   })
 })

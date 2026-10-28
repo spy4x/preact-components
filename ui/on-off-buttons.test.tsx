@@ -66,9 +66,9 @@ describe("OnOffButtons", () => {
   it("squares the halves off against each other", () => {
     const html = render(<OnOffButtons value onSwitch={() => {}} />)
 
-    expect(html).toContain("rounded-r-none")
-    expect(html).toContain("rounded-l-none")
-    expect(html).toContain("-ml-px")
+    expect(html).toContain("rounded-e-none")
+    expect(html).toContain("rounded-s-none")
+    expect(html).toContain("-ms-px")
   })
 
   it("uses the caller's labels", () => {

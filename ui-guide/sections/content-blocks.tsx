@@ -36,6 +36,7 @@ const POSTS = [
       "A Jobs page in the admin panel lists every run, its attempts and its last error, and runs a failed one again with one click.",
     publishedAt: "2026-10-23T09:00:00.000Z",
     readMinutes: 6,
+    lang: "en",
   },
   {
     href: "#demo-PostList",
@@ -43,6 +44,7 @@ const POSTS = [
     description: "Posts are written in the admin panel and go live at the time you pick.",
     publishedAt: "2026-10-02T09:00:00.000Z",
     readMinutes: 4,
+    lang: "en",
   },
 ]
 
@@ -115,9 +117,9 @@ export const contentBlockDemos: DemoFragment = {
     props: [
       {
         name: "posts",
-        type: "{ href, title, description?, publishedAt, readMinutes? }[]",
+        type: "{ href, title, description?, publishedAt, readMinutes?, lang?, dir? }[]",
         description:
-          "The posts, newest first. `publishedAt` is shown as its UTC day. An empty list renders nothing.",
+          'The posts, newest first. `publishedAt` is shown as its UTC day. An empty list renders nothing. `lang` marks the title and description, such as an English post on an Arabic page, with `dir="auto"` unless `dir` is given.',
       },
       {
         name: "headingLevel / label",
@@ -131,7 +133,7 @@ export const contentBlockDemos: DemoFragment = {
         description: `The reading time's words, "6 min read" by default.`,
       },
     ],
-    snippet: `<PostList posts={posts} />`,
+    snippet: `<PostList posts={posts.map((post) => ({ ...post, lang: "en" }))} />`,
     render: () => <PostList posts={POSTS} headingLevel={4} label="Recent posts" />,
   },
   FactList: {

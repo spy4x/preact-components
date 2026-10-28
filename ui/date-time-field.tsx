@@ -4,6 +4,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { Field } from "./field.tsx"
 import { Input } from "./input.tsx"
 import { useLabels } from "./i18n.tsx"
+import { Isolated } from "./bdi.tsx"
 
 /** The words a {@link DateTimeField} shows. */
 export interface DateTimeFieldLabels {
@@ -110,7 +111,7 @@ export function DateTimeField(
             onInput={(event) => onChange(fromWallClock(event.currentTarget.value, zone))}
           />
           <span id={zoneId} class="text-sm text-muted">
-            {words.zone(zoneLabel(zone, instant ?? new Date()))}
+            <Isolated message={words.zone} value={zoneLabel(zone, instant ?? new Date())} />
           </span>
         </div>
       )}

@@ -7,6 +7,7 @@ import type { Translator } from "@spy4x/platform/universal/i18n"
 import { Button, type ButtonVariant } from "./button.tsx"
 import { ENGLISH, translate, useT } from "./i18n.tsx"
 import { TOUCH_TARGET } from "./touch-target.ts"
+import { isolate } from "./bdi.tsx"
 
 /**
  * One file a {@link FileInput} refused, and why.
@@ -346,10 +347,10 @@ export function FileInput(
     if (rejected.length > 0) {
       const text = rejected.map((rejection) =>
         rejection.reason === "too-large"
-          ? tooLargeLabel(rejection.file.name, maxSize ?? 0)
+          ? tooLargeLabel(isolate(rejection.file.name), maxSize ?? 0)
           : rejection.reason === "wrong-type"
-          ? wrongTypeLabel(rejection.file.name)
-          : tooManyLabel(rejection.file.name)
+          ? wrongTypeLabel(isolate(rejection.file.name))
+          : tooManyLabel(isolate(rejection.file.name))
       ).join(" ")
       announceRejection(text)
       onReject?.(rejected)
@@ -436,7 +437,7 @@ export function FileInput(
       {label !== undefined && label !== null && (
         <label for={id} class={cn("pc-label", disabled && "opacity-50")}>
           {label}
-          {required && <span aria-hidden="true" class="ml-1 text-danger">*</span>}
+          {required && <span aria-hidden="true" class="ms-1 text-danger">*</span>}
         </label>
       )}
       <div

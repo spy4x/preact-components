@@ -252,7 +252,7 @@ describe("CommandPalette", () => {
     // No class switches at `sm`: the field is the same at every width.
     expect(trigger?.[1].split(" ").filter((name) => name.startsWith("sm:"))).toEqual([])
     expect(trigger?.[2]).toContain(
-      `<span class="min-w-0 flex-1 truncate text-left">${defaultCommandPaletteLabels.placeholder}</span>`,
+      `<span class="min-w-0 flex-1 truncate text-start">${defaultCommandPaletteLabels.placeholder}</span>`,
     )
     expect(trigger?.[2]).not.toContain("hidden sm:")
   })
