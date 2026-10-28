@@ -6,7 +6,7 @@ import type { VNode } from "preact"
 import en from "./i18n/en.ts"
 import de from "./i18n/de.ts"
 import { I18nContext } from "./i18n.tsx"
-import { languageName, LanguagePicker } from "./language-picker.tsx"
+import { LanguageButton, languageName, LanguagePicker } from "./language-picker.tsx"
 
 const LANGUAGES = ["en", "de", "es", "pt-BR", "ru", "ar"]
 
@@ -174,5 +174,50 @@ describe("LanguagePicker list mode", () => {
       <LanguagePicker mode="links" languages={LANGUAGES} current="en" href={(tag) => `/${tag}/`} />,
     )
     for (const tag of links(html)) expect(tag).toMatch(/class="notranslate /)
+  })
+})
+
+describe("LanguageButton", () => {
+  /** The button's own markup: the closed dialog after it is left out. */
+  const button = (html: string) => html.slice(0, html.indexOf("</button>") + 9)
+
+  it("shows a globe and the language in use, named in itself with lang, dir and notranslate", () => {
+    const html = button(render(<LanguageButton languages={LANGUAGES} current="ar" />))
+    expect(html).toMatch(/^<button [^>]*aria-haspopup="dialog"[^>]*data-e2e="language-button"/)
+    expect(html).toContain(`<svg`)
+    expect(html).toContain(
+      `<span class="sr-only">Language</span><span lang="ar" dir="rtl" class="notranslate">العربية</span>`,
+    )
+  })
+
+  it("shows the device's language while current follows it", () => {
+    const html = button(
+      render(<LanguageButton languages={LANGUAGES} current={null} automatic="ru" />),
+    )
+    expect(html).toContain(`<span lang="ru" dir="ltr" class="notranslate">Русский</span>`)
+  })
+
+  it("shows the dialog's title, visibly, when no language is known", () => {
+    const html = button(render(<LanguageButton languages={LANGUAGES} current={null} />))
+    expect(html).not.toContain("sr-only")
+    expect(html).toMatch(/<\/svg>Language<\/button>$/)
+  })
+
+  it("reads the dialog's title from the catalog, and takes the caller's over it", () => {
+    expect(button(inGerman(<LanguageButton languages={LANGUAGES} current="en" />))).toContain(
+      `<span class="sr-only">Sprache</span>`,
+    )
+    const html = render(
+      <LanguageButton languages={LANGUAGES} current="en" labels={{ title: "Interface" }} />,
+    )
+    expect(button(html)).toContain(`<span class="sr-only">Interface</span>`)
+  })
+
+  it("renders no dialog until opened, and takes buttonDataE2E on the button", () => {
+    const html = render(
+      <LanguageButton languages={LANGUAGES} current="en" buttonDataE2E="public-language" />,
+    )
+    expect(button(html)).toContain(`data-e2e="public-language"`)
+    expect(html).toBe(button(html))
   })
 })

@@ -687,6 +687,7 @@ Kbd	component	@spy4x/preact-ui	One key, a combination of keys or a sequence of p
 KeyFace	type	@spy4x/preact-ui	How one key of a combination is drawn: what is on the key, and its name when that is a glyph.
 LIST_FIELD_LABELS	constant	@spy4x/preact-ui	The English words `ListField` shows when the caller passes none.
 LabelParams	type	@spy4x/preact-ui	For a label that is a function, the names its arguments take in the message, in order: `{ page: ["page"] }` turns `"Page {page}"` into `(page) => "Page 3"`.
+LanguageButton	component	@spy4x/preact-ui	A ghost button with `IconGlobe` and the language in use, named in itself, that opens `LanguageDialog`: the language switch of a signed-out header, so a visitor who landed in a language they cannot read finds their own before signing in.
 LanguageDialog	component	@spy4x/preact-ui	A `Modal` holding the `LanguagePicker` list.
 LanguagePicker	component	@spy4x/preact-ui	The language picker: every language by its own name, as a radio group (`mode="list"`) or as links (`mode="links"`).
 LayoutCustomiser	component	@spy4x/preact-ui	A dialog that reorders and hides the parts of a page: a `SortableList` (drag a handle, or use the keyboard) with a switch per row.
