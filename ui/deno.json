@@ -48,6 +48,7 @@
     "./image-gallery": "./image-gallery.tsx",
     "./input": "./input.tsx",
     "./input-button": "./input-button.tsx",
+    "./language-picker": "./language-picker.tsx",
     "./layout": "./layout.tsx",
     "./layout-customiser": "./layout-customiser.tsx",
     "./lightbox": "./lightbox.tsx",

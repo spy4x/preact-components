@@ -161,6 +161,15 @@ Kbd.space	20eac5aae274985f
 Kbd.tab	90ddf1963abb36c9
 Kbd.then	21af6f1260f927f5
 Kbd.up	9d2e0b449d951c6f
+LanguageDialog.closeLabel	7d9eb7acb13e2462
+LanguageDialog.description	a2f7a3311ac41f72
+LanguageDialog.done	11a6767d5674c7e4
+LanguageDialog.title	a4fe65264ef7dbb3
+LanguagePicker.automatic	a78bcbc87e36c7eb
+LanguagePicker.error	20d45554ef35c99f
+LanguagePicker.label	a4fe65264ef7dbb3
+LanguagePicker.loading	909a22ac42c52561
+LanguagePicker.offline	3cb8a39b153d4d58
 LayoutCustomiser.done	11a6767d5674c7e4
 LayoutCustomiser.hidden	7e6fefff0f0aeb6c
 LayoutCustomiser.list	efbcd674b4f43dcc

@@ -288,6 +288,15 @@ export {
   type LinkClickTarget,
   type LinkProps,
 } from "./link.tsx"
+export {
+  LanguageDialog,
+  type LanguageDialogLabels,
+  type LanguageDialogProps,
+  languageName,
+  LanguagePicker,
+  type LanguagePickerLabels,
+  type LanguagePickerProps,
+} from "./language-picker.tsx"
 export { LoadingSkeleton, type LoadingSkeletonProps } from "./loading-skeleton.tsx"
 export { LoadingSpinner, type LoadingSpinnerProps, type SpinnerSize } from "./loading-spinner.tsx"
 export {

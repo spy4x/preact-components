@@ -27,6 +27,8 @@ import {
   FileInput,
   Grid,
   isValidDateTimeRange,
+  LanguageDialog,
+  LanguagePicker,
   OnOffButtons,
   rangeForPreset,
   Slider,
@@ -43,10 +45,17 @@ import {
   IconChevronDown,
   IconCog6Tooth,
   IconEllipsisVertical,
+  IconGlobe,
   IconTrashBin,
   IconUser,
 } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
+import {
+  DEMO_LANGUAGES,
+  InDemoLanguage,
+  SimulateLanguageStates,
+  useDemoLanguage,
+} from "./language-demo.tsx"
 
 /** The small caption over one variant inside a card that shows several. */
 function Variant({ title, children }: { title: ComponentChildren; children: ComponentChildren }) {
@@ -54,6 +63,70 @@ function Variant({ title, children }: { title: ComponentChildren; children: Comp
     <Stack gap="sm">
       <h4 class="text-sm font-medium text-foreground">{title}</h4>
       {children}
+    </Stack>
+  )
+}
+
+/**
+ * The picker both ways, in one language state: a list that switches everything in the card, with
+ * chips for the offline and failed states, and the links a website's footer draws.
+ */
+function LanguagePickerDemo() {
+  const language = useDemoLanguage()
+  return (
+    <Stack gap="md">
+      <SimulateLanguageStates language={language} />
+      <InDemoLanguage language={language}>
+        <Stack gap="lg">
+          <Variant title="List, for an app">
+            <LanguagePicker
+              languages={DEMO_LANGUAGES}
+              current={language.current}
+              automatic={language.automatic}
+              pending={language.pending}
+              unavailable={language.unavailable}
+              failed={language.failed}
+              onSelect={language.select}
+            />
+          </Variant>
+          <Variant title="Links, for a website's footer">
+            <LanguagePicker
+              mode="links"
+              languages={DEMO_LANGUAGES}
+              current={language.current ?? language.automatic}
+              href={(tag) => `#language-${tag}`}
+            />
+          </Variant>
+        </Stack>
+      </InDemoLanguage>
+    </Stack>
+  )
+}
+
+/** The dialog behind a button, switching the card's language while it stays open. */
+function LanguageDialogDemo() {
+  const language = useDemoLanguage()
+  const open = useSignal(false)
+  return (
+    <Stack gap="md">
+      <SimulateLanguageStates language={language} />
+      <InDemoLanguage language={language}>
+        <Button variant="outline" onClick={() => open.value = true} data-e2e="language-dialog-open">
+          <IconGlobe class="size-4" aria-hidden="true" />
+          Choose a language
+        </Button>
+        <LanguageDialog
+          open={open.value}
+          onClose={() => open.value = false}
+          languages={DEMO_LANGUAGES}
+          current={language.current}
+          automatic={language.automatic}
+          pending={language.pending}
+          unavailable={language.unavailable}
+          failed={language.failed}
+          onSelect={language.select}
+        />
+      </InDemoLanguage>
     </Stack>
   )
 }
@@ -1334,6 +1407,102 @@ export const inputDemos = {
   marks={[{ value: 2, label: "Inflation target" }]}
 />`,
     render: () => <SliderDemo />,
+  },
+  LanguagePicker: {
+    summary:
+      "Every language by its own name: a radio group for an app's settings, or plain links for a website's footer that work without JavaScript.",
+    wide: false,
+    props: [
+      {
+        name: "languages / current",
+        type: "string[] / string | null",
+        description:
+          "The tags offered, in order, and the one in use; `null` follows the device (`automatic`).",
+      },
+      {
+        name: "mode",
+        type: `"list" | "links"`,
+        default: `"list"`,
+        description:
+          "`list` is a radio group: one tab stop, arrow keys move and choose. `links` is a `<nav>` of `<a href hreflang lang>`.",
+      },
+      {
+        name: "onSelect / href",
+        type: "(tag | null) => void / (tag) => string",
+        description:
+          "What a choice does: the list calls `onSelect`; each link goes to `href(tag)`.",
+      },
+      {
+        name: "automatic",
+        type: "string",
+        description:
+          'The device\'s language. Given, the list starts with "Automatic: same as this device", chosen when `current` is `null`.',
+      },
+      {
+        name: "pending / unavailable / failed",
+        type: "string | null / string[] / string",
+        description:
+          "The language loading (a spinner, read aloud), the ones that cannot load offline (disabled), and one that failed (an error under the list).",
+      },
+      {
+        name: "labels",
+        type: "{ label?, automatic?, loading?, error?, offline? }",
+        description: "The words; each language's own name always comes from `Intl.DisplayNames`.",
+      },
+    ],
+    snippet: `<LanguagePicker
+  languages={["en", "de", "es", "pt-BR", "ru", "ar"]}
+  current={language}
+  automatic={navigator.language}
+  pending={loading}
+  onSelect={(tag) => switchLanguage(tag)}
+/>
+
+<LanguagePicker
+  mode="links"
+  languages={["en", "de", "ar"]}
+  current="en"
+  href={(tag) => \`/\${tag}/\`}
+/>`,
+    render: () => <LanguagePickerDemo />,
+  },
+  LanguageDialog: {
+    summary:
+      "The language list in a dialog: a choice applies at once and the dialog stays open in the new language, with focus on the chosen row.",
+    wide: false,
+    props: [
+      {
+        name: "open / onClose",
+        type: "boolean / () => void",
+        description: "On screen, and closed by Done, Escape, the close control or the backdrop.",
+      },
+      {
+        name: "languages / current / onSelect",
+        type: "string[] / string | null / (tag | null) => void",
+        description: "As on `LanguagePicker`'s list.",
+      },
+      {
+        name: "automatic / pending / unavailable / failed",
+        type: "string / string | null / string[] / string",
+        description:
+          "As on `LanguagePicker`: the device's language, and the loading, offline and error states.",
+      },
+      {
+        name: "labels / pickerLabels",
+        type: "{ title?, description?, done?, closeLabel? } / LanguagePickerLabels",
+        description: "The dialog's words, and the list's.",
+      },
+    ],
+    snippet: `<LanguageDialog
+  open={open}
+  onClose={() => setOpen(false)}
+  languages={["en", "de", "es", "pt-BR", "ru", "ar"]}
+  current={language}
+  automatic={navigator.language}
+  pending={loading}
+  onSelect={(tag) => switchLanguage(tag)}
+/>`,
+    render: () => <LanguageDialogDemo />,
   },
   OnOffButtons: {
     summary:
