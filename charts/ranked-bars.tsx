@@ -105,11 +105,11 @@ const numberCell = "py-2 ps-3 text-end align-top tabular-nums whitespace-nowrap"
  * a table with a header row, server-rendered like `Bars`.
  *
  * Per row: an optional 40 px `image`, then the label (a link with `href`, a button with `onSelect`,
- * either covering the whole row with its hit area and focus ring; a button needs JavaScript; a
- * link goes through `navigate` when given, as `Link` does), an
+ * either covering the whole row with its hit area and focus ring; a button needs JavaScript), an
  * optional muted `note` under it and the bar, then the bar's number and one to three more from the
  * row's `values`, right-aligned in tabular figures. A missing or non-finite number prints "–". A
- * `lowSample` row is drawn in the muted text colour with a fainter bar.
+ * `lowSample` row is drawn in the muted text colour with a fainter bar. Given `navigate`, a plain
+ * click on a row link calls it instead of loading the page, as `Link` does.
  *
  * Below `sm` the extra columns leave the table and their numbers join the note's muted line under
  * the label, each after its column's header ("Views 210 · mostly Zalo A"), so a phone shows two
