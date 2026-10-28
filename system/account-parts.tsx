@@ -1,7 +1,8 @@
 /**
  * The parts `AccountMenu` and `AppShell`'s phone sheet share: the role badge, the identity row
- * (avatar, name, e-mail, badge), the language row's content and the renderer of one account item. Internal to this package, so
- * it is not in the package's exports; `account-menu.tsx` re-exports `AccountTag`.
+ * (avatar, name, e-mail, badge), the language row's content and the renderer of one account
+ * item. Internal to this package, so it is not in the package's exports; `account-menu.tsx`
+ * re-exports `AccountTag`.
  *
  * @module
  */
