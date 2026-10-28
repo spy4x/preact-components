@@ -1,6 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
-import { useRef } from "preact/hooks"
+import { useLayoutEffect, useRef } from "preact/hooks"
 import { inlineStep, isRightToLeft } from "./direction.ts"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import {
@@ -51,7 +51,10 @@ export interface TabsProps {
   label?: string
   /** Extra utilities for the root container. */
   class?: string
-  /** Extra utilities for the tablist. */
+  /**
+   * Extra utilities for the tablist. A row that scrolls sideways (`flex-nowrap overflow-x-auto`)
+   * scrolls the selected tab into view on the first render and whenever `active` changes.
+   */
   listClass?: string
   /** Extra utilities for every tab button. */
   tabClass?: string
@@ -119,6 +122,19 @@ function rovingIndex(flags: readonly boolean[], activeIndex: number): number {
   if (activeIndex >= 0 && !flags[activeIndex]) return activeIndex
   const firstEnabled = flags.indexOf(false)
   return firstEnabled === -1 ? 0 : firstEnabled
+}
+
+/**
+ * Scroll `list` sideways by the least that shows the whole of `tab`, and never the page, as
+ * `scrollIntoView` would. Measured in viewport pixels, so the same sum holds in a right-to-left
+ * row, whose `scrollLeft` runs from `0` down. A row that does not scroll ignores the assignment.
+ */
+function revealInRow(list: HTMLElement, tab: HTMLElement): void {
+  const start = list.getBoundingClientRect().left + list.clientLeft
+  const end = start + list.clientWidth
+  const { left, right } = tab.getBoundingClientRect()
+  if (left < start) list.scrollLeft -= start - left
+  else if (right > end) list.scrollLeft += right - end
 }
 
 /**
@@ -222,6 +238,14 @@ export function Tabs(
   const activeIndex = tabs.findIndex((tab) => tab.id === active)
   const flags = tabs.map((tab) => tab.disabled === true)
   const focusIndex = rovingIndex(flags, activeIndex)
+
+  // A link or a reload can open the page on a tab far along a row that scrolls sideways; without
+  // this the row starts at its first tab and the selected one sits out of sight.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const tab = list?.querySelector<HTMLElement>(`[role="tab"][aria-selected="true"]`)
+    if (list && tab) revealInRow(list, tab)
+  }, [active])
 
   /**
    * Focus the tab at `index` and report it as selected.
