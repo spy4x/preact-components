@@ -6021,10 +6021,12 @@ What the page does for `OrderBar` on a phone, below `lg`:
 
 - Put it last in the main column, outside the page's side padding, so the bar spans the screen,
   and not inside an element that scrolls on its own: it sticks to the page's scroll.
-- Leave room under the controls above it. Once scripts run, the bar sets the page's
-  `scroll-padding-bottom` to its own height, so a control Tab reaches stops above the bar. For a
-  page that also works without scripts, set a starting value in the page's CSS, about the bar's
-  height: `@media (width < 64rem) { html { scroll-padding-bottom: 14rem; } }`.
+- Leave room under the controls above it. Once scripts run, while the bar is stuck to the bottom
+  of the screen and focus is in its form (the `form` it names, else the form or the element around
+  it), the bar sets the page's `scroll-padding-bottom` to its own height and scrolls the focused
+  control above it. Focus elsewhere leaves the page as it was. For a page that also works without
+  scripts, set a starting value in the page's CSS, about the bar's height:
+  `@media (width < 64rem) { html { scroll-padding-bottom: 14rem; } }`.
 
 ## ListField and DateTimeField
 
@@ -7751,6 +7753,10 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 ### OrderBar (`./order-bar`)
 
 - `ORDER_BAR_LABELS` holds the English words of `OrderBar`: `region` and `message`.
+- `bindScrollRoom(bar, scope, page)` is exported for the package's own components and tests: it
+  listens on `page` (a `ScrollRoomPage`, `window` in a browser) for focus in `scope` and keeps a focused
+  control above the bar while the bar is stuck to the bottom of a phone's screen. It returns the
+  unbind, which removes the listener and restores the page's `scroll-padding-bottom`.
 
 ### ImageGallery (`./image-gallery`)
 

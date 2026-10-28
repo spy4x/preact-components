@@ -1000,6 +1000,8 @@ ImageSequence	type	@spy4x/preact-ui/zoomable-images	What `collectSequence` hands
 collectSequence	helper	@spy4x/preact-ui/zoomable-images	Build the sequence a lightbox pages through, and the position of the image that was opened.
 zoomableAlt	helper	@spy4x/preact-ui/zoomable-images	The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`, not treated as a real name because a non-empty string happens to be truthy.
 nextStepIndex	helper	@spy4x/preact-ui/screen-tour	Index of the step a key press on the tab at `current` moves to: `Tabs`' `nextTabIndex`, with Up and Down stepping like Left and Right, because the list is a column from 1024 px and a row below it.
+ScrollRoomPage	type	@spy4x/preact-ui/order-bar	The parts of the page `bindScrollRoom` reads and changes: `window` passes as one.
+bindScrollRoom	helper	@spy4x/preact-ui/order-bar	Keeps the controls of an `OrderBar`'s form out from under the bar while it is stuck to the bottom of a phone's screen.
 CLASS_PACKAGE	constant	@spy4x/preact-ui-guide	The package the class sections document.
 CatalogueSection	type	@spy4x/preact-ui-guide	One rendered section: its identity, its copy, the package it documents and its cards.
 ClassDemo	type	@spy4x/preact-ui-guide	One card of a class section: the same shape as `Demo`, plus what only a class card has.
