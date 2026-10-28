@@ -87,7 +87,9 @@ describe("Slider", () => {
       />,
     )
     expect(html).toMatch(/class="[^"]*items-start text-start"[^>]*>(?:(?!<\/span><\/span>).)*Low/)
-    expect(html).toMatch(/class="[^"]*-translate-x-full \[&amp;:dir\(rtl\)\]:translate-x-full items-end text-end"[^>]*>.*High/)
+    expect(html).toMatch(
+      /class="[^"]*-translate-x-full \[&amp;:dir\(rtl\)\]:translate-x-full items-end text-end"[^>]*>.*High/,
+    )
   })
 
   it("describes nothing when it has neither marks nor a hint", () => {
