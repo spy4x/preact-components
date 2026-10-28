@@ -175,7 +175,7 @@ describe("FileInput", () => {
 
     expect(html).toMatch(/<input[^>]*\srequired(\s|>|=)/)
     expect(html).toContain(
-      '<span aria-hidden="true" class="ml-1 text-danger">*</span>',
+      '<span aria-hidden="true" class="ms-1 text-danger">*</span>',
     )
   })
 

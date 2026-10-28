@@ -93,13 +93,26 @@ describe("Dropdown", () => {
     expect(html).toContain("origin-bottom-right")
   })
 
-  it("anchors the panel to the left when asked", () => {
+  it("anchors the panel to the start of the line when asked, growing from the start corner", () => {
     const html = render(
-      <Dropdown trigger="Menu" triggerNamedByContent horizontal="left">item</Dropdown>,
+      <Dropdown trigger="Menu" triggerNamedByContent horizontal="start">item</Dropdown>,
     )
 
-    expect(html).toContain("left-0")
-    expect(html).toContain("origin-top-left")
+    expect(html).toContain("start-0")
+    expect(html).not.toContain("end-0")
+    expect(html).toContain("origin-top-left [&amp;:dir(rtl)]:origin-top-right")
+  })
+
+  it("treats left and right as the old names of start and end", () => {
+    const start = render(
+      <Dropdown trigger="M" triggerNamedByContent horizontal="start">i</Dropdown>,
+    )
+    const end = render(<Dropdown trigger="M" triggerNamedByContent horizontal="end">i</Dropdown>)
+
+    expect(render(<Dropdown trigger="M" triggerNamedByContent horizontal="left">i</Dropdown>))
+      .toBe(start)
+    expect(render(<Dropdown trigger="M" triggerNamedByContent horizontal="right">i</Dropdown>))
+      .toBe(end)
   })
 
   it("renders an auto menu below the trigger until the browser has measured it", () => {
@@ -111,11 +124,13 @@ describe("Dropdown", () => {
     expect(html).not.toContain("bottom-full")
   })
 
-  it("defaults the panel below and to the right of the trigger", () => {
+  it("defaults the panel below the trigger and lined up with its end", () => {
     const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
 
     expect(html).toContain("top-full")
-    expect(html).toContain("right-0")
+    expect(html).toContain("end-0")
+    expect(html).not.toContain("start-0")
+    expect(html).toContain("origin-top-right [&amp;:dir(rtl)]:origin-top-left")
   })
 
   it("gives the fallback summary a button's arrow cursor instead of a text cursor", () => {
@@ -269,7 +284,7 @@ describe("DropdownItem", () => {
     ) {
       expect(attrOf(html, /<(a|button)\b[^>]*>/, "aria-keyshortcuts")).toBe("Control+E")
       expect(html).toMatch(
-        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ml-auto pl-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
+        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ms-auto ps-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
       )
     }
   })

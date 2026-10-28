@@ -83,7 +83,7 @@ export function Timeline(
             <span
               aria-hidden="true"
               data-timeline-line=""
-              class="absolute top-4 bottom-0 left-1.5 w-px -translate-x-1/2 bg-track"
+              class="absolute top-4 bottom-0 start-1.5 w-px -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 bg-track"
             />
           )}
           <span

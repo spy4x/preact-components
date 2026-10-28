@@ -57,7 +57,7 @@ export interface DropdownBaseProps {
   triggerClasses?: string
   /** Sets `data-e2e` on the trigger button. */
   triggerDataE2E?: string
-  /** Utilities for the root container; defaults to `relative inline-flex text-left`. */
+  /** Utilities for the root container; defaults to `relative inline-flex text-start`. */
   containerClasses?: string
   /** Extra utilities for the panel. */
   panelClasses?: string
@@ -68,13 +68,20 @@ export interface DropdownBaseProps {
    * bottom of the viewport and there is more room above the trigger (see {@link dropdownOpensUp}).
    */
   vertical?: "auto" | "up" | "down"
-  /** Horizontal anchor relative to the trigger. Defaults to `"right"`. */
-  horizontal?: "left" | "right"
+  /**
+   * Which edge of the trigger the menu lines up with: `"end"`, the default, or `"start"`, the ends
+   * of a line in the page's reading direction, so the menu mirrors in a right-to-left page.
+   * `"left"` and `"right"` are the old names of `"start"` and `"end"`, and mirror the same way.
+   */
+  horizontal?: DropdownAlign
   /** Accessible name for the menu, applied as `aria-label` on the panel. */
   menuLabel?: string
 }
 
 export type DropdownProps = DropdownBaseProps & DropdownTriggerName
+
+/** The edge of the trigger a {@link Dropdown} menu lines up with; `left` and `right` are aliases. */
+export type DropdownAlign = "start" | "end" | "left" | "right"
 
 /**
  * Index the open menu moves focus to for `key`, or `undefined` for a key the menu does not own.
@@ -152,7 +159,7 @@ const DropdownTrigger = createContext<RefObject<HTMLButtonElement> | null>(null)
  * pressable.
  */
 const itemClasses =
-  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
+  "flex w-full items-center gap-2 px-4 py-2 text-start text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
 /**
  * Text colour of a {@link DropdownItemProps.danger} item, in both themes. A disabled item leaves it
  * out, so a disabled destructive action looks like any other disabled item rather than a live one.
@@ -294,7 +301,7 @@ export function DropdownItem(
     ? undefined
     : announced.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
   const hint = announced.length > 0 && hotkeyHint
-    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ml-auto pl-4" />
+    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ms-auto ps-4" />
     : null
 
   // `disabled` disables the button form only, so only there does it take the red away.
@@ -452,7 +459,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     panelClasses,
     children,
     vertical = "auto",
-    horizontal = "right",
+    horizontal = "end",
     menuLabel,
   } = props
 
@@ -610,12 +617,19 @@ export function Dropdown(props: DropdownProps): JSX.Element {
 
   const opensUp = vertical === "up" || (vertical === "auto" && autoOpensUp.value)
   const verticalClass = opensUp ? "bottom-full mb-2" : "top-full mt-2"
-  const horizontalClass = horizontal === "left" ? "left-0" : "right-0"
+  // `left` and `right` are the old names of `start` and `end`. `transform-origin` has no logical
+  // keyword, so the corner the menu grows from swaps under `rtl:`.
+  const atStart = horizontal === "start" || horizontal === "left"
+  const horizontalClass = atStart ? "start-0" : "end-0"
   const originClass = opensUp
-    ? (horizontal === "left" ? "origin-bottom-left" : "origin-bottom-right")
-    : (horizontal === "left" ? "origin-top-left" : "origin-top-right")
+    ? (atStart
+      ? "origin-bottom-left [&:dir(rtl)]:origin-bottom-right"
+      : "origin-bottom-right [&:dir(rtl)]:origin-bottom-left")
+    : (atStart
+      ? "origin-top-left [&:dir(rtl)]:origin-top-right"
+      : "origin-top-right [&:dir(rtl)]:origin-top-left")
 
-  const rootClasses = cn("relative inline-flex text-left", containerClasses)
+  const rootClasses = cn("relative inline-flex text-start", containerClasses)
   const defaultTriggerClasses = triggerClasses ?? buttonClasses("icon")
   const panel = (
     <div

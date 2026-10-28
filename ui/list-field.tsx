@@ -207,7 +207,7 @@ export function ListField(
           </Button>
         )}
         {max !== undefined && (
-          <span class="ml-auto text-sm text-muted tabular-nums">
+          <span class="ms-auto text-sm text-muted tabular-nums">
             {words.count(value.length, max)}
           </span>
         )}

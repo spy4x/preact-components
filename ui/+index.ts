@@ -186,6 +186,7 @@ export {
 } from "./date-range.ts"
 export {
   Dropdown,
+  type DropdownAlign,
   type DropdownBaseProps,
   DropdownItem,
   type DropdownItemProps,

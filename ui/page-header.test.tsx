@@ -64,15 +64,25 @@ describe("PageHeader", () => {
   it("draws the title as the page's one-line h1, with its full text as the tooltip", () => {
     const html = render(<PageHeader title="Notes" subtitle="Personal" />)
     expect(html).toMatch(
-      /<h1 [^>]*title="Notes"[^>]*><span class="block truncate">Notes<\/span><\/h1>/,
+      /<h1 [^>]*title="Notes"[^>]*><span dir="auto" class="block truncate [^"]*">Notes<\/span><\/h1>/,
     )
     expect(html).toContain(">Personal</p>")
+  })
+
+  it("sets the title and the subtitle in the direction of their own words", () => {
+    // A Latin title in an Arabic page keeps its start and loses its end to the ellipsis, and still
+    // lines up with the page's start: `pages/e2e/ui.spec.ts` measures both in a browser.
+    const html = render(<PageHeader title="Notes" subtitle="Personal" />)
+    expect(html).toMatch(/<span dir="auto" class="[^"]*\[text-align:match-parent\][^"]*">Notes</)
+    expect(html).toMatch(
+      /<p dir="auto" class="[^"]*\[text-align:match-parent\][^"]*"[^>]*>Personal</,
+    )
   })
 
   it("draws the title at the level the caller picks, and no h1 then", () => {
     const html = render(<PageHeader title="Notes" headingLevel={2} />)
     expect(html).toMatch(
-      /<h2 [^>]*title="Notes"[^>]*><span class="block truncate">Notes<\/span><\/h2>/,
+      /<h2 [^>]*title="Notes"[^>]*><span dir="auto" class="block truncate [^"]*">Notes<\/span><\/h2>/,
     )
     expect(html).not.toContain("<h1")
   })
