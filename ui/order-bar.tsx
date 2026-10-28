@@ -76,9 +76,9 @@ const BAR =
   "sticky bottom-0 z-10 flex flex-col gap-3 border-t border-subtle bg-surface px-4 py-3 " +
   "lg:top-6 lg:bottom-auto lg:gap-4 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
 
-/** An outgoing chat bubble in a neutral fill: rounded, with the corner nearest the sender cut. */
+/** An outgoing chat bubble in the track grey, which stands off the canvas and the surface alike: rounded, with the corner nearest the sender cut. */
 const BUBBLE =
-  "rounded-2xl rounded-ee-sm bg-hover px-4 py-2 text-sm text-foreground whitespace-pre-line " +
+  "rounded-2xl rounded-ee-sm bg-track px-4 py-2 text-sm text-foreground whitespace-pre-line " +
   "break-words select-text"
 
 /** A button's look, a 44 px target on a phone, by its role in the bar. */
