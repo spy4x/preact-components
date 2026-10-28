@@ -315,7 +315,9 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 - **Accessibility.** `e2e/ui-guide.spec.ts` runs axe's default rule set on every guide page, in
   the light and the dark palette, once the page's late content is drawn (the Map's tiles). Each
   page and palette is two specs, the contrast rule and every other rule, because the whole scan of
-  the `ui` page came too close to a spec's 60 seconds under load (#696).
+  the `ui` page came too close to a spec's 60 seconds under load (#696). The `ui` page's other
+  rules are split again into `region`, the ARIA rules and the rest (`SPLIT_FURTHER`): that scan
+  alone still ran past 60 seconds in CI.
   `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
   axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
   the number with it and the list only shrinks. axe reports what it cannot decide as

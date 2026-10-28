@@ -730,7 +730,7 @@ NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), someth
 ORDER_BAR_LABELS	constant	@spy4x/preact-ui	The English words `OrderBar` shows when the caller passes none.
 OnDay	component	@spy4x/preact-ui	A calendar day in the person's format (`FormatContext`), `17 Oct 2026`, in a `<time datetime>` whose hover text is the exact instant.
 OnOffButtons	component	@spy4x/preact-ui	Segmented ON/OFF pair, optionally annotated with counts.
-OnboardingChecklist	component	@spy4x/preact-ui	A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one primary button, and Dismiss.
+OnboardingChecklist	component	@spy4x/preact-ui	A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one footer button (primary unless `actionVariant` says otherwise), and Dismiss.
 OnboardingStep	type	@spy4x/preact-ui	One step of an `OnboardingChecklist`.
 OnboardingStepAction	type	@spy4x/preact-ui	What a step offers to get it done: a button, or a link.
 OnboardingStepButton	type	@spy4x/preact-ui	A step's action that runs in place, such as opening a dialog.
