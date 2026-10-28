@@ -19,6 +19,6 @@ describe("Isolated", () => {
 
 describe("isolate", () => {
   it("wraps the value in a first-strong isolate and its closing mark", () => {
-    expect(isolate("report.pdf")).toBe("⁨report.pdf⁩")
+    expect(isolate("report.pdf")).toBe("\u2068report.pdf\u2069")
   })
 })

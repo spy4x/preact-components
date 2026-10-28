@@ -38,5 +38,5 @@ export function Isolated(
  * @param value The value to keep in its own direction.
  */
 export function isolate(value: string): string {
-  return `⁨${value}⁩`
+  return `\u2068${value}\u2069`
 }
