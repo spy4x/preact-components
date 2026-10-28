@@ -5166,6 +5166,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
 | `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                                                                                                          |
 | `Steps`               | `steps`                | `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter                                                                                                                                                                                              |
+| `StoryTile`           | `story-tile`           | `href`, `title`, `publishedAt`, `topic?`, `readMinutes?`, `cover?` (`{ variants, alt, sizes? }`), `lead?`, `priority?`, `viewTransitionName?`, `headingLevel?`, `navigate?`, `labels?` — a 3:4 cover (or the title on a panel) as the card, one link; dates in UTC; no JavaScript                                                                                   |
 | `SwatchChips`         | `swatch-chips`         | `legend`, `name`, `options` (`{ value, name, color, disabled?, id? }[]`), `defaultValue?` or `value?`, `onChange?` — `RadioChips` with a colour swatch before each name; works without JavaScript                                                                                                                                                                   |
 | `Table`               | `table`                | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                                                                                                                       |
 | `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                                                 |
@@ -6024,10 +6025,10 @@ draws the `h1`.
 `PostList` reads each `publishedAt` as its UTC day, through the nearest `FormatContext`, so a post
 shows the same date to every reader and on the server.
 
-## Storefront: LookTile, LookGrid, SwatchChips and OrderBar
+## Storefront: LookTile, StoryTile, LookGrid, SwatchChips and OrderBar
 
 The patterns of a shop's catalog that takes orders by chat ("Storefront" in
-`docs/design-language.md`). `LookTile`, `LookGrid` and `SwatchChips` are plain markup and CSS,
+`docs/design-language.md`). `LookTile`, `StoryTile`, `LookGrid` and `SwatchChips` are plain markup and CSS,
 and `OrderBar`'s actions are links or submit buttons, so the catalog works with no JavaScript.
 
 ```tsx
@@ -6067,6 +6068,28 @@ A photo's `variants` are what `responsiveImage` of `@spy4x/platform/universal/sr
 widths it is stored at, cropped to 3:4. For the photo to grow from the tile into the item page,
 give the item page's photo the tile's `viewTransitionName` and put
 `@view-transition { navigation: auto; }` in both pages' CSS.
+
+A shop's blog lists its posts as `StoryTile`s in the same `LookGrid`, so a post looks like an item.
+Mark the newest one `lead`: from `lg` it spans two columns with a 4:3 cover. A post with no cover
+gets its title, large, on a plain panel. The date and the reading time use `PostList`'s words.
+
+```tsx
+<LookGrid label="Stories">
+  {posts.map((post, index) => (
+    <StoryTile
+      key={post.id}
+      href={post.href}
+      title={post.title}
+      topic={post.topic}
+      publishedAt={post.publishedAt}
+      readMinutes={post.readMinutes}
+      cover={post.cover && { variants: post.cover.variants, alt: "" }}
+      lead={index === 0}
+      priority={index === 0}
+    />
+  ))}
+</LookGrid>
+```
 
 What the page does for `OrderBar` on a phone, below `lg`:
 
