@@ -20,16 +20,18 @@ const GRID = "grid grid-cols-1 gap-x-6 gap-y-12 md:grid-cols-2 md:pb-16 lg:grid-
 /**
  * Every second tile is lowered in two columns, and the middle one in three, so the columns are
  * staggered like a contact sheet. A translate moves the drawing only: the row order, the reading
- * order and the tab order stay the order of the list.
+ * order and the tab order stay the order of the list. A tile marked `data-lead` (a lead
+ * `StoryTile`) spans two columns from `lg`.
  */
-const STAGGER = "md:max-lg:even:translate-y-16 lg:nth-[3n+2]:translate-y-16"
+const STAGGER =
+  "md:max-lg:even:translate-y-16 lg:nth-[3n+2]:translate-y-16 lg:has-[[data-lead]]:col-span-2"
 
 /**
  * The looks of a shop's catalog in staggered columns: one per screen width on a phone, two from
  * 768 px and three from 1024 px, with the middle column lowered.
  *
  * Server-rendered CSS grid with no script. Each child becomes one item of a `<ul>`, in order,
- * read row by row.
+ * read row by row. A lead `StoryTile` spans two of the three columns.
  *
  * @param props The looks and options, see {@link LookGridProps}.
  */

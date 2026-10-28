@@ -643,6 +643,7 @@ export {
   type LookTileProps,
 } from "./look-tile.tsx"
 export { LookGrid, type LookGridProps } from "./look-grid.tsx"
+export { StoryTile, type StoryTileProps } from "./story-tile.tsx"
 export { SwatchChips, type SwatchChipsProps, type SwatchOption } from "./swatch-chips.tsx"
 export {
   ORDER_BAR_LABELS,

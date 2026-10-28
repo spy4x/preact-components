@@ -37,7 +37,7 @@ describe("LookGrid", () => {
       </LookGrid>,
     )
     expect(html).toContain(
-      '<li class="md:max-lg:even:translate-y-16 lg:nth-[3n+2]:translate-y-16">',
+      '<li class="md:max-lg:even:translate-y-16 lg:nth-[3n+2]:translate-y-16 lg:has-[[data-lead]]:col-span-2">',
     )
     expect(html).toContain("md:pb-16")
   })

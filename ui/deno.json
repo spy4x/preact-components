@@ -112,6 +112,7 @@
     "./tldr-box": "./tldr-box.tsx",
     "./look-tile": "./look-tile.tsx",
     "./look-grid": "./look-grid.tsx",
+    "./story-tile": "./story-tile.tsx",
     "./swatch-chips": "./swatch-chips.tsx",
     "./order-bar": "./order-bar.tsx"
   },
