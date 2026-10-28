@@ -2099,6 +2099,44 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "RailShell from md pads the column's start side by that side's safe-area inset: the " +
+      "left inset on the left left to right, the right inset on the right right to left",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 900 })
+      const session = await page.context().newCDPSession(page)
+      // Two different insets, so a column padded by the wrong side's inset shows it too.
+      await session.send("Emulation.setSafeAreaInsetsOverride", {
+        insets: { left: 20, right: 36, top: 0, bottom: 0 },
+      })
+      const padding = async () => {
+        const column = page.locator(
+          `[data-e2e="rail-shell-direction"] [data-e2e="rail-shell-column"]`,
+        )
+        await column.scrollIntoViewIfNeeded()
+        return await column.evaluate((element) => {
+          const style = getComputedStyle(element)
+          return `${style.direction} left ${style.paddingLeft} right ${style.paddingRight}`
+        })
+      }
+      try {
+        const ltr = await padding()
+        await page.locator(`[data-e2e="rail-shell-arabic"]`).check()
+        await page.locator(`[data-e2e="rail-shell-direction"][dir="rtl"]`).waitFor()
+        const rtl = await padding()
+        if (ltr !== "ltr left 20px right 0px" || rtl !== "rtl left 0px right 36px") {
+          throw new Error(`left to right: ${ltr}; right to left: ${rtl}`)
+        }
+        return `${ltr}; ${rtl}`
+      } finally {
+        await session.send("Emulation.setSafeAreaInsetsOverride", {
+          insets: { left: 0, right: 0, top: 0, bottom: 0 },
+        })
+        await session.detach()
+      }
+    },
+  },
+  {
     name: "AuthForm right to left: the password box stays left to right with its toggle inside " +
       "the right padding, before and after the password is shown",
     pageId: "system",
