@@ -405,12 +405,6 @@ const todayClass = "bg-selected-soft font-semibold text-selected hover:bg-select
 const selectableClass = "text-foreground hover:bg-hover"
 
 /**
- * The grid's 42 cells: six weeks, weekday-aligned. The leading cells step back into the previous
- * month, then days are appended until the grid is full.
- *
- * @param state The parts of a day that depend on the caller's props.
- */
-/**
  * The locale's one-letter weekday names for the dates of one week, or `undefined` when two of them
  * read alike. Below the `sm` width a header shows these instead of the abbreviation: Arabic and
  * Persian abbreviate a weekday to its whole name, and seven whole names touch at 390 px (#840).
@@ -422,6 +416,12 @@ function narrowWeekdays(dates: string[], locale: string): string[] | undefined {
   return new Set(names).size === names.length ? names : undefined
 }
 
+/**
+ * The grid's 42 cells: six weeks, weekday-aligned. The leading cells step back into the previous
+ * month, then days are appended until the grid is full.
+ *
+ * @param state The parts of a day that depend on the caller's props.
+ */
 function monthDays(
   firstOfMonth: string,
   firstWeekday: number,
