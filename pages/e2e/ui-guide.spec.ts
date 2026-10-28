@@ -147,27 +147,86 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
   map: '#demo-Map [data-e2e="map-attribution"]',
 }
 
-/** The rule a page's scan is split on: it takes about half the time of the whole scan. */
+/** The rule every page's scan is split on: it takes about half the time of the whole scan. */
 const CONTRAST = "color-contrast"
 
 /**
- * Which half of a page's rules one spec runs. The ui page's scan took 46 to 53 seconds at a load
- * average near 40, too close to a spec's 60-second limit once specs run side by side, and the
- * contrast rule was about half of it (#696). Two halves run in parallel and each has room.
+ * A share of axe's rules that one spec runs on one page: `rules` alone, or, without `rules`, every
+ * rule no other share of that page runs. A page's scan is split into shares that run in parallel,
+ * each in a spec of its own, so none comes near a spec's 60-second limit (#696).
  */
-type Half = "contrast" | "rest"
+interface RuleShare {
+  /** What the spec's name says it finds none of, such as "region violation". */
+  what: string
+  rules?: readonly string[]
+}
+
+const CONTRAST_SHARE: RuleShare = { what: "colour-contrast violation", rules: [CONTRAST] }
+const REST_SHARE: RuleShare = { what: "violation of another rule" }
 
 /**
- * One page in one palette, for one half of axe's rules: each rule fails on exactly as many
- * elements as is known, and on none when the rule is not listed; and axe leaves no more elements
- * undecided, per rule and reason, than `KNOWN_INCOMPLETE` lists for that half.
+ * The rules of axe's ARIA category (its `cat.aria` tag) and `aria-hidden-focus`, by id. A rule axe
+ * adds later runs in the page's other share until it is listed here, so it is never left out.
  */
-function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half): Spec {
-  const which = half === "contrast"
-    ? "colour-contrast violation and no new undecided result"
-    : "violation of another rule and no new undecided result"
+const ARIA_RULES = [
+  "aria-allowed-attr",
+  "aria-allowed-role",
+  "aria-braille-equivalent",
+  "aria-command-name",
+  "aria-conditional-attr",
+  "aria-deprecated-role",
+  "aria-dialog-name",
+  "aria-hidden-body",
+  "aria-hidden-focus",
+  "aria-input-field-name",
+  "aria-meter-name",
+  "aria-progressbar-name",
+  "aria-prohibited-attr",
+  "aria-required-attr",
+  "aria-required-children",
+  "aria-required-parent",
+  "aria-roledescription",
+  "aria-roles",
+  "aria-tab-name",
+  "aria-text",
+  "aria-toggle-field-name",
+  "aria-tooltip-name",
+  "aria-treeitem-name",
+  "aria-valid-attr-value",
+  "aria-valid-attr",
+]
+
+/**
+ * Pages whose rules besides contrast are split further. The ui page holds about 12,000 elements,
+ * and its scan without contrast took 15 seconds alone on a 16-core workstation, 22 beside three
+ * other specs, and ran past 60 in CI's shard 2/4. `region`, which checks every element for a
+ * landmark around it, was 6 of those 15 seconds and looks at the whole page, so it cannot be split
+ * by part of the page: it gets a spec of its own, and so do the ARIA rules.
+ */
+const SPLIT_FURTHER: Partial<Record<GuidePageId, readonly RuleShare[]>> = {
+  ui: [{ what: "region violation", rules: ["region"] }, {
+    what: "violation of an ARIA rule",
+    rules: ARIA_RULES,
+  }],
+}
+
+/** Every share of a page's rules, one spec each; together they run each rule exactly once. */
+function ruleShares(pageId: GuidePageId): readonly RuleShare[] {
+  return [...SPLIT_FURTHER[pageId] ?? [], REST_SHARE, CONTRAST_SHARE]
+}
+
+/**
+ * One page in one palette, for one share of axe's rules: each rule fails on exactly as many
+ * elements as is known, and on none when the rule is not listed; and axe leaves no more elements
+ * undecided, per rule and reason, than `KNOWN_INCOMPLETE` lists for that share.
+ */
+function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: RuleShare): Spec {
+  const named = ruleShares(pageId).flatMap((other) => other.rules ?? [])
+  const inShare = (rule: string) => share.rules ? share.rules.includes(rule) : !named.includes(rule)
+  const contrast = share === CONTRAST_SHARE
   return {
-    name: `axe: the ${pageId} page has no new and no fixed ${which} in the ${colorScheme} palette`,
+    name: `axe: the ${pageId} page has no new and no fixed ${share.what} and no new undecided ` +
+      `result in the ${colorScheme} palette`,
     pageId,
     colorScheme,
     run: async (page) => {
@@ -182,12 +241,11 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
       const apart = CONTRAST_ELSEWHERE[pageId]
       const builder = new AxeBuilder({ page })
       const { passes, incomplete, violations } =
-        await (half === "contrast"
-          ? (apart ? builder.exclude(apart) : builder).withRules([CONTRAST])
-          : builder.disableRules([CONTRAST])).analyze()
+        await (share.rules
+          ? (contrast && apart ? builder.exclude(apart) : builder).withRules([...share.rules])
+          : builder.disableRules(named)).analyze()
       const known = Object.fromEntries(
-        Object.entries(KNOWN_VIOLATIONS[pageId])
-          .filter(([rule]) => (rule === CONTRAST) === (half === "contrast")),
+        Object.entries(KNOWN_VIOLATIONS[pageId]).filter(([rule]) => inShare(rule)),
       )
       const expected = (rule: string) => known[rule]?.[colorScheme === "light" ? 0 : 1] ?? 0
       const found = new Map(violations.map(({ id, nodes }) => [id, nodes]))
@@ -213,7 +271,7 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
       // it stopped at. It measured nothing, so it must not pass as "nothing found".
       const knownUndecided = Object.fromEntries(
         Object.entries(KNOWN_INCOMPLETE[pageId])
-          .filter(([key]) => key.startsWith(`${CONTRAST}: `) === (half === "contrast")),
+          .filter(([key]) => inShare(key.slice(0, key.indexOf(": ")))),
       )
       const expectedUndecided = (key: string) =>
         knownUndecided[key]?.[colorScheme === "light" ? 0 : 1] ?? 0
@@ -245,15 +303,22 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
         .map((key) => `${key} ${undecided.get(key)?.length ?? 0} of ${expectedUndecided(key)}`)
       // Every page has text on it, so a contrast scan that measured none had the rule switched off.
       const measured = passes.find(({ id }) => id === CONTRAST)?.nodes.length ?? 0
-      if (half === "contrast" && measured === 0) {
+      if (contrast && measured === 0) {
         problems.push("axe measured the contrast of no element")
+      }
+      // Every page has a landmark and ARIA attributes, so a share that tested no element ran no
+      // rule of its own.
+      const tested = [...passes, ...violations, ...incomplete]
+        .filter(({ id }) => inShare(id)).reduce((sum, { nodes }) => sum + nodes.length, 0)
+      if (share.rules && !contrast && tested === 0) {
+        problems.push(`axe tested no element for ${share.what}`)
       }
       if (problems.length > 0) throw new Error(problems.join(" | "))
 
       const unsettled = [...undecided.values()].reduce((sum, targets) => sum + targets.length, 0)
       const listed = Object.keys(known).filter((rule) => expected(rule) > 0)
         .map((rule) => `${rule} ×${expected(rule)}`)
-      return (half === "contrast"
+      return (contrast
         ? `contrast passes on ${measured} elements`
         : `${passes.length} rules pass`) +
         `, ${unsettled} known undecided` +
@@ -386,7 +451,7 @@ function hoverSpec(pageId: GuidePageId, palette: "light" | "dark" | "ink"): Spec
 export const specs: readonly Spec[] = [
   ...(["light", "dark"] as const).flatMap((colorScheme) =>
     guidePageIds.flatMap((pageId) =>
-      (["rest", "contrast"] as const).map((half) => axeSpec(pageId, colorScheme, half))
+      ruleShares(pageId).map((share) => axeSpec(pageId, colorScheme, share))
     )
   ),
   ...(["light", "dark", "ink"] as const).flatMap((palette) =>
