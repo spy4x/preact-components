@@ -817,6 +817,33 @@ export const specs: readonly Spec[] = [
     },
   },
   ...loadingAndNarrowSpecs(),
+  {
+    name: "CrudList right to left: the Search button sits at the search box's left end, inside " +
+      "its padding",
+    pageId: "crud",
+    run: async (page) => {
+      await page.locator(`[data-e2e="crud-list-arabic"]`).check()
+      const card = page.locator(`[data-e2e="crud-list-direction"][dir="rtl"]`)
+      const form = card.locator(`form:has(button[type="submit"] svg)`).first()
+      const input = form.locator(`input.pc-input`)
+      const button = form.locator(`button[type="submit"]`)
+      await input.scrollIntoViewIfNeeded()
+      const [inputBox, buttonBox, padding] = await Promise.all([
+        input.boundingBox(),
+        button.boundingBox(),
+        input.evaluate((element) => parseFloat(getComputedStyle(element).paddingLeft)),
+      ])
+      if (!inputBox || !buttonBox) throw new Error("the search box is not drawn")
+      const buttonEnd = buttonBox.x + buttonBox.width
+      if (padding < 40 || buttonBox.x < inputBox.x || buttonEnd > inputBox.x + padding) {
+        throw new Error(
+          `the button spans ${buttonBox.x}–${buttonEnd}; the box starts at ${inputBox.x} with ` +
+            `${padding} px of left padding`,
+        )
+      }
+      return `button at ${buttonBox.x}–${buttonEnd}, inside ${padding} px of left padding`
+    },
+  },
 ]
 
 /**

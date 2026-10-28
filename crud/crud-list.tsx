@@ -289,7 +289,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
           (props.badge ?? <Badge color="gray" class="translate-y-0.5" text={String(count)} />)}
       </PageTitle>
 
-      <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-left" />
+      <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-start" />
 
       {
         // Wraps on a narrow screen rather than squeezing the Status select to one letter. The row
@@ -314,9 +314,9 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
           />
         )}
         {showAdd && (
-          <div class="ml-auto">
+          <div class="ms-auto">
             <a href={props.addHref} class="btn btn-primary">
-              <IconPlus class="size-5 -ml-1 hidden md:block" />
+              <IconPlus class="size-5 -ms-1 hidden md:block" />
               {words.addLabel}
             </a>
           </div>
@@ -338,7 +338,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
               <>
                 {props.header}
                 {props.actions !== undefined && (
-                  <th class="text-right" scope="col">{words.actionsLabel}</th>
+                  <th class="text-end" scope="col">{words.actionsLabel}</th>
                 )}
               </>
             }
@@ -349,7 +349,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
               <>
                 {props.row(row)}
                 {props.actions !== undefined && (
-                  <td class="text-right whitespace-nowrap">{props.actions(row)}</td>
+                  <td class="text-end whitespace-nowrap">{props.actions(row)}</td>
                 )}
               </>
             ))}
@@ -433,11 +433,11 @@ function SearchBox(
         type="text"
         placeholder={placeholder}
         aria-label={fieldLabel ?? placeholder}
-        class="pc-input pr-12"
+        class="pc-input pe-12"
         value={draft.value}
         onInput={(event) => draft.value = event.currentTarget.value}
       />
-      <div class="absolute right-1.5">
+      <div class="absolute end-1.5">
         <button class="btn-input-icon" type="submit" title={label}>
           <IconSearch class="size-4" />
         </button>

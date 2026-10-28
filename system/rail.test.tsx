@@ -323,7 +323,7 @@ describe("Rail", () => {
   })
 
   const barColour = "bg-[var(--color-nav-active,var(--color-selected-text))]"
-  const columnBar = ["absolute", "left-0", "w-[3px]", barColour]
+  const columnBar = ["absolute", "start-0", "w-[3px]", barColour]
   const tabBar = ["absolute", "top-0", "h-[3px]", barColour]
 
   /**
@@ -344,7 +344,7 @@ describe("Rail", () => {
   const link = (href: string) => new RegExp(`<a [^>]*href="${href}"`)
   const moreButton = /<button [^>]*data-e2e="rail-shell-more"/
 
-  it("adds a 3 px left-edge bar to the labels variant's current cell, a RailEntry's included", () => {
+  it("adds a 3 px start-edge bar to the labels variant's current cell, a RailEntry's included", () => {
     const html = render(
       <Rail
         variant="labels"
@@ -478,10 +478,10 @@ describe("Rail", () => {
     expect(html).toContain('data-rail-variant="labels"')
   })
 
-  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the left safe-area inset", () => {
+  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the inline-start safe-area inset", () => {
     const html = render(<Rail items={itemsOf(3)}>page</Rail>)
     const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
-    expect(aside).toContain("pl-safe")
+    expect(aside).toContain("ps-safe")
     const column = columnClasses(html)
     expect(column).toContain("w-18")
     expect(column).not.toContain("w-22")
@@ -617,7 +617,7 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(sheetTop).toMatch(/<button data-rail-close type="button"/)
     // A button centres its text by default; its label starts at the left like a link row's.
     const [buttonRow] = sheetTop.match(/<button data-rail-close[^>]*>/) ?? [``]
-    expect(controlClass(buttonRow).split(` `)).toContain(`text-left`)
+    expect(controlClass(buttonRow).split(` `)).toContain(`text-start`)
   })
 
   it("draws sheet-only items as sheet rows alone, never in the column or as tabs", () => {

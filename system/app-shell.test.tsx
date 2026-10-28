@@ -190,7 +190,7 @@ describe("AppShell", () => {
     })
     const sheet = whole(html, "app-shell-sheet-account", "dialog")
     expect(sheet).toMatch(
-      /<button type="button"[^>]*aria-keyshortcuts="\?"[^>]*>Keyboard shortcuts<span aria-hidden="true" data-account-key-hint class="ml-auto hidden pointer-fine:inline-flex"><kbd[^>]*>\?<\/kbd>/,
+      /<button type="button"[^>]*aria-keyshortcuts="\?"[^>]*>Keyboard shortcuts<span aria-hidden="true" data-account-key-hint class="ms-auto hidden pointer-fine:inline-flex"><kbd[^>]*>\?<\/kbd>/,
     )
     expect(sheet).toMatch(/<a href="\/profile"(?![^>]*aria-keyshortcuts)[^>]*>Profile<\/a>/)
   })

@@ -633,11 +633,17 @@
 }
 
 /*
- * Left padding that clears a notch or rounded corner on a phone or tablet held sideways: `Rail`'s
- * desktop column pads itself by it, so its 72 px of cells never sit under the cut-out.
+ * Inline-start padding that clears a notch or rounded corner on a phone or tablet held sideways:
+ * `Rail`'s desktop column pads itself by it, so its 72 px of cells never sit under the cut-out.
+ * The start side is the left on a left-to-right page and the right under `dir="rtl"`, so it takes
+ * the inset of the side it pads.
  */
-@utility pl-safe {
-  padding-left: env(safe-area-inset-left, 0px);
+@utility ps-safe {
+  padding-inline-start: env(safe-area-inset-left, 0px);
+
+  &:dir(rtl) {
+    padding-inline-start: env(safe-area-inset-right, 0px);
+  }
 }
 
 /*

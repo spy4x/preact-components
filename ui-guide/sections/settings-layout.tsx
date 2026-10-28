@@ -9,6 +9,7 @@ import { Avatar, Button, SettingList, SettingRow, Stack } from "@spy4x/preact-ui
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren } from "preact"
 import type { DemoFragment } from "../registry.ts"
+import { ArabicSwitch } from "./arabic-demo.tsx"
 
 /** The demo's sub-pages. Their addresses are fragments, so a new tab opens this guide. */
 const SECTIONS: readonly SettingsSection[] = [
@@ -170,6 +171,10 @@ export const settingsLayoutDemos = {
 >
   {sectionId === "security" ? <SecuritySettings /> : <AccountSettings />}
 </SettingsLayout>`,
-    render: () => <SettingsLayoutDemo />,
+    render: () => (
+      <ArabicSwitch name="settings-layout">
+        <SettingsLayoutDemo />
+      </ArabicSwitch>
+    ),
   },
 } satisfies DemoFragment

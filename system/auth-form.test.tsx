@@ -298,7 +298,7 @@ describe("AuthForm", () => {
     expect(toggle?.[1]).toMatch(/^<svg/)
     expect(toggle?.[1]).not.toContain("Show password")
     expect(toggle?.[0]).toContain("size-8")
-    expect(inputTag(html, "password")).toContain("pr-12")
+    expect(inputTag(html, "password")).toContain("pe-12")
   })
 
   it("takes the toggle's accessible name from a labels override", () => {
