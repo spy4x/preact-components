@@ -59,6 +59,149 @@ function glyphKey(node: VNode): string {
   return parts.join("")
 }
 
+/**
+ * Glyphs that point along the reading direction and flip under `dir="rtl"`: #876's "mirror" list,
+ * with both external-link drawings (`IconExternal`, `IconExternalLink`).
+ */
+const MIRRORED = [
+  "IconArrowLeft",
+  "IconArrowRight",
+  "IconArrowUpRight",
+  "IconArrowUturnLeft",
+  "IconArrowUturnRight",
+  "IconChevronLeft",
+  "IconChevronRight",
+  "IconExternal",
+  "IconExternalLink",
+  "IconList",
+  "IconLogout",
+]
+
+/**
+ * Every other glyph, drawn the same way in both directions. #876's "never mirror" list (check,
+ * x-mark, search, globe, play, up and down arrows, refresh, clocks, logos) is among them. A new icon
+ * goes in one of the two lists, or "puts every icon in exactly one direction list" fails.
+ */
+const NOT_MIRRORED = [
+  "IconAdjustmentsHorizontal",
+  "IconAlertTriangle",
+  "IconArchive",
+  "IconArrowDown",
+  "IconArrowDownTray",
+  "IconArrowPath",
+  "IconArrowUp",
+  "IconArrowsPointingOut",
+  "IconAtSign",
+  "IconBars3",
+  "IconBell",
+  "IconBookOpen",
+  "IconBookmark",
+  "IconBriefcase",
+  "IconBuilding",
+  "IconBuildingOffice2",
+  "IconCalendar",
+  "IconCalendarDays",
+  "IconChartPie",
+  "IconChatBubble",
+  "IconCheck",
+  "IconCheckCircle",
+  "IconChevronDown",
+  "IconChip",
+  "IconCircleDot",
+  "IconClipboard",
+  "IconClipboardCopy",
+  "IconClock",
+  "IconCloudArrowUp",
+  "IconCode",
+  "IconCog6Tooth",
+  "IconCopy",
+  "IconCpuChip",
+  "IconCreditCard",
+  "IconCursorArrowRays",
+  "IconDocument",
+  "IconDocumentDuplicate",
+  "IconDocumentText",
+  "IconDollar",
+  "IconDownload",
+  "IconEllipsisVertical",
+  "IconExclamationCircle",
+  "IconEye",
+  "IconEyeOff",
+  "IconFilm",
+  "IconFire",
+  "IconFlag",
+  "IconFlask",
+  "IconFolder",
+  "IconFunnel",
+  "IconGateway",
+  "IconGitHub",
+  "IconGlobe",
+  "IconGrid",
+  "IconHandThumbUp",
+  "IconHome",
+  "IconImage",
+  "IconInformationCircle",
+  "IconKey",
+  "IconLens",
+  "IconLightBulb",
+  "IconLink",
+  "IconLinkedIn",
+  "IconLoading",
+  "IconLocationMarker",
+  "IconLockClosed",
+  "IconLockClosedFilled",
+  "IconLockOpen",
+  "IconMail",
+  "IconMap",
+  "IconMicrophone",
+  "IconMinus",
+  "IconMoon",
+  "IconPackage",
+  "IconPen",
+  "IconPencilSquare",
+  "IconPlayCircle",
+  "IconPlaySolid",
+  "IconPlus",
+  "IconQuote",
+  "IconRefresh",
+  "IconRocket",
+  "IconSearch",
+  "IconSensor",
+  "IconServer",
+  "IconShare",
+  "IconShieldCheck",
+  "IconSmile",
+  "IconSparkle",
+  "IconSpinner",
+  "IconSprout",
+  "IconStar",
+  "IconStopCircle",
+  "IconSuccess",
+  "IconSun",
+  "IconTag",
+  "IconTarget",
+  "IconTelegram",
+  "IconThemeAuto",
+  "IconTrashBin",
+  "IconTrendingDown",
+  "IconTrendingUp",
+  "IconTwitter",
+  "IconUpwork",
+  "IconUser",
+  "IconUsers",
+  "IconVideo",
+  "IconVideoCamera",
+  "IconViewColumns",
+  "IconWallet",
+  "IconWrench",
+  "IconXMark",
+  "IconYouTube",
+  "IconZap",
+]
+
+/** The class that flips a glyph under `dir="rtl"`; `pages/e2e/icons.spec.ts` proves what it does. */
+const MIRROR = "[&:dir(rtl)]:[transform:scaleX(-1)]"
+
 describe("icon set", () => {
   it("exports only Icon-prefixed components", () => {
     expect(names.length).toBeGreaterThan(0)
@@ -230,6 +373,26 @@ describe("icon set", () => {
       const className = vnodeOf(name, { class: "size-8" }).props.class as string
       expect(className).toContain("animate-spin")
       expect(className).toContain("size-8")
+    }
+  })
+
+  it("puts every icon in exactly one direction list", () => {
+    const listed = [...MIRRORED, ...NOT_MIRRORED]
+    expect(new Set(listed).size, "an icon is in both lists").toBe(listed.length)
+    expect([...listed].sort()).toEqual([...names].sort())
+  })
+
+  it("mirrors exactly the icons that point along the reading direction", () => {
+    const mirrored = names.filter((name) =>
+      (vnodeOf(name, {}).props.class as string).split(" ").includes(MIRROR)
+    )
+    expect(mirrored.sort()).toEqual([...MIRRORED].sort())
+  })
+
+  it("keeps the mirror whatever class or name the caller passes", () => {
+    for (const name of MIRRORED) {
+      const props: IconProps = { class: "size-8", "aria-label": "Next" }
+      expect((vnodeOf(name, props).props.class as string).split(" "), name).toContain(MIRROR)
     }
   })
 })

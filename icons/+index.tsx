@@ -62,7 +62,20 @@ interface SvgIconStyle {
   viewBox?: string
   /** Spins, and stands still under reduced motion. */
   spin?: true
+  /**
+   * Points along the reading direction, so it flips left to right when the page or the nearest
+   * ancestor is `dir="rtl"`. Set only on the glyphs README.md → "Right to left" lists.
+   */
+  mirror?: true
 }
+
+/**
+ * The class a mirrored glyph carries. `:dir(rtl)` reads the nearest `dir`, so a left-to-right block
+ * inside an Arabic page stays unflipped; Tailwind's `rtl:` also matches any descendant of a
+ * `[dir="rtl"]`, nested `dir="ltr"` or not. A `transform`, not `-scale-x-100`: that one shares
+ * `--tw-scale-x` with `scale-*`, so a caller's `hover:scale-125` would undo the mirror.
+ */
+const MIRROR_CLASS = "[&:dir(rtl)]:[transform:scaleX(-1)]"
 
 /**
  * The root `<svg>` every icon renders: `currentColor` paint, the caller's name or a hidden
@@ -81,9 +94,9 @@ function svgIcon(props: IconProps, style: SvgIconStyle, ...drawing: JSX.Element[
       stroke-linecap={style.round ? "round" : undefined}
       stroke-linejoin={style.round === true ? "round" : undefined}
       {...iconA11y(props)}
-      class={`${style.spin ? "animate-spin motion-reduce:animate-none " : ""}shrink-0 ${
-        props.class || style.size || "size-5"
-      }`}
+      class={`${style.spin ? "animate-spin motion-reduce:animate-none " : ""}${
+        style.mirror ? `${MIRROR_CLASS} ` : ""
+      }shrink-0 ${props.class || style.size || "size-5"}`}
     >
       {[iconTitle(props), ...drawing]}
     </svg>
@@ -152,7 +165,7 @@ export function IconArrowDownTray(props: IconProps): JSX.Element {
 export function IconArrowLeft(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "2" },
+    { stroke: "2", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -178,7 +191,7 @@ export function IconArrowPath(props: IconProps): JSX.Element {
 export function IconArrowRight(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "2" },
+    { stroke: "2", mirror: true },
     <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />,
   )
 }
@@ -196,7 +209,7 @@ export function IconArrowUp(props: IconProps): JSX.Element {
 export function IconArrowUpRight(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <line x1="7" y1="17" x2="17" y2="7" />,
     <polyline points="7 7 17 7 17 17" />,
   )
@@ -206,7 +219,7 @@ export function IconArrowUpRight(props: IconProps): JSX.Element {
 export function IconArrowUturnLeft(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.5", size: "size-6" },
+    { stroke: "1.5", size: "size-6", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -219,7 +232,7 @@ export function IconArrowUturnLeft(props: IconProps): JSX.Element {
 export function IconArrowUturnRight(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.5", size: "size-6" },
+    { stroke: "1.5", size: "size-6", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -426,12 +439,12 @@ export function IconChevronDown(props: IconProps): JSX.Element {
 
 /** Lucide outline (stroke-2); matches Lucide's "chevron-left" exactly, not Heroicons. */
 export function IconChevronLeft(props: IconProps): JSX.Element {
-  return svgIcon(props, { stroke: "2", round: true }, <path d="m15 18-6-6 6-6" />)
+  return svgIcon(props, { stroke: "2", round: true, mirror: true }, <path d="m15 18-6-6 6-6" />)
 }
 
 /** Lucide outline (stroke-2); matches Lucide's "chevron-right" exactly, not Heroicons. */
 export function IconChevronRight(props: IconProps): JSX.Element {
-  return svgIcon(props, { stroke: "2", round: true }, <path d="m9 18 6-6-6-6" />)
+  return svgIcon(props, { stroke: "2", round: true, mirror: true }, <path d="m9 18 6-6-6-6" />)
 }
 
 /** Heroicons v1 outline (stroke-2) · "chip" from heroicons@1.0.6 (#233). */
@@ -624,7 +637,7 @@ export function IconExclamationCircle(props: IconProps): JSX.Element {
 export function IconExternal(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />,
     <polyline points="15 3 21 3 21 9" />,
     <line x1="10" y1="14" x2="21" y2="3" />,
@@ -896,7 +909,7 @@ export function IconLinkedIn(props: IconProps): JSX.Element {
 export function IconList(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <line x1="8" y1="6" x2="21" y2="6" />,
     <line x1="8" y1="12" x2="21" y2="12" />,
     <line x1="8" y1="18" x2="21" y2="18" />,
@@ -934,7 +947,7 @@ export function IconLocationMarker(props: IconProps): JSX.Element {
 export function IconLogout(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />,
     <polyline points="16 17 21 12 16 7" />,
     <line x1="21" y1="12" x2="9" y2="12" />,
@@ -1475,7 +1488,7 @@ export function IconDownload(props: IconProps): JSX.Element {
 export function IconExternalLink(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "2" },
+    { stroke: "2", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
