@@ -12,10 +12,9 @@
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Page } from "playwright-core"
 import { type GuidePageId, guidePageIds } from "@spy4x/preact-ui-guide/registry"
+import { type KnownCount, partSelectors, restExcludes, restKnown } from "./page-parts.ts"
+import { CONTRAST, CONTRAST_PARTS, GLYPH, OBSCURED, OVERLAPPED, SHORT } from "./ui-guide-parts.ts"
 import type { Spec } from "./runner.ts"
-
-/** How many elements fail one rule on one page: `[light, dark]`. */
-type KnownCount = readonly [light: number, dark: number]
 
 /**
  * How many elements break each axe rule on each page today, per palette. They were found when axe
@@ -53,15 +52,6 @@ const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>
   },
   crud: {},
 }
-
-/** Text partly covered by another element: axe cannot see the colour under the covered part. */
-const OBSCURED = "color-contrast: elmPartiallyObscured"
-/** Text with another element over it. */
-const OVERLAPPED = "color-contrast: bgOverlap"
-/** Text too short for axe to be sure it is text, which it leaves undecided when it reads low. */
-const SHORT = "color-contrast: shortTextContent"
-/** A glyph drawn as a character outside the basic plane, which axe does not read as text. */
-const GLYPH = "color-contrast: nonBmp"
 
 /**
  * How many elements axe could not decide on, per page, rule and reason, and per palette. The reason
@@ -147,9 +137,6 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
   map: '#demo-Map [data-e2e="map-attribution"]',
 }
 
-/** The rule every page's scan is split on: it takes about half the time of the whole scan. */
-const CONTRAST = "color-contrast"
-
 /**
  * A share of axe's rules that one spec runs on one page: `rules` alone, or, without `rules`, every
  * rule no other share of that page runs. A page's scan is split into shares that run in parallel,
@@ -159,6 +146,12 @@ interface RuleShare {
   /** What the spec's name says it finds none of, such as "region violation". */
   what: string
   rules?: readonly string[]
+  /** Scan only these elements, and what is inside them. */
+  include?: readonly string[]
+  /** Leave these elements, and what is inside them, out of the scan. */
+  exclude?: readonly string[]
+  /** The share's own known counts, in place of the page's, when it scans only part of the page. */
+  known?: Readonly<Record<string, KnownCount>>
 }
 
 const CONTRAST_SHARE: RuleShare = { what: "colour-contrast violation", rules: [CONTRAST] }
@@ -212,9 +205,33 @@ const SPLIT_FURTHER: Partial<Record<GuidePageId, readonly RuleShare[]>> = {
   }],
 }
 
+/** The contrast shares of a page: the whole page, or one per part and one for the rest of it. */
+function contrastShares(pageId: GuidePageId): readonly RuleShare[] {
+  const parts = CONTRAST_PARTS[pageId]
+  if (!parts) return [CONTRAST_SHARE]
+  const page = Object.fromEntries(
+    [...Object.entries(KNOWN_VIOLATIONS[pageId]), ...Object.entries(KNOWN_INCOMPLETE[pageId])]
+      .filter(([key]) => key === CONTRAST || key.startsWith(`${CONTRAST}: `)),
+  )
+  return [
+    ...parts.map((part) => ({
+      what: `${CONTRAST_SHARE.what} in ${part.what}`,
+      rules: CONTRAST_SHARE.rules,
+      include: partSelectors(part),
+      known: part.known ?? {},
+    })),
+    {
+      what: `${CONTRAST_SHARE.what} in the rest of the page`,
+      rules: CONTRAST_SHARE.rules,
+      exclude: restExcludes(parts),
+      known: restKnown(page, parts),
+    },
+  ]
+}
+
 /** Every share of a page's rules, one spec each; together they run each rule exactly once. */
 function ruleShares(pageId: GuidePageId): readonly RuleShare[] {
-  return [...SPLIT_FURTHER[pageId] ?? [], REST_SHARE, CONTRAST_SHARE]
+  return [...SPLIT_FURTHER[pageId] ?? [], REST_SHARE, ...contrastShares(pageId)]
 }
 
 /**
@@ -225,7 +242,7 @@ function ruleShares(pageId: GuidePageId): readonly RuleShare[] {
 function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: RuleShare): Spec {
   const named = ruleShares(pageId).flatMap((other) => other.rules ?? [])
   const inShare = (rule: string) => share.rules ? share.rules.includes(rule) : !named.includes(rule)
-  const contrast = share === CONTRAST_SHARE
+  const contrast = share.rules?.includes(CONTRAST) ?? false
   return {
     name: `axe: the ${pageId} page has no new and no fixed ${share.what} and no new undecided ` +
       `result in the ${colorScheme} palette`,
@@ -242,12 +259,16 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
 
       const apart = CONTRAST_ELSEWHERE[pageId]
       const builder = new AxeBuilder({ page })
+      for (const selector of share.include ?? []) builder.include(selector)
+      for (const selector of share.exclude ?? []) builder.exclude(selector)
       const { passes, incomplete, violations } =
         await (share.rules
           ? (contrast && apart ? builder.exclude(apart) : builder).withRules([...share.rules])
           : builder.disableRules(named)).analyze()
       const known = Object.fromEntries(
-        Object.entries(KNOWN_VIOLATIONS[pageId]).filter(([rule]) => inShare(rule)),
+        Object.entries(share.known ?? KNOWN_VIOLATIONS[pageId]).filter(([rule]) =>
+          inShare(rule) && !rule.includes(": ")
+        ),
       )
       const expected = (rule: string) => known[rule]?.[colorScheme === "light" ? 0 : 1] ?? 0
       const found = new Map(violations.map(({ id, nodes }) => [id, nodes]))
@@ -272,8 +293,8 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
       // A rule axe could not run comes back as "incomplete" too, with this check on the element
       // it stopped at. It measured nothing, so it must not pass as "nothing found".
       const knownUndecided = Object.fromEntries(
-        Object.entries(KNOWN_INCOMPLETE[pageId])
-          .filter(([key]) => inShare(key.slice(0, key.indexOf(": ")))),
+        Object.entries(share.known ?? KNOWN_INCOMPLETE[pageId])
+          .filter(([key]) => key.includes(": ") && inShare(key.slice(0, key.indexOf(": ")))),
       )
       const expectedUndecided = (key: string) =>
         knownUndecided[key]?.[colorScheme === "light" ? 0 : 1] ?? 0

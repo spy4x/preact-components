@@ -317,7 +317,13 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
   page and palette is two specs, the contrast rule and every other rule, because the whole scan of
   the `ui` page came too close to a spec's 60 seconds under load (#696). The `ui` page's other
   rules are split again into `region`, the ARIA rules and the rest (`SPLIT_FURTHER`): that scan
-  alone still ran past 60 seconds in CI.
+  alone still ran past 60 seconds in CI. The `ui` page's contrast scan is split by part of the
+  page (`CONTRAST_PARTS` in `e2e/ui-guide-parts.ts`, #1052): two runs of the display cards, two
+  pairs of sections and the rest of the page, which takes whatever no part names. With eight
+  specs at once at a fourfold CPU throttle, as two shard lanes on one agent, the whole scan took
+  55 to 58 seconds and each part 13 to 19. Each part holds its share of the page's known counts,
+  and `e2e/page-parts.test.ts` fails when a part names a section or card the page does not draw,
+  or when one falls in two parts.
   `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
   axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
   the number with it and the list only shrinks. axe reports what it cannot decide as
