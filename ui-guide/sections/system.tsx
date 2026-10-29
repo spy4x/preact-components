@@ -3283,7 +3283,7 @@ const tags = seoHeadTags(head)`,
       {
         name: "message",
         type: "string",
-        default: '"New version available"',
+        default: '"A new version is ready"',
         description: "The bar's text.",
       },
       {

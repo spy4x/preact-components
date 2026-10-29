@@ -63,12 +63,12 @@ export const DEFAULT_CONFLICT_CHOOSER_LABELS: ConflictChooserLabels = {
   explanation: {
     version: "Changed elsewhere while you were offline.",
     gone: "Deleted elsewhere while you were offline.",
-    rejected: "The server refused this change.",
+    rejected: "The server didn't accept this change.",
   },
   keepMine: { version: "Keep mine", gone: "Restore mine", rejected: "Keep mine" },
   useTheirs: { version: "Use theirs", gone: "Discard mine", rejected: "Discard mine" },
   resolved: "All conflicts resolved",
-  failed: "Your choice was not saved. Try again.",
+  failed: "Couldn't save your choice. Try again.",
 }
 
 /** The words a caller replaces: any of them, and per reason inside the records. */
