@@ -684,6 +684,7 @@ ImageGalleryImage	type	@spy4x/preact-ui	One image a gallery's strip can show, an
 InlineEdit	component	@spy4x/preact-ui	A value shown as text that turns into a text field in place, for renaming a list, a tag or a column where it stands.
 Input	component	@spy4x/preact-ui	Controlled text input.
 InputButton	component	@spy4x/preact-ui	Render the input, the button and the chrome that positions them.
+Isolated	component	@spy4x/preact-ui	`message` filled with `value`, the value drawn in a `<bdi>`.
 KBD_LABELS	constant	@spy4x/preact-ui	English defaults for every `KbdLabels` entry.
 KanbanBoard	component	@spy4x/preact-ui	A board of columns; see the module doc.
 KanbanColumn	type	@spy4x/preact-ui	One column of the board.
@@ -918,6 +919,7 @@ isDismissKey	helper	@spy4x/preact-ui	Whether a keyboard event is a request to di
 isPlainClick	helper	@spy4x/preact-ui	Whether a click is one the page may take over: the primary button with no modifier.
 isSingleKey	helper	@spy4x/preact-ui	Whether a switch for single-key shortcuts turns these keys off: every press types a character, such as `"?"`, `"n"`, `"shift+n"`, `"space"` or `"g i"`.
 isValidDateTimeRange	helper	@spy4x/preact-ui	Whether a `DateTimeRange` is two well-formed wall-clock values, in order — not necessarily two real ones: nothing here checks whether a named local time actually occurs in any zone, since this function is not handed one.
+isolate	helper	@spy4x/preact-ui	`value` between Unicode's first-strong isolate and its closing mark: what `<bdi>` does, for text that cannot hold markup, such as a message kept in state or an `aria-label`.
 keyFaces	helper	@spy4x/preact-ui	The faces of every key in a combination, modifiers first, in the order the platform writes them: ⌃ ⌥ ⇧ ⌘ on Apple platforms, Ctrl Alt Shift Meta elsewhere.
 labelOr	helper	@spy4x/preact-ui	The caller's label, or the library's English default.
 labelsFrom	helper	@spy4x/preact-ui	`useLabels` for a given translator, outside a component.

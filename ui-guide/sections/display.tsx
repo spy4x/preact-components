@@ -31,6 +31,7 @@ import {
   ImageGallery,
   type ImageGalleryImage,
   Input,
+  Isolated,
   Kbd,
   Lightbox,
   type LightboxImage,
@@ -1278,6 +1279,20 @@ function ZoomableImagesDemo() {
 /** Combinations `Kbd` draws, each on both platforms; the last is a sequence of two presses. */
 const kbdCombos = ["mod+k", "mod+shift+p", "alt+up", "?", "esc", "g t"]
 
+/** One file name in an English sentence and in an Arabic one, right to left. */
+function IsolatedDemo() {
+  return (
+    <Stack>
+      <p>
+        <Isolated message={(name) => `Delete ${name}?`} value="report-v2.pdf" />
+      </p>
+      <p lang="ar" dir="rtl">
+        <Isolated message={(name) => `هل تريد حذف ${name}؟`} value="report-v2.pdf" />
+      </p>
+    </Stack>
+  )
+}
+
 /**
  * Each combination twice, with `apple={false}` and `apple`, so the card shows both faces whatever
  * the reader's platform; the last row leaves `apple` out and shows the reader's own.
@@ -2194,6 +2209,24 @@ const translator = createTranslator({
   ]}
 />`,
     render: () => <Timeline label="Activity" items={TIMELINE_ITEMS} />,
+  },
+  Isolated: {
+    summary:
+      "Puts a value, such as a name someone typed, into a translated sentence in its own direction: a Latin file name in an Arabic sentence stays whole, and the question mark stays at the sentence's end.",
+    wide: false,
+    props: [
+      {
+        name: "message",
+        type: "(value: string) => string",
+        description: "The sentence, as a label function of the value.",
+      },
+      { name: "value", type: "string", description: "The value, such as a name the user gave." },
+    ],
+    snippet: `<Isolated message={(name) => \`Delete \${name}?\`} value="report-v2.pdf" />
+<p dir="rtl">
+  <Isolated message={(name) => \`هل تريد حذف \${name}؟\`} value="report-v2.pdf" />
+</p>`,
+    render: () => <IsolatedDemo />,
   },
   Kbd: {
     summary:

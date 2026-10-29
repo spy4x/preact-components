@@ -37,6 +37,7 @@ export {
   type BadgeProps,
   type BadgeType,
 } from "./badge.tsx"
+export { isolate, Isolated } from "./bdi.tsx"
 export {
   type BillingHeadingLevel,
   BillingInterval,

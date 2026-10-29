@@ -5114,6 +5114,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                              |
 | `Input`               | `input`                | native input attrs, `class`; forwards `ref`; `dir="ltr"` on an e-mail, URL or password input, by `type` or `autocomplete`                                                                                                                                                                                                                                           |
 | `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                                                    |
+| `Isolated`            | `bdi`                  | `message` (the sentence, as a label function of the value), `value` — the value drawn in a `<bdi>`; `isolate(value)` does the same for plain text                                                                                                                                                                                                                   |
 | `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                                                                                                                                      |
 | `InlineEdit`          | `inline-edit`          | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`                                                                                                                                                                                              |
 | `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; touch or mouse drag, and keyboard moves                                                                                                                                                                                                                |
@@ -6716,6 +6717,18 @@ languages yet: `dir` is the app's to set.
 part is text: a message or a value never becomes markup, and an `href` comes only from the `tags`
 the caller passes. Translating the catalogs, and stamping their locks, is in the repository's
 `TRANSLATING.md`.
+
+`Isolated` (`@spy4x/preact-ui/bdi`) keeps a value, such as a name the person typed, in its own
+direction inside a translated sentence, so a Latin file name in an Arabic sentence stays whole and
+its punctuation stays at its end. `isolate(value)` does the same for text that cannot hold markup,
+such as an `aria-label`:
+
+```tsx
+import { isolate, Isolated } from "@spy4x/preact-ui/bdi"
+
+<Isolated message={(name) => `Delete ${name}?`} value={file.name} />
+<button aria-label={`Remove ${isolate(file.name)}`}>×</button>
+```
 
 ## When and OnDay
 

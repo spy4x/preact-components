@@ -6,6 +6,7 @@
     "./attachment-list": "./attachment-list.tsx",
     "./avatar": "./avatar.tsx",
     "./badge": "./badge.tsx",
+    "./bdi": "./bdi.tsx",
     "./billing": "./billing.tsx",
     "./brand-mark": "./brand-mark.tsx",
     "./button": "./button.tsx",
