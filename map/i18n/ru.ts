@@ -4,7 +4,7 @@ export default {
   "Map.listLabel": "Места",
   "Map.zoomInLabel": "Приблизить",
   "Map.zoomOutLabel": "Отдалить",
-  "MapStatus.off": "не работает",
-  "MapStatus.on": "работает",
-  "MapStatus.unknown": "статус неизвестен",
+  "MapStatus.off": "выключено",
+  "MapStatus.on": "включено",
+  "MapStatus.unknown": "состояние неизвестно",
 }
