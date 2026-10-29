@@ -264,7 +264,7 @@ The harness is the six parts, once:
 | `onCreated`      | —                    | navigate where the created row belongs                            |
 | `validate`       | —                    | extra checks after the schema                                     |
 | `cancelHref`     | —                    | where Cancel points                                               |
-| `saveErrorLabel` | `"Could not save"`   | what a failed save is introduced with                             |
+| `saveErrorLabel` | `"Couldn't save"`    | what a failed save is introduced with                             |
 | `saveLabel`      | `"Save"`             | label of the Save button; `cancelLabel` is Cancel's               |
 | `notFoundLabel`  | `<entity> not found` | shown when `editId` names a row the store does not hold           |
 | `headingLevel`   | `1`                  | level of the title's heading, for a page that has its `<h1>`      |

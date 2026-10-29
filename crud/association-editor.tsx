@@ -175,12 +175,12 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   restoreLabel?: string
   /**
    * What a failed removal is introduced with, before the store's own message. Defaults to
-   * `"Could not delete"`.
+   * `"Couldn't delete"`.
    */
   deleteErrorLabel?: string
   /**
    * What a failed restore is introduced with, before the store's own message. Defaults to
-   * `"Could not restore"`.
+   * `"Couldn't restore"`.
    */
   restoreErrorLabel?: string
   /**
@@ -197,7 +197,7 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   cancelLabel?: string
   /** Label of the Save button. Defaults to `"Save"`. */
   saveLabel?: string
-  /** What a failed save is introduced with. Defaults to `"Could not save"`. */
+  /** What a failed save is introduced with. Defaults to `"Couldn't save"`. */
   saveErrorLabel?: string
   /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
   notFoundLabel?: string
@@ -222,17 +222,16 @@ export type AssociationEditorProps<M extends CrudRow> =
 /** The association editor's English words, each the key `AssociationEditor.<field>`. */
 const ASSOCIATION_EDITOR_LABELS = {
   restoreLabel: "Restore",
-  restoreErrorLabel: "Could not restore",
+  restoreErrorLabel: "Couldn't restore",
   confirmRestoreTitle: (entity: string) => `Restore ${entity}?`,
-  confirmRestore: (entity: string) => `Are you sure you want to restore this ${entity}?`,
+  confirmRestore: (entity: string) => `This ${entity} comes back as it was.`,
   deleteLabel: "Delete",
-  deleteErrorLabel: "Could not delete",
+  deleteErrorLabel: "Couldn't delete",
   confirmDeleteTitle: (entity: string) => `Delete ${entity}?`,
-  confirmDelete: (entity: string) => `Are you sure you want to delete this ${entity}?`,
+  confirmDelete: (entity: string) => `You can restore this ${entity} later.`,
   conflictMessage: (entity: string) => `This ${entity} already exists.`,
-  conflictRemovedMessage: (entity: string) => `This ${entity} existed before and was removed.`,
-  restoreHint:
-    "Restoring it keeps the record that was there before instead of creating a second one.",
+  conflictRemovedMessage: (entity: string) => `This ${entity} was removed earlier.`,
+  restoreHint: "Restore it to bring back the original instead of adding a copy.",
   removedLabel: (ago: string) => `Removed ${ago}`,
 }
 

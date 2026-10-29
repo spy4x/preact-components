@@ -528,7 +528,7 @@ export const specs: readonly Spec[] = [
       await field.fill("Ink supplier")
       await page.keyboard.press("Tab")
       await card.getByText(
-        "Restoring it keeps the record that was there before instead of creating a second one.",
+        "Restore it to bring back the original instead of adding a copy.",
       ).waitFor()
       await refuse.click()
       await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
@@ -696,11 +696,12 @@ export const specs: readonly Spec[] = [
       const block = demo.getByRole("alert")
 
       await demo.getByRole("checkbox").check()
-      await block.filter({ hasText: "To archive this Team, please first archive:" }).waitFor()
+      await block.filter({ hasText: "Archive these first, then you can archive this Team:" })
+        .waitFor()
 
       await demo.locator(`[data-e2e="word-block"]`).click()
       await block.filter({ hasText: "Move these out of the team first:" }).waitFor()
-      await block.filter({ hasText: "please first archive" }).waitFor({ state: "detached" })
+      await block.filter({ hasText: "Archive these first" }).waitFor({ state: "detached" })
     },
   },
   {

@@ -848,7 +848,7 @@ async function blockedArchiveChecks(devtools: Devtools): Promise<void> {
   const shown = await readArchiveDemo(devtools, false)
   check(
     "a blocked archive shows its message in normal flow, 24px under the form, in the same region, with the form's own margin still 0",
-    ticked && shown.regionText.includes("please first archive") && shown.position === "static" &&
+    ticked && shown.regionText.includes("Archive these first") && shown.position === "static" &&
       shown.gapAbove === 24 && shown.formMargin === "0px" && shown.same,
     `ticked=${ticked} position=${shown.position} gap above=${shown.gapAbove} ` +
       `form margin-bottom=${shown.formMargin} same region=${shown.same} text="${shown.regionText}"`,

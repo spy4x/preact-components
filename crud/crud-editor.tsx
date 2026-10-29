@@ -231,7 +231,7 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
   saveLabel?: string
   /**
    * What a failed save is introduced with, before the store's own message. Defaults to
-   * `"Could not save"`.
+   * `"Couldn't save"`.
    */
   saveErrorLabel?: string
   /** Called after a successful create, with the created row. Navigate from here. */
@@ -292,11 +292,11 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
  * already submits, plus whatever has to be archived first for it to be allowed.
  */
 export interface ArchiveConfig<M extends CrudRow> {
-  /** Label of the checkbox. Defaults to `"Is Archived?"`. */
+  /** Label of the checkbox. Defaults to `"Archived"`. */
   label?: string
   /**
    * Heading of the list of what blocks the archive. Defaults to
-   * `To archive this <entity>, please first archive:`.
+   * `Archive these first, then you can archive this <entity>:`.
    */
   blockedLabel?: string
   /**
@@ -313,11 +313,11 @@ export type CrudEditorProps<M extends CrudRow> = CrudEditorBaseProps<M> & CrudEd
 const CRUD_EDITOR_LABELS = {
   addTitle: (entity: string) => `Add ${entity}`,
   editTitle: (entity: string) => `Edit ${entity}`,
-  notFoundLabel: (entity: string) => `${entity} not found`,
+  notFoundLabel: (entity: string) => `Couldn't find this ${entity}`,
   cancelLabel: "Cancel",
   saveLabel: "Save",
-  saveErrorLabel: "Could not save",
-  archiveLabel: "Is Archived?",
+  saveErrorLabel: "Couldn't save",
+  archiveLabel: "Archived",
 }
 
 /**
