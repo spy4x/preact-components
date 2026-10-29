@@ -129,6 +129,7 @@ function swatch(fill: string): string {
  */
 function RankedBarsDemo() {
   const source = useSignal<string | null>(null)
+  const opened = useSignal<string | null>(null)
   return (
     <div class="flex flex-col gap-6" data-e2e="bars-ranked">
       <div class="flex flex-col gap-2">
@@ -169,7 +170,11 @@ function RankedBarsDemo() {
             image: { src: swatch("#8fb3c9"), alt: "" },
           },
         ]}
+        navigate={(href) => opened.value = href}
       />
+      <p class="text-xs text-muted" data-e2e="bars-ranked-opened">
+        Opened in place: {opened.value ?? "nothing yet"}
+      </p>
     </div>
   )
 }
@@ -607,6 +612,12 @@ export const chartsDemos = {
         description: "How the bar's own number is printed.",
       },
       { name: "title", type: "string", description: "The heading, and the table's name." },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "The app's router: a plain click on a row's `href` calls it instead of loading the page, as `Link` does. A modified click or another origin stays the browser's.",
+      },
     ],
     snippet: `<RankedBars
   title="Where visits come from"

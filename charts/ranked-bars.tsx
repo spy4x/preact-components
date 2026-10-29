@@ -1,6 +1,7 @@
 import type { JSX } from "preact"
 import { join } from "@spy4x/preact-cn/join"
 import { useLabels } from "@spy4x/preact-ui/i18n"
+import { Link } from "@spy4x/preact-ui/link"
 import { barTop, barTotal, barTrack } from "./bar-parts.tsx"
 import type { BarDatum } from "./bars.tsx"
 import { CHART_PALETTE_CLASS, DEFAULT_TEXT_COLOR, DEFAULT_TRACK_COLOR } from "./colors.ts"
@@ -74,6 +75,11 @@ export interface RankedBarsProps {
   emptyLabel?: string
   /** Added after the chart's own classes with `join`; mark yours important to replace one. */
   class?: string
+  /**
+   * Called with a row's `href` on a plain click instead of the browser loading it: the app's
+   * router, as `Link` takes it. Left out, every click on a row link loads the page.
+   */
+  navigate?: (href: string) => void
 }
 
 /** What a {@link RankedBars} table prints for a number it does not have. */
@@ -102,7 +108,8 @@ const numberCell = "py-2 ps-3 text-end align-top tabular-nums whitespace-nowrap"
  * either covering the whole row with its hit area and focus ring; a button needs JavaScript), an
  * optional muted `note` under it and the bar, then the bar's number and one to three more from the
  * row's `values`, right-aligned in tabular figures. A missing or non-finite number prints "–". A
- * `lowSample` row is drawn in the muted text colour with a fainter bar.
+ * `lowSample` row is drawn in the muted text colour with a fainter bar. Given `navigate`, a plain
+ * click on a row link calls it instead of loading the page, as `Link` does.
  *
  * Below `sm` the extra columns leave the table and their numbers join the note's muted line under
  * the label, each after its column's header ("Views 210 · mostly Zalo A"), so a phone shows two
@@ -122,6 +129,7 @@ export function RankedBars({
   ariaLabel,
   emptyLabel: emptyLabelProp,
   class: className,
+  navigate,
 }: RankedBarsProps): JSX.Element {
   const { emptyLabel } = useLabels("Bars", { emptyLabel: "No data" }, {
     emptyLabel: emptyLabelProp,
@@ -185,7 +193,11 @@ export function RankedBars({
                     <div class="flex min-w-0 flex-1 flex-col gap-1">
                       <span class="line-clamp-2 wrap-anywhere">
                         {row.href !== undefined
-                          ? <a href={row.href} class={rowControl}>{row.label}</a>
+                          ? (
+                            <Link href={row.href} navigate={navigate} class={rowControl}>
+                              {row.label}
+                            </Link>
+                          )
                           : row.onSelect
                           ? (
                             <button type="button" class={rowControl} onClick={row.onSelect}>
