@@ -2022,7 +2022,7 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "a waiting worker makes SWUpdater's update bar appear",
-    before.bar === "" && barAppeared && staged.bar.includes("New version available"),
+    before.bar === "" && barAppeared && staged.bar.includes("A new version is ready"),
     before.bar === ""
       ? barAppeared
         ? `the bar reads "${staged.bar}" with buttons ${staged.barButtons.join(", ")}`
@@ -8100,7 +8100,7 @@ async function syncStatusChecks(devtools: Devtools): Promise<void> {
   const failed = await readSync(devtools)
   check(
     "a failed sync says so and offers Retry beside the live region, not inside it",
-    syncing.text === "Syncing…" && failed.state === "failed" && failed.text === "Sync failed" &&
+    syncing.text === "Syncing…" && failed.state === "failed" && failed.text === "Couldn't sync" &&
       failed.retry === "Retry" && !failed.buttonInRegion && failed.sameRegion &&
       failed.focus === "sync-fail",
     JSON.stringify({ syncing, failed }),
@@ -8305,8 +8305,8 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   check(
     "a choice whose promise rejects keeps the item, says so under it and in the live region, and leaves nothing uncaught",
     focusedFailing && failed.items.length === 3 &&
-      failed.failures["1"] === "Your choice was not saved. Try again." &&
-      failed.announced === "Your choice was not saved. Try again." &&
+      failed.failures["1"] === "Couldn't save your choice. Try again." &&
+      failed.announced === "Couldn't save your choice. Try again." &&
       failed.log.join("|") === "failed: Buy milk" && failed.focus === "1:Keep mine" &&
       uncaught === 0,
     JSON.stringify({ failed, uncaught }),
@@ -8521,7 +8521,7 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
   const uncaughtDismiss = await unhandledRejections(devtools)
   check(
     "Not now whose store write fails keeps the steps, says it did not work, and leaves nothing uncaught",
-    refused.shown === "ios" && refused.failed === "That did not work. Try again." &&
+    refused.shown === "ios" && refused.failed === "That didn't work. Try again." &&
       refused.state === "mode: ios, dismissed: false" && uncaughtDismiss === 0,
     JSON.stringify({ refused, uncaughtDismiss }),
   )

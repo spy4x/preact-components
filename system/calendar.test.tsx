@@ -133,7 +133,7 @@ describe("Calendar", () => {
   it("greys out days after the horizon", () => {
     const html = render(<Calendar {...base} minDate="2026-08-03" maxDate="2026-08-15" />)
 
-    expect(html).toContain('aria-label="16 August 2026 — outside the allowed range"')
+    expect(html).toContain('aria-label="16 August 2026 — too far ahead"')
     expect(html).not.toContain('href="?date=2026-08-16"')
     expect(html).toContain('href="?date=2026-08-15"')
   })
@@ -403,7 +403,7 @@ describe("Calendar, as a screen reader is told about it", () => {
       expect(days.get("2026-02-06")?.current).toBe(true)
       expect(days.get("2026-02-07")?.name).toBe("7 February 2026 — none left")
       expect(days.get("2026-02-08")?.name).toBe("8 February 2026 — not available")
-      expect(days.get("2026-02-09")?.name).toBe("9 February 2026 — outside the allowed range")
+      expect(days.get("2026-02-09")?.name).toBe("9 February 2026 — too far ahead")
     })
   }
 })

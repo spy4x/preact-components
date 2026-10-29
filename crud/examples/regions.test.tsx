@@ -98,7 +98,7 @@ describe("RegionEditor", () => {
   })
 
   it("shows no dependency block when nothing blocks the archive", () => {
-    expect(render(<RegionEditor mode="edit" editId={1} />)).not.toContain("please first archive")
+    expect(render(<RegionEditor mode="edit" editId={1} />)).not.toContain("Archive these first")
   })
 
   it("always renders the form-level live region, named by Save's aria-describedby", () => {

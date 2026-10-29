@@ -96,14 +96,14 @@ function rangeWords(
     return translate(
       translator,
       "MoneyInput.rangeMin",
-      `Enter an amount of at least ${money(min)}`,
+      `Enter ${money(min)} or more`,
       { min: money(min) },
     )
   }
   return translate(
     translator,
     "MoneyInput.rangeMax",
-    `Enter an amount of at most ${money(max as number)}`,
+    `Enter ${money(max as number)} or less`,
     { max: money(max as number) },
   )
 }

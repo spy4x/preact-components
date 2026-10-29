@@ -400,7 +400,7 @@ by finding a region that arrived carrying text.
 
 ## The service-worker contract
 
-`SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
+`SWUpdater` registers the worker and shows one bar: "A new version is ready", with Reload and
 Dismiss. Four things about it are the host's business rather than this package's.
 
 **The live region is always there; the bar is not.** The component renders one unstyled
@@ -1092,7 +1092,7 @@ Components for an offline-first app. None of them imports a queue or a store: th
 plain values and callbacks, so they work with any outbox and ship on their own.
 
 - **`SyncStatus`** is one compact line for a header or a status bar: offline, "3 changes waiting
-  to sync", syncing, "Sync failed" with a Retry button, or "All changes synced" (`labels.synced: ""`
+  to sync", syncing, "Couldn't sync" with a Retry button, or "All changes synced" (`labels.synced: ""`
   hides that one). The words sit in a `role="status"` region that is always in the page, so every
   change is announced politely, and the component never moves focus on its own. A shape beside the
   words tells the states apart without colour. `syncState(input)` is the precedence it uses, most

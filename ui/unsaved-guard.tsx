@@ -78,7 +78,7 @@ export function guardedHref(
 export interface UnsavedGuardLabels {
   /** The dialog's title. Defaults to `"Leave without saving?"`. */
   title: string
-  /** The sentence under it. Defaults to `"Your changes have not been saved. If you leave, they are lost."`. */
+  /** The sentence under it. Defaults to `"You have unsaved changes. If you leave now, you'll lose them."`. */
   message: string
   /** The button that leaves. Defaults to `"Leave"`. */
   leave: string
@@ -91,7 +91,7 @@ export interface UnsavedGuardLabels {
 /** The English words of {@link UnsavedGuard}'s dialog. */
 export const defaultUnsavedGuardLabels: UnsavedGuardLabels = {
   title: "Leave without saving?",
-  message: "Your changes have not been saved. If you leave, they are lost.",
+  message: "You have unsaved changes. If you leave now, you'll lose them.",
   leave: "Leave",
   stay: "Stay",
 }

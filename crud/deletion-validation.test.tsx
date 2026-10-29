@@ -35,7 +35,7 @@ describe("DeletionValidation", () => {
   it("lists every dependency kind and its linked values when the list is non-empty", () => {
     const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
 
-    expect(html).toContain("To archive this Region, please first archive:")
+    expect(html).toContain("Archive these first, then you can archive this Region:")
     expect(html).toContain("Zones:")
     expect(html).toContain("Schedules:")
     expect(html).toContain('href="/zones/1/edit"')

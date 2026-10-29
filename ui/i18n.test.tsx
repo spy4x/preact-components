@@ -82,18 +82,18 @@ describe("labelsFrom", () => {
 
 describe("translate", () => {
   it("falls back to the component's English when the translator lacks the key", () => {
-    expect(translate(APP_ONLY, "DataTable.empty", "No rows")).toBe("No rows")
-    expect(translate(ENGLISH, "DataTable.empty", "No rows")).toBe("No rows")
-    expect(translate(GERMAN, "DataTable.empty", "No rows")).toBe(de["DataTable.empty"])
+    expect(translate(APP_ONLY, "DataTable.empty", "Nothing to show")).toBe("Nothing to show")
+    expect(translate(ENGLISH, "DataTable.empty", "Nothing to show")).toBe("Nothing to show")
+    expect(translate(GERMAN, "DataTable.empty", "Nothing to show")).toBe(de["DataTable.empty"])
   })
 })
 
 describe("I18nContext", () => {
   it("is English without a provider", () => {
     function Probe() {
-      return <p>{translate(useT(), "DataTable.empty", "No rows")}</p>
+      return <p>{translate(useT(), "DataTable.empty", "Nothing to show")}</p>
     }
-    expect(render(<Probe />)).toBe("<p>No rows</p>")
+    expect(render(<Probe />)).toBe("<p>Nothing to show</p>")
     expect(inLanguage(GERMAN, <Probe />)).toBe(`<p>${de["DataTable.empty"]}</p>`)
   })
 

@@ -794,7 +794,7 @@ Every other time comes back exactly as typed.
   after `toInstant`, so the first-pass `02:50` through the second-pass `02:10` is a valid
   twenty-minute range, and the second-pass `02:30` through the first-pass `02:45` is not. When both
   ends resolve and are out of order — a skipped `02:30` read as `03:30` with To at `03:10`, say — a
-  note above Apply says "From comes after To, so there is nothing to apply."
+  note above Apply says "The From date is after the To date. Change one of them to apply."
 - **Tied to its field.** Each field's `aria-describedby` names its skipped-time note or its radio
   group whenever one is shown, and the order note too while it shows; Apply is described by the
   order note. Each radio group is named by its field's label and its legend ("From This time happens
@@ -1298,7 +1298,7 @@ is no English default; `captionHidden` keeps it for assistive tech while hiding 
 unaffected.
 
 **`empty` replaces the whole body, not just one cell's worth**, when `rows` is empty: a single row
-spanning every column, defaulting to `<EmptyState title="No rows" />`. The header stays, so a
+spanning every column, defaulting to `<EmptyState title="Nothing to show" />`. The header stays, so a
 sortable column stays clickable even when a filter elsewhere on the page is what emptied the list.
 
 **`rowKey` is each row's identity.** `DataTable` hands it to `Table` as `bodyKeys`, so every
@@ -2583,13 +2583,13 @@ Both forms are `EnhancedForm`s. While the app is still working on a submit (open
 portal), it passes `pending`: the form is disabled, its button shows a spinner, and a second submit
 is refused, with or without a script. While a promise returned from `onChoose` or `onSubmit` is
 outstanding, the form refuses another submit too, though it stays enabled. A screen reader hears
-the `pending` label ("Please wait…") from the form the visitor submitted. A callback that returns
+the `pending` label ("One moment…") from the form the visitor submitted. A callback that returns
 at once leaves focus on the button the visitor pressed, and when `pending` ends, focus the wait had
 parked on the form goes back to its button.
 
 A callback that throws or rejects is not swallowed: the error goes to the global `reportError`, so
 it reaches the console and the app's `error` listener, and the form shows and announces the `failed`
-label ("Something went wrong. Please try again.") under its button until the next submit.
+label ("Something went wrong. Try again.") under its button until the next submit.
 
 The app owns `pending`, so the app clears it when the browser restores the page from its
 back/forward cache. Otherwise a visitor who comes Back from checkout finds every "Choose" still

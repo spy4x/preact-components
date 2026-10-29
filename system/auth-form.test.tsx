@@ -117,9 +117,9 @@ describe("AuthForm", () => {
     const withoutPort = render(<AuthForm {...base} />)
     expect(modeSwitchTag(withPort)).toMatch(/^<button /)
     expect(attr(modeSwitchTag(withPort), "type")).toBe("button")
-    expect(withPort).toContain("Need an account? Sign up")
+    expect(withPort).toContain("New here? Sign up")
     expect(withPort).not.toContain("<a")
-    expect(withoutPort).not.toContain("Need an account? Sign up")
+    expect(withoutPort).not.toContain("New here? Sign up")
   })
 
   it("with modeHrefs, renders the mode switch as a link to the other mode's page", () => {
@@ -128,13 +128,13 @@ describe("AuthForm", () => {
     expect(modeSwitchTag(signIn)).toMatch(/^<a /)
     expect(attr(modeSwitchTag(signIn), "href")).toBe("/sign-up")
     expect(attr(modeSwitchTag(signUp), "href")).toBe("/sign-in")
-    expect(signUp).toContain("Have an account? Sign in")
+    expect(signUp).toContain("Already have an account? Sign in")
   })
 
   it("with modeHrefs, renders the mode-switch link even without onModeChange", () => {
     const html = render(<AuthForm {...base} modeHrefs={hrefs} />)
     expect(attr(modeSwitchTag(html), "href")).toBe("/sign-up")
-    expect(html).toContain("Need an account? Sign up")
+    expect(html).toContain("New here? Sign up")
   })
 
   it("draws the mode-switch link with the same classes as the mode-switch button", () => {
@@ -149,7 +149,7 @@ describe("AuthForm", () => {
     expect(html).toMatch(/<input[^>]*name="code"[^>]*inputmode="numeric"/)
     expect(html).not.toContain('name="login"')
     expect(html).not.toContain('name="password"')
-    expect(html).toContain("Enter the code you were sent.")
+    expect(html).toContain("Enter the code we sent you.")
   })
 
   it("renders an empty, always-present alert region when there is no error", () => {
@@ -212,7 +212,7 @@ describe("AuthForm", () => {
     expect(hasDisabledAttr(submitButtonTag(idle))).toBe(false)
     expect(hasDisabledAttr(submitButtonTag(busy))).toBe(true)
     expect(idle).toMatch(/class="sr-only">\s*<\/p>/)
-    expect(busy).toContain("Working…")
+    expect(busy).toContain("One moment…")
   })
 
   it("draws the credentials submit as the primary button unless the caller picks a variant", () => {

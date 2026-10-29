@@ -163,15 +163,15 @@ const defaultLabels: AuthFormLabels = {
   login: "Email or username",
   password: "Password",
   code: "One-time code",
-  codeHint: "Enter the code you were sent.",
+  codeHint: "Enter the code we sent you.",
   showPassword: "Show password",
   hidePassword: "Hide password",
   signIn: "Sign in",
   signUp: "Sign up",
   submitCode: "Verify code",
-  switchToSignUp: "Need an account? Sign up",
-  switchToSignIn: "Have an account? Sign in",
-  busy: "Working…",
+  switchToSignUp: "New here? Sign up",
+  switchToSignIn: "Already have an account? Sign in",
+  busy: "One moment…",
 }
 
 /**

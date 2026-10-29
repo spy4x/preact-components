@@ -26,7 +26,7 @@ export interface StatusMarkProps {
 const DEFAULT_LABELS: Record<StatusMarkStatus, string> = {
   ready: "Ready",
   beta: "Beta",
-  wip: "WIP",
+  wip: "In progress",
   paused: "Paused",
   archived: "Archived",
   "known-issue": "Known issue",
@@ -199,7 +199,7 @@ const SHAPES: Record<StatusMarkStatus, (props: { class?: string }) => JSX.Elemen
 }
 
 /**
- * A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`,
+ * A shape paired with a word: `Ready`, `In use`, `Beta`, `In progress`, `Paused`, `Archived`,
  * `Known issue`, `Outcome`, `Live`, `Offline`.
  *
  * The shape alone never carries the meaning — `label` is real text, and the glyph is wrapped

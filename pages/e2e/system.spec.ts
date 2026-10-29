@@ -550,7 +550,7 @@ export const specs: readonly Spec[] = [
       await textChanges(region)
 
       await press("lose")
-      await region.filter({ hasText: "saved on this device: 14:05." }).waitFor()
+      await region.filter({ hasText: "saved on this device at 14:05." }).waitFor()
       const arrived = await textChanges(region)
       if (arrived === 0) throw new Error("the region's text did not change when the copy arrived")
 
@@ -561,12 +561,12 @@ export const specs: readonly Spec[] = [
         .filter({ hasText: "Rendered again 2 times" }).waitFor()
       const rerendered = await textChanges(region)
       const said = await region.innerText()
-      if (rerendered !== 0 || !said.includes("saved on this device: 14:05.")) {
+      if (rerendered !== 0 || !said.includes("saved on this device at 14:05.")) {
         throw new Error(`rendering again changed the region ${rerendered} times, to "${said}"`)
       }
 
       await press("newer")
-      await region.filter({ hasText: "saved on this device: 14:07, render 2." }).waitFor()
+      await region.filter({ hasText: "saved on this device at 14:07, render 2." }).waitFor()
       if (await textChanges(region) === 0) throw new Error("a newer copy changed no text")
 
       await press("reach")

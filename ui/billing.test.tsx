@@ -342,7 +342,7 @@ describe("PlanCard", () => {
 
     expect(html).toMatch(/<fieldset[^>]*disabled/)
     expect(html).toMatch(/aria-busy="true"[^>]*>.*Manage billing/)
-    expect(html).toMatch(/role="status"[^>]*>Please wait…<\/p>/)
+    expect(html).toMatch(/role="status"[^>]*>One moment…<\/p>/)
   })
 
   it("announces the caller's pending word", () => {
@@ -416,7 +416,7 @@ describe("PlanCard", () => {
     const html = render(<PlanCard {...base} status={SubscriptionStatus.Incomplete} />)
 
     expect(html).toContain("Incomplete")
-    expect(html).toContain("Your first payment has not gone through.")
+    expect(html).toContain("Your first payment hasn't gone through yet.")
     expect(html).toContain(warningIcon)
   })
 
@@ -534,7 +534,7 @@ describe("UpgradePrompt", () => {
 
     expect(html).toContain('href="/pricing"')
     expect(html).toContain("Upgrade to use this feature")
-    expect(html).toContain("Your plan does not include this feature.")
+    expect(html).toContain("Your plan doesn't include this feature.")
     expect(html).toMatch(/<a [^>]*>See plans<\/a>/)
   })
 

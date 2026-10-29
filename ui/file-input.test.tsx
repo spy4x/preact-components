@@ -120,9 +120,9 @@ describe("resolveLabels", () => {
     const { removeFile, tooLarge, wrongType, tooMany } = resolveLabels({})
 
     expect(removeFile("a.png")).toBe("Remove a.png")
-    expect(tooLarge("a.png", 1024)).toBe("a.png is larger than 1 KB")
-    expect(wrongType("a.png")).toBe("a.png is not an accepted file type")
-    expect(tooMany("a.png")).toBe("a.png was not chosen — only one file is allowed")
+    expect(tooLarge("a.png", 1024)).toBe("a.png is over the 1 KB limit")
+    expect(wrongType("a.png")).toBe("a.png isn't a file type you can add here")
+    expect(tooMany("a.png")).toBe("a.png wasn't added — you can choose only one file")
   })
 
   it("words the size limit in the translator's language", () => {

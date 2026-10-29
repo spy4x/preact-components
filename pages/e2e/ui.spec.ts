@@ -2192,7 +2192,7 @@ function lostInputSpecs(): Spec[] {
         await card.getByRole("button", { name: "Submit", exact: true }).click()
         // The sending slot shows for 200 ms, too short to wait for reliably under load; the
         // fields it hides are what this reads back.
-        await card.getByText("Something went wrong. Please try again.", { exact: true }).waitFor()
+        await card.getByText("Something went wrong. Try again.", { exact: true }).waitFor()
         await note.and(page.locator(":enabled")).waitFor()
         const kept = await note.inputValue()
         if (kept !== "Typed before the failure") throw new Error(`the note reads "${kept}"`)
@@ -3778,7 +3778,7 @@ function languagePickerSpecs(): Spec[] {
       run: async (page) => {
         await page.setViewportSize({ width: 390, height: 900 })
         const { opener, dialog, focused, radio } = await openDialog(page)
-        await radio(/^Automatic: same as this device/, true).and(focused).waitFor()
+        await radio(/^Automatic: .+, like this device/, true).and(focused).waitFor()
 
         for (const row of await dialog.getByRole("radio").all()) {
           const box = await row.boundingBox()
@@ -3945,7 +3945,7 @@ function languagePickerSpecs(): Spec[] {
         await radio("English", true).focus()
         await page.keyboard.press("ArrowDown")
         await card.getByRole("alert").filter({
-          hasText: "Could not load Deutsch. Check your connection and try again.",
+          hasText: "Couldn't load Deutsch. Check your connection and try again.",
         }).waitFor()
         await radio("English", true).waitFor()
         // The live region was cleared when Deutsch began to load, so "English" is not said again.
@@ -5547,7 +5547,7 @@ function quickAddSpecs(): Spec[] {
       run: async (page) => {
         const { card, input, submit, chips, live, added } = quickAdd(page)
         await input.fill("Call Anna #work 2099-01-05 3pm !high")
-        const named = card.getByRole("list", { name: "Recognised in your line", exact: true })
+        const named = card.getByRole("list", { name: "Picked up from what you typed", exact: true })
         for (const badge of ["Tag work", "Due Mon 5 Jan 15:00", "High priority"]) {
           await named.locator("li").filter({ hasText: new RegExp(`^${badge}$`) }).waitFor()
         }
@@ -6318,7 +6318,7 @@ function remotePaletteSpecs(): Spec[] {
       run: async (page) => {
         const palette = await openRemotePalette(page)
         await palette.field.fill("boom")
-        await palette.shows("The search failed. Try again.")
+        await palette.shows("Couldn't search. Try again.")
         await palette.resultsAre([])
         await palette.field.fill("zz")
         await palette.shows("Nothing matches.")
@@ -7004,7 +7004,7 @@ function kanbanDragSpecs(): Spec[] {
         } finally {
           await page.mouse.up()
         }
-        await kanban.liveIs("Put back Write the release notes in To do, position 1 of 3.")
+        await kanban.liveIs("Write the release notes is back in To do, position 1 of 3.")
         return seen.join("; ")
       },
     },
@@ -7615,7 +7615,7 @@ function rightToLeftSpecs(): Spec[] {
           buffer: Buffer.from("notes"),
         })
         const region = page.locator("#guide-file-input-rejection")
-        await region.getByText("not an accepted file type").waitFor()
+        await region.getByText("isn't a file type you can add here").waitFor()
         const text = (await region.textContent()) ?? ""
         if (!text.includes("\u2068notes.txt\u2069")) {
           throw new Error(`the name is not isolated: ${JSON.stringify(text)}`)

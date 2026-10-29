@@ -170,7 +170,7 @@ export interface DataTableBaseProps<T, K extends Extract<keyof T, string>> {
   caption: string
   /** Hides the caption visually (`sr-only`) while keeping it for assistive tech. Defaults to `false`. */
   captionHidden?: boolean
-  /** Shown instead of the body when `rows` is empty. Defaults to `<EmptyState title="No rows" />`. */
+  /** Shown instead of the body when `rows` is empty. Defaults to `<EmptyState title="Nothing to show" />`. */
   empty?: ComponentChildren
   /**
    * Identifies one row: the Preact key of its `<tr>`, so a row's DOM and state follow it through a
@@ -439,7 +439,11 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     )
     : [
       <td key="empty" colspan={columns.length}>
-        {empty ?? <EmptyState title={translate(translator, "DataTable.empty", "No rows")} />}
+        {empty ?? (
+          <EmptyState
+            title={translate(translator, "DataTable.empty", "Nothing to show")}
+          />
+        )}
       </td>,
     ]
 

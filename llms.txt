@@ -797,7 +797,7 @@ SortableList	component	@spy4x/preact-ui	A list whose items are reordered by drag
 SortablePlace	type	@spy4x/preact-ui	Where an item is, as the announcements describe it.
 SpinnerSize	type	@spy4x/preact-ui	Rendered size of a `LoadingSpinner`.
 Stack	component	@spy4x/preact-ui	Children in a column, a named `gap` apart.
-StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`.
+StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `In progress`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`.
 StatusMarkStatus	type	@spy4x/preact-ui	A project or feature's lifecycle state.
 StepItem	type	@spy4x/preact-ui	One step of a `Steps` list.
 Steps	component	@spy4x/preact-ui	A numbered "how it works" list: each step a heading and a line of text, joined by a thin line.

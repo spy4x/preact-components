@@ -79,7 +79,7 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
   close: "Close the search",
   empty: "Nothing matches.",
   loading: "Searching…",
-  error: "The search failed. Try again.",
+  error: "Couldn't search. Try again.",
 }
 
 /**

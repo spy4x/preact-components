@@ -631,7 +631,7 @@ describe("DateRangePicker, withTime, a repeated or skipped time (#264)", () => {
     })
 
     expect(html).toContain('data-e2e="date-range-from-skipped"')
-    expect(html).toContain("The clocks skip this time that day, so it is read as 2026-03-29 03:30.")
+    expect(html).toContain("The clocks skip this time that day, so we'll use 2026-03-29 03:30.")
     expect(html).not.toContain("date-range-from-occurrence")
     expect(applyDisabled(html)).toBe(false)
   })
@@ -756,7 +756,9 @@ describe("DateRangePicker, withTime, notes tied to their fields (#264 review)", 
     const orderId = idOf(html, "date-range-order")
 
     expect(applyDisabled(html)).toBe(true)
-    expect(textOfId(html, orderId)).toBe("From comes after To, so there is nothing to apply.")
+    expect(textOfId(html, orderId)).toBe(
+      "The From date is after the To date. Change one of them to apply.",
+    )
     expect(attributeOf(html, "date-range-apply", "aria-describedby")).toBe(orderId)
     expect(attributeOf(html, "date-range-from", "aria-describedby"))
       .toBe(`${idOf(html, "date-range-from-skipped")} ${orderId}`)

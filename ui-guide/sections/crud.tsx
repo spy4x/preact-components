@@ -1065,7 +1065,7 @@ export const crudDemos = {
       {
         name: "saveErrorLabel",
         type: "string",
-        default: `"Could not save"`,
+        default: `"Couldn't save"`,
         description: "What a failed save is introduced with, before the store's own message.",
       },
       {
@@ -1205,7 +1205,7 @@ export const crudDemos = {
       {
         name: "deleteErrorLabel",
         type: "string",
-        default: `"Could not delete"`,
+        default: `"Couldn't delete"`,
         description:
           "What a refused Delete is introduced with in its dialog, before the store's own message; `restoreErrorLabel` is its twin.",
       },
@@ -1320,7 +1320,7 @@ export const crudDemos = {
       {
         name: "label",
         type: "string",
-        default: "`To archive this <model>, please first archive:`",
+        default: "`Archive these first, then you can archive this <model>:`",
         description: "The sentence above the list, in the app's own words.",
       },
     ],

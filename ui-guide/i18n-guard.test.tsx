@@ -17,7 +17,7 @@ import { catalogueSections, demoRegistry } from "./registry.ts"
 
 /**
  * Every guide demo of the `ui`, `system`, `crud`, `charts` and `map` packages rendered three times.
- * It checks only what the demos render: a word no demo shows (an empty `DataTable`'s "No rows", for
+ * It checks only what the demos render: a word no demo shows (an empty `DataTable`'s "Nothing to show", for
  * one) is not checked here.
  *
  * Under `en-XA`, the pseudo-language that wraps each catalog message in `⟦ ⟧`, a run of text with

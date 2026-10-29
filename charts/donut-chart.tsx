@@ -143,7 +143,7 @@ const HOLE = 0.7
 /** The chart's English words, each a key `DonutChart.<field>` of the catalog. */
 const DONUT_LABELS = {
   emptyLabel: "No data",
-  keyboardHint: "Arrow keys step through the slices.",
+  keyboardHint: "Use the arrow keys to move between slices.",
   chartLabel: (count: number) => `Donut chart of ${count} slices`,
 }
 
