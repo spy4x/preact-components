@@ -7479,8 +7479,12 @@ function rightToLeftSpecs(): Spec[] {
         const card = await rightToLeft(page, "ToggleSwitch")
         const on = card.locator(`[role="switch"][aria-checked="true"]`).first()
         await on.waitFor()
+        const thumb = on.locator("span").first()
+        // Turning the card right to left slides the knob over 200 ms: measure where it comes to
+        // rest, not a frame of the slide.
+        await thumb.evaluate((knob) => Promise.all(knob.getAnimations().map((a) => a.finished)))
         const track = await edges(on)
-        const knob = await edges(on.locator("span").first())
+        const knob = await edges(thumb)
         if (knob.left < track.left - 1 || knob.right > track.right + 1) {
           throw new Error(
             `the knob spans [${knob.left}, ${knob.right}], outside the track [${track.left}, ` +
