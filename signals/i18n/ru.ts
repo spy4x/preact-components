@@ -1,8 +1,8 @@
 /** The `signals` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
-  "ModelStore.unknownIssue": "неизвестная проблема",
+  "ModelStore.unknownIssue": "причина неизвестна",
   "Toast.error": "Ошибка",
-  "Toast.info": "Информация",
+  "Toast.info": "Для информации",
   "Toast.success": "Готово",
   "Toast.warning": "Внимание",
 }

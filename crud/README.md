@@ -235,7 +235,7 @@ The harness is the six parts, once:
    and is listed by `DeletionValidation`.
 5. **Submit**: an add calls `create` and hands the new row to `onCreated` (navigate from there); an
    edit calls `update` and reloads the row from the store. A save the store refuses, or one that
-   throws, is shown above Save in an `ErrorState` (a `role="alert"`) as `Could not save: <the store's message>`
+   throws, is shown above Save in an `ErrorState` (a `role="alert"`) as `Couldn't save: <the store's message>`
    (`saveErrorLabel` replaces the first part) and stays until the next save.
 6. **Chrome**: page title, error line, card, footer with the archive toggle, Cancel and Save, and the
    dependency block. A viewer `canChange` refuses gets the fields disabled and a footer with Cancel
@@ -253,23 +253,23 @@ The harness is the six parts, once:
    This package no longer re-exports them (#359): `formatTimestamp` was `formatTime` under this
    package's name.
 
-| Prop             | Default              | Notes                                                             |
-| ---------------- | -------------------- | ----------------------------------------------------------------- |
-| `blank`          | —                    | the add-mode row; the row type is inferred from it                |
-| `schema`         | —                    | arktype schema validated on every change; omit if there is none   |
-| `entity`         | —                    | "Add **Region**", "Region not found", dependency sentence         |
-| `title`          | `Add/Edit <entity>`  | full title override                                               |
-| `canChange`      | `true`               | a port, because the library has no auth; `false` leaves Cancel    |
-| `archive`        | no toggle            | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
-| `onCreated`      | —                    | navigate where the created row belongs                            |
-| `validate`       | —                    | extra checks after the schema                                     |
-| `cancelHref`     | —                    | where Cancel points                                               |
-| `saveErrorLabel` | `"Could not save"`   | what a failed save is introduced with                             |
-| `saveLabel`      | `"Save"`             | label of the Save button; `cancelLabel` is Cancel's               |
-| `notFoundLabel`  | `<entity> not found` | shown when `editId` names a row the store does not hold           |
-| `headingLevel`   | `1`                  | level of the title's heading, for a page that has its `<h1>`      |
-| `notice`         | —                    | slot between the field grid and the footer                        |
-| `footerSlot`     | —                    | slot at the start of the footer                                   |
+| Prop             | Default                       | Notes                                                              |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `blank`          | —                             | the add-mode row; the row type is inferred from it                 |
+| `schema`         | —                             | arktype schema validated on every change; omit if there is none    |
+| `entity`         | —                             | "Add **Region**", "Couldn't find this Region", dependency sentence |
+| `title`          | `Add/Edit <entity>`           | full title override                                                |
+| `canChange`      | `true`                        | a port, because the library has no auth; `false` leaves Cancel     |
+| `archive`        | no toggle                     | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }`  |
+| `onCreated`      | —                             | navigate where the created row belongs                             |
+| `validate`       | —                             | extra checks after the schema                                      |
+| `cancelHref`     | —                             | where Cancel points                                                |
+| `saveErrorLabel` | `"Couldn't save"`             | what a failed save is introduced with                              |
+| `saveLabel`      | `"Save"`                      | label of the Save button; `cancelLabel` is Cancel's                |
+| `notFoundLabel`  | `Couldn't find this <entity>` | shown when `editId` names a row the store does not hold            |
+| `headingLevel`   | `1`                           | level of the title's heading, for a page that has its `<h1>`       |
+| `notice`         | —                             | slot between the field grid and the footer                         |
+| `footerSlot`     | —                             | slot at the start of the footer                                    |
 
 ## Field rows
 
@@ -317,7 +317,7 @@ Four behaviours the copies got wrong, now in one place:
 ## `DeletionValidation`
 
 `DeletionValidation` renders the entities that block an archive, under the heading
-`To archive this <model>, please first archive:`, which `label` replaces (`archive.blockedLabel` on
+`Archive these first, then you can archive this <model>:`, which `label` replaces (`archive.blockedLabel` on
 `CrudEditor`). It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
 page on every render — even with an empty list, as a zero-height node rather than nothing at all —
@@ -445,7 +445,7 @@ differs from a validated form in three ways, and each one is a slot or a port on
   `confirmCancelLabel` the cancelling one and `confirmCloseLabel` the cross in the corner. All have
   English defaults. While the store has not
   answered, the confirming button is busy and the dialog stays. When the store refuses, or throws,
-  the dialog stays open and shows `Could not delete: <the store's message>` in an `ErrorState` (a
+  the dialog stays open and shows `Couldn't delete: <the store's message>` in an `ErrorState` (a
   `role="alert"`) that takes focus, so the person can try again or leave; `deleteErrorLabel` and
   `restoreErrorLabel` replace the first part, and a store that throws is logged with
   `console.error` as well. When it succeeds, the form's own copy of the row takes the new

@@ -44,7 +44,7 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
   iosAfter: "then Add to Home Screen.",
   install: "Install",
   dismiss: "Not now",
-  failed: "That did not work. Try again.",
+  failed: "That didn't work. Try again.",
 }
 
 export interface InstallPromptProps {

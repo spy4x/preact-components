@@ -3,6 +3,6 @@ export default {
   "ModelStore.unknownIssue": "problema desconocido",
   "Toast.error": "Error",
   "Toast.info": "Información",
-  "Toast.success": "Listo",
-  "Toast.warning": "Aviso",
+  "Toast.success": "Hecho",
+  "Toast.warning": "Atención",
 }

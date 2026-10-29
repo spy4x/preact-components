@@ -51,9 +51,9 @@ export interface LanguagePickerLabels {
 
 const DEFAULT_LABELS: LanguagePickerLabels = {
   label: "Language",
-  automatic: (language) => `Automatic: same as this device — ${language}`,
+  automatic: (language) => `Automatic: ${language}, like this device`,
   loading: (language) => `Loading ${language}…`,
-  error: (language) => `Could not load ${language}. Check your connection and try again.`,
+  error: (language) => `Couldn't load ${language}. Check your connection and try again.`,
   offline: "Needs a connection",
 }
 
@@ -88,7 +88,7 @@ export interface LanguagePickerProps {
   /** A language that failed to load: an error under the list names it. */
   failed?: string
   /**
-   * The device's language. Given, the list starts with "Automatic: same as this device — …",
+   * The device's language. Given, the list starts with "Automatic: …, like this device",
    * chosen when {@link current} is `null`.
    */
   automatic?: string
@@ -313,7 +313,7 @@ function valueOf(row: HTMLElement): string | null {
 const NAME_SLOT = "\u0001"
 
 /**
- * "Automatic: same as this device — English", with the name in its own language: the message is
+ * "Automatic: English, like this device", with the name in its own language: the message is
  * filled with a marker, and the name drawn where the marker landed.
  */
 function Automatic(

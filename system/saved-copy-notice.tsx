@@ -20,7 +20,7 @@ export interface SavedCopyNoticeLabels {
   title: string
   /**
    * The sentence under the title, given the time of the copy as the notice words it. Defaults to
-   * `"The server is out of reach. This copy was saved on this device: 12/10/2026 14:05."`.
+   * `"Can't reach the server. You're seeing the copy saved on this device at 12/10/2026 14:05."`.
    */
   body: (time: string) => string
 }
@@ -28,7 +28,7 @@ export interface SavedCopyNoticeLabels {
 /** The English words {@link SavedCopyNotice} shows when the caller passes none. */
 export const DEFAULT_SAVED_COPY_NOTICE_LABELS: SavedCopyNoticeLabels = {
   title: "Saved copy",
-  body: (time) => `The server is out of reach. This copy was saved on this device: ${time}.`,
+  body: (time) => `Can't reach the server. You're seeing the copy saved on this device at ${time}.`,
 }
 
 /**

@@ -98,7 +98,7 @@ export const defaultKanbanLabels: KanbanBoardLabels = {
   pickedUp: (at) => `Picked up ${at.item}. ${at.column}, position ${at.position} of ${at.total}.`,
   moved: (at) => `${at.item}: ${at.column}, position ${at.position} of ${at.total}.`,
   dropped: (at) => `Dropped ${at.item} in ${at.column}, position ${at.position} of ${at.total}.`,
-  cancelled: (at) => `Put back ${at.item} in ${at.column}, position ${at.position} of ${at.total}.`,
+  cancelled: (at) => `${at.item} is back in ${at.column}, position ${at.position} of ${at.total}.`,
 }
 
 export interface KanbanBoardProps<Item extends KanbanItem> {

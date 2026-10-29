@@ -72,7 +72,7 @@ export function describeCalendarDay(day: CalendarDay): string {
     case "past":
       return `${day.label} — past`
     case "after":
-      return `${day.label} — outside the allowed range`
+      return `${day.label} — too far ahead`
     case "none-left":
       return `${day.label} — none left`
     case "unavailable":

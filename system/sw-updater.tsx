@@ -260,7 +260,7 @@ export interface SWUpdaterProps {
    * its own registration hands over the container it already has.
    */
   container?: ContainerLike
-  /** Bar copy. Defaults to `"New version available"`. */
+  /** Bar copy. Defaults to `"A new version is ready"`. */
   message?: string
   /** Reload button copy. Defaults to `"Reload"`. */
   reloadLabel?: string
@@ -340,7 +340,8 @@ export function SWUpdater(
   }: SWUpdaterProps,
 ): JSX.Element {
   const translator = useT()
-  const message = messageProp ?? translate(translator, "SWUpdater.message", "New version available")
+  const message = messageProp ??
+    translate(translator, "SWUpdater.message", "A new version is ready")
   const reloadLabel = reloadLabelProp ?? translate(translator, "SWUpdater.reloadLabel", "Reload")
   const dismissLabel = dismissLabelProp ??
     translate(translator, "SWUpdater.dismissLabel", "Dismiss")

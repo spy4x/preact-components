@@ -46,7 +46,7 @@ export interface CopyButtonProps extends
   copyLabel?: string
   /** Shown and announced after a copy that worked. Defaults to `"Copied"`. */
   copiedLabel?: string
-  /** Shown and announced after a copy that failed. Defaults to `"Copy failed"`. */
+  /** Shown and announced after a copy that failed. Defaults to `"Couldn't copy"`. */
   failedLabel?: string
   /** Milliseconds a confirmation, of either kind, stays visible. Defaults to 1500. */
   copiedForMs?: number
@@ -119,7 +119,7 @@ const COPY_BUTTON_LABELS: Required<
 > = {
   copyLabel: "Copy",
   copiedLabel: "Copied",
-  failedLabel: "Copy failed",
+  failedLabel: "Couldn't copy",
 }
 
 /**

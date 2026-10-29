@@ -80,7 +80,7 @@ export interface AttachmentListLabels {
   /** Accessible name of a ready file's download button. Default: `"Download scan.pdf"`. */
   downloadFile: (name: string) => string
   /**
-   * Accessible name of the cancel button while uploading. Default: `"Cancel upload of scan.pdf"`.
+   * Accessible name of the cancel button while uploading. Default: `"Stop uploading scan.pdf"`.
    */
   cancel: (name: string) => string
   /**
@@ -128,7 +128,7 @@ function defaultLabels(translator: Translator<string>): AttachmentListLabels {
     checkingProgress: (name) => `Checking ${name}`,
     open: (name) => `Open ${name}`,
     downloadFile: (name) => `Download ${name}`,
-    cancel: (name) => `Cancel upload of ${name}`,
+    cancel: (name) => `Stop uploading ${name}`,
     remove: (name) => `Remove ${name}`,
     actions: (name) => `Actions for ${name}`,
     download: "Download",

@@ -9660,8 +9660,8 @@ async function skippedHourCheck(devtools: Devtools): Promise<void> {
   const typedReversed = opened.open &&
     await typeTimeField(devtools, "date-range-from", "2026-03-29T02:30") &&
     await typeTimeField(devtools, "date-range-to", "2026-03-29T03:10")
-  const ORDER = "From comes after To, so there is nothing to apply."
-  const SKIPPED = "The clocks skip this time that day, so it is read as 2026-03-29 03:30."
+  const ORDER = "The From date is after the To date. Change one of them to apply."
+  const SKIPPED = "The clocks skip this time that day, so we'll use 2026-03-29 03:30."
   const orderShown = typedReversed && await poll(
     () =>
       devtools.evaluate<boolean>(
@@ -11630,7 +11630,7 @@ async function enhancedFormAsyncFailureCheck(devtools: Devtools): Promise<void> 
   const failed = await poll(
     async () =>
       (await enhancedFormReading(devtools, card)).region ===
-        "Something went wrong. Please try again.",
+        "Something went wrong. Try again.",
     2_000,
   )
   const after = await enhancedFormReading(devtools, card)
@@ -11688,7 +11688,7 @@ async function enhancedFormFailureColourCheck(devtools: Devtools): Promise<void>
   const failed = toggledOn && await poll(
     async () =>
       (await enhancedFormReading(devtools, card)).region ===
-        "Something went wrong. Please try again.",
+        "Something went wrong. Try again.",
     2_000,
   )
   await pointerToCorner(devtools)
@@ -11797,7 +11797,7 @@ async function enhancedFormSynchronousThrowCheck(devtools: Devtools): Promise<vo
   const failed = await poll(
     async () =>
       (await enhancedFormReading(devtools, card)).region ===
-        "Something went wrong. Please try again.",
+        "Something went wrong. Try again.",
     2_000,
   )
   const after = await enhancedFormReading(devtools, card)
@@ -12778,7 +12778,7 @@ async function contactFormFailureRetryChecks(devtools: Devtools): Promise<void> 
   const failed = await poll(
     async () =>
       (await enhancedFormReading(devtools, card)).region ===
-        "Something went wrong. Please try again.",
+        "Something went wrong. Try again.",
     2_000,
   )
   const afterFailure = await enhancedFormReading(devtools, card)
@@ -14056,7 +14056,7 @@ async function fileInputRefusalChecks(
     )
     check(
       "the too-large refusal is announced in FileInput's own live region",
-      region.includes("larger than"),
+      region.includes("over the"),
       `"${region}"`,
     )
   }
@@ -14083,7 +14083,7 @@ async function fileInputRefusalChecks(
     )
     check(
       "the wrong-type refusal is announced in FileInput's own live region",
-      region.includes("not an accepted file type"),
+      region.includes("isn't a file type you can add here"),
       `"${region}"`,
     )
   }
@@ -16209,7 +16209,10 @@ async function kanbanEscapeCheck(devtools: Devtools): Promise<void> {
   )
   const moving = await devtools.evaluate<KanbanState>(KANBAN_STATE)
   await pressKey(devtools, "Escape")
-  await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.startsWith("Put back")`), 2_000)
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.includes(" is back in ")`),
+    2_000,
+  )
   const after = await devtools.evaluate<KanbanState>(KANBAN_STATE)
 
   check(
@@ -16251,7 +16254,10 @@ async function kanbanBlurCheck(devtools: Devtools): Promise<void> {
       clickCount: 1,
     })
   }
-  await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.startsWith("Put back")`), 2_000)
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.includes(" is back in ")`),
+    2_000,
+  )
   const after = await devtools.evaluate<KanbanState>(KANBAN_STATE)
 
   check(
@@ -16259,7 +16265,7 @@ async function kanbanBlurCheck(devtools: Devtools): Promise<void> {
     moving.columns.doing?.includes("search") === true &&
       JSON.stringify(after.columns) === JSON.stringify(before.columns) &&
       after.lastMove === before.lastMove && after.focused === null &&
-      after.live === "Put back Rank search results in To do, position 2 of 2.",
+      after.live === "Rank search results is back in To do, position 2 of 2.",
     `while moving: doing ${JSON.stringify(moving.columns.doing)}; after the click: ` +
       `${JSON.stringify(after.columns)}, onMove "${after.lastMove}", focus ${after.focused}, ` +
       `live "${after.live}"`,
@@ -16470,7 +16476,10 @@ async function kanbanOpenChecks(devtools: Devtools): Promise<void> {
   )
   const spaced = await devtools.evaluate<KanbanState>(KANBAN_STATE)
   await pressKey(devtools, "Escape")
-  await poll(() => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.startsWith("Put back")`), 2_000)
+  await poll(
+    () => devtools.evaluate<boolean>(`${KANBAN_STATE}.live.includes(" is back in ")`),
+    2_000,
+  )
 
   check(
     "Enter opens a KanbanBoard card through onOpen, and Space still picks it up",
@@ -17968,7 +17977,7 @@ interface CopyButtonReading {
 
 /** One failure colour's contrast against what it is drawn on, in one palette. */
 interface CopyFailureContrast {
-  /** The titled button's "Copy failed" text on the button's own fill. */
+  /** The titled button's "Couldn't copy" text on the button's own fill. */
   label: number
   /** The icon-only button's cross on what shows through its transparent box. */
   cross: number
@@ -18001,7 +18010,7 @@ function shownFor(log: readonly CopyRegionChange[], which: string, message: stri
 const COPY_WINDOW_MS = { min: 1_000, max: 2_200 } as const
 
 /**
- * `CopyButton` awaits its copy: a clipboard that rejects shows a cross and "Copy failed", both on
+ * `CopyButton` awaits its copy: a clipboard that rejects shows a cross and "Couldn't copy", both on
  * the button and in its live region, and a clipboard that resolves shows the checkmark and
  * "Copied". Either confirmation clears on its own after `copiedForMs`, 1500ms by default, which a
  * `MutationObserver` on each live region times. The failure's red text and cross are measured in
@@ -18126,7 +18135,7 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
     await click("icon")
     await click("titled")
     await pointerToCorner(devtools)
-    await poll(async () => (await read("titled")).region === "Copy failed", 1_000)
+    await poll(async () => (await read("titled")).region === "Couldn't copy", 1_000)
     const contrast = await devtools.evaluate<
       { light: CopyFailureContrast; dark: CopyFailureContrast } | null
     >(`(async () => {
@@ -18166,9 +18175,9 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
 
     check(
       "a CopyButton whose clipboard rejects shows a cross and announces the failure, not a copy",
-      iconFailed.icon === COPY_BUTTON_CROSS && iconFailed.region === "Copy failed" &&
-        titledFailed.icon === COPY_BUTTON_CROSS && titledFailed.region === "Copy failed" &&
-        titledFailed.text === "Copy failed" && failedCopied.length === 2,
+      iconFailed.icon === COPY_BUTTON_CROSS && iconFailed.region === "Couldn't copy" &&
+        titledFailed.icon === COPY_BUTTON_CROSS && titledFailed.region === "Couldn't copy" &&
+        titledFailed.text === "Couldn't copy" && failedCopied.length === 2,
       `icon-only ${JSON.stringify(iconFailed)}, titled ${JSON.stringify(titledFailed)}, ` +
         `clipboard asked for ${JSON.stringify(failedCopied)}`,
     )
@@ -18189,7 +18198,7 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
       async () => (await atRest("icon", null)) && (await atRest("titled", "Copy number")),
       3_000,
     )
-    const failureShown = shownFor(await regionLog(), "titled", "Copy failed")
+    const failureShown = shownFor(await regionLog(), "titled", "Couldn't copy")
     check(
       "a CopyButton's failure state clears on its own after about 1.5s",
       failureCleared && inWindow(failureShown),
@@ -18224,7 +18233,7 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
     await devtools.evaluate<null>(`(globalThis.__copyRegionLog.length = 0, null)`)
     await click("fails")
     const firstPress = Date.now()
-    await poll(async () => (await read("fails")).region === "Copy failed", 1_000)
+    await poll(async () => (await read("fails")).region === "Couldn't copy", 1_000)
     // A deliberate pause, not a poll: the second press has to land 1s after the first, and no state
     // on the page marks that moment.
     await new Promise((done) => setTimeout(done, Math.max(0, firstPress + 1_000 - Date.now())))
@@ -18233,14 +18242,14 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
     await poll(async () => await atRest("fails", null), 3_500)
     const secondLog = (await regionLog()).filter((change) => change.which === "fails")
     const texts = secondLog.map((change) => change.text)
-    const firstFailure = secondLog.find((change) => change.text === "Copy failed")
+    const firstFailure = secondLog.find((change) => change.text === "Couldn't copy")
     const lastEmpty = secondLog.findLast((change) => change.text === "")
     const failureLasted = firstFailure && lastEmpty
       ? Math.round(lastEmpty.at - firstFailure.at)
       : null
     check(
       "a second press empties the live region before announcing again, and restarts the window",
-      texts.join("|") === "Copy failed||Copy failed|" && failureLasted !== null &&
+      texts.join("|") === "Couldn't copy||Couldn't copy|" && failureLasted !== null &&
         failureLasted >= 1_800,
       `region texts ${JSON.stringify(texts)}; failure shown from the first announcement until ` +
         `${failureLasted}ms later (needs 1800ms or more)`,
@@ -18667,7 +18676,7 @@ async function pricingPendingCheck(devtools: Devtools): Promise<void> {
   )
   check(
     "a pending PricingTable announces the wait from the chosen plan's form alone",
-    afterFirst.regions.filter((text) => text === "Please wait…").length === 1 &&
+    afterFirst.regions.filter((text) => text === "One moment…").length === 1 &&
       afterFirst.regions.filter((text) => text !== "").length === 1,
     JSON.stringify(afterFirst.regions),
   )
@@ -18717,7 +18726,7 @@ async function planCardPendingCheck(devtools: Devtools): Promise<void> {
     )
     check(
       "a pending PlanCard announces the wait from its live region",
-      afterFirst.regions.includes("Please wait…"),
+      afterFirst.regions.includes("One moment…"),
       JSON.stringify(afterFirst.regions),
     )
 
@@ -18935,7 +18944,7 @@ async function billingFailureCheck(
   how: "Enter" | "click",
   clearAfter: boolean,
 ): Promise<void> {
-  const failedWords = "Something went wrong. Please try again."
+  const failedWords = "Something went wrong. Try again."
   await devtools.evaluate(`(() => {
     globalThis.__billingErrors = []
     globalThis.__billingErrorListener = (event) => {

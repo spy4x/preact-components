@@ -102,7 +102,7 @@ describe("LanguagePicker list mode", () => {
     expect(radios[0]).toContain(`aria-checked="true"`)
     expect(radios[0]).toContain(`data-value="automatic"`)
     expect(html).toContain(
-      `Automatic: same as this device — <span lang="de" dir="ltr" class="notranslate">Deutsch</span>`,
+      `Automatic: <span lang="de" dir="ltr" class="notranslate">Deutsch</span>, like this device`,
     )
   })
 
@@ -139,7 +139,7 @@ describe("LanguagePicker list mode", () => {
     const described = html.match(/aria-describedby="([^"]+)"/)?.[1]
     expect(described).toBeDefined()
     expect(html).toContain(
-      `<p id="${described}" role="alert" class="text-sm text-danger">Could not load <bdi>Русский</bdi>. Check your connection and try again.</p>`,
+      `<p id="${described}" role="alert" class="text-sm text-danger">Couldn't load <bdi>Русский</bdi>. Check your connection and try again.</p>`,
     )
   })
 
@@ -162,8 +162,10 @@ describe("LanguagePicker list mode", () => {
       />,
     )
     expect(html).toContain(`aria-label="Sprache"`)
-    expect(html).toContain(`Automatisch: wie auf diesem Gerät — <span lang="en"`)
-    expect(html).toContain("Nur mit Verbindung")
+    expect(html).toContain(
+      `Automatisch: <span lang="en" dir="ltr" class="notranslate">English</span>, wie auf diesem Gerät`,
+    )
+    expect(html).toContain("Nur mit Internetverbindung")
     expect(html).toContain(`<span lang="es" dir="ltr" class="notranslate">Español</span>`)
   })
 

@@ -23,7 +23,7 @@ export type SyncState = "offline" | "failed" | "syncing" | "waiting" | "synced"
 export interface SyncStatusLabels {
   /** No network. Defaults to `"Offline"`, plus how many changes wait, when any do. */
   offline: (pending: number) => string
-  /** The last attempt failed. Defaults to `"Sync failed"`. */
+  /** The last attempt failed. Defaults to `"Couldn't sync"`. */
   failed: (pending: number) => string
   /** A sync is running. Defaults to `"Syncing…"`. */
   syncing: (pending: number) => string
@@ -43,7 +43,7 @@ function changes(count: number): string {
 /** The English words {@link SyncStatus} shows when the caller passes none. */
 export const DEFAULT_SYNC_STATUS_LABELS: SyncStatusLabels = {
   offline: (pending) => pending > 0 ? `Offline, ${changes(pending)} waiting` : "Offline",
-  failed: () => "Sync failed",
+  failed: () => "Couldn't sync",
   syncing: () => "Syncing…",
   waiting: (pending) => `${changes(pending)} waiting to sync`,
   synced: "All changes synced",

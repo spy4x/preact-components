@@ -102,13 +102,13 @@ describe("resolveMoneyInputEdit", () => {
   it("refuses an amount below min, through rangeMessage", () => {
     const edit = resolveMoneyInputEdit("4.00", "USD", "en", { min: 500 }, INVALID)
     expect(edit.value).toBeUndefined()
-    expect(edit.message).toBe("Enter an amount of at least $5.00")
+    expect(edit.message).toBe("Enter $5.00 or more")
   })
 
   it("refuses an amount above max, through rangeMessage", () => {
     const edit = resolveMoneyInputEdit("6.00", "USD", "en", { max: 500 }, INVALID)
     expect(edit.value).toBeUndefined()
-    expect(edit.message).toBe("Enter an amount of at most $5.00")
+    expect(edit.message).toBe("Enter $5.00 or less")
   })
 
   it("names both bounds when both are set", () => {

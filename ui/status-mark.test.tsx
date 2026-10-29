@@ -8,7 +8,7 @@ const LABELS: Record<StatusMarkStatus, string> = {
   ready: "Ready",
   "in-use": "In use",
   beta: "Beta",
-  wip: "WIP",
+  wip: "In progress",
   paused: "Paused",
   archived: "Archived",
   "known-issue": "Known issue",
@@ -55,8 +55,8 @@ describe("StatusMark", () => {
       }
     }
     const hiddenWrapper = html.slice(tagStart, pos)
-    expect(hiddenWrapper).not.toContain("WIP")
-    expect(html.slice(pos)).toContain("WIP")
+    expect(hiddenWrapper).not.toContain("In progress")
+    expect(html.slice(pos)).toContain("In progress")
   })
 
   it("colours only the shape, so the word keeps the page's text colour", () => {

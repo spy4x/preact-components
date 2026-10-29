@@ -108,7 +108,9 @@ describe("the crud components under a translator", () => {
     expect(html).toContain("Zuordnung bearbeiten")
     expect(html).toContain(">Wiederherstellen</button>")
     expect(html).toContain("Entfernt vor 5 Tagen")
-    expect(inGerman(blocked())).toContain("Um „Gebiet“ zu archivieren, archiviere zuerst:")
+    expect(inGerman(blocked())).toContain(
+      "Archiviere zuerst diese Einträge, dann kannst du „Gebiet“ archivieren:",
+    )
   })
 
   it("say how long ago in Intl's words only under a language other than English", () => {

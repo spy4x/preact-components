@@ -21,7 +21,7 @@ describe("DeletionValidation", () => {
 
     expect(html).toContain('role="alert"')
     expect(html).not.toContain("border-danger")
-    expect(html).not.toContain("To archive this Region")
+    expect(html).not.toContain("archive this Region")
   })
 
   it("carries no class on the region while the dependency list is empty", () => {
@@ -35,7 +35,7 @@ describe("DeletionValidation", () => {
   it("lists every dependency kind and its linked values when the list is non-empty", () => {
     const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
 
-    expect(html).toContain("To archive this Region, please first archive:")
+    expect(html).toContain("Archive these first, then you can archive this Region:")
     expect(html).toContain("Zones:")
     expect(html).toContain("Schedules:")
     expect(html).toContain('href="/zones/1/edit"')
@@ -54,7 +54,7 @@ describe("DeletionValidation", () => {
     )
 
     expect(html).toContain("These still use the region:")
-    expect(html).not.toContain("To archive this Region")
+    expect(html).not.toContain("archive this Region")
   })
 
   it("styles the region as the visible card once there are dependencies", () => {

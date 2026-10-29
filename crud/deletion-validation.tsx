@@ -9,7 +9,7 @@ export interface DeletionValidationProps {
   dependencies: DeletionDependency[]
   /** Model name used in the sentence, for example `"Region"`. */
   model: string
-  /** Heading above the list. Defaults to `To archive this <model>, please first archive:`. */
+  /** Heading above the list. Defaults to `Archive these first, then you can archive this <model>:`. */
   label?: string
 }
 
@@ -48,7 +48,7 @@ export function DeletionValidation(
   const { heading } = useLabels(
     "DeletionValidation",
     {
-      heading: (model: string) => `To archive this ${model}, please first archive:`,
+      heading: (model: string) => `Archive these first, then you can archive this ${model}:`,
     },
     undefined,
     { heading: ["model"] },

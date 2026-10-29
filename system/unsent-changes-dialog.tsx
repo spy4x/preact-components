@@ -73,7 +73,7 @@ export const DEFAULT_UNSENT_CHANGES_DIALOG_LABELS: UnsentChangesDialogLabels = {
   body:
     "You made them while offline or the connection was slow. They haven't reached the server yet.",
   kept:
-    "If you sign out now, they stay on this browser and are sent only when you sign in here again.",
+    "If you sign out now, they stay in this browser and are sent the next time you sign in here.",
   conflicts: (conflicts) =>
     englishPlurals.select(conflicts) === "one"
       ? `${conflicts} of them needs your choice before it can be sent.`

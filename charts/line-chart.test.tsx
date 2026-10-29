@@ -101,7 +101,7 @@ describe("LineChart", () => {
       "M1000.0,0.0 L1000.0,0.0",
     ])
     expect(html).toMatch(/<path d="M333.3,500.0 L1000.0,0.0"[^>]*stroke-dasharray="2 3"/)
-    expect(html).toContain("Dashed grey segments bridge missing values.")
+    expect(html).toContain("Dashed grey lines mark gaps in the data.")
   })
 
   it("treats a zero as missing when asked to ignore zeroes", () => {

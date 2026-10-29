@@ -100,7 +100,7 @@ const defaultLabels: Required<DateRangePickerLabels> = {
   earlierOccurrence: "First, before the clocks go back",
   laterOccurrence: "Second, after the clocks go back",
   skippedTime: (readsAs) => skippedTime(ENGLISH, readsAs),
-  outOfOrder: "From comes after To, so there is nothing to apply.",
+  outOfOrder: "The From date is after the To date. Change one of them to apply.",
 }
 
 /** The note under a skipped time, with the `T` of the value it is read as shown as a space. */
@@ -109,7 +109,7 @@ function skippedTime(translator: Translator<string>, readsAs: string): string {
   return translate(
     translator,
     "DateRangePicker.skippedTime",
-    `The clocks skip this time that day, so it is read as ${time}.`,
+    `The clocks skip this time that day, so we'll use ${time}.`,
     { time },
   )
 }

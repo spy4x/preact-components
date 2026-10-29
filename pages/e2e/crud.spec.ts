@@ -175,7 +175,7 @@ export const specs: readonly Spec[] = [
 
       await restore.click()
       await dialog
-        .filter({ hasText: "Are you sure you want to restore this supplier association?" })
+        .filter({ hasText: "This supplier association comes back as it was." })
         .waitFor()
       await dialog.locator(`[data-e2e="confirm-dialog-cancel"]`).filter({ hasText: "Cancel" })
         .click()
@@ -460,7 +460,7 @@ export const specs: readonly Spec[] = [
       await remove.click()
       await confirm.click()
       await dialog.getByRole("alert")
-        .filter({ hasText: "Could not delete: the server refused the change" })
+        .filter({ hasText: "Couldn't delete: the server refused the change" })
         .and(focused).waitFor()
       await dialog.filter({ hasText: "It can be attached again later." }).waitFor()
       await rows.filter({ hasText: "1 of them removed" }).waitFor()
@@ -528,7 +528,7 @@ export const specs: readonly Spec[] = [
       await field.fill("Ink supplier")
       await page.keyboard.press("Tab")
       await card.getByText(
-        "Restoring it keeps the record that was there before instead of creating a second one.",
+        "Restore it to bring back the original instead of adding a copy.",
       ).waitFor()
       await refuse.click()
       await refuse.and(page.locator(`[aria-pressed="true"]`)).waitFor()
@@ -536,7 +536,7 @@ export const specs: readonly Spec[] = [
       await restore.click()
       await confirm.click()
       await dialog.getByRole("alert")
-        .filter({ hasText: "Could not restore: the server refused the change" })
+        .filter({ hasText: "Couldn't restore: the server refused the change" })
         .and(focused).waitFor()
       await rows.filter({ hasText: "1 of them removed" }).waitFor()
 
@@ -647,7 +647,7 @@ export const specs: readonly Spec[] = [
       const dialog = page.getByRole("alertdialog", { name: "Detach this supplier?" })
       const confirm = dialog.locator(`[data-e2e="confirm-dialog-confirm"]`)
       const refusal = dialog.getByRole("alert")
-        .filter({ hasText: "Could not delete: the server refused the change" })
+        .filter({ hasText: "Couldn't delete: the server refused the change" })
         .and(page.locator(":focus"))
 
       await card.locator(`[data-e2e="edit-association"]`).click()
@@ -682,7 +682,7 @@ export const specs: readonly Spec[] = [
       await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
       await calls.filter({ hasText: "asked to delete 1 times" }).waitFor()
       await dialog.getByRole("alert")
-        .filter({ hasText: "Could not delete: the connection dropped" })
+        .filter({ hasText: "Couldn't delete: the connection dropped" })
         .and(page.locator(":focus")).waitFor()
       await rows.filter({ hasText: "1 of them removed" }).waitFor()
     },
@@ -696,11 +696,12 @@ export const specs: readonly Spec[] = [
       const block = demo.getByRole("alert")
 
       await demo.getByRole("checkbox").check()
-      await block.filter({ hasText: "To archive this Team, please first archive:" }).waitFor()
+      await block.filter({ hasText: "Archive these first, then you can archive this Team:" })
+        .waitFor()
 
       await demo.locator(`[data-e2e="word-block"]`).click()
       await block.filter({ hasText: "Move these out of the team first:" }).waitFor()
-      await block.filter({ hasText: "please first archive" }).waitFor({ state: "detached" })
+      await block.filter({ hasText: "Archive these first" }).waitFor({ state: "detached" })
     },
   },
   {

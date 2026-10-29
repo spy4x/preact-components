@@ -62,7 +62,7 @@ describe("the system components under a translator", () => {
       past: "vorbei",
       count: "3 frei",
       noneLeft: "ausgebucht",
-      after: "außerhalb des erlaubten Zeitraums",
+      after: "zu weit in der Zukunft",
     })
     expect(html).toContain(`aria-label="${systemDe["Calendar.nextMonth"]}: `)
   })

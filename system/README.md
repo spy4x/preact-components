@@ -400,7 +400,7 @@ by finding a region that arrived carrying text.
 
 ## The service-worker contract
 
-`SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
+`SWUpdater` registers the worker and shows one bar: "A new version is ready", with Reload and
 Dismiss. Four things about it are the host's business rather than this package's.
 
 **The live region is always there; the bar is not.** The component renders one unstyled
@@ -1092,15 +1092,15 @@ Components for an offline-first app. None of them imports a queue or a store: th
 plain values and callbacks, so they work with any outbox and ship on their own.
 
 - **`SyncStatus`** is one compact line for a header or a status bar: offline, "3 changes waiting
-  to sync", syncing, "Sync failed" with a Retry button, or "All changes synced" (`labels.synced: ""`
+  to sync", syncing, "Couldn't sync" with a Retry button, or "All changes synced" (`labels.synced: ""`
   hides that one). The words sit in a `role="status"` region that is always in the page, so every
   change is announced politely, and the component never moves focus on its own. A shape beside the
   words tells the states apart without colour. `syncState(input)` is the precedence it uses, most
   urgent first: offline, failed, syncing, waiting, synced. `DEFAULT_SYNC_STATUS_LABELS` holds its
   English words.
 - **`SavedCopyNotice`** is the banner above a list that says the list is a copy saved on this
-  device, and when: "The server is out of reach. This copy was saved on this device: 12/10/2026
-  14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
+  device, and when: "Can't reach the server. You're seeing the copy saved on this device at
+  12/10/2026 14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
   reading is, and an app often shows both. Render it always and pass `savedAt` (a `Date` or epoch
   milliseconds) only while a saved copy is on screen: with `null` it is an empty `role="status"`
   region that takes no room, so the notice is announced when the copy arrives. It is announced
