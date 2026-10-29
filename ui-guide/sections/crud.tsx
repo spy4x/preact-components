@@ -1077,7 +1077,7 @@ export const crudDemos = {
       {
         name: "notFoundLabel",
         type: "string",
-        default: "`<entity> not found`",
+        default: "`Couldn't find this <entity>`",
         description: 'Shown when `mode="edit"` names a row the store does not hold.',
       },
       {
