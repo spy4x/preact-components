@@ -1,6 +1,8 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { options, type VNode } from "preact"
 import { render } from "preact-render-to-string"
+import { Link } from "@spy4x/preact-ui/link"
 import { type RankedBarColumns, type RankedBarRow, RankedBars } from "./ranked-bars.tsx"
 
 describe("RankedBars", () => {
@@ -87,6 +89,27 @@ describe("RankedBars", () => {
       expect(row).toMatch(/^<tr [^>]*class="[^"]*\brelative\b/)
       expect(row).toMatch(/focus-visible:after:ring-2/)
     }
+  })
+
+  it("routes a plain click on a row link through navigate, as Link does", () => {
+    const calls: string[] = []
+    const links: VNode<{ href: string; navigate?: (href: string) => void }>[] = []
+    const previousHook = options.vnode
+    options.vnode = (vnode) => {
+      if (vnode.type === Link) links.push(vnode as (typeof links)[number])
+      previousHook?.(vnode)
+    }
+    try {
+      render(
+        <RankedBars data={[sources[0]]} columns={columns} navigate={(href) => calls.push(href)} />,
+      )
+    } finally {
+      options.vnode = previousHook
+    }
+
+    expect(links.map((link) => link.props.href)).toEqual(["?source=zalo"])
+    links[0].props.navigate?.("?source=zalo")
+    expect(calls).toEqual(["?source=zalo"])
   })
 
   it("mutes a low-sample row and fades its bar", () => {

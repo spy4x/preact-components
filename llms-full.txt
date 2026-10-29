@@ -77,15 +77,15 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                                  |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`              |
-| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                               |
-| `RankedBars` | `ranked-bars` | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `format` |
-| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                                |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                           |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                      |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                             |
+| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                                              |
+| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                          |
+| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                                           |
+| `RankedBars` | `ranked-bars` | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `format`, `navigate` |
+| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                                            |
+| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                       |
+| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                  |
+| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                                         |
 
 Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
 period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a
@@ -231,7 +231,8 @@ phone the extra numbers join the note's muted line under the label, each after i
 table keeps two columns. `lowSample` mutes a row. It shares `Bars`' empty label. A page that renders
 only `Bars` carries none of its markup.
 
-A row with `href` is a real link and works without JavaScript. A row with `onSelect` is a button
+A row with `href` is a real link and works without JavaScript. Pass the app's router as
+`navigate` and a plain click on it routes in place, as `Link` does. A row with `onSelect` is a button
 whose handler runs only once the page is hydrated, so it needs JavaScript: on a server-rendered page
 that must work without it, give the row an `href` instead.
 
