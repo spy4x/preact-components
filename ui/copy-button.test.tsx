@@ -123,7 +123,7 @@ describe("CopyButton's confirmation", () => {
     expect(html).toContain(CROSS)
     expect(html).not.toContain(CHECK)
     expect(html).toContain(
-      '<span role="status" aria-live="polite" class="sr-only">Copy failed</span>',
+      `<span role="status" aria-live="polite" class="sr-only">Couldn't copy</span>`,
     )
   })
 
@@ -149,7 +149,7 @@ describe("CopyButton's confirmation", () => {
     expect(copied).toMatch(/<\/svg>Copied<\/button>/)
     const failed = body("failed", { title: "Copy number" })
     expect(failed).not.toContain("Copy number")
-    expect(failed).toContain('<span class="text-danger">Copy failed</span></button>')
+    expect(failed).toContain(`<span class="text-danger">Couldn't copy</span></button>`)
   })
 
   it("takes both confirmation words from the caller", () => {

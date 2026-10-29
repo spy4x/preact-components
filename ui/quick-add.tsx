@@ -49,7 +49,7 @@ function dueWords(translator: Translator<string>, day: string, time?: string): s
 /** The English defaults of {@link QuickAddLabels}. */
 export const defaultQuickAddLabels: QuickAddLabels = {
   submit: "Add",
-  recognised: "Recognised in your line",
+  recognised: "Picked up from what you typed",
   noTitle: "Add a title first",
   tag: (name) => `Tag ${name}`,
   context: (name) => `Context ${name}`,

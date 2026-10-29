@@ -124,7 +124,7 @@ describe("AttachmentList", () => {
     expect(html).toContain('aria-label="Uploading scan.pdf"')
     expect(html).toContain('aria-valuenow="45.4"')
     expect(html).toContain("Uploading, 45%")
-    expect(html).toContain('aria-label="Cancel upload of scan.pdf"')
+    expect(html).toContain('aria-label="Stop uploading scan.pdf"')
     expect(html).not.toContain("PDF · 1.5 MB")
   })
 

@@ -1854,7 +1854,7 @@ const translator = createTranslator({
       {
         name: "failedLabel",
         type: "string",
-        default: `"Copy failed"`,
+        default: `"Couldn't copy"`,
         description: "What a screen reader hears after a copy that failed.",
       },
     ],

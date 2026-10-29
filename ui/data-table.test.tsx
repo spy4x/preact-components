@@ -530,7 +530,7 @@ describe("DataTable", () => {
       />,
     )
 
-    expect(html).toContain("No rows")
+    expect(html).toContain("Nothing to show")
     expect(html).toContain('role="status"')
     expect(html).not.toContain(rowKeyAttribute)
   })
@@ -549,7 +549,7 @@ describe("DataTable", () => {
     )
 
     expect(html).toContain("Nothing filed yet")
-    expect(html).not.toContain("No rows")
+    expect(html).not.toContain("Nothing to show")
   })
 
   it("renders no pager at all when paging is omitted", () => {
@@ -649,7 +649,7 @@ describe("DataTable", () => {
     )
 
     expect(order(html)).toEqual(["INV-G"])
-    expect(html).not.toContain("No rows")
+    expect(html).not.toContain("Nothing to show")
     expect(html).toContain('aria-current="page"')
     expect(html).toContain(">3</button>")
   })
@@ -819,7 +819,7 @@ describe("DataTable", () => {
         />,
       )
 
-      expect(html).toContain("No rows")
+      expect(html).toContain("Nothing to show")
     })
 
     it("rejects total in client mode, and server paging without one", () => {

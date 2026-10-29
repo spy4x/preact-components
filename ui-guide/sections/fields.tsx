@@ -1163,7 +1163,7 @@ export const fieldDemos = {
       {
         name: "errorMessage",
         type: "(error: unknown) => string",
-        default: `"Could not save. Try again."`,
+        default: `"Couldn't save. Try again."`,
         description: "Words a rejected save; the field stays open with the typed text.",
       },
       {

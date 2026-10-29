@@ -29,7 +29,7 @@ export interface EnhancedFormLabels {
 const defaultLabels: EnhancedFormLabels = {
   sending: "Sending…",
   done: "Sent.",
-  failed: "Something went wrong. Please try again.",
+  failed: "Something went wrong. Try again.",
 }
 
 /**

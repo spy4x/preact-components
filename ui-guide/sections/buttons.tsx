@@ -545,7 +545,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
       {
         name: "failedLabel",
         type: "string",
-        default: `"Copy failed"`,
+        default: `"Couldn't copy"`,
         description: "Shown and announced after a copy that failed.",
       },
       {

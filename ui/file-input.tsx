@@ -541,12 +541,12 @@ export function resolveLabels(labels: FileInputLabels, translator: Translator<st
         translate(
           translator,
           "FileInput.tooLarge",
-          `${name} is larger than ${formatBytes(maxSize)}`,
+          `${name} is over the ${formatBytes(maxSize)} limit`,
           { name, size: formatBytes(maxSize, translator.language) },
         )),
     wrongType: labels.wrongType ??
       ((name) =>
-        translate(translator, "FileInput.wrongType", `${name} is not an accepted file type`, {
+        translate(translator, "FileInput.wrongType", `${name} isn't a file type you can add here`, {
           name,
         })),
     tooMany: labels.tooMany ??
@@ -554,7 +554,7 @@ export function resolveLabels(labels: FileInputLabels, translator: Translator<st
         translate(
           translator,
           "FileInput.tooMany",
-          `${name} was not chosen — only one file is allowed`,
+          `${name} wasn't added — you can choose only one file`,
           { name },
         )),
   }

@@ -1502,7 +1502,7 @@ export const inputDemos = {
         name: "automatic",
         type: "string",
         description:
-          'The device\'s language. Given, the list starts with "Automatic: same as this device", chosen when `current` is `null`.',
+          'The device\'s language. Given, the list starts with "Automatic: <language>, like this device", chosen when `current` is `null`.',
       },
       {
         name: "pending / unavailable / failed",

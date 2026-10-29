@@ -108,12 +108,12 @@ export interface PricingTableLabels {
   chooseName: (planName: string) => string
   /**
    * Announced to screen readers from the plan whose "Choose" started the work, while `pending`
-   * holds. Defaults to `"Please wait…"`.
+   * holds. Defaults to `"One moment…"`.
    */
   pending: string
   /**
    * Shown and announced under a plan's "Choose" when `onChoose` threw or its promise rejected.
-   * Defaults to `"Something went wrong. Please try again."`.
+   * Defaults to `"Something went wrong. Try again."`.
    */
   failed: string
 }
@@ -127,8 +127,8 @@ export const defaultPricingTableLabels: PricingTableLabels = {
   highlighted: "Most popular",
   choose: "Choose",
   chooseName: (planName) => `Choose ${planName}`,
-  pending: "Please wait…",
-  failed: "Something went wrong. Please try again.",
+  pending: "One moment…",
+  failed: "Something went wrong. Try again.",
 }
 
 /** One word per interval, from the catalog keys `<prefix>.month` and `<prefix>.year`. */
@@ -482,11 +482,11 @@ export interface PlanCardLabels {
   incomplete: string
   /** The button that posts to `manageAction`. Defaults to `"Manage billing"`. */
   manage: string
-  /** Announced to screen readers while `pending` holds. Defaults to `"Please wait…"`. */
+  /** Announced to screen readers while `pending` holds. Defaults to `"One moment…"`. */
   pending: string
   /**
    * Shown and announced under "Manage billing" when `onSubmit` threw or its promise rejected.
-   * Defaults to `"Something went wrong. Please try again."`.
+   * Defaults to `"Something went wrong. Try again."`.
    */
   failed: string
 }
@@ -500,10 +500,10 @@ export const defaultPlanCardLabels: PlanCardLabels = {
   ends: (date) => `Ends on ${date}`,
   ended: (date) => `Ended on ${date}`,
   pastDue: "Your last payment failed. Update your payment method to keep your plan.",
-  incomplete: "Your first payment has not gone through. Complete it to start your plan.",
+  incomplete: "Your first payment hasn't gone through yet. Complete it to start your plan.",
   manage: "Manage billing",
-  pending: "Please wait…",
-  failed: "Something went wrong. Please try again.",
+  pending: "One moment…",
+  failed: "Something went wrong. Try again.",
 }
 
 /** The argument names of {@link PlanCardLabels}' date lines. */
@@ -710,7 +710,7 @@ export function PlanCard(
 export interface UpgradePromptLabels {
   /** The prompt's heading. Defaults to `"Upgrade to use this feature"`. */
   title: string
-  /** The line under the heading. Defaults to `"Your plan does not include this feature."`. */
+  /** The line under the heading. Defaults to `"Your plan doesn't include this feature."`. */
   message: string
   /** The link's text. Defaults to `"See plans"`. */
   action: string
@@ -719,7 +719,7 @@ export interface UpgradePromptLabels {
 /** The English words {@link UpgradePrompt} uses when a caller passes none. */
 export const defaultUpgradePromptLabels: UpgradePromptLabels = {
   title: "Upgrade to use this feature",
-  message: "Your plan does not include this feature.",
+  message: "Your plan doesn't include this feature.",
   action: "See plans",
 }
 

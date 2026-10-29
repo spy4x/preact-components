@@ -22,7 +22,7 @@ export interface InlineEditProps {
   inputLabel?: string
   /** Shown, and announced, while a returned promise runs. Defaults to `"Saving…"`. */
   savingLabel?: string
-  /** Words a rejected save. Defaults to `"Could not save. Try again."` whatever the error. */
+  /** Words a rejected save. Defaults to `"Couldn't save. Try again."` whatever the error. */
   errorMessage?: (error: unknown) => string
   /**
    * Turns the value's button off. Turning it on while the field is open cancels the edit, as Escape
@@ -104,7 +104,7 @@ export function InlineEdit(
     ((current: string) =>
       translate(translator, "InlineEdit.editLabel", `Edit ${current}`, { value: current }))
   const errorMessage = errorMessageProp ??
-    (() => translate(translator, "InlineEdit.errorMessage", "Could not save. Try again."))
+    (() => translate(translator, "InlineEdit.errorMessage", "Couldn't save. Try again."))
   const { inputLabel, savingLabel } = useLabels(
     "InlineEdit",
     INLINE_EDIT_LABELS,

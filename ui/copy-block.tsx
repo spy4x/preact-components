@@ -37,7 +37,7 @@ export interface CopyBlockProps {
    * `"Copy command"` + `"ed"` is not the confirmation anybody wants to hear.
    */
   copiedLabel?: string
-  /** What a copy that failed is announced as. Defaults to `"Copy failed"`. */
+  /** What a copy that failed is announced as. Defaults to `"Couldn't copy"`. */
   failedLabel?: string
   /** Milliseconds the confirmation is shown and announced for. Defaults to 1500. */
   copiedForMs?: number
