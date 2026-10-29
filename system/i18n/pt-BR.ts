@@ -70,7 +70,7 @@ export default {
   "InstallPrompt.iosShare": "Compartilhar",
   "InstallPrompt.title": "Instale este app",
   "PushSettings.blocked":
-    "As notificações estão bloqueadas para este app. Para permitir, abra as configurações do navegador para este site (ou as configurações de notificação do aparelho), mude Notificações para Permitir e volte aqui.",
+    "As notificações estão bloqueadas para este app. Para permitir, abra as configurações do navegador para este site (ou as configurações de notificação do dispositivo), mude Notificações para Permitir e volte aqui.",
   "PushSettings.checking": "Verificando este dispositivo…",
   "PushSettings.disable": "Desativar notificações",
   "PushSettings.disableFailed": "Não foi possível desativar as notificações. Tente de novo.",
@@ -93,11 +93,11 @@ export default {
   "Rail.nav": "Navegação principal",
   "Rail.sidebar": "Barra lateral",
   "Rail.skipToContent": "Pular para o conteúdo",
-  "SWUpdater.dismissLabel": "Dispensar",
+  "SWUpdater.dismissLabel": "Fechar",
   "SWUpdater.message": "Há uma nova versão disponível",
   "SWUpdater.reloadLabel": "Recarregar",
   "SavedCopyNotice.body":
-    "Não conseguimos falar com o servidor. Você está vendo a cópia salva neste dispositivo às {time}.",
+    "Não conseguimos falar com o servidor. Você está vendo a cópia salva neste dispositivo em {time}.",
   "SavedCopyNotice.title": "Cópia salva",
   "SettingsLayout.back": "Voltar para {title}",
   "Shell.menu": "Menu",

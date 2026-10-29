@@ -96,7 +96,7 @@ export default {
   "SWUpdater.message": "Hay una nueva versión lista",
   "SWUpdater.reloadLabel": "Recargar",
   "SavedCopyNotice.body":
-    "No podemos conectar con el servidor. Estás viendo la copia guardada en este dispositivo a las {time}.",
+    "No podemos conectar con el servidor. Estás viendo la copia guardada en este dispositivo ({time}).",
   "SavedCopyNotice.title": "Copia guardada",
   "SettingsLayout.back": "Volver a {title}",
   "Shell.menu": "Menú",

@@ -325,7 +325,7 @@ export default {
   "Tour.backLabel": "Atrás",
   "Tour.doneLabel": "Listo",
   "Tour.nextLabel": "Siguiente",
-  "Tour.skipLabel": "Saltar el tour",
+  "Tour.skipLabel": "Saltar el recorrido",
   "Tour.stepLabel": "Paso {step} de {total}",
   "UnsavedGuard.leave": "Salir",
   "UnsavedGuard.message": "Tienes cambios sin guardar. Si sales ahora, los perderás.",

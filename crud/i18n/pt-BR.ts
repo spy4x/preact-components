@@ -2,7 +2,8 @@
 export default {
   "AssociationEditor.confirmDelete": "Se mudar de ideia, você pode restaurar {entity} depois.",
   "AssociationEditor.confirmDeleteTitle": "Excluir {entity}?",
-  "AssociationEditor.confirmRestore": "Ao restaurar, {entity} volta exatamente como estava.",
+  "AssociationEditor.confirmRestore":
+    "Ao restaurar, o item ({entity}) volta exatamente como estava.",
   "AssociationEditor.confirmRestoreTitle": "Restaurar {entity}?",
   "AssociationEditor.conflictMessage": "Já existe {entity} igual.",
   "AssociationEditor.conflictRemovedMessage": "Já existe {entity} igual entre os itens excluídos.",
