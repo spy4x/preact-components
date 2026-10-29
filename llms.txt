@@ -67,7 +67,7 @@ timeSeriesPointSchema	helper	@spy4x/preact-charts	One bucket of a time series, a
 useInView	hook	@spy4x/preact-charts	Report whether the element behind `ref` has scrolled into view.
 xLabelStride	helper	@spy4x/preact-charts	Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label count without dropping the right-hand end.
 CHART_PALETTE_CLASS	constant	@spy4x/preact-charts/colors	Classes a chart puts on its root so `DEFAULT_CHART_PALETTE` resolves to the light steps, or to the dark ones under a `.dark` ancestor — the theme package's class-based dark mode.
-default	helper	@spy4x/preact-charts/i18n/ar	
+default	helper	@spy4x/preact-charts/i18n/ar	The `charts` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 cn	helper	@spy4x/preact-cn	Join conditional class names and resolve conflicting Tailwind utilities.
 join	helper	@spy4x/preact-cn	Join conditional class names, with no Tailwind conflict resolution.
 ArchiveConfig	type	@spy4x/preact-crud	The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form already submits, plus whatever has to be archived first for it to be allowed.
@@ -124,7 +124,7 @@ setField	helper	@spy4x/preact-crud	Merge one field into a model signal.
 submitEditor	helper	@spy4x/preact-crud	Route a submit to the store operation the mode implies.
 toggleArchiveState	helper	@spy4x/preact-crud	The archive toggle's next state.
 typedNumber	helper	@spy4x/preact-crud	The number a keystroke may commit, or `undefined` while the box holds a half-typed value.
-default	helper	@spy4x/preact-crud/i18n/ar	
+default	helper	@spy4x/preact-crud/i18n/ar	The `crud` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 IconAdjustmentsHorizontal	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-2); Heroicons v2's "adjustments-horizontal" (2.2.0), added for the "Interactive" line of `Explorable` in `@spy4x/preact-ui` (#958).
 IconAlertTriangle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArchive	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons.
@@ -255,7 +255,7 @@ Map	component	@spy4x/preact-map	See this file's own doc.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.
-default	helper	@spy4x/preact-map/i18n/ar	
+default	helper	@spy4x/preact-map/i18n/ar	The `map` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 CLIPBOARD_UNAVAILABLE	constant	@spy4x/preact-signals	Reason reported when the runtime has no clipboard at all (an insecure origin, a server render).
 ClipboardPort	type	@spy4x/preact-signals	Write port.
 ClipboardStore	type	@spy4x/preact-signals	A clipboard helper.
@@ -357,7 +357,7 @@ filterSearch	helper	@spy4x/preact-signals/use-url-filters	The query string a set
 filterWrite	helper	@spy4x/preact-signals/use-url-filters	What one field's value means for its parameter.
 readAddress	helper	@spy4x/preact-signals/use-url-filters	Read the address into the filters, and answer with the query string they now agree on.
 restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the write should have left behind, or `undefined` when that is already the address.
-default	helper	@spy4x/preact-signals/i18n/ar	
+default	helper	@spy4x/preact-signals/i18n/ar	The `signals` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
 AccountMenuLanguage	type	@spy4x/preact-system	The language choice `AccountMenu` offers: `LanguageDialog`'s props without its open state, which the menu owns.
@@ -484,7 +484,7 @@ PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, 
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
-default	helper	@spy4x/preact-system/i18n/ar	
+default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1314 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
@@ -525,7 +525,6 @@ WebManifest	type	@spy4x/preact-theme/vite	A manifest with every default filled i
 WebManifestIcon	type	@spy4x/preact-theme/vite	One manifest icon.
 buildIdOf	helper	@spy4x/preact-theme/vite	A short hash of files, by path and content, so a change to any one of them, or a rename, changes it.
 buildWebManifest	helper	@spy4x/preact-theme/vite	The manifest with its defaults filled in.
-denoJsonModules	helper	@spy4x/preact-theme/vite	Lets the Vite dev server load the JSON modules `@deno/vite-plugin` loads, such as the component catalogs (`import catalog from "./en.json" with { type: "json" }` in a JSR package).
 denoModuleIds	helper	@spy4x/preact-theme/vite	Gives each module `@deno/vite-plugin` loads one id, so a page runs one copy of it.
 npmSpecifiers	helper	@spy4x/preact-theme/vite	Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that package, and refuses one whose version or range the app's copy does not satisfy.
 preactThemeCss	helper	@spy4x/preact-theme/vite	Gives the app's stylesheet the `@spy4x/preact-*` design system before Tailwind compiles it.
@@ -993,7 +992,7 @@ FieldLabelFor	type	@spy4x/preact-ui/field	What `Field`'s own label points at thr
 labelTarget	helper	@spy4x/preact-ui/field	The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`.
 classifyFiles	helper	@spy4x/preact-ui/file-input	Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser.
 resolveLabels	helper	@spy4x/preact-ui/file-input	Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it.
-default	helper	@spy4x/preact-ui/i18n/ar	
+default	helper	@spy4x/preact-ui/i18n/ar	The `ui` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 StripNavigationVariant	type	@spy4x/preact-ui/image-gallery	How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`.
 StripScroll	type	@spy4x/preact-ui/image-gallery	Where a strip's row has scrolled to, as `stripPosition` reads it.
 stripNavigationClasses	helper	@spy4x/preact-ui/image-gallery	The full class list of the strip's Previous/Next buttons for a `navigationVariant`.

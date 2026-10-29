@@ -2,7 +2,7 @@
  * `@spy4x/preact-theme/vite` — the Vite plugins a Deno app needs to use the `@spy4x/preact-*`
  * packages.
  *
- * Seven plugins, each a factory an app lists in its `vite.config.ts`:
+ * Six plugins, each a factory an app lists in its `vite.config.ts`:
  *
  * - {@link preactThemeCss} answers the theme's `@import` lines in the app's stylesheet with the
  *   text this package exports, and appends `@source inline(...)` with {@link COMPONENT_CLASSES}.
@@ -10,7 +10,6 @@
  * - {@link npmSpecifiers} resolves the `npm:` specifiers inside the library's modules to the app's
  *   own copy, and fails when the versions differ.
  * - {@link denoModuleIds} gives each module `@deno/vite-plugin` loads one id, so it runs once.
- * - {@link denoJsonModules} lets the dev server load the JSON modules `@deno/vite-plugin` loads.
  * - {@link serviceWorker} bundles a service worker after the app build, with a hash of the build
  *   defined in it.
  * - {@link webManifest} writes `manifest.webmanifest` from a typed object with install defaults.
@@ -459,43 +458,6 @@ export function denoModuleIds(): VitePlugin {
       const resolved = await this.resolve(source, importer, { skipSelf: true })
       if (!resolved || !resolved.id.startsWith(DENO_ID_PREFIX)) return resolved
       return { ...resolved, id: denoModuleId(resolved.id) }
-    },
-  }
-}
-
-/** The start of the ids `@deno/vite-plugin` gives the JSON modules it loads. */
-const DENO_JSON_ID_PREFIX = `${DENO_ID_PREFIX}Json::`
-
-/** What `@deno/vite-plugin` puts before a JSON module's text. */
-const DENO_JSON_EXPORT = "export default "
-
-/** The ids Vite's `vite:json` plugin parses as JSON: `jsonExtRE` in `vite@7.3.6`. */
-const VITE_JSON_ID = /\.json(?:$|\?)(?!commonjs-(?:proxy|external))/
-
-/** The queries `vite:json` leaves alone: `SPECIAL_QUERY_RE` in `vite@7.3.6`. */
-const VITE_SPECIAL_QUERY = /[?&](?:worker|sharedworker|raw|url)\b/
-
-/**
- * Lets the Vite dev server load the JSON modules `@deno/vite-plugin` loads, such as the component
- * catalogs (`import catalog from "./en.json" with { type: "json" }` in a JSR package).
- *
- * `@deno/vite-plugin` 2.0.4 loads such a module as `export default {…}` under an id that ends in
- * `.json#deno`, a suffix meant to keep Vite's `vite:json` plugin away. In the dev server Vite adds
- * `?import` before the suffix, and the browser drops the suffix from the URL, so `vite:json` sees
- * the id after all and fails on the JavaScript with "Failed to parse JSON file". This plugin hands
- * `vite:json` the JSON text instead, for exactly the ids it parses, and leaves every other id (a
- * build's among them) to the Deno plugin's own output.
- *
- * List it before `deno()` from `@deno/vite-plugin`; it needs no options.
- */
-export function denoJsonModules(): VitePlugin {
-  return {
-    name: "deno-json-modules",
-    enforce: "pre",
-    transform(code, id) {
-      if (!id.startsWith(DENO_JSON_ID_PREFIX) || !code.startsWith(DENO_JSON_EXPORT)) return
-      if (!VITE_JSON_ID.test(id) || VITE_SPECIAL_QUERY.test(id)) return
-      return code.slice(DENO_JSON_EXPORT.length)
     },
   }
 }

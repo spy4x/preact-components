@@ -28,7 +28,7 @@ import { catalogueSections, demoRegistry } from "./registry.ts"
  * (user content, a brand name) is skipped.
  *
  * Under the English catalog, every demo must render exactly what it renders without a provider: the
- * English written in each component's code and the package's `i18n/en.json` say the same. Under the
+ * English written in each component's code and the package's `i18n/en.ts` say the same. Under the
  * German catalogs, with an `onMissing` that throws, no demo may ask for a key the catalogs lack. A
  * demo of another package renders `ui` components too, so every translator holds every catalog.
  */

@@ -1,14 +1,14 @@
 # Translating
 
-The words the components show live in one catalog per language: `ui/i18n/<language>.json`, with
-`ui/i18n/en.json` as the source. Each key is `<Component>.<field>`, such as
-`Pagination.nextLabel`. A `{name}` in a message is a value the component fills in. Keep every one,
-spelled the same. A message that is an object (`{ "one": …, "other": … }`) is a plural, with one
+The words the components show live in one catalog per language: `ui/i18n/<language>.ts`, with
+`ui/i18n/en.ts` as the source. Each file exports its catalog as `export default { … }`. Each key
+is `<Component>.<field>`, such as `Pagination.nextLabel`. A `{name}` in a message is a value the
+component fills in. Keep every one, spelled the same. A message that is an object (`{ "one": …, "other": … }`) is a plural, with one
 form per plural category of the language.
 
 ## The loop
 
-1. Change the English in `en.json`, and the same English in the component's code: a component
+1. Change the English in `en.ts`, and the same English in the component's code: a component
    without a provider shows the English written in its own code, and the guide's test holds the
    two equal.
 2. Run `deno task test`. The catalog test (`ui/i18n/catalogs.test.ts`) lists every message that
@@ -26,13 +26,13 @@ date.
 
 Short, plain and friendly, as a person would say it. The same voice in every language:
 
-| Language             | File         | Voice                                                         |
-| -------------------- | ------------ | ------------------------------------------------------------- |
-| German               | `de.json`    | `du`, lower-case. "Versuche es noch einmal."                  |
-| Spanish              | `es.json`    | `tú`, neutral Spanish, gender-neutral where it costs nothing. |
-| Brazilian Portuguese | `pt-BR.json` | `você`. "Tente de novo."                                      |
-| Russian              | `ru.json`    | `вы`, lower-case. "Попробуйте ещё раз."                       |
-| Arabic               | `ar.json`    | Modern Standard Arabic, addressing the reader directly.       |
+| Language             | File       | Voice                                                         |
+| -------------------- | ---------- | ------------------------------------------------------------- |
+| German               | `de.ts`    | `du`, lower-case. "Versuche es noch einmal."                  |
+| Spanish              | `es.ts`    | `tú`, neutral Spanish, gender-neutral where it costs nothing. |
+| Brazilian Portuguese | `pt-BR.ts` | `você`. "Tente de novo."                                      |
+| Russian              | `ru.ts`    | `вы`, lower-case. "Попробуйте ещё раз."                       |
+| Arabic               | `ar.ts`    | Modern Standard Arabic, addressing the reader directly.       |
 
 A button says what it does, as a verb: "Speichern", not "Speicherung". An error says what happened
 and what to do next. Use the typographic quotes of the language: „…“ in German, «…» in Spanish,

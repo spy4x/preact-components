@@ -1,4 +1,10 @@
 /** The `map` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./ar.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Map.label": "الخريطة",
+  "Map.listLabel": "الأماكن",
+  "Map.zoomInLabel": "تكبير",
+  "Map.zoomOutLabel": "تصغير",
+  "MapStatus.off": "متوقف",
+  "MapStatus.on": "يعمل",
+  "MapStatus.unknown": "الحالة غير معروفة",
+}

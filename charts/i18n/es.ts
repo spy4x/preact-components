@@ -1,4 +1,24 @@
 /** The `charts` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./es.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Bars.emptyLabel": "Sin datos",
+  "DonutChart.chartLabel": {
+    "one": "Gráfico de anillo con {count} sector",
+    "many": "Gráfico de anillo con {count} sectores",
+    "other": "Gráfico de anillo con {count} sectores",
+  },
+  "DonutChart.emptyLabel": "Sin datos",
+  "DonutChart.keyboardHint": "Usa las flechas para recorrer los sectores.",
+  "DotPlot.missingLabel": "Sin datos",
+  "LineChart.chartLabel": {
+    "one": "Gráfico de líneas con {count} serie",
+    "many": "Gráfico de líneas con {count} series",
+    "other": "Gráfico de líneas con {count} series",
+  },
+  "LineChart.emptyLabel": "Sin datos",
+  "LineChart.keyboardHint": "Usa las flechas para recorrer los puntos.",
+  "LineChart.loadingLabel": "Cargando…",
+  "LineChart.missingValuesLabel": "Los tramos grises discontinuos unen valores que faltan.",
+  "LineChart.xLabel": "Punto",
+  "changeText.delta": "{change} frente a {period}",
+  "changeText.none": "Sin cambios frente a {period}",
+}

@@ -1,4 +1,10 @@
 /** The `map` catalog in English, the source every translation is checked against. */
-import catalog from "./en.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Map.label": "Map",
+  "Map.listLabel": "Places",
+  "Map.zoomInLabel": "Zoom in",
+  "Map.zoomOutLabel": "Zoom out",
+  "MapStatus.off": "off",
+  "MapStatus.on": "on",
+  "MapStatus.unknown": "status unknown",
+}

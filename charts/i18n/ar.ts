@@ -1,4 +1,30 @@
 /** The `charts` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./ar.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Bars.emptyLabel": "لا توجد بيانات",
+  "DonutChart.chartLabel": {
+    "zero": "مخطط حلقي بلا شرائح",
+    "one": "مخطط حلقي من شريحة واحدة",
+    "two": "مخطط حلقي من شريحتين",
+    "few": "مخطط حلقي من {count} شرائح",
+    "many": "مخطط حلقي من {count} شريحة",
+    "other": "مخطط حلقي من {count} شريحة",
+  },
+  "DonutChart.emptyLabel": "لا توجد بيانات",
+  "DonutChart.keyboardHint": "استخدم مفاتيح الأسهم للتنقل بين الشرائح.",
+  "DotPlot.missingLabel": "لا توجد بيانات",
+  "LineChart.chartLabel": {
+    "zero": "مخطط خطي بلا سلاسل",
+    "one": "مخطط خطي بسلسلة واحدة",
+    "two": "مخطط خطي بسلسلتين",
+    "few": "مخطط خطي بـ{count} سلاسل",
+    "many": "مخطط خطي بـ{count} سلسلة",
+    "other": "مخطط خطي بـ{count} سلسلة",
+  },
+  "LineChart.emptyLabel": "لا توجد بيانات",
+  "LineChart.keyboardHint": "استخدم مفاتيح الأسهم للتنقل بين النقاط.",
+  "LineChart.loadingLabel": "جارٍ التحميل…",
+  "LineChart.missingValuesLabel": "المقاطع الرمادية المتقطعة تصل بين القيم المفقودة.",
+  "LineChart.xLabel": "النقطة",
+  "changeText.delta": "{change} مقارنةً بـ{period}",
+  "changeText.none": "لا تغيير مقارنةً بـ{period}",
+}

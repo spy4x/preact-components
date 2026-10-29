@@ -7,7 +7,6 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { COMPONENT_CLASSES, INK_CSS, PRESET_CSS, THEME_PREVIEW_CSS, TOKENS_CSS } from "./+index.ts"
 import {
-  denoJsonModules,
   denoModuleIds,
   npmSpecifiers,
   NpmVersionMismatchError,
@@ -523,49 +522,5 @@ describe("denoModuleIds", () => {
     const { result, asked } = await resolveDenoId(denoId(FORMAT_SPECIFIERS[0]), {})
     expect(result).toBeUndefined()
     expect(asked).toEqual([])
-  })
-})
-
-/** A catalog's URL inside a JSR package, as `@deno/vite-plugin` 2.0.4 resolves it. */
-const CATALOG_URL = "https://jsr.io/@spy4x/preact-system/10.10.0/i18n/en.json"
-
-/** A catalog's text, and what `@deno/vite-plugin` 2.0.4 loads it as. */
-const CATALOG_JSON = `{\n  "AccountMenu.dark": "Dark"\n}\n`
-const CATALOG_MODULE = `export default ${CATALOG_JSON}`
-
-/** Runs the JSON-module plugin's transform on `code` as the module `id`. */
-function transformDenoJson(code: string, id: string): string | undefined {
-  return denoJsonModules().transform!.call(pluginContext, code, id)
-}
-
-describe("denoJsonModules", () => {
-  it("runs before Vite's own JSON plugin", () => {
-    expect(denoJsonModules().enforce).toBe("pre")
-  })
-
-  it("hands vite:json the JSON text of a catalog the dev server serves", () => {
-    // The id as the dev server's import analysis writes it, then as the browser asks for it.
-    for (const query of ["?import#deno", "?import"]) {
-      const id = `\0deno::Json::${CATALOG_URL}::${CATALOG_URL}${query}`
-      const code = transformDenoJson(CATALOG_MODULE, id)
-      expect(code).toBe(CATALOG_JSON)
-      expect(JSON.parse(code!)).toEqual({ "AccountMenu.dark": "Dark" })
-    }
-  })
-
-  it("leaves every module vite:json skips to the Deno plugin's own output", () => {
-    const ids = [
-      // A build's id: the `#deno` suffix keeps vite:json away, so the module must stay JavaScript.
-      `\0deno::Json::${CATALOG_URL}::${CATALOG_URL}#deno`,
-      // Queries vite:json leaves alone.
-      `\0deno::Json::${CATALOG_URL}::${CATALOG_URL}?raw`,
-      `\0deno::Json::${CATALOG_URL}::${CATALOG_URL}?url`,
-      // A JSONC file, which vite:json does not parse.
-      `\0deno::Json::${CATALOG_URL}c::${CATALOG_URL}c?import`,
-      // A TypeScript module, and a JSON file Vite loads itself.
-      `\0deno::TypeScript::${CATALOG_URL}::${CATALOG_URL}?import`,
-      "/app/src/catalog.json",
-    ]
-    for (const id of ids) expect(transformDenoJson(CATALOG_MODULE, id)).toBeUndefined()
   })
 })

@@ -1,4 +1,33 @@
 /** The `crud` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./es.json" with { type: "json" }
-
-export default catalog
+export default {
+  "AssociationEditor.confirmDelete": "¿Seguro que quieres eliminar «{entity}»?",
+  "AssociationEditor.confirmDeleteTitle": "¿Eliminar «{entity}»?",
+  "AssociationEditor.confirmRestore": "¿Seguro que quieres restaurar «{entity}»?",
+  "AssociationEditor.confirmRestoreTitle": "¿Restaurar «{entity}»?",
+  "AssociationEditor.conflictMessage": "«{entity}» ya existe.",
+  "AssociationEditor.conflictRemovedMessage": "«{entity}» ya existía y se eliminó.",
+  "AssociationEditor.deleteErrorLabel": "No se pudo eliminar",
+  "AssociationEditor.deleteLabel": "Eliminar",
+  "AssociationEditor.removedLabel": "Eliminado {ago}",
+  "AssociationEditor.restoreErrorLabel": "No se pudo restaurar",
+  "AssociationEditor.restoreHint":
+    "Al restaurarlo se conserva el registro anterior en lugar de crear uno nuevo.",
+  "AssociationEditor.restoreLabel": "Restaurar",
+  "CrudEditor.addTitle": "Añadir {entity}",
+  "CrudEditor.archiveLabel": "¿Archivado?",
+  "CrudEditor.cancelLabel": "Cancelar",
+  "CrudEditor.editTitle": "Editar {entity}",
+  "CrudEditor.notFoundLabel": "{entity}: no se encontró",
+  "CrudEditor.saveErrorLabel": "No se pudo guardar",
+  "CrudEditor.saveLabel": "Guardar",
+  "CrudList.actionsLabel": "Acciones",
+  "CrudList.addLabel": "Añadir",
+  "CrudList.emptyTitle": "Aún no hay nada aquí",
+  "CrudList.noMatchTitle": "Nada coincide con tu búsqueda",
+  "CrudList.searchLabel": "Buscar",
+  "CrudList.searchPlaceholder": "Buscar",
+  "CrudList.statusActive": "Activos",
+  "CrudList.statusArchived": "Archivados",
+  "CrudList.statusLabel": "Estado",
+  "DeletionValidation.heading": "Para archivar «{model}», primero archiva:",
+}
