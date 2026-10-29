@@ -1,6 +1,6 @@
 /**
- * The cards of a shop's catalog that takes orders by chat: `LookTile`, `LookGrid` and `OrderBar`,
- * spread into the Display section, and `SwatchChips`, spread into the Fields section beside
+ * The cards of a shop's catalog that takes orders by chat: `LookTile`, `StoryTile`, `LookGrid` and
+ * `OrderBar`, spread into the Display section, and `SwatchChips`, spread into the Fields section beside
  * `RadioChips`. None needs JavaScript.
  */
 
@@ -10,6 +10,7 @@ import {
   type LookTileProps,
   OrderBar,
   RadioChips,
+  StoryTile,
   SwatchChips,
 } from "@spy4x/preact-ui"
 import type { ResponsiveImageVariant } from "@spy4x/platform/universal/srcset"
@@ -166,6 +167,113 @@ export const storefrontDemos: DemoFragment = {
       </div>
     ),
   },
+  StoryTile: {
+    summary:
+      "One post of a photo-led blog, made to sit beside `LookTile`s: a 3:4 cover, the topic, the title and the date, all one link.",
+    wide: true,
+    props: [
+      {
+        name: "href / title / publishedAt",
+        type: "string / string / string",
+        description:
+          "The post's page, its title (the link's text and name) and the day it went live, shown in UTC.",
+      },
+      {
+        name: "topic / readMinutes",
+        type: "ComponentChildren / number",
+        description: "A small line above the title, and the reading time after the date.",
+      },
+      {
+        name: "cover",
+        type: "{ variants, alt, sizes? }",
+        description:
+          "As `LookTile`'s photo, cropped to 3:4. Left out, the title is drawn large on a plain panel instead.",
+      },
+      {
+        name: "lead",
+        type: "boolean",
+        default: "false",
+        description:
+          "The post the list opens with: a larger title, and from 1024 px two columns of a `LookGrid` with a 3:2 cover.",
+      },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description: "Takes a plain click instead of the browser, as `Link`'s port does.",
+      },
+      {
+        name: "priority / viewTransitionName / headingLevel / labels",
+        type: "boolean / string / 2 | 3 | 4 / object",
+        default: "false / – / 2",
+        description:
+          "Load the cover first, let it grow into the post, the title's heading level, and `PostList`'s words.",
+      },
+    ],
+    snippet: `<LookGrid label="Stories">
+  {posts.map((post, index) => (
+    <StoryTile
+      key={post.id}
+      href={post.href}
+      title={post.title}
+      topic={post.topic}
+      publishedAt={post.publishedAt}
+      readMinutes={post.readMinutes}
+      cover={post.cover}
+      lead={index === 0}
+      priority={index === 0}
+    />
+  ))}
+</LookGrid>`,
+    render: () => (
+      <LookGrid label="Stories">
+        <StoryTile
+          href="#demo-StoryTile"
+          title="Three ways to wear one zip jacket"
+          topic="Styling"
+          publishedAt="2026-10-28"
+          readMinutes={4}
+          cover={{ variants: variants("#7a5230"), alt: "" }}
+          lead
+          headingLevel={4}
+        />
+        <StoryTile
+          href="#demo-StoryTile"
+          title="Washing linen without shrinking it"
+          topic="Care"
+          publishedAt="2026-10-21"
+          readMinutes={3}
+          cover={{ variants: variants("#cdb894"), alt: "" }}
+          headingLevel={4}
+        />
+        <StoryTile
+          href="#demo-StoryTile"
+          title="How we choose our fabrics"
+          topic="Fabrics"
+          publishedAt="2026-10-14"
+          readMinutes={6}
+          headingLevel={4}
+        />
+        <StoryTile
+          href="#demo-StoryTile"
+          title="A week in the workshop"
+          topic="Behind the scenes"
+          publishedAt="2026-10-07"
+          readMinutes={5}
+          cover={{ variants: variants("#2f4a6b"), alt: "" }}
+          headingLevel={4}
+        />
+        <StoryTile
+          href="#demo-StoryTile"
+          title="Sizing a set that fits from the first wear"
+          topic="Fit"
+          publishedAt="2026-09-30"
+          readMinutes={2}
+          cover={{ variants: variants("#3d6b4a"), alt: "" }}
+          headingLevel={4}
+        />
+      </LookGrid>
+    ),
+  },
   LookGrid: {
     summary:
       "A catalog's looks in aligned columns, one on a phone, two from 768 px and three from 1024 px, with no script.",
@@ -175,7 +283,7 @@ export const storefrontDemos: DemoFragment = {
         name: "children",
         type: "ComponentChildren",
         description:
-          "The looks, usually `LookTile`s, each put in its own list item. None renders nothing.",
+          "The looks, usually `LookTile`s or `StoryTile`s, each put in its own list item; one with `lead` spans two columns from 1024 px. None renders nothing.",
       },
       {
         name: "label",

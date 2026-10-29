@@ -3961,14 +3961,62 @@ function languagePickerSpecs(): Spec[] {
 }
 
 /**
- * `LookTile`, `LookGrid`, `SwatchChips` and `OrderBar`: the storefront patterns. The grid's
- * columns follow the width and line up, the colour choice moves with the arrow keys, the order bar
+ * `LookTile`, `StoryTile`, `LookGrid`, `SwatchChips` and `OrderBar`: the storefront patterns. The
+ * grid's columns follow the width and line up, a lead story spans two columns from 1440 px, the
+ * colour choice moves with the arrow keys, the order bar
  * sticks to a phone's screen, the order form submits its choices with JavaScript off, and axe
  * passes in both palettes.
  */
 function storefrontSpecs(): Spec[] {
-  const cards = ["#demo-LookTile", "#demo-LookGrid", "#demo-SwatchChips", "#demo-OrderBar"] as const
+  const cards = [
+    "#demo-LookTile",
+    "#demo-StoryTile",
+    "#demo-LookGrid",
+    "#demo-SwatchChips",
+    "#demo-OrderBar",
+  ] as const
   return [
+    {
+      name:
+        "StoryTile: one link per post, named by its title; the lead fills the width at 390 px and spans two of three columns at 1440 px, level with the post beside it",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-StoryTile")
+        const links = card.locator(`[data-e2e="story-tile"] a`)
+        if (await links.count() !== 5) throw new Error(`${await links.count()} links in 5 tiles`)
+        await card.getByRole("link", { name: "How we choose our fabrics", exact: true }).waitFor()
+        const items = card.locator(`[data-e2e="look-grid"] > li`)
+        /** The grid's width, and each of the first two posts' left edge, top and width, rounded. */
+        const read = () =>
+          items.evaluateAll((all) => ({
+            grid: Math.round(all[0].parentElement!.getBoundingClientRect().width),
+            posts: all.slice(0, 2).map((item) => {
+              const box = item.getBoundingClientRect()
+              return {
+                x: Math.round(box.left),
+                y: Math.round(box.top),
+                width: Math.round(box.width),
+              }
+            }),
+          }))
+        const seen: string[] = []
+        for (const width of [390, 1440] as const) {
+          await page.setViewportSize({ width, height: 900 })
+          await items.first().scrollIntoViewIfNeeded()
+          const { grid, posts: [lead, next] } = await read()
+          const fits = width === 390
+            ? lead.width === grid
+            : lead.width > 1.9 * next.width && next.x > lead.x + lead.width && next.y === lead.y
+          if (!fits) {
+            throw new Error(
+              `at ${width} px the lead does not fit: ${JSON.stringify({ grid, lead, next })}`,
+            )
+          }
+          seen.push(`${width}: ${JSON.stringify({ grid, lead, next })}`)
+        }
+        return seen.join("; ")
+      },
+    },
     {
       name:
         "LookGrid: one column at 390 px, two at 768 px and three at 1440 px, every look of the first row at the same height",
@@ -4163,7 +4211,7 @@ function storefrontSpecs(): Spec[] {
     ...(["light", "dark"] as const).flatMap((colorScheme): Spec[] =>
       ([390, 1440] as const).map((width): Spec => ({
         name:
-          `LookTile, LookGrid, SwatchChips and OrderBar: axe finds no violation, contrast included, ${colorScheme}, ${width} px`,
+          `LookTile, StoryTile, LookGrid, SwatchChips and OrderBar: axe finds no violation, contrast included, ${colorScheme}, ${width} px`,
         pageId: "ui",
         colorScheme,
         run: async (page) => {
