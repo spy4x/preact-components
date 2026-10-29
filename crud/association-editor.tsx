@@ -157,9 +157,9 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   conflictMessage?: string
   /** Message for a duplicate that was removed earlier. */
   conflictRemovedMessage?: string
-  /** Question the dialog asks before removing this row. Defaults to an English sentence. */
+  /** What the dialog says before removing this row. Defaults to an English sentence. */
   confirmDelete?: string
-  /** Question the dialog asks before restoring a removed row. Defaults to an English sentence. */
+  /** What the dialog says before restoring a removed row. Defaults to an English sentence. */
   confirmRestore?: string
   /** Heading of the dialog that confirms a removal. Defaults to `Delete <entity>?`. */
   confirmDeleteTitle?: string
@@ -199,7 +199,7 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   saveLabel?: string
   /** What a failed save is introduced with. Defaults to `"Couldn't save"`. */
   saveErrorLabel?: string
-  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
+  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `Couldn't find this <entity>`. */
   notFoundLabel?: string
   /** Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. */
   headingLevel?: CrudEditorBaseProps<M>["headingLevel"]

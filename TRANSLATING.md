@@ -38,7 +38,7 @@ like a machine made it, so:
    translated.
 5. A translation is done by an agent or person whose only task is that language, never as a side
    task of a code change. A change that adds or edits English leaves the other languages to that
-   pass.
+   pass, in the same pull request, so the catalog test still passes.
 6. A second reader checks every new translation: the owner for Russian, and for the other
    languages a separate agent that translates it back to English and compares the meaning with
    the source.

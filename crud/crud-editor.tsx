@@ -221,7 +221,7 @@ export interface CrudEditorBaseProps<M extends CrudRow> {
    * already has its `<h1>`; the look stays the same.
    */
   headingLevel?: PageTitleProps["headingLevel"]
-  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
+  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `Couldn't find this <entity>`. */
   notFoundLabel?: string
   /** Where Cancel points. */
   cancelHref: string

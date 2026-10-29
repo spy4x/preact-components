@@ -1099,8 +1099,8 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   urgent first: offline, failed, syncing, waiting, synced. `DEFAULT_SYNC_STATUS_LABELS` holds its
   English words.
 - **`SavedCopyNotice`** is the banner above a list that says the list is a copy saved on this
-  device, and when: "The server is out of reach. This copy was saved on this device: 12/10/2026
-  14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
+  device, and when: "Can't reach the server. You're seeing the copy saved on this device at
+  12/10/2026 14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
   reading is, and an app often shows both. Render it always and pass `savedAt` (a `Date` or epoch
   milliseconds) only while a saved copy is on screen: with `null` it is an empty `role="status"`
   region that takes no room, so the notice is announced when the copy arrives. It is announced
