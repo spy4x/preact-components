@@ -485,7 +485,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1309 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1306 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -713,7 +713,7 @@ ListField	component	@spy4x/preact-ui	An ordered list of short lines, such as an 
 LoadingSkeleton	component	@spy4x/preact-ui	Placeholder layout shown while a result loads.
 LoadingSpinner	component	@spy4x/preact-ui	Inline spinner with an accessible live region.
 LookColor	type	@spy4x/preact-ui	One colour of a `LookTile`'s item, drawn as a dot.
-LookGrid	component	@spy4x/preact-ui	The looks of a shop's catalog in staggered columns: one per screen width on a phone, two from 768 px and three from 1024 px, with the middle column lowered.
+LookGrid	component	@spy4x/preact-ui	The looks of a shop's catalog in aligned columns: one per screen width on a phone, two from 768 px and three from 1024 px.
 LookPhoto	type	@spy4x/preact-ui	The photo of a `LookTile`.
 LookSize	type	@spy4x/preact-ui	One size of a `LookTile`'s item, such as `"M"`.
 LookTile	component	@spy4x/preact-ui	One look of a shop's catalog: a tall 3:4 photo as the whole card, and under it the name, the price, the sizes and the colours.
