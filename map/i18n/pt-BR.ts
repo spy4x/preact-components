@@ -2,9 +2,9 @@
 export default {
   "Map.label": "Mapa",
   "Map.listLabel": "Locais",
-  "Map.zoomInLabel": "Aumentar zoom",
-  "Map.zoomOutLabel": "Diminuir zoom",
-  "MapStatus.off": "inativo",
-  "MapStatus.on": "ativo",
+  "Map.zoomInLabel": "Aproximar",
+  "Map.zoomOutLabel": "Afastar",
+  "MapStatus.off": "desligado",
+  "MapStatus.on": "ligado",
   "MapStatus.unknown": "status desconhecido",
 }
