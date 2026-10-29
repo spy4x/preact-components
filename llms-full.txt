@@ -4114,7 +4114,6 @@ import deno from "@deno/vite-plugin"
 import preact from "@preact/preset-vite"
 import tailwindcss from "@tailwindcss/vite"
 import {
-  denoJsonModules,
   denoModuleIds,
   npmSpecifiers,
   preactThemeCss,
@@ -4125,7 +4124,6 @@ import { defineConfig } from "vite"
 export default defineConfig({
   plugins: [
     denoModuleIds(),
-    denoJsonModules(),
     npmSpecifiers({ readTextFile: Deno.readTextFile }),
     deno(),
     preact(),
@@ -4170,13 +4168,6 @@ and its `src/app.css` keeps the `@import` lines of the recipe above:
   per name. A context then split in two: the app's provider filled one copy and a screen read the
   other. List it first, before `npmSpecifiers()` and `deno()`, so it sees every id the Deno plugin
   gives; it needs no options.
-- `denoJsonModules()` lets the dev server load a JSON module `@deno/vite-plugin` loads, such as
-  a package's catalog (`i18n/en.ts` imports `./en.json`). `@deno/vite-plugin` 2.0.4 loads it as
-  `export default {…}` under an id ending in `#deno`, but the dev server adds `?import` before that
-  suffix and the browser drops it, so Vite's own JSON plugin parsed the JavaScript and answered 500
-  "Failed to parse JSON file": the app never rendered, while `vite build` worked. The plugin hands
-  Vite's JSON plugin the JSON text for exactly the ids it parses. List it before `deno()`; it needs
-  no options.
 - `serviceWorker({ entry, build, plugins, readDir, readFile })` builds a service worker after the
   app build, because a browser cannot load a worker that imports a `jsr:` or `npm:` specifier. It
   writes `sw.js` (`fileName` changes it) into the output folder as one classic script, with

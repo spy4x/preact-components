@@ -1,9 +1,0 @@
-{
-  "Map.label": "Mapa",
-  "Map.listLabel": "Locais",
-  "Map.zoomInLabel": "Aumentar zoom",
-  "Map.zoomOutLabel": "Diminuir zoom",
-  "MapStatus.off": "inativo",
-  "MapStatus.on": "ativo",
-  "MapStatus.unknown": "status desconhecido"
-}

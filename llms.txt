@@ -525,7 +525,6 @@ WebManifest	type	@spy4x/preact-theme/vite	A manifest with every default filled i
 WebManifestIcon	type	@spy4x/preact-theme/vite	One manifest icon.
 buildIdOf	helper	@spy4x/preact-theme/vite	A short hash of files, by path and content, so a change to any one of them, or a rename, changes it.
 buildWebManifest	helper	@spy4x/preact-theme/vite	The manifest with its defaults filled in.
-denoJsonModules	helper	@spy4x/preact-theme/vite	Lets the Vite dev server load the JSON modules `@deno/vite-plugin` loads, such as the component catalogs (`import catalog from "./en.json" with { type: "json" }` in a JSR package).
 denoModuleIds	helper	@spy4x/preact-theme/vite	Gives each module `@deno/vite-plugin` loads one id, so a page runs one copy of it.
 npmSpecifiers	helper	@spy4x/preact-theme/vite	Resolves the `npm:` specifiers inside `@spy4x/preact-*` modules to the app's own copy of that package, and refuses one whose version or range the app's copy does not satisfy.
 preactThemeCss	helper	@spy4x/preact-theme/vite	Gives the app's stylesheet the `@spy4x/preact-*` design system before Tailwind compiles it.

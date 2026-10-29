@@ -1,9 +1,0 @@
-{
-  "Map.label": "Karte",
-  "Map.listLabel": "Orte",
-  "Map.zoomInLabel": "Vergrößern",
-  "Map.zoomOutLabel": "Verkleinern",
-  "MapStatus.off": "aus",
-  "MapStatus.on": "an",
-  "MapStatus.unknown": "Status unbekannt"
-}
