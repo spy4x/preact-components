@@ -142,10 +142,10 @@ interface Line {
 
 /** The chart's English words, each a key `LineChart.<field>` of the catalog. */
 const LINE_CHART_LABELS = {
-  missingValuesLabel: "Dashed grey segments bridge missing values.",
+  missingValuesLabel: "Dashed grey lines mark gaps in the data.",
   loadingLabel: "Loading…",
   emptyLabel: "No data",
-  keyboardHint: "Arrow keys step through the points.",
+  keyboardHint: "Use the arrow keys to move between points.",
   xLabel: "Point",
   chartLabel: (count: number) => `Line chart with ${count} series`,
 }
