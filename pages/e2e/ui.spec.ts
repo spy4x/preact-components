@@ -7357,6 +7357,38 @@ async function edges(locator: Locator): Promise<{ left: number; right: number }>
   return { left: box.x, right: box.x + box.width }
 }
 
+/** Where one line of text is drawn, and the box it is drawn in, in viewport pixels. */
+interface DrawnLine {
+  text: string
+  words: { left: number; right: number }
+  box: { left: number; right: number }
+}
+
+/**
+ * Puts `title` and `subtitle` into the long-titled page header of `card`, short enough to fit, and
+ * returns where the words of each are drawn inside the line they sit on.
+ */
+async function headerLines(card: Locator, title: string, subtitle: string): Promise<DrawnLine[]> {
+  const heading = card.locator(`[data-e2e="page-header-long-title"]`)
+  return await heading.evaluate((element, texts) => {
+    const lines = [element.querySelector(`span`), element.parentElement?.querySelector(`p`)]
+    return lines.map((line, index) => {
+      if (!(line instanceof HTMLElement)) throw new Error(`the header has no line ${index + 1}`)
+      line.textContent = texts[index]
+      const range = document.createRange()
+      range.selectNodeContents(line)
+      const words = range.getBoundingClientRect()
+      const box = line.getBoundingClientRect()
+      if (words.width >= box.width) throw new Error(`"${texts[index]}" fills its line`)
+      return {
+        text: texts[index],
+        words: { left: Math.round(words.left), right: Math.round(words.right) },
+        box: { left: Math.round(box.left), right: Math.round(box.right) },
+      }
+    })
+  }, [title, subtitle])
+}
+
 /**
  * The `ui` components in a right-to-left page (#876): keys that move along a line follow `dir`,
  * menus and hints open toward the line's end, and a Latin title keeps its start in an Arabic page.
@@ -7471,6 +7503,39 @@ function rightToLeftSpecs(): Spec[] {
         }
         return `"G" at ${Math.round(result.first.left)}, inside [${Math.round(result.box.left)}, ` +
           `${Math.round(result.box.right)}]`
+      },
+    },
+    {
+      name: "PageHeader in a right-to-left page: a short Latin title and subtitle line up with " +
+        "the right edge, the page's start",
+      pageId: "ui",
+      run: async (page) => {
+        const card = await rightToLeft(page, "PageHeader")
+        const lines = await headerLines(card, "Design team", "Personal")
+        for (const line of lines) {
+          nearly(`"${line.text}"'s right edge`, line.words.right, line.box.right)
+        }
+        return lines.map((line) =>
+          `"${line.text}" ends at ${line.words.right} of ${line.box.right}`
+        )
+          .join(", ")
+      },
+    },
+    {
+      name: "PageHeader in a left-to-right page: a short Arabic title and subtitle line up with " +
+        "the left edge, the page's start",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator(`#demo-PageHeader`)
+        await card.scrollIntoViewIfNeeded()
+        const lines = await headerLines(card, "فريق التصميم", "شخصي")
+        for (const line of lines) {
+          nearly(`"${line.text}"'s left edge`, line.words.left, line.box.left)
+        }
+        return lines.map((line) =>
+          `"${line.text}" starts at ${line.words.left} of ${line.box.left}`
+        )
+          .join(", ")
       },
     },
     {

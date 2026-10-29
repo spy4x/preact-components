@@ -22,3 +22,12 @@ describe("isolate", () => {
     expect(isolate("report.pdf")).toBe("\u2068report.pdf\u2069")
   })
 })
+
+describe("@spy4x/preact-ui/bdi", () => {
+  it("is published as its own subpath and in the barrel, so an app can import both helpers", async () => {
+    const subpath = await import("@spy4x/preact-ui/bdi")
+    const barrel = await import("@spy4x/preact-ui")
+    expect([subpath.Isolated, subpath.isolate]).toEqual([Isolated, isolate])
+    expect([barrel.Isolated, barrel.isolate]).toEqual([Isolated, isolate])
+  })
+})
