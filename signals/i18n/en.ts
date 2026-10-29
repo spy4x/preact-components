@@ -1,4 +1,8 @@
 /** The `signals` catalog in English, the source every translation is checked against. */
-import catalog from "./en.json" with { type: "json" }
-
-export default catalog
+export default {
+  "ModelStore.unknownIssue": "unknown issue",
+  "Toast.error": "Error",
+  "Toast.info": "Info",
+  "Toast.success": "Success",
+  "Toast.warning": "Warning",
+}

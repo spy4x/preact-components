@@ -1,4 +1,33 @@
 /** The `crud` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./ru.json" with { type: "json" }
-
-export default catalog
+export default {
+  "AssociationEditor.confirmDelete": "Вы точно хотите удалить «{entity}»?",
+  "AssociationEditor.confirmDeleteTitle": "Удалить «{entity}»?",
+  "AssociationEditor.confirmRestore": "Вы точно хотите восстановить «{entity}»?",
+  "AssociationEditor.confirmRestoreTitle": "Восстановить «{entity}»?",
+  "AssociationEditor.conflictMessage": "«{entity}» уже существует.",
+  "AssociationEditor.conflictRemovedMessage": "«{entity}» уже существовало и было удалено.",
+  "AssociationEditor.deleteErrorLabel": "Не удалось удалить",
+  "AssociationEditor.deleteLabel": "Удалить",
+  "AssociationEditor.removedLabel": "Удалено {ago}",
+  "AssociationEditor.restoreErrorLabel": "Не удалось восстановить",
+  "AssociationEditor.restoreHint":
+    "При восстановлении сохранится прежняя запись, а не появится вторая.",
+  "AssociationEditor.restoreLabel": "Восстановить",
+  "CrudEditor.addTitle": "Добавление: {entity}",
+  "CrudEditor.archiveLabel": "В архиве?",
+  "CrudEditor.cancelLabel": "Отмена",
+  "CrudEditor.editTitle": "Редактирование: {entity}",
+  "CrudEditor.notFoundLabel": "Не найдено: {entity}",
+  "CrudEditor.saveErrorLabel": "Не удалось сохранить",
+  "CrudEditor.saveLabel": "Сохранить",
+  "CrudList.actionsLabel": "Действия",
+  "CrudList.addLabel": "Добавить",
+  "CrudList.emptyTitle": "Здесь пока ничего нет",
+  "CrudList.noMatchTitle": "По вашему запросу ничего не нашлось",
+  "CrudList.searchLabel": "Найти",
+  "CrudList.searchPlaceholder": "Поиск",
+  "CrudList.statusActive": "Активные",
+  "CrudList.statusArchived": "В архиве",
+  "CrudList.statusLabel": "Статус",
+  "DeletionValidation.heading": "Чтобы отправить «{model}» в архив, сначала отправьте туда:",
+}

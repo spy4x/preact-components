@@ -1,4 +1,8 @@
 /** The `signals` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./ru.json" with { type: "json" }
-
-export default catalog
+export default {
+  "ModelStore.unknownIssue": "неизвестная проблема",
+  "Toast.error": "Ошибка",
+  "Toast.info": "Информация",
+  "Toast.success": "Готово",
+  "Toast.warning": "Внимание",
+}

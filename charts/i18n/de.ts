@@ -1,4 +1,22 @@
 /** The `charts` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./de.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Bars.emptyLabel": "Keine Daten",
+  "DonutChart.chartLabel": {
+    "one": "Ringdiagramm mit {count} Segment",
+    "other": "Ringdiagramm mit {count} Segmenten",
+  },
+  "DonutChart.emptyLabel": "Keine Daten",
+  "DonutChart.keyboardHint": "Mit den Pfeiltasten gehst du durch die Segmente.",
+  "DotPlot.missingLabel": "Keine Daten",
+  "LineChart.chartLabel": {
+    "one": "Liniendiagramm mit {count} Reihe",
+    "other": "Liniendiagramm mit {count} Reihen",
+  },
+  "LineChart.emptyLabel": "Keine Daten",
+  "LineChart.keyboardHint": "Mit den Pfeiltasten gehst du durch die Punkte.",
+  "LineChart.loadingLabel": "Wird geladen…",
+  "LineChart.missingValuesLabel": "Gestrichelte graue Abschnitte überbrücken fehlende Werte.",
+  "LineChart.xLabel": "Punkt",
+  "changeText.delta": "{change} gegenüber {period}",
+  "changeText.none": "Keine Änderung gegenüber {period}",
+}

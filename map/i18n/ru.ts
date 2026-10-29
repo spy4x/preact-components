@@ -1,4 +1,10 @@
 /** The `map` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./ru.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Map.label": "Карта",
+  "Map.listLabel": "Места",
+  "Map.zoomInLabel": "Приблизить",
+  "Map.zoomOutLabel": "Отдалить",
+  "MapStatus.off": "не работает",
+  "MapStatus.on": "работает",
+  "MapStatus.unknown": "статус неизвестен",
+}

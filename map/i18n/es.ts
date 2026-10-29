@@ -1,4 +1,10 @@
 /** The `map` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
-import catalog from "./es.json" with { type: "json" }
-
-export default catalog
+export default {
+  "Map.label": "Mapa",
+  "Map.listLabel": "Lugares",
+  "Map.zoomInLabel": "Acercar",
+  "Map.zoomOutLabel": "Alejar",
+  "MapStatus.off": "inactivo",
+  "MapStatus.on": "activo",
+  "MapStatus.unknown": "estado desconocido",
+}
