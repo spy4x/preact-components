@@ -162,8 +162,10 @@ describe("LanguagePicker list mode", () => {
       />,
     )
     expect(html).toContain(`aria-label="Sprache"`)
-    expect(html).toContain(`Automatisch: wie auf diesem Gerät — <span lang="en"`)
-    expect(html).toContain("Nur mit Verbindung")
+    expect(html).toContain(
+      `Automatisch: <span lang="en" dir="ltr" class="notranslate">English</span>, wie auf diesem Gerät`,
+    )
+    expect(html).toContain("Nur mit Internetverbindung")
     expect(html).toContain(`<span lang="es" dir="ltr" class="notranslate">Español</span>`)
   })
 

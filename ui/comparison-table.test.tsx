@@ -152,16 +152,16 @@ describe("ComparisonTable under a translator", () => {
 
   it("dates the method in the translator's language when no locale is given", () => {
     const html = inRussian()
-    expect(html).toContain("Проверено 1 октября 2026 г.")
+    expect(html).toContain("Данные проверены 1 октября 2026 г.")
     expect(html).not.toContain("October")
   })
 
   it("ends the Russian sentence in one full stop", () => {
-    expect(inRussian({})).toContain("Проверено 1 октября 2026 г. ")
+    expect(inRussian({})).toContain("Данные проверены 1 октября 2026 г. ")
     expect(inRussian({})).not.toContain("г..")
   })
 
   it("dates the method in the caller's locale over the translator's language", () => {
-    expect(inRussian({ locale: "en" })).toContain("Проверено October 1, 2026.")
+    expect(inRussian({ locale: "en" })).toContain("Данные проверены October 1, 2026.")
   })
 })

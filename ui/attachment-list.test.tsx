@@ -277,12 +277,12 @@ describe("AttachmentList under a translator", () => {
 
     for (
       const text of [
-        'aria-label="Вложения"',
+        'aria-label="Файлы"',
         "Изображение · 820 кБ · Maya Chen",
         'aria-label="Открыть tickets.png"',
-        "Загрузка, 45 %",
-        'aria-label="Загрузка scan.pdf"',
-        'aria-label="Отменить загрузку scan.pdf"',
+        "Загружаем, 45%",
+        'aria-label="Загружаем файл scan.pdf"',
+        'aria-label="Остановить загрузку файла scan.pdf"',
       ]
     ) expect(html).toContain(text)
     expect(html).not.toContain("Uploading")
@@ -295,7 +295,7 @@ describe("AttachmentList under a translator", () => {
     )
 
     expect(html).toContain('aria-label="Voir tickets.png"')
-    expect(html).toContain('aria-label="Вложения"')
+    expect(html).toContain('aria-label="Файлы"')
   })
 })
 

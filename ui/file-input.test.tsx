@@ -132,7 +132,7 @@ describe("resolveLabels", () => {
     })
     const { tooLarge } = resolveLabels({}, russian)
 
-    expect(tooLarge("a.png", 2 * 1024 * 1024)).toBe("a.png больше 2 МБ")
+    expect(tooLarge("a.png", 2 * 1024 * 1024)).toBe("a.png: файл больше 2 МБ")
   })
 })
 

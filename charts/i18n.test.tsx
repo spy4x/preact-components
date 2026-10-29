@@ -42,14 +42,14 @@ describe("the charts under a translator", () => {
     expect(inGerman(emptyBars())).toContain(">Keine Daten<")
     expect(inGerman(oneSlice())).toContain(`aria-label="Ringdiagramm mit 1 Segment"`)
     const line = inGerman(loadingLine())
-    expect(line).toContain("Liniendiagramm mit 1 Reihe")
-    expect(line).toContain("Wird geladen…")
+    expect(line).toContain("Liniendiagramm mit 1 Datenreihe")
+    expect(line).toContain("Wird geladen …")
     expect(line).toContain(">Punkt<")
   })
 
   it("word a change in the translator's language, and in English without one", () => {
     expect(changeText({ current: 5, previous: 5 }, "gestern", "de-DE", GERMAN))
-      .toBe("Keine Änderung gegenüber gestern")
+      .toBe("Unverändert gegenüber gestern")
     expect(changeText({ current: 1500, previous: 0 }, "Vormonat", "de-DE", GERMAN))
       .toBe("+1.500 gegenüber Vormonat")
     expect(changeText({ current: 5, previous: 5 }, "yesterday")).toBe("No change vs yesterday")

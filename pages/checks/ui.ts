@@ -18249,7 +18249,7 @@ async function copyButtonStatusChecks(devtools: Devtools): Promise<void> {
       : null
     check(
       "a second press empties the live region before announcing again, and restarts the window",
-      texts.join("|") === "Copy failed||Copy failed|" && failureLasted !== null &&
+      texts.join("|") === "Couldn't copy||Couldn't copy|" && failureLasted !== null &&
         failureLasted >= 1_800,
       `region texts ${JSON.stringify(texts)}; failure shown from the first announcement until ` +
         `${failureLasted}ms later (needs 1800ms or more)`,

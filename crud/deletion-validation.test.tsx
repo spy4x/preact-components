@@ -21,7 +21,7 @@ describe("DeletionValidation", () => {
 
     expect(html).toContain('role="alert"')
     expect(html).not.toContain("border-danger")
-    expect(html).not.toContain("To archive this Region")
+    expect(html).not.toContain("archive this Region")
   })
 
   it("carries no class on the region while the dependency list is empty", () => {
@@ -54,7 +54,7 @@ describe("DeletionValidation", () => {
     )
 
     expect(html).toContain("These still use the region:")
-    expect(html).not.toContain("To archive this Region")
+    expect(html).not.toContain("archive this Region")
   })
 
   it("styles the region as the visible card once there are dependencies", () => {

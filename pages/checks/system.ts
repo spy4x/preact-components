@@ -870,7 +870,7 @@ function findModeSwitchTarget(devtools: Devtools): Promise<ModeSwitchAim> {
     const card = document.querySelector('${AUTH_INTERACTIVE}')
     const button = card
       ? [...card.querySelectorAll("button")].find((candidate) =>
-        /^(Need|Have) an account\\?/.test(candidate.textContent.trim())
+        /^(New here|Already have an account)\\?/.test(candidate.textContent.trim())
       )
       : null
     if (!button) return { found: false, x: 0, y: 0, onTarget: false }
