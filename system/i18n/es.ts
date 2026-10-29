@@ -31,7 +31,7 @@ export default {
   "AuthForm.signUp": "Registrarse",
   "AuthForm.submitCode": "Verificar código",
   "AuthForm.switchToSignIn": "¿Ya tienes una cuenta? Inicia sesión",
-  "AuthForm.switchToSignUp": "¿Eres nuevo? Regístrate",
+  "AuthForm.switchToSignUp": "¿Primera vez aquí? Regístrate",
   "Calendar.day.after": "{label}: demasiado lejos",
   "Calendar.day.available": "{label}: disponible",
   "Calendar.day.availableCount": {

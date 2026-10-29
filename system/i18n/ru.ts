@@ -62,7 +62,7 @@ export default {
   "ConflictChooser.resolved": "Все конфликты решены",
   "ConflictChooser.useTheirs.gone": "Отказаться от моего",
   "ConflictChooser.useTheirs.rejected": "Отказаться от моего",
-  "ConflictChooser.useTheirs.version": "Взять их версию",
+  "ConflictChooser.useTheirs.version": "Взять другую версию",
   "InstallPrompt.body": "Открывайте его прямо с экрана «Домой» и пользуйтесь даже без сети.",
   "InstallPrompt.dismiss": "Не сейчас",
   "InstallPrompt.failed": "Не получилось. Попробуйте ещё раз.",

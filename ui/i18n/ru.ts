@@ -79,7 +79,7 @@ export default {
   "ComparisonTable.method": "Как сравнивали",
   "ComparisonTable.no": "Нет",
   "ComparisonTable.noMeaning": "нет",
-  "ComparisonTable.ours": "Это мы",
+  "ComparisonTable.ours": "Наш продукт",
   "ComparisonTable.partial": "Частично",
   "ComparisonTable.partialMeaning": "с ограничениями или через дополнение",
   "ComparisonTable.yes": "Да",
