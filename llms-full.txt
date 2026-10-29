@@ -621,23 +621,23 @@ The harness is the six parts, once:
    This package no longer re-exports them (#359): `formatTimestamp` was `formatTime` under this
    package's name.
 
-| Prop             | Default                       | Notes                                                             |
-| ---------------- | ----------------------------- | ----------------------------------------------------------------- |
-| `blank`          | —                             | the add-mode row; the row type is inferred from it                |
-| `schema`         | —                             | arktype schema validated on every change; omit if there is none   |
-| `entity`         | —                             | "Add **Region**", "Couldn't find this Region", dependency sentence         |
-| `title`          | `Add/Edit <entity>`           | full title override                                               |
-| `canChange`      | `true`                        | a port, because the library has no auth; `false` leaves Cancel    |
-| `archive`        | no toggle                     | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }` |
-| `onCreated`      | —                             | navigate where the created row belongs                            |
-| `validate`       | —                             | extra checks after the schema                                     |
-| `cancelHref`     | —                             | where Cancel points                                               |
-| `saveErrorLabel` | `"Couldn't save"`             | what a failed save is introduced with                             |
-| `saveLabel`      | `"Save"`                      | label of the Save button; `cancelLabel` is Cancel's               |
-| `notFoundLabel`  | `Couldn't find this <entity>` | shown when `editId` names a row the store does not hold           |
-| `headingLevel`   | `1`                           | level of the title's heading, for a page that has its `<h1>`      |
-| `notice`         | —                             | slot between the field grid and the footer                        |
-| `footerSlot`     | —                             | slot at the start of the footer                                   |
+| Prop             | Default                       | Notes                                                              |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `blank`          | —                             | the add-mode row; the row type is inferred from it                 |
+| `schema`         | —                             | arktype schema validated on every change; omit if there is none    |
+| `entity`         | —                             | "Add **Region**", "Couldn't find this Region", dependency sentence |
+| `title`          | `Add/Edit <entity>`           | full title override                                                |
+| `canChange`      | `true`                        | a port, because the library has no auth; `false` leaves Cancel     |
+| `archive`        | no toggle                     | `{}` turns the toggle on; `{ label, dependencies, blockedLabel }`  |
+| `onCreated`      | —                             | navigate where the created row belongs                             |
+| `validate`       | —                             | extra checks after the schema                                      |
+| `cancelHref`     | —                             | where Cancel points                                                |
+| `saveErrorLabel` | `"Couldn't save"`             | what a failed save is introduced with                              |
+| `saveLabel`      | `"Save"`                      | label of the Save button; `cancelLabel` is Cancel's                |
+| `notFoundLabel`  | `Couldn't find this <entity>` | shown when `editId` names a row the store does not hold            |
+| `headingLevel`   | `1`                           | level of the title's heading, for a page that has its `<h1>`       |
+| `notice`         | —                             | slot between the field grid and the footer                         |
+| `footerSlot`     | —                             | slot at the start of the footer                                    |
 
 ## Field rows
 
