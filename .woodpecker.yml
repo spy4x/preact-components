@@ -25,6 +25,7 @@ steps:
   # CSS-module export fails this step the same way a red `check` fails the one above.
   publish-dry:
     image: denoland/deno:2.9.7
+    depends_on: [check]
     commands:
       - deno task publish:dry
 
@@ -50,13 +51,17 @@ steps:
       - export PATH="/woodpecker/bin:$${PATH}"
       - deno --version
       - deno task --cwd pages build
+    depends_on: [check]
 
-  # The parts run one after another, not side by side: several browsers at once would compete
-  # with the other pipelines on the one agent host, and load slows `e2e` most (`pages/README.md`).
+  # The parts run in two lanes side by side, three parts each, balanced by their usual time:
+  # `verify-ui`, `verify-e2e-2`, `verify-e2e-4` and `verify-e2e-1`, `verify-e2e-3`, `verify-rest`.
+  # Two lanes, not six: each part already drives four browser contexts, and the agent host runs
+  # other pipelines too, so more browsers at once would push the heavy checks past their limits
+  # (#1052). In one lane the six parts took about 22 minutes; two lanes take about half.
   # `e2e` runs as four shards (#975): as one step it ran past its 900-second ceiling whenever other
   # pipelines shared the agent. `pages/e2e/shard.test.ts` fails when a shard is missing here or
-  # listed twice. A red part skips the parts after it. `CHROME_PATH` names the image's Chromium,
-  # so the browser `verify` drives is the one it reports.
+  # listed twice. A red part skips the parts after it in its lane. `CHROME_PATH` names the image's
+  # Chromium, so the browser `verify` drives is the one it reports.
   verify-ui:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
@@ -66,6 +71,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=ui
+    depends_on: [pages-build]
 
   verify-e2e-1:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -76,6 +82,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=1/4
+    depends_on: [pages-build]
 
   verify-e2e-2:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -86,6 +93,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=2/4
+    depends_on: [verify-ui]
 
   verify-e2e-3:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -96,6 +104,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=3/4
+    depends_on: [verify-e2e-1]
 
   verify-e2e-4:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -106,6 +115,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=4/4
+    depends_on: [verify-e2e-2]
 
   verify-rest:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -116,6 +126,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --except=ui,e2e
+    depends_on: [verify-e2e-3]
 
   # Guards against an accidental release: a `v*` tag publishes to JSR with the global token, so
   # this step fails the build unless the tagged commit is already on `main` (reviewed, green CI).
@@ -124,6 +135,7 @@ steps:
   # clone is full but has no `main` ref, which is why the step fetches it.
   on-main:
     image: alpine/git:2.47.2
+    depends_on: [publish-dry]
     when:
       event: tag
       ref: refs/tags/v*
@@ -138,6 +150,7 @@ steps:
   # itself; the shell reads the secret.
   publish:
     image: denoland/deno:2.9.7
+    depends_on: [on-main]
     when:
       event: tag
       ref: refs/tags/v*

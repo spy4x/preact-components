@@ -108,7 +108,7 @@ without anyone listing it. An unknown name, an empty list, a list that names eve
 its own limits (see "How long a run may take"), repeats the static phase and the startup checks,
 and ends with its own `FILTERED:` line. All three green is a full run; one or two are not.
 
-CI runs `ui` and the nine blocks as one step each, and `e2e` as four shards, one after another
+CI runs `ui` and the nine blocks as one step each, and `e2e` as four shards, in two lanes side by side
 (see "Shards of the e2e part" below). On a workstation, use the parts when other browser runs share
 the machine: run them one after another, or side by side in three terminals. One command is still
 fine on a quiet machine.
