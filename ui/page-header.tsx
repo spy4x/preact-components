@@ -100,12 +100,14 @@ export function PageHeader(
         </Button>
       )}
       {mark}
-      <div class="flex min-w-0 flex-1 flex-col gap-1">
+      <div class="flex min-w-0 flex-1 flex-col gap-1 [text-align:-webkit-match-parent]">
         {
           /* The plain title truncates in its own span: `truncate` on the heading would clip the focus
             ring of whatever the heading slot puts there. `dir="auto"` gives the span the direction
             of its own words, so a long Latin title in an Arabic page keeps its start and loses its
-            end to the ellipsis; `match-parent` still lines a short one up with the page's start. */
+            end to the ellipsis, and a short one still lines up with the page's start: Firefox reads
+            the span's `match-parent`; Chromium drops it, and the span inherits the left or right
+            this column's `-webkit-match-parent` resolves from the page's direction. */
         }
         <Heading
           class="min-w-0 text-xl font-semibold text-foreground sm:text-2xl"
