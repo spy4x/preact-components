@@ -491,6 +491,12 @@ without a key press behind it. The effect fires on `step` becoming `"one-time-co
 other render, whether that transition comes from a real round trip through an app's server or from
 a caller flipping the prop in a demo.
 
+**When `busy` ends, focus the submit button lost is handed on.** `busy` disables the submit button,
+and a disabled button drops the focus of the reader who pressed it to the page body. So when `busy`
+turns off while focus is on the body or still on that button, it moves to the error the answer
+brought: the named field for a field error, the message (`auth-form-error`) for a form-level one,
+and back to the submit button when there is no error. Focus the reader put anywhere else stays.
+
 **`error` accepts a plain string or `{ message, field? }`.** Most auth errors — a wrong password, a
 network the app could not reach — are not more about one field than the other, so a string is the
 ordinary case. Naming a `field` is for the error that really is about one, an unregistered login
@@ -558,8 +564,8 @@ an integer back into a string.
 
 **Tests find a control by its fixed `data-e2e`, not by a prop.** Every control carries one value
 that never changes: `auth-form` on the form, `auth-form-login`, `auth-form-password`,
-`auth-form-password-toggle`, `auth-form-code`, `auth-form-submit` (in both steps) and
-`auth-form-mode-switch`. This is how `Shell` marks its own parts (`shell-menu-button`,
+`auth-form-password-toggle`, `auth-form-code`, `auth-form-submit` (in both steps),
+`auth-form-mode-switch` and `auth-form-error` on a shown message. This is how `Shell` marks its own parts (`shell-menu-button`,
 `shell-sidebar`), and it holds whatever language the labels are in, which a lookup by label does
 not. A prop for test attributes was not added: nothing varies per caller, and a page with two
 forms tells them apart by the form's accessible name (`Sign in`, `Sign up`). Finding a field by
