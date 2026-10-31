@@ -1168,6 +1168,34 @@ function AuthFormInteractiveDemo() {
 }
 
 /**
+ * A sign-in with a pretend server: a submit turns `busy` on, and a moment later the answer turns it
+ * off with an error, as an app's own round trip would. The login `nobody` gets a field error on the
+ * login, anything else the form-level one, so a check can see where focus lands after each.
+ */
+function AuthFormRoundTripDemo() {
+  const busy = useSignal(false)
+  const error = useSignal<string | AuthFormError | null>(null)
+  return (
+    <div class="max-w-sm" data-e2e="auth-form-round-trip">
+      <AuthForm
+        mode="sign-in"
+        step="credentials"
+        busy={busy.value}
+        error={error.value}
+        onSignIn={({ login }) => {
+          error.value = null
+          busy.value = true
+          setTimeout(() => {
+            busy.value = false
+            error.value = login === "nobody" ? FIELD_ERROR : FORM_ERROR
+          }, 300)
+        }}
+      />
+    </div>
+  )
+}
+
+/**
  * `SiteHeader`, at the guide's own width.
  *
  * The links below `lg` (1024px) collapse into the `<details>` menu the component builds them
@@ -3049,7 +3077,8 @@ useEffect(() => {
     ],
     snippet: `// End-to-end tests find each control by a fixed data-e2e, whatever the labels say:
 // auth-form (the form), auth-form-login, auth-form-password, auth-form-password-toggle,
-// auth-form-code, auth-form-submit and auth-form-mode-switch.
+// auth-form-code, auth-form-submit, auth-form-mode-switch and auth-form-error (a message).
+// When busy ends, the focus the disabled submit dropped goes to the error the answer brought.
 <AuthForm
   mode={mode}
   step={step}
@@ -3078,6 +3107,9 @@ useEffect(() => {
           </Part>
           <Part title="Driven by buttons in place of a server">
             <AuthFormInteractiveDemo />
+          </Part>
+          <Part title="After a refused submit, focus goes to the error">
+            <AuthFormRoundTripDemo />
           </Part>
           <Part title="With the field names your API expects">
             <AuthFormNamesDemo />

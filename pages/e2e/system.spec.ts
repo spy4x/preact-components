@@ -431,6 +431,26 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AuthForm: when busy ends after a pressed submit, focus moves to the form-level " +
+      "message, or to the login a field error names",
+    pageId: "system",
+    run: async (page) => {
+      const demo = page.locator(`[data-e2e="auth-form-round-trip"]`)
+      const login = demo.locator(`[data-e2e="auth-form-login"]`)
+      const submit = demo.locator(`[data-e2e="auth-form-submit"]`)
+      await login.scrollIntoViewIfNeeded()
+      await login.fill("ana@example.com")
+      await demo.locator(`[data-e2e="auth-form-password"]`).fill("hunter2")
+      await submit.focus()
+      await page.keyboard.press("Enter")
+      await demo.locator(`[data-e2e="auth-form-error"]`).and(page.locator(":focus")).waitFor()
+      await login.fill("nobody")
+      await submit.focus()
+      await page.keyboard.press("Enter")
+      await login.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
     name: "Shell: after hydration its form items are menu items, and only the focused one is in " +
       "the tab order, the roving tab stop of Dropdown (#535, #967)",
     pageId: "system",
