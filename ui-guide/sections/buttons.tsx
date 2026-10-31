@@ -317,8 +317,9 @@ function BusySubmitDemo() {
 /**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service. The
- * fourth's port always fails, to show the failure state. C presses the third. `pages/checks/ui.ts`
- * presses the fourth twice, and drives the first two with a clipboard it replaces.
+ * fourth's port always fails, to show the failure state; the fifth is the primary look, for a page
+ * whose main action is the copy. C presses the third. `pages/checks/ui.ts` presses the fourth
+ * twice, and drives the first two with a clipboard it replaces.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
@@ -341,6 +342,9 @@ function CopyButtonDemo() {
       </Cluster>
       <Cluster>
         <CopyButton textToCopy="INV-0007" title="Copy, then fail" copy={() => false} />
+      </Cluster>
+      <Cluster>
+        <CopyButton textToCopy="INV-0007" title="Copy results" variant="primary" />
       </Cluster>
     </Stack>
   )
@@ -530,6 +534,13 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
           "A visible label, replaced by the confirmation while it shows; without it, the icon alone.",
       },
       {
+        name: "variant",
+        type: `"outline" | "primary"`,
+        default: `"outline"`,
+        description:
+          "The look of a button with a title; primary for a page whose main action is the copy. The icon alone ignores it.",
+      },
+      {
         name: "copy",
         type: "(text) => void | boolean | Promise",
         default: "the clipboard",
@@ -569,7 +580,8 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
     snippet: `<CopyButton textToCopy={invoice.id} />
 <CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />
 <CopyButton textToCopy={() => input.value} data-umami-event="copy-input" />
-<CopyButton textToCopy={invoice.id} title="Copy id" hotkey="c" />`,
+<CopyButton textToCopy={invoice.id} title="Copy id" hotkey="c" />
+<CopyButton textToCopy={results} title="Copy results" variant="primary" />`,
     render: () => <CopyButtonDemo />,
   },
   Link: {
