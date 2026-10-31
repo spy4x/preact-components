@@ -167,7 +167,9 @@ describe("AuthForm", () => {
 
   it("draws the error message with the danger token, not a fixed red (#526)", () => {
     const html = render(<AuthForm {...base} error="Wrong login or password" />)
-    expect(html).toContain('<p class="text-sm text-danger">Wrong login or password</p>')
+    expect(html).toMatch(
+      /<p[^>]*class="[^"]*\btext-danger\b[^"]*"[^>]*>Wrong login or password<\/p>/,
+    )
     expect(html).not.toMatch(/text-red-\d/)
   })
 
