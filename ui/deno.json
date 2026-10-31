@@ -70,6 +70,7 @@
     "./radio": "./radio.tsx",
     "./radio-chips": "./radio-chips.tsx",
     "./resend-button": "./resend-button.tsx",
+    "./run-steps": "./run-steps.tsx",
     "./segmented-control": "./segmented-control.tsx",
     "./theme-preview": "./theme-preview.tsx",
     "./setting-row": "./setting-row.tsx",

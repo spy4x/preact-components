@@ -277,6 +277,12 @@ export default {
     "other":
       "Nicht angekommen? Schau im Spam-Ordner nach. Erneut senden kannst du in {count} Sekunden.",
   },
+  "RunSteps.done": "Fertig",
+  "RunSteps.failed": "Fehlgeschlagen",
+  "RunSteps.pending": "Nicht gestartet",
+  "RunSteps.running": "Läuft",
+  "RunSteps.stopped": "Gestoppt",
+  "RunSteps.unavailable": "Nicht verfügbar",
   "ScreenTour.label": "Ansichten",
   "ScreenTour.viewFullSizeLabel": "In voller Größe ansehen",
   "ShortcutsDialog.closeLabel": "Schließen",

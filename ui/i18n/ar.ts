@@ -284,6 +284,12 @@ export default {
     "other":
       "لم تصلك الرسالة؟ تحقّق من مجلد الرسائل غير المرغوب فيها. يمكنك إعادة الإرسال بعد {count} ثانية.",
   },
+  "RunSteps.done": "تم",
+  "RunSteps.failed": "فشل",
+  "RunSteps.pending": "لم يبدأ",
+  "RunSteps.running": "قيد التشغيل",
+  "RunSteps.stopped": "متوقف",
+  "RunSteps.unavailable": "غير متاح",
   "ScreenTour.label": "الشاشات",
   "ScreenTour.viewFullSizeLabel": "عرض بالحجم الكامل",
   "ShortcutsDialog.closeLabel": "إغلاق",
