@@ -454,7 +454,7 @@ function ProgressDemo() {
   )
 }
 
-/** A benchmark half way through, failed on one step: every state the list draws, in one run. */
+/** A benchmark half way through, failed on one step: five of the six states the list draws. */
 const runSteps: readonly RunStep[] = [
   {
     id: "download",
@@ -488,13 +488,25 @@ const runSteps: readonly RunStep[] = [
   { id: "storage", label: "Storage used", state: "pending", hint: "No budget" },
 ]
 
-/** The run above, and the same list stopped part way. */
+/** The same run with Stop pressed during the save: that step is stopped, the rest not measured. */
+const stoppedSteps: readonly RunStep[] = runSteps.map((step) =>
+  step.id === "save" ? { id: step.id, label: step.label, state: "stopped" } : step
+)
+
+/** The run above, then the same run stopped part way: together, every state the list draws. */
 function RunStepsDemo() {
   const headingId = useId()
+  const stoppedId = useId()
   return (
     <Stack>
       <h3 id={headingId} class="text-sm font-semibold">Measurements</h3>
       <RunSteps steps={runSteps} aria-labelledby={headingId} labels={{ pending: "Not measured" }} />
+      <h3 id={stoppedId} class="text-sm font-semibold">Stopped part way</h3>
+      <RunSteps
+        steps={stoppedSteps}
+        aria-labelledby={stoppedId}
+        labels={{ pending: "Not measured" }}
+      />
       <DemoNote>
         The value column lines up from 640 px; on a phone each value sits on its label's line with
         the badge under it.
@@ -1665,9 +1677,9 @@ const translator = createTranslator({
     props: [
       {
         name: "steps",
-        type: "{ id, label, state, hint?, value?, verdict?, progress?, detail? }[]",
+        type: "RunStep[]",
         description:
-          "The steps in order. `state` is pending, running, done, failed, unavailable or stopped; `value` and `verdict` show once done.",
+          "The steps in order, each `{ id, label, state, hint?, value?, verdict?, progress?, detail? }`. `state` is pending, running, done, failed, unavailable or stopped; `value` and `verdict` show once done.",
       },
       {
         name: "labels",
