@@ -32,6 +32,11 @@ export interface CopyButtonProps extends
    */
   title?: string
   /**
+   * Look of a button with a `title`: `"outline"` (the default) or `"primary"`, for a page whose
+   * main action is the copy. A button without a title stays icon-only.
+   */
+  variant?: "outline" | "primary"
+  /**
    * Injected clipboard port, e.g. the host app's `clipboard.copy`. It reports a failure by
    * throwing, rejecting or returning `false`.
    *
@@ -93,9 +98,9 @@ export async function copyText(
 }
 
 /** The glyph for each status: a clipboard, a checkmark, a cross. */
-function StatusIcon({ status }: { status: CopyStatus }): JSX.Element {
+function StatusIcon({ status, danger }: { status: CopyStatus; danger: string }): JSX.Element {
   if (status === "copied") return <IconCheck class="size-4" />
-  if (status === "failed") return <IconXMark class="size-4 text-danger" />
+  if (status === "failed") return <IconXMark class={`size-4 ${danger}`.trim()} />
   return (
     <svg
       class="size-4 shrink-0"
@@ -139,6 +144,7 @@ export function CopyButtonBody(
   {
     textToCopy: _textToCopy,
     title,
+    variant = "outline",
     copyLabel: copyLabelProp,
     copiedLabel: copiedLabelProp,
     failedLabel: failedLabelProp,
@@ -156,12 +162,14 @@ export function CopyButtonBody(
     { copyLabel: copyLabelProp, copiedLabel: copiedLabelProp, failedLabel: failedLabelProp },
   )
   const message = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : ""
+  // The danger colour has no contrast on the primary fill: there the cross alone marks a failure.
+  const danger = title && variant === "primary" ? "" : "text-danger"
   return (
     <>
       <Button
         {...rest}
         type="button"
-        variant={title ? "outline" : "icon"}
+        variant={title ? variant : "icon"}
         class={className}
         title={copyLabel}
         aria-label={ariaLabel ?? (title ? undefined : copyLabel)}
@@ -170,11 +178,11 @@ export function CopyButtonBody(
           onPress()
         }}
       >
-        <StatusIcon status={status} />
+        <StatusIcon status={status} danger={danger} />
         {title === undefined
           ? null
           : status === "failed"
-          ? <span class="text-danger">{failedLabel}</span>
+          ? <span class={danger || undefined}>{failedLabel}</span>
           : message || title}
       </Button>
       <span role="status" aria-live="polite" class="sr-only">{message}</span>
