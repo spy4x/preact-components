@@ -55,6 +55,13 @@ describe("WindowFrame", () => {
     )
   })
 
+  it("rounds the phone's screen at the card radius, so a heading in its top corner stays whole", () => {
+    const html = render(<WindowFrame variant="phone">x</WindowFrame>)
+    const screen = html.match(/<div class="([^"]*overflow-hidden[^"]*)">x<\/div>/)![1].split(" ")
+    // A phone-sized radius (2rem) cut the "N" off a "Notes" heading at 160 px wide (spy4x/seed#384).
+    expect(screen.filter((name) => name.startsWith("rounded"))).toEqual(["rounded-xl"])
+  })
+
   it("draws the plain frame as the browser's rounded border and surface with no bar", () => {
     const html = render(
       <WindowFrame variant="plain" title="app.example.com">

@@ -56,10 +56,12 @@ const terminalFrame =
 
 /**
  * The phone. Its top bezel is deeper than the sides and holds the notch, so the notch never covers
- * the top of the screenshot, where an app keeps its own bar.
+ * the top of the screenshot, where an app keeps its own bar. The screen's corners are the card
+ * radius, small enough that a heading or a tab bar at the screenshot's edge stays whole even at
+ * 160 px wide; a phone-sized radius cut the first letter off.
  */
 const phoneFrame =
-  "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-[2.5rem] bg-foreground p-2 pt-8 shadow-2xl"
+  "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-3xl bg-foreground p-2 pt-8 shadow-2xl"
 
 /**
  * Draws the device around `children`. The chrome (the window buttons, the address bar, the notch)
@@ -97,7 +99,7 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
           aria-hidden="true"
           class="absolute start-1/2 top-3 h-2 w-16 -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 rounded-full bg-track"
         />
-        <div class="relative h-full overflow-hidden rounded-[2rem] bg-surface">{children}</div>
+        <div class="relative h-full overflow-hidden rounded-xl bg-surface">{children}</div>
       </div>
     )
   }
