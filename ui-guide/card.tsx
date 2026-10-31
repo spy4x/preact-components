@@ -271,7 +271,9 @@ function PropsSummary(
 
 /**
  * A prop name with a `<wbr>` before every camel-case hump, so a name too long for its column wraps
- * where a reader sees a word end (`conflict`/`Removed`/`Message`) rather than mid-word (#400).
+ * where a reader sees a word end (`conflict`/`Removed`/`Message`) rather than mid-word (#400). A
+ * hyphenated word (`aria-labelledby`) stays on one line: the browser would break it after the
+ * hyphen.
  *
  * @param props The name.
  */
@@ -282,7 +284,9 @@ function NameWithBreaks({ name }: { name: string }): JSX.Element {
       {parts.map((part, index) => (
         <Fragment key={index}>
           {index > 0 ? <wbr /> : null}
-          {part}
+          {part.split(/(\s+)/).map((word, at) =>
+            word.includes("-") ? <span key={at} class="whitespace-nowrap">{word}</span> : word
+          )}
         </Fragment>
       ))}
     </>

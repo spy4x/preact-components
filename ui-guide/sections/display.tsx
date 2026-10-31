@@ -44,6 +44,8 @@ import {
   type ProgressTone,
   RadioChips,
   Rich,
+  type RunStep,
+  RunSteps,
   type Shortcut,
   ShortcutsDialog,
   Stack,
@@ -448,6 +450,67 @@ function ProgressDemo() {
       <Progress id="guide-progress-clamped" label="Past the maximum (140 of 100)" value={140} />
       <Progress id="guide-progress-indeterminate" label="No reading yet" value={null} />
       <Progress ariaLabel="Uncaptioned upload" value={30} />
+    </Stack>
+  )
+}
+
+/** A benchmark half way through, failed on one step: five of the six states the list draws. */
+const runSteps: readonly RunStep[] = [
+  {
+    id: "download",
+    label: "Download the data",
+    state: "done",
+    hint: "Budget: under 10 s",
+    value: "2.4 s",
+    verdict: { label: "Within budget", tone: "success" },
+  },
+  {
+    id: "scroll",
+    label: "Scroll the list",
+    state: "done",
+    hint: "Budget: under 5% of frames dropped",
+    value: "12% of frames dropped",
+    verdict: { label: "Over budget", tone: "danger" },
+  },
+  {
+    id: "memory",
+    label: "Memory used",
+    state: "unavailable",
+    detail: "This browser doesn't report it.",
+  },
+  { id: "search", label: "Search on this device", state: "failed", hint: "Budget: under 100 ms" },
+  {
+    id: "save",
+    label: "Save to this device",
+    state: "running",
+    progress: { value: 3200, max: 10000, label: "3,200 of 10,000 records" },
+  },
+  { id: "storage", label: "Storage used", state: "pending", hint: "No budget" },
+]
+
+/** The same run with Stop pressed during the save: that step is stopped, the rest not measured. */
+const stoppedSteps: readonly RunStep[] = runSteps.map((step) =>
+  step.id === "save" ? { id: step.id, label: step.label, state: "stopped" } : step
+)
+
+/** The run above, then the same run stopped part way: together, every state the list draws. */
+function RunStepsDemo() {
+  const headingId = useId()
+  const stoppedId = useId()
+  return (
+    <Stack>
+      <h3 id={headingId} class="text-sm font-semibold">Measurements</h3>
+      <RunSteps steps={runSteps} aria-labelledby={headingId} labels={{ pending: "Not measured" }} />
+      <h3 id={stoppedId} class="text-sm font-semibold">Stopped part way</h3>
+      <RunSteps
+        steps={stoppedSteps}
+        aria-labelledby={stoppedId}
+        labels={{ pending: "Not measured" }}
+      />
+      <DemoNote>
+        The value column lines up from 640 px; on a phone each value sits on its label's line with
+        the badge under it.
+      </DemoNote>
     </Stack>
   )
 }
@@ -1606,6 +1669,50 @@ const translator = createTranslator({
     snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
 <Progress value={null} ariaLabel="Sync" />`,
     render: () => <ProgressDemo />,
+  },
+  RunSteps: {
+    summary:
+      "A fixed list of a run's steps, each filling in with its value and a verdict, so the layout never shifts while it runs.",
+    wide: true,
+    props: [
+      {
+        name: "steps",
+        type: "RunStep[]",
+        description:
+          "The steps in order, each `{ id, label, state, hint?, value?, verdict?, progress?, detail? }`. `state` is pending, running, done, failed, unavailable or stopped; `value` and `verdict` show once done.",
+      },
+      {
+        name: "labels",
+        type: "Partial<Record<RunStepState, string>>",
+        description: "The word each state shows in the value's place.",
+      },
+      {
+        name: "aria-labelledby",
+        type: "string",
+        description: "The id of the heading that names the list.",
+      },
+    ],
+    snippet: `<RunSteps
+  aria-labelledby="measurements"
+  labels={{ pending: "Not measured" }}
+  steps={[
+    {
+      id: "download",
+      label: "Download the data",
+      state: "done",
+      hint: "Budget: under 10 s",
+      value: "2.4 s",
+      verdict: { label: "Within budget", tone: "success" },
+    },
+    {
+      id: "save",
+      label: "Save to this device",
+      state: "running",
+      progress: { value: 3200, max: 10000, label: "3,200 of 10,000 records" },
+    },
+  ]}
+/>`,
+    render: () => <RunStepsDemo />,
   },
   ...comparisonTableDemos,
   ...marketingBlockDemos,
