@@ -259,6 +259,12 @@ ResendButton.label	f3d4b89cc56e5fbd
 ResendButton.readyText	d1891e9a64c3ee0b
 ResendButton.sentText	ab57ac7628e89201
 ResendButton.waitingText	7b62630ff6bcde07
+RunSteps.done	11a6767d5674c7e4
+RunSteps.failed	031a8f0f659df890
+RunSteps.pending	ba35f0c47d862763
+RunSteps.running	f4ccae29e1bb0c20
+RunSteps.stopped	1a4f630ac1b69fd0
+RunSteps.unavailable	67a926f7008e2b0e
 ScreenTour.label	4727a1a2b79c0c21
 ScreenTour.viewFullSizeLabel	0526649796aa1810
 ShortcutsDialog.closeLabel	7d9eb7acb13e2462

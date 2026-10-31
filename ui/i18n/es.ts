@@ -278,6 +278,12 @@ export default {
     "other":
       "¿No te ha llegado? Revisa la carpeta de spam. Podrás volver a enviarlo en {count} segundos.",
   },
+  "RunSteps.done": "Hecho",
+  "RunSteps.failed": "Falló",
+  "RunSteps.pending": "Sin empezar",
+  "RunSteps.running": "En curso",
+  "RunSteps.stopped": "Detenido",
+  "RunSteps.unavailable": "No disponible",
   "ScreenTour.label": "Pantallas",
   "ScreenTour.viewFullSizeLabel": "Ver a tamaño completo",
   "ShortcutsDialog.closeLabel": "Cerrar",
