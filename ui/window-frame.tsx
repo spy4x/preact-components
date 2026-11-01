@@ -27,7 +27,7 @@ export interface WindowFrameProps {
  * a marketing page. The plain frame suits most product media; the browser's bar is for when the URL
  * itself matters.
  *
- * The chrome (the window buttons, the address bar, the notch) is decorative and hidden from
+ * The chrome (the window buttons, the address bar, the speaker) is decorative and hidden from
  * assistive tech. Server-rendered with no hooks and no JavaScript.
  *
  * @param props The variant, content and caption, see {@link WindowFrameProps}.
