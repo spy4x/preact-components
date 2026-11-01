@@ -520,8 +520,10 @@
  * The type of an article (`Prose` from `@spy4x/preact-ui`): rendered Markdown, which carries no
  * classes, set from the tokens at a measure of about 65 characters. Every rule reads an element
  * inside the wrapper through `:where()`, so each weighs one class and a class on the element wins.
- * Code wraps instead of scrolling. A table too wide for the screen scrolls inside the focusable
- * region `Prose` puts it in (`[data-prose-table]`), so the page itself never scrolls sideways.
+ * Code wraps instead of scrolling, and inline code may break anywhere, so a long path in a table
+ * cell wraps instead of taking the whole width from the columns beside it. A table too wide for
+ * the screen scrolls inside the focusable region `Prose` puts it in (`[data-prose-table]`), so the
+ * page itself never scrolls sideways.
  */
 @utility pc-prose {
   @apply max-w-2xl text-base/7 text-pretty wrap-break-word;
@@ -562,7 +564,7 @@
     @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
   }
   & :where(:not(pre) > code) {
-    @apply rounded-sm bg-hover px-1 py-px font-mono text-sm;
+    @apply rounded-sm bg-hover px-1 py-px font-mono text-sm wrap-anywhere;
   }
   & :where(ul) {
     @apply list-disc ps-6;
