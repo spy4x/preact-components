@@ -155,6 +155,21 @@ export function resolveImage(
 /** Attribute marking an image this component has made zoomable, so cleanup knows what it owns. */
 const MARKER = "data-lightbox-zoom"
 
+/**
+ * The components' focus ring, as `Button` draws it, for an image that becomes a Tab stop. Without
+ * it a focused image shows only the browser's thin outline on its edge.
+ */
+const FOCUS_RING = [
+  "focus-visible:ring-2",
+  "focus-visible:ring-focus",
+  "focus-visible:ring-offset-2",
+  "focus-visible:ring-offset-focus",
+  "focus-visible:outline-hidden",
+]
+
+/** Attribute listing the {@link FOCUS_RING} utilities this component added, for cleanup. */
+const RING_MARKER = "data-lightbox-ring"
+
 /** What {@link markZoomable} puts on an image, beyond the marker itself. */
 interface ZoomableMarks {
   /** Selector an image must match. */
@@ -199,6 +214,9 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
     image.setAttribute("tabindex", "0")
     image.setAttribute("aria-label", `${marks.zoomLabel}: ${alt}`)
     if (marks.zoomCursor) image.style.cursor = "zoom-in"
+    const added = FOCUS_RING.filter((utility) => !image.classList.contains(utility))
+    image.classList.add(...added)
+    image.setAttribute(RING_MARKER, added.join(" "))
   }
 }
 
@@ -206,7 +224,10 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
 function unmarkZoomable(container: Element): void {
   for (const element of container.querySelectorAll(`[${MARKER}]`)) {
     const image = element as HTMLElement
-    for (const attribute of [MARKER, "role", "tabindex", "aria-label"]) {
+    const added = image.getAttribute(RING_MARKER)?.split(" ").filter(Boolean) ?? []
+    image.classList.remove(...added)
+    if (image.classList.length === 0) image.removeAttribute("class")
+    for (const attribute of [MARKER, RING_MARKER, "role", "tabindex", "aria-label"]) {
       image.removeAttribute(attribute)
     }
     image.style.removeProperty("cursor")
