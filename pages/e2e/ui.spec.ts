@@ -4420,16 +4420,39 @@ export const specs: readonly Spec[] = [
       if (first.text !== "<CostCalc users={500} />") {
         throw new Error(`Line 5 selected ${JSON.stringify(first.text)}`)
       }
-      // The draft fits its 12 rows, so axe can read every line; 30 more lines make it scroll.
-      await draft.fill(`${await draft.inputValue()}${"filler\n".repeat(30)}<Bad />`)
-      const far = panel.getByRole("button", { name: "Line 42", exact: true })
-      await far.click()
+      // The draft fits its 12 rows, so axe can read every line. A long paragraph that wraps over
+      // many rows, then the problem, then 30 more lines make it scroll, with the problem in the
+      // middle: a scroll that counts lines and not rows, or one that goes to the end, misses it.
+      await draft.fill(
+        `${await draft.inputValue()}${"word ".repeat(400)}\n<Bad />\n${"filler\n".repeat(30)}`,
+      )
+      await panel.getByRole("button", { name: "Line 13", exact: true }).click()
       await draft.and(page.locator(":focus")).waitFor()
-      const last = await selection()
-      if (last.text !== "<Bad />") throw new Error(`Line 42 selected ${JSON.stringify(last.text)}`)
-      // Line 42 is the last line, so it is in view only once the textarea is scrolled to its end.
-      if (last.scrollTop <= 0 || last.hiddenBelow > 1) {
-        throw new Error(`line 42 is not in view: ${JSON.stringify(last)}`)
+      const middle = await selection()
+      if (middle.text !== "<Bad />") {
+        throw new Error(`Line 13 selected ${JSON.stringify(middle.text)}`)
+      }
+      // Where the selected row sits in the textarea's content, measured on a copy with its font
+      // and width, and whether the textarea's visible part holds all of it.
+      const row = await draft.evaluate((el: HTMLTextAreaElement) => {
+        const style = getComputedStyle(el)
+        const copy = document.createElement("div")
+        copy.style.cssText =
+          `position:absolute;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;` +
+          `box-sizing:${style.boxSizing};width:${style.width};padding:${style.padding};` +
+          `border:${style.border};font:${style.font};line-height:${style.lineHeight}`
+        copy.textContent = el.value.slice(0, el.selectionStart)
+        document.body.append(copy)
+        const top = copy.scrollHeight
+        copy.remove()
+        const bottom = top + parseFloat(style.lineHeight)
+        return { top, bottom, scrollTop: el.scrollTop, clientHeight: el.clientHeight }
+      })
+      if (row.top < row.scrollTop || row.bottom > row.scrollTop + row.clientHeight) {
+        throw new Error(`line 13 is not in view: ${JSON.stringify(row)}`)
+      }
+      if (middle.hiddenBelow <= 0) {
+        throw new Error("the textarea scrolled to its end, not to line 13")
       }
       await draft.fill("# Pricing, explained\n\n<Chart year={2026} />\n")
       await panel.waitFor({ state: "detached" })
