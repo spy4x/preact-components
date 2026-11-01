@@ -110,7 +110,7 @@ export function ErrorSummary(
                   <Button
                     variant="outline"
                     size="sm"
-                    class="shrink-0 tabular-nums"
+                    class="shrink-0 tabular-nums max-sm:min-h-11"
                     data-e2e="error-summary-row"
                     aria-describedby={`${titleId}-${index}`}
                     onClick={() =>

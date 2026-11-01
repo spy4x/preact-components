@@ -43,6 +43,13 @@ describe("ErrorSummary", () => {
     expect(new Set(rows.map((row) => row[1])).size).toBe(2)
   })
 
+  it("makes each row's button a 44 px touch target on a phone", () => {
+    const html = render(<ErrorSummary title="T" items={items} onSelect={noop} />)
+    const buttons = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)]
+    expect(buttons).toHaveLength(2)
+    for (const [, classes] of buttons) expect(classes.split(" ")).toContain("max-sm:min-h-11")
+  })
+
   it("says the count in the status line, one and many", () => {
     expect(render(<ErrorSummary title="T" items={items} onSelect={noop} />)).toContain(
       'data-e2e="error-summary-status">2 problems</p>',
