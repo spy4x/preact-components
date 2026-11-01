@@ -4016,6 +4016,64 @@ function languagePickerSpecs(): Spec[] {
         return "Español and Português (Brasil) skipped; Deutsch failed and English stayed"
       },
     },
+    {
+      name:
+        'LanguagePicker menu: the globe is named "Language: English"; Enter opens it on the first language, checked, Escape closes it and returns focus to the globe, a press outside closes it; rows are 44 px on a phone',
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const card = page.locator("#demo-LanguagePicker")
+        const focused = page.locator(":focus")
+        const globe = card.getByRole("button", { name: "Language: English", exact: true })
+        const menu = card.getByRole("menu", { name: "Language" })
+        await globe.scrollIntoViewIfNeeded()
+
+        await globe.focus()
+        await page.keyboard.press("Enter")
+        const english = menu.getByRole("menuitemradio", { name: "English", checked: true })
+        await english.and(focused).waitFor()
+        await menu.getByRole("menuitemradio", { name: "العربية", checked: false }).waitFor()
+        const row = await english.boundingBox()
+        if (!row || row.height < 44) throw new Error(`row is ${row?.height} px tall, under 44`)
+
+        await page.keyboard.press("Escape")
+        await menu.waitFor({ state: "hidden" })
+        await globe.and(focused).waitFor()
+
+        await globe.click()
+        await menu.waitFor()
+        await page.mouse.click(5, 5)
+        await menu.waitFor({ state: "hidden" })
+        return `Escape back to the globe, outside press closed it, rows ${row.height} px`
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name:
+        `LanguagePicker menu: axe finds no violation in the open menu, in Arabic too, where it lines up with the globe's left edge, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const card = page.locator("#demo-LanguagePicker")
+        const root = `#demo-LanguagePicker div:has(> [data-e2e="language-menu"])`
+        const menu = card.getByRole("menu")
+        await card.scrollIntoViewIfNeeded()
+        await card.getByRole("button", { name: "Language: English", exact: true }).click()
+        await menu.waitFor()
+        const english = await axePasses(page, [root])
+        await page.keyboard.press("Escape")
+
+        await card.getByRole("radio", { name: "العربية" }).click()
+        const globe = card.getByRole("button", { name: "اللغة: العربية", exact: true })
+        await globe.click()
+        await menu.getByRole("menuitemradio", { name: "العربية", checked: true }).waitFor()
+        await axePasses(page, [root])
+        const [trigger, panel] = [await globe.boundingBox(), await menu.boundingBox()]
+        if (!trigger || !panel || Math.abs(trigger.x - panel.x) > 1) {
+          throw new Error(`panel starts at ${panel?.x}, globe at ${trigger?.x}`)
+        }
+        return english
+      },
+    })),
   ]
 }
 

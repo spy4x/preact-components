@@ -174,6 +174,10 @@ const dangerClasses = "text-danger dark:hover:text-red-300 dark:focus:text-red-3
 export interface DropdownItemProps extends HotkeyProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
   href?: string
+  /** The language of the page `href` leads to, as `hreflang` on the link. Ignored without `href`. */
+  hreflang?: string
+  /** The language of the item's text, as `lang`, such as a language's own name in a switcher. */
+  lang?: string
   /**
    * Called with `href` on a plain click instead of the browser following the link — the app's
    * router, passed in, so choosing the item does not reload the app. A click with a modifier or a
@@ -219,7 +223,9 @@ export interface DropdownItemProps extends HotkeyProps {
    * Makes the item one choice of a set, such as the current group of a switcher. Given at all, the
    * item is a `menuitemradio` with `aria-checked`, and draws a check before its text when `true`
    * and an empty space of the same width when `false`, so the names of a set line up. Left out,
-   * the item is a plain `menuitem` with no space before its text.
+   * the item is a plain `menuitem` with no space before its text. Before its dropdown hydrates, a
+   * checked link says `aria-current="page"`, since it leads to this very page, and a checked button
+   * `aria-current="true"`.
    */
   checked?: boolean
   /**
@@ -270,6 +276,8 @@ export interface DropdownItemProps extends HotkeyProps {
 export function DropdownItem(
   {
     href,
+    hreflang,
+    lang,
     navigate,
     onClick,
     type = "button",
@@ -314,9 +322,12 @@ export function DropdownItem(
   const role = enhanced ? (choice ? choiceRole : "menuitem") : undefined
   const tabindex = enhanced ? -1 : undefined
   // The no-JavaScript fallback is a plain link or button, where `aria-checked` means nothing, so a
-  // checked item there says it is the current one instead, and a box says it is pressed.
+  // checked item there says it is the current one instead (a link: the current page), and a box
+  // says it is pressed.
   const ariaChecked = enhanced && choice ? checked : undefined
-  const ariaCurrent = !enhanced && checked === true && !box ? "true" : undefined
+  const ariaCurrent = !enhanced && checked === true && !box
+    ? (href === undefined ? "true" : "page")
+    : undefined
   const ariaPressed = !enhanced && box ? checked : undefined
   const mark = box
     ? <CheckBoxMark checked={checked === true} />
@@ -330,6 +341,8 @@ export function DropdownItem(
       <a
         ref={item as RefObject<HTMLAnchorElement>}
         href={href}
+        hreflang={hreflang}
+        lang={lang}
         class={classes}
         role={role}
         tabindex={tabindex}
@@ -353,6 +366,7 @@ export function DropdownItem(
       <button
         ref={item as RefObject<HTMLButtonElement>}
         type={type}
+        lang={lang}
         class={classes}
         role={role}
         tabindex={tabindex}

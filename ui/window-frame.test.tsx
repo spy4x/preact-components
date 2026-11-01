@@ -41,18 +41,27 @@ describe("WindowFrame", () => {
     )
   })
 
-  it("hides the phone's notch from assistive tech and keeps a fixed aspect", () => {
+  it("hides the phone's speaker from assistive tech and keeps a fixed aspect", () => {
     const html = render(<WindowFrame variant="phone">x</WindowFrame>)
     expect(html).toContain("aspect-[9/19]")
     expect(html).toMatch(/<span aria-hidden="true" class="[^"]*rounded-full bg-track"/)
+    // A small speaker high in the bezel, not the wide grey pill it was.
+    expect(html).toMatch(/<span aria-hidden="true" class="absolute start-1\/2 top-2 h-1 w-10 /)
   })
 
-  it("puts the phone's notch in a deeper top bezel, before the screen, not inside it", () => {
+  it("puts the phone's speaker in a deeper top bezel, before the screen, not inside it", () => {
     const html = render(<WindowFrame variant="phone">x</WindowFrame>)
-    // The notch is the bezel's child, before the screen, not inside the screen with the content.
+    // The speaker is the bezel's child, before the screen, not inside the screen with the content.
     expect(html).toMatch(
-      /class="relative [^"]*\bpt-8\b[^"]*"><span aria-hidden="true"[^>]*><\/span><div class="[^"]*overflow-hidden[^"]*">x<\/div>/,
+      /class="relative [^"]*\bpt-4\b[^"]*"><span aria-hidden="true"[^>]*><\/span><div class="[^"]*overflow-hidden[^"]*">x<\/div>/,
     )
+  })
+
+  it("draws the phone dark in both themes, not in the flipping foreground colour", () => {
+    const html = render(<WindowFrame variant="phone">x</WindowFrame>)
+    // `bg-foreground` turned the body near-white on a dark page (spy4x/seed: "super-weird" phone).
+    expect(html).toContain("bg-scrim-strong")
+    expect(html).not.toContain("bg-foreground")
   })
 
   it("rounds the phone's screen at the card radius, so a heading in its top corner stays whole", () => {

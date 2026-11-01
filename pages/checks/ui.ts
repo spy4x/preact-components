@@ -1888,6 +1888,8 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-FilterBar": 3,
   // One "Actions for …" menu per ready file: tickets.png, the booking PDF and beach.jpg.
   "demo-AttachmentList": 3,
+  // The header language menu.
+  "demo-LanguagePicker": 1,
 }
 
 /** The part of a Chromium accessibility node the trigger check reads. */
