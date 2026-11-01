@@ -78,6 +78,7 @@ import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
 import { contentBlockDemos } from "./content-blocks.tsx"
+import { pageNavigationDemos } from "./page-navigation.tsx"
 import { storefrontDemos } from "./storefront.tsx"
 import { attachmentDemos } from "./attachments.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
@@ -1717,6 +1718,7 @@ const translator = createTranslator({
   ...comparisonTableDemos,
   ...marketingBlockDemos,
   ...contentBlockDemos,
+  ...pageNavigationDemos,
   ...storefrontDemos,
   Table: {
     summary:
