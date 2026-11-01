@@ -590,6 +590,10 @@ shell's side navigation (#135) — that one is a signed-in app's frame, this one
 top bar — and the two share the mobile-panel open/close behaviour rather than each writing their
 own; see `mobile-panel.ts` below.
 
+**One menu open at a time.** The menu's `<details>` joins `Dropdown`'s exclusive `MENU_GROUP`
+group, so a `LanguagePicker` menu or any other `Dropdown` in `actions` closes as the links' menu
+opens, and the other way round, with or without JavaScript.
+
 **No links, no navigation.** With `links` empty or left out, the bar draws neither `<nav>` nor the
 menu button, because a button that opens an empty panel is a dead control. What remains is `brand`
 on the left and `actions` on the right: the top bar of a single-page tool, in the design language's
