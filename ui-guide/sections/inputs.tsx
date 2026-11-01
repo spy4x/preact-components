@@ -70,8 +70,9 @@ function Variant({ title, children }: { title: ComponentChildren; children: Comp
 }
 
 /**
- * The picker both ways, in one language state: a list that switches everything in the card, with
- * chips for the offline and failed states, and the links a website's footer draws.
+ * The picker every way, in one language state: a list that switches everything in the card, with
+ * chips for the offline and failed states, the links a website's footer draws, and the globe menu
+ * a website's header draws, lined up at the row's end as in a header.
  */
 function LanguagePickerDemo() {
   const language = useDemoLanguage()
@@ -98,6 +99,16 @@ function LanguagePickerDemo() {
               current={language.current ?? language.automatic}
               href={(tag) => `#language-${tag}`}
             />
+          </Variant>
+          <Variant title="Menu, for a website's header">
+            <div class="flex justify-end">
+              <LanguagePicker
+                mode="menu"
+                languages={DEMO_LANGUAGES}
+                current={language.current ?? language.automatic}
+                href={(tag) => `#language-${tag}`}
+              />
+            </div>
           </Variant>
         </Stack>
       </InDemoLanguage>
@@ -1476,7 +1487,7 @@ export const inputDemos = {
   },
   LanguagePicker: {
     summary:
-      "Every language by its own name: a radio group for an app's settings, or plain links for a website's footer that work without JavaScript.",
+      "Every language by its own name: a radio group for an app's settings, or plain links that work without JavaScript, in a row for a website's footer or behind a globe menu for its header.",
     wide: false,
     props: [
       {
@@ -1487,16 +1498,16 @@ export const inputDemos = {
       },
       {
         name: "mode",
-        type: `"list" | "links"`,
+        type: `"list" | "links" | "menu"`,
         default: `"list"`,
         description:
-          "`list` is a radio group: one tab stop, arrow keys move and choose. `links` is a `<nav>` of `<a href hreflang lang>`.",
+          '`list` is a radio group: one tab stop, arrow keys move and choose. `links` is a `<nav>` of `<a href hreflang lang>`. `menu` puts those links behind a globe `Dropdown` named "Language: <name>", showing the name from `xl`.',
       },
       {
         name: "onSelect / href",
         type: "(tag | null) => void / (tag) => string",
         description:
-          "What a choice does: the list calls `onSelect`; each link goes to `href(tag)`.",
+          "What a choice does: the list calls `onSelect`; each link, in `links` and `menu`, goes to `href(tag)`.",
       },
       {
         name: "automatic",
@@ -1527,6 +1538,13 @@ export const inputDemos = {
 <LanguagePicker
   mode="links"
   languages={["en", "de", "ar"]}
+  current="en"
+  href={(tag) => \`/\${tag}/\`}
+/>
+
+<LanguagePicker
+  mode="menu"
+  languages={["en", "de", "zh-CN", "ar"]}
   current="en"
   href={(tag) => \`/\${tag}/\`}
 />`,
@@ -1752,6 +1770,12 @@ export const inputDemos = {
     props: [
       { name: "href", type: "string", description: "Makes the item a link to this address." },
       {
+        name: "hreflang / lang",
+        type: "string / string",
+        description:
+          "The language of the page the link leads to, and of the item's own text, as in a language switcher.",
+      },
+      {
         name: "navigate",
         type: "(href: string) => void",
         description:
@@ -1804,7 +1828,7 @@ export const inputDemos = {
         name: "checked",
         type: "boolean",
         description:
-          "Makes it one choice of a set: a `menuitemradio` with `aria-checked`, a check before its text when `true` and an empty space as wide when `false`.",
+          'Makes it one choice of a set: a `menuitemradio` with `aria-checked`, a check before its text when `true` and an empty space as wide when `false`. Without JavaScript a checked link says `aria-current="page"`.',
       },
       { name: "class", type: "string", description: "Extra classes, merged over its own." },
     ],
@@ -1822,7 +1846,8 @@ export const inputDemos = {
   <DropdownItem checked={group.id === currentId} onClick={() => switchTo(group.id)}>
     {group.name}
   </DropdownItem>
-))}`,
+))}
+<DropdownItem href="/de/" hreflang="de" lang="de" checked={false}>Deutsch</DropdownItem>`,
     render: () => <DropdownItemDemo />,
   },
   Combobox: {
