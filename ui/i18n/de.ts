@@ -312,6 +312,7 @@ export default {
   "RunSteps.unavailable": "Nicht verfügbar",
   "ScreenTour.label": "Ansichten",
   "ScreenTour.viewFullSizeLabel": "In voller Größe ansehen",
+  "SectionHeading.anchor": "Link zu diesem Abschnitt",
   "ShortcutsDialog.closeLabel": "Schließen",
   "ShortcutsDialog.defaultGroup": "Allgemein",
   "ShortcutsDialog.title": "Tastenkürzel",

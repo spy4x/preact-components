@@ -321,6 +321,7 @@ export default {
   "RunSteps.unavailable": "Недоступно",
   "ScreenTour.label": "Экраны",
   "ScreenTour.viewFullSizeLabel": "Открыть целиком",
+  "SectionHeading.anchor": "Ссылка на этот раздел",
   "ShortcutsDialog.closeLabel": "Закрыть",
   "ShortcutsDialog.defaultGroup": "Общие",
   "ShortcutsDialog.title": "Горячие клавиши",

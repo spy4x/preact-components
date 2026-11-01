@@ -485,7 +485,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1341 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1345 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -789,6 +789,7 @@ RowId	type	@spy4x/preact-ui	The id of a row: what the caller's list of ids holds
 RunStep	type	@spy4x/preact-ui	One step of a `RunSteps` list.
 RunStepState	type	@spy4x/preact-ui	Where a step of a run stands.
 RunSteps	component	@spy4x/preact-ui	A fixed list of the steps of a run, such as a benchmark or an import, each with its state, a hint, and once done its value and a verdict.
+SECTION_HEADING_LABELS	constant	@spy4x/preact-ui	The English words `SectionHeading` shows when the caller passes none.
 SWIPE_MIN_PX	constant	@spy4x/preact-ui	How far, in CSS pixels, one finger must travel sideways for a swipe to change the image.
 ScreenTour	component	@spy4x/preact-ui	A product walkthrough: named steps as tabs, beside one plain, browser or phone frame whose screenshot swaps when a step is picked, with the step's caption and line of text under it.
 ScreenTourImage	type	@spy4x/preact-ui	The screenshot of one `ScreenTourStep`.
@@ -798,6 +799,7 @@ ScrollLockHost	type	@spy4x/preact-ui	The scrollable element whose scrollbar a lo
 ScrollLockTarget	type	@spy4x/preact-ui	The two elements a page-level scroll lock has to touch, and the styles it replaces.
 Section	component	@spy4x/preact-ui	A titled block of a page: an optional heading and description, then the children.
 SectionElement	type	@spy4x/preact-ui	The elements a `Section` may render as: ones that can hold its `<header>`.
+SectionHeading	component	@spy4x/preact-ui	A heading with a "Link to this section" link beside it, outside it so the heading's name stays its text: the anchor `Prose`'s `anchors` draws, for a heading written as elements.
 SectionHeadingLevel	type	@spy4x/preact-ui	Heading level of a `Section`'s title.
 SegmentedControl	component	@spy4x/preact-ui	A single choice among two to five short options, drawn as joined segments: a period picker ("7 days, 30 days, 90 days"), a view switch.
 SegmentedOption	type	@spy4x/preact-ui	One segment of a `SegmentedControl`.

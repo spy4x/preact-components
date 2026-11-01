@@ -314,6 +314,7 @@ export default {
   "RunSteps.unavailable": "Indisponível",
   "ScreenTour.label": "Telas",
   "ScreenTour.viewFullSizeLabel": "Ver em tamanho real",
+  "SectionHeading.anchor": "Link para esta seção",
   "ShortcutsDialog.closeLabel": "Fechar",
   "ShortcutsDialog.defaultGroup": "Geral",
   "ShortcutsDialog.title": "Atalhos de teclado",

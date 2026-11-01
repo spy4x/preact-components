@@ -5165,6 +5165,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `SegmentedControl`    | `segmented-control`    | `options` (`{ value, label }`), `value`, `onChange`, `ariaLabel` (required); a radio group with one tab stop, arrows and Home/End choose                                                                                                                                                                                                                            |
 | `Rich`                | `i18n`                 | `parts` (from `useT().parts(key, values)`), `tags?` (a renderer per tag, given its text) — a translated sentence with spans the caller draws; a message or a value never becomes markup                                                                                                                                                                             |
 | `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
+| `SectionHeading`      | `section-heading`      | `children`, `id` (the heading's), `targetId?` (where the anchor links, default `id`; give that element `scroll-mt-16`), `headingLevel?` (`2`–`4`, default 2, `Prose`'s sizes), `labels?`, `class?` (merged) — a heading with `Prose`'s "Link to this section" anchor beside it; no JavaScript                                                                       |
 | `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
 | `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"plain"`, `"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                              |
 | `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
@@ -6037,13 +6038,15 @@ shows the same date to every reader and on the server.
 
 A docs site adds `anchors` to `Prose`, so every `h2` and `h3` gets a "Link to this section" link,
 puts `DocsNav` beside the body, and ends each guide with `PrevNext`. A changelog draws its months
-with `ChangeList`. All of them are plain markup and native `<details>`.
+with `ChangeList`. A page that is not one article, such as a feature page, gives each section's
+heading the same anchor with `SectionHeading`. All of them are plain markup and native `<details>`.
 
 ```tsx
 <DocsNav groups={guides} current={`/docs/${slug}`} />
 <Prose as="article" html={doc.html} anchors />
 <PrevNext previous={before} next={after} />
 <ChangeList months={months} labels={{ pullRequest: (n) => `Pull request ${n} on GitHub` }} />
+<SectionHeading id="pricing">Pricing</SectionHeading>
 ```
 
 ## Storefront: LookTile, StoryTile, LookGrid, SwatchChips and OrderBar
@@ -7855,6 +7858,10 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 ### Prose (`./prose`)
 
 - `PROSE_LABELS` holds the English words `Prose` adds: `anchor` and `table`.
+
+### SectionHeading (`./section-heading`)
+
+- `SECTION_HEADING_LABELS` holds the English words of `SectionHeading`: `anchor`.
 
 ### DocsNav (`./docs-nav`)
 

@@ -306,6 +306,7 @@ export default {
   "RunSteps.unavailable": "Not available",
   "ScreenTour.label": "Screens",
   "ScreenTour.viewFullSizeLabel": "View full size",
+  "SectionHeading.anchor": "Link to this section",
   "ShortcutsDialog.closeLabel": "Close",
   "ShortcutsDialog.defaultGroup": "General",
   "ShortcutsDialog.title": "Keyboard shortcuts",

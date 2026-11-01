@@ -1311,11 +1311,17 @@ function blogBlockSpecs(): Spec[] {
 }
 
 /**
- * `Prose`'s table regions and heading anchors, `DocsNav`, `PrevNext` and `ChangeList`: the blocks
- * of a docs site and a changelog.
+ * `Prose`'s table regions and heading anchors, `DocsNav`, `PrevNext`, `ChangeList` and
+ * `SectionHeading`: the blocks of a docs site, a changelog and a feature page.
  */
 function docsBlockSpecs(): Spec[] {
-  const cards = ["#demo-Prose", "#demo-DocsNav", "#demo-PrevNext", "#demo-ChangeList"] as const
+  const cards = [
+    "#demo-Prose",
+    "#demo-DocsNav",
+    "#demo-PrevNext",
+    "#demo-ChangeList",
+    "#demo-SectionHeading",
+  ] as const
   return [
     scrollRegionSpec({
       what: "Prose wide table",
@@ -1355,8 +1361,59 @@ function docsBlockSpecs(): Spec[] {
         await fix.waitFor()
       },
     },
+    {
+      name:
+        "SectionHeading: its anchor is hidden until the keyboard focuses it, and links to the " +
+        "section",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-SectionHeading")
+        const anchor = card.getByRole("link", { name: "Link to this section", exact: true })
+        await anchor.waitFor({ state: "attached" })
+        if (await anchor.getAttribute("href") !== "#guide-section-heading") {
+          throw new Error(`the anchor links to ${await anchor.getAttribute("href")}`)
+        }
+        const opacity = () => anchor.evaluate((node) => getComputedStyle(node).opacity)
+        if (await opacity() !== "0") throw new Error(`unfocused, its opacity is ${await opacity()}`)
+        await card.getByRole("link", { name: "Compare plans" }).focus()
+        await page.keyboard.press("Shift+Tab")
+        await anchor.and(page.locator(":focus")).waitFor()
+        if (await opacity() !== "1") throw new Error(`focused, its opacity is ${await opacity()}`)
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-section-heading$/)
+      },
+    },
+    {
+      name:
+        "SectionHeading: following its anchor leaves the heading in view below the sticky header",
+      pageId: "ui",
+      run: async (page) => {
+        const anchor = page.locator("#demo-SectionHeading")
+          .getByRole("link", { name: "Link to this section", exact: true })
+        await anchor.focus()
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-section-heading$/)
+        // The scroll may be smooth: wait until it has brought the heading into the viewport.
+        await page.waitForFunction(() => {
+          const top = document.getElementById("guide-section-heading")?.getBoundingClientRect().top
+          return top !== undefined && top >= 0 && top < innerHeight
+        })
+        const tops = await page.evaluate(() => ({
+          heading: document.getElementById("guide-section-heading")!.getBoundingClientRect().top,
+          header: document.querySelector("header.sticky")!.getBoundingClientRect().bottom,
+        }))
+        if (tops.heading < tops.header) {
+          throw new Error(
+            `the heading's top is at ${tops.heading} px, under the header's ` +
+              `bottom at ${tops.header} px`,
+          )
+        }
+        return `heading at ${tops.heading} px, header ends at ${tops.header} px`
+      },
+    },
     ...(["light", "dark"] as const).map((palette): Spec => ({
-      name: `Prose, DocsNav, PrevNext and ChangeList: axe finds no violation, their text's ` +
+      name: `Prose, DocsNav, PrevNext, ChangeList and SectionHeading: axe finds no violation, ` +
+        `their text's ` +
         `contrast included, ${palette}`,
       pageId: "ui",
       colorScheme: palette,
@@ -2071,6 +2128,25 @@ const zoomableCropSpec: Spec = {
     await shown.and(page.locator(`[alt="A placeholder image"]`)).waitFor()
     const plainOpened = await shown.getAttribute("src")
     if (plainOpened !== own) throw new Error("the plain image did not open its own src")
+  },
+}
+
+/**
+ * An image `ZoomableImages` turns into a Tab stop shows the components' focus ring, not only the
+ * browser's thin outline on its edge.
+ */
+const zoomableFocusSpec: Spec = {
+  name: "ZoomableImages: an image reached with the keyboard shows the components' focus ring",
+  pageId: "ui",
+  run: async (page) => {
+    const card = page.locator("#demo-ZoomableImages")
+    const crop = card.locator(`[data-e2e="lightbox-crop"]`)
+    await crop.focus()
+    await page.keyboard.press("Tab")
+    await page.keyboard.press("Shift+Tab")
+    await crop.and(page.locator(":focus-visible")).waitFor()
+    const ring = await crop.evaluate((element) => getComputedStyle(element).boxShadow)
+    if (ring === "none") throw new Error("the focused image shows no focus ring")
   },
 }
 
@@ -4466,6 +4542,7 @@ export const specs: readonly Spec[] = [
   ...escapeInsideModalSpecs(),
   ...lostInputSpecs(),
   zoomableCropSpec,
+  zoomableFocusSpec,
   ...comparisonTablePhoneSpecs(),
   {
     name: "ResendButton: a 44 px button sends by keyboard, keeps focus while busy, hands focus " +
