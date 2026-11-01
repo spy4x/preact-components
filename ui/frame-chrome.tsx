@@ -62,8 +62,8 @@ const terminalFrame =
  * heading or a tab bar at the screenshot's edge stays whole even at 160 px wide; a phone-sized
  * radius cut the first letter off.
  */
-const phoneFrame = "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-[1.25rem] border " +
-  "border-frame bg-scrim-strong p-1.5 pt-5 shadow-2xl"
+const phoneFrame = "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-2xl border " +
+  "border-frame bg-scrim-strong p-1 pt-4 shadow-2xl"
 
 /**
  * Draws the device around `children`. The chrome (the window buttons, the address bar, the speaker)
