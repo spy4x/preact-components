@@ -17,6 +17,7 @@ import { IconBars3, IconExternalLink, type IconProps, IconXMark } from "@spy4x/p
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
+import { MENU_GROUP } from "@spy4x/preact-ui/dropdown"
 import { useT } from "@spy4x/preact-ui/i18n"
 import { translate } from "./i18n.ts"
 
@@ -151,6 +152,10 @@ function SiteHeaderNavLink(
  * other is removed from the tree entirely rather than merely hidden behind `aria-hidden`, which is
  * what keeps two landmarks sharing one `aria-label` from ever being announced at the same time.
  *
+ * **One menu open at a time.** The `<details>` joins `Dropdown`'s `MENU_GROUP`, so opening it
+ * closes an open `Dropdown` in `actions`, such as a `LanguagePicker` menu, and opening that closes
+ * this, with or without JavaScript.
+ *
  * **No links, no navigation.** With `links` empty or left out, neither `<nav>` nor the menu button
  * is drawn, since a button that opens an empty panel is a dead control: the bar is `brand` on the
  * left and `actions` on the right, a single-page tool's top bar.
@@ -192,7 +197,12 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
           {actions}
 
           {hasLinks && (
-            <details ref={detailsRef} class="group lg:hidden" onToggle={handleToggle}>
+            <details
+              ref={detailsRef}
+              class="group lg:hidden"
+              name={MENU_GROUP}
+              onToggle={handleToggle}
+            >
               <summary
                 ref={triggerRef}
                 aria-expanded={open}

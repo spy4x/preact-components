@@ -154,7 +154,9 @@ function Name({ tag }: { tag: string }): JSX.Element {
  * The panel holds the same links as `"links"`, one `DropdownItem` per language in the order given,
  * the current one checked. Without JavaScript it is a `<details>` of plain links, the current one
  * `aria-current="page"`; once hydrated it is a menu that Escape, a press outside and the arrow keys
- * work, as `Dropdown` says.
+ * work, as `Dropdown` says. Below `sm` the panel opens under the globe and spans its nearest
+ * positioned ancestor, such as `SiteHeader`'s bar, 16 px in from each side, so it stays on a 320 px
+ * screen wherever the globe sits in the bar, in either direction.
  */
 export function LanguagePicker(
   {
@@ -329,13 +331,14 @@ export function LanguagePicker(
 
 /**
  * The menu trigger: the site header's ghost look, a square 44 px target on a phone and 36 px from
- * `sm`, widening from `xl` where the language's name shows. `group/language` lets the hint below
+ * `sm`, widening from `xl` where the language's name shows. A block on a phone, so the panel's own
+ * spot is right under it (see {@link MENU_ROOT}). `group/language` lets the hint below
  * follow the trigger's hover and focus.
  */
 const MENU_TRIGGER = buttonClasses(
   "ghost",
   "none",
-  "group/language relative gap-2 size-11 text-sm sm:size-9 xl:h-9 xl:w-auto xl:px-3",
+  "group/language relative gap-2 size-11 text-sm max-sm:flex sm:size-9 xl:h-9 xl:w-auto xl:px-3",
 )
 
 /**
@@ -345,6 +348,21 @@ const MENU_TRIGGER = buttonClasses(
  */
 const MENU_HINT =
   "pointer-events-none invisible absolute end-0 top-full z-50 mt-2 w-max opacity-0 transition-opacity duration-150 group-hover/language:visible group-hover/language:opacity-100 group-focus-visible/language:visible group-focus-visible/language:opacity-100 group-aria-expanded/language:hidden [details[open]_&]:hidden xl:hidden"
+
+/**
+ * The menu's root on a phone: `static`, so the panel is placed against the nearest positioned
+ * ancestor (`SiteHeader`'s bar, or the viewport), and a block, so the panel's own spot is under the
+ * trigger. The globe sits mid-bar beside a call to action, where a panel lined up with either of
+ * its edges runs off a 320 to 390 px screen.
+ */
+const MENU_ROOT = "max-sm:static max-sm:block"
+
+/**
+ * The panel: below the globe at its own spot on a phone, whichever way `Dropdown` would open it,
+ * and 16 px in from both sides of that ancestor; lined up with the globe's end from `sm` up.
+ */
+const MENU_PANEL =
+  "min-w-56 py-1 max-sm:min-w-0 max-sm:inset-x-4 max-sm:top-auto max-sm:bottom-auto max-sm:mt-2 max-sm:mb-0"
 
 /** `"menu"` mode of {@link LanguagePicker}: a globe `Dropdown` of links, one per language. */
 function LanguageMenu(
@@ -362,7 +380,8 @@ function LanguageMenu(
       triggerClasses={MENU_TRIGGER}
       triggerDataE2E="language-menu"
       menuLabel={labels.label}
-      panelClasses="min-w-56 py-1"
+      containerClasses={MENU_ROOT}
+      panelClasses={MENU_PANEL}
       trigger={
         <>
           <IconGlobe class="size-5 xl:size-4" aria-hidden="true" />

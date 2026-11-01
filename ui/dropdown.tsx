@@ -49,6 +49,13 @@ export type DropdownTriggerName =
     triggerLabel?: never
   }
 
+/**
+ * The `name` of the exclusive `<details>` group that every library menu drawn as a `<details>` joins:
+ * a `Dropdown` before it hydrates, and `SiteHeader`'s mobile menu. The browser closes the other
+ * members when one opens, with no JavaScript. A hydrated `Dropdown` closes them as it opens too.
+ */
+export const MENU_GROUP = "pc-menu"
+
 /** Everything about a dropdown except how its trigger is named. */
 export interface DropdownBaseProps {
   /** Content of the trigger button. */
@@ -410,6 +417,9 @@ function CheckBoxMark({ checked }: { checked: boolean }): JSX.Element {
  */
 const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]`
 
+/** An open member of {@link MENU_GROUP}. */
+const GROUP_OPEN = `details[name="${MENU_GROUP}"][open]`
+
 /**
  * The menu's focusable items, in DOM order.
  *
@@ -460,6 +470,10 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
  * toggles it, and Tab walks its items. So it carries no menu roles either: no `role="menu"`,
  * `aria-orientation` or menu name on the panel and no `role="menuitem"` on its items, which a
  * screen reader would otherwise announce as a menu whose keys do nothing (#537).
+ *
+ * **One menu open at a time.** The fallback joins the {@link MENU_GROUP} `<details>` group, so the
+ * browser closes any other member, another fallback or `SiteHeader`'s mobile menu, as it opens. A
+ * hydrated menu closes the group's open members as it opens, and a press outside closes it.
  *
  * @param props See {@link DropdownProps}.
  */
@@ -535,6 +549,15 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   useEffect(() => {
     if (!open) return
     menuItems(panelRef.current)[0]?.focus()
+  }, [open])
+
+  // A hydrated menu is no `<details>`, so the browser's exclusive group no longer closes the
+  // others for it: an open `<details>` menu, such as `SiteHeader`'s, is closed here.
+  useEffect(() => {
+    if (!open) return
+    for (const other of document.querySelectorAll<HTMLDetailsElement>(GROUP_OPEN)) {
+      if (!rootRef.current?.contains(other)) other.open = false
+    }
   }, [open])
 
   const close = (returnFocus: boolean) => {
@@ -674,7 +697,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
 
   if (!isEnhanced) {
     return (
-      <details class={rootClasses}>
+      <details class={rootClasses} name={MENU_GROUP}>
         <summary
           // `cursor-default` first: a `<summary>` shows a text cursor where a `<button>` shows the
           // arrow, and a cursor the caller's classes set still wins the merge.

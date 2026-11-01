@@ -485,7 +485,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1345 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1352 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -1011,6 +1011,7 @@ wrapIndex	helper	@spy4x/preact-ui	Move `delta` steps through a sequence of `tota
 failedAfterSrcChange	helper	@spy4x/preact-ui/avatar	Carry an avatar's "this image failed" flag across a change of `src`.
 BillingIntervalValue	type	@spy4x/preact-ui/billing	A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast.
 SubscriptionStatusValue	type	@spy4x/preact-ui/billing	A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast.
+MENU_GROUP	constant	@spy4x/preact-ui/dropdown	The `name` of the exclusive `<details>` group that every library menu drawn as a `<details>` joins: a `Dropdown` before it hydrates, and `SiteHeader`'s mobile menu.
 dropdownOpensUp	helper	@spy4x/preact-ui/dropdown	Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the trigger and the bottom of the viewport, and there is more room above the trigger than below.
 enhancedFormMessage	helper	@spy4x/preact-ui/enhanced-form	The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run.
 FieldLabelFor	type	@spy4x/preact-ui/field	What `Field`'s own label points at through `for`.

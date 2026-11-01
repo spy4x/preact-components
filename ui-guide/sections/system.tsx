@@ -74,6 +74,7 @@ import {
 import { Shell } from "@spy4x/preact-system/shell"
 import { SiteFooter } from "@spy4x/preact-system/site-footer"
 import { SiteHeader } from "@spy4x/preact-system/site-header"
+import { LanguagePicker } from "@spy4x/preact-ui/language-picker"
 import { readStateInit, StateInit } from "@spy4x/preact-system/state-init"
 import {
   type ContainerLike,
@@ -1228,6 +1229,37 @@ function SiteHeaderDemo() {
           <Button size="sm" data-e2e="site-header-cta">
             Get started
           </Button>
+        }
+      />
+    </div>
+  )
+}
+
+/**
+ * `SiteHeader` as a multilingual site draws it: a `LanguagePicker` menu beside the call to action.
+ * Below `sm` the language panel spans the bar 16 px in from each side, under the globe; opening it
+ * closes the links' menu and the other way round, with or without JavaScript.
+ */
+function SiteHeaderLanguageDemo() {
+  return (
+    <div data-e2e="site-header-language-demo">
+      <SiteHeader
+        brand={<span class="text-lg font-semibold text-foreground">Acme</span>}
+        links={[
+          { label: "Product", href: "/product" },
+          { label: "Pricing", href: "/pricing" },
+        ]}
+        labels={{ nav: "Navigation, with a language menu" }}
+        actions={
+          <>
+            <LanguagePicker
+              mode="menu"
+              languages={["en", "de", "fr", "ar"]}
+              current="de"
+              href={(tag) => `#language-${tag}`}
+            />
+            <Button size="sm">Try demo</Button>
+          </>
         }
       />
     </div>
@@ -2959,7 +2991,12 @@ useEffect(() => {
   ]}
   actions={<Button size="sm" onClick={() => navigate("/get-started")}>Get started</Button>}
 />`,
-    render: () => <SiteHeaderDemo />,
+    render: () => (
+      <Stack gap="md">
+        <SiteHeaderDemo />
+        <SiteHeaderLanguageDemo />
+      </Stack>
+    ),
   },
   SiteFooter: {
     summary:
