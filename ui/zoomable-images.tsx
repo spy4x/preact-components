@@ -156,15 +156,14 @@ export function resolveImage(
 const MARKER = "data-lightbox-zoom"
 
 /**
- * The components' focus ring, as `Button` draws it, for an image that becomes a Tab stop. Without
- * it a focused image shows only the browser's thin outline on its edge.
+ * The components' focus ring, in `Button`'s colour, for an image that becomes a Tab stop. It is an
+ * outline drawn just inside the image's edge: a frame such as `WindowFrame` clips anything outside
+ * the image, and an inset ring would be painted under the picture.
  */
 const FOCUS_RING = [
-  "focus-visible:ring-2",
-  "focus-visible:ring-focus",
-  "focus-visible:ring-offset-2",
-  "focus-visible:ring-offset-focus",
-  "focus-visible:outline-hidden",
+  "focus-visible:outline-2",
+  "focus-visible:-outline-offset-2",
+  "focus-visible:outline-(--color-ring)",
 ]
 
 /** Attribute listing the {@link FOCUS_RING} utilities this component added, for cleanup. */
