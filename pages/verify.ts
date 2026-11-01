@@ -624,9 +624,10 @@ const LAUNCH_ATTEMPT_TIMEOUT_MS = LAUNCH_PORT_TIMEOUT_MS + LAUNCH_CONNECT_TIMEOU
  * torn down and reported as hung — the limit that catches a hang (#239, #466).
  *
  * It bounds the gap between two checks, not the run, so it does not have to grow as checks are
- * added. `pages/README.md` ("How long a run may take") has the measurements it was sized from.
+ * added. `pages/README.md` ("How long a run may take") has the measurements it was sized from. It
+ * stays above a spec's own limit (`e2e/runner.ts`), so a slow spec fails under its own name.
  */
-const STALL_LIMIT_MS = 90_000
+const STALL_LIMIT_MS = 150_000
 
 /**
  * How long the whole browser phase may take, however steadily it records checks — a backstop for a
