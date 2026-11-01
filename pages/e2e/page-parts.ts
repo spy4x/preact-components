@@ -1,6 +1,6 @@
 /**
  * Splits one page's contrast scan into parts of the page, each scanned by a spec of its own, so no
- * scan of a large page comes near a spec's 60-second limit when two shard lanes share an agent
+ * scan of a large page comes near a spec's 120-second limit when two shard lanes share an agent
  * (#1052). The parts name whole sections, or a run of one section's cards; a last scan takes
  * everything no part names, so the page is covered whatever is added to it. {@link partGaps} is
  * what a test holds each page's parts to: no section or card in two parts, and no part naming one

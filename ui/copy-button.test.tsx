@@ -26,6 +26,21 @@ describe("CopyButton", () => {
     expect(html).not.toContain('aria-label="Copy"')
   })
 
+  it("renders the primary button with its label when asked for the primary look", () => {
+    const html = render(<CopyButton textToCopy="abc" title="Copy results" variant="primary" />)
+
+    expect(html).toContain("bg-accent-900")
+    expect(html).not.toContain("border-control")
+    expect(html).toContain("Copy results")
+  })
+
+  it("stays icon-only without a title, whatever look is asked for", () => {
+    const html = render(<CopyButton textToCopy="abc" variant="primary" />)
+
+    expect(html).toContain("size-9")
+    expect(html).not.toContain("bg-accent-900")
+  })
+
   it("takes a custom label for tooltip and accessible name", () => {
     const html = render(<CopyButton textToCopy="abc" copyLabel="Copy API key" />)
 
@@ -129,6 +144,13 @@ describe("CopyButton's confirmation", () => {
 
   it("draws the failure cross in the danger colour", () => {
     expect(body("failed")).toMatch(/<svg[^>]* class="[^"]*text-danger[^"]*"/)
+  })
+
+  it("draws a failed copy in the primary button's own colour, not the danger colour", () => {
+    const html = body("failed", { title: "Copy results", variant: "primary" })
+
+    expect(html).toContain(CROSS)
+    expect(html).not.toContain("text-danger")
   })
 
   it("shows the checkmark and announces the copy after a copy that worked", () => {

@@ -58,6 +58,7 @@ export {
   type UpgradePromptProps,
 } from "./billing.tsx"
 export { BrandMark, type BrandMarkProps } from "./brand-mark.tsx"
+export { type BreadcrumbItem, Breadcrumbs, type BreadcrumbsProps } from "./breadcrumbs.tsx"
 export {
   Button,
   buttonClasses,
@@ -339,6 +340,7 @@ export {
   type OnboardingStepLink,
 } from "./onboarding-checklist.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
+export { OnThisPage, type OnThisPageLink, type OnThisPageProps } from "./on-this-page.tsx"
 export {
   MoreMenu,
   type MoreMenuProps,
@@ -374,6 +376,13 @@ export {
 } from "./radio.tsx"
 export { type RadioChipOption, RadioChips, type RadioChipsProps } from "./radio-chips.tsx"
 export { ResendButton, type ResendButtonProps } from "./resend-button.tsx"
+export {
+  type RunStep,
+  RunSteps,
+  type RunStepsLabels,
+  type RunStepsProps,
+  type RunStepState,
+} from "./run-steps.tsx"
 export {
   SegmentedControl,
   type SegmentedControlProps,
@@ -556,7 +565,36 @@ export {
 } from "./unsaved-guard.tsx"
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
-export { Prose, type ProseProps } from "./prose.tsx"
+export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
+export {
+  SECTION_HEADING_LABELS,
+  SectionHeading,
+  type SectionHeadingLabels,
+  type SectionHeadingProps,
+} from "./section-heading.tsx"
+export {
+  CHANGE_LIST_LABELS,
+  type ChangeEntry,
+  ChangeList,
+  type ChangeListLabels,
+  type ChangeListProps,
+  type ChangeMonth,
+} from "./change-list.tsx"
+export {
+  DOCS_NAV_LABELS,
+  DocsNav,
+  type DocsNavGroup,
+  type DocsNavItem,
+  type DocsNavLabels,
+  type DocsNavProps,
+} from "./docs-nav.tsx"
+export {
+  PREV_NEXT_LABELS,
+  PrevNext,
+  type PrevNextLabels,
+  type PrevNextLink,
+  type PrevNextProps,
+} from "./prev-next.tsx"
 export { TldrBox, type TldrBoxProps } from "./tldr-box.tsx"
 export {
   POST_LIST_LABELS,

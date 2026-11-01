@@ -31,7 +31,7 @@ Extracted from earlier source applications.
 | `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                               |
 | `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                       |
 | `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                              |
-| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                         |
+| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `alternates?`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                          |
 | `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                     |
 | `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                  |
 | `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                                 |
@@ -92,6 +92,16 @@ with an `ogImage`. `twitterCreator` publishes the author's handle as
 `twitter:creator`, right after `twitter:site`. Every tag in the set has its own `name`, `property`
 or `rel`, so Fresh's `<Head>`, which identifies an unkeyed tag by those attributes, prints each one
 once.
+
+`alternates` lists the page in every language it is published in, the page itself and
+`x-default` included, as `{ lang, url }` entries: the shape of ts-libs' `SitemapEntry.alternates`,
+so a site hands the same list to its head and its sitemap. Each entry becomes one
+`<link rel="alternate" hreflang="…" href="…">` right after the canonical link, its address cleaned
+like the canonical one below. When `locale` is set, every other language also becomes an
+`og:locale:alternate`, written with `_` (`pt-BR` → `pt_BR`); the entry pointing at this page,
+`x-default` and the page's own `locale` are left out. Those meta tags share their attributes and
+differ only in `content`, so each carries a `key` named after its value, which keeps Fresh's
+`<Head>` from merging them and cannot equal another block's index key.
 
 Every string the component prints came in as a prop — the title, the description, the site name,
 each crumb's name. It has no user-visible string of its own and therefore no label to default or

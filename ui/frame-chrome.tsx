@@ -55,14 +55,18 @@ const terminalFrame =
   "dark overflow-hidden rounded-xl border border-subtle bg-canvas text-foreground shadow-2xl"
 
 /**
- * The phone. Its top bezel is deeper than the sides and holds the notch, so the notch never covers
- * the top of the screenshot, where an app keeps its own bar.
+ * The phone: a near-black body in both themes, as a real one is, so it never turns into a pale slab
+ * on a dark page. Its edge is the frame border, which shows on a dark page only. The bezel is thin;
+ * the top one is a little deeper and holds the speaker, so nothing covers the top of the screenshot,
+ * where an app keeps its own bar. The screen's corners are the card radius, small enough that a
+ * heading or a tab bar at the screenshot's edge stays whole even at 160 px wide; a phone-sized
+ * radius cut the first letter off.
  */
-const phoneFrame =
-  "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-[2.5rem] bg-foreground p-2 pt-8 shadow-2xl"
+const phoneFrame = "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-2xl border " +
+  "border-frame bg-scrim-strong p-1 pt-4 shadow-2xl"
 
 /**
- * Draws the device around `children`. The chrome (the window buttons, the address bar, the notch)
+ * Draws the device around `children`. The chrome (the window buttons, the address bar, the speaker)
  * is decorative and hidden from assistive tech; the terminal's output is a named, focusable group
  * because it may scroll sideways.
  *
@@ -95,9 +99,9 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
       <div class={phoneFrame}>
         <span
           aria-hidden="true"
-          class="absolute start-1/2 top-3 h-2 w-16 -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 rounded-full bg-track"
+          class="absolute start-1/2 top-2 h-1 w-10 -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 rounded-full bg-track"
         />
-        <div class="relative h-full overflow-hidden rounded-[2rem] bg-surface">{children}</div>
+        <div class="relative h-full overflow-hidden rounded-xl bg-surface">{children}</div>
       </div>
     )
   }

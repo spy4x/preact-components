@@ -1310,6 +1310,122 @@ function blogBlockSpecs(): Spec[] {
   ]
 }
 
+/**
+ * `Prose`'s table regions and heading anchors, `DocsNav`, `PrevNext`, `ChangeList` and
+ * `SectionHeading`: the blocks of a docs site, a changelog and a feature page.
+ */
+function docsBlockSpecs(): Spec[] {
+  const cards = [
+    "#demo-Prose",
+    "#demo-DocsNav",
+    "#demo-PrevNext",
+    "#demo-ChangeList",
+    "#demo-SectionHeading",
+  ] as const
+  return [
+    scrollRegionSpec({
+      what: "Prose wide table",
+      pageId: "ui",
+      selector: `#demo-Prose [data-prose-table]`,
+      name: "Limits",
+      key: "ArrowRight",
+      role: "region",
+      width: 390,
+    }),
+    {
+      name: "Prose: a heading's anchor is hidden until the keyboard focuses it, and links to it",
+      pageId: "ui",
+      run: async (page) => {
+        const anchor = page.locator(`#demo-Prose a[data-prose-anchor][href="#guide-prose-why"]`)
+          .and(page.getByRole("link", { name: "Link to this section", exact: true }))
+        await anchor.waitFor({ state: "attached" })
+        const opacity = () => anchor.evaluate((node) => getComputedStyle(node).opacity)
+        if (await opacity() !== "0") throw new Error(`unfocused, its opacity is ${await opacity()}`)
+        await page.locator("#demo-Prose").getByRole("link", { name: "a worked example" }).focus()
+        await page.keyboard.press("Tab")
+        await anchor.and(page.locator(":focus")).waitFor()
+        if (await opacity() !== "1") throw new Error(`focused, its opacity is ${await opacity()}`)
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-prose-why$/)
+      },
+    },
+    {
+      name: "ChangeList: the fixes stay folded until their count is clicked, then show",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-ChangeList")
+        const fix = card.getByText("The menu closes on Escape.")
+        await card.waitFor()
+        if (await fix.isVisible()) throw new Error("a fix shows before its details is opened")
+        await card.locator("summary").filter({ hasText: "2 fixes" }).click()
+        await fix.waitFor()
+      },
+    },
+    {
+      name:
+        "SectionHeading: its anchor is hidden until the keyboard focuses it, and links to the " +
+        "section",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-SectionHeading")
+        const anchor = card.getByRole("link", { name: "Link to this section", exact: true })
+        await anchor.waitFor({ state: "attached" })
+        if (await anchor.getAttribute("href") !== "#guide-section-heading") {
+          throw new Error(`the anchor links to ${await anchor.getAttribute("href")}`)
+        }
+        const opacity = () => anchor.evaluate((node) => getComputedStyle(node).opacity)
+        if (await opacity() !== "0") throw new Error(`unfocused, its opacity is ${await opacity()}`)
+        await card.getByRole("link", { name: "Compare plans" }).focus()
+        await page.keyboard.press("Shift+Tab")
+        await anchor.and(page.locator(":focus")).waitFor()
+        if (await opacity() !== "1") throw new Error(`focused, its opacity is ${await opacity()}`)
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-section-heading$/)
+      },
+    },
+    {
+      name:
+        "SectionHeading: following its anchor leaves the heading in view below the sticky header",
+      pageId: "ui",
+      run: async (page) => {
+        const anchor = page.locator("#demo-SectionHeading")
+          .getByRole("link", { name: "Link to this section", exact: true })
+        await anchor.focus()
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-section-heading$/)
+        // The scroll may be smooth: wait until it has brought the heading into the viewport.
+        await page.waitForFunction(() => {
+          const top = document.getElementById("guide-section-heading")?.getBoundingClientRect().top
+          return top !== undefined && top >= 0 && top < innerHeight
+        })
+        const tops = await page.evaluate(() => ({
+          heading: document.getElementById("guide-section-heading")!.getBoundingClientRect().top,
+          header: document.querySelector("header.sticky")!.getBoundingClientRect().bottom,
+        }))
+        if (tops.heading < tops.header) {
+          throw new Error(
+            `the heading's top is at ${tops.heading} px, under the header's ` +
+              `bottom at ${tops.header} px`,
+          )
+        }
+        return `heading at ${tops.heading} px, header ends at ${tops.header} px`
+      },
+    },
+    ...(["light", "dark"] as const).map((palette): Spec => ({
+      name: `Prose, DocsNav, PrevNext, ChangeList and SectionHeading: axe finds no violation, ` +
+        `their text's ` +
+        `contrast included, ${palette}`,
+      pageId: "ui",
+      colorScheme: palette,
+      run: async (page) => {
+        await page.locator(cards[0]).waitFor()
+        await page.addStyleTag({ content: `[data-card-part="demo"] { background-image: none; }` })
+        return await axePasses(page, cards)
+      },
+    })),
+  ]
+}
+
 /** One file for a file chooser, `size` bytes of zeros. */
 function chosenFile(name: string, mimeType: string, size = 16) {
   return { name, mimeType, buffer: Buffer.alloc(size) }
@@ -2012,6 +2128,25 @@ const zoomableCropSpec: Spec = {
     await shown.and(page.locator(`[alt="A placeholder image"]`)).waitFor()
     const plainOpened = await shown.getAttribute("src")
     if (plainOpened !== own) throw new Error("the plain image did not open its own src")
+  },
+}
+
+/**
+ * An image `ZoomableImages` turns into a Tab stop shows the components' focus ring, not only the
+ * browser's thin outline on its edge.
+ */
+const zoomableFocusSpec: Spec = {
+  name: "ZoomableImages: an image reached with the keyboard shows the components' focus ring",
+  pageId: "ui",
+  run: async (page) => {
+    const card = page.locator("#demo-ZoomableImages")
+    const crop = card.locator(`[data-e2e="lightbox-crop"]`)
+    await crop.focus()
+    await page.keyboard.press("Tab")
+    await page.keyboard.press("Shift+Tab")
+    await crop.and(page.locator(":focus-visible")).waitFor()
+    const ring = await crop.evaluate((element) => getComputedStyle(element).boxShadow)
+    if (ring === "none") throw new Error("the focused image shows no focus ring")
   },
 }
 
@@ -3804,10 +3939,10 @@ function languagePickerSpecs(): Spec[] {
         await radio("العربية", true).and(focused).waitFor()
         const direction = await dialog.evaluate((element) => getComputedStyle(element).direction)
         if (direction !== "rtl") throw new Error(`the Arabic dialog runs ${direction}`)
-        // Right goes back up the list in a right-to-left page.
+        // Right goes back up the list in a right-to-left page, to the Chinese row before Arabic.
         await page.keyboard.press("ArrowRight")
-        await radio("Русский", true).and(focused).waitFor()
-        await dialog.getByRole("heading", { name: "Язык" }).waitFor()
+        await radio(/^(简体中文|中文)/, true).and(focused).waitFor()
+        await dialog.getByRole("heading", { name: "语言" }).waitFor()
 
         await page.keyboard.press("Home")
         await dialog.getByRole("heading", { name: "Language" }).waitFor()
@@ -3816,7 +3951,7 @@ function languagePickerSpecs(): Spec[] {
         await page.keyboard.press("Escape")
         await dialog.waitFor({ state: "detached" })
         await opener.and(focused).waitFor()
-        return "Automatic → English → Deutsch → العربية → Русский → Automatic, Escape back to the opener"
+        return "Automatic → English → Deutsch → العربية → 简体中文 → Automatic, Escape back to the opener"
       },
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
@@ -3957,6 +4092,64 @@ function languagePickerSpecs(): Spec[] {
         return "Español and Português (Brasil) skipped; Deutsch failed and English stayed"
       },
     },
+    {
+      name:
+        'LanguagePicker menu: the globe is named "Language: English"; Enter opens it on the first language, checked, Escape closes it and returns focus to the globe, a press outside closes it; rows are 44 px on a phone',
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const card = page.locator("#demo-LanguagePicker")
+        const focused = page.locator(":focus")
+        const globe = card.getByRole("button", { name: "Language: English", exact: true })
+        const menu = card.getByRole("menu", { name: "Language" })
+        await globe.scrollIntoViewIfNeeded()
+
+        await globe.focus()
+        await page.keyboard.press("Enter")
+        const english = menu.getByRole("menuitemradio", { name: "English", checked: true })
+        await english.and(focused).waitFor()
+        await menu.getByRole("menuitemradio", { name: "العربية", checked: false }).waitFor()
+        const row = await english.boundingBox()
+        if (!row || row.height < 44) throw new Error(`row is ${row?.height} px tall, under 44`)
+
+        await page.keyboard.press("Escape")
+        await menu.waitFor({ state: "hidden" })
+        await globe.and(focused).waitFor()
+
+        await globe.click()
+        await menu.waitFor()
+        await page.mouse.click(5, 5)
+        await menu.waitFor({ state: "hidden" })
+        return `Escape back to the globe, outside press closed it, rows ${row.height} px`
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name:
+        `LanguagePicker menu: axe finds no violation in the open menu, in Arabic too, where it lines up with the globe's left edge, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const card = page.locator("#demo-LanguagePicker")
+        const root = `#demo-LanguagePicker div:has(> [data-e2e="language-menu"])`
+        const menu = card.getByRole("menu")
+        await card.scrollIntoViewIfNeeded()
+        await card.getByRole("button", { name: "Language: English", exact: true }).click()
+        await menu.waitFor()
+        const english = await axePasses(page, [root])
+        await page.keyboard.press("Escape")
+
+        await card.getByRole("radio", { name: "العربية" }).click()
+        const globe = card.getByRole("button", { name: "اللغة: العربية", exact: true })
+        await globe.click()
+        await menu.getByRole("menuitemradio", { name: "العربية", checked: true }).waitFor()
+        await axePasses(page, [root])
+        const [trigger, panel] = [await globe.boundingBox(), await menu.boundingBox()]
+        if (!trigger || !panel || Math.abs(trigger.x - panel.x) > 1) {
+          throw new Error(`panel starts at ${panel?.x}, globe at ${trigger?.x}`)
+        }
+        return english
+      },
+    })),
   ]
 }
 
@@ -4349,6 +4542,7 @@ export const specs: readonly Spec[] = [
   ...escapeInsideModalSpecs(),
   ...lostInputSpecs(),
   zoomableCropSpec,
+  zoomableFocusSpec,
   ...comparisonTablePhoneSpecs(),
   {
     name: "ResendButton: a 44 px button sends by keyboard, keeps focus while busy, hands focus " +
@@ -4806,6 +5000,7 @@ export const specs: readonly Spec[] = [
   ...onboardingChecklistSpecs,
   ...marketingBlockSpecs(),
   ...blogBlockSpecs(),
+  ...docsBlockSpecs(),
   ...storefrontSpecs(),
   ...fileSpecs(),
   ...screenTourSpecs(),
