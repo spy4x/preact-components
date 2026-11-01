@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconChevronDown } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useLabels } from "./i18n.tsx"
+import { SectionHeading } from "./section-heading.tsx"
 
 /** One change of a {@link ChangeList}: a sentence and, optionally, the pull request it came in. */
 export interface ChangeEntry {
@@ -68,32 +69,6 @@ export interface ChangeListProps {
 const FOCUS =
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 
-const ANCHOR =
-  `rounded-sm px-1 text-muted opacity-0 group-hover/heading:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 ${FOCUS}`
-
-const HEADING = "scroll-mt-16 font-semibold text-balance break-words hyphens-auto text-foreground"
-
-/** A heading with its "Link to this section" link beside it, outside it. */
-function AnchoredHeading(
-  { level, id, title, anchor, class: className }: {
-    level: 2 | 3 | 4
-    id: string
-    title: ComponentChildren
-    anchor: string
-    class: string
-  },
-): JSX.Element {
-  const Heading = `h${level}` as "h2"
-  return (
-    <div class="group/heading flex items-baseline gap-2">
-      <Heading id={id} class={cn(HEADING, className)}>{title}</Heading>
-      <a href={`#${id}`} aria-label={anchor} class={ANCHOR}>
-        <span aria-hidden="true">#</span>
-      </a>
-    </div>
-  )
-}
-
 /** The changes of one group, one sentence each with its muted number link. */
 function Entries(
   { entries, words }: { entries: readonly ChangeEntry[]; words: ChangeListLabels },
@@ -148,13 +123,14 @@ export function ChangeList(
       {months.map((month) => (
         <section key={month.id} aria-labelledby={month.id} class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
-            <AnchoredHeading
-              level={headingLevel}
+            <SectionHeading
+              headingLevel={headingLevel}
               id={month.id}
-              title={month.title}
-              anchor={words.anchor}
+              labels={{ anchor: words.anchor }}
               class="text-2xl/8 tracking-tight"
-            />
+            >
+              {month.title}
+            </SectionHeading>
             <p class="text-sm text-muted">
               {words.changes(month.added.length + month.fixed.length)}
               {month.note && <>{" · "}{month.note}</>}
@@ -162,25 +138,27 @@ export function ChangeList(
           </div>
           {month.added.length > 0 && (
             <div class="flex flex-col gap-2">
-              <AnchoredHeading
-                level={sub}
+              <SectionHeading
+                headingLevel={sub}
                 id={`${month.id}-new`}
-                title={words.added}
-                anchor={words.anchor}
+                labels={{ anchor: words.anchor }}
                 class="text-lg"
-              />
+              >
+                {words.added}
+              </SectionHeading>
               <Entries entries={month.added} words={words} />
             </div>
           )}
           {month.fixed.length > 0 && (
             <div class="flex flex-col gap-2">
-              <AnchoredHeading
-                level={sub}
+              <SectionHeading
+                headingLevel={sub}
                 id={`${month.id}-fixed`}
-                title={words.fixed}
-                anchor={words.anchor}
+                labels={{ anchor: words.anchor }}
                 class="text-lg"
-              />
+              >
+                {words.fixed}
+              </SectionHeading>
               <details class="group/fixes">
                 <summary
                   class={`flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-muted hover:text-foreground [&::-webkit-details-marker]:hidden ${FOCUS}`}
