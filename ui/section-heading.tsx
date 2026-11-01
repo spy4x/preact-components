@@ -19,7 +19,11 @@ export interface SectionHeadingProps {
   children: ComponentChildren
   /** The heading's own `id`, such as `"pricing-title"` for a section's `aria-labelledby`. */
   id: string
-  /** The `id` the anchor links to, such as the section's own. Defaults to `id`. */
+  /**
+   * The `id` the anchor links to, when not the heading's. Defaults to `id`. Give that element
+   * `scroll-mt-16`, as the heading has, so a sticky header does not cover it once the link is
+   * followed.
+   */
   targetId?: string
   /** Level of the heading, `<h2>` to `<h4>`. Defaults to `2`; each level has `Prose`'s size. */
   headingLevel?: 2 | 3 | 4

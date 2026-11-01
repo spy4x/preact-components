@@ -298,7 +298,8 @@ export const contentBlockDemos: DemoFragment = {
         name: "targetId",
         type: "string",
         default: "id",
-        description: "The `id` the anchor links to, such as the section's own.",
+        description:
+          "The `id` the anchor links to, when not the heading's. Give that element `scroll-mt-16`, as the heading has, so a sticky header does not cover it.",
       },
       {
         name: "headingLevel",
@@ -317,19 +318,13 @@ export const contentBlockDemos: DemoFragment = {
         description: "Utilities on the heading, merged after the defaults.",
       },
     ],
-    snippet: `<section id="pricing" aria-labelledby="pricing-title">
-  <SectionHeading id="pricing-title" targetId="pricing">Pricing</SectionHeading>
+    snippet: `<section aria-labelledby="pricing">
+  <SectionHeading id="pricing">Pricing</SectionHeading>
   …
 </section>`,
     render: () => (
-      <section
-        id="guide-section-heading"
-        aria-labelledby="guide-section-heading-title"
-        class="flex flex-col gap-3"
-      >
-        <SectionHeading id="guide-section-heading-title" targetId="guide-section-heading">
-          Pricing
-        </SectionHeading>
+      <section aria-labelledby="guide-section-heading" class="flex flex-col gap-3">
+        <SectionHeading id="guide-section-heading">Pricing</SectionHeading>
         <p class="text-pretty">
           One plan, free while you host it yourself.{" "}
           <a href="#demo-SectionHeading" class="underline">Compare plans</a>
