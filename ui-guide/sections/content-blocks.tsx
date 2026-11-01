@@ -24,7 +24,7 @@ and the <code>enqueueJob</code> call.</p>
 <blockquote><p>A job that sends email may send it twice if it partly ran before.</p></blockquote>
 <h4 id="guide-prose-limits">Limits</h4>
 <table><thead><tr><th>Setting</th><th>Default</th><th>Where it is set</th><th>What it changes</th></tr></thead>
-<tbody><tr><td>Attempts</td><td>20</td><td><code>JOB_ATTEMPTS</code></td><td>How often a failed run is tried again</td></tr><tr><td>Kept after it finished</td><td>7 days</td><td><code>JOB_KEEP_DAYS</code></td><td>When a finished run leaves the Jobs page</td></tr></tbody></table>
+<tbody><tr><td>Attempts</td><td>20</td><td><code>JOB_ATTEMPTS</code></td><td>How often a failed run is tried again</td></tr><tr><td>Kept after it finished</td><td>7 days</td><td><code>JOB_KEEP_DAYS</code></td><td>When a finished run leaves the Jobs page</td></tr><tr><td>Alert sent to</td><td><code>https://hooks.example.com/jobs/failed</code></td><td><code>JOB_FAILURE_WEBHOOK_URL</code></td><td>Where a run that failed for good is reported</td></tr></tbody></table>
 <ol><li>Define the job.</li><li>Queue it.</li></ol>
 <hr>
 <p>That is all it takes.</p>`

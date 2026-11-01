@@ -34,8 +34,9 @@ export const CONTRAST_PARTS: Partial<Record<GuidePageId, readonly PagePart[]>> =
     {
       what: "the display cards before LookGrid",
       cards: { section: "display", before: "LookGrid" },
-      // `MoneyDisplay`'s negative amount.
-      known: { [CONTRAST]: [1, 0] },
+      // `MoneyDisplay`'s negative amount, and the last column of the `Prose` demo's wide table,
+      // past the edge of its scroll region.
+      known: { [CONTRAST]: [1, 0], [OBSCURED]: [4, 4] },
     },
     {
       what: "the display cards from LookGrid on",
