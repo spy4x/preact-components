@@ -5081,6 +5081,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `CardBody`            | `card`                 | `children`, `class`                                                                                                                                                                                                                                                                                                                                                 |
 | `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                                                                                                                                                                 |
 | `CardHeader`          | `card`                 | `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`                                                                                                                                                                                                                                      |
+| `ChangeList`          | `change-list`          | `months` (`{ id, title, added, fixed, note? }[]`, newest first; entries `{ text, number?, href? }`), `headingLevel?` (`2` default), `labels?` — new things open, fixes in a counted `<details>`, an anchor on every heading; no JavaScript                                                                                                                          |
 | `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                                                                                                                                     |
 | `Coachmark`           | `coachmark`            | `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                                                                    |
 | `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                                                                                                       |
@@ -5097,6 +5098,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `DateTimeField`       | `date-time-field`      | `id`, `label`, `value` (ISO instant or `null`), `onChange`, `timeZone` (IANA; the zone and its offset show beside the input), `min?`, `max?`, `hint?`, `error?`, `required?`, `disabled?`, `labels?` — a `datetime-local` read and written as an instant                                                                                                            |
 | `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link                       |
 | `DialogActions`       | `dialog-actions`       | `children` (Cancel first, the submit last), `class?`, any other attribute — a dialog's button row: stacked full width on a phone with the submit at the bottom, right-aligned in one row from `sm`. `Modal`'s `footer` draws the same row                                                                                                                           |
+| `DocsNav`             | `docs-nav`             | `groups` (`{ title, items: { href, title }[] }[]`), `current?` (the `href` on screen, `aria-current="page"`), `labels?` — a side list from `lg`, a `<details>` below it; no JavaScript                                                                                                                                                                              |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal` (`"end"` by default; `"start"`, or the aliases `"left"` and `"right"`, all mirroring under `dir="rtl"`)                                                                                                                         |
 | `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?`, `checked?`, `multiple?`, `keepOpen?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before                                                                            |
 | `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)                                                                                                                                                                      |
@@ -5149,9 +5151,10 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                                                 |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                                                   |
 | `PostList`            | `post-list`            | `posts` (`{ href, title, description?, publishedAt, readMinutes?, lang?, dir? }[]`; `lang` sets the title's and description's language, `dir="auto"` unless `dir` is given), `headingLevel?` (`2` default), `label?`, `labels?` — the whole row is the link's target; dates in UTC; no JavaScript                                                                   |
+| `PrevNext`            | `prev-next`            | `previous?`, `next?` (`{ href, title }`), `labels?` — two whole-card links at a guide's end, next on the end side; no JavaScript                                                                                                                                                                                                                                    |
 | `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                                                                                                                                              |
 | `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`), `ariaLabel?` (the name when there is no caption)                                                                                                                                                                                                                                                           |
-| `Prose`               | `prose`                | `html` (already safe rendered Markdown) or `children`, `as?` (`"div"`/`"article"`), `class?` — article type from the tokens at about 65 characters a line; no JavaScript                                                                                                                                                                                            |
+| `Prose`               | `prose`                | `html` (already safe rendered Markdown) or `children`, `as?` (`"div"`/`"article"`), `anchors?` (a link beside each `h2` and `h3` with an `id`), `labels?`, `class?` — article type from the tokens at about 65 characters a line; each table of `html` in a focusable scroll region named after the heading before it; no JavaScript                                |
 | `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood                                                                                                                          |
 | `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                                                                                                                                            |
 | `RadioChips`          | `radio-chips`          | `legend`, `name`, `options` (`id?`, `inputAttributes?` each), `defaultValue?` or `value?`, `onChange?`, `hideLegend?` — `ToggleChips`' look on native radios; works without JavaScript                                                                                                                                                                              |
@@ -6030,6 +6033,17 @@ draws the `h1`.
 
 `PostList` reads each `publishedAt` as its UTC day, through the nearest `FormatContext`, so a post
 shows the same date to every reader and on the server.
+
+A docs site adds `anchors` to `Prose`, so every `h2` and `h3` gets a "Link to this section" link,
+puts `DocsNav` beside the body, and ends each guide with `PrevNext`. A changelog draws its months
+with `ChangeList`. All of them are plain markup and native `<details>`.
+
+```tsx
+<DocsNav groups={guides} current={`/docs/${slug}`} />
+<Prose as="article" html={doc.html} anchors />
+<PrevNext previous={before} next={after} />
+<ChangeList months={months} labels={{ pullRequest: (n) => `Pull request ${n} on GitHub` }} />
+```
 
 ## Storefront: LookTile, StoryTile, LookGrid, SwatchChips and OrderBar
 
@@ -7836,6 +7850,23 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 ### PostList (`./post-list`)
 
 - `POST_LIST_LABELS` holds the English words of `PostList`: `readTime`.
+
+### Prose (`./prose`)
+
+- `PROSE_LABELS` holds the English words `Prose` adds: `anchor` and `table`.
+
+### DocsNav (`./docs-nav`)
+
+- `DOCS_NAV_LABELS` holds the English words of `DocsNav`: `label`, `summary` and `summaryNone`.
+
+### PrevNext (`./prev-next`)
+
+- `PREV_NEXT_LABELS` holds the English words of `PrevNext`: `label`, `previous` and `next`.
+
+### ChangeList (`./change-list`)
+
+- `CHANGE_LIST_LABELS` holds the English words of `ChangeList`: `added`, `fixed`, `changes`,
+  `fixes`, `pullRequest` and `anchor`.
 
 ### LookTile (`./look-tile`)
 

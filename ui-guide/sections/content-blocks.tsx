@@ -1,9 +1,10 @@
 /**
- * The cards of the blocks a blog and a record's detail page are read in: `Prose`, `TldrBox`,
- * `PostList` and `FactList`. None needs JavaScript. They are spread into the Display section.
+ * The cards of the blocks a blog, a docs site, a changelog and a record's detail page are read
+ * in: `Prose`, `TldrBox`, `PostList`, `DocsNav`, `PrevNext`, `ChangeList` and `FactList`. None
+ * needs JavaScript. They are spread into the Display section.
  */
 
-import { FactList, PostList, Prose, TldrBox } from "@spy4x/preact-ui"
+import { ChangeList, DocsNav, FactList, PostList, PrevNext, Prose, TldrBox } from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
 /** A short article, as a Markdown renderer hands it over: plain elements, no classes. */
@@ -22,8 +23,8 @@ and the <code>enqueueJob</code> call.</p>
 <pre><code>await enqueueJob(tx, "blog.publish", post.id, { at: post.publishAt })</code></pre>
 <blockquote><p>A job that sends email may send it twice if it partly ran before.</p></blockquote>
 <h4 id="guide-prose-limits">Limits</h4>
-<table><thead><tr><th>Setting</th><th>Default</th></tr></thead>
-<tbody><tr><td>Attempts</td><td>20</td></tr><tr><td>Kept after it finished</td><td>7 days</td></tr></tbody></table>
+<table><thead><tr><th>Setting</th><th>Default</th><th>Where it is set</th><th>What it changes</th></tr></thead>
+<tbody><tr><td>Attempts</td><td>20</td><td><code>JOB_ATTEMPTS</code></td><td>How often a failed run is tried again</td></tr><tr><td>Kept after it finished</td><td>7 days</td><td><code>JOB_KEEP_DAYS</code></td><td>When a finished run leaves the Jobs page</td></tr><tr><td>Alert sent to</td><td><code>https://hooks.example.com/jobs/failed</code></td><td><code>JOB_FAILURE_WEBHOOK_URL</code></td><td>Where a run that failed for good is reported</td></tr></tbody></table>
 <ol><li>Define the job.</li><li>Queue it.</li></ol>
 <hr>
 <p>That is all it takes.</p>`
@@ -71,9 +72,21 @@ export const contentBlockDemos: DemoFragment = {
         default: `"div"`,
         description: "The wrapping element.",
       },
+      {
+        name: "anchors",
+        type: "boolean",
+        default: "false",
+        description:
+          "A “Link to this section” link beside every `h2` and `h3` with an `id`, shown on hover and on focus. Tables always scroll in their own focusable region, named after the heading before them.",
+      },
+      {
+        name: "labels",
+        type: "{ anchor?, table? }",
+        description: `The anchor's name and the name of a table region with no heading before it.`,
+      },
     ],
-    snippet: `<Prose as="article" html={renderedMarkdown} />`,
-    render: () => <Prose html={ARTICLE} />,
+    snippet: `<Prose as="article" html={renderedMarkdown} anchors />`,
+    render: () => <Prose html={ARTICLE} anchors />,
   },
   TldrBox: {
     summary:
@@ -135,6 +148,126 @@ export const contentBlockDemos: DemoFragment = {
     ],
     snippet: `<PostList posts={posts.map((post) => ({ ...post, lang: "en" }))} />`,
     render: () => <PostList posts={POSTS} headingLevel={4} label="Recent posts" />,
+  },
+  DocsNav: {
+    summary:
+      "The side list of a set of guides, grouped, with the guide on screen marked; a <details> below lg.",
+    wide: false,
+    props: [
+      {
+        name: "groups",
+        type: "{ title, items: { href, title }[] }[]",
+        description:
+          "The groups and their guides, in reading order. An empty list renders nothing.",
+      },
+      {
+        name: "current",
+        type: "string",
+        description:
+          'The `href` of the guide on screen: `aria-current="page"`, the bar on the inner edge, and the folded summary\'s title.',
+      },
+      {
+        name: "labels",
+        type: "{ label?, summary?, summaryNone? }",
+        description: `The landmark's name ("Docs") and the folded summary ("Guides: {title}").`,
+      },
+    ],
+    snippet: `<DocsNav groups={groups} current="/docs/deploy" />`,
+    render: () => (
+      <DocsNav
+        current="#demo-DocsNav-deploy"
+        groups={[
+          {
+            title: "Use",
+            items: [
+              { href: "#demo-DocsNav-apps", title: "The three apps" },
+              { href: "#demo-DocsNav-deploy", title: "Deploy and operate" },
+              { href: "#demo-DocsNav-guests", title: "Guest accounts" },
+            ],
+          },
+          {
+            title: "Build",
+            items: [
+              { href: "#demo-DocsNav-development", title: "Development" },
+              { href: "#demo-DocsNav-feature", title: "Adding a feature" },
+            ],
+          },
+        ]}
+      />
+    ),
+  },
+  PrevNext: {
+    summary:
+      "Two cards at the end of a guide, the previous one and the next one, each a whole-card link.",
+    wide: true,
+    props: [
+      {
+        name: "previous / next",
+        type: "{ href, title }",
+        description:
+          "The neighbours. Either may be left out; the next card stays on the end side. Neither, nothing renders.",
+      },
+      {
+        name: "labels",
+        type: "{ label?, previous?, next? }",
+        description: `The landmark's name and the line over each title, "Previous" and "Next".`,
+      },
+    ],
+    snippet: `<PrevNext previous={{ href: "/docs/apps", title: "The three apps" }} next={next} />`,
+    render: () => (
+      <PrevNext
+        previous={{ href: "#demo-PrevNext", title: "The three apps" }}
+        next={{ href: "#demo-PrevNext", title: "Guest accounts" }}
+      />
+    ),
+  },
+  ChangeList: {
+    summary:
+      "What changed, month by month: new things listed, fixes folded in a <details> that counts them, each with its pull request.",
+    wide: true,
+    props: [
+      {
+        name: "months",
+        type: "{ id, title, added, fixed, note? }[]",
+        description:
+          "The months, newest first; `added` and `fixed` are `{ text, number?, href? }[]`. An empty list renders nothing.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3",
+        default: "2",
+        description: "The month's heading level; New and Fixed sit one below.",
+      },
+      {
+        name: "labels",
+        type: "{ added?, fixed?, changes?, fixes?, pullRequest?, anchor? }",
+        description: `The words shown, such as "Pull request 612" for each number link.`,
+      },
+    ],
+    snippet: `<ChangeList months={months} />`,
+    render: () => (
+      <ChangeList
+        headingLevel={3}
+        months={[
+          {
+            id: "guide-changes-2026-10",
+            title: "October 2026",
+            added: [
+              { text: "People can sign in with a passkey.", number: 612, href: "#demo-ChangeList" },
+              {
+                text: "The admin panel lists every background job and runs a failed one again.",
+                number: 609,
+                href: "#demo-ChangeList",
+              },
+            ],
+            fixed: [
+              { text: "The menu closes on Escape.", number: 611, href: "#demo-ChangeList" },
+              { text: "A long name wraps on a phone.", number: 607, href: "#demo-ChangeList" },
+            ],
+          },
+        ]}
+      />
+    ),
   },
   FactList: {
     summary:
