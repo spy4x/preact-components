@@ -132,6 +132,11 @@ export default {
   "ErrorBoundary.description": "Meistens hilft es, die Seite neu zu laden.",
   "ErrorBoundary.reloadLabel": "Seite neu laden",
   "ErrorBoundary.title": "Etwas ist schiefgelaufen.",
+  "ErrorSummary.count": {
+    "one": "{count} Problem",
+    "other": "{count} Probleme",
+  },
+  "ErrorSummary.noneMessage": "Keine Probleme mehr",
   "Explorable.interactiveLabel": "Interaktiv",
   "FeatureCard.linkLabel": "Mehr erfahren",
   "FileInput.browse": "Dateien auswählen",

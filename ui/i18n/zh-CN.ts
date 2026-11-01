@@ -127,6 +127,10 @@ export default {
   "ErrorBoundary.description": "刷新页面通常就能解决。",
   "ErrorBoundary.reloadLabel": "刷新页面",
   "ErrorBoundary.title": "出了点问题。",
+  "ErrorSummary.count": {
+    "other": "{count} 个问题",
+  },
+  "ErrorSummary.noneMessage": "已没有问题",
   "Explorable.interactiveLabel": "可交互",
   "FeatureCard.linkLabel": "了解更多",
   "FileInput.browse": "选择文件",

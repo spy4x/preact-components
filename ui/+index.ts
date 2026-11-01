@@ -205,6 +205,7 @@ export {
 } from "./enhanced-form.tsx"
 export { ErrorBoundary, type ErrorBoundaryProps } from "./error-boundary.tsx"
 export { ErrorState, type ErrorStateProps } from "./error-state.tsx"
+export { ErrorSummary, type ErrorSummaryItem, type ErrorSummaryProps } from "./error-summary.tsx"
 export {
   Field,
   type FieldChild,
@@ -428,6 +429,7 @@ export {
   type TagInputProps,
   tagSuggestions,
 } from "./tag-input.tsx"
+export { selectTextareaLine, textLineRange } from "./textarea-line.ts"
 export {
   defaultToastActionDuration,
   defaultToastDuration,

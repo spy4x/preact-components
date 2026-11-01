@@ -137,6 +137,13 @@ export default {
   "ErrorBoundary.description": "Обычно помогает обновить страницу.",
   "ErrorBoundary.reloadLabel": "Обновить страницу",
   "ErrorBoundary.title": "Что-то пошло не так.",
+  "ErrorSummary.count": {
+    "one": "{count} проблема",
+    "few": "{count} проблемы",
+    "many": "{count} проблем",
+    "other": "{count} проблемы",
+  },
+  "ErrorSummary.noneMessage": "Проблем больше нет",
   "Explorable.interactiveLabel": "Интерактивно",
   "FeatureCard.linkLabel": "Подробнее",
   "FileInput.browse": "Выбрать файлы",

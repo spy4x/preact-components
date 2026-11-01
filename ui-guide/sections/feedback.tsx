@@ -24,6 +24,9 @@ import {
   EmptyState,
   ErrorBoundary,
   ErrorState,
+  ErrorSummary,
+  type ErrorSummaryItem,
+  Field,
   Input,
   LoadingSkeleton,
   LoadingSpinner,
@@ -32,9 +35,11 @@ import {
   type NoticeTone,
   RadioGroup,
   ResendButton,
+  selectTextareaLine,
   type SpinnerSize,
   Stack,
   TagInput,
+  Textarea,
   type ToastCorner,
   Toastr,
   type ToastVariant,
@@ -1201,6 +1206,73 @@ function ResendButtonDemo() {
   )
 }
 
+/** The draft the `ErrorSummary` card starts from: two tags the demo's check calls broken. */
+const ERROR_SUMMARY_DRAFT = `# Pricing, explained
+
+Every plan starts free.
+
+<CostCalc users={500} />
+
+What you pay grows with use.
+
+<Chart year={2026} />
+
+- <Gauge level={3} />
+`
+
+/**
+ * The demo's own check: a line holding a tag other than `<Chart>` is a problem. A real editor asks
+ * its server.
+ */
+function draftProblems(draft: string): ErrorSummaryItem[] {
+  return draft.split("\n").flatMap((text, index) => {
+    const tag = /<([A-Z][A-Za-z]*)/.exec(text)?.[1]
+    if (!tag || tag === "Chart") return []
+    const line = index + 1
+    return [{
+      key: `${line}:${tag}`,
+      label: `Line ${line}`,
+      message: `There's no component called ${tag}.`,
+    }]
+  })
+}
+
+/**
+ * A Markdown draft over its problems: a row's button selects its line in the textarea, and fixing
+ * the last line empties the list, which the status line says.
+ */
+function ErrorSummaryDemo() {
+  const draft = useSignal(ERROR_SUMMARY_DRAFT)
+  const textarea = useRef<HTMLTextAreaElement>(null)
+  const items = draftProblems(draft.value)
+  return (
+    <Stack>
+      <Field id="guide-error-summary-draft" label="Post">
+        <Textarea
+          ref={textarea}
+          rows={12}
+          class="font-mono"
+          data-e2e="error-summary-draft"
+          value={draft.value}
+          onInput={(event) => draft.value = event.currentTarget.value}
+        />
+      </Field>
+      <ErrorSummary
+        data-e2e="error-summary"
+        title={items.length === 1
+          ? "1 problem in this post"
+          : `${items.length} problems in this post`}
+        items={items}
+        onSelect={(item) => {
+          if (textarea.current) selectTextareaLine(textarea.current, Number(item.key.split(":")[0]))
+        }}
+      >
+        Readers won't see these lines. The rest of the post shows as written.
+      </ErrorSummary>
+    </Stack>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -1310,6 +1382,48 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         <RemovalDemo />
       </Stack>
     ),
+  },
+  ErrorSummary: {
+    summary:
+      "A titled list of problems in what the reader is editing, each row a button that takes them to it.",
+    wide: true,
+    props: [
+      { name: "title", type: "string", description: "The panel's title; it names the region." },
+      { name: "children", type: "ComponentChildren", description: "One line under the title." },
+      {
+        name: "items",
+        type: "readonly ErrorSummaryItem[]",
+        description:
+          "`{ key, label, message }` per problem: the row's button and what is wrong. With none, only the status line is drawn.",
+      },
+      {
+        name: "onSelect",
+        type: "(item: ErrorSummaryItem, index: number) => void",
+        description: "Takes the reader to the problem, such as with `selectTextareaLine`.",
+      },
+      {
+        name: "countMessage",
+        type: "(count: number) => string",
+        default: `"2 problems"`,
+        description: "The polite status line's text while there are problems.",
+      },
+      {
+        name: "noneMessage",
+        type: "string",
+        default: `"No problems left"`,
+        description: "The status line's text once the last problem is gone.",
+      },
+    ],
+    snippet: `const textarea = useRef<HTMLTextAreaElement>(null)
+
+<ErrorSummary
+  title="2 problems in this post"
+  items={problems.map((p) => ({ key: \`\${p.line}\`, label: \`Line \${p.line}\`, message: p.message }))}
+  onSelect={(_, index) => selectTextareaLine(textarea.current!, problems[index].line)}
+>
+  Readers won't see these lines. The rest of the post shows as written.
+</ErrorSummary>`,
+    render: () => <ErrorSummaryDemo />,
   },
   Notice: {
     summary: "A page-wide banner: a trial that ends soon, a change that saved, a failed payment.",

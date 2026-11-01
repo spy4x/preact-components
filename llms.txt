@@ -654,6 +654,8 @@ EnhancedForm	component	@spy4x/preact-ui	A real `<form>` that posts on its own, a
 EnhancedFormStatus	type	@spy4x/preact-ui	Where one `EnhancedForm` is in its submit cycle.
 ErrorBoundary	component	@spy4x/preact-ui	Catches an error thrown while its children render and shows a reload screen in their place, so the person sees a way out instead of a blank page.
 ErrorState	component	@spy4x/preact-ui	Message for an expected failure, shown where the result that failed would have been, such as a list whose request failed.
+ErrorSummary	component	@spy4x/preact-ui	A titled list of problems in something the reader is editing, each row a button that takes the reader to its problem: a document's broken lines under its editor, or a long form's errors above its fields.
+ErrorSummaryItem	type	@spy4x/preact-ui	One problem an `ErrorSummary` lists.
 ExactDateTimeRange	type	@spy4x/preact-ui	A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant.
 Explorable	component	@spy4x/preact-ui	A frame for an interactive figure inside an article: a result and the controls that change it.
 Fact	type	@spy4x/preact-ui	One label and value of a `FactList`.
@@ -977,6 +979,7 @@ resolveMoneyInputEdit	helper	@spy4x/preact-ui	The whole decision one edit of `Mo
 restoreFocus	helper	@spy4x/preact-ui	Move focus back to a captured element.
 rowKeyAttribute	helper	@spy4x/preact-ui	Attribute a row's first cell carries so a page — or a browser check — can find that row by the identity `DataTableProps.rowKey` gives it, without depending on rendered cell text.
 scrollLockPadding	helper	@spy4x/preact-ui	Padding, in pixels, that keeps a scroll-locked page from shifting.
+selectTextareaLine	helper	@spy4x/preact-ui	Focuses a textarea, selects one of its lines and scrolls the textarea so that line sits in the middle of it.
 selectableIndex	helper	@spy4x/preact-ui	Index a freshly opened list should highlight: `preferred` when it is still in the list and taking it is allowed, else the first enabled item, else `-1` when nothing can be highlighted.
 setLayoutHidden	helper	@spy4x/preact-ui	`layout` with the entry `id` hidden or shown; unchanged when `id` is not in it.
 shouldRetargetFocus	helper	@spy4x/preact-ui	Decide whether focus should go back to the element that opened the dialog.
@@ -987,6 +990,7 @@ splitTagText	helper	@spy4x/preact-ui	Split the input's text at commas: every par
 swipeStep	helper	@spy4x/preact-ui	The step a finished touch asks for: `1` for a leftward swipe (next image), `-1` for a rightward one (previous image), `0` for anything that is not a swipe.
 tagInputKeyAction	helper	@spy4x/preact-ui	The whole key table of `TagInput`, decided without a DOM.
 tagSuggestions	helper	@spy4x/preact-ui	The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling once.
+textLineRange	helper	@spy4x/preact-ui	Where a 1-based line starts and ends in a text, its line break left out.
 timeRangePresets	helper	@spy4x/preact-ui	Canonical presentation order — the `TimeRangePreset` counterpart of `dateRangePresets`.
 toggleChipSelection	helper	@spy4x/preact-ui	The selection after one chip is pressed, in multiple mode: the chip is added or removed, and the result keeps the order of `options` rather than the order of presses.
 translate	helper	@spy4x/preact-ui	The `ui` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels, such as one that switches on a case.
