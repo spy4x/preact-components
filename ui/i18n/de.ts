@@ -21,6 +21,7 @@ export default {
   "AttachmentList.uploadingUnknown": "Wird hochgeladen",
   "AttachmentList.waiting": "Wartet aufs Hochladen",
   "AvatarGroup.label": "Avatare",
+  "Breadcrumbs.label": "Brotkrümelnavigation",
   "ChangeList.added": "Neu",
   "ChangeList.anchor": "Link zu diesem Abschnitt",
   "ChangeList.changes": {
@@ -223,6 +224,7 @@ export default {
   "Notice.dismissLabel": "Schließen",
   "OnOffButtons.offLabel": "AUS",
   "OnOffButtons.onLabel": "AN",
+  "OnThisPage.label": "Auf dieser Seite",
   "OnboardingChecklist.completeMessage": "Alles erledigt. Du bist startklar.",
   "OnboardingChecklist.dismissLabel": "Ausblenden",
   "OnboardingChecklist.doneLabel": "Erledigt",

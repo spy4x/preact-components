@@ -21,6 +21,7 @@ export default {
   "AttachmentList.uploadingUnknown": "جارٍ الرفع",
   "AttachmentList.waiting": "بانتظار الرفع",
   "AvatarGroup.label": "الصور الرمزية",
+  "Breadcrumbs.label": "مسار التنقل",
   "ChangeList.added": "جديد",
   "ChangeList.anchor": "رابط إلى هذا القسم",
   "ChangeList.changes": {
@@ -233,6 +234,7 @@ export default {
   "Notice.dismissLabel": "إخفاء",
   "OnOffButtons.offLabel": "إيقاف",
   "OnOffButtons.onLabel": "تشغيل",
+  "OnThisPage.label": "في هذه الصفحة",
   "OnboardingChecklist.completeMessage": "اكتمل كل شيء. أنت جاهز للبدء.",
   "OnboardingChecklist.dismissLabel": "إخفاء",
   "OnboardingChecklist.doneLabel": "تم",

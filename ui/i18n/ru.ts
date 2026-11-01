@@ -21,6 +21,7 @@ export default {
   "AttachmentList.uploadingUnknown": "Загружаем",
   "AttachmentList.waiting": "В очереди на загрузку",
   "AvatarGroup.label": "Аватары",
+  "Breadcrumbs.label": "Навигационная цепочка",
   "ChangeList.added": "Новое",
   "ChangeList.anchor": "Ссылка на этот раздел",
   "ChangeList.changes": {
@@ -231,6 +232,7 @@ export default {
   "Notice.dismissLabel": "Скрыть",
   "OnOffButtons.offLabel": "ВЫКЛ",
   "OnOffButtons.onLabel": "ВКЛ",
+  "OnThisPage.label": "На этой странице",
   "OnboardingChecklist.completeMessage": "Готово, всё настроено.",
   "OnboardingChecklist.dismissLabel": "Скрыть",
   "OnboardingChecklist.doneLabel": "Сделано",

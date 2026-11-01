@@ -21,6 +21,7 @@ export default {
   "AttachmentList.uploadingUnknown": "Uploading",
   "AttachmentList.waiting": "Waiting to upload",
   "AvatarGroup.label": "Avatars",
+  "Breadcrumbs.label": "Breadcrumb",
   "ChangeList.added": "New",
   "ChangeList.anchor": "Link to this section",
   "ChangeList.changes": {
@@ -220,6 +221,7 @@ export default {
   "Notice.dismissLabel": "Dismiss",
   "OnOffButtons.offLabel": "OFF",
   "OnOffButtons.onLabel": "ON",
+  "OnThisPage.label": "On this page",
   "OnboardingChecklist.completeMessage": "All done. You're set up.",
   "OnboardingChecklist.dismissLabel": "Dismiss",
   "OnboardingChecklist.doneLabel": "Done",

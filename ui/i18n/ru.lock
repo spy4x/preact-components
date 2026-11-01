@@ -19,6 +19,7 @@ AttachmentList.uploading	7a0aebc02cbe9f6e
 AttachmentList.uploadingUnknown	8b898ca34ce71371
 AttachmentList.waiting	cf7ca0c9fd5d6f38
 AvatarGroup.label	fedfdc14d4f7bbb0
+Breadcrumbs.label	2bd873d6c734e63e
 ChangeList.added	18fdd549b2ed367a
 ChangeList.anchor	9dc5baf353535d6d
 ChangeList.changes	6c993e37ea30a5ac
@@ -206,6 +207,7 @@ MoneyInput.rangeMin	be9bd964d5dc9700
 Notice.dismissLabel	48845bff334a50a5
 OnOffButtons.offLabel	38cca6bea010af8a
 OnOffButtons.onLabel	e8a01133b1351e5f
+OnThisPage.label	b5658fc8edda24f9
 OnboardingChecklist.completeMessage	728e0d980c6414bd
 OnboardingChecklist.dismissLabel	48845bff334a50a5
 OnboardingChecklist.doneLabel	11a6767d5674c7e4

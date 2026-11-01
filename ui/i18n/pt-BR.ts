@@ -21,6 +21,7 @@ export default {
   "AttachmentList.uploadingUnknown": "Enviando",
   "AttachmentList.waiting": "Na fila para envio",
   "AvatarGroup.label": "Avatares",
+  "Breadcrumbs.label": "Trilha de navegação",
   "ChangeList.added": "Novidades",
   "ChangeList.anchor": "Link para esta seção",
   "ChangeList.changes": {
@@ -225,6 +226,7 @@ export default {
   "Notice.dismissLabel": "Fechar",
   "OnOffButtons.offLabel": "DESLIGADO",
   "OnOffButtons.onLabel": "LIGADO",
+  "OnThisPage.label": "Nesta página",
   "OnboardingChecklist.completeMessage": "Tudo pronto. Agora é só usar.",
   "OnboardingChecklist.dismissLabel": "Fechar",
   "OnboardingChecklist.doneLabel": "Feito",
