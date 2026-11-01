@@ -1320,12 +1320,36 @@ function docsBlockSpecs(): Spec[] {
     scrollRegionSpec({
       what: "Prose wide table",
       pageId: "ui",
-      selector: `#demo-Prose [data-prose-table]`,
-      name: "Limits",
+      selector: `#demo-Prose [data-prose-table][aria-labelledby="guide-prose-runs"]`,
+      name: "Runs per month",
       key: "ArrowRight",
       role: "region",
       width: 390,
     }),
+    {
+      // The page check below is a guard only: the guide's card clips, so no mutation made the
+      // page itself scroll.
+      name: "Prose at 390 px: a long code path in a table's first column wraps, so the text " +
+        "column keeps at least 40% of the table's region",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 800 })
+        const region = page.locator(`#demo-Prose [data-prose-table]`)
+          .and(page.getByRole("region", { name: "Files", exact: true }))
+        await region.waitFor()
+        const sizes = await region.evaluate((node) => ({
+          region: node.clientWidth,
+          text: node.querySelector("tbody td:last-child")?.getBoundingClientRect().width ?? 0,
+          page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }))
+        const share = Math.round(sizes.text / sizes.region * 100)
+        if (share < 40) {
+          throw new Error(`the text column is ${share}% of the ${sizes.region}px region`)
+        }
+        if (sizes.page > 0) throw new Error(`the page scrolls ${sizes.page}px sideways`)
+        return `the text column is ${share}% of the ${sizes.region}px region`
+      },
+    },
     {
       name: "Prose: a heading's anchor is hidden until the keyboard focuses it, and links to it",
       pageId: "ui",

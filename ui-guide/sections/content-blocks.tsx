@@ -25,6 +25,12 @@ and the <code>enqueueJob</code> call.</p>
 <h4 id="guide-prose-limits">Limits</h4>
 <table><thead><tr><th>Setting</th><th>Default</th><th>Where it is set</th><th>What it changes</th></tr></thead>
 <tbody><tr><td>Attempts</td><td>20</td><td><code>JOB_ATTEMPTS</code></td><td>How often a failed run is tried again</td></tr><tr><td>Kept after it finished</td><td>7 days</td><td><code>JOB_KEEP_DAYS</code></td><td>When a finished run leaves the Jobs page</td></tr><tr><td>Alert sent to</td><td><code>https://hooks.example.com/jobs/failed</code></td><td><code>JOB_FAILURE_WEBHOOK_URL</code></td><td>Where a run that failed for good is reported</td></tr></tbody></table>
+<h4 id="guide-prose-files">Files</h4>
+<table><thead><tr><th>File</th><th>What it holds</th></tr></thead>
+<tbody><tr><td><code>apps/api/features/jobs/transports.test.ts</code></td><td>The tests of the HTTP and WebSocket routes that queue and rerun a job</td></tr><tr><td><code>apps/api/features/jobs/repository.ts</code></td><td>The queries that claim, finish and retry a run</td></tr></tbody></table>
+<h4 id="guide-prose-runs">Runs per month</h4>
+<table><thead><tr><th>Job</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th></tr></thead>
+<tbody><tr><td>Email</td><td>1,204</td><td>1,318</td><td>1,277</td><td>1,402</td><td>1,511</td><td>1,630</td></tr><tr><td>Report</td><td>31</td><td>30</td><td>31</td><td>31</td><td>30</td><td>31</td></tr></tbody></table>
 <ol><li>Define the job.</li><li>Queue it.</li></ol>
 <hr>
 <p>That is all it takes.</p>`
