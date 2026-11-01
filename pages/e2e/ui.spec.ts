@@ -3875,7 +3875,7 @@ function languagePickerSpecs(): Spec[] {
         await page.keyboard.press("Escape")
         await dialog.waitFor({ state: "detached" })
         await opener.and(focused).waitFor()
-        return "Automatic → English → Deutsch → العربية → Русский → Automatic, Escape back to the opener"
+        return "Automatic → English → Deutsch → العربية → 简体中文 → Automatic, Escape back to the opener"
       },
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
