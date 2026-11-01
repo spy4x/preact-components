@@ -365,13 +365,13 @@ function LanguageMenu(
       panelClasses="min-w-56 py-1"
       trigger={
         <>
-          <IconGlobe class="size-5 shrink-0 xl:size-4" aria-hidden="true" />
+          <IconGlobe class="size-5 xl:size-4" aria-hidden="true" />
           {current && (
             <span class="hidden xl:inline">
               <Name tag={current} />
             </span>
           )}
-          <IconChevronDown class="hidden size-4 shrink-0 text-muted xl:block" aria-hidden="true" />
+          <IconChevronDown class="hidden size-4 text-muted xl:block" aria-hidden="true" />
           <span class={MENU_HINT} aria-hidden="true">
             <span class={hintBubbleClasses}>{name}</span>
           </span>
