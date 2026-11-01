@@ -301,6 +301,7 @@ export default {
   "RunSteps.unavailable": "利用不可",
   "ScreenTour.label": "画面",
   "ScreenTour.viewFullSizeLabel": "原寸で表示",
+  "SectionHeading.anchor": "このセクションへのリンク",
   "ShortcutsDialog.closeLabel": "閉じる",
   "ShortcutsDialog.defaultGroup": "全般",
   "ShortcutsDialog.title": "キーボードショートカット",
