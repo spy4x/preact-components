@@ -116,6 +116,7 @@
     "./post-list": "./post-list.tsx",
     "./prev-next": "./prev-next.tsx",
     "./prose": "./prose.tsx",
+    "./section-heading": "./section-heading.tsx",
     "./tldr-box": "./tldr-box.tsx",
     "./look-tile": "./look-tile.tsx",
     "./look-grid": "./look-grid.tsx",

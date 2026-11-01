@@ -310,6 +310,7 @@ export default {
   "RunSteps.unavailable": "No disponible",
   "ScreenTour.label": "Pantallas",
   "ScreenTour.viewFullSizeLabel": "Ver a tamaño completo",
+  "SectionHeading.anchor": "Enlace a esta sección",
   "ShortcutsDialog.closeLabel": "Cerrar",
   "ShortcutsDialog.defaultGroup": "General",
   "ShortcutsDialog.title": "Atajos de teclado",
