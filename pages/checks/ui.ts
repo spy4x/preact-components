@@ -1890,6 +1890,8 @@ const DROPDOWN_TRIGGERS_PER_CARD: Record<string, number> = {
   "demo-AttachmentList": 3,
   // The header language menu.
   "demo-LanguagePicker": 1,
+  // The language menu in the second header's actions.
+  "demo-SiteHeader": 1,
 }
 
 /** The part of a Chromium accessibility node the trigger check reads. */
