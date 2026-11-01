@@ -58,6 +58,7 @@ export {
   type UpgradePromptProps,
 } from "./billing.tsx"
 export { BrandMark, type BrandMarkProps } from "./brand-mark.tsx"
+export { type BreadcrumbItem, Breadcrumbs, type BreadcrumbsProps } from "./breadcrumbs.tsx"
 export {
   Button,
   buttonClasses,
@@ -340,6 +341,7 @@ export {
   type OnboardingStepLink,
 } from "./onboarding-checklist.tsx"
 export { OnOffButtons, type OnOffButtonsProps } from "./on-off-buttons.tsx"
+export { OnThisPage, type OnThisPageLink, type OnThisPageProps } from "./on-this-page.tsx"
 export {
   MoreMenu,
   type MoreMenuProps,
