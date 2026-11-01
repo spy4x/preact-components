@@ -1310,6 +1310,65 @@ function blogBlockSpecs(): Spec[] {
   ]
 }
 
+/**
+ * `Prose`'s table regions and heading anchors, `DocsNav`, `PrevNext` and `ChangeList`: the blocks
+ * of a docs site and a changelog.
+ */
+function docsBlockSpecs(): Spec[] {
+  const cards = ["#demo-Prose", "#demo-DocsNav", "#demo-PrevNext", "#demo-ChangeList"] as const
+  return [
+    scrollRegionSpec({
+      what: "Prose wide table",
+      pageId: "ui",
+      selector: `#demo-Prose [data-prose-table]`,
+      name: "Limits",
+      key: "ArrowRight",
+      role: "region",
+      width: 390,
+    }),
+    {
+      name: "Prose: a heading's anchor is hidden until the keyboard focuses it, and links to it",
+      pageId: "ui",
+      run: async (page) => {
+        const anchor = page.locator(`#demo-Prose a[data-prose-anchor][href="#guide-prose-why"]`)
+          .and(page.getByRole("link", { name: "Link to this section", exact: true }))
+        await anchor.waitFor({ state: "attached" })
+        const opacity = () => anchor.evaluate((node) => getComputedStyle(node).opacity)
+        if (await opacity() !== "0") throw new Error(`unfocused, its opacity is ${await opacity()}`)
+        await page.locator("#demo-Prose").getByRole("link", { name: "a worked example" }).focus()
+        await page.keyboard.press("Tab")
+        await anchor.and(page.locator(":focus")).waitFor()
+        if (await opacity() !== "1") throw new Error(`focused, its opacity is ${await opacity()}`)
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-prose-why$/)
+      },
+    },
+    {
+      name: "ChangeList: the fixes stay folded until their count is clicked, then show",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-ChangeList")
+        const fix = card.getByText("The menu closes on Escape.")
+        await card.waitFor()
+        if (await fix.isVisible()) throw new Error("a fix shows before its details is opened")
+        await card.locator("summary").filter({ hasText: "2 fixes" }).click()
+        await fix.waitFor()
+      },
+    },
+    ...(["light", "dark"] as const).map((palette): Spec => ({
+      name: `Prose, DocsNav, PrevNext and ChangeList: axe finds no violation, their text's ` +
+        `contrast included, ${palette}`,
+      pageId: "ui",
+      colorScheme: palette,
+      run: async (page) => {
+        await page.locator(cards[0]).waitFor()
+        await page.addStyleTag({ content: `[data-card-part="demo"] { background-image: none; }` })
+        return await axePasses(page, cards)
+      },
+    })),
+  ]
+}
+
 /** One file for a file chooser, `size` bytes of zeros. */
 function chosenFile(name: string, mimeType: string, size = 16) {
   return { name, mimeType, buffer: Buffer.alloc(size) }
@@ -4806,6 +4865,7 @@ export const specs: readonly Spec[] = [
   ...onboardingChecklistSpecs,
   ...marketingBlockSpecs(),
   ...blogBlockSpecs(),
+  ...docsBlockSpecs(),
   ...storefrontSpecs(),
   ...fileSpecs(),
   ...screenTourSpecs(),

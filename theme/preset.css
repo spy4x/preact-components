@@ -520,8 +520,8 @@
  * The type of an article (`Prose` from `@spy4x/preact-ui`): rendered Markdown, which carries no
  * classes, set from the tokens at a measure of about 65 characters. Every rule reads an element
  * inside the wrapper through `:where()`, so each weighs one class and a class on the element wins.
- * Code wraps instead of scrolling, and table cells break long words, so no block needs a scroll box
- * and its own tab stop on a phone.
+ * Code wraps instead of scrolling. A table too wide for the screen scrolls inside the focusable
+ * region `Prose` puts it in (`[data-prose-table]`), so the page itself never scrolls sideways.
  */
 @utility pc-prose {
   @apply max-w-2xl text-base/7 text-pretty wrap-break-word;
@@ -605,13 +605,49 @@
     @apply w-full border-collapse text-sm;
   }
   & :where(th, td) {
-    @apply border-b border-subtle px-3 py-2 text-start align-top wrap-anywhere;
+    @apply border-b border-subtle px-3 py-2 text-start align-top wrap-break-word;
   }
   & :where(th) {
     @apply font-medium;
   }
   & :where(thead th) {
     @apply border-strong;
+  }
+  /* A table scrolls sideways in its own focusable region, so the page never does. */
+  & :where([data-prose-table]) {
+    @apply overflow-x-auto rounded-sm;
+  }
+  & :where([data-prose-table]:focus-visible) {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  /* A heading with its anchor link: the wrapper takes the heading's spacing. */
+  & :where([data-prose-heading]) {
+    @apply flex items-baseline gap-2;
+  }
+  & > :where([data-prose-heading]:has(> h2)) {
+    @apply mt-12;
+  }
+  & > :where([data-prose-heading]:has(> h3)) {
+    @apply mt-8;
+  }
+  & > :where([data-prose-heading]:first-child),
+  & :where([data-prose-heading] > *) {
+    @apply mt-0;
+  }
+  & :where([data-prose-heading]) + :where(*) {
+    @apply mt-3;
+  }
+  & [data-prose-anchor] {
+    @apply rounded-sm px-1 font-normal text-muted no-underline opacity-0;
+  }
+  & [data-prose-heading]:hover [data-prose-anchor],
+  & [data-prose-anchor]:focus-visible {
+    @apply opacity-100;
+  }
+  @media (hover: none) {
+    & [data-prose-anchor] {
+      @apply opacity-100;
+    }
   }
 }
 
