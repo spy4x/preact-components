@@ -3019,6 +3019,10 @@ shell's side navigation (#135) — that one is a signed-in app's frame, this one
 top bar — and the two share the mobile-panel open/close behaviour rather than each writing their
 own; see `mobile-panel.ts` below.
 
+**One menu open at a time.** The menu's `<details>` joins `Dropdown`'s exclusive `MENU_GROUP`
+group, so a `LanguagePicker` menu or any other `Dropdown` in `actions` closes as the links' menu
+opens, and the other way round, with or without JavaScript.
+
 **No links, no navigation.** With `links` empty or left out, the bar draws neither `<nav>` nor the
 menu button, because a button that opens an empty panel is a dead control. What remains is `brand`
 on the left and `actions` on the right: the top bar of a single-page tool, in the design language's
@@ -5439,6 +5443,11 @@ before then. Hydration puts the roles and the name back and takes the items out 
 An item a caller renders by hand keeps whatever role and `tabindex` it sets. For an item that
 posts, wrap a `DropdownItem` with `type="submit"` in a `<form role="none">`, as `Shell`'s form-post
 item does: it follows the same rule and posts with or without JavaScript.
+
+One menu is open at a time. The fallback `<details>` carries `name="pc-menu"`, `MENU_GROUP`, the
+exclusive group `SiteHeader`'s mobile menu joins too, so the browser closes the others as one
+opens, with no JavaScript. A hydrated `Dropdown` closes the group's open members as it opens, and a
+press outside closes it. `MENU_GROUP` is exported for any other `<details>` menu that should join.
 
 `vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
 bottom of the viewport and there is more room above, as it does for the last row of a long table.

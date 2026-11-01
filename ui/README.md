@@ -420,6 +420,11 @@ An item a caller renders by hand keeps whatever role and `tabindex` it sets. For
 posts, wrap a `DropdownItem` with `type="submit"` in a `<form role="none">`, as `Shell`'s form-post
 item does: it follows the same rule and posts with or without JavaScript.
 
+One menu is open at a time. The fallback `<details>` carries `name="pc-menu"`, `MENU_GROUP`, the
+exclusive group `SiteHeader`'s mobile menu joins too, so the browser closes the others as one
+opens, with no JavaScript. A hydrated `Dropdown` closes the group's open members as it opens, and a
+press outside closes it. `MENU_GROUP` is exported for any other `<details>` menu that should join.
+
 `vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
 bottom of the viewport and there is more room above, as it does for the last row of a long table.
 It is measured each time the menu opens, before the browser draws it, so an upward menu is never

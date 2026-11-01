@@ -10,7 +10,7 @@ function attrOf(html: string, tag: RegExp, name: string): string | undefined {
 }
 
 describe("Dropdown", () => {
-  it("server-renders a closed details whose summary is the trigger, so it opens without JavaScript", () => {
+  it("server-renders a closed details in the pc-menu group whose summary is the trigger, so it opens without JavaScript", () => {
     const html = render(
       <Dropdown trigger="Menu" triggerNamedByContent>
         <DropdownItem href="/a">First</DropdownItem>
@@ -18,7 +18,7 @@ describe("Dropdown", () => {
     )
 
     expect(html).toMatch(
-      /^<details class="[^"]*"><summary[^>]*>Menu<\/summary><div class="/,
+      /^<details class="[^"]*" name="pc-menu"><summary[^>]*>Menu<\/summary><div class="/,
     )
     expect(html).toContain("First")
     expect(html.endsWith("</div></details>")).toBe(true)
