@@ -2075,6 +2075,25 @@ const zoomableCropSpec: Spec = {
 }
 
 /**
+ * An image `ZoomableImages` turns into a Tab stop shows the components' focus ring, not only the
+ * browser's thin outline on its edge.
+ */
+const zoomableFocusSpec: Spec = {
+  name: "ZoomableImages: an image reached with the keyboard shows the components' focus ring",
+  pageId: "ui",
+  run: async (page) => {
+    const card = page.locator("#demo-ZoomableImages")
+    const crop = card.locator(`[data-e2e="lightbox-crop"]`)
+    await crop.focus()
+    await page.keyboard.press("Tab")
+    await page.keyboard.press("Shift+Tab")
+    await crop.and(page.locator(":focus-visible")).waitFor()
+    const ring = await crop.evaluate((element) => getComputedStyle(element).boxShadow)
+    if (ring === "none") throw new Error("the focused image shows no focus ring")
+  },
+}
+
+/**
  * A highlighted danger `DropdownItem` keeps its text at 4.5:1, in each palette: the row under the
  * pointer, then the row with keyboard focus, each checked by axe's colour-contrast rule.
  */
@@ -4466,6 +4485,7 @@ export const specs: readonly Spec[] = [
   ...escapeInsideModalSpecs(),
   ...lostInputSpecs(),
   zoomableCropSpec,
+  zoomableFocusSpec,
   ...comparisonTablePhoneSpecs(),
   {
     name: "ResendButton: a 44 px button sends by keyboard, keeps focus while busy, hands focus " +
