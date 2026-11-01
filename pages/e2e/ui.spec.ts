@@ -2160,7 +2160,8 @@ const zoomableCropSpec: Spec = {
  * browser's thin outline on its edge.
  */
 const zoomableFocusSpec: Spec = {
-  name: "ZoomableImages: an image reached with the keyboard shows the components' focus ring",
+  name:
+    "ZoomableImages: an image reached with the keyboard shows the components' focus ring inside its edge",
   pageId: "ui",
   run: async (page) => {
     const card = page.locator("#demo-ZoomableImages")
@@ -2169,8 +2170,34 @@ const zoomableFocusSpec: Spec = {
     await page.keyboard.press("Tab")
     await page.keyboard.press("Shift+Tab")
     await crop.and(page.locator(":focus-visible")).waitFor()
-    const ring = await crop.evaluate((element) => getComputedStyle(element).boxShadow)
-    if (ring === "none") throw new Error("the focused image shows no focus ring")
+    const ring = await crop.evaluate((element) => {
+      const style = getComputedStyle(element)
+      // The ring colour resolved the way the browser resolves the outline's, for comparison.
+      const probe = document.createElement("span")
+      probe.style.color = "var(--color-ring)"
+      element.parentElement!.append(probe)
+      const ringColour = getComputedStyle(probe).color
+      probe.remove()
+      return {
+        style: style.outlineStyle,
+        width: style.outlineWidth,
+        offset: style.outlineOffset,
+        colour: style.outlineColor,
+        ringColour,
+      }
+    })
+    if (ring.style === "none" || ring.width !== "2px") {
+      throw new Error(`the focused image shows no focus ring: ${JSON.stringify(ring)}`)
+    }
+    if (ring.colour !== ring.ringColour) {
+      throw new Error(`the focus ring is not the components' colour: ${JSON.stringify(ring)}`)
+    }
+    // Inside the edge, so a frame that clips the image (WindowFrame) still shows all four sides.
+    if (parseFloat(ring.offset) >= 0) {
+      throw new Error(
+        `the focus ring sits outside the image, where a frame clips it: ${ring.offset}`,
+      )
+    }
   },
 }
 
