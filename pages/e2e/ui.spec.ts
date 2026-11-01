@@ -1357,6 +1357,24 @@ function docsBlockSpecs(): Spec[] {
       },
     },
     {
+      name:
+        "Prose at 1440 px: a file path in a table cell stays on one line when the table has room",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const region = page.locator(`#demo-Prose [data-prose-table]`)
+          .and(page.getByRole("region", { name: "Files", exact: true }))
+        await region.waitFor()
+        const broken = await region.evaluate((node) =>
+          [...node.querySelectorAll("td code")]
+            .filter((code) => code.getClientRects().length > 1)
+            .map((code) => code.textContent)
+        )
+        if (broken.length) throw new Error(`these paths break across lines: ${broken.join(", ")}`)
+        return "every path in the Files table is on one line"
+      },
+    },
+    {
       name: "Prose: a heading's anchor is hidden until the keyboard focuses it, and links to it",
       pageId: "ui",
       run: async (page) => {

@@ -71,9 +71,9 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     // `CommandPalette`'s two option groups, an `li` in the `group` role, which axe allows on an
     // `li` only while it is hidden.
     "aria-allowed-role: aria-allowed-role": [2, 2],
-    // The header's version pill, the install command in its scroll region, and three captions of
-    // a scroll-snap row.
-    [OBSCURED]: [5, 5],
+    // The header's version pill, the install command in its scroll region, three captions of a
+    // scroll-snap row, and the last column of the `Prose` demo's wide table in its scroll region.
+    [OBSCURED]: [9, 9],
     // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and three disclosure chevrons.
     [GLYPH]: [9, 9],
     // A one-character `Kbd` key that axe measured below the ratio and left undecided.
