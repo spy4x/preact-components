@@ -567,7 +567,30 @@ export {
 } from "./unsaved-guard.tsx"
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
-export { Prose, type ProseProps } from "./prose.tsx"
+export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
+export {
+  CHANGE_LIST_LABELS,
+  type ChangeEntry,
+  ChangeList,
+  type ChangeListLabels,
+  type ChangeListProps,
+  type ChangeMonth,
+} from "./change-list.tsx"
+export {
+  DOCS_NAV_LABELS,
+  DocsNav,
+  type DocsNavGroup,
+  type DocsNavItem,
+  type DocsNavLabels,
+  type DocsNavProps,
+} from "./docs-nav.tsx"
+export {
+  PREV_NEXT_LABELS,
+  PrevNext,
+  type PrevNextLabels,
+  type PrevNextLink,
+  type PrevNextProps,
+} from "./prev-next.tsx"
 export { TldrBox, type TldrBoxProps } from "./tldr-box.tsx"
 export {
   POST_LIST_LABELS,

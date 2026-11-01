@@ -20,6 +20,12 @@ AttachmentList.uploadingUnknown	8b898ca34ce71371
 AttachmentList.waiting	cf7ca0c9fd5d6f38
 AvatarGroup.label	fedfdc14d4f7bbb0
 Breadcrumbs.label	2bd873d6c734e63e
+ChangeList.added	18fdd549b2ed367a
+ChangeList.anchor	9dc5baf353535d6d
+ChangeList.changes	6c993e37ea30a5ac
+ChangeList.fixed	1246fc93bca00b90
+ChangeList.fixes	f8a63b88663430af
+ChangeList.pullRequest	55c1fec761fba5b2
 Coachmark.closeLabel	7d9eb7acb13e2462
 Coachmark.goTo	5650d8d75427004a
 Coachmark.goToHighlighted	dd4e9b3b30b69a80
@@ -104,6 +110,9 @@ DateTimeField.zone	dfd615b25b5c1d58
 DemoVideo.errorLabel	c548d36192f4ce04
 DemoVideo.openFileLabel	53c02a985e55f071
 DemoVideo.playLabel	43e3c3b1379bb838
+DocsNav.label	7af023c43013b9a5
+DocsNav.summary	beae47fb0bb284a8
+DocsNav.summaryNone	572cd72feb9a84e0
 EnhancedForm.done	74bb54faa1e3bd1c
 EnhancedForm.failed	4def98c892406e31
 EnhancedForm.sending	b8ed5279e897be5d
@@ -233,6 +242,9 @@ PlanCard.status.paused	e159b06187d369a0
 PlanCard.status.trialing	98a66e9745c9cb5e
 PlanCard.trialEnds	75a58d319d7bf1d4
 PostList.readTime	7166006e74bc2008
+PrevNext.label	4ff43b19536135d4
+PrevNext.next	1ff57a29d7c9d11b
+PrevNext.previous	a57b08a480b822a0
 PricingTable.choose	c7f937836f5d82d5
 PricingTable.chooseName	e835b55a1a8035fa
 PricingTable.failed	4def98c892406e31
@@ -246,6 +258,8 @@ PricingTable.per.year	611c1ee32d89ed3c
 PricingTable.perUnit	67343576583803d1
 PricingTable.perUnitMonth	b16e04f92a1035bc
 PricingTable.perUnitYear	0f6ecc00ea7a7a48
+Prose.anchor	9dc5baf353535d6d
+Prose.table	16d1c9050a0b32e8
 QuickAdd.context	0acfc7780ad3da65
 QuickAdd.due	f248beafbd16e5ee
 QuickAdd.dueAt	df63487fde4ac1f9
