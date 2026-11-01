@@ -36,6 +36,11 @@ describe("languageName", () => {
     expect(languageName("ar")).toBe("العربية")
   })
 
+  it("names a Chinese region tag by its script, as Chinese readers know the language", () => {
+    expect(languageName("zh-CN")).toBe("简体中文")
+    expect(languageName("zh-TW")).toBe("繁體中文")
+  })
+
   it("returns a tag Intl cannot read unchanged", () => {
     expect(languageName("not a tag")).toBe("not a tag")
   })
@@ -66,6 +71,55 @@ describe("LanguagePicker links mode", () => {
   it("refuses links mode without href", () => {
     expect(() => render(<LanguagePicker mode="links" languages={LANGUAGES} current="en" />))
       .toThrow(`"links" mode needs href`)
+  })
+})
+
+describe("LanguagePicker menu mode", () => {
+  const html = render(
+    <LanguagePicker mode="menu" languages={LANGUAGES} current="de" href={(tag) => `/${tag}/`} />,
+  )
+
+  it("server-renders a details of one link per language with href, hreflang and lang, and no script-only roles", () => {
+    expect(html).toMatch(/^<details /)
+    expect(html).toMatch(/<summary [^>]*data-e2e="language-menu"/)
+    const tags = links(html)
+    expect(tags.length).toBe(6)
+    LANGUAGES.forEach((tag, index) => {
+      expect(tags[index]).toContain(`href="/${tag}/"`)
+      expect(tags[index]).toContain(`hreflang="${tag}"`)
+      expect(tags[index]).toMatch(new RegExp(`\\slang="${tag}"`))
+    })
+    expect(html).not.toContain("<button")
+    expect(html).not.toContain("role=")
+  })
+
+  it("marks only the current language's link with aria-current page", () => {
+    const current = links(html).filter((tag) => tag.includes(`aria-current="page"`))
+    expect(current).toEqual([links(html)[1]])
+    expect(html).not.toContain(`aria-current="true"`)
+  })
+
+  it("names the trigger with the label and the current language's own name", () => {
+    expect(html).toMatch(/<summary [^>]*aria-label="Language: Deutsch"/)
+    expect(inGerman(
+      <LanguagePicker mode="menu" languages={LANGUAGES} current="ar" href={(tag) => `/${tag}/`} />,
+    )).toMatch(/<summary [^>]*aria-label="Sprache: العربية"/)
+  })
+
+  it("shows the current language's name in the trigger from xl only, in its own language", () => {
+    expect(html).toMatch(
+      /<summary [^>]*>(?:(?!<\/summary>).)*<span class="hidden xl:inline"><span lang="de" dir="ltr" class="notranslate">Deutsch<\/span><\/span>/,
+    )
+  })
+
+  it("is a 44 px target on a phone, 36 px from sm, with 44 px rows on a phone", () => {
+    expect(html).toMatch(/<summary class="[^"]*\bsize-11\b[^"]*\bsm:size-9\b/)
+    for (const tag of links(html)) expect(tag).toMatch(/class="[^"]*\bmin-h-11 sm:min-h-9\b/)
+  })
+
+  it("refuses menu mode without href", () => {
+    expect(() => render(<LanguagePicker mode="menu" languages={LANGUAGES} current="en" />))
+      .toThrow(`"menu" mode needs href`)
   })
 })
 
