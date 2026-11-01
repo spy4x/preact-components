@@ -316,6 +316,7 @@ export default {
   "RunSteps.unavailable": "Indisponible",
   "ScreenTour.label": "Écrans",
   "ScreenTour.viewFullSizeLabel": "Voir en taille réelle",
+  "SectionHeading.anchor": "Lien vers cette section",
   "ShortcutsDialog.closeLabel": "Fermer",
   "ShortcutsDialog.defaultGroup": "Général",
   "ShortcutsDialog.title": "Raccourcis clavier",
