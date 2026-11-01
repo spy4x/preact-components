@@ -24,6 +24,12 @@ export interface HeadTag {
   attrs: Record<string, string>
   /** Text content: the document title, or the JSON-LD body. */
   text?: string
+  /**
+   * Identity for a host head pipeline, set only on a tag that shares its type and attributes with
+   * a sibling and differs in content alone, such as each `og:locale:alternate`. Fresh's `<Head>`
+   * would merge those into one; a key unique to the value keeps each.
+   */
+  key?: string
 }
 
 /**
@@ -45,13 +51,37 @@ export function seoHeadJsonLd(head: PageHead): unknown[] {
 }
 
 /**
+ * The `og:locale:alternate` values for a page's alternates: each `lang` written the Open Graph
+ * way, with `_` (`pt-BR` → `pt_BR`), once each. `x-default`, the entry pointing at this page and
+ * the page's own `og:locale` are left out, since they name no other language.
+ */
+function alternateLocales(
+  locale: string,
+  canonical: string,
+  alternates: readonly { lang: string; url: string }[],
+): string[] {
+  const own = locale.replaceAll("-", "_").toLowerCase()
+  const seen = new Set<string>([own])
+  const locales: string[] = []
+  for (const { lang, url } of alternates) {
+    const value = lang.replaceAll("-", "_")
+    if (lang.toLowerCase() === "x-default" || url === canonical) continue
+    if (seen.has(value.toLowerCase())) continue
+    seen.add(value.toLowerCase())
+    locales.push(value)
+  }
+  return locales
+}
+
+/**
  * The full `<head>` tag set for a page, in document order.
  *
- * Primary meta, then the Twitter card, then Open Graph, then JSON-LD. Optional tags are omitted
+ * Primary meta (the `hreflang` alternates right after the canonical link), then the Twitter card,
+ * then Open Graph, then JSON-LD. Optional tags are omitted
  * rather than emitted empty — no `og:image=""`, no `og:site_name` a caller did not supply. The
  * image's alt text and size are emitted only with the image they describe.
  *
- * `<link rel="canonical">` and `og:url` carry the *normalised* address rather than the string the
+ * `<link rel="canonical">`, `og:url` and every `hreflang` link carry the *normalised* address rather than the string the
  * caller handed in, and the whole set is refused before a tag exists when that address is not an
  * `http`/`https` one: a tag set built on a wrong canonical address is wrong everywhere it is read.
  *
@@ -64,10 +94,19 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   // `ogImage` is given, unless the caller overrides it — see `PageHead.twitterCard`.
   const twitterCard = head.twitterCard ?? (head.ogImage ? "summary_large_image" : "summary")
 
+  const alternates = (head.alternates ?? []).map(({ lang, url }) => ({
+    lang,
+    url: normalizeCanonical(url),
+  }))
+
   const tags: HeadTag[] = [
     { tag: "title", attrs: {}, text: head.title },
     { tag: "meta", attrs: { name: "description", content: head.description } },
     { tag: "link", attrs: { rel: "canonical", href: canonical } },
+    ...alternates.map(({ lang, url }): HeadTag => ({
+      tag: "link",
+      attrs: { rel: "alternate", hreflang: lang, href: url },
+    })),
     {
       tag: "meta",
       attrs: {
@@ -127,6 +166,13 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
   }
   if (head.locale) {
     tags.push({ tag: "meta", attrs: { property: "og:locale", content: head.locale } })
+    for (const locale of alternateLocales(head.locale, canonical, alternates)) {
+      tags.push({
+        tag: "meta",
+        attrs: { property: "og:locale:alternate", content: locale },
+        key: `og:locale:alternate:${locale}`,
+      })
+    }
   }
 
   const graph = seoHeadJsonLd(head)
@@ -142,11 +188,12 @@ export function seoHeadTags(head: PageHead): HeadTag[] {
 }
 
 /**
- * One tag as JSX, deliberately without a `key`. Fresh's `<Head>` prints a head tag's key as
+ * One tag as JSX, never with an index `key`. Fresh's `<Head>` prints a head tag's key as
  * `data-key` and treats it as the tag's identity across every `<Head>` block on the page, so an
  * index key replaced another block's tag that happened to share the number. With no key, Fresh
- * identifies each tag by its type and attributes, which are unique within this set. Preact
- * matches unkeyed children by position, which for these tags only means rewriting attributes.
+ * identifies each tag by its type and attributes, which are unique within this set except for the
+ * tags that carry {@link HeadTag.key}, a name no index key can equal. Preact matches unkeyed
+ * children by position, which for these tags only means rewriting attributes.
  */
 function renderTag(tag: HeadTag) {
   switch (tag.tag) {
@@ -163,7 +210,7 @@ function renderTag(tag: HeadTag) {
         />
       )
     default:
-      return <meta {...tag.attrs} />
+      return <meta key={tag.key} {...tag.attrs} />
   }
 }
 
