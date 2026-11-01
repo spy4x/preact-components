@@ -522,9 +522,10 @@
  * inside the wrapper through `:where()`, so each weighs one class and a class on the element wins.
  * Code wraps instead of scrolling. On a phone inline code may break anywhere, so a long path in a
  * table cell wraps instead of taking the whole width from the columns beside it; from `sm` it
- * breaks only when it is longer than its line, so a file name that fits stays whole. A table too wide for
- * the screen scrolls inside the focusable region `Prose` puts it in (`[data-prose-table]`), so the
- * page itself never scrolls sideways.
+ * breaks only when it is longer than its line, so a file name that fits stays whole. A table cell
+ * holding code keeps room for a short name on a phone too. A table too wide for the screen
+ * scrolls inside the focusable region `Prose` puts it in (`[data-prose-table]`), so the page
+ * itself never scrolls sideways.
  */
 @utility pc-prose {
   @apply max-w-2xl text-base/7 text-pretty wrap-break-word;
@@ -612,6 +613,15 @@
   }
   & :where(th) {
     @apply font-medium;
+  }
+  /*
+   * Code that may break anywhere gives its cell a min-content width of one letter, so on a phone
+   * the table squeezed a column of file names to "den / o.j / son" while the text beside it had
+   * room. A cell holding code keeps room for about 12 letters of the mono type, with its padding;
+   * a longer path still wraps, and a table that no longer fits scrolls in its region.
+   */
+  & :where(td:has(> code), th:has(> code)) {
+    @apply max-sm:min-w-34;
   }
   & :where(thead th) {
     @apply border-strong;

@@ -1375,6 +1375,26 @@ function docsBlockSpecs(): Spec[] {
       },
     },
     {
+      name: "Prose at 390 px: a short code name in a table cell is not broken between letters",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const regions = page.locator(`#demo-Prose [data-prose-table]`)
+        await regions.first().waitFor()
+        const codes = await regions.evaluateAll((nodes) =>
+          nodes.flatMap((node) => [...node.querySelectorAll("td code")])
+            .filter((code) => (code.textContent ?? "").length <= 12)
+            .map((code) => ({ text: code.textContent, lines: code.getClientRects().length }))
+        )
+        if (!codes.length) throw new Error("no table in the Prose example holds a short code name")
+        const broken = codes.filter(({ lines }) => lines > 1).map(({ text }) => text)
+        if (broken.length) {
+          throw new Error(`these names break between letters: ${broken.join(", ")}`)
+        }
+        return `kept whole: ${codes.map(({ text }) => text).join(", ")}`
+      },
+    },
+    {
       name: "Prose: a heading's anchor is hidden until the keyboard focuses it, and links to it",
       pageId: "ui",
       run: async (page) => {
