@@ -343,6 +343,20 @@ describe("DropdownItem", () => {
     expect(html.match(/aria-current/g)?.length).toBe(1)
   })
 
+  it("marks the checked link of a server-rendered dropdown as the current page, with hreflang and lang", () => {
+    const html = render(
+      <Dropdown trigger="Language" triggerNamedByContent>
+        <DropdownItem checked href="/en/" hreflang="en" lang="en">English</DropdownItem>
+        <DropdownItem checked={false} href="/de/" hreflang="de" lang="de">Deutsch</DropdownItem>
+      </Dropdown>,
+    )
+
+    expect(attrOf(html, /<a[^>]*href="\/en\/"[^>]*>/, "aria-current")).toBe("page")
+    expect(attrOf(html, /<a[^>]*href="\/de\/"[^>]*>/, "hreflang")).toBe("de")
+    expect(attrOf(html, /<a[^>]*href="\/de\/"[^>]*>/, "lang")).toBe("de")
+    expect(html.match(/aria-current/g)?.length).toBe(1)
+  })
+
   it("renders a multiple item as a menuitemcheckbox with a box, filled only when checked", () => {
     const on = render(<DropdownItem checked multiple onClick={() => {}}>Design</DropdownItem>)
     const off = render(
