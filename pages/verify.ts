@@ -786,7 +786,7 @@ async function launchChromium(
  * Drive the page in headless Chromium and assert the interactions.
  *
  * The whole phase races a watchdog (#466): everything below runs inside `work`, and the watchdog
- * stops the phase when no check has finished and no block has started for 90 seconds, or when the
+ * stops the phase when no check has finished and no block has started for 150 seconds, or when the
  * phase has run 15 minutes in all, both multiplied by `--cpu-throttle` (see {@link phaseVerdict}).
  * So a hang anywhere inside `work` — a `DevTools` call with no timeout of its own would be the
  * classic case, which is why every one now has one — still lets `verify` exit non-zero instead of
