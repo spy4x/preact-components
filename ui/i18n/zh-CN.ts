@@ -295,6 +295,7 @@ export default {
   "RunSteps.unavailable": "不可用",
   "ScreenTour.label": "界面",
   "ScreenTour.viewFullSizeLabel": "查看大图",
+  "SectionHeading.anchor": "链接到此部分",
   "ShortcutsDialog.closeLabel": "关闭",
   "ShortcutsDialog.defaultGroup": "常规",
   "ShortcutsDialog.title": "键盘快捷键",
