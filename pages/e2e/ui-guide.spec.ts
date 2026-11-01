@@ -140,7 +140,7 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
 /**
  * A share of axe's rules that one spec runs on one page: `rules` alone, or, without `rules`, every
  * rule no other share of that page runs. A page's scan is split into shares that run in parallel,
- * each in a spec of its own, so none comes near a spec's 60-second limit (#696).
+ * each in a spec of its own, so none comes near a spec's 120-second limit (#696).
  */
 interface RuleShare {
   /** What the spec's name says it finds none of, such as "region violation". */

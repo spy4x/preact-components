@@ -236,8 +236,8 @@ of `verify` blocks the publish.
 `verify` stops its browser phase on either of two limits, and names the block it was in and the
 last check that finished:
 
-- **No progress for 90 seconds**: no check finished and no block started. This is the limit a hang
-  meets, so a hung run dies about 90 seconds after its last check, however many checks came
+- **No progress for 150 seconds**: no check finished and no block started. This is the limit a hang
+  meets, so a hung run dies about 150 seconds after its last check, however many checks came
   before. It bounds the gap between two checks, not the run, so adding checks does not move it.
 - **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
   never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
@@ -260,7 +260,8 @@ running `verify` alongside, the load average noted at the start and end of each 
 
 The longest single step then, a theme contrast sweep, took 24 seconds at a throttle of 4 (it is
 seven shorter calls now, #696); 90 seconds was about fourteen times the longest unthrottled gap and
-also covers the slowest browser start (two 30-second launch attempts, then hydration). The ceiling
+also covers the slowest browser start (two 30-second launch attempts, then hydration). It became
+150 seconds when a spec's own limit grew from 60 to 120 seconds (#979). The ceiling
 was about three times the unthrottled phase under load. The `ui` block was the largest (318 checks,
 134s unthrottled, 204s at a throttle of 4), but no one check in it is slow: the KanbanBoard checks
 took 7s together, and the time is spread over real timers and smooth scrolls. The old single
@@ -302,7 +303,7 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 - **Shape.** A file exports `specs`, a list of `Spec` (`e2e/runner.ts`): a name that says what is proven, the
   guide page to start on, the palette, and a `run(page)` that throws when the behaviour does not
   hold. The runner opens that page in a fresh browser context, waits for hydration, and records
-  one check per spec. A spec that throws, or takes over 60 seconds, is one failed check, and the
+  one check per spec. A spec that throws, or takes over 120 seconds, is one failed check, and the
   specs after it still run.
 - **Side by side.** Four specs run at once, each in its own context, so nothing a spec leaves
   behind (storage, cookies, a service worker, a viewport, emulated media) reaches another; the
