@@ -322,6 +322,7 @@ export default {
   "RunSteps.unavailable": "غير متاح",
   "ScreenTour.label": "الشاشات",
   "ScreenTour.viewFullSizeLabel": "عرض بالحجم الكامل",
+  "SectionHeading.anchor": "رابط إلى هذا القسم",
   "ShortcutsDialog.closeLabel": "إغلاق",
   "ShortcutsDialog.defaultGroup": "عام",
   "ShortcutsDialog.title": "اختصارات لوحة المفاتيح",
