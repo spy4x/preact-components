@@ -114,6 +114,11 @@ export default {
   "ErrorBoundary.description": "Reloading the page usually fixes it.",
   "ErrorBoundary.reloadLabel": "Reload the page",
   "ErrorBoundary.title": "Something went wrong.",
+  "ErrorSummary.count": {
+    "one": "{count} problem",
+    "other": "{count} problems",
+  },
+  "ErrorSummary.noneMessage": "No problems left",
   "Explorable.interactiveLabel": "Interactive",
   "FeatureCard.linkLabel": "Learn more",
   "FileInput.browse": "Choose files",

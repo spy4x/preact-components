@@ -4391,6 +4391,52 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "ErrorSummary with selectTextareaLine: a row's button selects its line in the textarea " +
+      "and scrolls it into view, the panel passes axe, and the status line says the count, then " +
+      '"No problems left" once the last problem is fixed',
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-ErrorSummary")
+      const draft = card.locator(`[data-e2e="error-summary-draft"]`)
+      const panel = card.locator(`[data-e2e="error-summary"]`)
+      const status = card.locator(`[data-e2e="error-summary-status"]`)
+      await card.getByRole("region", { name: "2 problems in this post" }).waitFor()
+      await status.filter({ hasText: /^2 problems$/ }).waitFor()
+      const { violations } = await new AxeBuilder({ page })
+        .include(`[data-e2e="error-summary"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(violations.map((v) => `${v.id}: ${v.help}`).join("; "))
+      }
+      /** The textarea's selected text and how far it is scrolled. */
+      const selection = () =>
+        draft.evaluate((el: HTMLTextAreaElement) => ({
+          text: el.value.slice(el.selectionStart, el.selectionEnd),
+          scrollTop: el.scrollTop,
+          hiddenBelow: el.scrollHeight - el.clientHeight - el.scrollTop,
+        }))
+      await panel.getByRole("button", { name: "Line 5", exact: true }).click()
+      await draft.and(page.locator(":focus")).waitFor()
+      const first = await selection()
+      if (first.text !== "<CostCalc users={500} />") {
+        throw new Error(`Line 5 selected ${JSON.stringify(first.text)}`)
+      }
+      // The draft fits its 12 rows, so axe can read every line; 30 more lines make it scroll.
+      await draft.fill(`${await draft.inputValue()}${"filler\n".repeat(30)}<Bad />`)
+      const far = panel.getByRole("button", { name: "Line 42", exact: true })
+      await far.click()
+      await draft.and(page.locator(":focus")).waitFor()
+      const last = await selection()
+      if (last.text !== "<Bad />") throw new Error(`Line 42 selected ${JSON.stringify(last.text)}`)
+      // Line 42 is the last line, so it is in view only once the textarea is scrolled to its end.
+      if (last.scrollTop <= 0 || last.hiddenBelow > 1) {
+        throw new Error(`line 42 is not in view: ${JSON.stringify(last)}`)
+      }
+      await draft.fill("# Pricing, explained\n\n<Chart year={2026} />\n")
+      await panel.waitFor({ state: "detached" })
+      await status.filter({ hasText: /^No problems left$/ }).waitFor()
+    },
+  },
+  {
     name: "Notice with onDismiss: at 390 px the close button is a named 44 px target in the " +
       "top corner, passes axe, and pressing it calls the caller, which hides the notice",
     pageId: "ui",

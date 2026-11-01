@@ -88,6 +88,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                                       |
 | `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                                               |
 | `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                                                                                                                      |
+| `ErrorSummary`        | `error-summary`        | `title` (names the region), `children?` (one line under it), `items` (`{ key, label, message }`: a button and its message per row), `onSelect(item, index)`, `countMessage?` (`"2 problems"`), `noneMessage?` (`"No problems left"`), `id?`, `data-*` — a warning panel listing problems, drawn while `items` is not empty, with a polite status line on the count  |
 | `Explorable`          | `explorable`           | `title`, `children` (the result), `lead?`, `controls?` (in a `<fieldset>` disabled until live), `caption?` (`<figcaption>`), `live?` (default: on once hydrated), `noScriptNote?`, `interactiveLabel?`, `id?`, `class?` — a `<figure>` for an interactive figure                                                                                                    |
 | `FactList`            | `fact-list`            | `facts` (`{ label, value, hint?, id? }[]`), `class?` — a `<dl>` of label and value rows; a long value drops under its label; no JavaScript                                                                                                                                                                                                                          |
 | `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                                              |
@@ -2927,6 +2928,14 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   `Combobox` matches, minus the chosen tags, each spelling once.
 - `tagInputKeyAction(event, state, count, text)` is the field's whole key table: `Combobox`'s arrow
   keys, plus Enter and comma adding a tag and Backspace removing the last one.
+
+### Textarea lines (`./textarea-line`)
+
+- `selectTextareaLine(textarea, line)` focuses a textarea, selects its 1-based line and scrolls the
+  textarea so the line sits in its middle, soft wraps counted. Use it from an `ErrorSummary` row
+  or a "next problem" key to take the reader to a problem on a line.
+- `textLineRange(text, line)` is the `[start, end]` offsets of a 1-based line, its line break left
+  out; a line out of range is the nearest one.
 
 ### UnsavedGuard (`./unsaved-guard`)
 

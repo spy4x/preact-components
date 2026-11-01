@@ -117,6 +117,12 @@ export default {
   "ErrorBoundary.description": "Suele arreglarse al recargar la página.",
   "ErrorBoundary.reloadLabel": "Recargar la página",
   "ErrorBoundary.title": "Algo salió mal.",
+  "ErrorSummary.count": {
+    "one": "{count} problema",
+    "many": "{count} de problemas",
+    "other": "{count} problemas",
+  },
+  "ErrorSummary.noneMessage": "Ya no hay problemas",
   "Explorable.interactiveLabel": "Interactivo",
   "FeatureCard.linkLabel": "Más información",
   "FileInput.browse": "Elegir archivos",
