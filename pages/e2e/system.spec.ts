@@ -406,6 +406,42 @@ function shellFormItems(page: Page): Promise<string> {
   )
 }
 
+/** The card's second header: a `LanguagePicker` menu, then a button, then the links' menu. */
+const LANGUAGE_HEADER = `#demo-SiteHeader [data-e2e="site-header-language-demo"]`
+
+/**
+ * Open the system page in a context of its own, with JavaScript on or off, at a phone's width,
+ * laid out in `dir`, and scroll the language header into view. The caller closes the context.
+ */
+async function openLanguageHeader(
+  page: Page,
+  javaScriptEnabled: boolean,
+  dir: "ltr" | "rtl",
+) {
+  const browser = page.context().browser()
+  if (browser === null) throw new Error("the spec's page has no browser to open a context in")
+  const context = await browser.newContext({
+    javaScriptEnabled,
+    viewport: { width: 390, height: 844 },
+  })
+  const tab = await context.newPage()
+  await tab.goto(page.url())
+  if (javaScriptEnabled) await tab.locator(`html[data-hydrated="true"]`).waitFor()
+  await tab.evaluate((value) => document.documentElement.dir = value, dir)
+  const header = tab.locator(LANGUAGE_HEADER)
+  await header.scrollIntoViewIfNeeded()
+  return {
+    context,
+    tab,
+    header,
+    globe: header.locator(`[data-e2e="language-menu"]`),
+    // The panel follows the trigger in both forms: the `<summary>` and the hydrated button.
+    languages: header.locator(`[data-e2e="language-menu"] + div`),
+    menuButton: header.locator(`[data-e2e="site-header-menu-button"]`),
+    links: header.locator(`[data-e2e="site-header-panel"]`),
+  }
+}
+
 export const specs: readonly Spec[] = [
   {
     name: "AuthForm: the login starts as defaultLogin, onLoginInput reports each value typed " +
@@ -2188,6 +2224,78 @@ export const specs: readonly Spec[] = [
         }
       }
       return `ltr both times; the toggle starts ${hidden.toggleStart} px into the right padding`
+    },
+  },
+  {
+    name: "SiteHeader with a LanguagePicker menu, at 320 and 390 px: the open language panel " +
+      "stays 16 px inside both edges of the bar and of the screen, left to right and right to " +
+      "left, with JavaScript and without",
+    pageId: "system",
+    run: async (page) => {
+      const seen: string[] = []
+      for (const javaScriptEnabled of [true, false]) {
+        for (const dir of ["ltr", "rtl"] as const) {
+          const { context, tab, header, globe, languages } = await openLanguageHeader(
+            page,
+            javaScriptEnabled,
+            dir,
+          )
+          try {
+            await globe.click()
+            await languages.waitFor()
+            for (const width of [390, 320]) {
+              await tab.setViewportSize({ width, height: 844 })
+              const [box, bar] = [await languages.boundingBox(), await header.boundingBox()]
+              const where = `${width} px, ${dir}, JavaScript ${javaScriptEnabled ? "on" : "off"}`
+              if (!box || !bar) throw new Error(`no language panel or bar at ${where}`)
+              const [start, end] = [Math.round(box.x), Math.round(box.x + box.width)]
+              const [barStart, barEnd] = [Math.round(bar.x), Math.round(bar.x + bar.width)]
+              if (start < Math.max(16, barStart + 16) || end > Math.min(width, barEnd) - 16) {
+                throw new Error(
+                  `the panel spans ${start} to ${end} px, the bar ${barStart} to ${barEnd}, at ${where}`,
+                )
+              }
+              seen.push(`${start}-${end} in ${barStart}-${barEnd}`)
+            }
+          } finally {
+            await context.close()
+          }
+        }
+      }
+      return `panel spans ${seen.join(", ")} px`
+    },
+  },
+  {
+    name: "SiteHeader with a LanguagePicker menu at 390 px: opening the language menu closes " +
+      "the links' menu and opening the links' menu closes the language menu, with JavaScript " +
+      "and without",
+    pageId: "system",
+    run: async (page) => {
+      for (const javaScriptEnabled of [true, false]) {
+        const { context, globe, languages, menuButton, links } = await openLanguageHeader(
+          page,
+          javaScriptEnabled,
+          "ltr",
+        )
+        const mode = `JavaScript ${javaScriptEnabled ? "on" : "off"}`
+        try {
+          await menuButton.click()
+          await links.waitFor()
+          await globe.click()
+          await languages.waitFor()
+          await links.waitFor({ state: "hidden" }).catch(() => {
+            throw new Error(`the links' menu stayed open under the language menu, ${mode}`)
+          })
+          await menuButton.click()
+          await links.waitFor()
+          await languages.waitFor({ state: "hidden" }).catch(() => {
+            throw new Error(`the language menu stayed open under the links' menu, ${mode}`)
+          })
+        } finally {
+          await context.close()
+        }
+      }
+      return "each menu closed the other, with JavaScript and without"
     },
   },
 ]
