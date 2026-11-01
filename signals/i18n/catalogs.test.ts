@@ -6,7 +6,7 @@ import { readCatalogs } from "../../infra/scripts/i18n-stamp.ts"
 const DIR = new URL("./", import.meta.url)
 
 /** The languages the `signals` package ships, besides English. */
-const SHIPPED = ["ar", "de", "es", "pt-BR", "ru"]
+const SHIPPED = ["ar", "de", "es", "fr", "ja", "pt-BR", "ru", "zh-CN"]
 
 describe("the signals catalogs", () => {
   it("translate every English key, in step with its lock", async () => {

@@ -17,17 +17,23 @@ import uiEs from "@spy4x/preact-ui/i18n/es"
 import uiPtBr from "@spy4x/preact-ui/i18n/pt-BR"
 import uiRu from "@spy4x/preact-ui/i18n/ru"
 import uiAr from "@spy4x/preact-ui/i18n/ar"
+import uiFr from "@spy4x/preact-ui/i18n/fr"
+import uiJa from "@spy4x/preact-ui/i18n/ja"
+import uiZhCn from "@spy4x/preact-ui/i18n/zh-CN"
 import systemEn from "@spy4x/preact-system/i18n/en"
 import systemDe from "@spy4x/preact-system/i18n/de"
 import systemEs from "@spy4x/preact-system/i18n/es"
 import systemPtBr from "@spy4x/preact-system/i18n/pt-BR"
 import systemRu from "@spy4x/preact-system/i18n/ru"
 import systemAr from "@spy4x/preact-system/i18n/ar"
+import systemFr from "@spy4x/preact-system/i18n/fr"
+import systemJa from "@spy4x/preact-system/i18n/ja"
+import systemZhCn from "@spy4x/preact-system/i18n/zh-CN"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 
 /** The languages the library ships, in the order a picker lists them. */
-export const DEMO_LANGUAGES = ["en", "de", "es", "pt-BR", "ru", "ar"] as const
+export const DEMO_LANGUAGES = ["en", "de", "es", "fr", "pt-BR", "ru", "ar", "ja", "zh-CN"] as const
 
 const catalogs: Record<string, [Record<string, unknown>, Record<string, unknown>]> = {
   en: [uiEn, systemEn],
@@ -36,6 +42,9 @@ const catalogs: Record<string, [Record<string, unknown>, Record<string, unknown>
   "pt-BR": [uiPtBr, systemPtBr],
   ru: [uiRu, systemRu],
   ar: [uiAr, systemAr],
+  fr: [uiFr, systemFr],
+  ja: [uiJa, systemJa],
+  "zh-CN": [uiZhCn, systemZhCn],
 }
 
 const translators = new Map<string, Translator<string>>()
