@@ -74,8 +74,10 @@ export const pageNavigationDemos = {
     { label: "Limits", href: "#limits" },
   ]}
 />`,
+    // Named apart from the guide's own "On this page" column, so the page's landmarks stay unique.
     render: () => (
       <OnThisPage
+        label="Sections of this example"
         links={[
           { label: "What you get", href: "#demo-OnThisPage" },
           { label: "How it works", href: "#demo-OnThisPage" },
