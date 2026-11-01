@@ -128,6 +128,10 @@ export default {
   "ErrorBoundary.description": "たいていはページを再読み込みすると直ります。",
   "ErrorBoundary.reloadLabel": "ページを再読み込み",
   "ErrorBoundary.title": "問題が発生しました。",
+  "ErrorSummary.count": {
+    "other": "{count}件の問題",
+  },
+  "ErrorSummary.noneMessage": "問題はもうありません",
   "Explorable.interactiveLabel": "インタラクティブ",
   "FeatureCard.linkLabel": "詳しく見る",
   "FileInput.browse": "ファイルを選択",

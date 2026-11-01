@@ -135,6 +135,12 @@ export default {
   "ErrorBoundary.description": "Recharger la page règle généralement le problème.",
   "ErrorBoundary.reloadLabel": "Recharger la page",
   "ErrorBoundary.title": "Un problème est survenu.",
+  "ErrorSummary.count": {
+    "one": "{count} problème",
+    "many": "{count} problèmes",
+    "other": "{count} problèmes",
+  },
+  "ErrorSummary.noneMessage": "Plus aucun problème",
   "Explorable.interactiveLabel": "Interactif",
   "FeatureCard.linkLabel": "En savoir plus",
   "FileInput.browse": "Choisir des fichiers",
