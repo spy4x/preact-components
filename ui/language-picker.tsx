@@ -3,31 +3,44 @@
  *
  * Every language is named in itself (Deutsch, Русский, العربية), from `Intl.DisplayNames`, so a
  * person who landed in a language they cannot read still finds their own. The picker is a radio
- * group for an app's dialog, or plain links for a website's footer; the dialog wraps the group in a
- * `Modal` and applies each choice at once.
+ * group for an app's dialog, plain links for a website's footer, or a globe menu of links for a
+ * website's header; the dialog wraps the group in a `Modal` and applies each choice at once.
  *
  * @module
  */
 
 import { join } from "@spy4x/preact-cn/join"
-import { IconCheck, IconGlobe, IconSpinner } from "@spy4x/preact-icons"
+import { IconCheck, IconChevronDown, IconGlobe, IconSpinner } from "@spy4x/preact-icons"
 import { textDirection } from "@spy4x/platform/universal/i18n"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
-import { Button } from "./button.tsx"
+import { Button, buttonClasses } from "./button.tsx"
+import { Dropdown, DropdownItem } from "./dropdown.tsx"
 import { useLabels } from "./i18n.tsx"
 import { Modal } from "./modal.tsx"
 import { Isolated } from "./bdi.tsx"
+import { hintBubbleClasses } from "./hint-bubble.ts"
+
+/**
+ * Region tags that stand for a script: Chinese readers know the language by its script, so
+ * `zh-CN` is named "简体中文", not "中文（中国）".
+ */
+const SCRIPT_OF_REGION: Record<string, string> = {
+  "zh-cn": "zh-Hans",
+  "zh-tw": "zh-Hant",
+}
 
 /**
  * The name of a language in that language, first letter capitalised the way the language does it:
- * `languageName("ru")` is `"Русский"`, `languageName("pt-BR")` `"Português (Brasil)"`. A tag `Intl`
- * cannot parse comes back as it is.
+ * `languageName("ru")` is `"Русский"`, `languageName("pt-BR")` `"Português (Brasil)"`. A Chinese
+ * region tag is named by its script: `languageName("zh-CN")` is `"简体中文"`, `"zh-TW"`
+ * `"繁體中文"`. A tag `Intl` cannot parse comes back as it is.
  */
 export function languageName(tag: string): string {
   try {
-    const name = new Intl.DisplayNames([tag], { type: "language" }).of(tag)
+    const named = SCRIPT_OF_REGION[tag.toLowerCase()] ?? tag
+    const name = new Intl.DisplayNames([named], { type: "language" }).of(named)
     if (!name) return tag
     return name.slice(0, 1).toLocaleUpperCase(tag) + name.slice(1)
   } catch {
@@ -71,10 +84,11 @@ export interface LanguagePickerProps {
   current: string | null
   /**
    * `"list"`, the default, is a radio group for an app; `"links"` is a row of plain links for a
-   * website, which works with no JavaScript and needs {@link href}.
+   * website's footer; `"menu"` is a globe button opening those links, for a website's header. Both
+   * link modes work with no JavaScript and need {@link href}.
    */
-  mode?: "list" | "links"
-  /** In `"links"` mode, the address of the page in a language. Required there. */
+  mode?: "list" | "links" | "menu"
+  /** In `"links"` and `"menu"` mode, the address of the page in a language. Required there. */
   href?: (tag: string) => string
   /** In `"list"` mode, called with the chosen tag, or `null` for "Automatic". */
   onSelect?: (tag: string | null) => void
@@ -133,6 +147,14 @@ function Name({ tag }: { tag: string }): JSX.Element {
  * **Links.** A `<nav>` with one `<a href hreflang lang>` per language and `aria-current="page"` on
  * the current one, whose link is this very page: no script, so a website's footer works with
  * JavaScript off.
+ *
+ * **Menu.** A `Dropdown` for a website's header: a globe, then the current language's own name from
+ * `xl` up, then a chevron. Below `xl` the globe stands alone, a 44 px target (36 px from `sm`) with
+ * a hint under it. The trigger is named "Language: English" at every width, from `labels.label`.
+ * The panel holds the same links as `"links"`, one `DropdownItem` per language in the order given,
+ * the current one checked. Without JavaScript it is a `<details>` of plain links, the current one
+ * `aria-current="page"`; once hydrated it is a menu that Escape, a press outside and the arrow keys
+ * work, as `Dropdown` says.
  */
 export function LanguagePicker(
   {
@@ -197,6 +219,11 @@ export function LanguagePicker(
         </ul>
       </nav>
     )
+  }
+
+  if (mode === "menu") {
+    if (!href) throw new Error(`LanguagePicker: "menu" mode needs href`)
+    return <LanguageMenu languages={languages} current={current} href={href} labels={labels} />
   }
 
   const options: (string | null)[] = automatic ? [null, ...languages] : [...languages]
@@ -297,6 +324,73 @@ export function LanguagePicker(
           : null}
       </p>
     </div>
+  )
+}
+
+/**
+ * The menu trigger: the site header's ghost look, a square 44 px target on a phone and 36 px from
+ * `sm`, widening from `xl` where the language's name shows. `group/language` lets the hint below
+ * follow the trigger's hover and focus.
+ */
+const MENU_TRIGGER = buttonClasses(
+  "ghost",
+  "none",
+  "group/language relative gap-2 size-11 text-sm sm:size-9 xl:h-9 xl:w-auto xl:px-3",
+)
+
+/**
+ * The hint under a globe-only trigger, below `xl`: shown on hover and keyboard focus, hidden while
+ * the menu is open so it never covers the panel. Hidden from screen readers, which hear the
+ * trigger's own name.
+ */
+const MENU_HINT =
+  "pointer-events-none invisible absolute end-0 top-full z-50 mt-2 w-max opacity-0 transition-opacity duration-150 group-hover/language:visible group-hover/language:opacity-100 group-focus-visible/language:visible group-focus-visible/language:opacity-100 group-aria-expanded/language:hidden [details[open]_&]:hidden xl:hidden"
+
+/** `"menu"` mode of {@link LanguagePicker}: a globe `Dropdown` of links, one per language. */
+function LanguageMenu(
+  { languages, current, href, labels }: {
+    languages: readonly string[]
+    current: string | null
+    href: (tag: string) => string
+    labels: LanguagePickerLabels
+  },
+): JSX.Element {
+  const name = current ? `${labels.label}: ${languageName(current)}` : labels.label
+  return (
+    <Dropdown
+      triggerLabel={name}
+      triggerClasses={MENU_TRIGGER}
+      triggerDataE2E="language-menu"
+      menuLabel={labels.label}
+      panelClasses="min-w-56 py-1"
+      trigger={
+        <>
+          <IconGlobe class="size-5 shrink-0 xl:size-4" aria-hidden="true" />
+          {current && (
+            <span class="hidden xl:inline">
+              <Name tag={current} />
+            </span>
+          )}
+          <IconChevronDown class="hidden size-4 shrink-0 text-muted xl:block" aria-hidden="true" />
+          <span class={MENU_HINT} aria-hidden="true">
+            <span class={hintBubbleClasses}>{name}</span>
+          </span>
+        </>
+      }
+    >
+      {languages.map((tag) => (
+        <DropdownItem
+          key={tag}
+          href={href(tag)}
+          hreflang={tag}
+          lang={tag}
+          checked={tag === current}
+          class="min-h-11 sm:min-h-9"
+        >
+          <Name tag={tag} />
+        </DropdownItem>
+      ))}
+    </Dropdown>
   )
 }
 
