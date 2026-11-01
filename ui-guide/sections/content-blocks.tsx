@@ -1,10 +1,19 @@
 /**
  * The cards of the blocks a blog, a docs site, a changelog and a record's detail page are read
- * in: `Prose`, `TldrBox`, `PostList`, `DocsNav`, `PrevNext`, `ChangeList` and `FactList`. None
- * needs JavaScript. They are spread into the Display section.
+ * in: `Prose`, `TldrBox`, `PostList`, `DocsNav`, `PrevNext`, `ChangeList`, `SectionHeading` and
+ * `FactList`. None needs JavaScript. They are spread into the Display section.
  */
 
-import { ChangeList, DocsNav, FactList, PostList, PrevNext, Prose, TldrBox } from "@spy4x/preact-ui"
+import {
+  ChangeList,
+  DocsNav,
+  FactList,
+  PostList,
+  PrevNext,
+  Prose,
+  SectionHeading,
+  TldrBox,
+} from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
 /** A short article, as a Markdown renderer hands it over: plain elements, no classes. */
@@ -267,6 +276,65 @@ export const contentBlockDemos: DemoFragment = {
           },
         ]}
       />
+    ),
+  },
+  SectionHeading: {
+    summary:
+      "A heading written as elements with Prose's “Link to this section” anchor beside it, for a page that is not one article.",
+    wide: false,
+    props: [
+      {
+        name: "children",
+        type: "ComponentChildren",
+        description: "The heading's text.",
+      },
+      {
+        name: "id",
+        type: "string",
+        description:
+          "The heading's own `id`, such as the one its section's `aria-labelledby` names.",
+      },
+      {
+        name: "targetId",
+        type: "string",
+        default: "id",
+        description: "The `id` the anchor links to, such as the section's own.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4",
+        default: "2",
+        description: "The heading's level; each is drawn at Prose's size for it.",
+      },
+      {
+        name: "labels",
+        type: "{ anchor? }",
+        description: "The anchor's name.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities on the heading, merged after the defaults.",
+      },
+    ],
+    snippet: `<section id="pricing" aria-labelledby="pricing-title">
+  <SectionHeading id="pricing-title" targetId="pricing">Pricing</SectionHeading>
+  …
+</section>`,
+    render: () => (
+      <section
+        id="guide-section-heading"
+        aria-labelledby="guide-section-heading-title"
+        class="flex flex-col gap-3"
+      >
+        <SectionHeading id="guide-section-heading-title" targetId="guide-section-heading">
+          Pricing
+        </SectionHeading>
+        <p class="text-pretty">
+          One plan, free while you host it yourself.{" "}
+          <a href="#demo-SectionHeading" class="underline">Compare plans</a>
+        </p>
+      </section>
     ),
   },
   FactList: {

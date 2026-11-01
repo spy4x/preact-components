@@ -1311,11 +1311,17 @@ function blogBlockSpecs(): Spec[] {
 }
 
 /**
- * `Prose`'s table regions and heading anchors, `DocsNav`, `PrevNext` and `ChangeList`: the blocks
- * of a docs site and a changelog.
+ * `Prose`'s table regions and heading anchors, `DocsNav`, `PrevNext`, `ChangeList` and
+ * `SectionHeading`: the blocks of a docs site, a changelog and a feature page.
  */
 function docsBlockSpecs(): Spec[] {
-  const cards = ["#demo-Prose", "#demo-DocsNav", "#demo-PrevNext", "#demo-ChangeList"] as const
+  const cards = [
+    "#demo-Prose",
+    "#demo-DocsNav",
+    "#demo-PrevNext",
+    "#demo-ChangeList",
+    "#demo-SectionHeading",
+  ] as const
   return [
     scrollRegionSpec({
       what: "Prose wide table",
@@ -1355,8 +1361,31 @@ function docsBlockSpecs(): Spec[] {
         await fix.waitFor()
       },
     },
+    {
+      name:
+        "SectionHeading: its anchor is hidden until the keyboard focuses it, and links to the " +
+        "section",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-SectionHeading")
+        const anchor = card.getByRole("link", { name: "Link to this section", exact: true })
+        await anchor.waitFor({ state: "attached" })
+        if (await anchor.getAttribute("href") !== "#guide-section-heading") {
+          throw new Error(`the anchor links to ${await anchor.getAttribute("href")}`)
+        }
+        const opacity = () => anchor.evaluate((node) => getComputedStyle(node).opacity)
+        if (await opacity() !== "0") throw new Error(`unfocused, its opacity is ${await opacity()}`)
+        await card.getByRole("link", { name: "Compare plans" }).focus()
+        await page.keyboard.press("Shift+Tab")
+        await anchor.and(page.locator(":focus")).waitFor()
+        if (await opacity() !== "1") throw new Error(`focused, its opacity is ${await opacity()}`)
+        await page.keyboard.press("Enter")
+        await page.waitForURL(/#guide-section-heading$/)
+      },
+    },
     ...(["light", "dark"] as const).map((palette): Spec => ({
-      name: `Prose, DocsNav, PrevNext and ChangeList: axe finds no violation, their text's ` +
+      name: `Prose, DocsNav, PrevNext, ChangeList and SectionHeading: axe finds no violation, ` +
+        `their text's ` +
         `contrast included, ${palette}`,
       pageId: "ui",
       colorScheme: palette,
