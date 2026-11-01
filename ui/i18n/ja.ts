@@ -158,9 +158,9 @@ export default {
   "KanbanBoard.cancelled": "{item}を{column}の{total}件中{position}番目に戻しました。",
   "KanbanBoard.dropped": "{item}を{column}の{total}件中{position}番目に置きました。",
   "KanbanBoard.instructions":
-    "SpaceキーかEnterキーでカードを持ち上げます。矢印キーで動かし、SpaceキーかEnterキーで置き、Escキーで元に戻します。",
+    "スペースキーかEnterキーでカードを持ち上げます。矢印キーで動かし、スペースキーかEnterキーで置き、Escキーで元に戻します。",
   "KanbanBoard.instructionsWithOpen":
-    "Enterキーでカードを開き、Spaceキーで持ち上げます。矢印キーで動かし、Spaceキーで置き、Escキーで元に戻します。",
+    "Enterキーでカードを開き、スペースキーで持ち上げます。矢印キーで動かし、スペースキーで置き、Escキーで元に戻します。",
   "KanbanBoard.moved": "{item}：{column}、{total}件中{position}番目です。",
   "KanbanBoard.pickedUp": "{item}を持ち上げました。{column}、{total}件中{position}番目です。",
   "KanbanBoard.roleDescription": "移動できるカード",
@@ -178,7 +178,7 @@ export default {
   "Kbd.option": "Option",
   "Kbd.right": "右矢印",
   "Kbd.shift": "Shift",
-  "Kbd.space": "Space",
+  "Kbd.space": "スペース",
   "Kbd.tab": "Tab",
   "Kbd.then": "続けて",
   "Kbd.up": "上矢印",
@@ -308,7 +308,7 @@ export default {
   "SortableList.dropped": "{item}を{total}件中{position}番目に置きました。",
   "SortableList.handle": "{item}を並べ替え",
   "SortableList.instructions":
-    "SpaceキーかEnterキーで項目を持ち上げます。矢印キーで動かし、SpaceキーかEnterキーで置き、Escキーでキャンセルします。",
+    "スペースキーかEnterキーで項目を持ち上げます。矢印キーで動かし、スペースキーかEnterキーで置き、Escキーでキャンセルします。",
   "SortableList.moved": "{item}を{total}件中{position}番目に移動しました。",
   "SortableList.pickedUp": "{item}を持ち上げました。{total}件中{position}番目です。",
   "StatusMark.archived": "アーカイブ済み",

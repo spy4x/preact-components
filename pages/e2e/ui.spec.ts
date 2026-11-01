@@ -3863,10 +3863,10 @@ function languagePickerSpecs(): Spec[] {
         await radio("العربية", true).and(focused).waitFor()
         const direction = await dialog.evaluate((element) => getComputedStyle(element).direction)
         if (direction !== "rtl") throw new Error(`the Arabic dialog runs ${direction}`)
-        // Right goes back up the list in a right-to-left page.
+        // Right goes back up the list in a right-to-left page, to the Chinese row before Arabic.
         await page.keyboard.press("ArrowRight")
-        await radio("Русский", true).and(focused).waitFor()
-        await dialog.getByRole("heading", { name: "Язык" }).waitFor()
+        await radio(/^(简体中文|中文)/, true).and(focused).waitFor()
+        await dialog.getByRole("heading", { name: "语言" }).waitFor()
 
         await page.keyboard.press("Home")
         await dialog.getByRole("heading", { name: "Language" }).waitFor()

@@ -112,9 +112,11 @@ A button says what it does, as a verb: "Speichern", not "Speicherung". An error 
 and what to do next. Use the typographic quotes of the language: „…“ in German, «…» in Spanish,
 Russian and Arabic, “…” in Brazilian Portuguese and Simplified Chinese, «…» with non-breaking
 spaces inside in French, 「…」 in Japanese. French puts a non-breaking space before `: ; ! ?`.
-Chinese and Japanese use full-width punctuation (，。：！？) and no space between words; a Latin word
-or a `{placeholder}` inside the sentence takes no added space either, except where the language's
-apps commonly put one.
+Chinese and Japanese use full-width punctuation (，。：！？) and no space between words. Japanese adds
+no space around a Latin word, a number or a `{placeholder}` either. Simplified Chinese puts a
+half-width space between Chinese and a Latin word or a number ("按 Enter", "过去 24 小时"), and
+around a placeholder whose value is Latin text or a number; none around one that holds Chinese
+words, a date or a person's name.
 
 ## Terms kept in English
 

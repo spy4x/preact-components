@@ -33,7 +33,7 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 
 /** The languages the library ships, in the order a picker lists them. */
-export const DEMO_LANGUAGES = ["en", "de", "es", "fr", "pt-BR", "ru", "ar", "ja", "zh-CN"] as const
+export const DEMO_LANGUAGES = ["en", "de", "es", "pt-BR", "ru", "fr", "ja", "zh-CN", "ar"] as const
 
 const catalogs: Record<string, [Record<string, unknown>, Record<string, unknown>]> = {
   en: [uiEn, systemEn],
