@@ -67,6 +67,14 @@ describe("ChangeList", () => {
     expect(html).toContain('</h3><a href="#2026-10-fixed" aria-label="Link to this section"')
   })
 
+  it("names every heading's anchor with the caller's anchor label", () => {
+    const html = render(<ChangeList months={MONTHS} labels={{ anchor: "Copy the link" }} />)
+    const headings = html.match(/class="group\/heading /g)?.length ?? 0
+    expect(headings).toBeGreaterThan(2)
+    expect(html.match(/<a href="#[^"]*" aria-label="Copy the link"/g)?.length).toBe(headings)
+    expect(html).not.toContain("Link to this section")
+  })
+
   it("takes the caller's words and heading level", () => {
     const html = render(
       <ChangeList
