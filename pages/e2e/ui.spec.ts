@@ -3606,7 +3606,9 @@ function loopVideoSpecs(): Spec[] {
         "draws no button",
       pageId: "ui",
       run: async (page) => {
-        const frame = page.locator("#demo-LoopVideo figure").filter({ hasText: "no browser can play" })
+        const frame = page.locator("#demo-LoopVideo figure").filter({
+          hasText: "no browser can play",
+        })
         await frame.scrollIntoViewIfNeeded()
         await frame.getByRole("img", { name: "A loop that cannot play.", exact: true }).waitFor()
         await frame.locator("video").waitFor({ state: "detached" })
