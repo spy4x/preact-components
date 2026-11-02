@@ -157,10 +157,12 @@ export {
 } from "./date-range-picker.tsx"
 export {
   DemoVideo,
+  type DemoVideoDarkPoster,
   type DemoVideoPoster,
   type DemoVideoProps,
   type DemoVideoSource,
 } from "./demo-video.tsx"
+export { LoopVideo, type LoopVideoProps } from "./loop-video.tsx"
 export { YouTubeVideo, type YouTubeVideoProps } from "./youtube-video.tsx"
 export { DialogActions, type DialogActionsProps } from "./dialog-actions.tsx"
 export {

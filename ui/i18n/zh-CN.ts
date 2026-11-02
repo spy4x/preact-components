@@ -214,6 +214,8 @@ export default {
   "LookTile.sizeSoldOut": "已售罄",
   "LookTile.sizes": "尺码",
   "LookTile.soldOut": "已售罄",
+  "LoopVideo.pauseLabel": "暂停动画",
+  "LoopVideo.playLabel": "播放动画",
   "MoneyInput.invalidMessage": "请输入有效金额",
   "MoneyInput.rangeBetween": "请输入 {min} 到 {max} 之间的金额",
   "MoneyInput.rangeMax": "请输入不超过 {max} 的金额",

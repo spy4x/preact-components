@@ -2956,7 +2956,7 @@ function demoVideoSpecs(): Spec[] {
           if (/\/video-demo\/clip\./.test(request.url())) requested.push(request.url())
         })
         const { card, link, video, clipRequests, playing } = await demoVideoCard(page)
-        if (await card.locator("video, source").count() > 0) {
+        if (await card.locator("video, video source").count() > 0) {
           throw new Error("a video element exists before the press")
         }
         const early = [...requested, ...await clipRequests()]
@@ -3353,6 +3353,284 @@ async function focusInPlayer(page: Page) {
     document.activeElement !== null &&
     document.activeElement === document.querySelector("#demo-YouTubeVideo iframe")
   )
+}
+
+/**
+ * Serves the loop's files with byte ranges, as GitHub Pages and every CDN do. The preview server
+ * answers a range request with the whole file and a 200, and Chromium cannot seek in such a
+ * response, so without this no spec could see the clip keep its time.
+ */
+async function serveLoopsWithRanges(page: Page): Promise<void> {
+  await page.route(/\/video-demo\/loop-(light|dark)\.(webm|mp4)$/, async (route) => {
+    const response = await route.fetch()
+    const body = await response.body()
+    const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers()["range"] ?? "")
+    if (range === null) return route.fulfill({ response, body })
+    const start = Number(range[1])
+    const end = range[2] === "" ? body.length - 1 : Math.min(Number(range[2]), body.length - 1)
+    await route.fulfill({
+      status: 206,
+      headers: {
+        "content-type": response.headers()["content-type"] ?? "video/webm",
+        "accept-ranges": "bytes",
+        "content-range": `bytes ${start}-${end}/${body.length}`,
+      },
+      body: body.subarray(start, end + 1),
+    })
+  })
+}
+
+/** The working loop of the `LoopVideo` card, its button and what its clip is doing. */
+function loopVideoCard(page: Page) {
+  const card = page.locator("#demo-LoopVideo")
+  const frame = card.locator("figure").filter({ hasText: "A six-second test loop" })
+  /** The clip's state, read off the element. */
+  const state = () =>
+    frame.locator("video").evaluate((element) => {
+      const clip = element as HTMLVideoElement
+      return {
+        paused: clip.paused,
+        loop: clip.loop,
+        time: clip.currentTime,
+        src: clip.currentSrc,
+        label: clip.getAttribute("aria-label"),
+      }
+    })
+  return {
+    frame,
+    state,
+    /** The pause/play button, under either of its names. */
+    button: (label: "Pause animation" | "Play animation") =>
+      frame.getByRole("button", { name: `${label}: Test loop`, exact: true }),
+    /** Every request this page made for one of the loop's files, by resource timing. */
+    loopRequests: () =>
+      page.evaluate(() =>
+        performance.getEntriesByType("resource").map((entry) => entry.name)
+          .filter((name) => /\/video-demo\/loop-(light|dark)\.(webm|mp4)$/.test(name))
+      ),
+    /** Waits until the clip is playing and has moved past its first frame. */
+    playing: () =>
+      frame.locator("video").evaluate((element) =>
+        new Promise<void>((resolve, reject) => {
+          const clip = element as HTMLVideoElement
+          const timer = setTimeout(() =>
+            reject(
+              new Error(
+                `not playing: paused ${clip.paused}, readyState ${clip.readyState}, ` +
+                  `currentTime ${clip.currentTime}`,
+              ),
+            ), 10_000)
+          const done = () => {
+            if (clip.paused || clip.currentTime === 0) return
+            clearTimeout(timer)
+            clip.removeEventListener("timeupdate", done)
+            resolve()
+          }
+          clip.addEventListener("timeupdate", done)
+          done()
+        })
+      ),
+    /** Waits until the clip is paused, for at most five seconds. */
+    paused: () =>
+      frame.locator("video").evaluate((element) =>
+        new Promise<void>((resolve, reject) => {
+          const clip = element as HTMLVideoElement
+          const timer = setTimeout(() => reject(new Error("the clip did not pause")), 5_000)
+          const done = () => {
+            if (!clip.paused) return
+            clearTimeout(timer)
+            resolve()
+          }
+          clip.addEventListener("pause", done)
+          done()
+        })
+      ),
+    /** Scrolls the page until the clip is wholly out of the viewport, above it. */
+    scrollAway: () =>
+      frame.evaluate((element) => {
+        const box = element.getBoundingClientRect()
+        globalThis.scrollBy(0, box.bottom + 40)
+      }),
+  }
+}
+
+/**
+ * The `LoopVideo` card: nothing loads before the clip is in view; in view it plays, out of view it
+ * pauses; the button pauses it by keyboard and that pause holds; dark pages play the dark files and
+ * a theme change keeps the time; reduced motion never autoplays; a missing file keeps the still.
+ */
+function loopVideoSpecs(): Spec[] {
+  return [
+    {
+      name: "LoopVideo: no request for the loop before it is in view; in view it plays the light " +
+        "files in a loop, and scrolled out of view it pauses",
+      pageId: "ui",
+      run: async (page) => {
+        const { frame, state, loopRequests, playing, paused, scrollAway } = loopVideoCard(page)
+        await frame.locator("video").waitFor({ state: "attached" })
+        const box = await frame.boundingBox()
+        const viewport = page.viewportSize()
+        if (box === null || viewport === null || box.y < viewport.height) {
+          throw new Error(`the loop starts in view at ${box?.y}, so the spec proves nothing`)
+        }
+        const early = await loopRequests()
+        if (early.length > 0) {
+          throw new Error(`requested before it was in view: ${early.join(", ")}`)
+        }
+        if (!(await state()).paused) throw new Error("the clip plays out of view")
+
+        await frame.scrollIntoViewIfNeeded()
+        await playing()
+        const shown = await state()
+        if (!shown.loop) throw new Error("the clip does not loop")
+        if (!/\/video-demo\/loop-light\.webm$/.test(shown.src)) {
+          throw new Error(`the clip plays ${shown.src}, not the light WebM`)
+        }
+        await scrollAway()
+        await paused()
+        return `${(await loopRequests()).length} loop request(s) once in view`
+      },
+    },
+    {
+      name: "LoopVideo: Tab reaches the 44 px button, Enter pauses the clip and renames the " +
+        "button, the pause holds when the clip scrolls out and back in, Escape hides the hint, " +
+        "and Space plays it again",
+      pageId: "ui",
+      run: async (page) => {
+        const { frame, button, state, playing, paused, scrollAway } = loopVideoCard(page)
+        await frame.scrollIntoViewIfNeeded()
+        await playing()
+        const pause = button("Pause animation")
+        await pause.focus()
+        await page.keyboard.press("Shift+Tab")
+        await page.keyboard.press("Tab")
+        await pause.and(page.locator(":focus-visible")).waitFor()
+        const size = await pause.boundingBox()
+        if (size === null || size.width < 44 || size.height < 44) {
+          throw new Error(`the button is ${size?.width}x${size?.height} px`)
+        }
+        const hint = frame.locator(`[aria-hidden="true"]`).filter({
+          hasText: "Pause animation: Test loop",
+        })
+        await hint.waitFor({ state: "visible" })
+        await page.keyboard.press("Escape")
+        await hint.waitFor({ state: "hidden" })
+
+        await page.keyboard.press("Enter")
+        await paused()
+        const play = button("Play animation")
+        await play.and(page.locator(":focus")).waitFor()
+        const held = (await state()).time
+        await scrollAway()
+        await frame.scrollIntoViewIfNeeded()
+        // The observer has had time to call for play if it were going to.
+        await page.waitForTimeout(1_000)
+        const after = await state()
+        if (!after.paused || after.time !== held) {
+          throw new Error(`the pause did not hold: paused ${after.paused}, ${held} → ${after.time}`)
+        }
+        await play.focus()
+        await page.keyboard.press(" ")
+        await playing()
+        await button("Pause animation").waitFor()
+      },
+    },
+    {
+      name:
+        "LoopVideo on a dark page: the dark files play, and a switch to light loads the light " +
+        "files at the same time and keeps playing",
+      pageId: "ui",
+      colorScheme: "dark",
+      run: async (page) => {
+        await serveLoopsWithRanges(page)
+        const { frame, state, playing } = loopVideoCard(page)
+        await frame.scrollIntoViewIfNeeded()
+        await playing()
+        const dark = await state()
+        if (!/\/video-demo\/loop-dark\.webm$/.test(dark.src)) {
+          throw new Error(`a dark page plays ${dark.src}`)
+        }
+        await page.waitForTimeout(1_000)
+        const before = (await state()).time
+        await page.emulateMedia({ colorScheme: "light" })
+        await frame.locator("video").evaluate((element) =>
+          new Promise<void>((resolve, reject) => {
+            const clip = element as HTMLVideoElement
+            const timer = setTimeout(() =>
+              reject(
+                new Error(
+                  `the light files did not play: ${clip.currentSrc} at ${clip.currentTime}s`,
+                ),
+              ), 10_000)
+            const done = () => {
+              if (!/loop-light\.webm$/.test(clip.currentSrc) || clip.currentTime === 0) return
+              clearTimeout(timer)
+              clip.removeEventListener("timeupdate", done)
+              resolve()
+            }
+            clip.addEventListener("timeupdate", done)
+            done()
+          })
+        )
+        const light = await state()
+        if (light.paused) throw new Error("the clip stopped on the theme change")
+        if (light.time < before) {
+          throw new Error(`the clip went back from ${before}s to ${light.time}s`)
+        }
+      },
+    },
+    {
+      name:
+        "LoopVideo under reduced motion: in view it does not start; the button plays it once, " +
+        "without a loop",
+      pageId: "ui",
+      run: async (page) => {
+        await page.emulateMedia({ reducedMotion: "reduce" })
+        await page.reload()
+        await page.locator(`html[data-hydrated="true"]`).waitFor()
+        const { frame, button, state, loopRequests, playing } = loopVideoCard(page)
+        await frame.scrollIntoViewIfNeeded()
+        const play = button("Play animation")
+        await play.waitFor()
+        await page.waitForTimeout(1_000)
+        if (!(await state()).paused) throw new Error("the clip started by itself")
+        const early = await loopRequests()
+        if (early.length > 0) throw new Error(`requested before the press: ${early.join(", ")}`)
+        await play.click()
+        await playing()
+        if ((await state()).loop) throw new Error("the clip loops under reduced motion")
+      },
+    },
+    {
+      name: "LoopVideo: a loop no browser can play keeps its still, named by the title, and " +
+        "draws no button",
+      pageId: "ui",
+      run: async (page) => {
+        const frame = page.locator("#demo-LoopVideo figure").filter({
+          hasText: "no browser can play",
+        })
+        await frame.scrollIntoViewIfNeeded()
+        await frame.getByRole("img", { name: "A loop that cannot play.", exact: true }).waitFor()
+        await frame.locator("video").waitFor({ state: "detached" })
+        if (await frame.getByRole("button").count() > 0) {
+          throw new Error("the failed loop still draws its button")
+        }
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `LoopVideo: axe finds no violation on the playing and the failed loop, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const { frame, playing } = loopVideoCard(page)
+        await frame.scrollIntoViewIfNeeded()
+        await playing()
+        await page.locator("#demo-LoopVideo figure").filter({ hasText: "no browser can play" })
+          .locator("video").waitFor({ state: "detached" })
+        return await axePasses(page, ["#demo-LoopVideo"])
+      },
+    })),
+  ]
 }
 
 /**
@@ -4625,6 +4903,7 @@ export const specs: readonly Spec[] = [
   ...dashboardSpecs,
   ...explorableSpecs(),
   ...demoVideoSpecs(),
+  ...loopVideoSpecs(),
   ...youTubeVideoSpecs(),
   ...dangerItemContrastSpecs(),
   ...secondaryEdgeSpecs(),

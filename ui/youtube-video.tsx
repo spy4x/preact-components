@@ -2,10 +2,10 @@ import { join } from "@spy4x/preact-cn/join"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
-import type { DemoVideoPoster } from "./demo-video.tsx"
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 import { useLabels } from "./i18n.tsx"
+import { aspectRef, type DemoVideoPoster, PosterPicture } from "./poster-picture.tsx"
 
 /**
  * Props of {@link YouTubeVideo}. Any other attribute, such as `id` or a `data-*` attribute for
@@ -97,7 +97,7 @@ export function YouTubeVideo(
   const id = encodeURIComponent(videoId)
   const playing = useSignal(false)
   const player = useRef<HTMLIFrameElement>(null)
-  const style = { aspectRatio: `${poster.width} / ${poster.height}` }
+  const aspect = aspectRef(poster)
 
   useEffect(() => {
     if (playing.value) player.current?.focus()
@@ -105,7 +105,7 @@ export function YouTubeVideo(
 
   if (playing.value) {
     return (
-      <div class={join(frameClass, className)} style={style}>
+      <div ref={aspect} class={join(frameClass, className)}>
         <iframe
           ref={player}
           src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`}
@@ -131,7 +131,7 @@ export function YouTubeVideo(
       href={`https://www.youtube.com/watch?v=${id}`}
       aria-label={`${playLabel}: ${title}`}
       class={join(playLinkClass, className)}
-      style={style}
+      ref={aspect}
       onClick={(event) => {
         // Ctrl, Cmd, Shift or Alt, or another button, opens the link the browser's way.
         if (isPlainClick(event)) play(event)
@@ -145,19 +145,7 @@ export function YouTubeVideo(
         if (event.key === " ") play(event)
       }}
     >
-      <img
-        src={poster.src}
-        srcset={poster.srcset}
-        sizes={poster.sizes}
-        width={poster.width}
-        height={poster.height}
-        alt=""
-        aria-hidden="true"
-        loading={eager ? "eager" : "lazy"}
-        fetchpriority={eager ? "high" : undefined}
-        decoding={eager ? undefined : "async"}
-        class={posterClass}
-      />
+      <PosterPicture poster={poster} eager={eager} class={posterClass} />
       <PlayMark />
     </a>
   )

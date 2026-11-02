@@ -393,6 +393,13 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "for a phone's 280 px axis, and the browser measures the real axis and picks again, so a " +
       "wider card shows more dates; each of the card's three charts has one such label row",
   },
+  "demo-LoopVideo": {
+    selector: `[class~="group/loop"]`,
+    parts: 1,
+    reason: "LoopVideo draws its pause button, and the hint that repeats the button's name, only " +
+      "after hydration: the served card is the still alone. The card's unplayable loop fails at " +
+      "once in the browser and draws no button",
+  },
   "demo-Map": {
     selector: `[data-e2e="map-slot"]`,
     parts: 1,

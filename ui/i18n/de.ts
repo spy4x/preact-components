@@ -222,6 +222,8 @@ export default {
   "LookTile.sizeSoldOut": "ausverkauft",
   "LookTile.sizes": "Größen",
   "LookTile.soldOut": "Ausverkauft",
+  "LoopVideo.pauseLabel": "Animation anhalten",
+  "LoopVideo.playLabel": "Animation abspielen",
   "MoneyInput.invalidMessage": "Gib einen gültigen Betrag ein",
   "MoneyInput.rangeBetween": "Gib einen Betrag zwischen {min} und {max} ein",
   "MoneyInput.rangeMax": "Gib höchstens {max} ein",

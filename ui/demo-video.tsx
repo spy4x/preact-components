@@ -11,22 +11,14 @@ import {
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 import { useLabels } from "./i18n.tsx"
+import {
+  aspectRef,
+  type DemoVideoDarkPoster,
+  type DemoVideoPoster,
+  PosterPicture,
+} from "./poster-picture.tsx"
 
-export type { DemoVideoSource }
-
-/** The still frame a {@link DemoVideo} shows until it is pressed. */
-export interface DemoVideoPoster {
-  /** Where the browser loads the poster image from. */
-  src: string
-  /** Other sizes of the same image, as the `<img>`'s `srcset`. */
-  srcset?: string
-  /** The `<img>`'s `sizes`, for `srcset`. */
-  sizes?: string
-  /** The poster's intrinsic width in pixels; the clip is drawn at the same aspect. */
-  width: number
-  /** The poster's intrinsic height in pixels. */
-  height: number
-}
+export type { DemoVideoDarkPoster, DemoVideoPoster, DemoVideoSource }
 
 /**
  * Props of {@link DemoVideo}. Any other attribute, such as `id` or a `data-*` attribute for
@@ -47,7 +39,10 @@ export interface DemoVideoProps extends
     | "aria-label"
     | "loop"
   > {
-  /** The still frame shown before the press, with its size so nothing shifts. */
+  /**
+   * The still frame shown before the press, with its size so nothing shifts, and optionally its
+   * dark variant.
+   */
   poster: DemoVideoPoster
   /**
    * The clip's files, the preferred one first (WebM before MP4). The first is also the link a
@@ -108,12 +103,14 @@ const DEMO_VIDEO_LABELS: Required<
  * clip on press.
  *
  * The server renders the poster `<img>` inside a link to the first source, so without JavaScript
- * the link opens the clip in the browser's own player. After hydration, a click, Enter or Space on
- * the link stays on the page and puts `<video controls autoplay playsinline>` in the poster's
- * place, at the same aspect, and focus moves to the video so a keyboard reader can pause it at
- * once. The clip plays with its sound, since the press is the reader's own gesture; when the
- * browser still refuses sound, it plays muted. The video is `object-contain`, so in full screen on
- * a screen of another aspect the whole frame shows, with dark bars. No `<video>` element exists
+ * the link opens the clip in the browser's own player. With `poster.dark` the image is a
+ * `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. After hydration, a
+ * click, Enter or Space on the link stays on the page and puts
+ * `<video controls autoplay playsinline>` in the poster's place, at the same aspect, and focus
+ * moves to the video so a keyboard reader can pause it at once. The clip plays with its sound,
+ * since the press is the reader's own gesture; when the browser still refuses sound, it plays
+ * muted. The video is `object-contain`, so in full screen on a screen of another aspect the whole
+ * frame shows, with dark bars. No `<video>` element exists
  * before the press, so the browser fetches no video bytes. Under `prefers-reduced-motion: reduce`
  * the clip still plays, since the reader asked for it, but `loop` is ignored. One clip plays at a
  * time: when one starts, by the press or its own controls, every other `DemoVideo` on the page
@@ -173,11 +170,11 @@ export function DemoVideo(
     if (current.kind === "failed" && current.hadFocus) fileLink.current?.focus()
   }, [current])
 
-  const style = { aspectRatio: `${poster.width} / ${poster.height}` }
+  const aspect = aspectRef(poster)
 
   if (current.kind === "failed") {
     return (
-      <div class={join(frameClass, className)} style={style}>
+      <div ref={aspect} class={join(frameClass, className)}>
         <div role="status" class={failedClass}>
           <p>{errorLabel}</p>
           <a ref={fileLink} href={first.src} class={fileLinkClass}>{openFileLabel}</a>
@@ -192,7 +189,7 @@ export function DemoVideo(
       phase.value = { kind: "failed", hadFocus: focused }
     }
     return (
-      <div class={join(frameClass, className)} style={style}>
+      <div ref={aspect} class={join(frameClass, className)}>
         <DemoVideoClip
           videoRef={video}
           sources={sources}
@@ -227,7 +224,7 @@ export function DemoVideo(
       href={first.src}
       aria-label={`${playLabel}: ${title}`}
       class={join(playLinkClass, className)}
-      style={style}
+      ref={aspect}
       onClick={(event) => {
         // Ctrl, Cmd, Shift or Alt, or another button, opens the link the browser's way.
         if (isPlainClick(event)) play(event)
@@ -244,19 +241,7 @@ export function DemoVideo(
         if (event.key === " ") play(event)
       }}
     >
-      <img
-        src={poster.src}
-        srcset={poster.srcset}
-        sizes={poster.sizes}
-        width={poster.width}
-        height={poster.height}
-        alt=""
-        aria-hidden="true"
-        loading={eager ? "eager" : "lazy"}
-        fetchpriority={eager ? "high" : undefined}
-        decoding={eager ? undefined : "async"}
-        class={posterClass}
-      />
+      <PosterPicture poster={poster} eager={eager} class={posterClass} />
       <PlayMark />
     </a>
   )

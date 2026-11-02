@@ -227,6 +227,8 @@ export default {
   "LookTile.sizeSoldOut": "épuisé",
   "LookTile.sizes": "Tailles",
   "LookTile.soldOut": "Épuisé",
+  "LoopVideo.pauseLabel": "Mettre l’animation en pause",
+  "LoopVideo.playLabel": "Lire l’animation",
   "MoneyInput.invalidMessage": "Saisissez un montant valide",
   "MoneyInput.rangeBetween": "Saisissez un montant entre {min} et {max}",
   "MoneyInput.rangeMax": "Saisissez {max} ou moins",
