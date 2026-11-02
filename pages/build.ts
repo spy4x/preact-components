@@ -87,8 +87,10 @@ const FORM_DEMO_DIRECTORY = "form-demo"
 const MAP_DEMO_DIRECTORY = "map-demo"
 /**
  * Directory copied verbatim into the artefact for the `DemoVideo` card: a four-second silent test
- * clip as WebM and MP4, and its poster. The card's browser checks prove no request reaches these
- * clips before the play button is pressed.
+ * clip as WebM and MP4, and its light and dark posters. The card's browser checks prove no request
+ * reaches these clips before the play button is pressed. It also holds the `LoopVideo` card's
+ * six-second loops, light and dark, with their posters; `make-video-demo.sh` remakes every file
+ * but the four-second clip and its light poster.
  */
 const VIDEO_DEMO_DIRECTORY = "video-demo"
 /**
@@ -418,8 +420,19 @@ async function main(): Promise<void> {
   )
   const videoDemo = await copyDemoDirectory(
     VIDEO_DEMO_DIRECTORY,
-    ["clip.webm", "clip.mp4", "poster.webp"],
-    "the DemoVideo card",
+    [
+      "clip.webm",
+      "clip.mp4",
+      "poster.webp",
+      "poster-dark.webp",
+      "loop-light.webm",
+      "loop-light.mp4",
+      "loop-light.webp",
+      "loop-dark.webm",
+      "loop-dark.mp4",
+      "loop-dark.webp",
+    ],
+    "the DemoVideo and LoopVideo cards",
   )
   const fonts = await copyDemoDirectory(
     FONTS_DIRECTORY,
@@ -481,7 +494,7 @@ async function main(): Promise<void> {
       } + ${mapIsland.chunks.length} chunks — a server-rendered Map the browser hydrates\n` +
       `  ${VIDEO_DEMO_DIRECTORY}/ ${
         videoDemo.join(", ")
-      } — the DemoVideo card's clip and poster\n` +
+      } — the DemoVideo card's clip and posters, the LoopVideo card's loops\n` +
       `  ${FONTS_DIRECTORY}/ ${
         fonts.join(", ")
       } — the Arabic face, fetched only for Arabic text\n` +

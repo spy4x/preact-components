@@ -1,8 +1,9 @@
 /**
  * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript;
  * `DemoVideo` and `YouTubeVideo` use it to play in place, and without it the play link opens the
- * clip or the video's YouTube page. `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`,
- * `ScreenTour`, `Steps`, `WindowFrame` and `YouTubeVideo` are spread into the
+ * clip or the video's YouTube page; `LoopVideo` uses it to play, and without it shows its still.
+ * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `LoopVideo`, `ScreenTour`, `Steps`,
+ * `WindowFrame` and `YouTubeVideo` are spread into the
  * Display section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
@@ -21,6 +22,7 @@ import {
   FeatureCard,
   Field,
   Input,
+  LoopVideo,
   PageHero,
   ScreenTour,
   type ScreenTourStep,
@@ -48,16 +50,45 @@ const FAQ = [
   },
 ]
 
+/** When the guide's posters and loops show their dark files: on a device that asks for dark. */
+const DARK_MEDIA = "(prefers-color-scheme: dark)"
+
 /**
  * The `DemoVideo` card's clip: a four-second silent test pattern `pages/build.ts` copies into
  * `video-demo/`, beside its poster. Relative, as `form-demo/` is, so it resolves under the guide's
  * base path.
  */
 const DEMO_CLIP = {
-  poster: { src: "video-demo/poster.webp", width: 640, height: 360 },
+  poster: {
+    src: "video-demo/poster.webp",
+    width: 640,
+    height: 360,
+    dark: { srcset: "video-demo/poster-dark.webp", media: DARK_MEDIA },
+  },
   sources: [
     { src: "video-demo/clip.webm", type: "video/webm" },
     { src: "video-demo/clip.mp4", type: "video/mp4" },
+  ],
+} as const
+
+/**
+ * The `LoopVideo` card's six-second test loop, light and dark, beside the `DemoVideo` clip in
+ * `video-demo/`; `pages/make-video-demo.sh` remakes it.
+ */
+const DEMO_LOOP = {
+  poster: {
+    src: "video-demo/loop-light.webp",
+    width: 640,
+    height: 400,
+    dark: { srcset: "video-demo/loop-dark.webp", media: DARK_MEDIA },
+  },
+  sources: [
+    { src: "video-demo/loop-light.webm", type: "video/webm" },
+    { src: "video-demo/loop-light.mp4", type: "video/mp4" },
+  ],
+  darkSources: [
+    { src: "video-demo/loop-dark.webm", type: "video/webm" },
+    { src: "video-demo/loop-dark.mp4", type: "video/mp4" },
   ],
 } as const
 
@@ -279,8 +310,9 @@ export const marketingBlockDemos: DemoFragment = {
     props: [
       {
         name: "poster",
-        type: "{ src, srcset?, sizes?, width, height }",
-        description: "The still frame shown before the press; its size keeps the box still.",
+        type: "{ src, srcset?, sizes?, width, height, dark? }",
+        description:
+          "The still frame shown before the press; its size keeps the box still. `dark: { srcset, media }` draws a `<picture>` whose dark file shows while `media` matches.",
       },
       {
         name: "sources",
@@ -357,6 +389,98 @@ export const marketingBlockDemos: DemoFragment = {
             title="A missing clip"
             poster={DEMO_CLIP.poster}
             sources={[{ src: "video-demo/missing.webm", type: "video/webm" }]}
+          />
+        </WindowFrame>
+      </div>
+    ),
+  },
+  LoopVideo: {
+    summary:
+      "A silent loop that proves a claim: a themed still on the server, a muted clip that plays while half of it is in view, and a pause button whose pause lasts the visit.",
+    wide: false,
+    props: [
+      {
+        name: "poster",
+        type: "{ src, srcset?, sizes?, width, height, dark? }",
+        description:
+          "The still: rendered on the server, shown until the clip has a frame, and kept when it cannot play. `dark: { srcset, media }` is its dark file and the query that picks it.",
+      },
+      {
+        name: "sources",
+        type: "{ src, type }[]",
+        description: "The clip's files in the light theme, WebM before MP4.",
+      },
+      {
+        name: "darkSources",
+        type: "{ src, type }[]",
+        description:
+          "The clip's files in the dark theme, played while `poster.dark.media` matches; a theme change keeps the position.",
+      },
+      { name: "title", type: "string", description: "What the clip shows: the video's name." },
+      {
+        name: "name",
+        type: "string",
+        description:
+          "A short name; the button says `Pause animation: {name}` or `Play animation: {name}`.",
+      },
+      {
+        name: "pauseLabel",
+        type: "string",
+        default: `"Pause animation"`,
+        description: "The button's first words while the clip plays.",
+      },
+      {
+        name: "playLabel",
+        type: "string",
+        default: `"Play animation"`,
+        description: "The button's first words while it is stopped.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities for the root, joined after its own.",
+      },
+    ],
+    snippet: `<WindowFrame variant="plain">
+  <LoopVideo
+    name="Realtime sync"
+    title="A note saved in one window appears in the other within a second."
+    poster={{
+      src: "/realtime-light.webp",
+      width: 1440,
+      height: 900,
+      dark: { srcset: "/realtime-dark.webp", media: "(prefers-color-scheme: dark)" },
+    }}
+    sources={[
+      { src: "/realtime-light.webm", type: "video/webm" },
+      { src: "/realtime-light.mp4", type: "video/mp4" },
+    ]}
+    darkSources={[
+      { src: "/realtime-dark.webm", type: "video/webm" },
+      { src: "/realtime-dark.mp4", type: "video/mp4" },
+    ]}
+  />
+</WindowFrame>`,
+    render: () => (
+      <div class="grid gap-6">
+        <WindowFrame variant="plain" caption="A six-second test loop, light and dark">
+          <LoopVideo
+            name="Test loop"
+            title="A square crosses a card while a bar fills under it."
+            poster={DEMO_LOOP.poster}
+            sources={DEMO_LOOP.sources}
+            darkSources={DEMO_LOOP.darkSources}
+          />
+        </WindowFrame>
+        <WindowFrame
+          variant="plain"
+          caption="A loop whose file is missing: the still stays and the button goes away"
+        >
+          <LoopVideo
+            name="Missing loop"
+            title="A loop that cannot load."
+            poster={DEMO_LOOP.poster}
+            sources={[{ src: "video-demo/missing-loop.webm", type: "video/webm" }]}
           />
         </WindowFrame>
       </div>

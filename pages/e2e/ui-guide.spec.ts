@@ -78,6 +78,9 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     [GLYPH]: [9, 9],
     // A one-character `Kbd` key that axe measured below the ratio and left undecided.
     [SHORT]: [1, 1],
+    // The `LoopVideo` card's two silent loops, which have no `<track kind="captions">`: a clip
+    // with no sound has nothing to caption, and its `aria-label` is its text alternative.
+    "video-caption: caption": [2, 2],
   },
   icons: { [OBSCURED]: [1, 1] },
   // The header's version pill and eight months of the `.pc-scrollbar` card's scrolling row.
