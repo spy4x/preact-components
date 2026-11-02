@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-cn",
-  "version": "13.6.1",
+  "version": "13.7.0",
   "exports": {
     ".": "./cn.ts",
     // The merge-free join on its own, so a module that imports it never reaches `tailwind-merge`.
