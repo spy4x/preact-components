@@ -47,11 +47,10 @@ describe("LoopVideo", () => {
     expect(html).toContain("<img ")
   })
 
-  it("keeps the box at the poster's aspect and joins the caller's class", () => {
+  it("joins the caller's class and renders no style attribute a strict CSP blocks", () => {
     const html = render(<LoopVideo {...PROPS} class="rounded-lg" />)
-    expect(html).toMatch(
-      /^<div class="relative block w-full overflow-hidden rounded-lg" style="aspect-ratio:1440 \/ 900;"/,
-    )
+    expect(html).toMatch(/^<div class="relative block w-full overflow-hidden rounded-lg">/)
+    expect(html).not.toMatch(/\sstyle=/)
   })
 
   it("throws without a source", () => {

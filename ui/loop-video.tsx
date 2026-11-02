@@ -6,7 +6,7 @@ import type { DemoVideoSource } from "./demo-video-clip.tsx"
 import { useLabels } from "./i18n.tsx"
 import { LoopVideoButton } from "./loop-video-button.tsx"
 import { controlLoop, type LoopControl } from "./loop-video-control.ts"
-import { type DemoVideoPoster, PosterPicture } from "./poster-picture.tsx"
+import { aspectRef, type DemoVideoPoster, PosterPicture } from "./poster-picture.tsx"
 
 /** Props of {@link LoopVideo}. */
 export interface LoopVideoProps {
@@ -44,7 +44,7 @@ const LOOP_VIDEO_LABELS: Required<Pick<LoopVideoProps, "pauseLabel" | "playLabel
 /** The share of the clip that must be on screen for it to play. */
 const IN_VIEW_RATIO = 0.5
 
-/** The box the poster and the clip fill; the clip lies over the poster, so the swap moves nothing. */
+/** The box the poster and the clip fill; the clip lies over the poster, so nothing moves. */
 const frameClass = "relative block w-full overflow-hidden"
 
 /** The poster, and the clip over it, fill the box. */
@@ -146,13 +146,12 @@ export function LoopVideo(
     loadedDark.current = isDark
   }, [live, isDark])
 
-  const style = { aspectRatio: `${poster.width} / ${poster.height}` }
   const files = isDark && darkSources !== undefined ? darkSources : sources
   const fail = () => failed.value = true
   const toggle = () => control.current?.toggle()
 
   return (
-    <div class={join(frameClass, className)} style={style}>
+    <div ref={aspectRef(poster)} class={join(frameClass, className)}>
       {/* Named until the clip, which carries the name from then on, takes its place. */}
       <PosterPicture poster={poster} eager={false} class={fillClass} alt={live ? "" : title} />
       {live && (

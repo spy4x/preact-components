@@ -47,8 +47,8 @@ export interface PosterPictureProps {
 
 /**
  * The poster image: decorative by default, `alt=""` and hidden from assistive tech, since the
- * component around it carries the name. With `poster.dark` it is wrapped in a `display: contents` `<picture>`, so
- * the image lays out exactly as it does alone.
+ * component around it carries the name. With `poster.dark` it is wrapped in a `display: contents`
+ * `<picture>`, so the image lays out exactly as it does alone.
  *
  * @param props See {@link PosterPictureProps}.
  * @returns The `<img>`, or the `<picture>` around it.
@@ -78,4 +78,19 @@ export function PosterPicture(
       {image}
     </picture>
   )
+}
+
+/**
+ * A ref that gives the box around a poster the poster's aspect ratio once the page runs.
+ *
+ * The server renders no `style` attribute, which a strict `style-src 'self'` policy blocks: until
+ * hydration the poster's own `width` and `height` size the box. After it, the clip, the player or
+ * the error message takes the poster's place, so the box keeps the ratio itself. A script may set
+ * a style through the CSSOM under that policy.
+ *
+ * @param poster The poster whose width and height give the ratio.
+ * @returns A callback ref for the box.
+ */
+export function aspectRef(poster: DemoVideoPoster): (box: HTMLElement | null) => void {
+  return (box) => box?.style.setProperty("aspect-ratio", `${poster.width} / ${poster.height}`)
 }

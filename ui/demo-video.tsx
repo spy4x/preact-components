@@ -11,7 +11,12 @@ import {
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 import { useLabels } from "./i18n.tsx"
-import { type DemoVideoDarkPoster, type DemoVideoPoster, PosterPicture } from "./poster-picture.tsx"
+import {
+  aspectRef,
+  type DemoVideoDarkPoster,
+  type DemoVideoPoster,
+  PosterPicture,
+} from "./poster-picture.tsx"
 
 export type { DemoVideoDarkPoster, DemoVideoPoster, DemoVideoSource }
 
@@ -99,12 +104,13 @@ const DEMO_VIDEO_LABELS: Required<
  *
  * The server renders the poster `<img>` inside a link to the first source, so without JavaScript
  * the link opens the clip in the browser's own player. With `poster.dark` the image is a
- * `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. After hydration, a click, Enter or Space on
- * the link stays on the page and puts `<video controls autoplay playsinline>` in the poster's
- * place, at the same aspect, and focus moves to the video so a keyboard reader can pause it at
- * once. The clip plays with its sound, since the press is the reader's own gesture; when the
- * browser still refuses sound, it plays muted. The video is `object-contain`, so in full screen on
- * a screen of another aspect the whole frame shows, with dark bars. No `<video>` element exists
+ * `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. After hydration, a
+ * click, Enter or Space on the link stays on the page and puts
+ * `<video controls autoplay playsinline>` in the poster's place, at the same aspect, and focus
+ * moves to the video so a keyboard reader can pause it at once. The clip plays with its sound,
+ * since the press is the reader's own gesture; when the browser still refuses sound, it plays
+ * muted. The video is `object-contain`, so in full screen on a screen of another aspect the whole
+ * frame shows, with dark bars. No `<video>` element exists
  * before the press, so the browser fetches no video bytes. Under `prefers-reduced-motion: reduce`
  * the clip still plays, since the reader asked for it, but `loop` is ignored. One clip plays at a
  * time: when one starts, by the press or its own controls, every other `DemoVideo` on the page
@@ -164,11 +170,11 @@ export function DemoVideo(
     if (current.kind === "failed" && current.hadFocus) fileLink.current?.focus()
   }, [current])
 
-  const style = { aspectRatio: `${poster.width} / ${poster.height}` }
+  const aspect = aspectRef(poster)
 
   if (current.kind === "failed") {
     return (
-      <div class={join(frameClass, className)} style={style}>
+      <div ref={aspect} class={join(frameClass, className)}>
         <div role="status" class={failedClass}>
           <p>{errorLabel}</p>
           <a ref={fileLink} href={first.src} class={fileLinkClass}>{openFileLabel}</a>
@@ -183,7 +189,7 @@ export function DemoVideo(
       phase.value = { kind: "failed", hadFocus: focused }
     }
     return (
-      <div class={join(frameClass, className)} style={style}>
+      <div ref={aspect} class={join(frameClass, className)}>
         <DemoVideoClip
           videoRef={video}
           sources={sources}
@@ -218,7 +224,7 @@ export function DemoVideo(
       href={first.src}
       aria-label={`${playLabel}: ${title}`}
       class={join(playLinkClass, className)}
-      style={style}
+      ref={aspect}
       onClick={(event) => {
         // Ctrl, Cmd, Shift or Alt, or another button, opens the link the browser's way.
         if (isPlainClick(event)) play(event)

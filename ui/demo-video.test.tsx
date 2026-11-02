@@ -23,10 +23,10 @@ describe("DemoVideo", () => {
     expect(html).not.toContain("/demo.mp4")
   })
 
-  it("gives the poster its size and keeps the box at the poster's aspect", () => {
+  it("sizes the box by the poster's width and height, with no style attribute a strict CSP blocks", () => {
     const html = render(<DemoVideo {...PROPS} />)
     expect(html).toMatch(/<img [^>]*width="1280" height="720"/)
-    expect(html).toContain('style="aspect-ratio:1280 / 720;"')
+    expect(html).not.toMatch(/\sstyle=/)
   })
 
   it("loads the poster lazily by default and eagerly, at high priority, with eager", () => {
