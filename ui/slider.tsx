@@ -1,6 +1,6 @@
 import { join } from "@spy4x/preact-cn/join"
 import type { JSX } from "preact"
-import { useId } from "preact/hooks"
+import { useId, useLayoutEffect, useRef } from "preact/hooks"
 
 /** One labelled point under a {@link Slider}'s track, such as "Typical" or "Today". */
 export interface SliderMark {
@@ -72,22 +72,29 @@ function thumbCentre(fraction: number): string {
 
 /*
  * The input is the whole 44 px tall hit area; the browser draws a 4 px track and a 20 px thumb
- * inside it. The track is `--color-track` filled up to the thumb in the secondary text colour,
- * through `--pc-slider-fill`, which the input's own style sets. The thumb carries the house focus
- * ring, 2 px with a 2 px gap, because the input's own box is much larger than what a person
- * sees. No transition: the thumb follows the pointer exactly. Chromium and Safari read the
- * `-webkit-` pseudo-elements, Firefox the `-moz-` ones; every class is written out whole, so
- * Tailwind's scanner finds it.
+ * inside it. The track is `--color-track`, filled up to the thumb in the secondary text colour.
+ * Nothing is an inline `style` attribute, which a strict `style-src 'self'` policy blocks:
+ * - Firefox draws the fill natively, as `::-moz-range-progress`, with or without script.
+ * - Chromium and Safari paint it as a gradient up to `--pc-slider-fill`. The class sets that from
+ *   the input's `data-fill` with a typed `attr()`, so Chromium shows it in the server HTML; the
+ *   component also sets it through CSSOM once it runs, which a policy allows, for Safari, which
+ *   lacks typed `attr()` and shows the bare track until then.
+ * The thumb carries the house focus ring, 2 px with a 2 px gap, because the input's own box is much
+ * larger than what a person sees. No transition: the thumb follows the pointer exactly. Every class
+ * is written out whole, so Tailwind's scanner finds it.
  */
 const input = [
   "block h-11 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-hidden",
   "disabled:cursor-not-allowed",
+  "[--pc-slider-fill:calc(0.625rem+(100%-1.25rem)*attr(data-fill_type(<number>)))]",
   "[&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full",
-  "[&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
-  "[&:dir(rtl)]:[&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_left,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
+  "[&::-webkit-slider-runnable-track]:bg-track",
+  "[&::-webkit-slider-runnable-track]:bg-[image:linear-gradient(to_right,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),transparent_0)]",
+  "[&:dir(rtl)]:[&::-webkit-slider-runnable-track]:bg-[image:linear-gradient(to_left,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),transparent_0)]",
   "[&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full",
-  "[&::-moz-range-track]:bg-[linear-gradient(to_right,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
-  "[&:dir(rtl)]:[&::-moz-range-track]:bg-[linear-gradient(to_left,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),var(--color-track,oklch(0.928_0.006_264.531))_var(--pc-slider-fill))]",
+  "[&::-moz-range-track]:bg-track",
+  "[&::-moz-range-progress]:h-1 [&::-moz-range-progress]:rounded-full",
+  "[&::-moz-range-progress]:bg-[var(--color-muted-foreground,oklch(0.446_0.03_256.802))]",
   "[&::-webkit-slider-thumb]:-mt-2 [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none",
   "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-foreground",
   "[&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-foreground",
@@ -104,8 +111,9 @@ const input = [
  * input already announces it as `aria-valuetext`. Up to two `marks` sit under the track, each label
  * wrapping under its tick on a narrow screen. `disabled` dims the track and thumb and mutes the
  * label and value, which keep their 4.5:1 contrast; a slider disabled by a surrounding
- * `<fieldset disabled>` (as `Explorable` does before hydration) keeps its look. Server-rendered
- * complete: the fill is an inline custom property, correct before any script runs. Classes are
+ * `<fieldset disabled>` (as `Explorable` does before hydration) keeps its look. The server HTML
+ * carries no `style` attribute, so a strict style policy blocks nothing; how the fill and the marks
+ * still show before any script runs is in the class notes above. Classes are
  * joined with `join`, not `cn`, so a hydrating island carries no tailwind-merge; a caller's `class`
  * is added to the wrapper's own, not merged over it.
  *
@@ -134,7 +142,11 @@ export function Slider({
   const marksId = shownMarks.length > 0 ? `${inputId}-marks` : undefined
   const hintId = hint ? `${inputId}-hint` : undefined
   const describedBy = [marksId, hintId].filter(Boolean).join(" ") || undefined
-  const fill = thumbCentre(sliderFraction(value, min, max))
+  const fraction = sliderFraction(value, min, max)
+  const ref = useRef<HTMLInputElement>(null)
+  useLayoutEffect(() => {
+    ref.current?.style.setProperty("--pc-slider-fill", thumbCentre(fraction))
+  }, [fraction])
 
   return (
     <div class={join("flex min-w-0 flex-col", className)}>
@@ -167,7 +179,8 @@ export function Slider({
         aria-valuetext={(valueText ?? format)(value)}
         aria-describedby={describedBy}
         class={join(input, disabled && "opacity-50")}
-        style={{ "--pc-slider-fill": fill }}
+        ref={ref}
+        data-fill={fraction}
         onInput={(event) => onInput?.(Number(event.currentTarget.value))}
       />
       {marksId && (
@@ -188,23 +201,30 @@ export function Slider({
  * Both marks share one grid cell and are shifted along it with `inset-inline-start`, so the row is as tall as the
  * taller label and nothing is measured. A label near an end is aligned to that end instead of
  * centred, so it never spills past the track; elsewhere it is centred on its tick. Each wraps
- * within a third of the width.
+ * within a third of the width. Its offset comes from `data-at` through a typed `attr()`, and is set
+ * again through CSSOM once the component runs, for the browsers without it, as the track's fill is.
  */
 function SliderTick(
   { mark, min, max }: { mark: SliderMark; min: number; max: number },
 ): JSX.Element {
   const fraction = sliderFraction(mark.value, min, max)
+  const ref = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    if (ref.current) ref.current.style.insetInlineStart = thumbCentre(fraction)
+  }, [fraction])
   const align = fraction < 0.2 ? "start" : fraction > 0.8 ? "end" : "center"
   return (
     <span
       class={join(
         "relative col-start-1 row-start-1 flex w-1/3 flex-col gap-1",
+        "[inset-inline-start:calc(0.625rem+(100%-1.25rem)*attr(data-at_type(<number>)))]",
         align === "start" && "items-start text-start",
         align === "center" &&
           "-translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 items-center text-center",
         align === "end" && "-translate-x-full [&:dir(rtl)]:translate-x-full items-end text-end",
       )}
-      style={{ insetInlineStart: thumbCentre(fraction) }}
+      ref={ref}
+      data-at={fraction}
     >
       <span
         aria-hidden="true"
