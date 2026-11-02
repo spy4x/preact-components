@@ -225,6 +225,8 @@ export default {
   "LookTile.sizeSoldOut": "agotada",
   "LookTile.sizes": "Tallas",
   "LookTile.soldOut": "Agotado",
+  "LoopVideo.pauseLabel": "Pausar animación",
+  "LoopVideo.playLabel": "Reproducir animación",
   "MoneyInput.invalidMessage": "Escribe un importe válido",
   "MoneyInput.rangeBetween": "Escribe un importe entre {min} y {max}",
   "MoneyInput.rangeMax": "Escribe {max} o menos",

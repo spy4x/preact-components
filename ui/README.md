@@ -11,14 +11,14 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on thirty-two exports.** Most components pass a caller's
+- **A `class` is merged, except on thirty-three exports.** Most components pass a caller's
   `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
   of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
   `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `DialogActions`, `YouTubeVideo`,
   `ScreenTour`, `PricingTable`, `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its
   `optionsClass`), `CommandPalette`, `LanguagePicker`,
   `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
-  `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips` and `OrderBar` use `join`
+  `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips`, `OrderBar` and `LoopVideo` use `join`
   instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
   `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
@@ -82,7 +82,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                                                                                                                     |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                                            |
 | `DateTimeField`       | `date-time-field`      | `id`, `label`, `value` (ISO instant or `null`), `onChange`, `timeZone` (IANA; the zone and its offset show beside the input), `min?`, `max?`, `hint?`, `error?`, `required?`, `disabled?`, `labels?` — a `datetime-local` read and written as an instant                                                                                                            |
-| `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link                       |
+| `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link                |
 | `DialogActions`       | `dialog-actions`       | `children` (Cancel first, the submit last), `class?`, any other attribute — a dialog's button row: stacked full width on a phone with the submit at the bottom, right-aligned in one row from `sm`. `Modal`'s `footer` draws the same row                                                                                                                           |
 | `DocsNav`             | `docs-nav`             | `groups` (`{ title, items: { href, title }[] }[]`), `current?` (the `href` on screen, `aria-current="page"`), `labels?` — a side list from `lg`, a `<details>` below it; no JavaScript                                                                                                                                                                              |
 | `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal` (`"end"` by default; `"start"`, or the aliases `"left"` and `"right"`, all mirroring under `dir="rtl"`)                                                                                                                         |
@@ -120,6 +120,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `LoadingSpinner`      | `loading-spinner`      | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion                                                                                                                                                                                                                                            |
 | `LookGrid`            | `look-grid`            | `children` (the looks), `label?` — aligned columns: one on a phone, two from `md`, three from `lg`; a child with `lead` (a lead `StoryTile`) spans two from `lg`; no JavaScript                                                                                                                                                                                     |
 | `LookTile`            | `look-tile`            | `href`, `name`, `price`, `photo` (`{ variants, alt, sizes? }`), `sizes?` (`{ label, soldOut? }[]`), `chosenSize?`, `colors?`, `soldOut?`, `viewTransitionName?`, `priority?`, `headingLevel?`, `labels?` — a 3:4 photo as the card, one link; no JavaScript                                                                                                         |
+| `LoopVideo`           | `loop-video`           | `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` and `darkSources?` (`{ src, type }[]`, WebM first), `title` (the video's name), `name` (the button says "Pause animation: {name}"), `pauseLabel?`, `playLabel?`, `class?` — a silent loop that plays while half of it is in view                                                             |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`                                                                                                                                                                                                                                |
 | `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                                                                                                         |
 | `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                                                                                                               |
@@ -907,6 +908,10 @@ and shows `errorLabel` ("The video didn't load.") with a link, `openFileLabel` (
 file"), to the first source, in a `role="status"` region. Focus moves to that link when it was on
 the video.
 
+`poster.dark` (`{ srcset, media }`) adds the poster's dark file: the image becomes a `<picture>`
+whose dark `<source>` shows while `media` matches, so a dark page never shows a light still.
+`YouTubeVideo` takes the same poster.
+
 ```tsx
 <DemoVideo
   title="Creating an invoice"
@@ -915,6 +920,45 @@ the video.
     { src: "/demo.webm", type: "video/webm" },
     { src: "/demo.mp4", type: "video/mp4" },
   ]}
+/>
+```
+
+## LoopVideo
+
+A silent loop, five to eight seconds long, that proves a claim on a public page, such as "the
+other window updates by itself". The server renders the poster: an `<img>` with its `width` and
+`height`, or a `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. Without
+JavaScript the still stays, named by `title`, so the page still says something true.
+
+After hydration a `<video muted loop playsinline preload="none">` lies over the poster, invisible
+until it has a frame, so nothing moves when it takes the poster's place and no video byte loads
+before it is in view. It plays while at least half of it is on screen (an `IntersectionObserver`)
+and pauses when it leaves, so several loops on one page each play only while seen. With
+`darkSources`, the dark files play while `poster.dark.media` matches; when the theme changes, the
+clip loads the other files and keeps its position. `darkSources` need `poster.dark`, which holds
+that query.
+
+One 44 px round button on the scrim, 12 px in from the bottom and the inline end (the left in a
+right-to-left page), pauses and plays the clip, and so does a click on the clip. It is named
+`"Pause animation: {name}"` or `"Play animation: {name}"` (`pauseLabel` and `playLabel` replace
+the first words), and shows the same words in a hint on hover and focus, which Escape hides. A
+pause by the visitor holds for the rest of the visit, also when the clip scrolls back into view;
+nothing is stored. Under `prefers-reduced-motion: reduce` the clip never starts by itself: a press
+plays it once, and it stops on its last frame. When no source can play, the poster stays and the
+button goes away. `class` is joined, not merged. It fits inside `WindowFrame variant="plain"`.
+
+```tsx
+<LoopVideo
+  name="Realtime sync"
+  title="A note saved in one window appears in the other within a second."
+  poster={{
+    src: "/realtime-light.webp",
+    width: 1440,
+    height: 900,
+    dark: { srcset: "/realtime-dark.webp", media: "(prefers-color-scheme: dark)" },
+  }}
+  sources={[{ src: "/realtime-light.webm", type: "video/webm" }]}
+  darkSources={[{ src: "/realtime-dark.webm", type: "video/webm" }]}
 />
 ```
 

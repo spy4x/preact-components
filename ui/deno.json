@@ -60,6 +60,7 @@
     "./layout": "./layout.tsx",
     "./layout-customiser": "./layout-customiser.tsx",
     "./lightbox": "./lightbox.tsx",
+    "./loop-video": "./loop-video.tsx",
     "./link": "./link.tsx",
     "./loading-skeleton": "./loading-skeleton.tsx",
     "./loading-spinner": "./loading-spinner.tsx",

@@ -202,6 +202,8 @@ LookTile.colors	88f20221cac178c4
 LookTile.sizeSoldOut	dcbe3413cdd26c04
 LookTile.sizes	74a3978d10045c73
 LookTile.soldOut	1a27eedbc636ee6b
+LoopVideo.pauseLabel	8a754f71ce340e4e
+LoopVideo.playLabel	76bced7d616aad89
 MoneyInput.invalidMessage	617dd68ca7c08390
 MoneyInput.rangeBetween	c6a6d8602e09a1c1
 MoneyInput.rangeMax	d3173383df1953bc

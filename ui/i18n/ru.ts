@@ -232,6 +232,8 @@ export default {
   "LookTile.sizeSoldOut": "раскуплен",
   "LookTile.sizes": "Размеры",
   "LookTile.soldOut": "Нет в наличии",
+  "LoopVideo.pauseLabel": "Приостановить анимацию",
+  "LoopVideo.playLabel": "Запустить анимацию",
   "MoneyInput.invalidMessage": "Введите сумму числом",
   "MoneyInput.rangeBetween": "Введите сумму от {min} до {max}",
   "MoneyInput.rangeMax": "Введите не больше {max}",

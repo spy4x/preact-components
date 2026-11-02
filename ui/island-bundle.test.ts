@@ -3,7 +3,7 @@
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
  * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea`, `EnhancedForm`
- * (#511), `PricingTable` (#523), `DemoVideo`, `YouTubeVideo`, `RadioChips`, `ScreenTour`,
+ * (#511), `PricingTable` (#523), `DemoVideo`, `LoopVideo`, `YouTubeVideo`, `RadioChips`, `ScreenTour`,
  * `CommandPalette`, `Combobox`, `Modal` and `Toastr` (#943) compose their classes with `join` instead, so an island
  * that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and is
  * bundled here the way an app's build bundles one: `deno bundle --platform browser --minify`.
@@ -100,6 +100,7 @@ describe("a browser bundle of a library component", () => {
       "island-enhanced-form.tsx",
       "island-pricing-table.tsx",
       "island-demo-video.tsx",
+      "island-loop-video.tsx",
       "island-youtube-video.tsx",
       "island-radio-chips.tsx",
       "island-screen-tour.tsx",

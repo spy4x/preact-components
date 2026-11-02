@@ -217,6 +217,8 @@ export default {
   "LookTile.sizeSoldOut": "売り切れ",
   "LookTile.sizes": "サイズ",
   "LookTile.soldOut": "売り切れ",
+  "LoopVideo.pauseLabel": "アニメーションを一時停止",
+  "LoopVideo.playLabel": "アニメーションを再生",
   "MoneyInput.invalidMessage": "正しい金額を入力してください",
   "MoneyInput.rangeBetween": "{min}から{max}までの金額を入力してください",
   "MoneyInput.rangeMax": "{max}以下で入力してください",

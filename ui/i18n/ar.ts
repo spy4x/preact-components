@@ -236,6 +236,8 @@ export default {
   "LookTile.sizeSoldOut": "نفد",
   "LookTile.sizes": "المقاسات",
   "LookTile.soldOut": "نفدت الكمية",
+  "LoopVideo.pauseLabel": "إيقاف الرسوم المتحركة مؤقتًا",
+  "LoopVideo.playLabel": "تشغيل الرسوم المتحركة",
   "MoneyInput.invalidMessage": "أدخل مبلغًا صحيحًا",
   "MoneyInput.rangeBetween": "أدخل مبلغًا بين {min} و{max}",
   "MoneyInput.rangeMax": "أدخل {max} أو أقل",
