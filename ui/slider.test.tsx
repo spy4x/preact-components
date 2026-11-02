@@ -51,9 +51,25 @@ describe("Slider", () => {
     expect(spoken).toContain('aria-valuetext="2 times"')
   })
 
-  it("fills the track up to the thumb's centre in the server markup", () => {
+  it("fills the track up to the thumb's centre in the server markup, from data-fill", () => {
     const html = render(<Slider label="Rate" value={25} />)
-    expect(html).toContain("--pc-slider-fill:calc(0.625rem + (100% - 1.25rem) * 0.25)")
+    expect(html).toMatch(/<input [^<]*\sdata-fill="0\.25"\/>/)
+    expect(html).toContain(
+      "[--pc-slider-fill:calc(0.625rem+(100%-1.25rem)*attr(data-fill_type(&lt;number>)))]",
+    )
+  })
+
+  it("renders no style attribute, so a strict style-src policy blocks nothing", () => {
+    const html = render(
+      <Slider
+        label="Rate"
+        value={25}
+        hint="Drag."
+        marks={[{ value: 10, label: "Low" }, { value: 50, label: "Typical" }]}
+        disabled
+      />,
+    )
+    expect(html).not.toMatch(/\sstyle=/)
   })
 
   it("draws at most two marks, each at its value, and ties them and the hint to the input", () => {
@@ -74,7 +90,9 @@ describe("Slider", () => {
     expect(html).toContain(">None<")
     expect(html).toContain(">Typical<")
     expect(html).not.toContain("Dropped")
-    expect(html).toContain("inset-inline-start:calc(0.625rem + (100% - 1.25rem) * 0.5)")
+    expect(html).toMatch(
+      /<span class="[^"]*\[inset-inline-start:calc\(0\.625rem\+\(100%-1\.25rem\)\*attr\(data-at_type[^"]*" data-at="0\.5">/,
+    )
     expect(html).toMatch(/<p id="rate-hint"[^>]*>Drag or use the arrow keys\.<\/p>/)
   })
 
