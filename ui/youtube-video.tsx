@@ -2,10 +2,10 @@ import { join } from "@spy4x/preact-cn/join"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
-import type { DemoVideoPoster } from "./demo-video.tsx"
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 import { useLabels } from "./i18n.tsx"
+import { type DemoVideoPoster, PosterPicture } from "./poster-picture.tsx"
 
 /**
  * Props of {@link YouTubeVideo}. Any other attribute, such as `id` or a `data-*` attribute for
@@ -145,19 +145,7 @@ export function YouTubeVideo(
         if (event.key === " ") play(event)
       }}
     >
-      <img
-        src={poster.src}
-        srcset={poster.srcset}
-        sizes={poster.sizes}
-        width={poster.width}
-        height={poster.height}
-        alt=""
-        aria-hidden="true"
-        loading={eager ? "eager" : "lazy"}
-        fetchpriority={eager ? "high" : undefined}
-        decoding={eager ? undefined : "async"}
-        class={posterClass}
-      />
+      <PosterPicture poster={poster} eager={eager} class={posterClass} />
       <PlayMark />
     </a>
   )

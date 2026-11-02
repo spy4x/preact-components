@@ -11,22 +11,9 @@ import {
 import { isPlainClick } from "./link.tsx"
 import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
 import { useLabels } from "./i18n.tsx"
+import { type DemoVideoDarkPoster, type DemoVideoPoster, PosterPicture } from "./poster-picture.tsx"
 
-export type { DemoVideoSource }
-
-/** The still frame a {@link DemoVideo} shows until it is pressed. */
-export interface DemoVideoPoster {
-  /** Where the browser loads the poster image from. */
-  src: string
-  /** Other sizes of the same image, as the `<img>`'s `srcset`. */
-  srcset?: string
-  /** The `<img>`'s `sizes`, for `srcset`. */
-  sizes?: string
-  /** The poster's intrinsic width in pixels; the clip is drawn at the same aspect. */
-  width: number
-  /** The poster's intrinsic height in pixels. */
-  height: number
-}
+export type { DemoVideoDarkPoster, DemoVideoPoster, DemoVideoSource }
 
 /**
  * Props of {@link DemoVideo}. Any other attribute, such as `id` or a `data-*` attribute for
@@ -47,7 +34,10 @@ export interface DemoVideoProps extends
     | "aria-label"
     | "loop"
   > {
-  /** The still frame shown before the press, with its size so nothing shifts. */
+  /**
+   * The still frame shown before the press, with its size so nothing shifts, and optionally its
+   * dark variant.
+   */
   poster: DemoVideoPoster
   /**
    * The clip's files, the preferred one first (WebM before MP4). The first is also the link a
@@ -108,7 +98,8 @@ const DEMO_VIDEO_LABELS: Required<
  * clip on press.
  *
  * The server renders the poster `<img>` inside a link to the first source, so without JavaScript
- * the link opens the clip in the browser's own player. After hydration, a click, Enter or Space on
+ * the link opens the clip in the browser's own player. With `poster.dark` the image is a
+ * `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. After hydration, a click, Enter or Space on
  * the link stays on the page and puts `<video controls autoplay playsinline>` in the poster's
  * place, at the same aspect, and focus moves to the video so a keyboard reader can pause it at
  * once. The clip plays with its sound, since the press is the reader's own gesture; when the
@@ -244,19 +235,7 @@ export function DemoVideo(
         if (event.key === " ") play(event)
       }}
     >
-      <img
-        src={poster.src}
-        srcset={poster.srcset}
-        sizes={poster.sizes}
-        width={poster.width}
-        height={poster.height}
-        alt=""
-        aria-hidden="true"
-        loading={eager ? "eager" : "lazy"}
-        fetchpriority={eager ? "high" : undefined}
-        decoding={eager ? undefined : "async"}
-        class={posterClass}
-      />
+      <PosterPicture poster={poster} eager={eager} class={posterClass} />
       <PlayMark />
     </a>
   )

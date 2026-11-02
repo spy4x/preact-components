@@ -48,6 +48,29 @@ describe("DemoVideo", () => {
     expect(html).toMatch(/<img [^>]*srcset="\/demo-640\.webp 640w" sizes="100vw"/)
   })
 
+  it("draws a picture with a dark source when the poster has a dark variant", () => {
+    const html = render(
+      <DemoVideo
+        {...PROPS}
+        poster={{
+          ...PROPS.poster,
+          sizes: "100vw",
+          dark: { srcset: "/demo-dark.webp", media: "(prefers-color-scheme: dark)" },
+        }}
+      />,
+    )
+    expect(html).toContain(
+      '<picture class="contents"><source media="(prefers-color-scheme: dark)" ' +
+        'srcset="/demo-dark.webp" sizes="100vw"/><img src="/demo.webp"',
+    )
+  })
+
+  it("draws the poster as a plain img without a dark variant", () => {
+    const html = render(<DemoVideo {...PROPS} />)
+    expect(html).not.toContain("<picture")
+    expect(html).not.toContain("<source")
+  })
+
   it("hides the play mark and the decorative poster from assistive tech", () => {
     const html = render(<DemoVideo {...PROPS} />)
     expect(html).toMatch(/<img [^>]* alt(?:="")? aria-hidden="true" /)
