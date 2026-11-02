@@ -299,6 +299,11 @@ with no title bar. Draw the browser window, with its bar and address, only when 
 matters, such as a public link the reader will type; a fake bar otherwise takes space and says
 nothing. A phone screen goes in the phone frame, a command in the terminal.
 
+**A demo with sound is `DemoVideo`; a silent loop that proves a claim is `LoopVideo`.** The visitor
+starts a `DemoVideo`. A `LoopVideo` is 5 to 8 seconds, plays by itself while in view and has a
+pause button, so it is content the visitor controls and the "Never: scroll-triggered reveals" rule
+under Motion does not cover it.
+
 **A product walkthrough is `ScreenTour`:** named steps as tabs beside one plain, browser or phone
 frame whose screenshot swaps, the step's caption (its `alt`) and one line of text under the frame,
 and "View full size" into `Lightbox`. Use it on a product or case-study page when the screens tell a
