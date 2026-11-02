@@ -3554,10 +3554,17 @@ function loopVideoSpecs(): Spec[] {
         const before = (await state()).time
         await page.emulateMedia({ colorScheme: "light" })
         await frame.locator("video").evaluate((element) =>
-          new Promise<void>((resolve) => {
+          new Promise<void>((resolve, reject) => {
             const clip = element as HTMLVideoElement
+            const timer = setTimeout(() =>
+              reject(
+                new Error(
+                  `the light files did not play: ${clip.currentSrc} at ${clip.currentTime}s`,
+                ),
+              ), 10_000)
             const done = () => {
               if (!/loop-light\.webm$/.test(clip.currentSrc) || clip.currentTime === 0) return
+              clearTimeout(timer)
               clip.removeEventListener("timeupdate", done)
               resolve()
             }
