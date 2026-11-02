@@ -3602,13 +3602,13 @@ function loopVideoSpecs(): Spec[] {
       },
     },
     {
-      name: "LoopVideo: a loop whose file is missing keeps its still, named by the title, and " +
+      name: "LoopVideo: a loop no browser can play keeps its still, named by the title, and " +
         "draws no button",
       pageId: "ui",
       run: async (page) => {
-        const frame = page.locator("#demo-LoopVideo figure").filter({ hasText: "file is missing" })
+        const frame = page.locator("#demo-LoopVideo figure").filter({ hasText: "no browser can play" })
         await frame.scrollIntoViewIfNeeded()
-        await frame.getByRole("img", { name: "A loop that cannot load.", exact: true }).waitFor()
+        await frame.getByRole("img", { name: "A loop that cannot play.", exact: true }).waitFor()
         await frame.locator("video").waitFor({ state: "detached" })
         if (await frame.getByRole("button").count() > 0) {
           throw new Error("the failed loop still draws its button")
@@ -3623,7 +3623,7 @@ function loopVideoSpecs(): Spec[] {
         const { frame, playing } = loopVideoCard(page)
         await frame.scrollIntoViewIfNeeded()
         await playing()
-        await page.locator("#demo-LoopVideo figure").filter({ hasText: "file is missing" })
+        await page.locator("#demo-LoopVideo figure").filter({ hasText: "no browser can play" })
           .locator("video").waitFor({ state: "detached" })
         return await axePasses(page, ["#demo-LoopVideo"])
       },

@@ -474,13 +474,14 @@ export const marketingBlockDemos: DemoFragment = {
         </WindowFrame>
         <WindowFrame
           variant="plain"
-          caption="A loop whose file is missing: the still stays and the button goes away"
+          caption="A loop no browser can play: the still stays and the button goes away"
         >
+          {/* A type no browser plays: it fails at once, and asks the server for nothing. */}
           <LoopVideo
-            name="Missing loop"
-            title="A loop that cannot load."
+            name="Unplayable loop"
+            title="A loop that cannot play."
             poster={DEMO_LOOP.poster}
-            sources={[{ src: "video-demo/missing-loop.webm", type: "video/webm" }]}
+            sources={[{ src: "video-demo/unplayable-loop.webm", type: "video/x-unplayable" }]}
           />
         </WindowFrame>
       </div>
