@@ -41,7 +41,7 @@ export interface LoopControl {
   stop(): void
 }
 
-/** Starts the clip and ignores a refusal: a pause that cancels the play, or autoplay not allowed. */
+/** Starts the clip, ignoring a refusal: a pause that cancels the play, or autoplay not allowed. */
 function start(clip: LoopClip): void {
   clip.play().catch(() => {})
 }
