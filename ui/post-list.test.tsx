@@ -126,7 +126,7 @@ describe("PostList", () => {
     expect(second).not.toContain("fetchpriority")
   })
 
-  it("renders a row without a cover exactly as before, with no placeholder", () => {
+  it("renders a row without a cover as text only, with no wrapper or placeholder", () => {
     const html = renderList(<PostList posts={[{ ...POSTS[0], image: COVER }, POSTS[1]]} />)
     const plain = renderList(<PostList posts={[POSTS[1]]} />)
     const row = (list: string) => list.slice(list.lastIndexOf("<li"), list.lastIndexOf("</ul>"))
