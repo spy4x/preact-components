@@ -65,6 +65,19 @@ describe("MailedCodeStep", () => {
     expect(at("Send a new code")).toBeLessThan(at("mailed-code-step-change-email"))
   })
 
+  it("draws the step in a card, with the change-email line centred under it", () => {
+    const markup = html()
+    const card = markup.match(/<div class="pc-card[^"]*"/)?.[0] ?? ""
+    expect(card).not.toBe("")
+    const cardAt = markup.indexOf(card)
+    const lineAt = markup.indexOf('<p class="text-center')
+    expect(lineAt).toBeGreaterThan(cardAt)
+    // The line comes after the card closes: everything up to it is the card's own markup.
+    const between = markup.slice(cardAt, lineAt)
+    expect(between.split("<div").length).toBe(between.split("</div>").length)
+    expect(markup.slice(lineAt)).toContain("mailed-code-step-change-email")
+  })
+
   it("draws the heading at the level asked for, 2 by default", () => {
     expect(html()).toMatch(/<h2[^>]*>Check your inbox<\/h2>/)
     expect(html({ headingLevel: 1 })).toMatch(/<h1[^>]*>Check your inbox<\/h1>/)

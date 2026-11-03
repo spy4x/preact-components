@@ -10,14 +10,20 @@
  * line break, and some apps print it in groups ("ABC 123"). A `-` or `_` can be part of a code, so
  * it is kept: the app's own check decides what a code may hold.
  *
- * **A paste or an autofill submits by itself** when `pattern` says the result is a whole code. An
- * input event that grows the value by more than one character is a paste or an autofill, never a
- * key press, so a person typing is never cut off mid-code.
+ * **A paste or an autofill submits by itself** when `pattern` says the result is a whole code. The
+ * input event's `inputType` tells them apart from typing: `insertFromPaste`, `insertReplacementText`
+ * (a suggestion picked, such as the code the keyboard offers) or none at all (an autofill). A key
+ * press never submits, so a person typing is never cut off mid-code, and a paste over a refused
+ * code's selected text submits even though the value did not grow.
  *
  * **Focus.** The field takes focus when the step opens, and again, with its text selected, after a
  * refused code, so the next try replaces it. After a new code went out, `ResendButton` moves focus
  * to its "on its way" line; this step hands it on to the field, since typing the new code is what
  * comes next, and the line, a `role="status"` region, is still announced.
+ *
+ * **It draws its own card**, with "Wrong email? Use a different one" centred under it, as the
+ * design language's "Waiting on an e-mail" row places it, so an app puts the whole step on the page
+ * as it is. `class` sizes the outer column.
  *
  * **Tests find a part by its fixed `data-e2e`**, as with `AuthForm`: `mailed-code-step` on the
  * root, `mailed-code-step-code`, `mailed-code-step-submit` and `mailed-code-step-change-email`, and
@@ -27,6 +33,7 @@
 import { cn } from "@spy4x/preact-cn"
 import { TOUCH_TARGET } from "@spy4x/preact-ui"
 import { Button } from "@spy4x/preact-ui/button"
+import { Card } from "@spy4x/preact-ui/card"
 import { Field } from "@spy4x/preact-ui/field"
 import { useLabels } from "@spy4x/preact-ui/i18n"
 import { Input } from "@spy4x/preact-ui/input"
@@ -105,13 +112,22 @@ export interface MailedCodeStepProps {
   headingLevel?: 1 | 2 | 3
   /** Words to replace, each with an English default. */
   labels?: Partial<MailedCodeStepLabels>
-  /** Utilities for the root element. */
+  /** Utilities for the outer column that holds the card and the line under it. */
   class?: string
 }
 
 /** The code as typed, without any whitespace. */
 function cleanCode(value: string): string {
   return value.replace(/\s+/g, "")
+}
+
+/**
+ * True when an input event put text in at once rather than a key at a time: a paste, a picked
+ * suggestion, or an autofill, which some browsers send as a plain `Event` with no `inputType`.
+ */
+function arrivedWhole(event: Event): boolean {
+  const type = (event as InputEvent).inputType
+  return !type || type === "insertFromPaste" || type === "insertReplacementText"
 }
 
 /** True when `pattern` accepts `code`; a `g` or `y` flag's position is reset first. */
@@ -147,7 +163,6 @@ export function MailedCodeStep(
   })
   const id = useId()
   const field = useRef<HTMLInputElement>(null)
-  const typed = useRef("")
   const invalid = useSignal(false)
   const shown = invalid.value ? words.invalid : error || null
   const Heading = `h${headingLevel}` as "h2"
@@ -179,79 +194,83 @@ export function MailedCodeStep(
   }
 
   return (
-    <div class={cn("flex flex-col gap-6", className)} data-e2e="mailed-code-step">
-      <header class="flex flex-col gap-1">
-        <Heading class="text-xl font-semibold text-foreground">{words.title}</Heading>
-        <p class="text-sm text-muted">
-          {sentence}
-          {minutes === undefined ? null : <>{" "}{words.expires(minutes)}</>}
-        </p>
-      </header>
-      {
-        /* `method="post"`: a submit before the script has loaded must not put the code in the
+    <div class={cn("flex w-full flex-col gap-6", className)} data-e2e="mailed-code-step">
+      <Card class="flex w-full flex-col gap-6 p-6 sm:p-8">
+        <header class="flex flex-col gap-1">
+          <Heading class="text-xl font-semibold text-foreground">{words.title}</Heading>
+          <p class="text-sm text-muted">
+            {sentence}
+            {minutes === undefined ? null : <>{" "}{words.expires(minutes)}</>}
+          </p>
+        </header>
+        {
+          /* `method="post"`: a submit before the script has loaded must not put the code in the
            address bar, as a form with no method does. */
-      }
-      <form
-        method="post"
-        class="flex flex-col gap-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          submit(cleanCode(field.current?.value ?? ""))
-        }}
-      >
-        <Field id={`${id}-code`} label={words.code} error={shown} required>
-          {(wiring) => (
-            <Input
-              ref={field}
-              id={wiring.id}
-              aria-describedby={wiring["aria-describedby"]}
-              aria-invalid={shown ? true : undefined}
-              name="code"
-              required
-              autocomplete="one-time-code"
-              autocapitalize="off"
-              autocorrect="off"
-              spellcheck={false}
-              inputmode="text"
-              class="font-mono text-lg"
-              onInput={(event) => {
-                const value = event.currentTarget.value
-                const jumped = value.length - typed.current.length > 1
-                typed.current = value
-                if (invalid.value) invalid.value = false
-                const code = cleanCode(value)
-                if (jumped && pattern && accepts(pattern, code)) submit(code)
-              }}
-              data-e2e="mailed-code-step-code"
-            />
-          )}
-        </Field>
-        <Button
-          type="submit"
-          busy={busy}
-          busyLabel={words.checking}
-          data-e2e="mailed-code-step-submit"
+        }
+        <form
+          method="post"
+          class="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            submit(cleanCode(field.current?.value ?? ""))
+          }}
         >
-          {words.submit}
-        </Button>
-      </form>
-      <div
-        onFocusIn={(event) => {
-          // ResendButton focuses its "on its way" line after a resend; typing comes next.
-          if ((event.target as HTMLElement).getAttribute("role") === "status") {
-            field.current?.focus()
-          }
-        }}
-      >
-        <ResendButton
-          onResend={onResend}
-          busy={resending}
-          readyAt={readyAt}
-          label={words.resend}
-          sentText={words.resent}
-        />
-      </div>
-      <p class="text-sm text-muted">
+          <Field id={`${id}-code`} label={words.code} error={shown} required>
+            {(wiring) => (
+              <Input
+                ref={field}
+                id={wiring.id}
+                aria-describedby={wiring["aria-describedby"]}
+                aria-invalid={shown ? true : undefined}
+                name="code"
+                required
+                autocomplete="one-time-code"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck={false}
+                inputmode="text"
+                class="font-mono text-lg"
+                onInput={(event) => {
+                  if (invalid.value) invalid.value = false
+                  const code = cleanCode(event.currentTarget.value)
+                  if (arrivedWhole(event) && pattern && accepts(pattern, code)) submit(code)
+                }}
+                data-e2e="mailed-code-step-code"
+              />
+            )}
+          </Field>
+          <Button
+            type="submit"
+            class="w-full"
+            busy={busy}
+            busyLabel={words.checking}
+            data-e2e="mailed-code-step-submit"
+          >
+            {words.submit}
+          </Button>
+        </form>
+        <div
+          onFocusIn={(event) => {
+            // ResendButton focuses its "on its way" line after a resend; typing comes next.
+            if ((event.target as HTMLElement).getAttribute("role") === "status") {
+              field.current?.focus()
+            }
+          }}
+        >
+          <ResendButton
+            onResend={() => {
+              // A new code is coming, so a complaint about the old one no longer applies.
+              invalid.value = false
+              onResend()
+            }}
+            busy={resending}
+            readyAt={readyAt}
+            label={words.resend}
+            sentText={words.resent}
+          />
+        </div>
+      </Card>
+      <p class="text-center text-sm text-muted">
         {words.wrongEmail}{" "}
         <Button
           type="button"
