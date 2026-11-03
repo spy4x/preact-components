@@ -5113,8 +5113,8 @@ export const specs: readonly Spec[] = [
   },
   ...(["light", "dark"] as const).map((palette): Spec => ({
     name: `Prose with copyCode, ${palette}: Tab goes from a code block to its named copy button, ` +
-      "which shows a focus ring, copies the block's exact text and announces it, and a long " +
-      "line scrolls inside the block",
+      "which shows a focus ring, copies the block's text without its final newline and " +
+      "announces it, and a long line scrolls inside the block",
     pageId: "ui",
     colorScheme: palette,
     run: async (page) => {
@@ -5122,9 +5122,10 @@ export const specs: readonly Spec[] = [
       const block = card.locator("pre")
       const button = card.getByRole("button", { name: "Copy", exact: true })
       const status = card.locator("[data-prose-copy-status]")
-      // The guide's text: two commands and the newline the Markdown renderer ends a block with.
+      // The guide's two commands, without the newline the Markdown renderer ends a block with,
+      // so a pasted command waits for Enter.
       const text = "deno add jsr:@spy4x/preact-ui\n" +
-        "deno task dev --port=8000 --watch=static/,routes/ --env-file=.env.local\n"
+        "deno task dev --port=8000 --watch=static/,routes/ --env-file=.env.local"
       // The clipboard is replaced, so the spec reads what reached it and decides whether it works.
       await page.evaluate(() => {
         const state = globalThis as { __copyWorks?: boolean; __copied?: string[] }

@@ -44,7 +44,7 @@ function codeBlock(text = BLOCK_TEXT) {
 }
 
 describe("enhanceCodeCopy", () => {
-  it("copies the block's exact text, closing newline kept, and announces Copied", async () => {
+  it("copies the block's text without its final newline and announces Copied", async () => {
     const block = codeBlock()
     const copied: string[] = []
     const undo = enhanceCodeCopy(block.root, (text) => void copied.push(text))
