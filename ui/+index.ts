@@ -570,6 +570,7 @@ export {
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
+export { enhanceCodeCopy, ProseCodeCopy, type ProseCodeCopyProps } from "./prose-copy.tsx"
 export {
   SECTION_HEADING_LABELS,
   SectionHeading,

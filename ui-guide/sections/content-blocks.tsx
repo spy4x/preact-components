@@ -1,7 +1,7 @@
 /**
  * The cards of the blocks a blog, a docs site, a changelog and a record's detail page are read
- * in: `Prose`, `TldrBox`, `PostList`, `DocsNav`, `PrevNext`, `ChangeList`, `SectionHeading` and
- * `FactList`. None needs JavaScript. They are spread into the Display section.
+ * in: `Prose` (with `ProseCodeCopy`, which wires its code blocks' copy buttons), `TldrBox`, `PostList`, `DocsNav`, `PrevNext`, `ChangeList`, `SectionHeading` and
+ * `FactList`. None needs JavaScript; `ProseCodeCopy` adds it to a page that has some. They are spread into the Display section.
  */
 
 import {
@@ -11,6 +11,7 @@ import {
   PostList,
   PrevNext,
   Prose,
+  ProseCodeCopy,
   SectionHeading,
   TldrBox,
 } from "@spy4x/preact-ui"
@@ -43,6 +44,12 @@ and the <code>enqueueJob</code> call.</p>
 <ol><li>Define the job.</li><li>Queue it.</li></ol>
 <hr>
 <p>That is all it takes.</p>`
+
+/** A guide's setup steps: two commands in one block, which its copy button copies as they read. */
+const SETUP = `<p>Add the package, then start the app:</p>
+<pre><code>deno add jsr:@spy4x/preact-ui
+deno task dev --port=8000 --watch=static/,routes/ --env-file=.env.local
+</code></pre>`
 
 const POSTS = [
   {
@@ -95,13 +102,52 @@ export const contentBlockDemos: DemoFragment = {
           "A “Link to this section” link beside every `h2` and `h3` with an `id`, shown on hover and on focus. Tables always scroll in their own focusable region, named after the heading before them.",
       },
       {
+        name: "copyCode",
+        type: "boolean",
+        default: "false",
+        description:
+          "A copy button in every code block's corner, rendered `hidden` until `ProseCodeCopy` or `enhanceCodeCopy` wires it, so a page without JavaScript shows none. Code blocks always keep their lines and scroll sideways.",
+      },
+      {
         name: "labels",
-        type: "{ anchor?, table? }",
-        description: `The anchor's name and the name of a table region with no heading before it.`,
+        type: "{ anchor?, table?, copy?, copied?, copyFailed? }",
+        description:
+          `The anchor's name, the name of a table region with no heading before it, and the copy button's name and announcements.`,
       },
     ],
-    snippet: `<Prose as="article" html={renderedMarkdown} anchors />`,
-    render: () => <Prose html={ARTICLE} anchors />,
+    snippet: `<Prose as="article" html={renderedMarkdown} anchors copyCode />`,
+    render: () => (
+      <>
+        <Prose html={ARTICLE} anchors copyCode />
+        <ProseCodeCopy />
+      </>
+    ),
+  },
+  ProseCodeCopy: {
+    summary:
+      "Wires the copy buttons `Prose` draws with `copyCode`: renders nothing, so a Fresh app makes it the page's one island.",
+    wide: false,
+    props: [
+      {
+        name: "copy",
+        type: "(text: string) => void | boolean | Promise<void | boolean>",
+        description:
+          "Clipboard port; `false`, a throw or a rejection is a failed copy. Left out, the browser clipboard.",
+      },
+    ],
+    snippet: `// islands/code-copy.tsx
+export { ProseCodeCopy as default } from "@spy4x/preact-ui/prose-copy"
+
+// a route
+import CodeCopy from "../islands/code-copy.tsx"
+<Prose html={guide.html} copyCode />
+<CodeCopy />`,
+    render: () => (
+      <div data-e2e="prose-code-copy">
+        <Prose html={SETUP} copyCode />
+        <ProseCodeCopy />
+      </div>
+    ),
   },
   TldrBox: {
     summary:

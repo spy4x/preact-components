@@ -48,13 +48,58 @@ describe("Prose", () => {
     expect(proseCss).not.toContain("dark:")
   })
 
-  it("wraps long code lines instead of scrolling them, so no code block needs a tab stop", () => {
+  it("scrolls a long code line inside its block, which is a Tab stop, instead of wrapping it", () => {
     const pre = /& :where\(pre\) \{([^}]*)\}/.exec(proseCss)?.[1] ?? ""
-    expect(pre).toContain("whitespace-pre-wrap")
-    // Only the table region scrolls; it is the one focusable block.
-    expect(proseCss.match(/overflow-x-auto/g)).toEqual(["overflow-x-auto"])
-    expect(/& :where\(\[data-prose-table\]\) \{([^}]*)\}/.exec(proseCss)?.[1]).toContain(
-      "overflow-x-auto",
+    expect(pre).toContain("overflow-x-auto")
+    expect(pre).toContain("whitespace-pre;")
+    expect(pre).not.toContain("wrap")
+    expect(proseCss).toContain("& :where(pre:focus-visible) {")
+    const html = render(<Prose html="<pre><code>deno task check</code></pre>" />)
+    expect(html).toContain('<pre tabindex="0"><code>deno task check</code></pre>')
+    // A block that is a Tab stop already, as a highlighter draws it, keeps its own.
+    expect(render(<Prose html='<pre class="shiki" tabindex="-1"><code>x</code></pre>' />))
+      .toContain('<pre class="shiki" tabindex="-1"><code>x</code></pre>')
+  })
+
+  it("draws no copy button without copyCode", () => {
+    const html = render(<Prose html="<pre><code>deno task check</code></pre>" />)
+    expect(html).not.toContain("data-prose-copy")
+    expect(html).not.toContain("<button")
+  })
+
+  it("renders each code block's copy button hidden, named, with its words and a live region", () => {
+    const html = render(
+      <Prose
+        html='<pre><code>a</code></pre><p>x</p><pre class="b"><code>b</code></pre>'
+        copyCode
+        labels={{ copy: 'Copy "code"', copied: "Done", copyFailed: "No luck" }}
+      />,
+    )
+    const blocks = [...html.matchAll(/<div data-prose-code="">([\s\S]*?)<\/div>/g)]
+    expect(blocks.length).toBe(2)
+    for (const [, block] of blocks) {
+      expect(block).toMatch(/^<pre[^>]* tabindex="0">[\s\S]*<\/pre><button /)
+      expect(block).toContain(
+        '<button type="button" data-prose-copy="" hidden aria-label="Copy &quot;code&quot;" ' +
+          'title="Copy &quot;code&quot;" data-copied="Done" data-failed="No luck">',
+      )
+      // A clipboard, a checkmark and a cross, in the order the stylesheet picks them by.
+      expect(block.match(/<svg /g)?.length).toBe(3)
+      expect(block).toMatch(
+        /<\/button><span data-prose-copy-status="" role="status" aria-live="polite"><\/span>$/,
+      )
+    }
+    // Without JavaScript the stylesheet keeps the hidden button out, even past a reset.
+    expect(proseCss).toContain("& [data-prose-copy][hidden] {")
+    expect(proseCss).toMatch(/& \[data-prose-copy-status\] \{\s*@apply sr-only;/)
+  })
+
+  it("gives the copy button a focus ring and the English words by default", () => {
+    const html = render(<Prose html="<pre><code>a</code></pre>" copyCode />)
+    expect(html).toContain('aria-label="Copy" title="Copy" data-copied="Copied"')
+    expect(html).toContain(`data-failed="Couldn't copy"`)
+    expect(/& \[data-prose-copy\]:focus-visible \{([^}]*)\}/.exec(proseCss)?.[1]).toContain(
+      "ring-2 ring-focus",
     )
   })
 
