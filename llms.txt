@@ -776,6 +776,7 @@ PricingTable	component	@spy4x/preact-ui	Plans side by side, each with its price,
 Progress	component	@spy4x/preact-ui	Determinate progress bar, or an indeterminate track when the reading is unknown.
 ProgressTone	type	@spy4x/preact-ui	Semantic colour of the filled portion, mapped onto the `theme/` colour atoms.
 Prose	component	@spy4x/preact-ui	The typography of an article: rendered Markdown (headings `h2` to `h4`, paragraphs, lists, code, quotes, tables, images, links and rules) set from the design tokens at a reading measure of about 65 characters, in light and dark.
+ProseCodeCopy	component	@spy4x/preact-ui	Renders nothing; once mounted, wires every copy button `Prose` drew with `copyCode` on the page, through `enhanceCodeCopy`, and unwires them when it unmounts.
 QUICK_ADD_ANNOUNCE_PAUSE_MS	constant	@spy4x/preact-ui	How long the typing must pause before the live region reads the recognised parts out.
 QuickAdd	component	@spy4x/preact-ui	One field that adds an item to a list: type, press Enter.
 QuickAddDueLabel	type	@spy4x/preact-ui	Words a due day for a badge.
@@ -922,6 +923,7 @@ describedImages	helper	@spy4x/preact-ui	Keep only the images with a real descrip
 dialogHeldFocus	helper	@spy4x/preact-ui	Whether the dialog still holds the focused element.
 dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
+enhanceCodeCopy	helper	@spy4x/preact-ui	Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside `root`: a press copies the block's text exactly as it reads, trailing newline included or not, then a checkmark (or a cross) shows and the polite live region beside the button says "Copied" (or "Couldn't copy") in the labels `Prose` rendered.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
 filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
