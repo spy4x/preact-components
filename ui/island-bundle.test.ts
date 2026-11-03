@@ -63,6 +63,8 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   "island-pricing-table.tsx": 36_000,
   // 45.8 KB.
   "island-screen-tour.tsx": 47_000,
+  // Below the default: a docs page's only island, Preact and the clipboard helper alone. 14.1 KB.
+  "island-prose-code-copy.tsx": 16_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
@@ -109,6 +111,7 @@ describe("a browser bundle of a library component", () => {
       "island-modal-combobox.tsx",
       "island-toastr.tsx",
       "island-explorable-bars.tsx",
+      "island-prose-code-copy.tsx",
     ]
   ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
@@ -125,5 +128,11 @@ describe("a browser bundle of a library component", () => {
     // imported something that imports `Button`, which once cost 19 KB minified for one class-name
     // constant (#671).
     expect(await bundle("island-toastr.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
+  })
+
+  it("carries none of Button's code for the island that wires Prose's copy buttons", async () => {
+    // The island copies through the shared clipboard helper, not through `CopyButton`, whose
+    // module renders a `Button`: a docs page that ships only this island stays small.
+    expect(await bundle("island-prose-code-copy.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
   })
 })
