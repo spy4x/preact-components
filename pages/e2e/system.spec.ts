@@ -507,7 +507,7 @@ export const specs: readonly Spec[] = [
   {
     name:
       "MailedCodeStep: opens with focus in the field and passes axe; a typed code with spaces " +
-      "reaches onSubmit without them, dashes kept, only on Enter; a refused code puts focus back " +
+      "reaches onSubmit without them, dashes kept, only on Continue; a refused code puts focus back " +
       "in the field with its text selected",
     pageId: "system",
     run: async (page) => {
@@ -521,7 +521,7 @@ export const specs: readonly Spec[] = [
       if (await received.textContent() !== "onSubmit received: nothing yet") {
         throw new Error(`typing submitted by itself: ${await received.textContent()}`)
       }
-      await page.keyboard.press("Enter")
+      await page.locator(`[data-e2e="mailed-code-step-submit"]`).click()
       await received.filter({ hasText: /^onSubmit received: k7q-2xm$/ }).waitFor()
       await page.locator(`[data-e2e="mailed-code-step"]`)
         .getByText("That code is wrong or has expired.").waitFor()
