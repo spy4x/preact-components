@@ -386,6 +386,7 @@ ConflictKind	type	@spy4x/preact-system	Why a change was not taken, the same thre
 ContainerLike	type	@spy4x/preact-system	The slice of `ServiceWorkerContainer` this package uses.
 DEFAULT_CONFLICT_CHOOSER_LABELS	constant	@spy4x/preact-system	The English words `ConflictChooser` shows when the caller passes none.
 DEFAULT_INSTALL_PROMPT_LABELS	constant	@spy4x/preact-system	The English words `InstallPrompt` shows when the caller passes none.
+DEFAULT_MAILED_CODE_STEP_LABELS	constant	@spy4x/preact-system	The English words `MailedCodeStep` shows when the caller passes none.
 DEFAULT_PUSH_SETTINGS_LABELS	constant	@spy4x/preact-system	The English words `PushSettings` shows when the caller passes none.
 DEFAULT_SAVED_COPY_NOTICE_LABELS	constant	@spy4x/preact-system	The English words `SavedCopyNotice` shows when the caller passes none.
 DEFAULT_SYNC_STATUS_LABELS	constant	@spy4x/preact-system	The English words `SyncStatus` shows when the caller passes none.
@@ -395,6 +396,7 @@ HeadStore	type	@spy4x/preact-system	A head signal with the defaults it was creat
 HeadTag	type	@spy4x/preact-system	A serialisable `<head>` element, in document order.
 HeadTagName	type	@spy4x/preact-system	Which `<head>` element a `HeadTag` describes.
 InstallPrompt	component	@spy4x/preact-system	Offer to install the app, or explain how to on iOS.
+MailedCodeStep	component	@spy4x/preact-system	"Check your inbox", the address the code went to, a code field with Continue as the one primary action, a `ResendButton`, and the way back to another address.
 OgType	type	@spy4x/preact-system	Open Graph object type a page declares.
 PageHead	type	@spy4x/preact-system	Every field `SEOHead` renders, plus the JSON-LD inputs.
 PushSettings	component	@spy4x/preact-system	Say whether this device gets notifications, and turn them on or off.
