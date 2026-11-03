@@ -52,7 +52,8 @@ describe("enhanceCodeCopy", () => {
 
     await block.press()
 
-    expect(copied).toEqual([BLOCK_TEXT])
+    // Without the final newline, so a pasted command waits for Enter in a terminal.
+    expect(copied).toEqual([BLOCK_TEXT.slice(0, -1)])
     expect(block.status.textContent).toBe("Copied")
     expect(block.attributes.get("data-status")).toBe("copied")
     undo()

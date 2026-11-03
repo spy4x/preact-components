@@ -29,7 +29,7 @@ function wire(button: HTMLButtonElement, copy?: CopyPort): (() => void) | undefi
     const id = ++latest
     // Back to rest first, so a second copy empties the live region and is announced again.
     settle()
-    const worked = await copyText(() => pre.textContent ?? "", copy)
+    const worked = await copyText(() => (pre.textContent ?? "").replace(/\n$/, ""), copy)
     if (id === latest) settle(worked ? "copied" : "failed")
   }
   const onClick = () => void press()
@@ -45,9 +45,9 @@ function wire(button: HTMLButtonElement, copy?: CopyPort): (() => void) | undefi
 
 /**
  * Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside
- * `root`: a press copies the block's text exactly as it reads, trailing newline included or not,
- * then a checkmark (or a cross) shows and the polite live region beside the button says "Copied"
- * (or "Couldn't copy") in the labels `Prose` rendered.
+ * `root`: a press copies the block's text as it reads, without its final newline, so a pasted
+ * command waits for Enter. Then a checkmark (or a cross) shows, and the polite live region beside
+ * the button says "Copied" (or "Couldn't copy") in the labels `Prose` rendered.
  *
  * Calling it again wires only the buttons not wired yet. Without a script the buttons stay
  * `hidden`, so a page with JavaScript off shows no dead control.
