@@ -589,12 +589,13 @@
   & :where(pre:focus-visible) {
     @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
   }
-  /* A code block with its copy button: the button sits in the block's top corner. */
+  /* A code block with its copy button: the button sits in the block's top corner, above the first
+     line, so a long line that scrolls never passes under it. */
   & :where([data-prose-code]) {
     @apply relative;
   }
   & :where([data-prose-code]:has(> [data-prose-copy]:not([hidden])) > pre) {
-    @apply pe-12;
+    @apply pt-12;
   }
   & [data-prose-copy] {
     @apply absolute end-2 top-2 inline-flex size-8 cursor-pointer items-center justify-center

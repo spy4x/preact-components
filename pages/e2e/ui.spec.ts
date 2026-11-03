@@ -5155,6 +5155,17 @@ export const specs: readonly Spec[] = [
       })
       if (!wide.scrolls) throw new Error("the long line does not scroll inside its block")
       if (wide.lines !== 2) throw new Error(`two commands take ${wide.lines} lines: one wrapped`)
+      // The first line starts below the button, so the text that scrolls under its corner is
+      // never covered.
+      const gap = await card.evaluate((node) => {
+        const pre = node.querySelector("pre")
+        const control = node.querySelector("[data-prose-copy]")
+        if (!pre || !control) return Number.NaN
+        const line = document.createRange()
+        line.selectNodeContents(pre)
+        return line.getClientRects()[0].top - control.getBoundingClientRect().bottom
+      })
+      if (!(gap >= 0)) throw new Error(`the copy button covers the first line by ${-gap} px`)
 
       await block.focus()
       await page.keyboard.press("Tab")
@@ -5173,7 +5184,7 @@ export const specs: readonly Spec[] = [
       await page.keyboard.press("Enter")
       await status.filter({ hasText: /^Couldn't copy$/ }).waitFor()
       await axeCleanIn(page, `[data-e2e="prose-code-copy"]`)
-      return `ring ${ring}, ${wide.lines} lines tall`
+      return `ring ${ring}, ${wide.lines} lines tall, first line ${gap} px below the button`
     },
   })),
   {
