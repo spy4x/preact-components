@@ -16,6 +16,14 @@ const POSTS: PostListItem[] = [
   { href: "/blog/first", title: "First post", publishedAt: "2026-09-01T08:00:00.000Z" },
 ]
 
+const COVER = {
+  src: "/covers/second.webp",
+  srcset: "/covers/second-640.webp 640w, /covers/second.webp 1600w",
+  sizes: "(min-width: 640px) 192px, calc(100vw - 32px)",
+  width: 1600,
+  height: 900,
+}
+
 const FORMAT = createFormatters({ locale: "en-GB", timeZone: "Asia/Tokyo" })
 
 function renderList(node: preact.ComponentChildren): string {
@@ -82,6 +90,48 @@ describe("PostList", () => {
     expect(html).toContain('<ul aria-label="Read next"')
     expect(html).toContain("</a></h3>")
     expect(html).toContain("6 Min. Lesezeit")
+  })
+
+  it("draws a post's cover as a decorative, sized, lazy picture beside its text", () => {
+    const html = renderList(<PostList posts={[{ ...POSTS[0], image: COVER }, POSTS[1]]} />)
+    const img = html.match(/<img [^>]*>/)?.[0] ?? ""
+    expect(img).toContain('src="/covers/second.webp"')
+    expect(img).toContain('srcset="/covers/second-640.webp 640w, /covers/second.webp 1600w"')
+    expect(img).toContain('sizes="(min-width: 640px) 192px, calc(100vw - 32px)"')
+    expect(img).toContain('width="1600"')
+    expect(img).toContain('height="900"')
+    // `preact-render-to-string` writes `alt=""` as the bare attribute `alt`.
+    expect(img).toMatch(/ alt(?=[\s>])/)
+    expect(img).toContain('loading="lazy"')
+    expect(img).toContain('decoding="async"')
+    expect(img).not.toContain("fetchpriority")
+    expect(img).toContain("order-first aspect-video")
+    expect(img).toContain("sm:order-none sm:w-48")
+    expect(img).toContain("rounded-card border border-subtle bg-surface")
+    expect(html).toContain('<li class="relative flex flex-col gap-4')
+    expect(html.match(/<img /g)?.length).toBe(1)
+  })
+
+  it("loads the first row's cover at once with eagerFirst, and the rest lazily", () => {
+    const html = renderList(
+      <PostList
+        posts={[{ ...POSTS[0], image: COVER }, { ...POSTS[1], image: COVER }]}
+        eagerFirst
+      />,
+    )
+    const [first, second] = html.match(/<img [^>]*>/g) ?? []
+    expect(first).toContain('loading="eager"')
+    expect(first).toContain('fetchpriority="high"')
+    expect(second).toContain('loading="lazy"')
+    expect(second).not.toContain("fetchpriority")
+  })
+
+  it("renders a row without a cover exactly as before, with no placeholder", () => {
+    const html = renderList(<PostList posts={[{ ...POSTS[0], image: COVER }, POSTS[1]]} />)
+    const plain = renderList(<PostList posts={[POSTS[1]]} />)
+    const row = (list: string) => list.slice(list.lastIndexOf("<li"), list.lastIndexOf("</ul>"))
+    expect(row(html)).toBe(row(plain))
+    expect(row(plain)).toMatch(/^<li class="relative border-b border-subtle py-6"><p /)
   })
 
   it("renders nothing for no posts, so the page draws its own empty state", () => {

@@ -51,6 +51,15 @@ const SETUP = `<p>Add the package, then start the app:</p>
 deno task dev --port=8000 --watch=static/,routes/ --env-file=.env.local
 </code></pre>`
 
+/** A flat 16:9 cover in one colour, so the card needs no image file. */
+const COVER = {
+  src:
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900'%3E%3Crect width='1600' height='900' fill='%2394a3b8'/%3E%3C/svg%3E",
+  width: 1600,
+  height: 900,
+  sizes: "(min-width: 640px) 192px, calc(100vw - 32px)",
+}
+
 const POSTS = [
   {
     href: "#demo-PostList",
@@ -60,6 +69,7 @@ const POSTS = [
     publishedAt: "2026-10-23T09:00:00.000Z",
     readMinutes: 6,
     lang: "en",
+    image: COVER,
   },
   {
     href: "#demo-PostList",
@@ -191,9 +201,16 @@ import CodeCopy from "../islands/code-copy.tsx"
     props: [
       {
         name: "posts",
-        type: "{ href, title, description?, publishedAt, readMinutes?, lang?, dir? }[]",
+        type: "{ href, title, description?, publishedAt, readMinutes?, lang?, dir?, image? }[]",
         description:
-          'The posts, newest first. `publishedAt` is shown as its UTC day. An empty list renders nothing. `lang` marks the title and description, such as an English post on an Arabic page, with `dir="auto"` unless `dir` is given.',
+          'The posts, newest first. `publishedAt` is shown as its UTC day. An empty list renders nothing. `lang` marks the title and description, such as an English post on an Arabic page, with `dir="auto"` unless `dir` is given. `image` (`{ src, width, height, srcset?, sizes? }`) is a decorative cover: full width and 16:9 above the text on a phone, 192×108 beside it from 640 px; a post without one stays text only.',
+      },
+      {
+        name: "eagerFirst",
+        type: "boolean",
+        default: "false",
+        description:
+          'The list is on the first screen: the first cover loads with `loading="eager"` and `fetchpriority="high"`, the rest lazily.',
       },
       {
         name: "headingLevel / label",
@@ -207,7 +224,7 @@ import CodeCopy from "../islands/code-copy.tsx"
         description: `The reading time's words, "6 min read" by default.`,
       },
     ],
-    snippet: `<PostList posts={posts.map((post) => ({ ...post, lang: "en" }))} />`,
+    snippet: `<PostList posts={posts.map((post) => ({ ...post, lang: "en" }))} eagerFirst />`,
     render: () => <PostList posts={POSTS} headingLevel={4} label="Recent posts" />,
   },
   DocsNav: {
