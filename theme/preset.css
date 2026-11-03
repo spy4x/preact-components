@@ -520,7 +520,9 @@
  * The type of an article (`Prose` from `@spy4x/preact-ui`): rendered Markdown, which carries no
  * classes, set from the tokens at a measure of about 65 characters. Every rule reads an element
  * inside the wrapper through `:where()`, so each weighs one class and a class on the element wins.
- * Code wraps instead of scrolling. On a phone inline code may break anywhere, so a long path in a
+ * A code block keeps its lines: a wide one scrolls inside the block, which `Prose` makes a Tab
+ * stop, so a copied command stays one line. With `copyCode`, the block's copy button sits in its
+ * top corner, over the code, on the block's own background. On a phone inline code may break anywhere, so a long path in a
  * table cell wraps instead of taking the whole width from the columns beside it; from `sm` it
  * breaks only when it is longer than its line, so a file name that fits stays whole. A table cell
  * holding code keeps room for a short name on a phone too. A table too wide for the screen
@@ -581,8 +583,43 @@
     @apply mt-2;
   }
   & :where(pre) {
-    @apply rounded-primary border border-subtle bg-canvas p-4 font-mono text-sm/6
-      whitespace-pre-wrap wrap-anywhere;
+    @apply overflow-x-auto rounded-primary border border-subtle bg-canvas p-4 font-mono text-sm/6
+      whitespace-pre;
+  }
+  & :where(pre:focus-visible) {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  /* A code block with its copy button: the button sits in the block's top corner. */
+  & :where([data-prose-code]) {
+    @apply relative;
+  }
+  & :where([data-prose-code]:has(> [data-prose-copy]:not([hidden])) > pre) {
+    @apply pe-12;
+  }
+  & [data-prose-copy] {
+    @apply absolute end-2 top-2 inline-flex size-8 cursor-pointer items-center justify-center
+      rounded-primary bg-canvas text-muted hover:bg-hover hover:text-foreground;
+  }
+  & [data-prose-copy][hidden] {
+    @apply hidden;
+  }
+  & [data-prose-copy]:focus-visible {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  & [data-prose-copy] > svg {
+    @apply hidden;
+  }
+  /* Its glyphs, in order: a clipboard at rest, a checkmark after a copy, a cross after a failure. */
+  & [data-prose-copy]:not([data-status]) > svg:nth-child(1),
+  & [data-prose-copy][data-status="copied"] > svg:nth-child(2),
+  & [data-prose-copy][data-status="failed"] > svg:nth-child(3) {
+    @apply block;
+  }
+  & [data-prose-copy][data-status="failed"] {
+    @apply text-danger;
+  }
+  & [data-prose-copy-status] {
+    @apply sr-only;
   }
   & :where(blockquote) {
     @apply border-s-2 border-strong ps-4 text-muted;
