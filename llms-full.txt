@@ -3015,16 +3015,19 @@ its label still works, since every field has a real `<label for>`.
 
 The step after an app e-mailed a code, for sign-up, sign-in and a password reset alike: "Check your
 inbox", the sentence the app passes (the address in bold), how long the code works when `minutes`
-is given, a code field with Continue as the one primary action, a `ResendButton` and "Wrong email?
-Use a different one". A code, unlike a mailed link, works in whichever browser the person types it
+is given, a code field with Continue as the one primary action and a `ResendButton`, all in one card, with
+"Wrong email? Use a different one" centred under the card, so an app places the whole step as it
+is. A code, unlike a mailed link, works in whichever browser the person types it
 into. `DEFAULT_MAILED_CODE_STEP_LABELS` holds its English words.
 
 - **The code leaves without whitespace, and nothing else is removed.** A code copied from a mail
   carries spaces or a line break; a `-` or `_` may be part of it, so the app's check decides.
 - **`pattern` is the code's shape**, tested after whitespace is removed. A code it refuses shows
-  `labels.invalid` under the field and never reaches `onSubmit`. An input event that grows the
-  value by more than one character, a paste or an autofill, submits by itself when `pattern`
-  accepts the result; typing never does. Without `pattern`, nothing submits by itself.
+  `labels.invalid` under the field and never reaches `onSubmit`; a new code going out clears it.
+  A paste, a picked suggestion or an autofill (an input event whose `inputType` is
+  `insertFromPaste`, `insertReplacementText` or missing) submits by itself when `pattern` accepts
+  the result, also over a refused code's selected text; typing never does. Without `pattern`,
+  nothing submits by itself. While `busy`, nothing is submitted a second time.
 - **Focus** goes to the field when the step opens, to the field with its text selected after a
   refused code (once `busy` is off, so the same message twice still moves it), and to the field
   after a new code went out: `ResendButton` focuses its "on its way" line, a `role="status"`
