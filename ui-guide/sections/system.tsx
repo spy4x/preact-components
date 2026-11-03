@@ -1200,9 +1200,10 @@ function AuthFormRoundTripDemo() {
 /**
  * `MailedCodeStep` with a pretend server, mounted only after "Email me a code" is pressed, as an
  * app shows it once the mail went out: mounted with the page, it would take the page's focus. The
- * code `K7Q-2XM` is accepted and any other well-formed one is refused 300 ms later; a new code goes
- * out 300 ms after the press, with a 30-second cooldown. The codes `onSubmit` received are listed,
- * so a check can see what reached it.
+ * code `K7Q-2XM` is accepted and any other well-formed one (three letters, digits or `_`, a dash,
+ * three more) is refused 300 ms later; a new code goes out 300 ms after the press, with a 30-second
+ * cooldown. The codes `onSubmit` received are listed, so a check can see what reached it. "Use a
+ * different one" closes the step and puts focus back on the button that opened it.
  */
 function MailedCodeStepDemo() {
   const open = useSignal(false)
@@ -1212,8 +1213,17 @@ function MailedCodeStepDemo() {
   const readyAt = useSignal<number | undefined>(undefined)
   const received = useSignal<string[]>([])
   const accepted = useSignal(false)
+  // Back from the step, focus returns to the button that opened it, as an app's address step
+  // would take it in its address field.
+  const opener = useRef<HTMLButtonElement>(null)
+  const returning = useRef(false)
+  useEffect(() => {
+    if (open.value || !returning.current) return
+    returning.current = false
+    opener.current?.focus()
+  }, [open.value])
   return (
-    <div class="flex max-w-sm flex-col gap-4" data-e2e="mailed-code-step-demo">
+    <div class="flex max-w-md flex-col gap-4" data-e2e="mailed-code-step-demo">
       {open.value
         ? (
           <MailedCodeStep
@@ -1223,7 +1233,7 @@ function MailedCodeStepDemo() {
               </>
             }
             minutes={15}
-            pattern={/^[A-Z0-9]{3}-[A-Z0-9]{3}$/i}
+            pattern={/^\w{3}-\w{3}$/}
             busy={busy.value}
             error={error.value}
             resending={resending.value}
@@ -1246,12 +1256,18 @@ function MailedCodeStepDemo() {
               }, 300)
             }}
             onChangeEmail={() => {
+              returning.current = true
               open.value = false
             }}
           />
         )
         : (
-          <Button type="button" class="self-start" onClick={() => (open.value = true)}>
+          <Button
+            ref={opener}
+            type="button"
+            class="self-start"
+            onClick={() => (open.value = true)}
+          >
             Email me a code
           </Button>
         )}
@@ -3682,7 +3698,7 @@ const tags = seoHeadTags(head)`,
 <MailedCodeStep
   sentence={<>We sent a code to <strong>{email}</strong>.</>}
   minutes={15}
-  pattern={/^[A-Z0-9]{3}-[A-Z0-9]{3}$/i} // a paste that matches submits at once
+  pattern={/^\w{3}-\w{3}$/} // a paste that matches submits at once
   busy={checking}
   error={error} // "That code is wrong or has expired."
   readyAt={sentAt + 60_000}
