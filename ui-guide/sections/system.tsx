@@ -85,6 +85,7 @@ import {
 } from "@spy4x/preact-system/sw-updater"
 import { ConflictChooser, type ConflictItem } from "@spy4x/preact-system/conflict-chooser"
 import { InstallPrompt } from "@spy4x/preact-system/install-prompt"
+import { MailedCodeStep } from "@spy4x/preact-system/mailed-code-step"
 import { SyncStatus } from "@spy4x/preact-system/sync-status"
 import { SavedCopyNotice } from "@spy4x/preact-system/saved-copy-notice"
 import {
@@ -1192,6 +1193,72 @@ function AuthFormRoundTripDemo() {
           }, 300)
         }}
       />
+    </div>
+  )
+}
+
+/**
+ * `MailedCodeStep` with a pretend server, mounted only after "Email me a code" is pressed, as an
+ * app shows it once the mail went out: mounted with the page, it would take the page's focus. The
+ * code `K7Q-2XM` is accepted and any other well-formed one is refused 300 ms later; a new code goes
+ * out 300 ms after the press, with a 30-second cooldown. The codes `onSubmit` received are listed,
+ * so a check can see what reached it.
+ */
+function MailedCodeStepDemo() {
+  const open = useSignal(false)
+  const busy = useSignal(false)
+  const error = useSignal<string | null>(null)
+  const resending = useSignal(false)
+  const readyAt = useSignal<number | undefined>(undefined)
+  const received = useSignal<string[]>([])
+  const accepted = useSignal(false)
+  return (
+    <div class="flex max-w-sm flex-col gap-4" data-e2e="mailed-code-step-demo">
+      {open.value
+        ? (
+          <MailedCodeStep
+            sentence={
+              <>
+                We sent a code to <strong class="wrap-anywhere">ana@example.com</strong>.
+              </>
+            }
+            minutes={15}
+            pattern={/^[A-Z0-9]{3}-[A-Z0-9]{3}$/i}
+            busy={busy.value}
+            error={error.value}
+            resending={resending.value}
+            readyAt={readyAt.value}
+            onSubmit={(code) => {
+              received.value = [...received.value, code]
+              error.value = null
+              busy.value = true
+              setTimeout(() => {
+                busy.value = false
+                accepted.value = code === "K7Q-2XM"
+                error.value = accepted.value ? null : "That code is wrong or has expired."
+              }, 300)
+            }}
+            onResend={() => {
+              resending.value = true
+              setTimeout(() => {
+                resending.value = false
+                readyAt.value = Date.now() + 30_000
+              }, 300)
+            }}
+            onChangeEmail={() => {
+              open.value = false
+            }}
+          />
+        )
+        : (
+          <Button type="button" class="self-start" onClick={() => (open.value = true)}>
+            Email me a code
+          </Button>
+        )}
+      <p class="text-sm text-muted" data-e2e="mailed-code-step-demo-received">
+        {accepted.value ? "Accepted. " : ""}onSubmit received:{" "}
+        {received.value.join(", ") || "nothing yet"}
+      </p>
     </div>
   )
 }
@@ -3552,6 +3619,83 @@ const tags = seoHeadTags(head)`,
   />
 )}`,
     render: () => <UnsentChangesDialogDemo />,
+  },
+  MailedCodeStep: {
+    summary:
+      "The step after an app mailed a code: Check your inbox, type the code, Continue, with a resend and the way back to another address.",
+    wide: true,
+    props: [
+      {
+        name: "sentence",
+        type: "ComponentChildren",
+        description: "Where the code went, with the address in bold.",
+      },
+      { name: "minutes", type: "number", description: "How long the code works, said under it." },
+      {
+        name: "onSubmit",
+        type: "(code: string) => void",
+        description: "Gets the code without whitespace; dashes and underscores stay.",
+      },
+      { name: "onResend", type: "() => void", description: "Sends a new code." },
+      {
+        name: "onChangeEmail",
+        type: "() => void",
+        description: "Goes back to the step that asks for the address.",
+      },
+      {
+        name: "busy",
+        type: "boolean",
+        default: "false",
+        description: "The code is being checked; a second submit is ignored.",
+      },
+      {
+        name: "error",
+        type: "string | null",
+        description: "Why the code was refused; the field takes focus with its text selected.",
+      },
+      {
+        name: "pattern",
+        type: "RegExp",
+        description:
+          "A whole code's shape. A refused code never reaches onSubmit; a paste or autofill it accepts submits at once.",
+      },
+      {
+        name: "readyAt",
+        type: "number",
+        description: "When a new code may be sent, for ResendButton's countdown.",
+      },
+      {
+        name: "resending",
+        type: "boolean",
+        default: "false",
+        description: "A new code is being sent.",
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3",
+        default: "2",
+        description: "The heading's level; 1 when the step is the page's main content.",
+      },
+    ],
+    snippet: `// data-e2e: mailed-code-step, mailed-code-step-code, mailed-code-step-submit,
+// mailed-code-step-change-email, plus ResendButton's resend-button-*.
+<MailedCodeStep
+  sentence={<>We sent a code to <strong>{email}</strong>.</>}
+  minutes={15}
+  pattern={/^[A-Z0-9]{3}-[A-Z0-9]{3}$/i} // a paste that matches submits at once
+  busy={checking}
+  error={error} // "That code is wrong or has expired."
+  readyAt={sentAt + 60_000}
+  resending={resending}
+  onSubmit={(code) => auth.verify(email, code)}
+  onResend={() => auth.sendCode(email)}
+  onChangeEmail={() => setStep("email")}
+/>`,
+    render: () => (
+      <ArabicSwitch name="mailed-code-step">
+        <MailedCodeStepDemo />
+      </ArabicSwitch>
+    ),
   },
   InstallPrompt: {
     summary:
