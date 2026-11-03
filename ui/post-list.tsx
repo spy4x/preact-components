@@ -27,6 +27,25 @@ export interface PostListItem {
    * direction otherwise.
    */
   dir?: "ltr" | "rtl" | "auto"
+  /** The post's cover, beside the text from 640 px and above it on a phone. Left out, the row is text only. */
+  image?: PostListImage
+}
+
+/**
+ * The cover of a {@link PostListItem}. It has no `alt`: the title already names the row, so the
+ * picture is decorative and drawn with `alt=""`.
+ */
+export interface PostListImage {
+  /** The image, best a 16:9 one: the frame crops it to 16:9. */
+  src: string
+  /** Its intrinsic width, so the row keeps its size while the image loads. */
+  width: number
+  /** Its intrinsic height. */
+  height: number
+  /** Other sizes of the image, as an `<img srcset>`. */
+  srcset?: string
+  /** The `<img sizes>` that goes with `srcset`, such as `"(min-width: 640px) 192px, calc(100vw - 32px)"`. */
+  sizes?: string
 }
 
 /** The words a {@link PostList} shows. */
@@ -50,6 +69,11 @@ export interface PostListProps {
   label?: string
   /** The words shown; see {@link POST_LIST_LABELS}. */
   labels?: Partial<PostListLabels>
+  /**
+   * The list is on the first screen: the first row's cover loads with `loading="eager"` and
+   * `fetchpriority="high"`. Every other cover loads with `loading="lazy"`. Defaults to `false`.
+   */
+  eagerFirst?: boolean
   /** Utilities on the list. */
   class?: string
 }
@@ -60,9 +84,18 @@ const LINK =
   "after:absolute after:inset-0 after:rounded-primary focus-visible:after:ring-2 " +
   "focus-visible:after:ring-focus"
 
+/** A row with a cover: the cover on top on a phone, beside the text from 640 px. */
+const ROW_WITH_IMAGE =
+  "relative flex flex-col gap-4 border-b border-subtle py-6 sm:flex-row sm:items-start sm:gap-6"
+
+/** A cover's frame: full width and 16:9 on a phone, 192×108 beside the text from 640 px. */
+const IMAGE =
+  "order-first aspect-video h-auto w-full rounded-card border border-subtle bg-surface " +
+  "object-cover sm:order-none sm:w-48 sm:shrink-0"
+
 /**
  * A list of articles, as a blog's index or its "Read next": per row the day it went live and its
- * reading time, the title as a link, and a description cut to two lines. No covers.
+ * reading time, the title as a link, and a description cut to two lines, and an optional cover: above the text on a phone, beside it from 640 px.
  *
  * Plain markup and CSS, so it works on a server-rendered page with no JavaScript. The whole row
  * takes the click, while a screen reader hears one link per post, named by its title. The date is
@@ -71,7 +104,7 @@ const LINK =
  * @param props The posts and options, see {@link PostListProps}.
  */
 export function PostList(
-  { posts, headingLevel = 2, label, labels, class: className }: PostListProps,
+  { posts, headingLevel = 2, label, labels, eagerFirst = false, class: className }: PostListProps,
 ): JSX.Element | null {
   const format = useFormat().utc()
   if (posts.length === 0) return null
@@ -79,11 +112,11 @@ export function PostList(
   const Heading = `h${headingLevel}` as const
   return (
     <ul aria-label={label} class={join("border-t border-subtle", className)} data-e2e="post-list">
-      {posts.map((post) => {
+      {posts.map((post, index) => {
         // Only the post's own words take its language; the line about it is the page's.
         const own = { lang: post.lang, dir: post.dir ?? (post.lang ? "auto" : undefined) }
-        return (
-          <li key={post.href} class="relative border-b border-subtle py-6">
+        const text = (
+          <>
             <p class="text-sm text-muted tabular-nums">
               <time dateTime={post.publishedAt}>{format.date(post.publishedAt)}</time>
               {post.readMinutes !== undefined && ` · ${words.readTime(post.readMinutes)}`}
@@ -99,6 +132,28 @@ export function PostList(
                 {post.description}
               </p>
             )}
+          </>
+        )
+        if (!post.image) {
+          return <li key={post.href} class="relative border-b border-subtle py-6">{text}</li>
+        }
+        const eager = eagerFirst && index === 0
+        // The stretched title link covers the picture too, so a click on it opens the post.
+        return (
+          <li key={post.href} class={ROW_WITH_IMAGE}>
+            <div class="min-w-0 flex-1">{text}</div>
+            <img
+              src={post.image.src}
+              srcset={post.image.srcset}
+              sizes={post.image.sizes}
+              width={post.image.width}
+              height={post.image.height}
+              alt=""
+              loading={eager ? "eager" : "lazy"}
+              fetchpriority={eager ? "high" : undefined}
+              decoding="async"
+              class={IMAGE}
+            />
           </li>
         )
       })}

@@ -604,6 +604,7 @@ export { TldrBox, type TldrBoxProps } from "./tldr-box.tsx"
 export {
   POST_LIST_LABELS,
   PostList,
+  type PostListImage,
   type PostListItem,
   type PostListLabels,
   type PostListProps,
