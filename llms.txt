@@ -768,6 +768,7 @@ Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed,
 PlanCard	component	@spy4x/preact-ui	The current plan: its name, status, price and the date it renews or ends, with a "Manage billing" form that posts to the app's billing-portal route.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.
 PostList	component	@spy4x/preact-ui	A list of articles, as a blog's index or its "Read next": per row the day it went live and its reading time, the title as a link, and a description cut to two lines, and an optional cover: above the text on a phone, beside it from 640 px.
+PostListImage	type	@spy4x/preact-ui	The cover of a `PostListItem`.
 PostListItem	type	@spy4x/preact-ui	One post of a `PostList`.
 PrevNext	component	@spy4x/preact-ui	Two cards at the end of a guide: the previous one and the next one, each a whole-card link with a muted "Previous" or "Next" over the title.
 PrevNextLink	type	@spy4x/preact-ui	One neighbour of a `PrevNext`.
@@ -1042,7 +1043,6 @@ ImageSequence	type	@spy4x/preact-ui/zoomable-images	What `collectSequence` hands
 collectSequence	helper	@spy4x/preact-ui/zoomable-images	Build the sequence a lightbox pages through, and the position of the image that was opened.
 zoomableAlt	helper	@spy4x/preact-ui/zoomable-images	The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`, not treated as a real name because a non-empty string happens to be truthy.
 nextStepIndex	helper	@spy4x/preact-ui/screen-tour	Index of the step a key press on the tab at `current` moves to: `Tabs`' `nextTabIndex`, with Up and Down stepping like Left and Right, because the list is a column from 1024 px and a row below it.
-PostListImage	type	@spy4x/preact-ui/post-list	The cover of a `PostListItem`.
 ScrollRoomPage	type	@spy4x/preact-ui/order-bar	The parts of the page `bindScrollRoom` reads and changes: `window` passes as one.
 bindScrollRoom	helper	@spy4x/preact-ui/order-bar	Keeps the controls of an `OrderBar`'s form out from under the bar while it is stuck to the bottom of a phone's screen.
 CLASS_PACKAGE	constant	@spy4x/preact-ui-guide	The package the class sections document.
