@@ -68,6 +68,21 @@ export default {
   "InstallPrompt.iosBefore": "Touchez",
   "InstallPrompt.iosShare": "Partager",
   "InstallPrompt.title": "Installer cette application",
+  "MailedCodeStep.changeEmail": "En utiliser une autre",
+  "MailedCodeStep.checking": "Vérification…",
+  "MailedCodeStep.code": "Code",
+  "MailedCodeStep.expires": {
+    "one": "Le code est valable {count} minute.",
+    "many": "Le code est valable {count} minutes.",
+    "other": "Le code est valable {count} minutes.",
+  },
+  "MailedCodeStep.invalid":
+    "Ce code ne ressemble pas à celui que nous avons envoyé. Vérifiez-le et réessayez.",
+  "MailedCodeStep.resend": "demandez un nouveau code",
+  "MailedCodeStep.resent": "Un nouveau code est en route.",
+  "MailedCodeStep.submit": "Continuer",
+  "MailedCodeStep.title": "Consultez votre boîte de réception",
+  "MailedCodeStep.wrongEmail": "Mauvaise adresse e-mail ?",
   "PushSettings.blocked":
     "Les notifications sont bloquées pour cette application. Pour les autoriser, ouvrez les paramètres de votre navigateur pour ce site (ou les paramètres de notification de votre appareil), réglez Notifications sur Autoriser, puis revenez ici.",
   "PushSettings.checking": "Vérification de cet appareil…",

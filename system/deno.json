@@ -4,6 +4,7 @@
   "exports": {
     ".": "./+index.ts",
     "./auth-form": "./auth-form.tsx",
+    "./mailed-code-step": "./mailed-code-step.tsx",
     "./head": "./head.ts",
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",

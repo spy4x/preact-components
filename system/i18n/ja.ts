@@ -62,6 +62,18 @@ export default {
   "InstallPrompt.iosBefore": "共有ボタン",
   "InstallPrompt.iosShare": "共有",
   "InstallPrompt.title": "アプリをインストール",
+  "MailedCodeStep.changeEmail": "別のアドレスを使う",
+  "MailedCodeStep.checking": "確認しています…",
+  "MailedCodeStep.code": "コード",
+  "MailedCodeStep.expires": {
+    "other": "コードの有効期限は{count}分です。",
+  },
+  "MailedCodeStep.invalid": "送信したコードと形式が違うようです。確認してもう一度お試しください。",
+  "MailedCodeStep.resend": "新しいコードを送信する",
+  "MailedCodeStep.resent": "新しいコードを送信しました。",
+  "MailedCodeStep.submit": "続ける",
+  "MailedCodeStep.title": "受信トレイを確認してください",
+  "MailedCodeStep.wrongEmail": "メールアドレスが違いますか？",
   "PushSettings.blocked":
     "このアプリの通知はブロックされています。許可するには、ブラウザのこのサイトの設定（またはデバイスの通知設定）を開き、通知を「許可」にしてから、この画面に戻ってください。",
   "PushSettings.checking": "このデバイスを確認しています…",

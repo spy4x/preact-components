@@ -68,6 +68,21 @@ export default {
   "InstallPrompt.iosBefore": "Toca",
   "InstallPrompt.iosShare": "Compartir",
   "InstallPrompt.title": "Instala esta app",
+  "MailedCodeStep.changeEmail": "Usar otro",
+  "MailedCodeStep.checking": "Comprobando…",
+  "MailedCodeStep.code": "Código",
+  "MailedCodeStep.expires": {
+    "one": "El código vale durante {count} minuto.",
+    "many": "El código vale durante {count} de minutos.",
+    "other": "El código vale durante {count} minutos.",
+  },
+  "MailedCodeStep.invalid":
+    "Eso no parece el código que te enviamos. Revísalo y vuelve a intentarlo.",
+  "MailedCodeStep.resend": "pide un código nuevo",
+  "MailedCodeStep.resent": "Un código nuevo va en camino.",
+  "MailedCodeStep.submit": "Continuar",
+  "MailedCodeStep.title": "Revisa tu correo",
+  "MailedCodeStep.wrongEmail": "¿No es tu correo?",
   "PushSettings.blocked":
     "Las notificaciones están bloqueadas para esta app. Para permitirlas, abre los ajustes del navegador para este sitio (o los ajustes de notificaciones de tu dispositivo), cambia Notificaciones a Permitir y vuelve aquí.",
   "PushSettings.checking": "Comprobando este dispositivo…",

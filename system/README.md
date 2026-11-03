@@ -31,6 +31,7 @@ Extracted from earlier source applications.
 | `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                               |
 | `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                       |
 | `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                              |
+| `MailedCodeStep`      | `mailed-code-step`      | `sentence`, `minutes?`, `onSubmit`, `onResend`, `onChangeEmail`, `busy?`, `error?`, `pattern?`, `readyAt?`, `resending?`, `headingLevel?`, `labels?`, `class?`                                           |
 | `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `alternates?`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                          |
 | `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                     |
 | `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                  |
@@ -580,6 +581,30 @@ that never changes: `auth-form` on the form, `auth-form-login`, `auth-form-passw
 not. A prop for test attributes was not added: nothing varies per caller, and a page with two
 forms tells them apart by the form's accessible name (`Sign in`, `Sign up`). Finding a field by
 its label still works, since every field has a real `<label for>`.
+
+## The `MailedCodeStep` contract
+
+The step after an app e-mailed a code, for sign-up, sign-in and a password reset alike: "Check your
+inbox", the sentence the app passes (the address in bold), how long the code works when `minutes`
+is given, a code field with Continue as the one primary action, a `ResendButton` and "Wrong email?
+Use a different one". A code, unlike a mailed link, works in whichever browser the person types it
+into. `DEFAULT_MAILED_CODE_STEP_LABELS` holds its English words.
+
+- **The code leaves without whitespace, and nothing else is removed.** A code copied from a mail
+  carries spaces or a line break; a `-` or `_` may be part of it, so the app's check decides.
+- **`pattern` is the code's shape**, tested after whitespace is removed. A code it refuses shows
+  `labels.invalid` under the field and never reaches `onSubmit`. An input event that grows the
+  value by more than one character, a paste or an autofill, submits by itself when `pattern`
+  accepts the result; typing never does. Without `pattern`, nothing submits by itself.
+- **Focus** goes to the field when the step opens, to the field with its text selected after a
+  refused code (once `busy` is off, so the same message twice still moves it), and to the field
+  after a new code went out: `ResendButton` focuses its "on its way" line, a `role="status"`
+  region that is announced, and the step hands focus on to the field. Tab order: the code,
+  Continue, Send a new code, Use a different one.
+- **The form posts with `method="post"`**, so a submit before the script has loaded never puts the
+  code in the address bar.
+- **Fixed `data-e2e` hooks**, as on `AuthForm`: `mailed-code-step`, `mailed-code-step-code`,
+  `mailed-code-step-submit`, `mailed-code-step-change-email`, plus `ResendButton`'s own.
 
 ## The `SiteHeader` contract
 

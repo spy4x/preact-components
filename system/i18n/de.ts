@@ -66,6 +66,20 @@ export default {
   "InstallPrompt.iosBefore": "Tippe auf",
   "InstallPrompt.iosShare": "Teilen",
   "InstallPrompt.title": "Diese App installieren",
+  "MailedCodeStep.changeEmail": "Andere verwenden",
+  "MailedCodeStep.checking": "Wird geprüft …",
+  "MailedCodeStep.code": "Code",
+  "MailedCodeStep.expires": {
+    "one": "Der Code gilt {count} Minute.",
+    "other": "Der Code gilt {count} Minuten.",
+  },
+  "MailedCodeStep.invalid":
+    "Das sieht nicht nach dem Code aus, den wir geschickt haben. Prüf ihn und versuch es noch mal.",
+  "MailedCodeStep.resend": "neuen Code senden",
+  "MailedCodeStep.resent": "Ein neuer Code ist unterwegs.",
+  "MailedCodeStep.submit": "Weiter",
+  "MailedCodeStep.title": "Schau in dein Postfach",
+  "MailedCodeStep.wrongEmail": "Falsche E-Mail-Adresse?",
   "PushSettings.blocked":
     "Benachrichtigungen sind für diese App blockiert. Um sie zu erlauben, öffne die Einstellungen deines Browsers für diese Website (oder die Mitteilungseinstellungen deines Geräts), stelle Benachrichtigungen auf „Erlauben“ und komm dann hierher zurück.",
   "PushSettings.checking": "Dieses Gerät wird geprüft …",
