@@ -1339,7 +1339,13 @@ function DateRangePickerEmptyDemo() {
 /** The stepper demos' clock: Wednesday 4 November 2026, in Paris. */
 const stepperNow = new Date("2026-11-04T10:00:00Z")
 
-/** One `PeriodStepper` showing a period and the range it hands back, for the browser checks. */
+/**
+ * One `PeriodStepper` showing a period and the range it hands back, for the browser checks.
+ *
+ * It names the period in the guide's own language, the stepper's default. Not `en-GB`: Deno 2.9
+ * names a week inside one month "1–7 Nov 2026" there and Chromium 155 "1 – 7 Nov 2026", so the
+ * served card and the hydrated one would read differently.
+ */
 function PeriodStepperExample(
   { start, firstWeekday, currentHotkey, singleKeys, e2e }: {
     start: Period
@@ -1360,7 +1366,6 @@ function PeriodStepperExample(
         options={{ firstWeekday }}
         currentHotkey={currentHotkey}
         singleKeys={singleKeys}
-        locale="en-GB"
       />
       <Note e2e={`${e2e}-value`}>
         period: <span class="whitespace-nowrap">{period.value.from} … {period.value.to}</span>
