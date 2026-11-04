@@ -166,7 +166,10 @@ describe("ImportMapper", () => {
     expect(html).toContain(
       "<li>Can't read &quot;n/a&quot; as an amount.</li><li>The payee is empty.</li>",
     )
-    expect(html).toMatch(/<td colspan="4" class="pt-0! text-danger">/)
+    // In the dark palette a hovered note takes red-300: red-400 reads 3.6:1 on the hover fill.
+    expect(html).toMatch(
+      /<td colspan="4" class="pt-0! text-danger dark:\[tr:hover>&amp;\]:text-red-300">/,
+    )
     const cleanRow = /<th scope="row" id="imp-line-2"[^>]*>(.*?)<\/th>/.exec(html)?.[1] ?? ""
     expect(cleanRow).not.toContain("Problem")
     expect(cleanRow).not.toContain("<svg")
