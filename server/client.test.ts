@@ -65,4 +65,28 @@ describe("hydrateIslands", () => {
     ])
     expect(loads).toBe(0)
   })
+
+  it("gives the browser a turn between loading an island and hydrating it (#623)", async () => {
+    const steps: string[] = []
+    const scope = globalThis as Record<string, unknown>
+    scope.scheduler = { yield: () => (steps.push(`yield`), Promise.resolve()) }
+    const islands = [{ file: "./islands/a.tsx", exportName: "A", props: {} }]
+    const end = { nodeValue: "/island:0" }
+    const start = { nodeValue: "island:0", nextSibling: end, parentNode: { namespaceURI: null } }
+    try {
+      await withPage(JSON.stringify(islands), [], async () => {
+        ;(document as unknown as { createTreeWalker: () => unknown }).createTreeWalker = () => {
+          const nodes = [start, end]
+          return { nextNode: () => nodes.shift() ?? null }
+        }
+        const A = () => (steps.push(`render`), null)
+        await hydrateIslands({
+          "./islands/a.tsx": () => (steps.push(`load`), Promise.resolve({ A })),
+        })
+      })
+    } finally {
+      delete scope.scheduler
+    }
+    expect(steps).toEqual([`load`, `yield`, `render`])
+  })
 })
