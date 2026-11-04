@@ -54,7 +54,7 @@ has the details.
 ## Why preact-components
 
 - **Accessibility written by hand.** Roles, labels, keyboard handling and focus are owned here, and
-  browser checks in `pages/checks/` prove the behaviours each package's README names.
+  browser checks in `pages/checks/` and `pages/e2e/` prove the behaviours each package's README names.
 - **No component-library dependency.** No Radix, shadcn, Headless UI or Material underneath, and
   no vendored copies of them: [the policy](docs/no-third-party-components.md).
 - **Tokens you can override.** Colours, radii and fonts are CSS custom properties read through
