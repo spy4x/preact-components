@@ -197,8 +197,8 @@ describe("ImportMapper", () => {
     expect(html).not.toContain("<b>x</b>")
     expect(html).not.toContain("<img")
     expect(html).toContain('<option value="0">&lt;b>x&lt;/b></option>')
-    expect(html).toContain("<bdi>&lt;b>x&lt;/b></bdi>")
-    expect(html).toContain("<bdi>=SUM(A1)</bdi>")
+    expect(html).toContain(">&lt;b>x&lt;/b></bdi>")
+    expect(html).toContain(">=SUM(A1)</bdi>")
     expect(html).toContain("First values: <bdi>&lt;img src=x onerror=alert(1)></bdi>")
   })
 
@@ -212,7 +212,7 @@ describe("ImportMapper", () => {
     ])
     expect(head).toContain('<th scope="col" class="text-end">Amount</th>')
     expect(html).toContain(
-      'class="max-w-[32ch] break-words text-end tabular-nums whitespace-nowrap"',
+      '<td class="text-end tabular-nums whitespace-nowrap"><bdi class="block max-w-[32ch] break-words">-€4.20</bdi></td>',
     )
   })
 

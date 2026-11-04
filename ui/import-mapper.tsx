@@ -288,14 +288,11 @@ export function ImportMapper(
             return (
               <td
                 key={field.key}
-                class={cn(
-                  "max-w-[32ch] break-words",
-                  field.numeric && "text-end tabular-nums whitespace-nowrap",
-                )}
+                class={field.numeric ? "text-end tabular-nums whitespace-nowrap" : "min-w-[16ch]"}
               >
                 {text === ""
                   ? <span class="text-muted">{words.emptyCell}</span>
-                  : <bdi>{text}</bdi>}
+                  : <bdi class="block max-w-[32ch] break-words">{text}</bdi>}
               </td>
             )
           })}
