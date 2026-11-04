@@ -39,8 +39,19 @@ export function hydrateIslands(loaders: Loaders): Promise<void[]> {
       return
     }
     const component = (await load())[island.exportName] as ComponentType
+    await yieldToMain()
     hydrate(h(component, island.props), rootFragment(start, end))
   }))
+}
+
+/**
+ * Gives the browser a turn before an island hydrates, so loading its module and hydrating it, and
+ * each island after the next, run as separate short tasks instead of one long one that keeps the
+ * page from answering input.
+ */
+function yieldToMain(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler
+  return scheduler?.yield ? scheduler.yield() : new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 /**
