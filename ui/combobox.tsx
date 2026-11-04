@@ -577,7 +577,8 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
    * with the trimmed query. Return the new item (or a promise of it) and it is chosen through
    * `onChange`; return nothing and the list just closes. While a promise is pending the row shows a
    * spinner and cannot be pressed again; a rejected one (or a throw) keeps the query, marks the field
-   * invalid and shows {@link ComboboxProps.createErrorMessage} under it until the next keystroke.
+   * invalid and shows {@link ComboboxProps.createErrorMessage} under it until the next keystroke, a
+   * create that succeeds or a chosen item.
    */
   onCreate?: (query: string) => T | void | Promise<T | void>
   /** Text of the Create row. English default, `"Create “Gym”"`; pass your own to translate it. */
@@ -1071,6 +1072,7 @@ export function Combobox<T>({
   }
 
   const select = (item: T) => {
+    createError.value = null
     onChange(item)
     close()
   }
@@ -1080,7 +1082,8 @@ export function Combobox<T>({
    *
    * A pending promise blocks a second press, so one `Enter` held down creates one item. A failure,
    * thrown or rejected, closes the list but keeps the query in the field, so the person sees what
-   * failed and can press `Enter` on it again.
+   * failed, and `ArrowDown` then `Enter` retries it. A create that succeeds, or a chosen item,
+   * clears the error.
    */
   const create = async () => {
     if (!onCreate || creating.value) return
@@ -1106,6 +1109,7 @@ export function Combobox<T>({
         creating.value = false
       }
     }
+    createError.value = null
     if (result !== undefined) onChange(result as T)
     close()
   }

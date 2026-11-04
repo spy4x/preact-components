@@ -1136,18 +1136,31 @@ function comboboxGroupSpecs(): Spec[] {
     },
     {
       name:
-        "Combobox: a failed create shows its error under the field, marks it invalid and keeps the query",
+        "Combobox: a failed create shows its error under the field, marks it invalid and keeps the query, and a retry that succeeds clears the error and names the new item",
       pageId: "ui",
       run: async (page) => {
         await card(page).getByRole("checkbox", { name: "Make the next create fail" }).check()
         await open(page)
         await field(page).fill("Travel")
         await field(page).press("Enter")
-        await card(page).getByRole("alert").getByText("Couldn't create “Travel”. Try again.")
-          .waitFor()
+        const error = card(page).getByRole("alert").getByText(
+          "Couldn't create “Travel”. Try again.",
+        )
+        await error.waitFor()
         await field(page).and(page.locator(`[aria-invalid="true"]`)).waitFor()
         const shown = await field(page).inputValue()
         if (shown !== "Travel") throw new Error(`the field reads "${shown}", not "Travel"`)
+        await field(page).press("ArrowDown")
+        await list(page).getByRole("option", { name: "Create “Travel”", exact: true }).waitFor()
+        await field(page).press("Enter")
+        await card(page).locator(`[data-e2e="controlled-value"]`)
+          .getByText("category: Travel, created: Travel", { exact: true }).waitFor()
+        await error.waitFor({ state: "detached" })
+        await field(page).and(page.locator(`[aria-invalid="true"]`)).waitFor({ state: "detached" })
+        const retried = await field(page).inputValue()
+        if (retried !== "Travel (Other)") {
+          throw new Error(`after the retry the field reads "${retried}"`)
+        }
       },
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
