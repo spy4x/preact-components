@@ -13,9 +13,9 @@ describe("filterCurrencies", () => {
     for (const query of ["euro", "eur", "EUR", "€"]) expect(codes(query)[0]).toBe("EUR")
   })
 
-  it("puts the option whose code is the query first, before a better-scored name", () => {
-    expect(codes("chf")[0]).toBe("CHF")
-    expect(codes("usd")[0]).toBe("USD")
+  it("puts the option whose code is the query first, before a name that ranks higher", () => {
+    // A word search alone ranks the Belarusian Ruble above RUB for "rub".
+    expect(codes("rub").slice(0, 2)).toEqual(["RUB", "BYN"])
   })
 
   it("lists the recent codes first, in the order given, while nothing is typed", () => {
