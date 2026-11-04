@@ -13,6 +13,7 @@ import {
   Cluster,
   ColorField,
   Combobox,
+  CurrencyField,
   DateTimeField,
   Field,
   Grid,
@@ -32,6 +33,7 @@ import {
   ToggleChips,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
+import { currencyOptions } from "@spy4x/platform/universal/money"
 import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
@@ -511,50 +513,99 @@ function RadioDemo() {
  */
 function MoneyInputDemo() {
   const amount = useSignal<number | null>(1999)
+  const coins = useSignal<number | null>(1)
+  const yen = useSignal<number | null>(null)
   const submits = useSignal(0)
   const lastSubmitted = useSignal("")
   return (
-    <form
-      class="max-w-xs"
-      onSubmit={(event) => {
-        event.preventDefault()
-        submits.value++
-        const data = new FormData(event.currentTarget)
-        lastSubmitted.value = String(data.get("guide-money-amount") ?? "")
-      }}
-    >
-      <Stack gap="sm">
-        <Field id="guide-money-input" label="Price (EUR, German locale)">
-          <MoneyInput
-            value={amount.value}
-            currency="EUR"
-            locale="de"
-            name="guide-money-amount"
-            onChange={(value) => amount.value = value}
-          />
-        </Field>
-        <p class="text-xs text-muted" data-e2e="controlled-value">
-          amount: {amount.value === null ? "(empty)" : amount.value}
-        </p>
-        <p class="text-xs text-muted" data-e2e="money-input-submits">
-          submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
-        </p>
-        <Cluster gap="sm">
-          <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-e2e="money-input-add-five"
-            onClick={() => amount.value = (amount.value ?? 0) + 500}
-          >
-            Add 5.00
-          </Button>
-        </Cluster>
-      </Stack>
-    </form>
+    <Stack gap="md">
+      <form
+        class="max-w-xs"
+        onSubmit={(event) => {
+          event.preventDefault()
+          submits.value++
+          const data = new FormData(event.currentTarget)
+          lastSubmitted.value = String(data.get("guide-money-amount") ?? "")
+        }}
+      >
+        <Stack gap="sm">
+          <Field id="guide-money-input" label="Price (EUR, German locale)">
+            <MoneyInput
+              value={amount.value}
+              currency="EUR"
+              locale="de"
+              name="guide-money-amount"
+              onChange={(value) => amount.value = value}
+            />
+          </Field>
+          <p class="text-xs text-muted" data-e2e="controlled-value">
+            amount: {amount.value === null ? "(empty)" : amount.value}
+          </p>
+          <p class="text-xs text-muted" data-e2e="money-input-submits">
+            submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
+          </p>
+          <Cluster gap="sm">
+            <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-e2e="money-input-add-five"
+              onClick={() => amount.value = (amount.value ?? 0) + 500}
+            >
+              Add 5.00
+            </Button>
+          </Cluster>
+        </Stack>
+      </form>
+      <Field id="guide-money-btc" label="Balance (BTC, 8 decimals)" class="max-w-xs">
+        <MoneyInput
+          value={coins.value}
+          currency="BTC"
+          decimals={8}
+          onChange={(value) => coins.value = value}
+        />
+      </Field>
+      <Field
+        id="guide-money-jpy"
+        label="Price (JPY, whole amounts)"
+        hint="Type 0.5 to see the decimals message."
+        class="max-w-xs"
+      >
+        <MoneyInput value={yen.value} currency="JPY" onChange={(value) => yen.value = value} />
+      </Field>
+    </Stack>
   )
 }
+
+/**
+ * A currency field with three recent codes, so an empty query lists them first, and the chosen code
+ * printed under it. Options in English plus one coin the app adds, which `Intl` does not know.
+ */
+function CurrencyFieldDemo() {
+  const code = useSignal<string | null>(null)
+  return (
+    <Stack gap="sm" class="max-w-xs">
+      <Field id="guide-currency" label="Account currency">
+        <CurrencyField
+          ariaLabel="Account currency"
+          value={code.value}
+          onChange={(next) => code.value = next}
+          options={currencyChoices}
+          recent={["EUR", "USD", "THB"]}
+        />
+      </Field>
+      <p class="text-xs text-muted" data-e2e="currency-value">
+        code: {code.value ?? "(none)"}
+      </p>
+    </Stack>
+  )
+}
+
+/** Every ISO currency, named in English, plus a coin `Intl` has no data for. */
+const currencyChoices = currencyOptions("en", [
+  { code: "BTC", name: "Bitcoin", decimals: 8 },
+])
 
 /**
  * Two rename fields: one whose save takes a moment and succeeds, one whose save always fails, so
@@ -1088,12 +1139,21 @@ export const fieldDemos = {
         type: "(value: number | null) => void",
         description: "Called when the typed text reads as a new amount.",
       },
-      { name: "currency", type: "string", description: "The ISO code, such as `EUR`." },
+      {
+        name: "currency",
+        type: "string",
+        description: "The ISO code, such as `EUR`, shown inside the field.",
+      },
       {
         name: "locale",
         type: "string",
-        default: `"en"`,
-        description: "How the amount is shown and how typed text is read.",
+        default: "useFormat().locale",
+        description: "How the amount is shown and typed text is read; by default the region.",
+      },
+      {
+        name: "decimals",
+        type: "number",
+        description: "A coin's own decimals, such as 8 for BTC.",
       },
       {
         name: "min / max",
@@ -1116,12 +1176,44 @@ export const fieldDemos = {
   <MoneyInput
     value={amount.value}
     currency="EUR"
-    locale="de"
     name="price"
     onChange={(value) => amount.value = value}
   />
-</Field>`,
+</Field>
+<MoneyInput value={sats.value} currency="BTC" decimals={8} onChange={setSats} />`,
     render: () => <MoneyInputDemo />,
+  },
+  CurrencyField: {
+    summary:
+      "Picks a currency by its code, its name or its symbol, with the ones used lately first.",
+    wide: false,
+    props: [
+      { name: "value", type: "string | null", description: "The chosen code, such as `EUR`." },
+      {
+        name: "onChange",
+        type: "(code: string | null) => void",
+        description: "Called with the chosen code, or `null` when cleared.",
+      },
+      {
+        name: "options",
+        type: "CurrencyOption[]",
+        description: "ts-libs' `currencyOptions(locale)`, plus any coin the app adds.",
+      },
+      {
+        name: "recent",
+        type: "string[]",
+        description: "Codes listed first while nothing is typed.",
+      },
+    ],
+    snippet: `<Field id="currency" label="Currency">
+  <CurrencyField
+    value={code.value}
+    onChange={(next) => code.value = next}
+    options={currencyOptions("en")}
+    recent={["EUR", "USD"]}
+  />
+</Field>`,
+    render: () => <CurrencyFieldDemo />,
   },
   InlineEdit: {
     summary:
