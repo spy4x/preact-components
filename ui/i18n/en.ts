@@ -221,6 +221,12 @@ export default {
   "LookTile.soldOut": "Sold out",
   "LoopVideo.pauseLabel": "Pause animation",
   "LoopVideo.playLabel": "Play animation",
+  "MoneyInput.currency": "Currency: {name} ({code})",
+  "MoneyInput.decimalsMax": {
+    "one": "{code} takes up to {count} decimal place",
+    "other": "{code} takes up to {count} decimal places",
+  },
+  "MoneyInput.decimalsNone": "{code} takes whole amounts only",
   "MoneyInput.invalidMessage": "Enter a valid amount",
   "MoneyInput.rangeBetween": "Enter an amount between {min} and {max}",
   "MoneyInput.rangeMax": "Enter {max} or less",
