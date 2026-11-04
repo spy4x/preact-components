@@ -114,6 +114,7 @@
     "./theme-toggle": "./theme-toggle.tsx",
     "./unsaved-guard": "./unsaved-guard.tsx",
     "./steps": "./steps.tsx",
+    "./usage-meter": "./usage-meter.tsx",
     "./window-frame": "./window-frame.tsx",
     "./screen-tour": "./screen-tour.tsx",
     "./date-time-field": "./date-time-field.tsx",

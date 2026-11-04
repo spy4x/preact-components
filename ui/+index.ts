@@ -573,6 +573,15 @@ export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.
 export { enhanceCodeCopy, ProseCodeCopy, type ProseCodeCopyProps } from "./prose-copy.tsx"
 export {
   SECTION_HEADING_LABELS,
+export {
+  UsageMeter,
+  type UsageMeterLabels,
+  usageMeterLabels,
+  type UsageMeterProps,
+  type UsageMeterState,
+  type UsageReading,
+  usageReading,
+} from "./usage-meter.tsx"
   SectionHeading,
   type SectionHeadingLabels,
   type SectionHeadingProps,
