@@ -100,6 +100,16 @@ export default {
   "CopyButton.copiedLabel": "コピーしました",
   "CopyButton.copyLabel": "コピー",
   "CopyButton.failedLabel": "コピーできませんでした",
+  "CurrencyField.clear": "通貨をクリア",
+  "CurrencyField.count": {
+    "other": "{count}件の通貨",
+  },
+  "CurrencyField.empty":
+    "「{query}」に一致する通貨はありません。EURのような3文字のコードでお試しください。",
+  "CurrencyField.label": "通貨",
+  "CurrencyField.option": "{name}（{code}）",
+  "CurrencyField.placeholder": "コード、名前、記号",
+  "CurrencyField.required": "通貨を選択してください",
   "DataTable.empty": "表示するものはありません",
   "DateRangePicker.apply": "適用",
   "DateRangePicker.cancel": "キャンセル",
@@ -219,6 +229,11 @@ export default {
   "LookTile.soldOut": "売り切れ",
   "LoopVideo.pauseLabel": "アニメーションを一時停止",
   "LoopVideo.playLabel": "アニメーションを再生",
+  "MoneyInput.currency": "通貨：{name}（{code}）",
+  "MoneyInput.decimalsMax": {
+    "other": "{code}は小数点以下{count}桁まで入力できます",
+  },
+  "MoneyInput.decimalsNone": "{code}は整数の金額のみ入力できます",
   "MoneyInput.invalidMessage": "正しい金額を入力してください",
   "MoneyInput.rangeBetween": "{min}から{max}までの金額を入力してください",
   "MoneyInput.rangeMax": "{max}以下で入力してください",
