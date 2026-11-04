@@ -66,6 +66,8 @@ const ID = /\bid="([^"]+)"/
 const PRE = /<pre\b([^>]*)>([\s\S]*?)<\/pre>/g
 /** A `tabindex` attribute among an opening tag's attributes. */
 const TABINDEX = /\btabindex=/i
+/** A `dir` attribute among an opening tag's attributes. */
+const DIR = /\bdir=/i
 
 /** The copy button's three glyphs, rendered once: at rest, after a copy, after a failure. */
 let glyphs: string | undefined
@@ -101,11 +103,11 @@ function enhance(html: string, anchors: boolean, words: ProseLabels): string {
 
 /**
  * `html` with every `<pre>` a Tab stop, so a line wider than the block can be scrolled from the
- * keyboard, and, when `copy` is set, wrapped with a hidden copy button and its live region.
+ * keyboard, laid out left to right so code keeps its order on a right-to-left page, and, when `copy` is set, wrapped with a hidden copy button and its live region.
  */
 function enhanceCode(html: string, copy: boolean, words: ProseLabels): string {
   return html.replace(PRE, (_block: string, attributes: string, content: string) => {
-    const pre = `<pre${attributes}${
+    const pre = `<pre${attributes}${DIR.test(attributes) ? "" : ' dir="ltr"'}${
       TABINDEX.test(attributes) ? "" : ' tabindex="0"'
     }>${content}</pre>`
     if (!copy) return pre
