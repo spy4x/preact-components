@@ -239,7 +239,9 @@ export function IconPicker(
         {legend ?? text.legend}
         {chosen !== null && (
           // The legend is a flex box, which drops a leading space, so a margin keeps the gap.
-          <span class="ms-1 font-normal text-muted" aria-hidden="true">{`· ${nameOf(chosen)}`}</span>
+          <span class="ms-1 font-normal text-muted" aria-hidden="true">
+            {`· ${nameOf(chosen)}`}
+          </span>
         )}
       </legend>
       <div class="relative mb-2 w-full sm:max-w-xs">
