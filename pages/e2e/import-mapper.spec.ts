@@ -74,16 +74,26 @@ export const specs: readonly Spec[] = [
       await page.locator(`#guide-import-line-${line}:focus`).waitFor()
       const text = await cell.textContent()
       if (!text?.includes("Problem")) throw new Error(`the focused cell reads "${text}"`)
-      const box = await cell.boundingBox()
-      if (box === null || box.y < 0 || box.y + box.height > 800) {
-        throw new Error(`the focused cell is out of view: ${JSON.stringify(box)}`)
-      }
+      // The page may scroll smoothly, so wait for the cell to arrive rather than measure once.
+      await cell.evaluate((node) =>
+        new Promise<void>((resolve, reject) => {
+          const started = performance.now()
+          const look = () => {
+            const { top, bottom } = node.getBoundingClientRect()
+            if (top >= 0 && bottom <= innerHeight) resolve()
+            else if (performance.now() - started > 5000) {
+              reject(new Error(`the focused cell is out of view: ${top}..${bottom}`))
+            } else requestAnimationFrame(look)
+          }
+          look()
+        })
+      )
       return `focus on line ${line}: "${text}"`
     },
   },
   {
-    name: "ImportMapper: a setting change marks the preview busy, draws skeleton bars after " +
-      "300 ms, keeps the selects enabled, then announces the updated preview",
+    name: "ImportMapper: a setting change marks the preview busy and announces the re-read, " +
+      "draws skeleton bars while it lasts, then announces the updated preview",
     pageId: "ui",
     run: async (page) => {
       await page.setViewportSize({ width: 1440, height: 900 })
@@ -104,8 +114,7 @@ export const specs: readonly Spec[] = [
   },
   ...(["light", "dark"] as const).flatMap((colorScheme) =>
     [390, 1440].map((width): Spec => ({
-      name: `ImportMapper at ${width} px in ${colorScheme}: axe finds no violation` +
-        (width === 390 ? ", and the 20-column file does not scroll the page sideways" : ""),
+      name: `ImportMapper at ${width} px in ${colorScheme}: axe finds no violation`,
       pageId: "ui",
       colorScheme,
       run: async (page) => {
@@ -116,8 +125,9 @@ export const specs: readonly Spec[] = [
         const sideways = await page.evaluate(() =>
           document.documentElement.scrollWidth - document.documentElement.clientWidth
         )
+        // A guard only: the guide's card clips its overflow, so no mutation made the page scroll.
         if (sideways > 0) throw new Error(`the page scrolls ${sideways}px sideways`)
-        return await axeCleanIn(page, CARD)
+        return `${await axeCleanIn(page, CARD)}; the page scrolls ${sideways}px sideways`
       },
     }))
   ),
