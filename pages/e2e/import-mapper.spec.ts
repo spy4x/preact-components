@@ -112,6 +112,41 @@ export const specs: readonly Spec[] = [
       return "busy, skeleton, then Preview updated."
     },
   },
+  {
+    name: "ImportMapper at 390 px: a problem quoting a long unbroken line wraps inside the " +
+      "problem summary and inside the preview's note under its row",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 900 })
+      // Comma on a semicolon file leaves one column, so every problem quotes a whole line.
+      await page.locator("#guide-import-setting-separator").selectOption(",")
+      await page.locator(`${CARD} [aria-busy="true"]`).waitFor({ state: "detached" })
+      const summary = page.locator(`${CARD} section`).filter({ has: page.locator("ul li") })
+      await summary.locator("li").first().waitFor()
+      const faults = await page.locator(CARD).evaluate((card) => {
+        const found: string[] = []
+        const section = card.querySelector("section")!
+        // A message's box fits; its text spilling past that box is what gets cut off.
+        for (const span of section.querySelectorAll("li > span")) {
+          if (span.scrollWidth > span.clientWidth + 1) {
+            found.push(`a summary message spills ${span.scrollWidth - span.clientWidth}px`)
+          }
+        }
+        for (const note of card.querySelectorAll("td > ul")) {
+          const region = note.closest("table")!.parentElement!
+          if (note.scrollWidth > note.clientWidth + 1 || note.clientWidth > region.clientWidth) {
+            found.push(`a note is ${note.scrollWidth}px wide in a ${region.clientWidth}px region`)
+          }
+        }
+        const notes = card.querySelectorAll("td > ul").length
+        const messages = section.querySelectorAll("li > span").length
+        if (!notes || !messages) found.push(`${messages} summary messages and ${notes} notes drawn`)
+        return found
+      })
+      if (faults.length) throw new Error(faults.join(", "))
+      return "every summary message and preview note wraps inside its box"
+    },
+  },
   ...(["light", "dark"] as const).flatMap((colorScheme) =>
     [390, 1440].map((width): Spec => ({
       name: `ImportMapper at ${width} px in ${colorScheme}: axe finds no violation`,
