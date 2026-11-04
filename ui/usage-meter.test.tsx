@@ -79,6 +79,13 @@ describe("UsageMeter", () => {
     expect(attribute(html, "aria-valuenow")).toBe("412")
   })
 
+  it("draws the label as the caller wrote it, not as an uppercase caption", () => {
+    const html = render(<UsageMeter used={412} limit={500} format={euros} label="Groceries" />)
+    expect(html).toMatch(/<span id="[^"]+" class="min-w-0 truncate text-sm font-medium">Groceries</)
+    expect(html).not.toContain("pc-kpi-label")
+    expect(html).not.toContain("uppercase")
+  })
+
   it("says what is left, in muted ink, well under the limit", () => {
     const html = render(<UsageMeter used={212} limit={500} format={euros} label="Groceries" />)
     expect(html).toContain(">€288 left<")

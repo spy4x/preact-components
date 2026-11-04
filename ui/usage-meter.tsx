@@ -202,7 +202,7 @@ export function UsageMeter({
       class={cn("flex min-w-0 flex-col gap-1", className)}
     >
       <div class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
-        <span id={labelId} class="pc-kpi-label min-w-0 truncate">{label}</span>
+        <span id={labelId} class="min-w-0 truncate text-sm font-medium">{label}</span>
         <span aria-hidden="true" class="pc-num ms-auto shrink-0 text-xs font-semibold">
           {value}
         </span>
