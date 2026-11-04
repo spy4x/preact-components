@@ -300,8 +300,10 @@ export function ImportMapper(
       )
       if (rowErrors.length > 0) {
         bodyKeys.push(`note-${row.line}`)
+        // The dark palette's danger, red-400, reads 3.6:1 on a hovered row's gray-700, so a hovered
+        // note takes red-300 (5.4:1), as a highlighted danger item in a Dropdown does.
         bodySlots.push(
-          <td colSpan={mapped.length + 1} class="pt-0! text-danger">
+          <td colSpan={mapped.length + 1} class="pt-0! text-danger dark:[tr:hover>&]:text-red-300">
             <ul class="sticky start-6 max-w-[calc(100cqi-3rem)] list-none wrap-anywhere">
               {rowErrors.map((error, index) => <li key={index}>{error}</li>)}
             </ul>
