@@ -297,9 +297,9 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 ### A Playwright spec
 
 - **Where.** `e2e/<package>.spec.ts`, one file per package, created with the package's first spec
-  — `e2e/ui.spec.ts` for a `ui/` component, `e2e/ui-guide.spec.ts` for the guide as a whole. The
-  runner reads the directory, so every `*.spec.ts` file there runs; a file that exports no spec
-  fails the `e2e` block.
+  — `e2e/ui-guide.spec.ts` for the guide as a whole. A `ui/` component's specs go in
+  `e2e/ui/<component>.spec.ts`, which `e2e/ui.spec.ts` imports. The runner reads the directory, so
+  every `*.spec.ts` file there runs; a file that exports no spec fails the `e2e` block.
 - **Shape.** A file exports `specs`, a list of `Spec` (`e2e/runner.ts`): a name that says what is proven, the
   guide page to start on, the palette, and a `run(page)` that throws when the behaviour does not
   hold. The runner opens that page in a fresh browser context, waits for hydration, and records
@@ -348,8 +348,9 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 Everything from here to "How a build works" is about the existing checks under `checks/`. Read it
 to understand one of them; a new check does not use these helpers.
 
-- **Where.** A check goes in its package's own file under `checks/` — `checks/ui.ts` for a `ui/`
-  component, `checks/system.ts` for a `system/` one — never in `verify.ts`, which keeps the static
+- **Where.** A check goes in its package's own file under `checks/` — `checks/ui/<component>.ts`
+  for a `ui/` component, run in the order `checks/ui.ts` lists, `checks/system.ts` for a `system/`
+  one — never in `verify.ts`, which keeps the static
   phase and the browser startup and calls every package's file in one fixed order. Every package
   the catalogue demonstrates has a file, even an empty one, so a first check touches nobody else's
   file; `cn/` has none, as nothing in it can be driven. The shared helpers (`check`, `poll`,
