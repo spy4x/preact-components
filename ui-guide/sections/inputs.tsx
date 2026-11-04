@@ -1341,7 +1341,13 @@ const stepperNow = new Date("2026-11-04T10:00:00Z")
 
 /** One `PeriodStepper` showing a period and the range it hands back, for the browser checks. */
 function PeriodStepperExample(
-  { start, firstWeekday, e2e }: { start: Period; firstWeekday?: number; e2e: string },
+  { start, firstWeekday, currentHotkey, singleKeys, e2e }: {
+    start: Period
+    firstWeekday?: number
+    currentHotkey?: string
+    singleKeys?: boolean
+    e2e: string
+  },
 ) {
   const period = useSignal(start)
   return (
@@ -1352,6 +1358,8 @@ function PeriodStepperExample(
         now={stepperNow}
         timeZone={fixedZone}
         options={{ firstWeekday }}
+        currentHotkey={currentHotkey}
+        singleKeys={singleKeys}
         locale="en-GB"
       />
       <Note e2e={`${e2e}-value`}>
@@ -1363,7 +1371,9 @@ function PeriodStepperExample(
 
 /**
  * Months, opened on October while today is in November, so "This month" shows; `]` or › brings
- * November back and the button goes. Then weeks that start on Sunday, opened on the current week.
+ * November back and the button goes. Its return key is `m` here, because this page already gives
+ * `t` to the theme toggle. Then weeks that start on Sunday, opened on the current week, with
+ * `singleKeys` off: two steppers on one screen cannot both own `[` and `]`.
  */
 function PeriodStepperDemo() {
   return (
@@ -1371,13 +1381,15 @@ function PeriodStepperDemo() {
       <Variant title="Months, one month back">
         <PeriodStepperExample
           start={periodOf(PeriodUnit.Month, "2026-10-01", {})}
+          currentHotkey="m"
           e2e="guide-period-month"
         />
       </Variant>
-      <Variant title="Weeks from Sunday, this week">
+      <Variant title="Weeks from Sunday, keys off">
         <PeriodStepperExample
           start={periodOf(PeriodUnit.Week, "2026-11-04", { firstWeekday: 7 })}
           firstWeekday={7}
+          singleKeys={false}
           e2e="guide-period-week"
         />
       </Variant>
