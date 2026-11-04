@@ -173,7 +173,8 @@ export function renderModule(classes: string[]): string {
  * spaces, for an app's \`@source inline("…")\` (${classes.length} classes). See README.md →
  * "Install".
  */
-export const COMPONENT_CLASSES: string = ${JSON.stringify(classes.join(" "))}
+export const COMPONENT_CLASSES: string = [
+${classes.map((name) => `  ${JSON.stringify(name)},\n`).join("")}].join(" ")
 `
 }
 

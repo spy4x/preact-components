@@ -1,0 +1,5 @@
+# Generated files: `rg` skips them so a search returns source. Git still tracks them.
+theme/*-css.ts
+theme/component-classes.ts
+llms-full.txt
+*.lock
