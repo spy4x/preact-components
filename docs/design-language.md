@@ -1,5 +1,7 @@
 # Design language
 
+Every rule below in one line each: [design-rules.md](./design-rules.md). Read that first.
+
 One house style for every app built on this library, so that a person who uses two of them can
 tell they were made by the same hand, and can still tell at a glance which app they are in.
 
