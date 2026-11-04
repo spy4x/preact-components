@@ -655,6 +655,12 @@ const dateLabels: DateRangePickerLabels = {
   cancel: "Cancel",
 }
 
+/** The week card's presets: the two week presets and nothing else. */
+const weekPresetOptions: readonly DateRangePresetOption[] = [
+  { preset: "this-week", label: "This week" },
+  { preset: "last-week", label: "Last week" },
+]
+
 /** The preset list in render order, with `custom` last — which is what shows the from/to fields. */
 const datePresetOptions: readonly DateRangePresetOption[] = [
   { preset: "last-7-days", label: "Last 7 days" },
@@ -1329,6 +1335,40 @@ function DateRangePickerEmptyDemo() {
 }
 
 /**
+ * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
+ * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
+ */
+function DateRangePickerWeekDemo() {
+  const range = useSignal<DateRange | null>(null)
+  const preset = useSignal<DateRangePreset | undefined>(undefined)
+
+  return (
+    <div class="space-y-3">
+      <DateRangePicker
+        range={range.value}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
+        timeZone={fixedZone}
+        now={fixedNow}
+        firstWeekday={7}
+        presets={weekPresetOptions}
+        selectedPreset={preset.value}
+        labels={{ placeholder: "Any week" }}
+        dataE2E="guide-date-range-week"
+      />
+      <Note e2e="week-value">
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : `${range.value.from} … ${range.value.to}`}
+        </span>
+      </Note>
+    </div>
+  )
+}
+
+/**
  * The picker with `withTime` on: From and To are `datetime-local` fields, and the panel also offers
  * the two presets that only make sense with a time of day, `"last-hour"` and `"last-24-hours"`.
  * `now` is injected, so the two sub-day presets resolve to the same numbers at every build.
@@ -1389,6 +1429,9 @@ function DateRangePickersDemo() {
           }
         >
           <DateRangePickerWithTimeDemo />
+        </Variant>
+        <Variant title="Weeks from Sunday">
+          <DateRangePickerWeekDemo />
         </Variant>
       </Grid>
       <Stack gap="xs">
@@ -2017,6 +2060,13 @@ export const inputDemos = {
         description: "The instant presets resolve against.",
       },
       {
+        name: "firstWeekday",
+        type: "number",
+        default: "1",
+        description:
+          "The day a week starts on for the `this-week` and `last-week` presets, 1 for Monday to 7 for Sunday.",
+      },
+      {
         name: "withTime",
         type: "boolean",
         default: "false",
@@ -2043,6 +2093,16 @@ export const inputDemos = {
 
 // Every label is English by default; override only the ones you need to.
 <DateRangePicker {...props} labels={{ placeholder: "All time" }} />
+
+// Week presets: weeks start on Monday unless firstWeekday says otherwise (7 is Sunday).
+<DateRangePicker
+  {...props}
+  firstWeekday={7}
+  presets={[
+    { preset: "this-week", label: "This week" },
+    { preset: "last-week", label: "Last week" },
+  ]}
+/>
 
 // withTime: datetime-local fields, two sub-day presets — no presets prop — and a range whose
 // fromInstant / toInstant say exactly which moment each end means, even in a repeated hour.
