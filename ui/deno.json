@@ -54,6 +54,7 @@
     "./i18n/ru": "./i18n/ru.ts",
     "./i18n/zh-CN": "./i18n/zh-CN.ts",
     "./image-gallery": "./image-gallery.tsx",
+    "./import-mapper": "./import-mapper.tsx",
     "./input": "./input.tsx",
     "./input-button": "./input-button.tsx",
     "./language-picker": "./language-picker.tsx",
