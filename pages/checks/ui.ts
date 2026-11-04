@@ -23800,11 +23800,12 @@ async function compositionComboboxCheck(devtools: Devtools): Promise<void> {
   await pressTagKey(devtools, "Backspace")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === ""`), 2_000)
   const cleared = await devtools.evaluate<string[]>(COMBOBOX_OPTIONS)
-  const typed = await typeEachCharacter(devtools, COMBOBOX_OPTIONS, "US")
+  // Matching is by word start, so "E" keeps ETH and EUR and "EU" keeps EUR alone.
+  const typed = await typeEachCharacter(devtools, COMBOBOX_OPTIONS, "EU")
   check(
     "plain typing still filters the Combobox list on every keystroke",
     narrowedEachTime(cleared, typed),
-    typingDetail("US", cleared, typed),
+    typingDetail("EU", cleared, typed),
   )
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)
@@ -23818,9 +23819,9 @@ const TAG_INPUT_OPTIONS = `(${TAG_INPUT_STATE})?.options ?? []`
  * them once, and plain typing still filters on every keystroke (#643).
  *
  * The card holds the tag `work`; a click opens its other five suggestions. The composition builds
- * "h" then "ho", either of which would leave only home and phone. The field is emptied with
- * Backspace, which removes no chip while it holds text, and "e" and "r" are then typed as two
- * keystrokes: four suggestions, then errand alone. Escape drops the text, and the card is left with
+ * "h" then "ho", either of which would leave only home, since suggestions match at word starts.
+ * The field is emptied with Backspace, which removes no chip while it holds text, and "w" and "i"
+ * are then typed as two keystrokes: waiting and wishlist, then wishlist alone. Escape drops the text, and the card is left with
  * its one tag.
  *
  * @param devtools The connected session, on a hydrated page.
@@ -23841,7 +23842,7 @@ async function compositionTagInputCheck(devtools: Devtools): Promise<void> {
   )
   check(
     "an input method's steps leave the TagInput suggestions unchanged, and the finished word filters them",
-    landing?.onTarget === true && heldThenFiltered(composed, steps, ["home", "phone"]),
+    landing?.onTarget === true && heldThenFiltered(composed, steps, ["home"]),
     `the click ${landing?.onTarget === true ? "landed" : "missed"}; ${compositionDetail(composed)}`,
   )
 
@@ -23849,12 +23850,12 @@ async function compositionTagInputCheck(devtools: Devtools): Promise<void> {
   await pressTagKey(devtools, "Backspace")
   await poll(async () => (await read())?.value === "", 2_000)
   const cleared = await devtools.evaluate<string[]>(TAG_INPUT_OPTIONS)
-  const typed = await typeEachCharacter(devtools, TAG_INPUT_OPTIONS, "er")
+  const typed = await typeEachCharacter(devtools, TAG_INPUT_OPTIONS, "wi")
   const chips = (await read())?.chips.join("|") ?? "missing"
   check(
     "plain typing still filters the TagInput suggestions on every keystroke",
     chips === "work" && narrowedEachTime(cleared, typed),
-    `chips ${chips}; ${typingDetail("er", cleared, typed)}`,
+    `chips ${chips}; ${typingDetail("wi", cleared, typed)}`,
   )
   await pressKey(devtools, "Escape")
   await poll(async () => (await read())?.value === "", 2_000)
