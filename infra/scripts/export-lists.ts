@@ -14,10 +14,11 @@
  *    in {@linkcode COMPLETE_SUMMARIES}, whose row must name every value export;
  * 2. the `deno add` lines in `docs/usage.md`'s Install section — one line per published package,
  *    and no line for a package that does not exist;
- * 3. the "Components" table of each catalogued package's own README — the complete list. Its
- *    first column must name exactly the package's components, no more and no fewer —
+ * 3. the "Components" table or list of each catalogued package's own README — the complete list.
+ *    Its first column must name exactly the package's components, no more and no fewer —
  *    every backticked name in that column counts, so a row may name several — and where the second
- *    column names a subpath, that subpath must export every component the row names;
+ *    column names a subpath, that subpath must export every component the row names. A list item
+ *    `` - `Name` (`subpath`): props `` counts as a row with those two columns;
  * 4. the "Packages" table in `README.md` — it must link every published package's own README.
  *
  * "Component" is the catalogue's own rule, `isComponent` in `ui-guide/component-kind.ts`: a
@@ -39,8 +40,8 @@ import { packageIds } from "../../ui-guide/registry-ids.ts"
 import { memberConfig, readConfig, readEntryPoints, ROOT, workspaceMembers } from "./workspace.ts"
 
 /**
- * Packages whose README must carry a complete "Components" table: the ones the guide gives cards
- * to, `packageIds` in `ui-guide/registry-ids.ts`.
+ * Packages whose README must carry a complete "Components" table or list: the ones the guide gives
+ * cards to, `packageIds` in `ui-guide/registry-ids.ts`.
  */
 export const CATALOGUED = packageIds
 
@@ -108,6 +109,31 @@ export function tableRows(markdown: string, heading: string): string[][] {
       continue
     }
     rows.push(cells)
+  }
+  return rows
+}
+
+/**
+ * The list items under one heading, up to the next heading of the same level, read as table rows:
+ * `` - `Name` (`subpath`): props `` becomes `` ["`Name`", "`subpath`"] ``. An item with no
+ * parenthesised subpath becomes its text before the first colon, alone.
+ *
+ * @param markdown Document text.
+ * @param heading Heading line exactly as written, such as `## Components`.
+ * @returns One row per top-level list item. Empty when the heading is missing.
+ */
+export function listRows(markdown: string, heading: string): string[][] {
+  const lines = markdown.split("\n")
+  const start = lines.findIndex((line) => line.trim() === heading)
+  if (start === -1) return []
+
+  const level = heading.match(/^#+/)?.[0] ?? "##"
+  const rows: string[][] = []
+  for (const line of lines.slice(start + 1)) {
+    if (new RegExp(`^#{1,${level.length}} `).test(line)) break
+    if (!line.startsWith("- ")) continue
+    const match = line.match(/^- (.*?) \((`[^`]+`)\)(?::|$)/)
+    rows.push(match ? [match[1], match[2]] : [line.slice(2).split(":")[0]])
   }
   return rows
 }
@@ -193,9 +219,10 @@ export function exportListProblems(
   }
 
   for (const id of CATALOGUED) {
-    const rows = tableRows(docs.packageReadmes[id] ?? "", "## Components")
+    const readme = docs.packageReadmes[id] ?? ""
+    const rows = [...tableRows(readme, "## Components"), ...listRows(readme, "## Components")]
     if (rows.length === 0) {
-      problems.push(`${id}/README.md has no "## Components" table`)
+      problems.push(`${id}/README.md has no "## Components" table or list`)
       continue
     }
     const listed = new Set<string>()
