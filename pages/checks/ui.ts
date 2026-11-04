@@ -81,93 +81,9 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await dropdownChecks(devtools)
   await dropdownAutoDirectionChecks(devtools)
 
-  const switches = await devtools.evaluate<{ count: number; before: string; after: string }>(
-    `(async () => {
-      const card = document.querySelector("#demo-ToggleSwitch")
-      const switches = [...card.querySelectorAll('button[role="switch"]')]
-      const before = switches[0].getAttribute("aria-checked")
-      switches[0].click()
-      await ${PAGE_UNTIL}(() => switches[0].getAttribute("aria-checked") !== before)
-      return { count: switches.length, before, after: switches[0].getAttribute("aria-checked") }
-    })()`,
-  )
-  check(
-    "ToggleSwitch toggles its controlled value",
-    switches.before !== switches.after,
-    `${switches.before} → ${switches.after} across ${switches.count} switches`,
-  )
-
-  const segmented = await devtools.evaluate<{ before: string; after: string }>(
-    `(async () => {
-      const card = document.querySelector("#demo-OnOffButtons")
-      const off = [...card.querySelectorAll("button")].find((b) => b.textContent.includes("OFF"))
-      const before = off.className
-      off.click()
-      await ${PAGE_UNTIL}(() => off.className !== before)
-      return { before, after: off.className }
-    })()`,
-  )
-  check("OnOffButtons switches the selected half", segmented.before !== segmented.after)
-
-  // The `Fields` section's primitives: what `Field` wires is exactly what the browser makes
-  // observable — the label's `for`, the control's `id`, and the ids of the messages the control
-  // describes itself by, including the one it stops describing itself by once the error clears.
-  const fields = await devtools.evaluate<{
-    echoBefore: string
-    echoAfter: string
-    controlId: string
-    labelFor: string
-    beforeInvalid: string | null
-    beforeDescribedBy: string
-    afterInvalid: string | null
-    afterDescribedBy: string
-    errorText: string
-  }>(`(async () => {
-    const echo = () =>
-      document.querySelector('#demo-Field [data-e2e="controlled-value"]').textContent.trim()
-    const email = document.querySelector("#demo-Field input[type=email]")
-    const read = () => ({
-      invalid: email.getAttribute("aria-invalid"),
-      describedBy: email.getAttribute("aria-describedby") ?? "",
-    })
-
-    const echoBefore = echo()
-    const before = read()
-    email.value = "ada@example.com"
-    email.dispatchEvent(new Event("input", { bubbles: true }))
-    await ${PAGE_UNTIL}(() => echo().includes("ada@example.com") && read().invalid === null)
-
-    return {
-      echoBefore,
-      echoAfter: echo(),
-      controlId: email.id,
-      labelFor: document.querySelector("#demo-Field label[for='guide-email']")?.getAttribute("for") ?? "",
-      beforeInvalid: before.invalid,
-      beforeDescribedBy: before.describedBy,
-      afterInvalid: read().invalid,
-      afterDescribedBy: read().describedBy,
-      errorText: document.querySelector("#guide-email-error")?.textContent ?? "",
-    }
-  })()`)
-  check(
-    "typing into a `Field`'s control drives the demo's controlled value",
-    fields.echoBefore !== fields.echoAfter && fields.echoAfter.includes("ada@example.com"),
-    fields.echoAfter,
-  )
-  check(
-    "`Field` wires the label's `for` to the control's `id`",
-    fields.controlId === "guide-email" && fields.labelFor === "guide-email",
-    `for="${fields.labelFor}" id="${fields.controlId}"`,
-  )
-  check(
-    "`Field` describes the control by its error and its hint, and drops the error once it clears",
-    fields.beforeInvalid === "true" &&
-      fields.beforeDescribedBy === "guide-email-error guide-email-hint" &&
-      fields.afterInvalid === null && fields.afterDescribedBy === "guide-email-hint" &&
-      fields.errorText === "",
-    `invalid=${fields.beforeInvalid} "${fields.beforeDescribedBy}" → ` +
-      `invalid=${fields.afterInvalid} "${fields.afterDescribedBy}"`,
-  )
+  await toggleSwitchChecks(devtools)
+  await onOffButtonsChecks(devtools)
+  await fieldChecks(devtools)
 
   await refForwardingChecks(devtools)
   await roundCheckboxChecks(devtools)
@@ -236,12 +152,7 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await errorStateDangerCheck(devtools)
   await noticeToneCheck(devtools)
   await errorBoundaryChecks(devtools)
-  // The pill itself is the link, unlike the link inside the static badge beside it.
-  await linkFocusRingCheck(devtools, {
-    selector: "#demo-Badge a[href].inline-flex",
-    name: "linked Badge",
-  })
-  await linkFocusRingCheck(devtools, { selector: BUTTON_LINK, name: "Button link" })
+  await linkFocusRingChecks(devtools)
   await primaryButtonFillCheck(devtools)
   await kanbanBoardChecks(devtools)
   await sortableListChecks(devtools)
@@ -260,6 +171,118 @@ export async function uiChecks(devtools: Devtools): Promise<void> {
   await modalChecks(devtools)
   await sharedScrollLockChecks(devtools)
 
+  zoomableImagesReadErrorsCheck()
+}
+
+/** ToggleSwitch toggles its controlled value. */
+async function toggleSwitchChecks(devtools: Devtools): Promise<void> {
+  const switches = await devtools.evaluate<{ count: number; before: string; after: string }>(
+    `(async () => {
+      const card = document.querySelector("#demo-ToggleSwitch")
+      const switches = [...card.querySelectorAll('button[role="switch"]')]
+      const before = switches[0].getAttribute("aria-checked")
+      switches[0].click()
+      await ${PAGE_UNTIL}(() => switches[0].getAttribute("aria-checked") !== before)
+      return { count: switches.length, before, after: switches[0].getAttribute("aria-checked") }
+    })()`,
+  )
+  check(
+    "ToggleSwitch toggles its controlled value",
+    switches.before !== switches.after,
+    `${switches.before} → ${switches.after} across ${switches.count} switches`,
+  )
+}
+
+/** OnOffButtons switches the selected half. */
+async function onOffButtonsChecks(devtools: Devtools): Promise<void> {
+  const segmented = await devtools.evaluate<{ before: string; after: string }>(
+    `(async () => {
+      const card = document.querySelector("#demo-OnOffButtons")
+      const off = [...card.querySelectorAll("button")].find((b) => b.textContent.includes("OFF"))
+      const before = off.className
+      off.click()
+      await ${PAGE_UNTIL}(() => off.className !== before)
+      return { before, after: off.className }
+    })()`,
+  )
+  check("OnOffButtons switches the selected half", segmented.before !== segmented.after)
+}
+
+/** `Field`'s wiring of its label, control and messages. */
+async function fieldChecks(devtools: Devtools): Promise<void> {
+  // The `Fields` section's primitives: what `Field` wires is exactly what the browser makes
+  // observable — the label's `for`, the control's `id`, and the ids of the messages the control
+  // describes itself by, including the one it stops describing itself by once the error clears.
+  const fields = await devtools.evaluate<{
+    echoBefore: string
+    echoAfter: string
+    controlId: string
+    labelFor: string
+    beforeInvalid: string | null
+    beforeDescribedBy: string
+    afterInvalid: string | null
+    afterDescribedBy: string
+    errorText: string
+  }>(`(async () => {
+    const echo = () =>
+      document.querySelector('#demo-Field [data-e2e="controlled-value"]').textContent.trim()
+    const email = document.querySelector("#demo-Field input[type=email]")
+    const read = () => ({
+      invalid: email.getAttribute("aria-invalid"),
+      describedBy: email.getAttribute("aria-describedby") ?? "",
+    })
+
+    const echoBefore = echo()
+    const before = read()
+    email.value = "ada@example.com"
+    email.dispatchEvent(new Event("input", { bubbles: true }))
+    await ${PAGE_UNTIL}(() => echo().includes("ada@example.com") && read().invalid === null)
+
+    return {
+      echoBefore,
+      echoAfter: echo(),
+      controlId: email.id,
+      labelFor: document.querySelector("#demo-Field label[for='guide-email']")?.getAttribute("for") ?? "",
+      beforeInvalid: before.invalid,
+      beforeDescribedBy: before.describedBy,
+      afterInvalid: read().invalid,
+      afterDescribedBy: read().describedBy,
+      errorText: document.querySelector("#guide-email-error")?.textContent ?? "",
+    }
+  })()`)
+  check(
+    "typing into a `Field`'s control drives the demo's controlled value",
+    fields.echoBefore !== fields.echoAfter && fields.echoAfter.includes("ada@example.com"),
+    fields.echoAfter,
+  )
+  check(
+    "`Field` wires the label's `for` to the control's `id`",
+    fields.controlId === "guide-email" && fields.labelFor === "guide-email",
+    `for="${fields.labelFor}" id="${fields.controlId}"`,
+  )
+  check(
+    "`Field` describes the control by its error and its hint, and drops the error once it clears",
+    fields.beforeInvalid === "true" &&
+      fields.beforeDescribedBy === "guide-email-error guide-email-hint" &&
+      fields.afterInvalid === null && fields.afterDescribedBy === "guide-email-hint" &&
+      fields.errorText === "",
+    `invalid=${fields.beforeInvalid} "${fields.beforeDescribedBy}" → ` +
+      `invalid=${fields.afterInvalid} "${fields.afterDescribedBy}"`,
+  )
+}
+
+/** The focus ring of a linked Badge and of a Button link. */
+async function linkFocusRingChecks(devtools: Devtools): Promise<void> {
+  // The pill itself is the link, unlike the link inside the static badge beside it.
+  await linkFocusRingCheck(devtools, {
+    selector: "#demo-Badge a[href].inline-flex",
+    name: "linked Badge",
+  })
+  await linkFocusRingCheck(devtools, { selector: BUTTON_LINK, name: "Button link" })
+}
+
+/** Fails the block by name when a ZoomableImages reading threw inside the page. */
+function zoomableImagesReadErrorsCheck(): void {
   // A ZoomableImages reading that threw inside the page was recorded rather than raised, so the
   // rest of this block still ran; fail the block by name now, at its end.
   if (lightboxReadErrors.length > 0) {
