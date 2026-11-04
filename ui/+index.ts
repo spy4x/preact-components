@@ -104,6 +104,7 @@ export {
 } from "./confirm-dialog.tsx"
 export { CopyBlock, type CopyBlockProps } from "./copy-block.tsx"
 export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
+export { CurrencyField, type CurrencyFieldProps, filterCurrencies } from "./currency-field.tsx"
 export {
   activeDescendant,
   Combobox,
@@ -324,11 +325,13 @@ export {
   restoreFocus,
   shouldRetargetFocus,
 } from "./modal.tsx"
-export { MoneyDisplay, type MoneyDisplayProps } from "./money-display.tsx"
+export { MoneyDisplay, type MoneyDisplayProps, type MoneyTone } from "./money-display.tsx"
 export {
   MoneyInput,
   type MoneyInputBounds,
+  type MoneyInputDecimalsMessage,
   type MoneyInputEdit,
+  type MoneyInputEditOptions,
   type MoneyInputProps,
   type MoneyInputRangeMessage,
   resolveMoneyInputEdit,
