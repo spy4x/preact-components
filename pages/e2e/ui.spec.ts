@@ -2511,13 +2511,14 @@ function lostInputSpecs(): Spec[] {
 }
 
 /**
- * `CurrencyField` finds a currency by its name, its code or its symbol and Enter picks the best
- * match; `MoneyInput` reads a coin's own decimals and refuses one decimal too many; `MoneyDisplay`'s
- * signed amounts pass axe's contrast check in both palettes, on a phone and on a desktop.
+ * `CurrencyField` finds a currency by its name, its code or its symbol and Enter picks the
+ * highlighted match (the unit tests prove the order); `MoneyInput` reads a coin's own decimals and
+ * refuses one decimal too many; `MoneyDisplay`'s signed amounts pass axe's contrast check in both
+ * palettes, on a phone and on a desktop.
  */
 function currencySpecs(): Spec[] {
   const pick = (query: string): Spec => ({
-    name: `CurrencyField: typing "${query}" puts the euro first and Enter picks it`,
+    name: `CurrencyField: typing "${query}" finds the euro and Enter picks it`,
     pageId: "ui",
     run: async (page) => {
       const card = page.locator("#demo-CurrencyField")
