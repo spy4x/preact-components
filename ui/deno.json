@@ -43,6 +43,7 @@
     "./filter-bar": "./filter-bar.tsx",
     "./format": "./format.tsx",
     "./honeypot": "./honeypot.tsx",
+    "./icon-picker": "./icon-picker.tsx",
     "./i18n": "./i18n.tsx",
     "./i18n/ar": "./i18n/ar.ts",
     "./i18n/de": "./i18n/de.ts",
