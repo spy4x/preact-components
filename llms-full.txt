@@ -1556,7 +1556,7 @@ setAssets(
     devScripts: ["/@vite/client"],
   },
 )
-setStaticFiles(build && { files: build.files, root: "/path/to/_fresh", fs: staticFs })
+setStaticFiles(build && { files: build.files, root: "/path/to/dist", fs: staticFs })
 
 export default { fetch: app.handler() }
 ```
@@ -1613,9 +1613,9 @@ export default defineConfig({
 
 - `Head` — its children go into the page's `<head>`: a `<title>`, or a `<meta>` with the same
   name, replaces the wrapper's, the rest go at the end, after the stylesheets.
-- `asset(path)` — `path` with the build id (`?__frsh_c=…`), so it can be cached for a year. Every
+- `asset(path)` — `path` with the build id (`?__v=…`), so it can be cached for a year. Every
   `<img>` and `<source>` on this site gets it on its own.
-- `BUILD_ID_KEY` — that query key, `__frsh_c`.
+- `BUILD_ID_KEY` — that query key, `__v`.
 - `buildId()` — the current build id.
 - `setAssets(assets)` — the stylesheets, the client script, the preload chunks and the build id;
   the server entry calls it once.
@@ -1641,8 +1641,8 @@ export default defineConfig({
 
 ## The build
 
-- `website(options)` — the Vite plugin. `vite build` writes `_fresh/client/` (`static/` and the
-  hashed client code) and `_fresh/server.js` with the server bundle; `vite` serves the site from
+- `website(options)` — the Vite plugin. `vite build` writes `dist/client/` (`static/` and the
+  hashed client code) and `dist/server.js` with the server bundle; `vite` serves the site from
   `server-entry.ts` and leaves modules and files on disk to Vite. Its options are the file
   readers (`readDir`, `readFile`, `isFile`) and an optional `buildId`; without one the id is a
   hash of the client files.

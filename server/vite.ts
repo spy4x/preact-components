@@ -2,8 +2,7 @@
  * `@spy4x/preact-server/vite` — a website's build and dev server on Vite, in place of Fresh's
  * plugin. Build-time only: no page or server bundle imports it.
  *
- * `vite build` makes two bundles in `_fresh/`, the folder layout Fresh used, so the paths a site's
- * routes and scripts know still hold:
+ * `vite build` makes two bundles in `dist/`:
  *
  * - `client/`: `static/` as it is, and `client.ts` with the styles and the islands' code, hashed
  *   under `client/assets/`;
@@ -25,7 +24,7 @@ import { encodeHex } from "@std/encoding/hex"
 import type { WebsiteBuild } from "./build.ts"
 import type { StaticFile } from "./static.ts"
 
-const OUT = "_fresh"
+const OUT = "dist"
 const CLIENT_ENTRY = "client.ts"
 const SERVER_ENTRY = "server-entry.ts"
 

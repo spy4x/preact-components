@@ -73,7 +73,7 @@ describe("Head", () => {
       </Head>,
     )).text()
     expect(html).toContain(
-      `<link rel="stylesheet" href="/assets/site.css?__frsh_c=dev"/>` +
+      `<link rel="stylesheet" href="/assets/site.css?__v=dev"/>` +
         `<link rel="canonical" href="https://example.test/"/></head>`,
     )
   })
@@ -82,8 +82,8 @@ describe("Head", () => {
 describe("asset", () => {
   it("adds the build id to a path on this site, and leaves other addresses alone", () => {
     setAssets({ ...DEV, buildId: "b1" })
-    expect(asset("/logo.svg#a")).toBe("/logo.svg?__frsh_c=b1#a")
-    expect(asset("/logo.svg?__frsh_c=old")).toBe("/logo.svg?__frsh_c=old")
+    expect(asset("/logo.svg#a")).toBe("/logo.svg?__v=b1#a")
+    expect(asset("/logo.svg?__v=old")).toBe("/logo.svg?__v=old")
     expect(asset("//cdn.example/logo.svg")).toBe("//cdn.example/logo.svg")
     expect(asset("https://example.test/logo.svg")).toBe("https://example.test/logo.svg")
   })
@@ -96,8 +96,8 @@ describe("asset", () => {
         <img src="/a.png" alt="" />
       </picture>,
     )).text()
-    expect(html).toContain(`srcset="/a.webp?__frsh_c=b1 1x, /b.webp?__frsh_c=b1 2x"`)
-    expect(html).toContain(`src="/a.png?__frsh_c=b1"`)
+    expect(html).toContain(`srcset="/a.webp?__v=b1 1x, /b.webp?__v=b1 2x"`)
+    expect(html).toContain(`src="/a.png?__v=b1"`)
   })
 })
 

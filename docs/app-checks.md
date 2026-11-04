@@ -68,7 +68,7 @@ registerBoundaryTests({
   name included, is passed over like any other file the guard does not read.
 - **An unreadable file fails the test** too, and so does an empty `directories` list.
 - **Left out:** test files (`*.test.ts`, `*.test.tsx`), which spell out classes and forbidden
-  imports to assert on, and the directories `node_modules`, `dist`, `build`, `.vite` and `_fresh`
+  imports to assert on, and the directories `node_modules`, `dist`, `build`, `.vite` and `dist`
   wherever they appear below a walked directory. `skipDirectories` replaces that list. A folder
   above the root with one of these names does not count.
 - **Extensions:** the spacing guard reads `.ts`, `.tsx`, `.css` and `.html`; the boundary guard

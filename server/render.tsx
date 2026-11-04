@@ -274,7 +274,7 @@ function hashAssets(props: Record<string, unknown>): void {
 }
 
 /** The query key that marks an address with the build id. */
-export const BUILD_ID_KEY = "__frsh_c"
+export const BUILD_ID_KEY = "__v"
 
 /** `path` with the build id, when it is a path on this site. */
 export function asset(path: string): string {

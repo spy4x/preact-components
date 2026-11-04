@@ -28,7 +28,7 @@ const fs = {
 function staticApp() {
   setAssets({ buildId: "b1", css: [], script: null, preload: null, devScripts: [] })
   setStaticFiles({
-    root: "/srv/_fresh",
+    root: "/srv/dist",
     fs,
     files: {
       "/logo.svg": { filePath: "client/logo.svg", hash: HASH, contentType: "image/svg+xml" },
@@ -63,7 +63,7 @@ describe("staticFiles", () => {
       "no-cache, no-store, max-age=0, must-revalidate",
     )
     expect(await response.text()).toBe("body")
-    expect(opened).toEqual(["/srv/_fresh/client/logo.svg"])
+    expect(opened).toEqual(["/srv/dist/client/logo.svg"])
   })
 
   it("sends a file whose address carries this build's id as immutable for a year", async () => {
@@ -86,7 +86,7 @@ describe("staticFiles", () => {
   })
 
   it("redirects an address with another build's id to the same address without it", async () => {
-    const response = await staticApp()("/logo.svg?v=2&__frsh_c=old")
+    const response = await staticApp()("/logo.svg?v=2&__v=old")
     expect(response.status).toBe(307)
     expect(response.headers.get("location")).toBe("/logo.svg?v=2")
   })

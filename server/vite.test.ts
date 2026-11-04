@@ -11,7 +11,7 @@ import {
 } from "./vite.ts"
 
 const ROOT = join("/", "site")
-const CLIENT = join(ROOT, "_fresh", "client")
+const CLIENT = join(ROOT, "dist", "client")
 
 /** The client build's manifest: the entry with a shared chunk, and one island. */
 const MANIFEST = {
