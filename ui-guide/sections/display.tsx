@@ -480,12 +480,14 @@ function UsageMeterDemo() {
     <Grid minColumnWidth="lg" data-e2e="guide-usage-meter">
       {usageMeterBudgets.map((budget) => (
         <Card key={budget.label}>
-          <UsageMeter
-            label={budget.label}
-            used={budget.used}
-            limit={budget.limit}
-            format={euros}
-          />
+          <CardBody>
+            <UsageMeter
+              label={budget.label}
+              used={budget.used}
+              limit={budget.limit}
+              format={euros}
+            />
+          </CardBody>
         </Card>
       ))}
     </Grid>
