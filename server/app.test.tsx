@@ -127,6 +127,14 @@ describe("Context", () => {
     expect(response.headers.get("location")).toBe("/evil.example/x?next=//y")
   })
 
+  it("keeps a redirect with a backslash or a tab on this site", async () => {
+    for (const target of ["/\\evil.example/x", "/\t/evil.example/x", "\\\\evil.example/x"]) {
+      const app = new App().get("/", (ctx) => ctx.redirect(target))
+      const location = (await call(app, "/")).headers.get("location")!
+      expect(new URL(location, "https://site.test/").host).toBe("site.test")
+    }
+  })
+
   it("leaves a redirect to a full address as it is", async () => {
     const app = new App().get("/", (ctx) => ctx.redirect("https://example.test//x", 307))
     const response = await call(app, "/")

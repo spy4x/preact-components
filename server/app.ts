@@ -168,12 +168,14 @@ export class Context<S> {
   }
 
   /**
-   * A redirect. A path that starts with `/` has its repeated slashes collapsed, so `//evil.com/`
-   * stays on this site, as in Fresh.
+   * A redirect. A path that starts with `/` stays on this site: a browser reads `\` as `/` and
+   * drops tabs and line breaks, so those go first, then repeated slashes collapse, and
+   * `//evil.com/`, `/\evil.com` and `/<tab>/evil.com` all stay here.
    */
   redirect(pathOrUrl: string, status = 302): Response {
     let location = pathOrUrl
-    if (pathOrUrl !== "/" && pathOrUrl.startsWith("/")) {
+    if (pathOrUrl !== "/" && /^[/\\]/.test(pathOrUrl)) {
+      pathOrUrl = pathOrUrl.replaceAll(/[\t\r\n]/g, "").replaceAll("\\", "/")
       let at = pathOrUrl.indexOf("?")
       if (at === -1) at = pathOrUrl.indexOf("#")
       const path = at > -1 ? pathOrUrl.slice(0, at) : pathOrUrl

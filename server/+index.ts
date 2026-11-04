@@ -10,7 +10,6 @@
 export {
   App,
   type AppConfig,
-  compilePath,
   Context,
   createDefine,
   type HandlerByMethod,
@@ -23,7 +22,6 @@ export {
   type PageResponse,
   type RouteHandler,
   type RouteModule,
-  runRoute,
   type ServeInfo,
 } from "./app.ts"
 export type { WebsiteBuild } from "./build.ts"
@@ -31,8 +29,6 @@ export { fsRoutes } from "./fs-routes.ts"
 export {
   asset,
   type Assets,
-  BUILD_ID_KEY,
-  buildId,
   Head,
   type IslandRef,
   type Preload,

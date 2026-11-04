@@ -258,7 +258,6 @@ MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carri
 default	helper	@spy4x/preact-map/i18n/ar	The `map` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.
 Assets	type	@spy4x/preact-server	What the build tells the renderer: the stylesheets, the client script and the build id.
-BUILD_ID_KEY	constant	@spy4x/preact-server	The query key that marks an address with the build id.
 Context	helper	@spy4x/preact-server	The request's context, as Fresh's `Context`.
 HandlerByMethod	type	@spy4x/preact-server	A route's handlers by HTTP method, such as `{ GET, POST }`.
 HandlerFn	type	@spy4x/preact-server	A route's handler: a response, or data for its page.
@@ -277,13 +276,10 @@ StaticFile	type	@spy4x/preact-server	One file of the build, as the build lists i
 StaticFileHandle	type	@spy4x/preact-server	A file opened for streaming; the shape of `StaticFileHandle` in `@spy4x/server/static`, so its `denoStaticFs` fits `StaticBuild.fs` as it is.
 WebsiteBuild	type	@spy4x/preact-server	What the client build produced: the server entry hands it to `setAssets` and `setStaticFiles`.
 asset	helper	@spy4x/preact-server	`path` with the build id, when it is a path on this site.
-buildId	helper	@spy4x/preact-server	The build id, for the static files' cache rule.
-compilePath	helper	@spy4x/preact-server	`/blog/:slug` → a regular expression.
 createDefine	helper	@spy4x/preact-server	Typed identity helpers, as Fresh's `createDefine`.
 fsRoutes	helper	@spy4x/preact-server	Adds every file of `files` (from `import.meta.glob("./routes/**\/*.{ts,tsx}")`, keyed `./routes/…`) to `app`.
 page	helper	@spy4x/preact-server	Fresh's `page()`: data and response options for a handler to give its page.
 registerIslands	helper	@spy4x/preact-server	Registers the exports of `islands/` files, each a component the browser wakes.
-runRoute	helper	@spy4x/preact-server	Runs a route module: its handler for the method, then its page.
 setAssets	helper	@spy4x/preact-server	Sets what the build produced; the server entry calls it once.
 setStaticFiles	helper	@spy4x/preact-server	The build's files; the server entry calls it once.
 staticFiles	helper	@spy4x/preact-server	Answer with the file at the request's path, when the build has one; else the next step.
