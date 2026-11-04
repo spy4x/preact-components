@@ -122,7 +122,7 @@ export interface UsageMeterProps {
 }
 
 const FILL: Record<UsageMeterState, string> = {
-  under: "bg-muted-foreground",
+  under: "bg-[var(--color-muted-foreground,oklch(0.446_0.03_256.802))]",
   near: "bg-warning",
   reached: "bg-warning",
   over: "bg-danger",

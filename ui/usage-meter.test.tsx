@@ -83,7 +83,7 @@ describe("UsageMeter", () => {
     const html = render(<UsageMeter used={212} limit={500} format={euros} label="Groceries" />)
     expect(html).toContain(">€288 left<")
     expect(attribute(html, "aria-valuetext")).toBe("€212 of €500, 42%, €288 left")
-    expect(html).toContain("bg-muted-foreground")
+    expect(html).toContain("bg-[var(--color-muted-foreground")
     expect(html).not.toContain("<svg")
   })
 
