@@ -544,8 +544,10 @@ const moneyRegions = [
  */
 function MoneyDisplayDemo() {
   return (
-    <table class="w-full text-sm" data-e2e="money-display-table">
-      <thead>
+    // `bg-transparent` on both: the dark palette's base rules band a table head, which here would
+    // sit between the amounts and the card for no reason.
+    <table class="w-full bg-transparent text-sm" data-e2e="money-display-table">
+      <thead class="bg-transparent">
         <tr class="text-xs text-muted">
           <th scope="col" class="pb-2 text-start font-normal">Tone or currency</th>
           {moneyRegions.map((region) => (
