@@ -22,14 +22,15 @@ async function text(app: App<unknown>, path: string): Promise<string> {
 describe("fsRoutes", () => {
   it("serves a fixed page before a language segment that would also match it", async () => {
     const app = new App()
-    // The language route comes first, as a glob may list it.
+    // The language routes come first, as a glob may list them.
     await fsRoutes(app, {
+      "./routes/[lang].tsx": named("language"),
       "./routes/[[lang]]/index.tsx": named("home"),
       "./routes/[[lang]]/pricing.tsx": named("pricing"),
     })
     expect(await text(app, "/pricing")).toBe(`<p>pricing {&quot;lang&quot;:&quot;&quot;}</p>`)
     expect(await text(app, "/de/pricing")).toBe(`<p>pricing {&quot;lang&quot;:&quot;de&quot;}</p>`)
-    expect(await text(app, "/de")).toBe(`<p>home {&quot;lang&quot;:&quot;de&quot;}</p>`)
+    expect(await text(app, "/de")).toBe(`<p>language {&quot;lang&quot;:&quot;de&quot;}</p>`)
     expect(await text(app, "/")).toBe(`<p>home {&quot;lang&quot;:&quot;&quot;}</p>`)
   })
 
