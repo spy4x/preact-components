@@ -10,6 +10,33 @@ import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
 <IconTrashBin class="size-4 text-red-500" />
 ```
 
+## Registry: icons by id
+
+`@spy4x/preact-icons/registry` is for an app that stores which icon a person chose, such as a
+category's. A separate entry, so an app without a picker never loads these glyphs.
+
+- `ICONS` maps an id to `{ Icon, name, aliases }`: the component, an English name after what is
+  drawn ("Lightning bolt") and lower-case English aliases for what it is used for
+  ("electricity"). An app stores the id. A released id never changes or disappears.
+- `IconName` is the union of the ids; `CATEGORY_ICONS` lists the 42 ids of the category set, in
+  the order a picker shows them (grouped by meaning: home and bills, food, getting around,
+  shopping, health and family, leisure, money and work, other).
+- Every registry glyph is Lucide at stroke 2 (`lucide-static@1.47.0`), so a grid of them is one
+  family. Two are the main entry's own Lucide glyphs (`IconWallet`, `IconSprout`); the other 40 are
+  drawn in `lucide.tsx` and reached only through `ICONS`, because several share a name with a glyph
+  of another family here (`IconCreditCard` is Heroicons v1's). The main entry did not change.
+- `IconPicker` in `@spy4x/preact-ui` shows them as a searchable grid, named in nine languages.
+
+```tsx
+import { ICONS, type IconName } from "@spy4x/preact-icons/registry"
+
+const { Icon, name } = ICONS[category.icon as IconName]
+<Icon aria-label={name} />
+```
+
+`registry.test.ts` holds every `CATEGORY_ICONS` id to `ICONS`, every glyph to stroke 2 and no
+mirror, and every drawing in `lucide.tsx` to a JSDoc naming `lucide-static@1.47.0`.
+
 ## Contract
 
 Every icon is a plain function component with the same prop surface:
@@ -122,7 +149,8 @@ Heroicons; a few may have come from an image search, with no known licence. The 
 must come from a FOSS pack, so every glyph that matched no pack exactly was replaced by a pack's own
 drawing, under the same export name and props.
 
-`provenance.ts`, in this package's own source repository, compares every exported glyph's geometry
+`provenance.ts`, in this package's own source repository, compares every exported glyph's geometry,
+and the registry's 40 drawings in `lucide.tsx`,
 against the published Heroicons v1, Heroicons v2, Feather, Lucide and Simple Icons packs,
 normalising path and shape data so formatting differences (spacing, number precision, attribute
 order) do not hide a real match. Its own JSDoc explains the normalisation and its limits in full. It
@@ -140,7 +168,8 @@ Of the 124 glyphs, **all 124 match a pack's glyph exactly**: Heroicons v1 (`hero
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
 or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 31
 replaced in #233 also the upstream file name and version.
-[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs. The registry's 40 drawings in `lucide.tsx` all match Lucide
+exactly too.
 
 Six glyphs were added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
