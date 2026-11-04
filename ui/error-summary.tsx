@@ -118,7 +118,9 @@ export function ErrorSummary(
                   >
                     {item.label}
                   </Button>
-                  <span id={`${titleId}-${index}`} class="min-w-0 flex-1">{item.message}</span>
+                  <span id={`${titleId}-${index}`} class="min-w-0 flex-1 wrap-anywhere">
+                    {item.message}
+                  </span>
                 </li>
               ))}
             </ul>

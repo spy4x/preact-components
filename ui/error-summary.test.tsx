@@ -37,7 +37,7 @@ describe("ErrorSummary", () => {
     expect(rows.map((row) => row[2])).toEqual(["Line 14", "Line 32"])
     for (const [i, row] of rows.entries()) {
       expect(html).toContain(
-        `<span id="${row[1]}" class="min-w-0 flex-1">${items[i].message}</span>`,
+        `<span id="${row[1]}" class="min-w-0 flex-1 wrap-anywhere">${items[i].message}</span>`,
       )
     }
     expect(new Set(rows.map((row) => row[1])).size).toBe(2)
