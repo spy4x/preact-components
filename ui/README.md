@@ -137,6 +137,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `note?` (a caveat under the byline), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript                                                                                                                            |
 | `PageTitle`           | `page-title`           | `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `PeriodStepper`       | `period-stepper`       | `period`, `onChange`, `now`, `timeZone`, `options?` (first weekday), `labels?`, `locale?`, `currentHotkey?`, `singleKeys?` — steps through weeks or months with `[`, `]` and `t`; the period maths is `@spy4x/time/period`                                                                                                                                                                                                                                                                     |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                                                                                                                                                                              |
 | `PostList`            | `post-list`            | `posts` (`{ href, title, description?, publishedAt, readMinutes?, lang?, dir?, image? }[]`; `lang` sets the title's and description's language, `dir="auto"` unless `dir` is given; `image` is a decorative `{ src, width, height, srcset?, sizes? }` cover, above the text on a phone and 192×108 beside it from 640 px), `headingLevel?` (`2` default), `label?`, `labels?`, `eagerFirst?` (the first cover loads eagerly) — the whole row is the link's target; dates in UTC; no JavaScript |
 | `PrevNext`            | `prev-next`            | `previous?`, `next?` (`{ href, title }`), `labels?` — two whole-card links at a guide's end, next on the end side; no JavaScript                                                                                                                                                                                                                                                                                                                                                               |
@@ -183,6 +184,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`                                                                                                                                                                                                                                                        |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                                                                                                                                                                                                                                           |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab                                                                                                                                                                                                                   |
+| `UsageMeter`          | `usage-meter`          | `used`, `limit`, `format`, `label`, `warnAt?` (80), `labels?`, `locale?` — the figures, a bar and a line saying what is left or how far over; `role="meter"`                                                                                                                                                                                                                                                                                                                                   |
 | `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                                                                                                                                                                                                                                    |
 | `WidgetCard`          | `widget-card`          | `title`, `status` (`loading`/`error`/`empty`/`ready`), `size?`, `loadingLabel`, `caption?`, `menu?`, `href?`, `errorMessage?`, `onRetry?`, `emptyLabel?`, `skeletonDelay?`                                                                                                                                                                                                                                                                                                                     |
 | `WidgetStat`          | `widget-card`          | `value`, `valueLabel?`, `lines?`                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -2833,9 +2835,12 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 
 - `dateRangePresets` lists every date preset in its presentation order: the single days and rolling
   day counts (`"today"` to `"last-90-days"`), then `"last-12-months"`, then the calendar periods
-  (`"this-month"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
+  (`"this-week"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
   `"last-hour"` then `"last-24-hours"`. They carry no labels: build a picker's option list from them
   and word each option yourself.
+- `rangeForPreset` and `presetForRange` take `firstWeekday` (1 Monday to 7 Sunday, default 1) for
+  the two week presets; pass the same one to both, and to `DateRangePicker`, so a Sunday-start week
+  the picker applied is still recognised as "This week".
 
 ### Dropdown (`./dropdown`)
 
@@ -3006,6 +3011,11 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   page with its neighbours. A `size` below `5` counts as `5`. Use it to draw pagination in markup of
   your own.
 
+### PeriodStepper (`./period-stepper`)
+
+- `periodStepperLabels` is the stepper's English words, one set per unit, the same as the
+  `PeriodStepper.*` keys of `i18n/en.ts`.
+
 ### Progress (`./progress`)
 
 - `clampProgress(value, max)` clamps a reading into `0…max` (`max` defaults to `100`) and returns it
@@ -3056,6 +3066,14 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   `leaveGuard` prop) and the code that navigates. `leaveGuard.navigate(go)` runs `go` at once when
   nothing is unsaved and asks first otherwise. `navigate` is its only member; `UnsavedGuard`
   throws for a `leaveGuard` that `createLeaveGuard()` did not return.
+
+### UsageMeter (`./usage-meter`)
+
+- `usageReading(used, limit, warnAt?)` is the meter's arithmetic without the markup: the state
+  (`"under"`, `"near"`, `"reached"`, `"over"`), the percentage rounded down, what is left or over,
+  the fill's width and where the limit's tick sits.
+- `usageMeterLabels` is the meter's English words, the same as the `UsageMeter.*` keys of
+  `i18n/en.ts`.
 
 ### useSucceeded (`./use-succeeded`)
 

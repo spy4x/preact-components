@@ -31,6 +31,7 @@ import {
   LanguageDialog,
   LanguagePicker,
   OnOffButtons,
+  PeriodStepper,
   rangeForPreset,
   SegmentedControl,
   Slider,
@@ -40,6 +41,7 @@ import {
   ToggleSwitch,
 } from "@spy4x/preact-ui"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
+import { type Period, periodOf, PeriodUnit } from "@spy4x/time/period"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { useSignal } from "@preact/signals"
@@ -1334,6 +1336,55 @@ function DateRangePickerEmptyDemo() {
   )
 }
 
+/** The stepper demos' clock: Wednesday 4 November 2026, in Paris. */
+const stepperNow = new Date("2026-11-04T10:00:00Z")
+
+/** One `PeriodStepper` showing a period and the range it hands back, for the browser checks. */
+function PeriodStepperExample(
+  { start, firstWeekday, e2e }: { start: Period; firstWeekday?: number; e2e: string },
+) {
+  const period = useSignal(start)
+  return (
+    <div class="space-y-2" data-e2e={e2e}>
+      <PeriodStepper
+        period={period.value}
+        onChange={(next) => period.value = next}
+        now={stepperNow}
+        timeZone={fixedZone}
+        options={{ firstWeekday }}
+        locale="en-GB"
+      />
+      <Note e2e={`${e2e}-value`}>
+        period: <span class="whitespace-nowrap">{period.value.from} … {period.value.to}</span>
+      </Note>
+    </div>
+  )
+}
+
+/**
+ * Months, opened on October while today is in November, so "This month" shows; `]` or › brings
+ * November back and the button goes. Then weeks that start on Sunday, opened on the current week.
+ */
+function PeriodStepperDemo() {
+  return (
+    <Stack>
+      <Variant title="Months, one month back">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Month, "2026-10-01", {})}
+          e2e="guide-period-month"
+        />
+      </Variant>
+      <Variant title="Weeks from Sunday, this week">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Week, "2026-11-04", { firstWeekday: 7 })}
+          firstWeekday={7}
+          e2e="guide-period-week"
+        />
+      </Variant>
+    </Stack>
+  )
+}
+
 /**
  * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
  * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
@@ -2117,6 +2168,63 @@ export const inputDemos = {
   labels={{ repeatedTime: "This time happens twice that day" }}
 />`,
     render: () => <DateRangePickersDemo />,
+  },
+  PeriodStepper: {
+    summary:
+      "Steps a screen through weeks or months, with a button back to the current one and the keys [, ] and T.",
+    wide: true,
+    props: [
+      { name: "period", type: "Period", description: "The week or month on screen." },
+      {
+        name: "onChange",
+        type: "(period: Period) => void",
+        description: "Called with the period to show next.",
+      },
+      {
+        name: "now",
+        type: "Date",
+        description: "The current instant; the stepper never reads the clock.",
+      },
+      { name: "timeZone", type: "string", description: "The zone whose calendar holds today." },
+      {
+        name: "options",
+        type: "PeriodOptions",
+        description: "The week's first day, as the period was made with.",
+      },
+      {
+        name: "labels",
+        type: "Partial<PeriodStepperLabels>",
+        description: "Overrides for the words, one set per unit.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the period's name; defaults to the translator's language.",
+      },
+      {
+        name: "currentHotkey",
+        type: "string",
+        default: `"t"`,
+        description: "The key back to the current period.",
+      },
+      {
+        name: "singleKeys",
+        type: "boolean",
+        default: "true",
+        description: "Whether [, ] and the current key work; off, the tooltips show no key.",
+      },
+    ],
+    snippet: `import { currentPeriod, PeriodUnit } from "@spy4x/time/period"
+
+const period = useSignal(currentPeriod(PeriodUnit.Month, { now, timeZone }))
+
+<PeriodStepper
+  period={period.value}
+  onChange={(next) => period.value = next}
+  now={now}
+  timeZone={timeZone}
+/>`,
+    render: () => <PeriodStepperDemo />,
   },
   FileInput: {
     summary:
