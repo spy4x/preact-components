@@ -4,9 +4,9 @@
  * The demo is a bank statement of 20 columns, already split into strings the way a CSV reader
  * hands them over. Everything the app owns is faked here in a few lines: reading a date by the
  * chosen format, reading an amount by the chosen decimal mark, the row errors, and a re-read that
- * takes 700 ms after a setting changes. What only a browser shows (the keyboard order, focus from
+ * takes 1.5 s after a setting changes. What only a browser shows (the keyboard order, focus from
  * the summary, the delayed placeholders, no sideways page scroll at 390 px, axe in both palettes)
- * is driven by `pages/e2e/ui.spec.ts`.
+ * is driven by `pages/e2e/import-mapper.spec.ts`.
  */
 
 import { useSignal } from "@preact/signals"
@@ -223,7 +223,7 @@ function ImportMapperDemo() {
     dateFormat: "DD.MM.YYYY",
     decimal: ",",
   })
-  // The settings the shown file was read with: a change takes 700 ms to reach it, as a re-read.
+  // The settings the shown file was read with: a change takes 1.5 s to reach it, as a slow re-read.
   const read = useSignal(settings.value)
   const timer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -257,7 +257,7 @@ function ImportMapperDemo() {
         onSettingsChange={(key, choice) => {
           settings.value = { ...settings.value, [key]: choice }
           clearTimeout(timer.current)
-          timer.current = setTimeout(() => read.value = settings.value, 700)
+          timer.current = setTimeout(() => read.value = settings.value, 1500)
         }}
         preview={readPreview(file.rows, file.firstLine, value, read.value)}
         rowCount={340}

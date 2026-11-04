@@ -60,7 +60,8 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "ImportMapper: a problem's Line button moves focus to that row's line cell in the preview",
+    name:
+      "ImportMapper: a problem's Line button moves focus to that row's line cell in the preview",
     pageId: "ui",
     run: async (page) => {
       await page.setViewportSize({ width: 390, height: 800 })
@@ -95,7 +96,7 @@ export const specs: readonly Spec[] = [
         throw new Error("a select is disabled while the file is read again")
       }
       await status.filter({ hasText: "Preview updated." }).waitFor()
-      await page.locator(`${CARD} [aria-busy="false"]`).waitFor()
+      await page.locator(`${CARD} [aria-busy="true"]`).waitFor({ state: "detached" })
       const bars = await page.locator(`${CARD} tbody .animate-pulse`).count()
       if (bars) throw new Error(`${bars} skeleton bars stay after the re-read`)
       return "busy, skeleton, then Preview updated."
