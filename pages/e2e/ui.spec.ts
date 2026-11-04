@@ -1059,13 +1059,16 @@ function comboboxGroupSpecs(): Spec[] {
   return [
     {
       name:
-        "Combobox: grouped categories have one named group per parent, the arrows walk only options, never the Other heading, and a parent can be chosen",
+        "Combobox: grouped categories have one named group per parent, the Other heading is no option, the arrows walk every option, and a parent can be chosen",
       pageId: "ui",
       run: async (page) => {
         await open(page)
         for (const name of ["Home", "Food", "Health", "Other"]) {
           await list(page).getByRole("group", { name, exact: true }).waitFor()
         }
+        const otherOptions = await list(page).getByRole("option", { name: "Other", exact: true })
+          .count()
+        if (otherOptions > 0) throw new Error(`the Other heading is drawn as an option`)
         const optionCount = await list(page).getByRole("option").count()
         const walked: (string | null)[] = []
         for (let step = 0; step < optionCount; step++) {
@@ -1076,6 +1079,9 @@ function comboboxGroupSpecs(): Spec[] {
           throw new Error(
             `the arrows reached something that is not an option: ${walked.join(", ")}`,
           )
+        }
+        if (walked.includes("option:Other")) {
+          throw new Error(`the arrows landed on the Other heading: ${walked.join(", ")}`)
         }
         if (new Set(walked).size < optionCount - 1) {
           throw new Error(`the arrows did not walk every option: ${walked.join(", ")}`)
@@ -1223,7 +1229,9 @@ function iconPickerSpecs(): Spec[] {
       pageId: "ui",
       run: async (page) => {
         await search(page).fill("zzz")
-        await card(page).getByText("No icon matches “zzz”.").first().waitFor()
+        // The visible message, not the live region that says the same words.
+        await card(page).locator("p:not([role=status])", { hasText: "No icon matches “zzz”." })
+          .waitFor()
         await card(page).getByRole("button", { name: "Clear search", exact: true }).last().click()
         await card(page).getByRole("radio", { name: "Car", exact: true }).waitFor()
         const count = await card(page).locator(`[data-e2e="icon-picker-tile"]`).count()

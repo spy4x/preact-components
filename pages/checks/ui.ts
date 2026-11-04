@@ -7501,9 +7501,10 @@ async function countArrivesCheck(devtools: Devtools, pristine: RegionReading): P
   )
   const opened = await devtools.evaluate<RegionReading>(REGION_STATE)
 
-  await typeInto(devtools, "u")
+  // "e" leaves ETH and EUR, so the region speaks the plural count.
+  await typeInto(devtools, "e")
   const queryArrived = await poll(
-    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "u"`),
+    () => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === "e"`),
     3_000,
   )
   const regionSpoke = await poll(
