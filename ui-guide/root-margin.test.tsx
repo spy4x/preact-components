@@ -137,6 +137,7 @@ const NOT_RENDERED_ON_THE_SERVER: Record<string, string> = {
   "map/Map": "the guide loads the Leaflet island only in the browser",
   "system/SEOHead": "its card prints the tag data instead of rendering a second <title>",
   "system/UnsentChangesDialog": "its demo mounts the dialog only after a click opens it",
+  "system/MailedCodeStep": "its demo mounts the step only after a click asks for a code",
 }
 
 /** Every component the guide's component packages export, by function, with its package. */

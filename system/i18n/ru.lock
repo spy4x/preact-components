@@ -54,6 +54,16 @@ InstallPrompt.iosAfter	33d5944f308359cb
 InstallPrompt.iosBefore	464d23b54f26916c
 InstallPrompt.iosShare	29887a5ff9846ccc
 InstallPrompt.title	fa3d4cbc5818c4e3
+MailedCodeStep.changeEmail	959fefbaafb2c2e6
+MailedCodeStep.checking	ec963ffc911b8401
+MailedCodeStep.code	340f463033e0fd5d
+MailedCodeStep.expires	20de5fe5c139ec79
+MailedCodeStep.invalid	a78941c8770f3c34
+MailedCodeStep.resend	9200fc2f31ae11ab
+MailedCodeStep.resent	8f5c29c43ffff22e
+MailedCodeStep.submit	31fbef162594de01
+MailedCodeStep.title	4ee2c02184f0fe62
+MailedCodeStep.wrongEmail	1692f08a161ebdb0
 PushSettings.blocked	1e3d1ef911346f0d
 PushSettings.checking	cf10577f82e2c5eb
 PushSettings.disable	a6d99209f7019b50

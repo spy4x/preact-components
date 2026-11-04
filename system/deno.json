@@ -1,9 +1,10 @@
 {
   "name": "@spy4x/preact-system",
-  "version": "13.9.0",
+  "version": "13.10.0",
   "exports": {
     ".": "./+index.ts",
     "./auth-form": "./auth-form.tsx",
+    "./mailed-code-step": "./mailed-code-step.tsx",
     "./head": "./head.ts",
     "./seo-head": "./seo-head.tsx",
     "./sw-updater": "./sw-updater.tsx",

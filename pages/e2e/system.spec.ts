@@ -442,6 +442,38 @@ async function openLanguageHeader(
   }
 }
 
+/** The `MailedCodeStep` demo, opened: "Email me a code" pressed and the code field focused. */
+async function openMailedCodeStep(page: Page) {
+  const demo = page.locator(`[data-e2e="mailed-code-step-demo"]`)
+  await demo.getByRole("button", { name: "Email me a code", exact: true }).click()
+  const field = demo.locator(`[data-e2e="mailed-code-step-code"]`)
+  await field.and(page.locator(":focus")).waitFor()
+  const received = demo.locator(`[data-e2e="mailed-code-step-demo-received"]`)
+  return { demo, field, received }
+}
+
+/**
+ * Pastes `text` into `field` over its selection, as the browser does: the selected text replaced
+ * and an `input` event whose `inputType` is `insertFromPaste`. Playwright has no paste of its own
+ * that does not depend on the system clipboard, and this is the event the step reads.
+ */
+function paste(field: Locator, text: string): Promise<void> {
+  return field.evaluate((element: HTMLInputElement, value: string) => {
+    element.setRangeText(value, element.selectionStart ?? 0, element.selectionEnd ?? 0, "end")
+    element.dispatchEvent(
+      new InputEvent("input", { inputType: "insertFromPaste", data: value, bubbles: true }),
+    )
+  }, text)
+}
+
+/** True when `field` has focus and its whole value is selected. */
+function focusedAndSelected(field: Locator): Promise<boolean> {
+  return field.evaluate((element: HTMLInputElement) =>
+    document.activeElement === element && element.value.length > 0 &&
+    element.selectionStart === 0 && element.selectionEnd === element.value.length
+  )
+}
+
 export const specs: readonly Spec[] = [
   {
     name: "AuthForm: the login starts as defaultLogin, onLoginInput reports each value typed " +
@@ -484,6 +516,117 @@ export const specs: readonly Spec[] = [
       await submit.focus()
       await page.keyboard.press("Enter")
       await login.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name:
+      "MailedCodeStep: opens with focus in the field and passes axe; a typed code with spaces " +
+      "reaches onSubmit without them, dashes and underscores kept, only on Continue; a refused code puts focus back " +
+      "in the field with its text selected",
+    pageId: "system",
+    run: async (page) => {
+      const { field, received } = await openMailedCodeStep(page)
+      const { violations } = await new AxeBuilder({ page })
+        .include(`[data-e2e="mailed-code-step"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(violations.map((v) => `${v.id}: ${v.help}`).join("; "))
+      }
+      await field.pressSequentially("k_q - 2xm")
+      if (await received.textContent() !== "onSubmit received: nothing yet") {
+        throw new Error(`typing submitted by itself: ${await received.textContent()}`)
+      }
+      await page.locator(`[data-e2e="mailed-code-step-submit"]`).click()
+      await received.filter({ hasText: /^onSubmit received: k_q-2xm$/ }).waitFor()
+      await page.locator(`[data-e2e="mailed-code-step"]`)
+        .getByText("That code is wrong or has expired.").waitFor()
+      await field.and(page.locator(":focus")).waitFor()
+      if (!await focusedAndSelected(field)) throw new Error("the refused code is not selected")
+    },
+  },
+  {
+    name: "MailedCodeStep: a paste that makes a whole code submits by itself, spaces removed; " +
+      "one that does not waits, and Enter then shows the pattern error without calling onSubmit",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field, received } = await openMailedCodeStep(page)
+      await page.keyboard.insertText("nope")
+      await page.keyboard.press("Enter")
+      await demo.getByText("That doesn't look like the code we sent. Check it and try again.")
+        .waitFor()
+      if (!await focusedAndSelected(field)) throw new Error("the refused code is not selected")
+      if (await received.textContent() !== "onSubmit received: nothing yet") {
+        throw new Error(
+          `a code the pattern refuses reached onSubmit: ${await received.textContent()}`,
+        )
+      }
+      await paste(field, " K7Q - 2XM ")
+      await received.filter({ hasText: /^Accepted\. onSubmit received: K7Q-2XM$/ }).waitFor()
+    },
+  },
+  {
+    name: "MailedCodeStep: a paste over a refused code's selected text submits by itself, though " +
+      "the new code is just as long",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field, received } = await openMailedCodeStep(page)
+      await field.pressSequentially("AAA-BBB")
+      await page.keyboard.press("Enter")
+      await demo.getByText("That code is wrong or has expired.").waitFor()
+      if (!await focusedAndSelected(field)) throw new Error("the refused code is not selected")
+      await paste(field, "K7Q-2XM")
+      await received.filter({ hasText: /^Accepted\. onSubmit received: AAA-BBB, K7Q-2XM$/ })
+        .waitFor()
+    },
+  },
+  {
+    name: "MailedCodeStep: while a code is being checked, a pasted whole code is not submitted " +
+      "a second time",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field, received } = await openMailedCodeStep(page)
+      await field.pressSequentially("AAA-BBB")
+      await page.keyboard.press("Enter")
+      await demo.locator(`[data-e2e="mailed-code-step-submit"][aria-busy="true"]`).waitFor()
+      await field.selectText()
+      await paste(field, "K7Q-2XM")
+      await demo.getByText("That code is wrong or has expired.").waitFor()
+      if (await received.textContent() !== "onSubmit received: AAA-BBB") {
+        throw new Error(`a second code went out while busy: ${await received.textContent()}`)
+      }
+    },
+  },
+  {
+    name: "MailedCodeStep: after Send a new code, the on-its-way line is in the status region " +
+      "and focus is back in the code field",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field } = await openMailedCodeStep(page)
+      await demo.getByRole("button", { name: "Send a new code", exact: true }).click()
+      await demo.locator(`[role="status"][data-e2e="resend-button-sent"]`)
+        .filter({ hasText: "A new code is on its way." }).waitFor()
+      await demo.locator(`[data-e2e="resend-button-waiting"]`).waitFor()
+      await field.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name:
+      "MailedCodeStep: a pattern error goes away when a new code is sent, and Use a different " +
+      "one closes the step with focus back on the button that opened it",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field } = await openMailedCodeStep(page)
+      await field.pressSequentially("nope")
+      await page.keyboard.press("Enter")
+      const invalid = demo.getByText(
+        "That doesn't look like the code we sent. Check it and try again.",
+      )
+      await invalid.waitFor()
+      await demo.getByRole("button", { name: "Send a new code", exact: true }).click()
+      await demo.locator(`[data-e2e="resend-button-waiting"]`).waitFor()
+      await invalid.waitFor({ state: "detached" })
+      await demo.locator(`[data-e2e="mailed-code-step-change-email"]`).click()
+      await demo.getByRole("button", { name: "Email me a code", exact: true })
+        .and(page.locator(":focus")).waitFor()
     },
   },
   {

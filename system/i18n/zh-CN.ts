@@ -62,6 +62,18 @@ export default {
   "InstallPrompt.iosBefore": "点按",
   "InstallPrompt.iosShare": "分享",
   "InstallPrompt.title": "安装此应用",
+  "MailedCodeStep.changeEmail": "换一个邮箱",
+  "MailedCodeStep.checking": "正在验证…",
+  "MailedCodeStep.code": "验证码",
+  "MailedCodeStep.expires": {
+    "other": "验证码 {count} 分钟内有效。",
+  },
+  "MailedCodeStep.invalid": "这看起来不像我们发送的验证码。请检查后重试。",
+  "MailedCodeStep.resend": "获取新验证码",
+  "MailedCodeStep.resent": "新验证码已发出。",
+  "MailedCodeStep.submit": "继续",
+  "MailedCodeStep.title": "查看你的邮箱",
+  "MailedCodeStep.wrongEmail": "邮箱填错了？",
   "PushSettings.blocked":
     "此应用的通知已被屏蔽。如需开启，请打开浏览器中此网站的设置（或设备的通知设置），将“通知”设为“允许”，然后回到这里。",
   "PushSettings.checking": "正在检查此设备…",
