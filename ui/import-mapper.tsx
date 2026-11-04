@@ -302,7 +302,7 @@ export function ImportMapper(
         bodyKeys.push(`note-${row.line}`)
         bodySlots.push(
           <td colSpan={mapped.length + 1} class="pt-0! text-danger">
-            <ul class="sticky start-6 max-w-[calc(100cqi-3rem)] list-none">
+            <ul class="sticky start-6 max-w-[calc(100cqi-3rem)] list-none wrap-anywhere">
               {rowErrors.map((error, index) => <li key={index}>{error}</li>)}
             </ul>
           </td>,
@@ -435,13 +435,13 @@ export function ImportMapper(
               {problems.length === 0 && !pending && (
                 <p class="text-sm text-muted">{words.summaryClean(preview.length)}</p>
               )}
-              <div aria-busy={pending ? "true" : undefined} class="min-w-0">
+              <div aria-busy={pending ? "true" : undefined} class="@container min-w-0">
                 <p class="text-sm font-medium text-foreground" aria-hidden="true">
                   {words.previewHeading}
                 </p>
                 <p class="mt-1 text-sm text-muted" aria-hidden="true">{previewLine}</p>
                 <Table
-                  class="@container mt-4 min-h-0"
+                  class="mt-4 min-h-0"
                   caption={`${words.previewHeading}. ${previewLine}`}
                   captionClass="sr-only"
                   headerSlot={
