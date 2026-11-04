@@ -60,6 +60,16 @@ describe("PeriodStepper", () => {
     expect(html).toMatch(/role="tooltip"[^>]*>.*?Previous month.*?<kbd[^>]*>\[<\/kbd>/)
   })
 
+  it("opens the previous arrow's tooltip from its start edge, so it stays on a phone's screen", () => {
+    const surfaces = [...stepper().matchAll(/<span[^>]*class="([^"]*bottom-full[^"]*)"/g)]
+      .map((match) => match[1].split(" "))
+    expect(surfaces).toHaveLength(2)
+    expect(surfaces[0]).toContain("start-0")
+    expect(surfaces[0]).not.toContain("start-1/2")
+    expect(surfaces[0]).not.toContain("-translate-x-1/2")
+    expect(surfaces[1]).toContain("start-1/2")
+  })
+
   it("binds no key and shows no key hint with singleKeys off", () => {
     const html = stepper({ period: AUGUST, singleKeys: false })
     expect(html).not.toContain("aria-keyshortcuts")

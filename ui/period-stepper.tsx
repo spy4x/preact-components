@@ -74,6 +74,12 @@ export interface PeriodStepperProps {
 const arrow = "size-11 sm:size-9"
 
 /**
+ * The previous arrow's tooltip opens from the arrow's start edge rather than centred on it: the
+ * stepper usually starts a row, and a centred bubble there runs past the screen's start on a phone.
+ */
+const fromStartEdge = "start-0 translate-x-0 [&:dir(rtl)]:translate-x-0"
+
+/**
  * Steps a screen through weeks or months: "‹ › November 2026  This month".
  *
  * Two joined arrow buttons, the period's name, and a button back to the current period that shows
@@ -130,7 +136,12 @@ export function PeriodStepper({
       class={cn("flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2", className)}
     >
       <div class="flex shrink-0">
-        <Tooltip content={tip(previous, "[")} label={previous} focusable={false}>
+        <Tooltip
+          content={tip(previous, "[")}
+          label={previous}
+          focusable={false}
+          contentClass={fromStartEdge}
+        >
           <Button
             variant="outline"
             size="none"
