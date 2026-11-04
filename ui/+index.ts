@@ -363,6 +363,12 @@ export {
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {
+  PeriodStepper,
+  type PeriodStepperLabels,
+  periodStepperLabels,
+  type PeriodStepperProps,
+} from "./period-stepper.tsx"
+export {
   clampProgress,
   formatProgressPercent,
   Progress,
@@ -567,12 +573,6 @@ export {
   type UnsavedGuardProps,
   type UnsavedLink,
 } from "./unsaved-guard.tsx"
-export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
-export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
-export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
-export { enhanceCodeCopy, ProseCodeCopy, type ProseCodeCopyProps } from "./prose-copy.tsx"
-export {
-  SECTION_HEADING_LABELS,
 export {
   UsageMeter,
   type UsageMeterLabels,
@@ -582,6 +582,12 @@ export {
   type UsageReading,
   usageReading,
 } from "./usage-meter.tsx"
+export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
+export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
+export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
+export { enhanceCodeCopy, ProseCodeCopy, type ProseCodeCopyProps } from "./prose-copy.tsx"
+export {
+  SECTION_HEADING_LABELS,
   SectionHeading,
   type SectionHeadingLabels,
   type SectionHeadingProps,
