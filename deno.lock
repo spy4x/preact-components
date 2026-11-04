@@ -6,13 +6,13 @@
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2.3.3": "2.3.3",
     "jsr:@hono/hono@4.13.8": "4.13.8",
-    "jsr:@spy4x/email@^1.95.0": "1.95.0",
-    "jsr:@spy4x/net@^1.95.0": "1.95.0",
-    "jsr:@spy4x/platform@1.95.0": "1.95.0",
-    "jsr:@spy4x/time@1.95.0": "1.95.0",
-    "jsr:@spy4x/time@^1.95.0": "1.95.0",
-    "jsr:@spy4x/validation@1.95.0": "1.95.0",
-    "jsr:@spy4x/validation@^1.95.0": "1.95.0",
+    "jsr:@spy4x/email@^1.114.0": "1.114.0",
+    "jsr:@spy4x/net@^1.114.0": "1.114.0",
+    "jsr:@spy4x/platform@1.114.0": "1.114.0",
+    "jsr:@spy4x/time@1.114.0": "1.114.0",
+    "jsr:@spy4x/time@^1.114.0": "1.114.0",
+    "jsr:@spy4x/validation@1.114.0": "1.114.0",
+    "jsr:@spy4x/validation@^1.114.0": "1.114.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.1",
@@ -66,7 +66,8 @@
     "npm:preact@^10.29.8": "10.29.8_preact-render-to-string@6.7.0",
     "npm:tailwind-merge@3.7.0": "3.7.0",
     "npm:tailwindcss@4.1.12": "4.1.12",
-    "npm:wouter-preact@3.9.0": "3.9.0_preact@10.29.8_preact-render-to-string@6.7.0"
+    "npm:wouter-preact@3.9.0": "3.9.0_preact@10.29.8_preact-render-to-string@6.7.0",
+    "npm:ws@8.22.1": "8.22.1"
   },
   "jsr": {
     "@deno/esbuild-plugin@1.2.1": {
@@ -114,34 +115,35 @@
     "@hono/hono@4.13.8": {
       "integrity": "bbb566d9ebb81e74c0d7eeff1f9221ba9f3fda6f1832e5ca66cbddcecb2f7fec"
     },
-    "@spy4x/email@1.95.0": {
-      "integrity": "4409dca0486ae020b430a378c684ad0967ff14f09a418a3d4ab27e745523abf2"
+    "@spy4x/email@1.114.0": {
+      "integrity": "f609a1e197f9b44867e608a6ce4a729bb3648d487829ce2c1ba3db107e277782"
     },
-    "@spy4x/net@1.95.0": {
-      "integrity": "0d57ad488a6ad2bf19e96eabeff47065918a98630236e8c7bab83724308b6e06"
+    "@spy4x/net@1.114.0": {
+      "integrity": "b855f4d31203628db74a25de4c7217911ffe1a1a60bb782a5e586f18fbce352c"
     },
-    "@spy4x/platform@1.95.0": {
-      "integrity": "5c7c96794d4c8b3ddb183d1ad2a9970c53a993e49dbab463de6bb632d33e59a5",
+    "@spy4x/platform@1.114.0": {
+      "integrity": "ed0490cf3f37eaeebb81ae8fcf27be1df184c66e8e50d66e09492af34dd803c5",
       "dependencies": [
         "jsr:@hono/hono",
         "jsr:@spy4x/email",
         "jsr:@spy4x/net",
-        "jsr:@spy4x/time@^1.95.0",
-        "jsr:@spy4x/validation@^1.95.0",
+        "jsr:@spy4x/time@^1.114.0",
+        "jsr:@spy4x/validation@^1.114.0",
         "jsr:@std/crypto",
         "jsr:@std/encoding@1.0.11",
         "jsr:@std/path@1.1.6",
         "jsr:@std/ulid",
         "jsr:@std/uuid@1.1.2",
         "npm:arktype",
-        "npm:marked"
+        "npm:marked",
+        "npm:ws"
       ]
     },
-    "@spy4x/time@1.95.0": {
-      "integrity": "249aba2a12b4d1431a055f709cffccfe8f524d9b6c36de87879e854dd5cd3113"
+    "@spy4x/time@1.114.0": {
+      "integrity": "840ecc03beffdb6207e88aaca0d6859d90afc113ca10ab257f628a4cafd5d740"
     },
-    "@spy4x/validation@1.95.0": {
-      "integrity": "9e3d9a28df5965de379a6752c9bcf5426ad7a290cae12ff5963cf40e7f249fa5",
+    "@spy4x/validation@1.114.0": {
+      "integrity": "b38f9952f7bef15b3561b5cb402b2e13492be40bf7294ea0b95e107d63d9e325",
       "dependencies": [
         "npm:arktype"
       ]
@@ -623,15 +625,18 @@
         "regexparam"
       ]
     },
+    "ws@8.22.1": {
+      "integrity": "sha512-oyL6OPYme/CmiFvNuGzeoxCJ4nOrZE2O1FwM9MWM1AsGri6nLXB2pg+lNA8aLeXMSav0J6eIVS1j6vUPzUtK9g=="
+    },
     "yallist@5.0.0": {
       "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw=="
     }
   },
   "workspace": {
     "dependencies": [
-      "jsr:@spy4x/platform@1.95.0",
-      "jsr:@spy4x/time@1.95.0",
-      "jsr:@spy4x/validation@1.95.0",
+      "jsr:@spy4x/platform@1.114.0",
+      "jsr:@spy4x/time@1.114.0",
+      "jsr:@spy4x/validation@1.114.0",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/encoding@1.0.11",
       "jsr:@std/expect@1.0.20",
