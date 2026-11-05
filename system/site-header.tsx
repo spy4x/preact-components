@@ -173,7 +173,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
   return (
     <header
       class={cn(
-        "relative border-b border-subtle bg-surface dark:bg-canvas",
+        "relative border-b border-subtle bg-surface dark:bg-canvas print:hidden",
         barFocusOffset,
         className,
       )}
