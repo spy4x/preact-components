@@ -1,6 +1,6 @@
 {
-  // A member joins this list in the same change as its own `<pkg>/deno.json`, never ahead of it:
-  // Deno only warns about a listed member whose directory does not exist.
+  // A member joins or leaves this list in the same change as its own `<pkg>/deno.json`, never
+  // ahead of it: Deno only warns about a listed member whose directory does not exist.
   "workspace": [
     "./charts",
     "./cn",

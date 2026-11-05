@@ -35,23 +35,29 @@ Business wording, one app's data model, or a renamed copy of something generic d
 
 ## Adding a package
 
-- The member joins `"workspace"` in `deno.jsonc` in the same change as its `<pkg>/deno.json`, never
-  ahead of it. `name` is `@spy4x/preact-<directory>`; `exports` lists only entry points that exist.
+- A member joins or leaves `"workspace"` in `deno.jsonc` in the same change as its
+  `<pkg>/deno.json`, never ahead of it. `name` is `@spy4x/preact-<directory>`; `exports` lists
+  exactly the entry points that exist.
 - An `imports` block only for a specifier the root import map lacks. Today `theme`, `system`, `map`
   and `pages` have one.
 - Add the directory to `packageIds` or `helperPackageIds` (`ui-guide/registry-ids.ts`), or to
   `EXCLUDED_PACKAGES` (`ui-guide/coverage.ts`) with a reason, to `PUBLISHED_PACKAGES`
   (`infra/scripts/private-names.ts`) and to `WORKSPACE_DIRECTORIES` (`pages/build-fingerprint.ts`).
-- Add a row to the "Scope" table in `docs/maintaining.md`, a `deno add` line in `docs/usage.md` and
-  a link in the README's "Packages" table; `infra/scripts/export-lists.test.ts` checks all three.
+- Add a row to the "Scope" table in `docs/maintaining.md`, a `deno add` line in `docs/usage.md`, a
+  link in the README's "Packages" table and, for a package in `packageIds`, a complete list of its
+  components in its own README; `infra/scripts/export-lists.test.ts` checks all four.
 - Every component (a PascalCase function) needs a card under `ui-guide/sections/`, or an entry in
   `COMPONENTS_WITHOUT_CARD` with a reason. Every helper is named in code in the package README
   (`` `clampProgress(value, max)` ``) with a line on what it does.
 
 ## Pull requests
 
-One package per PR, plus the generated files and guide cards that package's change forces. A
-commit's scope is the package directory or `deps`, omitted when repo-wide.
+One package per PR, plus the generated files and guide cards that package's change forces. Never
+reformat or edit a directory another agent owns. Update the PR body after every significant change
+with the decisions you made.
+
+Branch types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`, `perf/`, `ci/`. A commit's
+scope is the package directory or `deps`, omitted when repo-wide; its summary is lowercase.
 
 Filing issues follows the global rule alone: one piece of work per issue, additions in a comment,
 no list of proposed issues. One addition: findings that wait on the owner's answer go together in
@@ -122,8 +128,9 @@ exception is a name only the caller knows, such as an icon-only trigger's access
 required prop.
 
 **Every change updates the UI guide.** A new or changed component updates its `ui-guide/` card in
-the same PR; a new or changed helper updates its README line. `deno task test` checks that they
-exist; review checks that they are accurate.
+the same PR (a new prop gets a demo, a changed default changes the snippet); a new or changed helper
+or hook updates its README line. `deno task test` checks that they exist; review checks that they
+are accurate.
 
 **Validation: arktype only.** No zod, valibot or hand-rolled validators.
 
