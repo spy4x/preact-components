@@ -5860,6 +5860,7 @@ export const specs: readonly Spec[] = [
   ...smallFixSpecs(),
   ...segmentedControlSpecs(),
   ...rightToLeftSpecs(),
+  ...periodAndUsageSpecs(),
 ]
 
 /**
@@ -8698,5 +8699,98 @@ function rightToLeftSpecs(): Spec[] {
         return "ArrowLeft → Doing"
       },
     },
+  ]
+}
+
+/**
+ * `PeriodStepper` and `UsageMeter` (#1162), and the week presets of `DateRangePicker`: the keys step
+ * the month and the live region names it, the return button hands focus to the next arrow, a
+ * Sunday-start "This week" is the week from that Sunday and stays pressed, and axe passes on both
+ * new cards at both widths in both palettes.
+ */
+function periodAndUsageSpecs(): Spec[] {
+  const month = (page: Page) => {
+    const example = page.locator(`[data-e2e="guide-period-month"]`)
+    return {
+      example,
+      name: example.locator(`[aria-live="polite"]`),
+      value: example.locator(`[data-e2e="guide-period-month-value"]`),
+      back: example.getByRole("button", { name: "This month" }),
+      next: example.getByRole("button", { name: "Next month" }),
+    }
+  }
+  const axeSpec = (colorScheme: "light" | "dark"): Spec => ({
+    name: `PeriodStepper and UsageMeter: axe finds no violation at 390 and 1440 px in the ` +
+      `${colorScheme} palette`,
+    pageId: "ui",
+    colorScheme,
+    run: async (page) => {
+      const said: string[] = []
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 })
+        for (const card of ["#demo-PeriodStepper", "#demo-UsageMeter"]) {
+          await page.locator(card).scrollIntoViewIfNeeded()
+          said.push(`${card} at ${width} px: ${await axeCleanIn(page, card)}`)
+        }
+      }
+      return said.join("; ")
+    },
+  })
+
+  return [
+    {
+      name: "PeriodStepper: ] steps October 2026 to November 2026, the live region names it, " +
+        "the return button goes, and [ steps back",
+      pageId: "ui",
+      run: async (page) => {
+        const view = month(page)
+        await view.example.scrollIntoViewIfNeeded()
+        await view.name.filter({ hasText: "October 2026" }).waitFor()
+        await page.locator("body").press("]")
+        await view.name.filter({ hasText: "November 2026" }).waitFor()
+        await view.value.filter({ hasText: "2026-11-01 … 2026-11-30" }).waitFor()
+        await view.back.waitFor({ state: "detached" })
+        await page.locator("body").press("[")
+        await view.name.filter({ hasText: "October 2026" }).waitFor()
+        await view.back.waitFor()
+        return "] → November 2026 (2026-11-01 … 2026-11-30), [ → October 2026"
+      },
+    },
+    {
+      name: "PeriodStepper: the return button brings the current month back and leaves focus on " +
+        "the next arrow",
+      pageId: "ui",
+      run: async (page) => {
+        const view = month(page)
+        await view.example.scrollIntoViewIfNeeded()
+        await view.back.focus()
+        await page.keyboard.press("Enter")
+        await view.name.filter({ hasText: "November 2026" }).waitFor()
+        await view.back.waitFor({ state: "detached" })
+        await view.next.and(page.locator(":focus")).waitFor()
+        return "Enter on This month → November 2026, focus on Next month"
+      },
+    },
+    {
+      name: "DateRangePicker: with firstWeekday 7, This week on Sunday 15 February 2026 is " +
+        "15 to 21 February and stays pressed",
+      pageId: "ui",
+      run: async (page) => {
+        const trigger = page.locator(`[data-e2e="guide-date-range-week"]`)
+        const picker = trigger.locator("xpath=..")
+        await trigger.scrollIntoViewIfNeeded()
+        await trigger.click()
+        await picker.getByRole("button", { name: "This week" }).click()
+        await page.locator(`[data-e2e="week-value"]`)
+          .filter({ hasText: "2026-02-15 … 2026-02-21" }).waitFor()
+        if (!await picker.getByRole("button", { name: "This week" }).isVisible()) {
+          await trigger.click()
+        }
+        await picker.locator(`button[aria-pressed="true"]`, { hasText: "This week" }).waitFor()
+        return "This week → 2026-02-15 … 2026-02-21, pressed"
+      },
+    },
+    axeSpec("light"),
+    axeSpec("dark"),
   ]
 }

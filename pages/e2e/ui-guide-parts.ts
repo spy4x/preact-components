@@ -47,8 +47,8 @@ export const CONTRAST_PARTS: Partial<Record<GuidePageId, readonly PagePart[]>> =
     {
       what: "the inputs and fields sections",
       sections: ["inputs", "fields"],
-      // The disabled `FileInput` zone's lines, and the three disclosure chevrons.
-      known: { [CONTRAST]: [2, 1], [GLYPH]: [3, 3] },
+      // The disabled `FileInput` zone's lines, and the four disclosure chevrons.
+      known: { [CONTRAST]: [2, 1], [GLYPH]: [4, 4] },
     },
     { what: "the feedback and billing sections", sections: ["feedback", "billing"] },
   ],
