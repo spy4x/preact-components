@@ -5426,6 +5426,68 @@ export const specs: readonly Spec[] = [
     },
   })),
   {
+    name: "enhanceChecklist: a ticked box survives a reload, reaches a second tab through the " +
+      "storage event and back, and Clear ticks then Undo restores the same ticks",
+    pageId: "ui",
+    run: async (page) => {
+      /** The demo checklist's parts on one tab. */
+      const parts = (tab: Page) => {
+        const card = tab.locator(`[data-e2e="checklist"]`)
+        const box = (name: string, checked: boolean) =>
+          card.getByRole("checkbox", { name, exact: true, checked })
+        const count = (text: string) =>
+          card.locator(`[data-e2e="checklist-count"]`).filter({ hasText: new RegExp(`^${text}$`) })
+        return { card, box, count }
+      }
+      const first = parts(page)
+      await first.card.scrollIntoViewIfNeeded()
+      await first.count("0 of 4 checked").waitFor()
+
+      await first.box("Backups restore", false).click()
+      await first.count("1 of 4 checked").waitFor()
+
+      // A second tab of the same site: it starts from the stored tick, and its own tick reaches
+      // this tab through the `storage` event, without a reload.
+      const tab = await page.context().newPage()
+      try {
+        await tab.goto(page.url())
+        await tab.locator(`html[data-hydrated="true"]`).waitFor()
+        const second = parts(tab)
+        await second.card.scrollIntoViewIfNeeded()
+        await second.box("Backups restore", true).waitFor()
+        await second.box("Terms published", false).click()
+        await second.count("2 of 4 checked").waitFor()
+      } finally {
+        await tab.close()
+      }
+      await first.box("Terms published", true).waitFor()
+      await first.count("2 of 4 checked").waitFor()
+
+      await page.reload()
+      await page.locator(`html[data-hydrated="true"]`).waitFor()
+      await first.card.scrollIntoViewIfNeeded()
+      await first.box("Backups restore", true).waitFor()
+      await first.box("Terms published", true).waitFor()
+      await first.count("2 of 4 checked").waitFor()
+
+      await first.card.getByRole("button", { name: "Clear ticks" }).click()
+      await first.box("Backups restore", false).waitFor()
+      await first.box("Terms published", false).waitFor()
+      await first.count("0 of 4 checked").waitFor()
+      const stored = await page.evaluate(() =>
+        localStorage.getItem("preact-components.guide-checklist.v1")
+      )
+      if (stored !== "") throw new Error(`Clear left ${JSON.stringify(stored)} in storage`)
+
+      await first.card.getByRole("button", { name: "Undo" }).click()
+      await first.box("Backups restore", true).waitFor()
+      await first.box("Terms published", true).waitFor()
+      await first.count("2 of 4 checked").waitFor()
+      await axeCleanIn(page, `[data-e2e="checklist"]`)
+      return "reload, second tab both ways, Clear and Undo"
+    },
+  },
+  {
     name: "PageHeader's heading leaves room for the whole focus ring of a button in its heading " +
       "slot",
     pageId: "ui",
