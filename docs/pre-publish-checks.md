@@ -25,8 +25,9 @@ deno task private-names /path/to/names.txt
 
 The script never embeds a name anywhere in this repository. The names file itself is not tracked
 here either: it is `private-names.txt` in the owner's private memory repository (global agent
-rules, "Memory"), one name per line. Pass its path to the task. A short name can still match an unrelated word that happens to share it — the script
-narrows candidates, it does not replace reading each match.
+rules, "Memory"), one name per line. Pass its path to the task. A short name can still match an
+unrelated word that happens to share it — the script narrows candidates, it does not replace
+reading each match.
 
 ## When to run it
 

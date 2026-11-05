@@ -6,8 +6,9 @@
  * whole modules. This script reads the exports from the packages themselves and reports every name
  * a document lists that the package does not export, in four places:
  *
- * 1. the "Scope" table in `docs/maintaining.md` — a summary, one row per package. Every name written in backticks in a row must be a value export or a
- *    subpath of that package, and every published package needs a row. A summary may stop at
+ * 1. the "Scope" table in `docs/maintaining.md` — a summary, one row per package. Every name
+ *    written in backticks in a row must be a value export or a subpath of that package, and every
+ *    published package needs a row. A summary may stop at
  *    "and the rest", so it is not required to name everything — except for the few small packages
  *    in {@linkcode COMPLETE_SUMMARIES}, whose row must name every value export;
  * 2. the `deno add` lines in `docs/usage.md`'s Install section — one line per published package,
