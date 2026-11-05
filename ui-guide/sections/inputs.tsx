@@ -33,6 +33,7 @@ import {
   LanguageDialog,
   LanguagePicker,
   OnOffButtons,
+  PeriodStepper,
   rangeForPreset,
   SegmentedControl,
   Slider,
@@ -42,6 +43,7 @@ import {
   ToggleSwitch,
 } from "@spy4x/preact-ui"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
+import { type Period, periodOf, PeriodUnit } from "@spy4x/time/period"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { useSignal } from "@preact/signals"
@@ -656,6 +658,12 @@ const dateLabels: DateRangePickerLabels = {
   apply: "Apply",
   cancel: "Cancel",
 }
+
+/** The week card's presets: the two week presets and nothing else. */
+const weekPresetOptions: readonly DateRangePresetOption[] = [
+  { preset: "this-week", label: "This week" },
+  { preset: "last-week", label: "Last week" },
+]
 
 /** The preset list in render order, with `custom` last — which is what shows the from/to fields. */
 const datePresetOptions: readonly DateRangePresetOption[] = [
@@ -1422,6 +1430,106 @@ function DateRangePickerEmptyDemo() {
   )
 }
 
+/** The stepper demos' clock: Wednesday 4 November 2026, in Paris. */
+const stepperNow = new Date("2026-11-04T10:00:00Z")
+
+/**
+ * One `PeriodStepper` showing a period and the range it hands back, for the browser checks.
+ *
+ * It names the period in the guide's own language, the stepper's default. Not `en-GB`: Deno 2.9
+ * names a week inside one month "1–7 Nov 2026" there and Chromium 155 "1 – 7 Nov 2026", so the
+ * served card and the hydrated one would read differently.
+ */
+function PeriodStepperExample(
+  { start, firstWeekday, currentHotkey, singleKeys, e2e }: {
+    start: Period
+    firstWeekday?: number
+    currentHotkey?: string
+    singleKeys?: boolean
+    e2e: string
+  },
+) {
+  const period = useSignal(start)
+  return (
+    <div class="space-y-2" data-e2e={e2e}>
+      <PeriodStepper
+        period={period.value}
+        onChange={(next) => period.value = next}
+        now={stepperNow}
+        timeZone={fixedZone}
+        options={{ firstWeekday }}
+        currentHotkey={currentHotkey}
+        singleKeys={singleKeys}
+      />
+      <Note e2e={`${e2e}-value`}>
+        period: <span class="whitespace-nowrap">{period.value.from} … {period.value.to}</span>
+      </Note>
+    </div>
+  )
+}
+
+/**
+ * Months, opened on October while today is in November, so "This month" shows; `]` or › brings
+ * November back and the button goes. Its return key is `m` here, because this page already gives
+ * `t` to the theme toggle. Then weeks that start on Sunday, opened on the current week, with
+ * `singleKeys` off: two steppers on one screen cannot both own `[` and `]`.
+ */
+function PeriodStepperDemo() {
+  return (
+    <Stack>
+      <Variant title="Months, one month back">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Month, "2026-10-01", {})}
+          currentHotkey="m"
+          e2e="guide-period-month"
+        />
+      </Variant>
+      <Variant title="Weeks from Sunday, keys off">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Week, "2026-11-04", { firstWeekday: 7 })}
+          firstWeekday={7}
+          singleKeys={false}
+          e2e="guide-period-week"
+        />
+      </Variant>
+    </Stack>
+  )
+}
+
+/**
+ * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
+ * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
+ */
+function DateRangePickerWeekDemo() {
+  const range = useSignal<DateRange | null>(null)
+  const preset = useSignal<DateRangePreset | undefined>(undefined)
+
+  return (
+    <div class="space-y-3">
+      <DateRangePicker
+        range={range.value}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
+        timeZone={fixedZone}
+        now={fixedNow}
+        firstWeekday={7}
+        presets={weekPresetOptions}
+        selectedPreset={preset.value}
+        labels={{ placeholder: "Any week" }}
+        dataE2E="guide-date-range-week"
+      />
+      <Note e2e="week-value">
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : `${range.value.from} … ${range.value.to}`}
+        </span>
+      </Note>
+    </div>
+  )
+}
+
 /**
  * The picker with `withTime` on: From and To are `datetime-local` fields, and the panel also offers
  * the two presets that only make sense with a time of day, `"last-hour"` and `"last-24-hours"`.
@@ -1483,6 +1591,9 @@ function DateRangePickersDemo() {
           }
         >
           <DateRangePickerWithTimeDemo />
+        </Variant>
+        <Variant title="Weeks from Sunday">
+          <DateRangePickerWeekDemo />
         </Variant>
       </Grid>
       <Stack gap="xs">
@@ -2142,6 +2253,13 @@ export const inputDemos = {
         description: "The instant presets resolve against.",
       },
       {
+        name: "firstWeekday",
+        type: "number",
+        default: "1",
+        description:
+          "The day a week starts on for the `this-week` and `last-week` presets, 1 for Monday to 7 for Sunday.",
+      },
+      {
         name: "withTime",
         type: "boolean",
         default: "false",
@@ -2169,6 +2287,16 @@ export const inputDemos = {
 // Every label is English by default; override only the ones you need to.
 <DateRangePicker {...props} labels={{ placeholder: "All time" }} />
 
+// Week presets: weeks start on Monday unless firstWeekday says otherwise (7 is Sunday).
+<DateRangePicker
+  {...props}
+  firstWeekday={7}
+  presets={[
+    { preset: "this-week", label: "This week" },
+    { preset: "last-week", label: "Last week" },
+  ]}
+/>
+
 // withTime: datetime-local fields, two sub-day presets — no presets prop — and a range whose
 // fromInstant / toInstant say exactly which moment each end means, even in a repeated hour.
 <DateRangePicker
@@ -2182,6 +2310,63 @@ export const inputDemos = {
   labels={{ repeatedTime: "This time happens twice that day" }}
 />`,
     render: () => <DateRangePickersDemo />,
+  },
+  PeriodStepper: {
+    summary:
+      "Steps a screen through weeks or months, with a button back to the current one and the keys [, ] and T.",
+    wide: true,
+    props: [
+      { name: "period", type: "Period", description: "The week or month on screen." },
+      {
+        name: "onChange",
+        type: "(period: Period) => void",
+        description: "Called with the period to show next.",
+      },
+      {
+        name: "now",
+        type: "Date",
+        description: "The current instant; the stepper never reads the clock.",
+      },
+      { name: "timeZone", type: "string", description: "The zone whose calendar holds today." },
+      {
+        name: "options",
+        type: "PeriodOptions",
+        description: "The week's first day, as the period was made with.",
+      },
+      {
+        name: "labels",
+        type: "Partial<PeriodStepperLabels>",
+        description: "Overrides for the words, one set per unit.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the period's name; defaults to the translator's language.",
+      },
+      {
+        name: "currentHotkey",
+        type: "string",
+        default: `"t"`,
+        description: "The key back to the current period.",
+      },
+      {
+        name: "singleKeys",
+        type: "boolean",
+        default: "true",
+        description: "Whether [, ] and the current key work; off, the tooltips show no key.",
+      },
+    ],
+    snippet: `import { currentPeriod, PeriodUnit } from "@spy4x/time/period"
+
+const period = useSignal(currentPeriod(PeriodUnit.Month, { now, timeZone }))
+
+<PeriodStepper
+  period={period.value}
+  onChange={(next) => period.value = next}
+  now={now}
+  timeZone={timeZone}
+/>`,
+    render: () => <PeriodStepperDemo />,
   },
   FileInput: {
     summary:

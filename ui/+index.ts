@@ -367,6 +367,12 @@ export {
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {
+  PeriodStepper,
+  type PeriodStepperLabels,
+  periodStepperLabels,
+  type PeriodStepperProps,
+} from "./period-stepper.tsx"
+export {
   clampProgress,
   formatProgressPercent,
   Progress,
@@ -571,6 +577,15 @@ export {
   type UnsavedGuardProps,
   type UnsavedLink,
 } from "./unsaved-guard.tsx"
+export {
+  UsageMeter,
+  type UsageMeterLabels,
+  usageMeterLabels,
+  type UsageMeterProps,
+  type UsageMeterState,
+  type UsageReading,
+  usageReading,
+} from "./usage-meter.tsx"
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
