@@ -1,6 +1,6 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconAlertTriangle, IconCheck, IconLockClosed } from "@spy4x/preact-icons"
-import { formatMoney } from "@spy4x/platform/universal/money"
+import { formatMoney } from "@spy4x/platform/universal/money-core"
 import type { Translator } from "@spy4x/platform/universal/i18n"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
