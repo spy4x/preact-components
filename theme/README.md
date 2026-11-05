@@ -349,6 +349,9 @@ classes keep their names: no app writes them as ordinary words.
 - **Surfaces** — `pc-card`, `pc-card-header`, `pc-card-body`, `pc-card-footer`, `pc-scrollbar`,
   `pc-focus-offset-surface`.
 - **Data display** — `pc-num`, `pc-kpi`, `pc-kpi-label`, `pc-kpi-value`, `pc-bar`.
+- **Print** — Tailwind's `print:hidden` on anything that means nothing on paper: navigation, menus,
+  buttons. `SiteHeader` and `SiteFooter` carry it on their root, so a public page prints as its
+  content alone; a page adds it to its own controls.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`

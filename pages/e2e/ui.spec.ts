@@ -21,6 +21,7 @@ import { specs as notice } from "./ui/notice.spec.ts"
 import { specs as toggleField } from "./ui/toggle-field.spec.ts"
 import { specs as copyBlock } from "./ui/copy-block.spec.ts"
 import { specs as prose } from "./ui/prose.spec.ts"
+import { specs as checklist } from "./ui/checklist.spec.ts"
 import { specs as pageHeader } from "./ui/page-header.spec.ts"
 import { specs as forwardRef } from "./ui/forward-ref.spec.ts"
 import { specs as field } from "./ui/field.spec.ts"
@@ -82,6 +83,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "toggle-field": toggleField,
   "copy-block": copyBlock,
   prose,
+  checklist,
   "page-header": pageHeader,
   "forward-ref": forwardRef,
   field,

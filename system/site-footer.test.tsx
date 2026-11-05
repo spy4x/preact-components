@@ -33,6 +33,11 @@ function footerTag(html: string): string {
 }
 
 describe("SiteFooter", () => {
+  it("is left out when the page is printed", () => {
+    const classes = footerTag(render(<SiteFooter groups={groups} />)).match(/class="([^"]*)"/)?.[1]
+    expect(classes?.split(" ")).toContain("print:hidden")
+  })
+
   it("renders each group as a nav named by its title, holding its heading and its links", () => {
     const html = render(<SiteFooter groups={groups} />)
     const [product, community] = navs(html)
