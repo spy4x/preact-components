@@ -17,6 +17,7 @@ deno task fix     # lint --fix, then fmt
 deno test --no-prompt --allow-read --allow-env ui/button.test.tsx   # one test file
 deno task llms    # rewrite llms.txt and llms-full.txt after an export, JSDoc or README change
 deno task --cwd pages build && deno task --cwd pages verify --only=ui   # one package's browser checks
+deno task --cwd pages verify --component=<name>   # one ui component's browser checks and specs
 ```
 
 A few test files need more permissions; the `test` task in `deno.jsonc` lists them.
