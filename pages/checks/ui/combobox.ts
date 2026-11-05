@@ -644,11 +644,12 @@ async function compositionComboboxCheck(devtools: Devtools): Promise<void> {
   await pressTagKey(devtools, "Backspace")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.inputValue === ""`), 2_000)
   const cleared = await devtools.evaluate<string[]>(COMBOBOX_OPTIONS)
-  const typed = await typeEachCharacter(devtools, COMBOBOX_OPTIONS, "US")
+  // Matching is by word start, so "E" keeps ETH and EUR and "EU" keeps EUR alone.
+  const typed = await typeEachCharacter(devtools, COMBOBOX_OPTIONS, "EU")
   check(
     "plain typing still filters the Combobox list on every keystroke",
     narrowedEachTime(cleared, typed),
-    typingDetail("US", cleared, typed),
+    typingDetail("EU", cleared, typed),
   )
   await pressKey(devtools, "Escape")
   await poll(() => devtools.evaluate<boolean>(`${COMBOBOX_STATE}.expanded === "false"`), 3_000)

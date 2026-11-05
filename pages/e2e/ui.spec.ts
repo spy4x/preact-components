@@ -31,6 +31,8 @@ import { specs as toggleChips } from "./ui/toggle-chips.spec.ts"
 import { specs as radioChips } from "./ui/radio-chips.spec.ts"
 import { specs as languagePicker } from "./ui/language-picker.spec.ts"
 import { specs as colorField } from "./ui/color-field.spec.ts"
+import { specs as iconPicker } from "./ui/icon-picker.spec.ts"
+import { specs as comboboxGroup } from "./ui/combobox-group.spec.ts"
 import { specs as themePreview } from "./ui/theme-preview.spec.ts"
 import { specs as quickAdd } from "./ui/quick-add.spec.ts"
 import { specs as confirmDialog } from "./ui/confirm-dialog.spec.ts"
@@ -87,6 +89,8 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "radio-chips": radioChips,
   "language-picker": languagePicker,
   "color-field": colorField,
+  "icon-picker": iconPicker,
+  "combobox-group": comboboxGroup,
   "theme-preview": themePreview,
   "quick-add": quickAdd,
   "confirm-dialog": confirmDialog,

@@ -89,8 +89,8 @@ export function splitTagText(text: string): { tags: string[]; rest: string } {
  * The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling
  * once.
  *
- * Matching is `Combobox`'s ({@link filterItems}): a substring of the folded text, so `"sao"` finds
- * `"São Paulo"`. A suggestion counts as chosen when a tag matches it without regard to case, the
+ * Matching is `Combobox`'s ({@link filterItems}): the start of a word in the folded text, in any
+ * order, forgiving a typo, so `"sao"` finds `"São Paulo"`, best match first. A suggestion counts as chosen when a tag matches it without regard to case, the
  * same rule {@link addTags} uses, so picking `"work"` hides `"Work"` too.
  *
  * @param suggestions Every suggestion, in the caller's order.
