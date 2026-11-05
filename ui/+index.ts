@@ -107,6 +107,7 @@ export { CopyButton, type CopyButtonProps } from "./copy-button.tsx"
 export {
   activeDescendant,
   Combobox,
+  type ComboboxGroup,
   type ComboboxKey,
   comboboxKey,
   type ComboboxKeyAction,
@@ -118,6 +119,8 @@ export {
   comboboxOptionId,
   type ComboboxOptionState,
   type ComboboxProps,
+  type ComboboxSection,
+  comboboxSections,
   type ComboboxState,
   defaultGetLabel,
   filterItems,
@@ -234,6 +237,7 @@ export {
   type WhenProps,
 } from "./format.tsx"
 export { honeypotField } from "./honeypot.tsx"
+export { IconPicker, type IconPickerLabels, type IconPickerProps } from "./icon-picker.tsx"
 export {
   ENGLISH,
   I18nContext,
@@ -372,6 +376,12 @@ export {
 } from "./page-hero.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
+export {
+  PeriodStepper,
+  type PeriodStepperLabels,
+  periodStepperLabels,
+  type PeriodStepperProps,
+} from "./period-stepper.tsx"
 export {
   clampProgress,
   formatProgressPercent,
@@ -577,6 +587,15 @@ export {
   type UnsavedGuardProps,
   type UnsavedLink,
 } from "./unsaved-guard.tsx"
+export {
+  UsageMeter,
+  type UsageMeterLabels,
+  usageMeterLabels,
+  type UsageMeterProps,
+  type UsageMeterState,
+  type UsageReading,
+  usageReading,
+} from "./usage-meter.tsx"
 export { type FaqItem, FaqList, type FaqListProps } from "./faq-list.tsx"
 export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"

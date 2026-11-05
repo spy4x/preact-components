@@ -4,11 +4,13 @@ import { render } from "preact-render-to-string"
 import {
   activeDescendant,
   Combobox,
+  type ComboboxGroup,
   type ComboboxKey,
   comboboxKey,
   comboboxKeyAction,
   comboboxListboxId,
   comboboxOptionId,
+  comboboxSections,
   type ComboboxState,
   defaultGetLabel,
   filterItems,
@@ -44,6 +46,10 @@ describe("fold", () => {
     expect(fold("usd/eur 100%")).toBe("usd/eur 100%")
   })
 
+  it("keeps Hindi vowel signs, so का and कि stay apart", () => {
+    expect(fold("का")).not.toBe(fold("कि"))
+  })
+
   it("is idempotent", () => {
     expect(fold(fold("Ünïcödé"))).toBe(fold("Ünïcödé"))
   })
@@ -72,8 +78,27 @@ describe("matchesQuery", () => {
     expect(matchesQuery("BTC", "   ")).toBe(true)
   })
 
-  it("matches a substring", () => {
-    expect(matchesQuery("Bitcoin", "coin")).toBe(true)
+  it("matches the words of the query in any order, each at the start of a word", () => {
+    expect(matchesQuery("Eating out", "out eat")).toBe(true)
+  })
+
+  it("does not match the middle of a word", () => {
+    expect(matchesQuery("Bitcoin", "coin")).toBe(false)
+  })
+
+  it("forgives one typo in a word of four letters or more", () => {
+    expect(matchesQuery("Eating out", "eatng out")).toBe(true)
+  })
+
+  it("matches an alias as it matches the label", () => {
+    const aliases = () => ["restaurant"]
+    expect(matchesQuery("Eating out", "restaurant", undefined, aliases)).toBe(true)
+    expect(matchesQuery("Eating out", "restaurant")).toBe(false)
+  })
+
+  it("matches a query typed in the Russian keyboard layout", () => {
+    // `out eating` typed with the Russian layout on.
+    expect(matchesQuery("Eating out", "щге уфештп")).toBe(true)
   })
 
   it("matches case-insensitively", () => {
@@ -87,7 +112,7 @@ describe("matchesQuery", () => {
   })
 
   it("ignores surrounding whitespace in the query", () => {
-    expect(matchesQuery("Bitcoin", "  coin  ")).toBe(true)
+    expect(matchesQuery("Bitcoin", "  bit  ")).toBe(true)
   })
 
   it("rejects a query the label does not contain", () => {
@@ -96,9 +121,9 @@ describe("matchesQuery", () => {
   })
 
   it("matches against the label the caller supplies", () => {
-    const item = { code: "BTC", name: "Bitcoin" }
-    expect(matchesQuery(item, "coin", (entry) => entry.name)).toBe(true)
-    expect(matchesQuery(item, "coin", (entry) => entry.code)).toBe(false)
+    const item = { code: "XBT", name: "Bitcoin" }
+    expect(matchesQuery(item, "bit", (entry) => entry.name)).toBe(true)
+    expect(matchesQuery(item, "bit", (entry) => entry.code)).toBe(false)
   })
 
   it("keeps the file's own row when the query is empty even for objects", () => {
@@ -117,16 +142,24 @@ describe("filterItems", () => {
     expect(filterItems(items, "  ")).toEqual(items)
   })
 
-  it("keeps the original order", () => {
-    expect(filterItems(items, "coin")).toEqual(["Bitcoin", "Litecoin"])
+  it("keeps the original order among equally good matches", () => {
+    expect(filterItems(["Litecoin", "Bitcoin", "Bitcoin Cash"], "bit")).toEqual([
+      "Bitcoin",
+      "Bitcoin Cash",
+    ])
+  })
+
+  it("puts the best match first", () => {
+    expect(filterItems(["Bitcoin Cash", "Cash"], "cash")).toEqual(["Cash", "Bitcoin Cash"])
   })
 
   it("is case-insensitive", () => {
     expect(filterItems(items, "ETHER")).toEqual(["Ethereum"])
   })
 
-  it("matches mid-word, not just a prefix", () => {
-    expect(filterItems(items, "her")).toEqual(["Ethereum"])
+  it("matches the start of a word, not the middle of one", () => {
+    expect(filterItems(items, "her")).toEqual([])
+    expect(filterItems(items, "eth")).toEqual(["Ethereum"])
   })
 
   it("returns an empty list when nothing matches", () => {
@@ -151,10 +184,6 @@ describe("filterItems", () => {
 
   it("folds diacritics in both the label and the query", () => {
     expect(filterItems(["São Paulo", "Santiago"], "sao")).toEqual(["São Paulo"])
-  })
-
-  it("keeps Hindi vowel signs, so का does not suggest कि", () => {
-    expect(filterItems(["कि", "का"], "का")).toEqual(["का"])
   })
 
   it("folds stroked letters, so da nang finds Đà Nẵng", () => {
@@ -557,6 +586,8 @@ function countId(html: string, id: string): number {
 
 describe("Combobox markup", () => {
   const items = ["BTC", "ETH", "USD"]
+  /** Two items one letter starts, so a count has a plural to say. */
+  const twoBs = ["BTC", "BCH", "USD"]
 
   it("starts closed and announces itself as a collapsed combobox", () => {
     const html = render(<Combobox items={items} onChange={() => {}} />)
@@ -710,7 +741,7 @@ describe("Combobox markup", () => {
 
   it("describes the input by the region while the empty message is in it, and never otherwise", () => {
     const untouched = render(<Combobox items={items} onChange={() => {}} />)
-    const counting = render(<Combobox items={items} onChange={() => {}} query="t" />)
+    const counting = render(<Combobox items={items} onChange={() => {}} query="b" />)
     const nothing = render(<Combobox items={items} onChange={() => {}} query="zzz" />)
 
     // The two sentences the region can hold are different kinds of thing. "No matches" is a
@@ -843,9 +874,9 @@ describe("Combobox markup", () => {
   })
 
   it("announces how many options the query left, inside that same region", () => {
-    // `"t"` folds into `"BTC"` and `"ETH"` but not `"USD"`, so the number is a fact about the
-    // list rather than a copy of it — case-folded, like every other match this component makes.
-    const html = render(<Combobox items={items} onChange={() => {}} query="t" />)
+    // `"b"` starts `"BTC"` and `"BCH"` but not `"USD"`, so the number is a fact about the list
+    // rather than a copy of it — case-folded, like every other match this component makes.
+    const html = render(<Combobox items={twoBs} onChange={() => {}} query="b" />)
 
     expect(statusRegion(html)).toContain('<span class="sr-only">2 matches</span>')
     expect(statusRegionId(html)).toBe(`${inputId(html)}-status`)
@@ -857,15 +888,15 @@ describe("Combobox markup", () => {
   })
 
   it("takes the count wording from the caller, and defaults it to English otherwise", () => {
-    expect(statusRegion(render(<Combobox items={items} onChange={() => {}} query="t" />)))
+    expect(statusRegion(render(<Combobox items={twoBs} onChange={() => {}} query="b" />)))
       .toContain(">2 matches<")
     expect(
       statusRegion(
         render(
           <Combobox
-            items={items}
+            items={twoBs}
             onChange={() => {}}
-            query="t"
+            query="b"
             countMessage={(count) => `noch ${count} Treffer`}
           />,
         ),
@@ -906,7 +937,7 @@ describe("Combobox markup", () => {
   })
 
   it("counts nothing while loading, because the rows on screen are the last query's", () => {
-    const html = render(<Combobox items={items} onChange={() => {}} query="t" loading />)
+    const html = render(<Combobox items={twoBs} onChange={() => {}} query="b" loading />)
 
     expect(statusRegion(html)).not.toContain("matches")
     expect(statusRegion(html)).toContain("Loading…")
@@ -1315,5 +1346,159 @@ describe("openingState", () => {
   it("always opens", () => {
     expect(openingState(items, -1, items).isOpen).toBe(true)
     expect(openingState(items, -1, []).isOpen).toBe(true)
+  })
+})
+
+/** A category tree of the kind a finance app keeps: parents lead their groups, children follow. */
+interface Category {
+  name: string
+  parent?: string
+  aliases?: readonly string[]
+}
+
+const CATEGORIES: readonly Category[] = [
+  { name: "Home" },
+  { name: "Rent", parent: "Home" },
+  { name: "Food" },
+  { name: "Groceries", parent: "Food" },
+  { name: "Eating out", parent: "Food", aliases: ["restaurant"] },
+  { name: "Gift" },
+]
+
+/** The group of a category: its parent's, or its own when it has children. */
+const groupOfCategory = (item: Category): ComboboxGroup | null => {
+  const id = item.parent ??
+    (CATEGORIES.some((child) => child.parent === item.name) ? item.name : "")
+  return id === "" ? null : { id, label: id }
+}
+const isParent = (item: Category) => item.parent === undefined
+const nameOf = (item: Category) => item.name
+const named = (...names: string[]) => names.map((name) => CATEGORIES.find((c) => c.name === name)!)
+
+describe("comboboxSections", () => {
+  it("puts each group's lead first and its members under it, in the caller's order", () => {
+    const sections = comboboxSections(CATEGORIES, CATEGORIES, groupOfCategory, isParent)
+    expect(sections.map((section) => [section.lead?.name, section.items.map(nameOf)])).toEqual([
+      ["Home", ["Rent"]],
+      ["Food", ["Groceries", "Eating out"]],
+      [undefined, ["Gift"]],
+    ])
+  })
+
+  it("keeps a lead the query did not match above its matched member, as context", () => {
+    const sections = comboboxSections(named("Eating out"), CATEGORIES, groupOfCategory, isParent)
+    expect(sections).toEqual([{
+      group: { id: "Food", label: "Food" },
+      lead: named("Food")[0],
+      items: named("Eating out"),
+    }])
+  })
+
+  it("orders groups by their best match", () => {
+    const sections = comboboxSections(
+      named("Eating out", "Rent", "Groceries"),
+      CATEGORIES,
+      groupOfCategory,
+      isParent,
+    )
+    expect(sections.map((section) => section.group?.id)).toEqual(["Food", "Home"])
+    expect(sections[0].items.map(nameOf)).toEqual(["Eating out", "Groceries"])
+  })
+
+  it("leaves a group without a lead item leadless, so the popup draws its heading", () => {
+    const recent = ["Gym", "Taxi"]
+    const sections = comboboxSections(recent, recent, () => ({ id: "recent", label: "Recent" }))
+    expect(sections).toEqual([{
+      group: { id: "recent", label: "Recent" },
+      lead: undefined,
+      items: recent,
+    }])
+  })
+
+  it("draws an ungrouped list as one section, and nothing as none", () => {
+    expect(comboboxSections(["a", "b"], ["a", "b"])).toEqual([{ items: ["a", "b"] }])
+    expect(comboboxSections([], ["a"])).toEqual([])
+  })
+})
+
+describe("Combobox groups, aliases and Create", () => {
+  const grouped = (extra: Record<string, unknown> = {}) =>
+    render(
+      <Combobox
+        id="category"
+        ariaLabel="Category"
+        items={CATEGORIES}
+        getLabel={nameOf}
+        groupOf={groupOfCategory}
+        isGroupLead={isParent}
+        aliasesOf={(item) => item.aliases ?? []}
+        onChange={() => {}}
+        {...extra}
+      />,
+    )
+
+  it("draws one group per parent, named by the parent's own option", () => {
+    const html = grouped()
+    const groups = html.match(/<ul role="group" aria-labelledby="([^"]+)"/g) ?? []
+    expect(groups).toEqual([
+      `<ul role="group" aria-labelledby="${comboboxOptionId("category", 0)}"`,
+      `<ul role="group" aria-labelledby="${comboboxOptionId("category", 2)}"`,
+    ])
+    // The parent is an option, so it can be chosen: drawn once, as the group's first row.
+    expect(html).toContain(`id="${comboboxOptionId("category", 2)}" role="option"`)
+    expect(html.split(">Food<").length - 1).toBe(1)
+  })
+
+  it("names a group without a lead by a heading that is not an option", () => {
+    const html = render(
+      <Combobox
+        id="recent"
+        ariaLabel="Recent"
+        items={["Gym", "Taxi"]}
+        groupOf={() => ({ id: "recent", label: "Recent" })}
+        onChange={() => {}}
+      />,
+    )
+    expect(html).toContain('<ul role="group" aria-labelledby="recent-group-0">')
+    expect(html).toMatch(/<li id="recent-group-0" role="presentation"[^>]*>Recent<\/li>/)
+    // Options are numbered without the heading, so the arrow keys never land on it.
+    expect(html).toContain(`id="${comboboxOptionId("recent", 0)}" role="option"`)
+    expect(html).toContain(">Gym<")
+  })
+
+  it("finds a child by an alias, with its parent above it", () => {
+    const html = grouped({ query: "restaurant" })
+    expect(html).toContain(">Eating out<")
+    expect(html).toContain(">Food<")
+    expect(html).not.toContain(">Groceries<")
+    expect(statusRegion(html)).toContain(">1 match<")
+  })
+
+  it("reads a chosen child with its group in the closed field", () => {
+    expect(grouped({ value: named("Eating out")[0] })).toContain('value="Eating out (Food)"')
+    expect(grouped({ value: named("Food")[0] })).toContain('value="Food"')
+  })
+
+  it("offers Create as the last row for a query no item is called", () => {
+    const html = grouped({ query: "Gym", onCreate: () => {} })
+    expect(html).toMatch(/role="option"[^>]*>.*Create “Gym”/)
+    // Nothing else matches, so it is the only option, numbered as the first.
+    expect(html).toContain(`id="${comboboxOptionId("category", 0)}"`)
+    expect(html).not.toContain(`id="${comboboxOptionId("category", 1)}"`)
+    expect(statusRegion(html)).toContain("No matches. You can create “Gym”.")
+    expect(html).not.toContain(">No matches<")
+  })
+
+  it("puts Create after the matches when some items match", () => {
+    const html = grouped({ query: "gi", onCreate: () => {} })
+    expect(html.indexOf(">Gift<")).toBeLessThan(html.indexOf("Create “gi”"))
+  })
+
+  it("offers no Create for a query that is already an item's name, in any case", () => {
+    expect(grouped({ query: "  food ", onCreate: () => {} })).not.toContain("Create “")
+  })
+
+  it("offers no Create without onCreate", () => {
+    expect(grouped({ query: "Gym" })).not.toContain("Create “")
   })
 })

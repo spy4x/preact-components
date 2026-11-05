@@ -12,8 +12,10 @@
 
 import {
   Button,
+  Checkbox,
   Cluster,
   Combobox,
+  type ComboboxGroup,
   type ComboboxOptionState,
   DateRangePicker,
   type DateRangePickerLabels,
@@ -31,6 +33,7 @@ import {
   LanguageDialog,
   LanguagePicker,
   OnOffButtons,
+  PeriodStepper,
   rangeForPreset,
   SegmentedControl,
   Slider,
@@ -40,6 +43,7 @@ import {
   ToggleSwitch,
 } from "@spy4x/preact-ui"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
+import { type Period, periodOf, PeriodUnit } from "@spy4x/time/period"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { useSignal } from "@preact/signals"
@@ -655,6 +659,12 @@ const dateLabels: DateRangePickerLabels = {
   cancel: "Cancel",
 }
 
+/** The week card's presets: the two week presets and nothing else. */
+const weekPresetOptions: readonly DateRangePresetOption[] = [
+  { preset: "this-week", label: "This week" },
+  { preset: "last-week", label: "Last week" },
+]
+
 /** The preset list in render order, with `custom` last — which is what shows the from/to fields. */
 const datePresetOptions: readonly DateRangePresetOption[] = [
   { preset: "last-7-days", label: "Last 7 days" },
@@ -994,8 +1004,97 @@ function AnnouncingCombobox() {
   )
 }
 
+/** A spending category: a parent leads its group, a child names its parent. */
+interface DemoCategory {
+  name: string
+  parent?: string
+  aliases?: readonly string[]
+}
+
+/** Parents with their children, then two categories with no parent, under "Other". */
+const demoCategories: readonly DemoCategory[] = [
+  { name: "Home", aliases: ["housing"] },
+  { name: "Rent", parent: "Home", aliases: ["mortgage"] },
+  { name: "Utilities", parent: "Home", aliases: ["electricity", "water", "gas bill"] },
+  { name: "Food" },
+  { name: "Groceries", parent: "Food", aliases: ["supermarket"] },
+  { name: "Eating out", parent: "Food", aliases: ["restaurant", "cafe", "dining"] },
+  { name: "Health" },
+  { name: "Doctor", parent: "Health", aliases: ["clinic", "medical"] },
+  { name: "Pharmacy", parent: "Health", aliases: ["medicine"] },
+  { name: "Gifts", aliases: ["presents", "birthday"] },
+  { name: "Charity", aliases: ["donation"] },
+]
+
+/** The group of a category without a parent or children: no lead, so a muted heading names it. */
+const otherGroup: ComboboxGroup = { id: "other", label: "Other" }
+
+/** How long the demo's "server" takes to create a category, so the spinner shows. */
+const CREATE_MS = 800
+
 /**
- * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, one
+ * Categories in parent groups, found by alias, with a "Create" row. A parent is its group's first
+ * row and stays choosable; "Other" has no parent, so a heading that is not an option names it. A
+ * new category takes {@link CREATE_MS} to "save"; ticking the box makes the next save fail.
+ */
+function CategoryCombobox() {
+  const items = useSignal<readonly DemoCategory[]>(demoCategories)
+  const category = useSignal<DemoCategory | null>(demoCategories[5])
+  const failNext = useSignal(false)
+  const created = useSignal("")
+
+  const groupOf = (item: DemoCategory): ComboboxGroup => {
+    const parent = item.parent ??
+      (items.value.some((other) => other.parent === item.name) ? item.name : undefined)
+    return parent === undefined ? otherGroup : { id: parent, label: parent }
+  }
+
+  const create = async (name: string): Promise<DemoCategory> => {
+    await new Promise((done) => setTimeout(done, CREATE_MS))
+    if (failNext.value) {
+      failNext.value = false
+      throw new Error("The demo refused it")
+    }
+    const made: DemoCategory = { name }
+    items.value = [...items.value, made]
+    created.value = name
+    return made
+  }
+
+  return (
+    <Stack gap="sm">
+      <Field id="guide-combobox-category" label="Category">
+        <Combobox
+          items={items.value}
+          value={category.value}
+          onChange={(next) => category.value = next}
+          getLabel={(item) => item.name}
+          aliasesOf={(item) => item.aliases ?? []}
+          groupOf={groupOf}
+          isGroupLead={(item) => item.parent === undefined && groupOf(item) !== otherGroup}
+          onCreate={create}
+          placeholder="Search or create a category…"
+        />
+      </Field>
+      <Checkbox
+        checked={failNext.value}
+        onChange={(event) => failNext.value = event.currentTarget.checked}
+      >
+        Make the next create fail
+      </Checkbox>
+      <Note e2e="controlled-value">
+        category: {category.value?.name ?? "(none)"}
+        {created.value === "" ? "" : `, created: ${created.value}`}
+      </Note>
+      <Note>
+        Try “out eat”, “eatng out”, “restaurant” or “щге уфештп”, then “Gym” and Enter.
+      </Note>
+    </Stack>
+  )
+}
+
+/**
+ * Every combobox on the card: strings, grouped categories with Create, objects, a controlled query, a long list, an empty one, one
  * whose screen-reader count uses the caller's own words, and one that fetches per keystroke.
  */
 function ComboboxDemo() {
@@ -1003,6 +1102,9 @@ function ComboboxDemo() {
     <Grid minColumnWidth="md" gap="lg">
       <Variant title="Strings">
         <CoinCombobox />
+      </Variant>
+      <Variant title="Groups, aliases and Create">
+        <CategoryCombobox />
       </Variant>
       <Variant title="Objects, one disabled">
         <CityCombobox />
@@ -1027,7 +1129,7 @@ function ComboboxDemo() {
 }
 
 /** Tags a task already uses elsewhere: what the tag field suggests. */
-const usedTags = ["work", "home", "errand", "waiting", "someday", "phone"]
+const usedTags = ["work", "home", "errand", "waiting", "someday", "wishlist"]
 
 /**
  * The tag field inside `Field`, with suggestions and the tags it holds reported back, and a disabled
@@ -1328,6 +1430,106 @@ function DateRangePickerEmptyDemo() {
   )
 }
 
+/** The stepper demos' clock: Wednesday 4 November 2026, in Paris. */
+const stepperNow = new Date("2026-11-04T10:00:00Z")
+
+/**
+ * One `PeriodStepper` showing a period and the range it hands back, for the browser checks.
+ *
+ * It names the period in the guide's own language, the stepper's default. Not `en-GB`: Deno 2.9
+ * names a week inside one month "1–7 Nov 2026" there and Chromium 155 "1 – 7 Nov 2026", so the
+ * served card and the hydrated one would read differently.
+ */
+function PeriodStepperExample(
+  { start, firstWeekday, currentHotkey, singleKeys, e2e }: {
+    start: Period
+    firstWeekday?: number
+    currentHotkey?: string
+    singleKeys?: boolean
+    e2e: string
+  },
+) {
+  const period = useSignal(start)
+  return (
+    <div class="space-y-2" data-e2e={e2e}>
+      <PeriodStepper
+        period={period.value}
+        onChange={(next) => period.value = next}
+        now={stepperNow}
+        timeZone={fixedZone}
+        options={{ firstWeekday }}
+        currentHotkey={currentHotkey}
+        singleKeys={singleKeys}
+      />
+      <Note e2e={`${e2e}-value`}>
+        period: <span class="whitespace-nowrap">{period.value.from} … {period.value.to}</span>
+      </Note>
+    </div>
+  )
+}
+
+/**
+ * Months, opened on October while today is in November, so "This month" shows; `]` or › brings
+ * November back and the button goes. Its return key is `m` here, because this page already gives
+ * `t` to the theme toggle. Then weeks that start on Sunday, opened on the current week, with
+ * `singleKeys` off: two steppers on one screen cannot both own `[` and `]`.
+ */
+function PeriodStepperDemo() {
+  return (
+    <Stack>
+      <Variant title="Months, one month back">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Month, "2026-10-01", {})}
+          currentHotkey="m"
+          e2e="guide-period-month"
+        />
+      </Variant>
+      <Variant title="Weeks from Sunday, keys off">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Week, "2026-11-04", { firstWeekday: 7 })}
+          firstWeekday={7}
+          singleKeys={false}
+          e2e="guide-period-week"
+        />
+      </Variant>
+    </Stack>
+  )
+}
+
+/**
+ * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
+ * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
+ */
+function DateRangePickerWeekDemo() {
+  const range = useSignal<DateRange | null>(null)
+  const preset = useSignal<DateRangePreset | undefined>(undefined)
+
+  return (
+    <div class="space-y-3">
+      <DateRangePicker
+        range={range.value}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
+        timeZone={fixedZone}
+        now={fixedNow}
+        firstWeekday={7}
+        presets={weekPresetOptions}
+        selectedPreset={preset.value}
+        labels={{ placeholder: "Any week" }}
+        dataE2E="guide-date-range-week"
+      />
+      <Note e2e="week-value">
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : `${range.value.from} … ${range.value.to}`}
+        </span>
+      </Note>
+    </div>
+  )
+}
+
 /**
  * The picker with `withTime` on: From and To are `datetime-local` fields, and the panel also offers
  * the two presets that only make sense with a time of day, `"last-hour"` and `"last-24-hours"`.
@@ -1389,6 +1591,9 @@ function DateRangePickersDemo() {
           }
         >
           <DateRangePickerWithTimeDemo />
+        </Variant>
+        <Variant title="Weeks from Sunday">
+          <DateRangePickerWeekDemo />
         </Variant>
       </Grid>
       <Stack gap="xs">
@@ -1871,8 +2076,39 @@ export const inputDemos = {
       {
         name: "filter",
         type: "(items, query) => T[]",
-        default: "folded substring match",
-        description: "Replaces the built-in search.",
+        default: "searchEntries",
+        description:
+          "Replaces the built-in search, which takes words in any order, one typo and the other keyboard layout, best match first. Groups still apply.",
+      },
+      {
+        name: "aliasesOf",
+        type: "(item: T) => readonly string[]",
+        description: "Other names the built-in search finds an item by; never shown.",
+      },
+      {
+        name: "groupOf / isGroupLead",
+        type: "(item: T) => { id, label } | null / (item: T) => boolean",
+        description:
+          "Puts items in named groups. A lead (a parent category) is its group's first row and name, and stays choosable; a group without one gets a heading the arrow keys skip.",
+      },
+      {
+        name: "groupedLabel",
+        type: "(label, group) => string",
+        default: `"Eating out (Food)"`,
+        description: "How the closed field reads a chosen group member.",
+      },
+      {
+        name: "onCreate",
+        type: "(query: string) => T | void | Promise<T | void>",
+        description:
+          "Adds a last row, Create “Gym”, highlighted when nothing else matches. A returned item is chosen; a pending promise shows a spinner, a rejected one a field error.",
+      },
+      {
+        name: "createLabel / createOnlyMessage / createErrorMessage",
+        type: "(query: string) => string",
+        default:
+          `"Create “Gym”" / "No matches. You can create “Gym”." / "Couldn't create “Gym”. Try again."`,
+        description: "The Create row, what the live region says when it is alone, and the error.",
       },
       {
         name: "query / onQueryChange",
@@ -2017,6 +2253,13 @@ export const inputDemos = {
         description: "The instant presets resolve against.",
       },
       {
+        name: "firstWeekday",
+        type: "number",
+        default: "1",
+        description:
+          "The day a week starts on for the `this-week` and `last-week` presets, 1 for Monday to 7 for Sunday.",
+      },
+      {
         name: "withTime",
         type: "boolean",
         default: "false",
@@ -2044,6 +2287,16 @@ export const inputDemos = {
 // Every label is English by default; override only the ones you need to.
 <DateRangePicker {...props} labels={{ placeholder: "All time" }} />
 
+// Week presets: weeks start on Monday unless firstWeekday says otherwise (7 is Sunday).
+<DateRangePicker
+  {...props}
+  firstWeekday={7}
+  presets={[
+    { preset: "this-week", label: "This week" },
+    { preset: "last-week", label: "Last week" },
+  ]}
+/>
+
 // withTime: datetime-local fields, two sub-day presets — no presets prop — and a range whose
 // fromInstant / toInstant say exactly which moment each end means, even in a repeated hour.
 <DateRangePicker
@@ -2057,6 +2310,63 @@ export const inputDemos = {
   labels={{ repeatedTime: "This time happens twice that day" }}
 />`,
     render: () => <DateRangePickersDemo />,
+  },
+  PeriodStepper: {
+    summary:
+      "Steps a screen through weeks or months, with a button back to the current one and the keys [, ] and T.",
+    wide: true,
+    props: [
+      { name: "period", type: "Period", description: "The week or month on screen." },
+      {
+        name: "onChange",
+        type: "(period: Period) => void",
+        description: "Called with the period to show next.",
+      },
+      {
+        name: "now",
+        type: "Date",
+        description: "The current instant; the stepper never reads the clock.",
+      },
+      { name: "timeZone", type: "string", description: "The zone whose calendar holds today." },
+      {
+        name: "options",
+        type: "PeriodOptions",
+        description: "The week's first day, as the period was made with.",
+      },
+      {
+        name: "labels",
+        type: "Partial<PeriodStepperLabels>",
+        description: "Overrides for the words, one set per unit.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the period's name; defaults to the translator's language.",
+      },
+      {
+        name: "currentHotkey",
+        type: "string",
+        default: `"t"`,
+        description: "The key back to the current period.",
+      },
+      {
+        name: "singleKeys",
+        type: "boolean",
+        default: "true",
+        description: "Whether [, ] and the current key work; off, the tooltips show no key.",
+      },
+    ],
+    snippet: `import { currentPeriod, PeriodUnit } from "@spy4x/time/period"
+
+const period = useSignal(currentPeriod(PeriodUnit.Month, { now, timeZone }))
+
+<PeriodStepper
+  period={period.value}
+  onChange={(next) => period.value = next}
+  now={now}
+  timeZone={timeZone}
+/>`,
+    render: () => <PeriodStepperDemo />,
   },
   FileInput: {
     summary:

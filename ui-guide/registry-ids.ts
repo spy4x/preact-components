@@ -14,10 +14,11 @@
 export const packageIds = ["ui", "charts", "map", "system", "crud"] as const
 
 /**
- * Packages that export no component: helpers only, so the guide shows none of their exports and no
- * stylesheet needs to scan them. `theme` still has a page, for the classes its preset ships.
+ * Packages that export helpers, so the guide shows none of their exports and no stylesheet needs to
+ * scan them. `theme` still has a page, for the classes its preset ships; `server`'s one component,
+ * `Head`, renders nothing of its own and is excused in `COMPONENTS_WITHOUT_CARD`.
  */
-export const helperPackageIds = ["theme", "signals", "cn"] as const
+export const helperPackageIds = ["theme", "signals", "cn", "server"] as const
 
 /**
  * Every package the coverage rule accounts for: {@link packageIds}, then {@link helperPackageIds}.

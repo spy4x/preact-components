@@ -1033,6 +1033,244 @@ function colorFieldSpecs(): Spec[] {
 }
 
 /**
+ * `Combobox` with `groupOf`, `isGroupLead`, `aliasesOf` and `onCreate`, on the card's category
+ * field: one named group per parent and one for the parentless "Other", arrow keys that walk the
+ * options and never the "Other" heading, a parent that can be chosen, the forgiving search, a
+ * Create row that Enter presses, a failed create as a field error, and axe in both palettes at 390
+ * and 1440 px.
+ */
+function comboboxGroupSpecs(): Spec[] {
+  const card = (page: Page) => page.locator("#demo-Combobox")
+  const field = (page: Page) => card(page).locator("#guide-combobox-category")
+  const list = (page: Page) => card(page).locator("#guide-combobox-category-listbox")
+  /** The text of the option `aria-activedescendant` points at, or `null`. */
+  const activeText = (page: Page) =>
+    field(page).evaluate((input) => {
+      const id = input.getAttribute("aria-activedescendant")
+      const row = id ? document.getElementById(id) : null
+      return row === null ? null : `${row.getAttribute("role")}:${row.textContent?.trim()}`
+    })
+  /** Opens the list with nothing typed. */
+  const open = async (page: Page) => {
+    await field(page).click()
+    await field(page).fill("")
+    await field(page).and(page.locator(`[aria-expanded="true"]`)).waitFor()
+  }
+  return [
+    {
+      name:
+        "Combobox: grouped categories have one named group per parent, the Other heading is no option, the arrows walk every option, and a parent can be chosen",
+      pageId: "ui",
+      run: async (page) => {
+        await open(page)
+        for (const name of ["Home", "Food", "Health", "Other"]) {
+          await list(page).getByRole("group", { name, exact: true }).waitFor()
+        }
+        const otherOptions = await list(page).getByRole("option", { name: "Other", exact: true })
+          .count()
+        if (otherOptions > 0) throw new Error(`the Other heading is drawn as an option`)
+        const optionCount = await list(page).getByRole("option").count()
+        const walked: (string | null)[] = []
+        for (let step = 0; step < optionCount; step++) {
+          await field(page).press("ArrowDown")
+          walked.push(await activeText(page))
+        }
+        if (walked.some((text) => text === null || !text.startsWith("option:"))) {
+          throw new Error(
+            `the arrows reached something that is not an option: ${walked.join(", ")}`,
+          )
+        }
+        if (walked.includes("option:Other")) {
+          throw new Error(`the arrows landed on the Other heading: ${walked.join(", ")}`)
+        }
+        if (new Set(walked).size < optionCount - 1) {
+          throw new Error(`the arrows did not walk every option: ${walked.join(", ")}`)
+        }
+        await field(page).fill("Food")
+        await list(page).getByRole("option", { name: "Food", exact: true }).waitFor()
+        await field(page).press("Enter")
+        await card(page).locator(`[data-e2e="controlled-value"]`)
+          .getByText("category: Food", { exact: true }).waitFor()
+        const shown = await field(page).inputValue()
+        if (shown !== "Food") throw new Error(`the closed field reads "${shown}", not "Food"`)
+        return `${optionCount} options walked: ${walked.join(" → ")}`
+      },
+    },
+    {
+      name:
+        "Combobox: words in any order, a typo, an alias and the Russian keyboard layout each find Eating out, under Food",
+      pageId: "ui",
+      run: async (page) => {
+        await open(page)
+        for (const query of ["out eat", "eatng out", "restaurant", "щге уфештп"]) {
+          await field(page).fill(query)
+          await list(page).getByRole("group", { name: "Food", exact: true })
+            .getByRole("option", { name: "Eating out", exact: true }).waitFor()
+        }
+        await field(page).press("Enter")
+        await card(page).locator(`[data-e2e="controlled-value"]`)
+          .getByText("category: Eating out", { exact: true }).waitFor()
+        const shown = await field(page).inputValue()
+        if (shown !== "Eating out (Food)") throw new Error(`the closed field reads "${shown}"`)
+      },
+    },
+    {
+      name:
+        "Combobox: with nothing else matching, Create “Gym” is highlighted, Enter calls onCreate with Gym, the row spins while it saves, and the new item is chosen",
+      pageId: "ui",
+      run: async (page) => {
+        await open(page)
+        await field(page).fill("Gym")
+        const create = list(page).getByRole("option", { name: "Create “Gym”", exact: true })
+        await create.waitFor()
+        const active = await activeText(page)
+        if (active !== "option:Create “Gym”") throw new Error(`the highlight is on ${active}`)
+        await field(page).press("Enter")
+        await list(page).locator(`[role="option"][aria-busy="true"]`).waitFor()
+        await card(page).locator(`[data-e2e="controlled-value"]`)
+          .getByText("category: Gym, created: Gym", { exact: true }).waitFor()
+        const shown = await field(page).inputValue()
+        // A created item has no parent, so it joins the Other group and the field names it.
+        if (shown !== "Gym (Other)") throw new Error(`the closed field reads "${shown}"`)
+      },
+    },
+    {
+      name:
+        "Combobox: a failed create shows its error under the field, marks it invalid and keeps the query, and a retry that succeeds clears the error and names the new item",
+      pageId: "ui",
+      run: async (page) => {
+        await card(page).getByRole("checkbox", { name: "Make the next create fail" }).check()
+        await open(page)
+        await field(page).fill("Travel")
+        await field(page).press("Enter")
+        const error = card(page).getByRole("alert").getByText(
+          "Couldn't create “Travel”. Try again.",
+        )
+        await error.waitFor()
+        await field(page).and(page.locator(`[aria-invalid="true"]`)).waitFor()
+        const shown = await field(page).inputValue()
+        if (shown !== "Travel") throw new Error(`the field reads "${shown}", not "Travel"`)
+        await field(page).press("ArrowDown")
+        await list(page).getByRole("option", { name: "Create “Travel”", exact: true }).waitFor()
+        await field(page).press("Enter")
+        await card(page).locator(`[data-e2e="controlled-value"]`)
+          .getByText("category: Travel, created: Travel", { exact: true }).waitFor()
+        await error.waitFor({ state: "detached" })
+        await field(page).and(page.locator(`[aria-invalid="true"]`)).waitFor({ state: "detached" })
+        const retried = await field(page).inputValue()
+        if (retried !== "Travel (Other)") {
+          throw new Error(`after the retry the field reads "${retried}"`)
+        }
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name:
+        `Combobox: axe finds no violation on the open grouped list with its Create row, at 390 and 1440 px, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const results: string[] = []
+        for (const width of [390, 1440]) {
+          await page.setViewportSize({ width, height: 900 })
+          await open(page)
+          await field(page).fill("gi")
+          await list(page).getByRole("option", { name: "Create “gi”", exact: true }).waitFor()
+          results.push(`${width}: ${await axePasses(page, ["#demo-Combobox"])}`)
+          await field(page).press("Escape")
+        }
+        return results.join("; ")
+      },
+    })),
+  ]
+}
+
+/**
+ * `IconPicker`: the card's picker in English and, after the language chips, in Russian. The search
+ * finds the car by its Russian name and by "car", every tile is named in the reader's language,
+ * Enter in the search box chooses and never submits the form, ArrowDown moves to the checked tile,
+ * Escape empties the box, a search with no match offers Clear search, and axe passes in both
+ * palettes at 390 and 1440 px with a tile's name bubble showing.
+ */
+function iconPickerSpecs(): Spec[] {
+  const card = (page: Page) => page.locator("#demo-IconPicker")
+  const search = (page: Page) => card(page).locator(`[data-e2e="icon-picker-search"]`)
+  const stored = (page: Page, text: string) =>
+    card(page).locator(`[data-e2e="icon-picker-value"]`).getByText(text).waitFor()
+  return [
+    {
+      name:
+        "IconPicker: in Russian the search finds the car by машина and by car, and each tile is named in Russian",
+      pageId: "ui",
+      run: async (page) => {
+        await card(page).getByText("Русский", { exact: true }).click()
+        await card(page).getByRole("radio", { name: "Русский", checked: true }).waitFor()
+        const group = card(page).getByRole("group", { name: "Значок", exact: true })
+        await group.getByRole("radio", { name: "Машина", exact: true, checked: true }).waitFor()
+        await group.getByRole("radio", { name: "Дом", exact: true }).waitFor()
+        for (const query of ["машина", "car"]) {
+          await search(page).fill(query)
+          await group.getByRole("radio", { name: "Машина", exact: true }).waitFor()
+          const count = await group.getByRole("radio").count()
+          if (count > 6) throw new Error(`"${query}" left ${count} icons`)
+        }
+        await card(page).getByRole("status").getByText(/значк/).waitFor()
+      },
+    },
+    {
+      name:
+        "IconPicker: Enter in the search chooses the first icon without submitting the form, ArrowDown moves to the checked tile, Escape empties the box",
+      pageId: "ui",
+      run: async (page) => {
+        await search(page).fill("coffee")
+        await search(page).press("Enter")
+        await stored(page, "coffee")
+        await card(page).locator(`[data-e2e="icon-picker-value"]`).getByText("saves: 0").waitFor()
+        await search(page).press("ArrowDown")
+        const focused = await page.evaluate(() => {
+          const element = document.activeElement as HTMLInputElement | null
+          return element?.type === "radio" && element.checked ? element.value : null
+        })
+        if (focused !== "coffee") throw new Error(`ArrowDown focused ${focused}`)
+        await search(page).fill("tea")
+        await search(page).press("Escape")
+        const left = await search(page).inputValue()
+        if (left !== "") throw new Error(`Escape left "${left}" in the search box`)
+      },
+    },
+    {
+      name: "IconPicker: a search with no match says so and Clear search brings every icon back",
+      pageId: "ui",
+      run: async (page) => {
+        await search(page).fill("zzz")
+        // The visible message, not the live region that says the same words.
+        await card(page).locator("p:not([role=status])", { hasText: "No icon matches “zzz”." })
+          .waitFor()
+        await card(page).getByRole("button", { name: "Clear search", exact: true }).last().click()
+        await card(page).getByRole("radio", { name: "Car", exact: true }).waitFor()
+        const count = await card(page).locator(`[data-e2e="icon-picker-tile"]`).count()
+        if (count !== 43) throw new Error(`${count} tiles after clearing, not 43`)
+      },
+    },
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name:
+        `IconPicker: axe finds no violation with a tile's name showing, at 390 and 1440 px, ${colorScheme}`,
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const results: string[] = []
+        for (const width of [390, 1440]) {
+          await page.setViewportSize({ width, height: 900 })
+          await search(page).focus()
+          await search(page).press("ArrowDown")
+          results.push(`${width}: ${await axePasses(page, ["#demo-IconPicker"])}`)
+        }
+        return results.join("; ")
+      },
+    })),
+  ]
+}
+
+/**
  * `RadioChips`: native radios drawn as chips. Arrow keys move the choice within one tab stop and
  * skip the disabled chip, the page's own `:has(#id:checked)` CSS follows the choice, the checked
  * chip shows the accent fill and the focus ring, and axe passes in both palettes.
@@ -5501,6 +5739,8 @@ export const specs: readonly Spec[] = [
   ...radioChipsSpecs(),
   ...languagePickerSpecs(),
   ...colorFieldSpecs(),
+  ...iconPickerSpecs(),
+  ...comboboxGroupSpecs(),
   ...themePreviewSpecs(),
   ...unsavedHistorySpecs(),
   ...quickAddSpecs(),
@@ -5530,6 +5770,7 @@ export const specs: readonly Spec[] = [
   ...smallFixSpecs(),
   ...segmentedControlSpecs(),
   ...rightToLeftSpecs(),
+  ...periodAndUsageSpecs(),
 ]
 
 /**
@@ -8368,5 +8609,98 @@ function rightToLeftSpecs(): Spec[] {
         return "ArrowLeft → Doing"
       },
     },
+  ]
+}
+
+/**
+ * `PeriodStepper` and `UsageMeter` (#1162), and the week presets of `DateRangePicker`: the keys step
+ * the month and the live region names it, the return button hands focus to the next arrow, a
+ * Sunday-start "This week" is the week from that Sunday and stays pressed, and axe passes on both
+ * new cards at both widths in both palettes.
+ */
+function periodAndUsageSpecs(): Spec[] {
+  const month = (page: Page) => {
+    const example = page.locator(`[data-e2e="guide-period-month"]`)
+    return {
+      example,
+      name: example.locator(`[aria-live="polite"]`),
+      value: example.locator(`[data-e2e="guide-period-month-value"]`),
+      back: example.getByRole("button", { name: "This month" }),
+      next: example.getByRole("button", { name: "Next month" }),
+    }
+  }
+  const axeSpec = (colorScheme: "light" | "dark"): Spec => ({
+    name: `PeriodStepper and UsageMeter: axe finds no violation at 390 and 1440 px in the ` +
+      `${colorScheme} palette`,
+    pageId: "ui",
+    colorScheme,
+    run: async (page) => {
+      const said: string[] = []
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 })
+        for (const card of ["#demo-PeriodStepper", "#demo-UsageMeter"]) {
+          await page.locator(card).scrollIntoViewIfNeeded()
+          said.push(`${card} at ${width} px: ${await axeCleanIn(page, card)}`)
+        }
+      }
+      return said.join("; ")
+    },
+  })
+
+  return [
+    {
+      name: "PeriodStepper: ] steps October 2026 to November 2026, the live region names it, " +
+        "the return button goes, and [ steps back",
+      pageId: "ui",
+      run: async (page) => {
+        const view = month(page)
+        await view.example.scrollIntoViewIfNeeded()
+        await view.name.filter({ hasText: "October 2026" }).waitFor()
+        await page.locator("body").press("]")
+        await view.name.filter({ hasText: "November 2026" }).waitFor()
+        await view.value.filter({ hasText: "2026-11-01 … 2026-11-30" }).waitFor()
+        await view.back.waitFor({ state: "detached" })
+        await page.locator("body").press("[")
+        await view.name.filter({ hasText: "October 2026" }).waitFor()
+        await view.back.waitFor()
+        return "] → November 2026 (2026-11-01 … 2026-11-30), [ → October 2026"
+      },
+    },
+    {
+      name: "PeriodStepper: the return button brings the current month back and leaves focus on " +
+        "the next arrow",
+      pageId: "ui",
+      run: async (page) => {
+        const view = month(page)
+        await view.example.scrollIntoViewIfNeeded()
+        await view.back.focus()
+        await page.keyboard.press("Enter")
+        await view.name.filter({ hasText: "November 2026" }).waitFor()
+        await view.back.waitFor({ state: "detached" })
+        await view.next.and(page.locator(":focus")).waitFor()
+        return "Enter on This month → November 2026, focus on Next month"
+      },
+    },
+    {
+      name: "DateRangePicker: with firstWeekday 7, This week on Sunday 15 February 2026 is " +
+        "15 to 21 February and stays pressed",
+      pageId: "ui",
+      run: async (page) => {
+        const trigger = page.locator(`[data-e2e="guide-date-range-week"]`)
+        const picker = trigger.locator("xpath=..")
+        await trigger.scrollIntoViewIfNeeded()
+        await trigger.click()
+        await picker.getByRole("button", { name: "This week" }).click()
+        await page.locator(`[data-e2e="week-value"]`)
+          .filter({ hasText: "2026-02-15 … 2026-02-21" }).waitFor()
+        if (!await picker.getByRole("button", { name: "This week" }).isVisible()) {
+          await trigger.click()
+        }
+        await picker.locator(`button[aria-pressed="true"]`, { hasText: "This week" }).waitFor()
+        return "This week → 2026-02-15 … 2026-02-21, pressed"
+      },
+    },
+    axeSpec("light"),
+    axeSpec("dark"),
   ]
 }
