@@ -8,6 +8,7 @@ import { zonedDateTime } from "@spy4x/time/tz"
 import { Buffer } from "node:buffer"
 import type { Spec } from "./runner.ts"
 import { axeCleanIn } from "./axe-clean.ts"
+import { CHECKLIST_DEMO_KEY, CLEARED_MESSAGE, UNDO_MS } from "../src/checklist-demo.tsx"
 import { scrollRegionSpec } from "./scroll-region.ts"
 
 /** The parts of the `UnsavedGuard` card a spec drives, with a change already typed in its field. */
@@ -5427,9 +5428,15 @@ export const specs: readonly Spec[] = [
   })),
   {
     name: "enhanceChecklist: a ticked box survives a reload, reaches a second tab through the " +
-      "storage event and back, and Clear ticks then Undo restores the same ticks",
+      "storage event and back, Clear ticks is announced and focuses Undo, Undo restores the same " +
+      "ticks, and Undo goes away after its timeout",
     pageId: "ui",
     run: async (page) => {
+      // A clean start on a retry, and a clock the check can move past Undo's timeout.
+      await page.clock.install()
+      await page.evaluate((key) => localStorage.removeItem(key), CHECKLIST_DEMO_KEY)
+      await page.reload()
+      await page.locator(`html[data-hydrated="true"]`).waitFor()
       /** The demo checklist's parts on one tab. */
       const parts = (tab: Page) => {
         const card = tab.locator(`[data-e2e="checklist"]`)
@@ -5474,17 +5481,27 @@ export const specs: readonly Spec[] = [
       await first.box("Backups restore", false).waitFor()
       await first.box("Terms published", false).waitFor()
       await first.count("0 of 4 checked").waitFor()
-      const stored = await page.evaluate(() =>
-        localStorage.getItem("preact-components.guide-checklist.v1")
-      )
+      const stored = await page.evaluate((key) => localStorage.getItem(key), CHECKLIST_DEMO_KEY)
       if (stored !== "") throw new Error(`Clear left ${JSON.stringify(stored)} in storage`)
+      const live = first.card.locator(`[data-e2e="checklist-live"][role="status"]`)
+      await live.filter({ hasText: new RegExp(`^${CLEARED_MESSAGE}$`) }).waitFor()
+      const undo = first.card.getByRole("button", { name: "Undo" })
+      await undo.and(page.locator(":focus")).waitFor()
 
-      await first.card.getByRole("button", { name: "Undo" }).click()
+      await undo.click()
       await first.box("Backups restore", true).waitFor()
       await first.box("Terms published", true).waitFor()
       await first.count("2 of 4 checked").waitFor()
+      await live.filter({ hasText: /^Ticks restored$/ }).waitFor()
       await axeCleanIn(page, `[data-e2e="checklist"]`)
-      return "reload, second tab both ways, Clear and Undo"
+
+      // Clear again and let Undo time out: it goes, and focus stays in the list.
+      await first.card.getByRole("button", { name: "Clear ticks" }).press("Enter")
+      await undo.and(page.locator(":focus")).waitFor()
+      await page.clock.runFor(UNDO_MS + 500)
+      await undo.waitFor({ state: "detached" })
+      await first.box("Backups restore", false).and(page.locator(":focus")).waitFor()
+      return "reload, second tab both ways, Clear announced, Undo, Undo timed out"
     },
   },
   {
