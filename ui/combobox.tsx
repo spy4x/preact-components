@@ -1,12 +1,12 @@
 import { join } from "@spy4x/preact-cn/join"
-import { IconXMark } from "@spy4x/preact-icons"
-import { fold } from "@spy4x/platform/universal/text"
+import { IconPlus, IconSpinner, IconXMark } from "@spy4x/preact-icons"
+import { fold, matchEntry, searchEntries } from "@spy4x/platform/universal/text"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
-import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
+import { listboxClasses, listboxHeadingClasses, listboxOptionClass } from "./listbox-parts.tsx"
 import { useDismiss } from "./use-dismiss.ts"
 import { useLabels } from "./i18n.tsx"
 
@@ -72,43 +72,124 @@ export function defaultGetLabel<T>(item: T): string {
 }
 
 /**
- * Whether one item matches a query.
+ * Whether one item matches a query, by the forgiving search of `@spy4x/platform/universal/text`
+ * (`matchEntry`).
  *
- * Substring match on the folded text — the rule a source application's currency selector used,
- * minus the currency fields. Diacritics fold, so `"sao"` finds `"São Paulo"`.
+ * Case and accents fold (`"sao"` finds `"São Paulo"`), words count in any order and each only has
+ * to start a word of the label (`"out eat"` finds `"Eating out"`), a word of four letters or more
+ * may carry one typo (`"eatng"`), an alias counts as the label does, and a query typed in the other
+ * keyboard layout or script still matches (`"щге"` finds `"out"`). A query that is empty or only
+ * spaces matches everything.
  *
  * @param item Item to test.
  * @param query Raw query; the caller need not trim or fold it.
  * @param getLabel How to read the item's text. Defaults to `String(item)`.
+ * @param getAliases Other names that find the item, such as `["restaurant"]`. Defaults to none.
  */
 export function matchesQuery<T>(
   item: T,
   query: string,
   getLabel: (item: T) => string = defaultGetLabel,
+  getAliases?: (item: T) => readonly string[],
 ): boolean {
-  const needle = fold(query.trim())
-  if (needle === "") return true
-  return fold(getLabel(item)).includes(needle)
+  return matchEntry(query, { label: getLabel(item), aliases: getAliases?.(item) }) !== null
 }
 
 /**
- * Filter a list down to the items matching a query, in the order they arrived.
+ * Filter a list down to the items matching a query, the best match first.
  *
- * The pure core of the component: no DOM, no signals, no state. An empty (or whitespace-only) query
- * keeps every item; a query matching nothing returns `[]`, and the component decides that its
+ * The pure core of the component: no DOM, no signals, no state. What matches is
+ * {@link matchesQuery}'s rule; the order is `searchEntries`': exact, then the start of the label,
+ * then words in any order, then an alias, then the other layout or script, then a typo, and equal
+ * matches keep the order they arrived in. An empty (or whitespace-only) query keeps every item in
+ * its order; a query matching nothing returns `[]`, and the component decides that its
  * `emptyMessage` goes in that slot.
  *
  * @param items Items to filter.
  * @param query Raw query, folded internally.
  * @param getLabel How to read an item's text. Defaults to `String(item)`.
- * @returns The matching items, original order preserved.
+ * @param getAliases Other names that find an item. Defaults to none.
+ * @returns The matching items, the best first.
  */
 export function filterItems<T>(
   items: readonly T[],
   query: string,
   getLabel: (item: T) => string = defaultGetLabel,
+  getAliases?: (item: T) => readonly string[],
 ): T[] {
-  return items.filter((item) => matchesQuery(item, query, getLabel))
+  const entries = items.map((item) => ({
+    item,
+    label: getLabel(item),
+    aliases: getAliases?.(item),
+  }))
+  return searchEntries(query, entries).map(({ entry }) => entry.item)
+}
+
+/** A group of {@link Combobox} options, as the caller's `groupOf` names it. */
+export interface ComboboxGroup {
+  /** What makes two items members of the same group. */
+  id: string
+  /** The group's name: its heading when no item leads it, and the `(Food)` of a chosen child. */
+  label: string
+}
+
+/** One run of rows in the popup: a group with its lead and members, or ungrouped items. */
+export interface ComboboxSection<T> {
+  /** The group, or `undefined` for a run of items that belong to none. */
+  group?: ComboboxGroup
+  /** The item that leads the group and is drawn as its heading, when one exists. */
+  lead?: T
+  /** The other items of the section, in the order the filter left them. */
+  items: T[]
+}
+
+/**
+ * Arrange the items a filter left into the sections the popup draws.
+ *
+ * A group starts where its first item is, so with a query the groups follow their best match, and
+ * inside a group the items keep the filter's order. A group whose lead the query did not match
+ * still shows the lead, taken from `all`, as the context its matched members are read in. A run of
+ * ungrouped items between two groups is a section of its own. Without `groupOf`, the whole list is
+ * one ungrouped section.
+ *
+ * @param visible The items the filter left, best first.
+ * @param all Every item, for finding a lead the filter did not leave.
+ * @param groupOf The group an item belongs to, or `null`/`undefined` for none.
+ * @param isGroupLead Whether an item is its group's own item, drawn as the heading.
+ */
+export function comboboxSections<T>(
+  visible: readonly T[],
+  all: readonly T[],
+  groupOf?: (item: T) => ComboboxGroup | null | undefined,
+  isGroupLead?: (item: T) => boolean,
+): ComboboxSection<T>[] {
+  if (!groupOf) return visible.length > 0 ? [{ items: [...visible] }] : []
+  const leads = new Map<string, T>()
+  if (isGroupLead) {
+    for (const item of all) {
+      const group = groupOf(item)
+      if (group && isGroupLead(item) && !leads.has(group.id)) leads.set(group.id, item)
+    }
+  }
+  const sections: ComboboxSection<T>[] = []
+  const byGroup = new Map<string, ComboboxSection<T>>()
+  for (const item of visible) {
+    const group = groupOf(item) ?? undefined
+    if (!group) {
+      const last = sections.at(-1)
+      if (last && !last.group) last.items.push(item)
+      else sections.push({ items: [item] })
+      continue
+    }
+    let section = byGroup.get(group.id)
+    if (!section) {
+      section = { group, lead: leads.get(group.id), items: [] }
+      byGroup.set(group.id, section)
+      sections.push(section)
+    }
+    if (item !== section.lead) section.items.push(item)
+  }
+  return sections
 }
 
 /**
@@ -463,8 +544,52 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
    * Defaults to `String(item)`, right for `string[]` and wrong for objects — pass this for objects.
    */
   getLabel?: (item: T) => string
-  /** Replaces {@link filterItems} entirely, e.g. for server-side filtering. Must be pure. */
+  /**
+   * Replaces {@link filterItems} entirely, e.g. for server-side filtering. Must be pure. Groups
+   * still apply to what it returns, and `aliasesOf` is then the caller's to use or ignore.
+   */
   filter?: (items: readonly T[], query: string) => T[]
+  /**
+   * Other names that find an item, such as `["restaurant", "ресторан"]` for "Eating out". The
+   * default search matches them as it matches the label; the field never shows them.
+   */
+  aliasesOf?: (item: T) => readonly string[]
+  /**
+   * The group an item belongs to, or `null`/`undefined` for none. Each group is drawn as one
+   * `role="group"`, named by its lead (see `isGroupLead`) or else by a heading row with the
+   * group's `label`, which is not an option, so the arrow keys pass over it.
+   */
+  groupOf?: (item: T) => ComboboxGroup | null | undefined
+  /**
+   * Whether an item is its group's own item, such as the category "Food" of the group "Food". That
+   * item is drawn once, as the group's first row and its name, and stays choosable; the other items
+   * of the group are indented under it. A search that matches only a member keeps the lead above it.
+   */
+  isGroupLead?: (item: T) => boolean
+  /**
+   * How the closed field reads a chosen item that is a group member, not its lead. English
+   * default, `"Eating out (Food)"`; pass your own to translate it.
+   */
+  groupedLabel?: (label: string, group: string) => string
+  /**
+   * Lets a person add what they typed. With it, a query no item's label equals gets a last row,
+   * `Create “Gym”`, which is highlighted when nothing else matches; `Enter` or a click calls this
+   * with the trimmed query. Return the new item (or a promise of it) and it is chosen through
+   * `onChange`; return nothing and the list just closes. While a promise is pending the row shows a
+   * spinner and cannot be pressed again; a rejected one (or a throw) keeps the query, marks the field
+   * invalid and shows {@link ComboboxProps.createErrorMessage} under it until the next keystroke, a
+   * create that succeeds or a chosen item.
+   */
+  onCreate?: (query: string) => T | void | Promise<T | void>
+  /** Text of the Create row. English default, `"Create “Gym”"`; pass your own to translate it. */
+  createLabel?: (query: string) => string
+  /**
+   * What the live region says when only the Create row is left; the visible empty message is not
+   * shown then. English default, `"No matches. You can create “Gym”."`.
+   */
+  createOnlyMessage?: (query: string) => string
+  /** The field error after a failed create. English default, `"Couldn't create “Gym”. Try again."`. */
+  createErrorMessage?: (query: string) => string
   /** Custom option markup. Keep it inside the `role="option"` element the component renders. */
   renderOption?: (item: T, state: ComboboxOptionState) => ComponentChildren
   /** Marks an item unselectable: rendered `aria-disabled`, and a click on it does nothing. */
@@ -602,6 +727,10 @@ const COMBOBOX_LABELS = {
   loading: "Loading…",
   clear: "Clear selection",
   required: "Select an option",
+  create: (query: string) => `Create “${query}”`,
+  createOnly: (query: string) => `No matches. You can create “${query}”.`,
+  createError: (query: string) => `Couldn't create “${query}”. Try again.`,
+  inGroup: (label: string, group: string) => `${label} (${group})`,
 }
 
 /**
@@ -666,6 +795,14 @@ export function Combobox<T>({
   onChange,
   getLabel,
   filter,
+  aliasesOf,
+  groupOf,
+  isGroupLead,
+  groupedLabel: groupedLabelProp,
+  onCreate,
+  createLabel: createLabelProp,
+  createOnlyMessage: createOnlyMessageProp,
+  createErrorMessage: createErrorMessageProp,
   renderOption,
   isItemDisabled,
   placeholder: placeholderProp,
@@ -694,7 +831,17 @@ export function Combobox<T>({
     loading: loadingMessageProp,
     clear: clearLabelProp,
     required: requiredMessageProp,
-  }, { count: ["count"] })
+    create: createLabelProp,
+    createOnly: createOnlyMessageProp,
+    createError: createErrorMessageProp,
+    inGroup: groupedLabelProp,
+  }, {
+    count: ["count"],
+    create: ["query"],
+    createOnly: ["query"],
+    createError: ["query"],
+    inGroup: ["label", "group"],
+  })
   const placeholder = text.placeholder
   const emptyMessage = emptyMessageProp ?? text.empty
   const countMessage = text.count
@@ -711,21 +858,50 @@ export function Combobox<T>({
   const draftQuery = useSignal("")
   const isOpen = useSignal(false)
   const activeIndex = useSignal(-1)
+  /** `true` while a promise `onCreate` returned is pending. */
+  const creating = useSignal(false)
+  /** The failed create's message, shown under the field until the next keystroke. */
+  const createError = useSignal<string | null>(null)
   const getText = getLabel ?? defaultGetLabel
   const isDisabled = (item: T) => isItemDisabled?.(item) === true
 
   const draft = controlledQuery ?? draftQuery.value
   /** The list for any query, through the caller's `filter` when given: what the input handler needs. */
   const visibleItems = (text: string) =>
-    (filter ?? ((all: readonly T[], query: string) => filterItems(all, query, getText)))(
+    (filter ?? ((all: readonly T[], query: string) => filterItems(all, query, getText, aliasesOf)))(
       items,
       text,
     )
+  /**
+   * The option rows for a filtered list, in the order they are drawn: each section's lead, then its
+   * members. A lead the query did not match is among them as context, so the rows can outnumber the
+   * matches.
+   */
+  const rowsOf = (list: readonly T[]) =>
+    comboboxSections(list, items, groupOf, isGroupLead).flatMap((section) =>
+      section.lead === undefined ? section.items : [section.lead, ...section.items]
+    )
+  /** Whether a query gets the Create row: a create handler, and no item already called that. */
+  const offersCreate = (text: string) => {
+    const wanted = fold(text.trim())
+    return onCreate !== undefined && wanted !== "" &&
+      !items.some((item) => fold(getText(item).trim()) === wanted)
+  }
   // While an input method composes, the list stays filtered by the text from before it began.
   const query = useComposedQuery(inputRef, draft, (text) => onTyped(text))
   const visible = visibleItems(query)
+  const sections = comboboxSections(visible, items, groupOf, isGroupLead)
+  const rows = sections.flatMap((section) =>
+    section.lead === undefined ? section.items : [section.lead, ...section.items]
+  )
+  const creates = !loading && offersCreate(query)
+  /** Index of the Create row: after every option. */
+  const createIndex = rows.length
+  const rowCount = rows.length + (creates ? 1 : 0)
+  const trimmedQuery = query.trim()
   const listboxId = comboboxListboxId(id)
   const statusId = `${id}-status`
+  const errorId = `${id}-error`
   // One pass over `items` per render, and then the selection tests below cost a lookup each. Rebuilt
   // rather than memoised on `items` on purpose: a caller that mutates its list in place keeps the
   // same array reference, and a cached index would then answer with the stale positions — a wrong
@@ -746,7 +922,11 @@ export function Combobox<T>({
   // below — is a claim the results contradict a moment later, on every keystroke of a search that
   // fetches per keystroke. So loading takes the empty message's place, under the same question.
   const answersLoading = loading && (isOpen.value || hasText)
-  const answersEmpty = !loading && content.emptyMessage !== undefined && (isOpen.value || hasText)
+  // With a Create row on offer, "No matches" would read as a dead end, so the region says what the
+  // row offers instead, and nothing visible repeats it.
+  const answersCreateOnly = creates && visible.length === 0
+  const answersEmpty = !loading && !answersCreateOnly && content.emptyMessage !== undefined &&
+    (isOpen.value || hasText)
   // The count answers one question — "what did my typing leave?" — so it is narrower than the
   // message above on purpose: opening the list is answered by the list itself, which a reader
   // announces along with the highlighted row, and a count repeated on every open would be noise
@@ -774,7 +954,7 @@ export function Combobox<T>({
    * list that is being re-fetched, and it is the one to keep in mind when reading the effects
    * below — none of them fires on the way down, because there is nothing for them to do.
    */
-  const active = activeIndex.value >= visible.length ? -1 : activeIndex.value
+  const active = activeIndex.value >= rowCount ? -1 : activeIndex.value
   // Which channel names this combobox, so each of the two labelled elements picks a consistent one.
   const named = naming({ ariaLabel, "aria-labelledby": ariaLabelledBy })
   const missing = required && !hasSelection
@@ -803,20 +983,20 @@ export function Combobox<T>({
    * of what is on screen, and `active` above is clamped for exactly that.
    */
   useEffect(() => {
-    const empty = visible.length === 0
+    const empty = rows.length === 0
     const arrived = wasEmpty.current && !empty
     wasEmpty.current = empty
     if (!isOpen.value || !arrived || active >= 0) return
-    activeIndex.value = openingState(items, selectedIndex, visible, isDisabled).activeIndex
-  }, [isOpen.value, visible.length])
+    activeIndex.value = openingState(items, selectedIndex, rows, isDisabled).activeIndex
+  }, [isOpen.value, rows.length])
 
   /**
    * Keep the highlighted option on screen.
    *
    * The popup is a fixed-height scroller, so a few `ArrowDown`s walk the highlight off the bottom
    * of it and the arrow keys go on moving something nobody can see — which makes them useless on
-   * any list longer than the box. The row is read out of the list's own children by the index it
-   * was rendered from, so no second lookup can disagree with the highlight.
+   * any list longer than the box. The row is found by the id `aria-activedescendant` names, so no
+   * second lookup can disagree with the highlight, and group wrappers do not shift it.
    *
    * `block: "nearest"` is what keeps this quiet: a row already in view is not scrolled to, so
    * opening a list whose selection is visible does not jerk it, and the list scrolls by exactly
@@ -824,7 +1004,8 @@ export function Combobox<T>({
    */
   useEffect(() => {
     if (!isOpen.value || active < 0) return
-    listRef.current?.children[active]?.scrollIntoView({ block: "nearest" })
+    listRef.current?.querySelector(`[id="${comboboxOptionId(id, active)}"]`)
+      ?.scrollIntoView({ block: "nearest" })
   }, [isOpen.value, active])
 
   const setQuery = (next: string) => {
@@ -838,7 +1019,17 @@ export function Combobox<T>({
    */
   const onTyped = (text: string) => {
     setQuery(text)
-    apply(typingState(visibleItems(text), isDisabled))
+    createError.value = null
+    const remaining = visibleItems(text)
+    const best = typingState(remaining, isDisabled).activeIndex
+    const textRows = rowsOf(remaining)
+    // The best match, wherever its group put it; else the Create row, when it is all there is.
+    const highlight = best >= 0
+      ? textRows.indexOf(remaining[best])
+      : !loading && offersCreate(text)
+      ? textRows.length
+      : -1
+    apply({ isOpen: true, activeIndex: highlight })
   }
 
   /**
@@ -877,11 +1068,49 @@ export function Combobox<T>({
   const openList = () => {
     const clears = controlledQuery === undefined && !isOpen.value
     if (clears) setQuery("")
-    apply(openingState(items, selectedIndex, clears ? visibleItems("") : visible, isDisabled))
+    apply(openingState(items, selectedIndex, clears ? rowsOf(visibleItems("")) : rows, isDisabled))
   }
 
   const select = (item: T) => {
+    createError.value = null
     onChange(item)
+    close()
+  }
+
+  /**
+   * Hand the trimmed query to `onCreate`, and choose what it returns.
+   *
+   * A pending promise blocks a second press, so one `Enter` held down creates one item. A failure,
+   * thrown or rejected, closes the list but keeps the query in the field, so the person sees what
+   * failed, and `ArrowDown` then `Enter` retries it. A create that succeeds, or a chosen item,
+   * clears the error.
+   */
+  const create = async () => {
+    if (!onCreate || creating.value) return
+    const wanted = trimmedQuery
+    const fail = () => {
+      createError.value = text.createError(wanted)
+      isOpen.value = false
+      activeIndex.value = -1
+    }
+    let result: T | void | Promise<T | void>
+    try {
+      result = onCreate(wanted)
+    } catch {
+      return fail()
+    }
+    if (result instanceof Promise) {
+      creating.value = true
+      try {
+        result = await result
+      } catch {
+        return fail()
+      } finally {
+        creating.value = false
+      }
+    }
+    createError.value = null
+    if (result !== undefined) onChange(result as T)
     close()
   }
 
@@ -893,20 +1122,71 @@ export function Combobox<T>({
     const action = comboboxKeyAction(key, {
       activeIndex: active,
       isOpen: isOpen.value,
-    }, visible.length)
+    }, rowCount)
     if (action.preventDefault) event.preventDefault()
     if (action.stopPropagation) event.stopPropagation()
     if (action.select >= 0) {
-      const item = visible[action.select]
+      if (creates && action.select === createIndex) {
+        void create()
+        return
+      }
+      const item = rows[action.select]
       if (item !== undefined) select(item)
       return
     }
     apply(action.state)
   }
 
+  /** How the closed field reads an item: a group member names its group, `"Eating out (Food)"`. */
+  const closedText = (item: T) => {
+    const group = groupOf?.(item)
+    if (!group || isGroupLead?.(item)) return getText(item)
+    return text.inGroup(getText(item), group.label)
+  }
+
+  /**
+   * One option row.
+   *
+   * @param item The item it offers.
+   * @param index Its place among all option rows, which its id and the highlight use.
+   * @param look Whether it leads its group or sits indented under a lead.
+   */
+  const option = (item: T, index: number, look: { lead: boolean; indent: boolean }) => {
+    // A lookup, not a scan: reading `items` per row is what made this loop quadratic.
+    const selected = positions.get(item) === selectedIndex
+    const isActive = index === active
+    const disabled = isDisabled(item)
+    return (
+      <li
+        key={`${index}-${getText(item)}`}
+        id={comboboxOptionId(id, index)}
+        role="option"
+        aria-selected={selected}
+        aria-disabled={disabled || undefined}
+        data-active={isActive || undefined}
+        class={listboxOptionClass({ active: isActive, selected, disabled, ...look })}
+        onMouseDown={(event) => event.preventDefault()}
+        // No pointer handler moves the highlight. `aria-activedescendant` is where a screen
+        // reader is reading, and writing it from a `mouseenter` drags that reading around
+        // with a pointer its user is not holding. The row under the pointer still lights up
+        // — `hover:bg-hover` in the base classes does that, in CSS, announcing nothing.
+        onClick={() => {
+          if (!disabled) select(item)
+        }}
+      >
+        {renderOption ? renderOption(item, { selected, active: isActive }) : getText(item)}
+      </li>
+    )
+  }
+
   // Closed and not being searched: the input shows the selection. Open or mid-query: it shows the
   // query, because that is what those characters are for.
-  const inputValue = isOpen.value ? draft : hasSelection ? getText(items[selectedIndex]) : draft
+  // A failed create keeps its query on show, so the error under the field names what is in it.
+  const inputValue = isOpen.value || createError.value !== null
+    ? draft
+    : hasSelection
+    ? closedText(items[selectedIndex])
+    : draft
 
   return (
     <div class={join("relative", className)} ref={rootRef}>
@@ -932,9 +1212,15 @@ export function Combobox<T>({
           // spoken as part of the field's identity long after the number was true. Zero matches
           // never carries a count, so while `answersEmpty` holds the region's text is exactly the
           // empty message and nothing else.
-          aria-describedby={[callerDescribedBy, answersEmpty ? statusId : undefined]
-            .filter(Boolean).join(" ") || undefined}
-          aria-invalid={callerInvalid === true || callerInvalid === "true" ? true : undefined}
+          aria-describedby={[
+            callerDescribedBy,
+            answersEmpty ? statusId : undefined,
+            createError.value !== null ? errorId : undefined,
+          ].filter(Boolean).join(" ") || undefined}
+          aria-invalid={callerInvalid === true || callerInvalid === "true" ||
+              createError.value !== null
+            ? true
+            : undefined}
           aria-required={required || undefined}
           aria-expanded={isOpen.value}
           aria-controls={listboxId}
@@ -1006,33 +1292,65 @@ export function Combobox<T>({
         tabIndex={-1}
         class={join(listboxClasses, listboxClass)}
       >
-        {content.options.map((item, index) => {
-          // A lookup, not a scan: reading `items` per row is what made this loop quadratic.
-          const selected = positions.get(item) === selectedIndex
-          const isActive = index === active
-          const disabled = isDisabled(item)
+        {sections.map((section, sectionIndex) => {
+          const first = rows.indexOf(section.lead ?? section.items[0])
+          const lead = section.lead
+          const options = lead === undefined ? section.items : [lead, ...section.items]
+          const drawn = options.map((item, offset) =>
+            option(item, first + offset, {
+              lead: lead !== undefined && offset === 0,
+              indent: lead !== undefined && offset > 0,
+            })
+          )
+          if (!section.group) return drawn
+          const headingId = `${id}-group-${sectionIndex}`
           return (
+            // `role="none"` keeps the `<li>` out of the tree, so the listbox owns the group.
             <li
-              key={`${index}-${getText(item)}`}
-              id={comboboxOptionId(id, index)}
-              role="option"
-              aria-selected={selected}
-              aria-disabled={disabled || undefined}
-              data-active={isActive || undefined}
-              class={listboxOptionClass({ active: isActive, selected, disabled })}
-              onMouseDown={(event) => event.preventDefault()}
-              // No pointer handler moves the highlight. `aria-activedescendant` is where a screen
-              // reader is reading, and writing it from a `mouseenter` drags that reading around
-              // with a pointer its user is not holding. The row under the pointer still lights up
-              // — `hover:bg-hover` in the base classes does that, in CSS, announcing nothing.
-              onClick={() => {
-                if (!disabled) select(item)
-              }}
+              key={`group-${section.group.id}`}
+              role="none"
+              class={sectionIndex > 0 ? "border-t border-subtle" : undefined}
             >
-              {renderOption ? renderOption(item, { selected, active: isActive }) : getText(item)}
+              <ul
+                role="group"
+                aria-labelledby={lead === undefined ? headingId : comboboxOptionId(id, first)}
+              >
+                {lead === undefined && (
+                  <li id={headingId} role="presentation" class={listboxHeadingClasses}>
+                    {section.group.label}
+                  </li>
+                )}
+                {drawn}
+              </ul>
             </li>
           )
         })}
+        {creates && (
+          <li
+            key="create"
+            id={comboboxOptionId(id, createIndex)}
+            role="option"
+            aria-selected={false}
+            aria-disabled={creating.value || undefined}
+            aria-busy={creating.value || undefined}
+            data-active={active === createIndex || undefined}
+            class={join(
+              listboxOptionClass({
+                active: active === createIndex,
+                selected: false,
+                disabled: creating.value,
+              }),
+              rows.length > 0 ? "border-t border-subtle" : undefined,
+            )}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void create()}
+          >
+            {creating.value
+              ? <IconSpinner class="size-4 shrink-0 text-muted" />
+              : <IconPlus class="size-4 shrink-0 text-muted" />}
+            <span class="min-w-0">{text.create(trimmedQuery)}</span>
+          </li>
+        )}
       </ul>
       {
         /*
@@ -1069,7 +1387,11 @@ export function Combobox<T>({
           </p>
         )}
         {announcesCount && <span class="sr-only">{countMessage(visible.length)}</span>}
+        {answersCreateOnly && <span class="sr-only">{text.createOnly(trimmedQuery)}</span>}
       </div>
+      {createError.value !== null && (
+        <p id={errorId} role="alert" class="mt-2 text-sm text-danger">{createError.value}</p>
+      )}
     </div>
   )
 }

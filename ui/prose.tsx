@@ -66,6 +66,8 @@ const ID = /\bid="([^"]+)"/
 const PRE = /<pre\b([^>]*)>([\s\S]*?)<\/pre>/g
 /** A `tabindex` attribute among an opening tag's attributes. */
 const TABINDEX = /\btabindex=/i
+/** A `dir` attribute among an opening tag's attributes. */
+const DIR = /\bdir=/i
 
 /** The copy button's three glyphs, rendered once: at rest, after a copy, after a failure. */
 let glyphs: string | undefined
@@ -101,11 +103,12 @@ function enhance(html: string, anchors: boolean, words: ProseLabels): string {
 
 /**
  * `html` with every `<pre>` a Tab stop, so a line wider than the block can be scrolled from the
- * keyboard, and, when `copy` is set, wrapped with a hidden copy button and its live region.
+ * keyboard, laid out left to right so code keeps its order on a right-to-left page, and, when
+ * `copy` is set, wrapped with a hidden copy button and its live region.
  */
 function enhanceCode(html: string, copy: boolean, words: ProseLabels): string {
   return html.replace(PRE, (_block: string, attributes: string, content: string) => {
-    const pre = `<pre${attributes}${
+    const pre = `<pre${attributes}${DIR.test(attributes) ? "" : ' dir="ltr"'}${
       TABINDEX.test(attributes) ? "" : ' tabindex="0"'
     }>${content}</pre>`
     if (!copy) return pre
@@ -141,7 +144,8 @@ function enhanceCode(html: string, copy: boolean, words: ProseLabels): string {
  * heading so the heading's name stays its text.
  *
  * A code block keeps its lines: a line wider than the block scrolls inside it, so a copied command
- * stays one line, and each `<pre>` of `html` is a Tab stop so the keyboard can scroll it. With
+ * stays one line, and each `<pre>` of `html` is a Tab stop so the keyboard can scroll it and reads
+ * left to right on a right-to-left page, unless it names its own `dir`. With
  * `copyCode`, each one also gets a copy button, rendered `hidden` with its labels, and a polite
  * live region. Nothing shows without JavaScript; one island wires every button on the page:
  *
