@@ -44,7 +44,6 @@ function docs(): Docs {
     ].join("\n")
   }
   return {
-    agents: `## Package layout\n\n${summary}\n`,
     readme: [
       "## Packages",
       "",
@@ -70,9 +69,12 @@ describe("export lists", () => {
 
   it("reports a summary row that names something its package does not export", () => {
     const input = docs()
-    input.agents = input.agents.replace("| `ui/` | `Widget` |", "| `ui/` | `Widget`, `Gadget` |")
+    input.maintaining = input.maintaining.replace(
+      "| `ui/` | `Widget` |",
+      "| `ui/` | `Widget`, `Gadget` |",
+    )
     expect(exportListProblems(input, packages())).toEqual([
-      "AGENTS.md lists `Gadget` under ui/, which ui does not export",
+      "docs/maintaining.md lists `Gadget` under ui/, which ui does not export",
     ])
   })
 
@@ -80,25 +82,24 @@ describe("export lists", () => {
     const surfaces = packages()
     surfaces.cn.names.push("cx")
     expect(exportListProblems(docs(), surfaces)).toEqual([
-      "AGENTS.md's cn/ row does not name `cx`, which cn exports",
       "docs/maintaining.md's cn/ row does not name `cx`, which cn exports",
     ])
   })
 
   it("reports a summary row for a directory that is not a published package", () => {
     const input = docs()
-    input.agents = input.agents.replace(
+    input.maintaining = input.maintaining.replace(
       "| `ui/` | `Widget` |",
       "| `ui/` | `Widget` |\n| `auth/` | `Login`, `Nav` |",
     )
     expect(exportListProblems(input, packages())).toEqual([
-      "AGENTS.md has a row for auth/, which is not a published package",
+      "docs/maintaining.md has a row for auth/, which is not a published package",
     ])
   })
 
   it("accepts the pages/ row, which publishes nothing", () => {
     const input = docs()
-    input.agents = input.agents.replace(
+    input.maintaining = input.maintaining.replace(
       "| `ui/` | `Widget` |",
       "| `ui/` | `Widget` |\n| `pages/` | demo app, not published |",
     )

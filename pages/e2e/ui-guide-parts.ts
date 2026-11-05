@@ -34,9 +34,8 @@ export const CONTRAST_PARTS: Partial<Record<GuidePageId, readonly PagePart[]>> =
     {
       what: "the display cards before LookGrid",
       cards: { section: "display", before: "LookGrid" },
-      // `MoneyDisplay`'s negative amount, and the last column of the `Prose` demo's wide table,
-      // past the edge of its scroll region.
-      known: { [CONTRAST]: [1, 0], [OBSCURED]: [4, 4] },
+      // The last column of the `Prose` demo's wide table, past the edge of its scroll region.
+      known: { [OBSCURED]: [4, 4] },
     },
     {
       what: "the display cards from LookGrid on",
@@ -48,8 +47,8 @@ export const CONTRAST_PARTS: Partial<Record<GuidePageId, readonly PagePart[]>> =
     {
       what: "the inputs and fields sections",
       sections: ["inputs", "fields"],
-      // The disabled `FileInput` zone's lines, and the three disclosure chevrons.
-      known: { [CONTRAST]: [2, 1], [GLYPH]: [3, 3] },
+      // The disabled `FileInput` zone's lines, and the four disclosure chevrons.
+      known: { [CONTRAST]: [2, 1], [GLYPH]: [4, 4] },
     },
     { what: "the feedback and billing sections", sections: ["feedback", "billing"] },
   ],

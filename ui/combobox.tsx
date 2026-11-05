@@ -696,7 +696,7 @@ export interface ComboboxNamingProps {
 }
 
 /**
- * Chevron of the search input, inline so `ui`'s "no dependency on `icons/`" rule holds.
+ * Chevron of the search input.
  *
  * `aria-hidden` because the input already announces itself as a combobox; the glyph adds nothing
  * for assistive tech.

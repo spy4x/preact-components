@@ -26,11 +26,10 @@ import type { Spec } from "./runner.ts"
  */
 const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>> = {
   overview: {},
-  // Found once the stage's dots stopped hiding the text on it (#695). Light: `MoneyDisplay`'s
-  // negative amount, red-600 on the canvas at 4.33:1, and the disabled `FileInput` zone's two lines;
-  // dark: the zone's hint alone. A disabled control is exempt from the contrast rule, which axe
-  // cannot tell from the zone's markup; the amount is a `ui/` fix of its own.
-  ui: { "color-contrast": [3, 1] },
+  // Found once the stage's dots stopped hiding the text on it (#695). Light: the disabled
+  // `FileInput` zone's two lines; dark: the zone's hint alone. A disabled control is exempt from the
+  // contrast rule, which axe cannot tell from the zone's markup.
+  ui: { "color-contrast": [2, 1] },
   icons: {},
   // The `bg-scrim` swatch draws its label on the scrim over the light canvas, at 4.28:1. No
   // component puts text on that scrim: the Lightbox's labels sit on `bg-scrim-strong`.
@@ -74,8 +73,8 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     // The header's version pill, the install command in its scroll region, three captions of a
     // scroll-snap row, and the last column of the `Prose` demo's wide table in its scroll region.
     [OBSCURED]: [9, 9],
-    // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and three disclosure chevrons.
-    [GLYPH]: [9, 9],
+    // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and four disclosure chevrons.
+    [GLYPH]: [10, 10],
     // A one-character `Kbd` key that axe measured below the ratio and left undecided.
     [SHORT]: [1, 1],
     // The `LoopVideo` card's silent loop, which has no `<track kind="captions">`: a clip with no
@@ -362,8 +361,8 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
 const KNOWN_HOVER_INCOMPLETE: Partial<
   Record<GuidePageId, Readonly<Record<string, readonly [light: number, dark: number, ink: number]>>>
 > = {
-  // The three disclosure chevrons, as on the page scan.
-  ui: { nonBmp: [3, 3, 3] },
+  // The four disclosure chevrons, as on the page scan.
+  ui: { nonBmp: [4, 4, 4] },
 }
 
 /** What a pointer can rest on: an element with a hover background, and every table body row. */

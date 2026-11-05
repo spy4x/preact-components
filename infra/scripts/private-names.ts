@@ -18,9 +18,9 @@
  * one) is exactly the kind of leak this check exists to catch, so ignoring case would miss it.
  * The boundary treats a hyphen as part of a word, alongside letters, digits and underscore, rather
  * than as a separator — the same rule `deno fmt`'s own kebab-case file names imply. That is what
- * keeps a short name from matching inside an unrelated hyphenated token such as the locale code
- * `en-GB`, while a hyphenated name (`widget-tracker`, invented for this example) still matches as
- * one whole word: the boundary sits outside it, not at the hyphen in the middle.
+ * keeps a short name (`bolt`) from matching inside an unrelated hyphenated token (`nn-bolt`),
+ * while a hyphenated name (`widget-tracker`) still matches as one whole word: the boundary sits
+ * outside it, not at the hyphen in the middle. All three words are invented for this example.
  *
  * This is a check meant to run unattended before a publish, so a broken input fails loudly instead
  * of quietly reporting nothing to worry about: a names file that turns out to hold no names (it is

@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1384 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1391 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -84,6 +84,7 @@ export const COMPONENT_CLASSES: string = [
   "[&:dir(rtl)]:origin-top-right",
   "[&:dir(rtl)]:shadow-[inset_1.5rem_0_0_0_var(--color-surface)]",
   "[&:dir(rtl)]:shadow-[inset_1.5rem_0_1rem_-1rem_color-mix(in_oklab,var(--color-foreground)_30%,transparent)]",
+  "[&:dir(rtl)]:translate-x-0",
   "[&:dir(rtl)]:translate-x-1/2",
   "[&:dir(rtl)]:translate-x-[calc(50%+var(--shift,0px))]",
   "[&:dir(rtl)]:translate-x-full",
@@ -183,6 +184,7 @@ export const COMPONENT_CLASSES: string = [
   "bg-[var(--color-border-strong,oklch(0.707_0.022_261.325))]",
   "bg-[var(--color-border-subtle,oklch(0.928_0.006_264.531))]",
   "bg-[var(--color-canvas,oklch(0.967_0.003_264.542))]",
+  "bg-[var(--color-muted-foreground,oklch(0.446_0.03_256.802))]",
   "bg-[var(--color-nav-active,var(--color-selected-text))]",
   "bg-[var(--color-surface,oklch(1_0_0))]",
   "bg-[var(--color-surface-active,var(--color-accent-100))]",
@@ -874,6 +876,7 @@ export const COMPONENT_CLASSES: string = [
   "min-w-60",
   "min-w-[200px]",
   "min-w-[4.5rem]",
+  "min-w-[4ch]",
   "min-w-full",
   "ml-auto",
   "motion-reduce:animate-none",
@@ -882,12 +885,15 @@ export const COMPONENT_CLASSES: string = [
   "motion-safe:[&:dir(rtl)]:starting:translate-x-8",
   "motion-safe:duration-150",
   "motion-safe:duration-200",
+  "motion-safe:duration-300",
+  "motion-safe:ease-out",
   "motion-safe:group-focus-visible:scale-110",
   "motion-safe:group-hover:scale-110",
   "motion-safe:starting:-translate-x-8",
   "motion-safe:starting:opacity-0",
   "motion-safe:starting:translate-x-8",
   "motion-safe:transition-[opacity,visibility]",
+  "motion-safe:transition-[width]",
   "motion-safe:transition-colors",
   "motion-safe:transition-opacity",
   "motion-safe:transition-transform",
@@ -1333,6 +1339,7 @@ export const COMPONENT_CLASSES: string = [
   "uppercase",
   "visible",
   "w-(--toastr-width)",
+  "w-0.5",
   "w-1/3",
   "w-10",
   "w-11",

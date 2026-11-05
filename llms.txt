@@ -527,7 +527,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1384 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1391 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -650,6 +650,7 @@ ComparisonValue	type	@spy4x/preact-ui	How far a product covers one capability.
 ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions.
 CopyBlock	component	@spy4x/preact-ui	A box of monospace text with a copy control beside it: an install command, an API key, an id.
 CopyButton	component	@spy4x/preact-ui	Copy a string to the clipboard through an injected port or the browser API, and say whether it worked.
+CurrencyField	component	@spy4x/preact-ui	Picks a currency by its code, its name or its symbol: a `Combobox` of `options`.
 DATE_TIME_FIELD_LABELS	constant	@spy4x/preact-ui	The English words `DateTimeField` shows when the caller passes none.
 DISMISS_KEY	constant	@spy4x/preact-ui	The key that asks a `Modal` to close.
 DOCS_NAV_LABELS	constant	@spy4x/preact-ui	The English words `DocsNav` shows when the caller passes none.
@@ -778,11 +779,14 @@ LookTile	component	@spy4x/preact-ui	One look of a shop's catalog: a tall 3:4 pho
 LoopVideo	component	@spy4x/preact-ui	A silent, looping clip that proves a claim on a public page: it plays while at least half of it is on screen, and the visitor can pause it.
 MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read of an option.
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
-MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals.
+MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat`, in the person's region format: `<MoneyDisplay amount={123456} currency="EUR" />` is `1.234,56 €` under a `FormatContext` for `de-DE` and `€1,234.56` for `en-US`, whatever language the words around it are in.
 MoneyInput	component	@spy4x/preact-ui	A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it.
 MoneyInputBounds	type	@spy4x/preact-ui	
+MoneyInputDecimalsMessage	type	@spy4x/preact-ui	A `MoneyInputProps.decimalsMessage` function: `decimals` is how many the currency takes, `0` for one with whole amounts only.
 MoneyInputEdit	type	@spy4x/preact-ui	What one edit of `MoneyInput`'s text resolves to — see `resolveMoneyInputEdit`.
+MoneyInputEditOptions	type	@spy4x/preact-ui	The optional inputs of `resolveMoneyInputEdit`.
 MoneyInputRangeMessage	type	@spy4x/preact-ui	A `MoneyInputProps.rangeMessage` function.
+MoneyTone	type	@spy4x/preact-ui	How `MoneyDisplay` marks an amount's direction:
 MoreMenu	component	@spy4x/preact-ui	A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list.
 Notice	component	@spy4x/preact-ui	A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed.
 NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`).
@@ -810,6 +814,7 @@ PageHeroAuthor	type	@spy4x/preact-ui	The person who wrote a page, named in `Page
 PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control renders: a real page, or a collapsed run of pages.
 PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
+PeriodStepper	component	@spy4x/preact-ui	Steps a screen through weeks or months: "‹ › November 2026 This month".
 PlanCard	component	@spy4x/preact-ui	The current plan: its name, status, price and the date it renews or ends, with a "Manage billing" form that posts to the app's billing-portal route.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.
 PostList	component	@spy4x/preact-ui	A list of articles, as a blog's index or its "Read next": per row the day it went live and its reading time, the title as a link, and a description cut to two lines, and an optional cover: above the text on a phone, beside it from 640 px.
@@ -914,6 +919,9 @@ UnsavedClick	type	@spy4x/preact-ui	The parts of a click that decide whether the 
 UnsavedGuard	component	@spy4x/preact-ui	Asks before a person leaves a page with unsaved changes.
 UnsavedLink	type	@spy4x/preact-ui	The parts of a link that decide where it goes.
 UpgradePrompt	component	@spy4x/preact-ui	A short message and an upgrade link, shown in place of a feature the current plan does not include.
+UsageMeter	component	@spy4x/preact-ui	How much of a limit is used: a budget's spending, a plan's storage, a team's seats.
+UsageMeterState	type	@spy4x/preact-ui	Where a reading stands against its limit.
+UsageReading	type	@spy4x/preact-ui	The numbers `UsageMeter` draws, worked out from a reading and its limit.
 WHEN_LABELS	constant	@spy4x/preact-ui	The English words of `When` and `OnDay`.
 WallClockOccurrence	type	@spy4x/preact-ui	Which of the two instants a repeated wall-clock time names: before or after the clocks go back.
 When	component	@spy4x/preact-ui	A moment as its distance from now, `3 days ago`, in a `<time datetime>` whose hover text is the exact instant in the person's format (`FormatContext`).
@@ -950,7 +958,7 @@ counterText	helper	@spy4x/preact-ui	The counter text, e.g.
 createHotkeyListener	helper	@spy4x/preact-ui	The `keydown` listener `useHotkeys` attaches, on its own: it reads the bindings on every press, runs the first that matches and cancels the press's default action.
 createLeaveGuard	helper	@spy4x/preact-ui	Creates a `LeaveGuard`.
 dashboardRows	helper	@spy4x/preact-ui	Groups widgets into rows, in order: each run of consecutive stats is one row, and each full widget is a row of its own.
-dateRangePresets	helper	@spy4x/preact-ui	Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods, then custom.
+dateRangePresets	helper	@spy4x/preact-ui	Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods from the shortest (weeks) to the longest, then custom.
 defaultCommandPaletteLabels	helper	@spy4x/preact-ui	English defaults for every `CommandPaletteLabels` entry.
 defaultCommandPaletteMatchLabels	helper	@spy4x/preact-ui	English defaults for the words `showMatch` puts beside a result, one per `CommandPaletteMatchKind`.
 defaultComparisonTableLabels	helper	@spy4x/preact-ui	The English defaults of `ComparisonTableLabels`.
@@ -972,6 +980,7 @@ dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 enhanceCodeCopy	helper	@spy4x/preact-ui	Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside `root`: a press copies the block's text as it reads, without its final newline, so a pasted command waits for Enter.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
+filterCurrencies	helper	@spy4x/preact-ui	The options `CurrencyField` lists for `query`, best first.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, the best match first.
 filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.
@@ -1014,6 +1023,7 @@ nextTabIndex	helper	@spy4x/preact-ui	Index the tablist should move focus to for 
 occurrenceOf	helper	@spy4x/preact-ui	Which pass of its wall clock an instant is: `"later"` when `value` is a repeated time in `timeZone` and `instant` is its second occurrence, `"earlier"` otherwise — including when either argument cannot be resolved.
 openingState	helper	@spy4x/preact-ui	The state a fresh list opens into: open, highlighting the selected item when the filter kept it, else the first enabled one.
 pageRange	helper	@spy4x/preact-ui	Collapse a page range into the items a pagination control renders.
+periodStepperLabels	helper	@spy4x/preact-ui	The English words of `PeriodStepper`, the same as the `PeriodStepper.*` keys of `i18n/en.ts`.
 pickHotkey	helper	@spy4x/preact-ui	The binding a key press runs, or `undefined`: the first binding whose combination matches and that may fire where the press landed.
 presetForRange	helper	@spy4x/preact-ui	The first preset whose range equals `range`, or `undefined` when none does.
 presetForTimeRange	helper	@spy4x/preact-ui	The first sub-day preset whose range equals `range`, or `undefined` when none does — the `TimeRangePreset` counterpart of `presetForRange`.
@@ -1046,6 +1056,8 @@ timeRangePresets	helper	@spy4x/preact-ui	Canonical presentation order — the `T
 toggleChipSelection	helper	@spy4x/preact-ui	The selection after one chip is pressed, in multiple mode: the chip is added or removed, and the result keeps the order of `options` rather than the order of presses.
 translate	helper	@spy4x/preact-ui	The `ui` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels, such as one that switches on a case.
 typingState	helper	@spy4x/preact-ui	The state a keystroke leaves behind after the caller has re-filtered for the new query.
+usageMeterLabels	helper	@spy4x/preact-ui	The English words of `UsageMeter`, the same as the `UsageMeter.*` keys of `i18n/en.ts`.
+usageReading	helper	@spy4x/preact-ui	Work out where `used` stands against `limit`.
 useApplePlatform	hook	@spy4x/preact-ui	Whether this browser is an Apple platform, for drawing or announcing `mod` as Command.
 useFocusAfterRemoval	hook	@spy4x/preact-ui	Keeps focus on the page when a row leaves a list because its own removal went through.
 useFocusFallback	hook	@spy4x/preact-ui	Keeps focus on the page when the focused control inside `container` leaves it, or when the whole container leaves.

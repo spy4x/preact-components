@@ -1,15 +1,6 @@
 {
-  // Every package a parallel agent will add is listed here up front. Deno skips
-  // workspace members whose directory does not exist yet (warning, exit 0), so a
-  // package becomes a real member the moment its own `<pkg>/deno.json` lands.
-  // That keeps this file untouched by every package PR — no shared-file conflicts.
-  //
-  // `./map` sat here on that same basis for a while and never arrived — `Map` was a recorded
-  // "deliberately not built" entry (see `docs/not-building.md`), because it needed Leaflet, a
-  // dependency decision nobody had taken — and was dropped rather than kept as a phantom, so
-  // `deno task check` stopped printing `Workspace member "./map" not found` on every invocation.
-  // Issue #143 took that decision (Leaflet is one of the "keep" libraries in the owner's global
-  // policy) and added the package back here, together with `map/deno.json`, in the same change.
+  // A member joins or leaves this list in the same change as its own `<pkg>/deno.json`, never
+  // ahead of it: Deno only warns about a listed member whose directory does not exist.
   "workspace": [
     "./charts",
     "./cn",
@@ -122,10 +113,10 @@
     // entries map every subpath of a package (`@spy4x/platform/universal/csv`) to the same release;
     // `deno publish` rewrites each import to that exact `jsr:` version, so only a package that
     // imports one of these gains it as a dependency.
-    "@spy4x/platform/": "jsr:/@spy4x/platform@1.95.0/",
-    "@spy4x/time/": "jsr:/@spy4x/time@1.95.0/",
-    "@spy4x/validation": "jsr:@spy4x/validation@1.95.0",
-    "@spy4x/validation/": "jsr:/@spy4x/validation@1.95.0/",
+    "@spy4x/platform/": "jsr:/@spy4x/platform@1.116.0/",
+    "@spy4x/time/": "jsr:/@spy4x/time@1.116.0/",
+    "@spy4x/validation": "jsr:@spy4x/validation@1.116.0",
+    "@spy4x/validation/": "jsr:/@spy4x/validation@1.116.0/",
 
     // The HTML renderer every package's suite imports. One pin here (#133) replaces six identical
     // per-package copies that all resolved the same version. `server/` renders its pages with it,

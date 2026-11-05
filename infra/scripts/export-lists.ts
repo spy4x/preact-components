@@ -6,10 +6,9 @@
  * whole modules. This script reads the exports from the packages themselves and reports every name
  * a document lists that the package does not export, in four places:
  *
- * 1. the "Package layout" table in `AGENTS.md` and the "Scope" table in `docs/maintaining.md` — a
- *    summary,
- *    one row per package. Every name written in backticks in a row must be a value export or a
- *    subpath of that package, and every published package needs a row. A summary may stop at
+ * 1. the "Scope" table in `docs/maintaining.md` — a summary, one row per package. Every name
+ *    written in backticks in a row must be a value export or a subpath of that package, and every
+ *    published package needs a row. A summary may stop at
  *    "and the rest", so it is not required to name everything — except for the few small packages
  *    in {@linkcode COMPLETE_SUMMARIES}, whose row must name every value export;
  * 2. the `deno add` lines in `docs/usage.md`'s Install section — one line per published package,
@@ -70,7 +69,6 @@ export interface PackageSurface {
 
 /** The documents this script reads, as text. */
 export interface Docs {
-  agents: string
   /** The root `README.md`, whose "Packages" table links each package's README. */
   readme: string
   /** `docs/usage.md`, whose Install section holds the `deno add` lines. */
@@ -168,7 +166,6 @@ export function exportListProblems(
     packages[id].names.includes(name) || name in packages[id].subpaths
 
   const summaries = [
-    { file: "AGENTS.md", rows: tableRows(docs.agents, "## Package layout") },
     { file: "docs/maintaining.md", rows: tableRows(docs.maintaining, "## Scope") },
   ]
   for (const { file, rows } of summaries) {
@@ -292,7 +289,7 @@ export async function readPackages(): Promise<Record<string, PackageSurface>> {
 }
 
 /**
- * Reads `AGENTS.md`, `README.md`, `docs/usage.md`, `docs/maintaining.md` and every published
+ * Reads `README.md`, `docs/usage.md`, `docs/maintaining.md` and every published
  * package's `README.md`.
  *
  * @param ids Package directories whose README to read.
@@ -303,7 +300,6 @@ export async function readDocs(ids: string[]): Promise<Docs> {
   const packageReadmes: Record<string, string> = {}
   for (const id of ids) packageReadmes[id] = await read(`${id}/README.md`)
   return {
-    agents: await read("AGENTS.md"),
     readme: await read("README.md"),
     usage: await read("docs/usage.md"),
     maintaining: await read("docs/maintaining.md"),
