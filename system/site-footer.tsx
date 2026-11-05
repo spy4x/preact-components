@@ -69,7 +69,11 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
 
   return (
     <footer
-      class={cn("border-t border-subtle bg-surface dark:bg-canvas", barFocusOffset, className)}
+      class={cn(
+        "border-t border-subtle bg-surface dark:bg-canvas print:hidden",
+        barFocusOffset,
+        className,
+      )}
     >
       <div class="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
         {isGiven(brand) && <div>{brand}</div>}
