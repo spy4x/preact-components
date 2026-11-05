@@ -527,7 +527,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1384 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1385 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -617,6 +617,11 @@ ChangeList	component	@spy4x/preact-ui	What changed, month by month: per month it
 ChangeMonth	type	@spy4x/preact-ui	One month of a `ChangeList`.
 Checkbox	component	@spy4x/preact-ui	Render the box and its label.
 CheckboxShape	type	@spy4x/preact-ui	The box's outline: the theme's square `.pc-checkbox`, or a circle, as a task list's check.
+ChecklistControl	type	@spy4x/preact-ui	What `enhanceChecklist` returns: call it to unwire the list.
+ChecklistCount	type	@spy4x/preact-ui	Ticked and total boxes of one group: the whole list, or one section of it.
+ChecklistOptions	type	@spy4x/preact-ui	Options of `enhanceChecklist`.
+ChecklistState	type	@spy4x/preact-ui	What `enhanceChecklist` reports to `onChange`.
+ChecklistStorage	type	@spy4x/preact-ui	Where `enhanceChecklist` keeps the ticks: the two `Storage` members it calls, so a page passes `localStorage` as it is and a test passes a fake.
 ClickModifiers	type	@spy4x/preact-ui	The part of a `MouseEvent` `isPlainClick` reads.
 Cluster	component	@spy4x/preact-ui	Children in a row that wraps, a named `gap` apart: a toolbar, a row of buttons, a list of tags.
 ClusterAlign	type	@spy4x/preact-ui	How a `Cluster`'s children line up across the row.
@@ -970,6 +975,7 @@ describedImages	helper	@spy4x/preact-ui	Keep only the images with a real descrip
 dialogHeldFocus	helper	@spy4x/preact-ui	Whether the dialog still holds the focused element.
 dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
+enhanceChecklist	helper	@spy4x/preact-ui	Wire the checkboxes a server rendered inside `root` into a checklist whose ticks survive a reload: restore the ticks from storage, save them on every change and follow another tab's changes through the `storage` event.
 enhanceCodeCopy	helper	@spy4x/preact-ui	Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside `root`: a press copies the block's text as it reads, without its final newline, so a pasted command waits for Enter.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, the best match first.
