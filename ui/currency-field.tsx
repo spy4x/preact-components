@@ -1,4 +1,4 @@
-import type { CurrencyOption } from "@spy4x/platform/universal/money"
+import type { CurrencyOption } from "@spy4x/platform/universal/money-core"
 import { searchEntries } from "@spy4x/platform/universal/text"
 import type { JSX } from "preact"
 import { Combobox } from "./combobox.tsx"

@@ -5,7 +5,7 @@ import {
   formatMoney,
   moneyDecimalString,
   parseMoney,
-} from "@spy4x/platform/universal/money"
+} from "@spy4x/platform/universal/money-core"
 import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import type { Translator } from "@spy4x/platform/universal/i18n"

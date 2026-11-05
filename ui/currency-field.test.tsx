@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { currencyOptions } from "@spy4x/platform/universal/money"
+import { currencyOptions } from "@spy4x/platform/universal/money-core"
 import { CurrencyField, filterCurrencies } from "./currency-field.tsx"
 
 const OPTIONS = currencyOptions("en")

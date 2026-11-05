@@ -33,7 +33,7 @@ import {
   ToggleChips,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
-import { currencyOptions } from "@spy4x/platform/universal/money"
+import { currencyOptions } from "@spy4x/platform/universal/money-core"
 import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
