@@ -75,12 +75,14 @@ export const specs: readonly Spec[] = [
       const text = await cell.textContent()
       if (!text?.includes("Problem")) throw new Error(`the focused cell reads "${text}"`)
       // The page may scroll smoothly, so wait for the cell to arrive rather than measure once.
+      // `block: "nearest"` can leave the cell's edge a fraction of a pixel past the viewport's
+      // (800.14 of 800 in CI), so the check allows 1px.
       await cell.evaluate((node) =>
         new Promise<void>((resolve, reject) => {
           const started = performance.now()
           const look = () => {
             const { top, bottom } = node.getBoundingClientRect()
-            if (top >= 0 && bottom <= innerHeight) resolve()
+            if (top >= -1 && bottom <= innerHeight + 1) resolve()
             else if (performance.now() - started > 5000) {
               reject(new Error(`the focused cell is out of view: ${top}..${bottom}`))
             } else requestAnimationFrame(look)
