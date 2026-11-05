@@ -28,7 +28,8 @@ Business wording, one app's data model, or a renamed copy of something generic d
 (worked examples: `docs/maintaining.md`, "What belongs").
 
 - Removing an export breaks apps: move every app that imports it onto a replacement first.
-- This is a public repository: no private application's code, paths, file lists or vocabulary.
+- This is a public repository: no private application's code, paths, file lists or vocabulary,
+  and never a raw production URL.
   Known mentions are tracked in [#859](https://github.com/spy4x/preact-components/issues/859); do
   not remove one in an unrelated change. A project deleted before its components were extracted is
   not a source; do not name it.
@@ -47,8 +48,9 @@ Business wording, one app's data model, or a renamed copy of something generic d
   link in the README's "Packages" table and, for a package in `packageIds`, a complete list of its
   components in its own README; `infra/scripts/export-lists.test.ts` checks all four.
 - Every component (a PascalCase function) needs a card under `ui-guide/sections/`, or an entry in
-  `COMPONENTS_WITHOUT_CARD` with a reason. Every helper is named in code in the package README
-  (`` `clampProgress(value, max)` ``) with a line on what it does.
+  `COMPONENTS_WITHOUT_CARD` with a sentence saying why, which review challenges. Every helper is
+  named in code in the package README (`` `clampProgress(value, max)` ``) with a line on what it
+  does.
 
 ## Pull requests
 
