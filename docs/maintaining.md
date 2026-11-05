@@ -6,12 +6,14 @@ the rules every package follows, and how this repository relates to the others.
 
 ## Status
 
-Stable since 1.0.0 (2026-09-30). Every package is published on JSR as `jsr:@spy4x/preact-<name>`,
+Beta, semver since 1.0.0 (2026-09-30): breaking changes still ship often, each one a major
+version. Every package is published on JSR as `jsr:@spy4x/preact-<name>`,
 released together from a `v*` tag by Woodpecker (#150) — see
 [`docs/publishing.md`](./publishing.md).
 
-No published file names a private application (#237). `deno task private-names <names-file>`
-re-checks that against every package's dry-run file list, before each release tag is pushed — see
+No published file may name a private application; the known mentions left are tracked in
+[#859](https://github.com/spy4x/preact-components/issues/859). `deno task private-names
+<names-file>` checks every package's dry-run file list before each release tag is pushed — see
 [`docs/pre-publish-checks.md`](./pre-publish-checks.md).
 
 ## Scope
@@ -29,7 +31,7 @@ re-checks that against every package's dry-run file list, before each release ta
 | `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet; each language subpath of its catalog exports `default`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `ui-guide/` | live component catalogue: an overview and one page per package behind a side navigation (`UIGuide`, `uiGuideRoute`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `server/`   | a website server with Fresh 2's API shape (`App`, `Context`, `HttpError`, `fsRoutes`, `staticFiles`, `Head`, `asset`), its browser half (`client`) and its Vite plugin (`vite`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/` and `pages/e2e/`), not published                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ## What belongs
 
