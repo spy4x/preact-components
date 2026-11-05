@@ -2951,6 +2951,16 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   inside `root` (default `document`), once each, and returns a function that hides and unwires
   them; `ProseCodeCopy` calls it on mount.
 
+### Checklist (`./checklist`)
+
+- `enhanceChecklist(root, { key, storage, onChange })` wires the checkboxes a server rendered inside
+  `root` into a checklist whose ticks survive a reload: it restores and saves the ticked ids under
+  `key` in the `storage` port (a page passes `() => localStorage`), follows other tabs through the `storage`
+  event, counts per `data-checklist-section` and reports `{ checked, total, bySection, storageOk }`
+  to `onChange` on start and after each change. It returns the function that unwires it, carrying
+  `clear()` (returns the ids it unticked) and `restore(ids)`, enough for Clear with Undo. It never
+  draws anything, so the boxes keep their native semantics.
+
 ### SectionHeading (`./section-heading`)
 
 - `SECTION_HEADING_LABELS` holds the English words of `SectionHeading`: `anchor`.

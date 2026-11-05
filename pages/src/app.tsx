@@ -8,12 +8,13 @@
  * the guide reports, and manual scroll restoration, because this page is the whole app and the
  * guide scrolls on its first read itself.
  *
- * The UI page ends with four demos that are not cards. Three need a page that owns an address:
+ * The UI page ends with five demos that are not cards. Three need a page that owns an address:
  * {@link UrlFilterDemo}, `useUrlFilters` bound directly to filter signals,
  * {@link DataTableSortDemo}, the same hook underneath `DataTable`'s own `sort` prop, and
  * {@link UnsavedHistoryDemo}, `UnsavedGuard` against the browser's Back and Forward buttons. The
  * fourth, {@link NowDemo}, is `useNow`, a hook with no markup of its own, mounted and unmounted on
- * a button.
+ * a button. The fifth, {@link ChecklistDemo}, is `enhanceChecklist`, a helper that wires
+ * server-rendered checkboxes; `pages/e2e/ui.spec.ts` drives it.
  * They were on the Signals page until the guide stopped showing helpers (#357); the browser checks
  * in `pages/checks/signals.ts` and `pages/checks/ui.ts` drive them there.
  *
@@ -37,6 +38,7 @@ import { AccentSwitch } from "./accent-switch.tsx"
 import { CrudListUrlDemo } from "./crud-list-url.tsx"
 import { DataTableSortDemo } from "./data-table-sort.tsx"
 import { NowDemo } from "./now-demo.tsx"
+import { ChecklistDemo } from "./checklist-demo.tsx"
 import { RouteAnnouncerDemo } from "./route-announcer-demo.tsx"
 import { AUTHOR, LOCAL_MAP_TILES_FLAG, PAGE_TITLE, REPOSITORY, THEME_KEY } from "./site.ts"
 import { UnsavedHistoryDemo } from "./unsaved-history.tsx"
@@ -131,6 +133,7 @@ export function App({ initialHash, version }: AppProps) {
               <DataTableSortDemo />
               <NowDemo />
               <UnsavedHistoryDemo />
+              <ChecklistDemo />
             </div>
           ),
           system: <RouteAnnouncerDemo />,
