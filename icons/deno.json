@@ -1,8 +1,9 @@
 {
   "name": "@spy4x/preact-icons",
-  "version": "13.10.1",
+  "version": "13.11.1",
   "exports": {
-    ".": "./+index.tsx"
+    ".": "./+index.tsx",
+    "./registry": "./registry.tsx"
   },
   "tasks": {
     // Compares every glyph against five npm icon packs (#111, #112, #233). The packs are pinned

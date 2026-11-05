@@ -17,6 +17,8 @@ import {
   DateTimeField,
   Field,
   Grid,
+  I18nContext,
+  IconPicker,
   InlineEdit,
   Input,
   InputButton,
@@ -31,11 +33,16 @@ import {
   TagInput,
   Textarea,
   ToggleChips,
+  useT,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import { currencyOptions } from "@spy4x/platform/universal/money-core"
 import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
+import type { IconName } from "@spy4x/preact-icons/registry"
+import { createTranslator, type Translator } from "@spy4x/platform/universal/i18n"
+import uiEn from "@spy4x/preact-ui/i18n/en"
+import uiRu from "@spy4x/preact-ui/i18n/ru"
 import type { DemoFragment } from "../registry.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { swatchChipsDemo } from "./storefront.tsx"
@@ -812,6 +819,63 @@ function ColorFieldDemo() {
   )
 }
 
+/** The picker's own words and icon names in Russian; English is whatever the page around it speaks. */
+const russian: Translator<string> = createTranslator({
+  language: "ru",
+  catalogs: [{ source: uiEn, translation: uiRu }],
+})
+
+/**
+ * A category's icon in a real `<form>`, so a browser check can prove Enter in the search box chooses
+ * and never submits. The language chips switch the picker to Russian: its names, its search and
+ * the tiles' accessible names follow, and English words still find an icon.
+ */
+function IconPickerDemo() {
+  const icon = useSignal<IconName | null>("car")
+  const language = useSignal("en")
+  const saves = useSignal(0)
+  const outer = useT()
+  const translator = language.value === "ru" ? russian : outer
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        saves.value++
+      }}
+    >
+      <Stack gap="md">
+        <RadioChips
+          legend="Language"
+          name="icon-picker-demo-language"
+          value={language.value}
+          onChange={(value) => language.value = value}
+          options={[
+            { value: "en", label: <span lang="en">English</span> },
+            { value: "ru", label: <span lang="ru">Русский</span> },
+          ]}
+        />
+        <I18nContext.Provider value={translator}>
+          <div lang={translator.language} dir={translator.dir}>
+            <IconPicker
+              value={icon.value}
+              onChange={(next) => icon.value = next}
+              allowNone
+              name="icon"
+              hint="Shown next to the category in lists and reports."
+            />
+          </div>
+        </I18nContext.Provider>
+        <Cluster gap="sm">
+          <Button type="submit" size="sm">Save</Button>
+          <p class="text-xs text-muted" data-e2e="icon-picker-value">
+            Stored: <code>{icon.value ?? "none"}</code>, saves: {saves.value}
+          </p>
+        </Cluster>
+      </Stack>
+    </form>
+  )
+}
+
 /** A server-rendered single choice: page CSS reads the checked radio, no script needed. */
 function RadioChipsDemo() {
   return (
@@ -1422,6 +1486,56 @@ export const fieldDemos = {
   )}
 />`,
     render: () => <ColorFieldDemo />,
+  },
+  IconPicker: {
+    summary:
+      "An icon for a category or a list, from 42 named icons, with a search that speaks the reader's language.",
+    wide: false,
+    props: [
+      {
+        name: "value / onChange",
+        type: "IconName | null / (value: IconName | null) => void",
+        description:
+          "The chosen id from `@spy4x/preact-icons/registry`, which an app stores, or `null` for none.",
+      },
+      {
+        name: "icons",
+        type: "readonly IconName[]",
+        default: "CATEGORY_ICONS",
+        description: "The ids offered, in the order shown.",
+      },
+      {
+        name: "allowNone / noneLabel",
+        type: "boolean / string",
+        default: `false / "No icon"`,
+        description: "A first tile that sends `null`, hidden while a search is typed.",
+      },
+      {
+        name: "legend / hint / error",
+        type: "ComponentChildren / ComponentChildren / string | null",
+        default: `"Icon"`,
+        description:
+          "The group's name, followed by the chosen icon's name, and messages tied to it with `aria-describedby`.",
+      },
+      {
+        name: "labels",
+        type: "{ search?, empty?(query), clearSearch?, count?(n) }",
+        description: "The search box's words, each with an English default.",
+      },
+      {
+        name: "name / disabled / class",
+        type: "string / boolean / string",
+        description:
+          "The radios' shared name (generated when left out), so a form submits the id; disables everything; utilities on the fieldset.",
+      },
+    ],
+    snippet: `<IconPicker
+  value={category.icon}
+  onChange={(icon) => category.icon = icon}
+  allowNone
+  name="icon"
+/>`,
+    render: () => <IconPickerDemo />,
   },
   RadioChips: {
     summary:

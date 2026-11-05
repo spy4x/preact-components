@@ -108,6 +108,7 @@ export { CurrencyField, type CurrencyFieldProps, filterCurrencies } from "./curr
 export {
   activeDescendant,
   Combobox,
+  type ComboboxGroup,
   type ComboboxKey,
   comboboxKey,
   type ComboboxKeyAction,
@@ -119,6 +120,8 @@ export {
   comboboxOptionId,
   type ComboboxOptionState,
   type ComboboxProps,
+  type ComboboxSection,
+  comboboxSections,
   type ComboboxState,
   defaultGetLabel,
   filterItems,
@@ -235,6 +238,7 @@ export {
   type WhenProps,
 } from "./format.tsx"
 export { honeypotField } from "./honeypot.tsx"
+export { IconPicker, type IconPickerLabels, type IconPickerProps } from "./icon-picker.tsx"
 export {
   ENGLISH,
   I18nContext,

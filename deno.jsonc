@@ -19,6 +19,7 @@
     // Not a package: the GitHub Pages demo. It is a member so it can pin its own build-only
     // dependencies in `pages/deno.json` instead of adding them to the import map below.
     "./pages",
+    "./server",
     "./signals",
     "./system",
     "./theme",
@@ -107,6 +108,8 @@
     "@std/expect": "jsr:@std/expect@1.0.20",
     // Parses the repository's own JSONC configs in `infra/scripts/workspace.ts`; no package ships it.
     "@std/jsonc": "jsr:@std/jsonc@1.0.2",
+    // Content types of a built site's files, in `server/vite.ts`.
+    "@std/media-types": "jsr:@std/media-types@1.1.0",
     "@std/path": "jsr:@std/path@1.1.6",
     "@std/semver": "jsr:@std/semver@1.0.8",
     "@std/testing": "jsr:@std/testing@1.0.20",
@@ -124,11 +127,11 @@
     "@spy4x/validation": "jsr:@spy4x/validation@1.116.0",
     "@spy4x/validation/": "jsr:/@spy4x/validation@1.116.0/",
 
-    // Test-only HTML renderer every package's suite imports. One pin here (#133) replaces six
-    // identical per-package copies that all resolved the same version. Unlike `leaflet`, this is
-    // safe to centralise: every import of it is in a `*.test.tsx` file or the unpublished `pages/`
-    // demo, never in a package's `exports`, so no published package's consumer ever resolves this
-    // specifier — moving it here adds nothing to what a consumer's own dependency graph pulls in.
+    // The HTML renderer every package's suite imports. One pin here (#133) replaces six identical
+    // per-package copies that all resolved the same version. `server/` renders its pages with it,
+    // so `@spy4x/preact-server` publishes it as a dependency; in every other package each import
+    // of it is in a `*.test.tsx` file or the unpublished `pages/` demo, so their consumers never
+    // resolve it.
     "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
 
     // Class name helper — see `cn/` for the small function built on it

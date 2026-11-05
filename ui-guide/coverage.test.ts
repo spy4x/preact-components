@@ -10,6 +10,7 @@ import * as cn from "@spy4x/preact-cn"
 import * as crud from "@spy4x/preact-crud"
 import * as map from "@spy4x/preact-map"
 import * as signals from "@spy4x/preact-signals"
+import * as server from "@spy4x/preact-server"
 import * as system from "@spy4x/preact-system"
 import * as theme from "@spy4x/preact-theme"
 import * as ui from "@spy4x/preact-ui"
@@ -47,7 +48,17 @@ const EXPORTS = await packageExports()
 const READMES = await packageReadmes()
 
 /** Every barrel imported directly: ground truth for the read, independent of `coverage.ts`. */
-const BARRELS: Record<PackageId, object> = { ui, charts, system, crud, map, signals, theme, cn }
+const BARRELS: Record<PackageId, object> = {
+  ui,
+  charts,
+  system,
+  crud,
+  map,
+  signals,
+  theme,
+  cn,
+  server,
+}
 
 /** A component name no package exports and no section demonstrates. */
 const GHOST = "GhostWidget"
