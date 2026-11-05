@@ -64,7 +64,7 @@ minor; a fix alone bumps the patch. The whole set takes the largest bump any of 
    this repository — [`pre-publish-checks.md`](./pre-publish-checks.md) says how. The script
    narrows the candidates; it does not decide. Read every match it prints: fix each one that names
    a private application, and publish only when every match left is a word that merely shares a
-   name, such as `GB` as a file-size unit in `ui/file-input.tsx`:
+   name, such as a unit or an abbreviation:
 
    ```bash
    deno task private-names /path/to/names.txt

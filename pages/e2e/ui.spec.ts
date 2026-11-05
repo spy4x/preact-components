@@ -12,6 +12,7 @@ import { specs as video } from "./ui/video.spec.ts"
 import { specs as button } from "./ui/button.spec.ts"
 import { specs as modal } from "./ui/modal.spec.ts"
 import { specs as lostInput } from "./ui/lost-input.spec.ts"
+import { specs as currencyField } from "./ui/currency-field.spec.ts"
 import { specs as zoomableImages } from "./ui/zoomable-images.spec.ts"
 import { specs as comparisonTable } from "./ui/comparison-table.spec.ts"
 import { specs as resendButton } from "./ui/resend-button.spec.ts"
@@ -72,6 +73,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   button,
   modal,
   "lost-input": lostInput,
+  "currency-field": currencyField,
   "zoomable-images": zoomableImages,
   "comparison-table": comparisonTable,
   "resend-button": resendButton,

@@ -36,6 +36,7 @@ import {
   Lightbox,
   type LightboxImage,
   MoneyDisplay,
+  type MoneyDisplayProps,
   OnDay,
   pageRange,
   PageTitle,
@@ -555,31 +556,66 @@ function RunStepsDemo() {
   )
 }
 
-/** Three currencies with a different decimal count each, plus one negative amount coloured. */
-const moneyRows: { amount: number; currency: string; note: string; negative?: boolean }[] = [
-  { amount: 12345, currency: "EUR", note: "two decimals" },
-  { amount: 12345, currency: "JPY", note: "no decimals" },
-  { amount: 12345, currency: "KWD", note: "three decimals" },
-  { amount: -4599, currency: "EUR", note: "colorNegative", negative: true },
+/**
+ * One amount per row: plain, the signed tone on income, spending and zero, the negative tone, yen
+ * with no decimals, dinar with three, and BTC with the 8 decimals the caller gives.
+ */
+const moneyRows: { what: string; props: MoneyDisplayProps }[] = [
+  { what: "plain", props: { amount: 123456, currency: "EUR" } },
+  { what: "signed +", props: { amount: 320000, currency: "EUR", tone: "signed" } },
+  { what: "signed −", props: { amount: -8420, currency: "EUR", tone: "signed" } },
+  { what: "signed 0", props: { amount: 0, currency: "EUR", tone: "signed" } },
+  { what: "negative", props: { amount: -4599, currency: "EUR", tone: "negative" } },
+  { what: "JPY", props: { amount: 12345, currency: "JPY" } },
+  { what: "KWD", props: { amount: 12345, currency: "KWD" } },
+  { what: "BTC", props: { amount: 1, currency: "BTC", decimals: 8 } },
 ]
 
-/** Each amount beside what it shows, in two aligned columns. */
+/** The two regions the card compares: the same English words, two number formats. */
+const moneyRegions = [
+  { locale: "de-DE", format: createFormatters({ locale: "de-DE", timeZone: "UTC" }) },
+  { locale: "en-US", format: createFormatters({ locale: "en-US", timeZone: "UTC" }) },
+]
+
+/**
+ * Each amount in a German and an American region, side by side: no `locale` prop, so the column's
+ * `FormatContext` decides the number format, as an app's region setting does.
+ */
 function MoneyDisplayDemo() {
   return (
-    <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
-      {moneyRows.map((row) => (
-        <Fragment key={`${row.currency}${row.amount}`}>
-          <span class="text-end tabular-nums">
-            <MoneyDisplay
-              amount={row.amount}
-              currency={row.currency}
-              colorNegative={row.negative}
-            />
-          </span>
-          <span class="text-xs text-muted">{row.note}</span>
-        </Fragment>
-      ))}
-    </div>
+    // `bg-transparent` on both: the dark palette's base rules band a table head, which here would
+    // sit between the amounts and the card for no reason.
+    <table class="w-full bg-transparent text-sm" data-e2e="money-display-table">
+      <thead class="bg-transparent">
+        <tr class="text-xs text-muted">
+          <th scope="col" class="pb-2 text-start font-normal">Tone or currency</th>
+          {moneyRegions.map((region) => (
+            <th key={region.locale} scope="col" class="pb-2 text-end font-normal">
+              {region.locale}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {moneyRows.map((row) => (
+          <tr key={row.what}>
+            <th
+              scope="row"
+              class="whitespace-nowrap py-1 pe-4 text-start text-xs font-normal text-muted"
+            >
+              {row.what}
+            </th>
+            {moneyRegions.map((region) => (
+              <td key={region.locale} class="py-1 ps-4 text-end">
+                <FormatContext.Provider value={region.format}>
+                  <MoneyDisplay {...row.props} />
+                </FormatContext.Provider>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -1582,10 +1618,41 @@ export const displayDemos = {
   ...pageHeaderDemos,
   MoneyDisplay: {
     summary:
-      "Shows an amount kept in a currency's smallest unit, with that currency's own decimals.",
+      "Shows an amount kept in a currency's smallest unit, in the person's region format, with that currency's own decimals.",
     wide: false,
-    snippet: `<MoneyDisplay amount={12345} currency="EUR" />
-<MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
+    props: [
+      {
+        name: "amount",
+        type: "number",
+        description: "The amount in the currency's smallest unit.",
+      },
+      {
+        name: "currency",
+        type: "string",
+        description: "The ISO code, such as `EUR`, or a coin's.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        default: "useFormat().locale",
+        description: "The number format; by default the region of `FormatContext`.",
+      },
+      {
+        name: "decimals",
+        type: "number",
+        description: "A coin's own decimals, such as 8 for BTC.",
+      },
+      {
+        name: "tone",
+        type: `"plain" | "negative" | "signed"`,
+        default: `"plain"`,
+        description:
+          "`signed` adds a plus and the success colour to income, the danger colour to spending.",
+      },
+    ],
+    snippet: `<MoneyDisplay amount={123456} currency="EUR" />
+<MoneyDisplay amount={-8420} currency="EUR" tone="signed" />
+<MoneyDisplay amount={1} currency="BTC" decimals={8} />`,
     render: () => <MoneyDisplayDemo />,
   },
   I18nContext: {

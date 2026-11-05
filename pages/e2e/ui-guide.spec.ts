@@ -26,11 +26,10 @@ import type { Spec } from "./runner.ts"
  */
 const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>> = {
   overview: {},
-  // Found once the stage's dots stopped hiding the text on it (#695). Light: `MoneyDisplay`'s
-  // negative amount, red-600 on the canvas at 4.33:1, and the disabled `FileInput` zone's two lines;
-  // dark: the zone's hint alone. A disabled control is exempt from the contrast rule, which axe
-  // cannot tell from the zone's markup; the amount is a `ui/` fix of its own.
-  ui: { "color-contrast": [3, 1] },
+  // Found once the stage's dots stopped hiding the text on it (#695). Light: the disabled
+  // `FileInput` zone's two lines; dark: the zone's hint alone. A disabled control is exempt from the
+  // contrast rule, which axe cannot tell from the zone's markup.
+  ui: { "color-contrast": [2, 1] },
   icons: {},
   // The `bg-scrim` swatch draws its label on the scrim over the light canvas, at 4.28:1. No
   // component puts text on that scrim: the Lightbox's labels sit on `bg-scrim-strong`.
