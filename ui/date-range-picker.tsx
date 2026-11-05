@@ -156,6 +156,11 @@ export interface DateRangePickerProps extends DateRangePickerSharedProps {
   selectedPreset?: DateRangePreset
   /** Renders the chosen range in the trigger. Defaults to `from → to` (ISO). */
   formatRange?: (range: DateRange) => string
+  /**
+   * The week's first day for `"this-week"` and `"last-week"`, `1` = Monday … `7` = Sunday. Default:
+   * Monday. Pass the same value to {@link presetForRange} so the week the picker applied is found.
+   */
+  firstWeekday?: number
 }
 
 /**
@@ -488,7 +493,10 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
       return
     }
     usingCustom.value = false
-    props.onChange(rangeForPreset(preset, { now: instant(), timeZone }), preset)
+    props.onChange(
+      rangeForPreset(preset, { now: instant(), timeZone, firstWeekday: props.firstWeekday }),
+      preset,
+    )
     closePanel(true)
   }
 

@@ -58,6 +58,8 @@ import { specs as dismiss } from "./ui/dismiss.spec.ts"
 import { specs as smallFixes } from "./ui/small-fixes.spec.ts"
 import { specs as segmentedControl } from "./ui/segmented-control.spec.ts"
 import { specs as rightToLeft } from "./ui/right-to-left.spec.ts"
+import { specs as periodStepper } from "./ui/period-stepper.spec.ts"
+import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 
 /** Each file's specs, by its name under `e2e/ui/` without `.spec.ts`. */
 export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
@@ -116,6 +118,8 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "small-fixes": smallFixes,
   "segmented-control": segmentedControl,
   "right-to-left": rightToLeft,
+  "period-stepper": periodStepper,
+  "date-range-picker": dateRangePicker,
 }
 
 export const specs: readonly Spec[] = Object.values(specsByFile).flat()

@@ -56,11 +56,13 @@ import {
   type TimelineItem,
   Tooltip,
   type TooltipPlacement,
+  UsageMeter,
   useFormat,
   useHotkeys,
   useT,
   When,
 } from "@spy4x/preact-ui"
+import { formatMoney } from "@spy4x/platform/universal/money"
 import uiAr from "@spy4x/preact-ui/i18n/ar"
 import uiDe from "@spy4x/preact-ui/i18n/de"
 import uiEn from "@spy4x/preact-ui/i18n/en"
@@ -452,6 +454,43 @@ function ProgressDemo() {
       <Progress id="guide-progress-indeterminate" label="No reading yet" value={null} />
       <Progress ariaLabel="Uncaptioned upload" value={30} />
     </Stack>
+  )
+}
+
+/** Euros from cents, the way a finance app stores them. */
+const euros = (cents: number) => formatMoney(cents, "EUR", "en-GB")
+
+/** One budget per state of `UsageMeter`, then a long label, then a limit of nothing. */
+const usageMeterBudgets: readonly { label: string; used: number; limit: number }[] = [
+  { label: "Groceries", used: 21_200, limit: 50_000 },
+  { label: "Restaurants", used: 48_200, limit: 50_000 },
+  { label: "Fuel", used: 50_000, limit: 50_000 },
+  { label: "Clothes", used: 51_200, limit: 50_000 },
+  { label: "Home improvement and garden supplies", used: 120_000, limit: 50_000 },
+  { label: "Gifts, with no budget", used: 4_000, limit: 0 },
+]
+
+/**
+ * `UsageMeter` well under its limit, close to it, at it and past it: the state line and the fill's
+ * colour change at each step, and past the limit a tick marks where the limit falls. Then a label
+ * too long for the row, and a limit of 0, which has no percentage.
+ */
+function UsageMeterDemo() {
+  return (
+    <Grid minColumnWidth="lg" data-e2e="guide-usage-meter">
+      {usageMeterBudgets.map((budget) => (
+        <Card key={budget.label}>
+          <CardBody>
+            <UsageMeter
+              label={budget.label}
+              used={budget.used}
+              limit={budget.limit}
+              format={euros}
+            />
+          </CardBody>
+        </Card>
+      ))}
+    </Grid>
   )
 }
 
@@ -1670,6 +1709,44 @@ const translator = createTranslator({
     snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
 <Progress value={null} ariaLabel="Sync" />`,
     render: () => <ProgressDemo />,
+  },
+  UsageMeter: {
+    summary:
+      "How much of a limit is used, such as a budget's spending: the figures, a bar, and a line that says what is left or how far over it is.",
+    wide: true,
+    props: [
+      { name: "used", type: "number", description: "The amount used so far." },
+      { name: "limit", type: "number", description: "The amount allowed, in the same unit." },
+      {
+        name: "format",
+        type: "(amount: number) => string",
+        description: "Turns an amount into text: money, storage or seats.",
+      },
+      { name: "label", type: "string", description: "What is measured; it names the meter." },
+      {
+        name: "warnAt",
+        type: "number",
+        default: "80",
+        description: "The percent of the limit from which the meter warns.",
+      },
+      {
+        name: "labels",
+        type: "Partial<UsageMeterLabels>",
+        description: "Overrides for the words; each state is one whole sentence.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the percentage; defaults to the translator's language.",
+      },
+    ],
+    snippet: `<UsageMeter
+  label="Groceries"
+  used={41200}
+  limit={50000}
+  format={(cents) => formatMoney(cents, "EUR", locale)}
+/>`,
+    render: () => <UsageMeterDemo />,
   },
   RunSteps: {
     summary:

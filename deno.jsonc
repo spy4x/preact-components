@@ -125,7 +125,7 @@
     // `deno publish` rewrites each import to that exact `jsr:` version, so only a package that
     // imports one of these gains it as a dependency.
     "@spy4x/platform/": "jsr:/@spy4x/platform@1.95.0/",
-    "@spy4x/time/": "jsr:/@spy4x/time@1.95.0/",
+    "@spy4x/time/": "jsr:/@spy4x/time@1.114.0/",
     "@spy4x/validation": "jsr:@spy4x/validation@1.95.0",
     "@spy4x/validation/": "jsr:/@spy4x/validation@1.95.0/",
 
