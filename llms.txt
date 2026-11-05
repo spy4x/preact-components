@@ -527,7 +527,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1406 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1407 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -651,6 +651,7 @@ ComparisonValue	type	@spy4x/preact-ui	How far a product covers one capability.
 ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions.
 CopyBlock	component	@spy4x/preact-ui	A box of monospace text with a copy control beside it: an install command, an API key, an id.
 CopyButton	component	@spy4x/preact-ui	Copy a string to the clipboard through an injected port or the browser API, and say whether it worked.
+CurrencyField	component	@spy4x/preact-ui	Picks a currency by its code, its name or its symbol: a `Combobox` of `options`.
 DATE_TIME_FIELD_LABELS	constant	@spy4x/preact-ui	The English words `DateTimeField` shows when the caller passes none.
 DISMISS_KEY	constant	@spy4x/preact-ui	The key that asks a `Modal` to close.
 DOCS_NAV_LABELS	constant	@spy4x/preact-ui	The English words `DocsNav` shows when the caller passes none.
@@ -783,11 +784,14 @@ LookTile	component	@spy4x/preact-ui	One look of a shop's catalog: a tall 3:4 pho
 LoopVideo	component	@spy4x/preact-ui	A silent, looping clip that proves a claim on a public page: it plays while at least half of it is on screen, and the visitor can pause it.
 MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read of an option.
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
-MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals.
+MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat`, in the person's region format: `<MoneyDisplay amount={123456} currency="EUR" />` is `1.234,56 €` under a `FormatContext` for `de-DE` and `€1,234.56` for `en-US`, whatever language the words around it are in.
 MoneyInput	component	@spy4x/preact-ui	A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it.
 MoneyInputBounds	type	@spy4x/preact-ui	
+MoneyInputDecimalsMessage	type	@spy4x/preact-ui	A `MoneyInputProps.decimalsMessage` function: `decimals` is how many the currency takes, `0` for one with whole amounts only.
 MoneyInputEdit	type	@spy4x/preact-ui	What one edit of `MoneyInput`'s text resolves to — see `resolveMoneyInputEdit`.
+MoneyInputEditOptions	type	@spy4x/preact-ui	The optional inputs of `resolveMoneyInputEdit`.
 MoneyInputRangeMessage	type	@spy4x/preact-ui	A `MoneyInputProps.rangeMessage` function.
+MoneyTone	type	@spy4x/preact-ui	How `MoneyDisplay` marks an amount's direction:
 MoreMenu	component	@spy4x/preact-ui	A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list.
 Notice	component	@spy4x/preact-ui	A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed.
 NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`).
@@ -982,6 +986,7 @@ dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 enhanceCodeCopy	helper	@spy4x/preact-ui	Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside `root`: a press copies the block's text as it reads, without its final newline, so a pasted command waits for Enter.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
+filterCurrencies	helper	@spy4x/preact-ui	The options `CurrencyField` lists for `query`, best first.
 filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, the best match first.
 filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.

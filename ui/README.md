@@ -78,6 +78,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                                                                                                                                                                                                                    |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                                                                                                                                                                                                                   |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `title?` (visible label; without it, the icon alone), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with a `title`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                                                                                                             |
+| `CurrencyField`       | `currency-field`       | `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`                                                                                                                                                                                                                                  |
 | `DashboardGrid`       | `widget-card`          | `items` (`{ id, size: "stat" \| "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row                                                                                                                                                                                                                                                                                                                                                                                |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                                                                                                                                                                                                                                                |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -124,8 +125,8 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `LookTile`            | `look-tile`            | `href`, `name`, `price`, `photo` (`{ variants, alt, sizes? }`), `sizes?` (`{ label, soldOut? }[]`), `chosenSize?`, `colors?`, `soldOut?`, `viewTransitionName?`, `priority?`, `headingLevel?`, `labels?` — a 3:4 photo as the card, one link; no JavaScript                                                                                                                                                                                                                                    |
 | `LoopVideo`           | `loop-video`           | `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` and `darkSources?` (`{ src, type }[]`, WebM first), `title` (the video's name), `name` (the button says "Pause animation: {name}"), `pauseLabel?`, `playLabel?`, `class?` — a silent loop that plays while half of it is in view                                                                                                                                                                                        |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`                                                                                                                                                                                                                                                                                                                                                           |
-| `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                                                                                                                                                                                                                                          |
+| `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `tone?` (`"plain"`, `"negative"`, `"signed"`), `colorNegative?` (deprecated), `class?`                                                                                                                                                                                                                                                                                                  |
+| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `decimalsMessage?`, `required?`, `class?` (the bordered box)                                                                                                                                                                                                                                   |
 | `MoreMenu`            | `page-header`          | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty                                                                                                                                                                                                                                            |
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`, `actionVariant?` (`primary` default, `secondary`)                                                                                                                                                                                                                                               |
@@ -1763,8 +1764,21 @@ grouping mark is accepted only where `Intl` itself would place one for that loca
 never stripped wherever it stands, which is what let `"12.50"` typed in a German field (where `.` is
 the grouping mark, not the decimal mark) silently become €1,250.00.
 
-`MoneyDisplay` is a bare `<span>` — this is text, not a control, so it carries no role or label of
-its own. `colorNegative` colours a negative amount red; every other style is the caller's `class`.
+Both format in the person's region, not the interface language: without a `locale` prop they use
+`useFormat().locale`, the region format the app gives `FormatContext`, so an English interface in a
+German region shows `1.234,56 €`, the same way its dates read. `decimals` gives a code the ISO table
+lacks its own, such as `8` for `BTC`.
+
+`MoneyDisplay` is a bare `<span>` with tabular figures — this is text, not a control, so it carries
+no role or label of its own. `tone="negative"` colours a negative amount with the danger token;
+`tone="signed"` adds a `+` to income in the success colour and keeps the minus sign of spending in
+the danger colour, and zero gets neither. `colorNegative` still works as `tone="negative"`. Every
+other style is the caller's `class`.
+
+`MoneyInput` shows the currency code inside its bordered box, after the amount, tied to the input by
+`aria-describedby` with a hidden "Currency: Euro (EUR)" when `Intl` knows the name. `class` styles
+that box. An amount with more decimals than the currency takes is refused with its own message,
+"EUR takes up to 2 decimal places" or "JPY takes whole amounts only"; `decimalsMessage` replaces it.
 
 `MoneyInput` keeps the typed text as local, purely visual state — the same allowance `Input`'s own
 draft state has — synced from `value`/`currency`/`locale` only while the field is not focused, so a
@@ -3018,12 +3032,18 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 - `counterText(position, total)` is the counter's English default, `"3 of 8"`; the `counterLabel`
   prop replaces it.
 
+### CurrencyField (`./currency-field`)
+
+- `filterCurrencies(options, query, recent)` is the list `CurrencyField` shows for a query: the
+  `recent` codes first while nothing is typed; the option whose code is the query first, then the
+  rest as `searchEntries` ranks them; for a query of symbols only, the options with that symbol.
+
 ### MoneyInput (`./money-input`)
 
-- `editableText(value, currency, locale)` formats an amount in the currency's smallest unit as the
+- `editableText(value, currency, locale, decimals)` formats an amount in the currency's smallest unit as the
   text a person edits: digits and the decimal mark of `locale`, the currency's number of decimals,
   no symbol and no grouping. `null` gives `""`.
-- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage)` is exported
+- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage, options)` is exported
   for the package's own components and tests: the value and message one edit of a `MoneyInput`
   produces.
 

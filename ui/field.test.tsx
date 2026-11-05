@@ -728,7 +728,7 @@ describe("Field with required and an error, around a control of this library", (
     const input = tagWithId(html, "price")
     expect(input).toMatch(/\srequired[\s/>]/)
     expect(input).toContain('aria-invalid="true"')
-    expect(input).toContain('aria-describedby="price-error"')
+    expect(input).toContain('aria-describedby="price-error price-currency"')
   })
 
   it("marks a TagInput aria-required and not natively required, which chips would fail", () => {

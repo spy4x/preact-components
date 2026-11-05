@@ -19,6 +19,7 @@
     "./confirm-dialog": "./confirm-dialog.tsx",
     "./copy-block": "./copy-block.tsx",
     "./copy-button": "./copy-button.tsx",
+    "./currency-field": "./currency-field.tsx",
     "./combobox": "./combobox.tsx",
     "./command-palette": "./command-palette.tsx",
     "./comparison-table": "./comparison-table.tsx",

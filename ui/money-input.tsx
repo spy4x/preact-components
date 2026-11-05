@@ -5,10 +5,11 @@ import {
   formatMoney,
   moneyDecimalString,
   parseMoney,
-} from "@spy4x/platform/universal/money"
+} from "@spy4x/platform/universal/money-core"
 import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import type { Translator } from "@spy4x/platform/universal/i18n"
+import { useFormat } from "./format.tsx"
 import { ENGLISH, translate, useT } from "./i18n.tsx"
 
 export interface MoneyInputBounds {
@@ -22,13 +23,22 @@ export interface MoneyInputProps {
   /** Amount in `currency`'s smallest unit, or `null` for an empty field. */
   value: number | null
   onChange: (value: number | null) => void
-  /** ISO 4217 code, e.g. `"EUR"`, `"JPY"`, `"KWD"`. */
+  /**
+   * ISO 4217 code, e.g. `"EUR"`, `"JPY"`, `"KWD"`, or an app's own code such as `"BTC"`. Shown
+   * inside the field, at its inline end.
+   */
   currency: string
   /**
-   * BCP 47 locale used to format the shown text and to parse what is typed. Defaults to the
-   * language of the nearest `I18nContext`, which is `"en"` without one.
+   * BCP 47 locale used to format the shown text and to parse what is typed. Defaults to the region
+   * format of the nearest `FormatContext` (`useFormat().locale`), so `1.234,56` reads as `123456`
+   * cents for a person in Germany whatever language the words are in.
    */
   locale?: string
+  /**
+   * How many decimals the smallest unit has: `8` for `BTC`. Defaults to the ISO 4217 table, which
+   * a code it lacks cannot rely on.
+   */
+  decimals?: number
   /** Smallest-unit lower bound. A parsed amount below it is refused, like unparsable text. */
   min?: number
   /** Smallest-unit upper bound. A parsed amount above it is refused, like unparsable text. */
@@ -52,6 +62,12 @@ export interface MoneyInputProps {
   invalidMessage?: string
   /** Shown, and announced, when a parsed amount falls outside `min`/`max`. */
   rangeMessage?: MoneyInputRangeMessage
+  /**
+   * Shown, and announced, when the typed amount has more decimals than the currency takes.
+   * English default: `"EUR takes up to 2 decimal places"`, `"JPY takes whole amounts only"`.
+   */
+  decimalsMessage?: MoneyInputDecimalsMessage
+  /** Utilities for the bordered box that holds the input and the currency code. */
   class?: string
   "aria-describedby"?: string
   /**
@@ -61,19 +77,30 @@ export interface MoneyInputProps {
   "aria-invalid"?: boolean | string
 }
 
-/** A {@link MoneyInputProps.rangeMessage} function. */
+/**
+ * A {@link MoneyInputProps.rangeMessage} function. `decimals` is the caller's
+ * {@link MoneyInputProps.decimals}, for formatting the bounds.
+ */
 export type MoneyInputRangeMessage = (
   bounds: MoneyInputBounds,
   currency: string,
   locale: string,
+  decimals?: number,
 ) => string
+
+/**
+ * A {@link MoneyInputProps.decimalsMessage} function: `decimals` is how many the currency takes,
+ * `0` for one with whole amounts only.
+ */
+export type MoneyInputDecimalsMessage = (decimals: number, currency: string) => string
 
 function defaultRangeMessage(
   bounds: MoneyInputBounds,
   currency: string,
   locale: string,
+  decimals?: number,
 ): string {
-  return rangeWords(ENGLISH, bounds, currency, locale)
+  return rangeWords(ENGLISH, bounds, currency, locale, decimals)
 }
 
 /** The range message in `translator`'s words, the amounts in `locale`'s money format. */
@@ -82,8 +109,9 @@ function rangeWords(
   { min, max }: MoneyInputBounds,
   currency: string,
   locale: string,
+  decimals?: number,
 ): string {
-  const money = (amount: number) => formatMoney(amount, currency, locale)
+  const money = (amount: number) => formatMoney(amount, currency, locale, { decimals })
   if (min !== undefined && max !== undefined) {
     return translate(
       translator,
@@ -106,6 +134,36 @@ function rangeWords(
     `Enter ${money(max as number)} or less`,
     { max: money(max as number) },
   )
+}
+
+/** The decimals message in `translator`'s words. */
+function decimalsWords(translator: Translator<string>, decimals: number, currency: string): string {
+  if (decimals === 0) {
+    return translate(
+      translator,
+      "MoneyInput.decimalsNone",
+      `${currency} takes whole amounts only`,
+      { code: currency },
+    )
+  }
+  return translate(
+    translator,
+    "MoneyInput.decimalsMax",
+    `${currency} takes up to ${decimals} decimal ${decimals === 1 ? "place" : "places"}`,
+    { code: currency, count: decimals },
+  )
+}
+
+function defaultDecimalsMessage(decimals: number, currency: string): string {
+  return decimalsWords(ENGLISH, decimals, currency)
+}
+
+/** The optional inputs of {@link resolveMoneyInputEdit}. */
+export interface MoneyInputEditOptions {
+  /** The currency's decimals, as {@link MoneyInputProps.decimals}. */
+  decimals?: number
+  /** The message for too many decimals. Default: the English of {@link MoneyInputProps.decimalsMessage}. */
+  decimalsMessage?: MoneyInputDecimalsMessage
 }
 
 /** What one edit of {@link MoneyInput}'s text resolves to — see {@link resolveMoneyInputEdit}. */
@@ -136,10 +194,11 @@ function withoutBlankText(input: HTMLInputElement | null): string {
  * The whole decision one edit of {@link MoneyInput}'s text makes, as a pure function with no
  * signal, ref or DOM in it — everything {@link MoneyInput} itself does with an edit is call this
  * and apply the result. Kept separate so every rule below is a plain, fast unit test instead of a
- * simulated keystroke: empty text clears the value; text {@link parseMoney} refuses (a letter, too
- * many fraction digits, an amount beyond `Number.MAX_SAFE_INTEGER`, …) reports `invalidMessage` and
- * leaves the value where it was; a parsed amount outside `bounds` reports `rangeMessage` the same
- * way; anything else reports the parsed value and clears the message.
+ * simulated keystroke: empty text clears the value; more fraction digits than the currency takes
+ * reports `options.decimalsMessage`; other text {@link parseMoney} refuses (a letter, an amount
+ * beyond `Number.MAX_SAFE_INTEGER`, …) reports `invalidMessage`; a parsed amount outside `bounds`
+ * reports `rangeMessage`. Each of those leaves the value where it was. Anything else reports the
+ * parsed value and clears the message.
  */
 export function resolveMoneyInputEdit(
   text: string,
@@ -148,15 +207,22 @@ export function resolveMoneyInputEdit(
   bounds: MoneyInputBounds,
   invalidMessage: string,
   rangeMessage: MoneyInputRangeMessage = defaultRangeMessage,
+  options: MoneyInputEditOptions = {},
 ): MoneyInputEdit {
   if (text.trim() === "") return { value: null, message: undefined }
 
-  const result = parseMoney(text, currency, locale)
-  if (!result.ok) return { message: invalidMessage }
+  const { decimals, decimalsMessage = defaultDecimalsMessage } = options
+  const result = parseMoney(text, currency, locale, { decimals })
+  if (!result.ok) {
+    if (result.error.type === "too-many-decimals") {
+      return { message: decimalsMessage(result.error.maxDecimals, currency) }
+    }
+    return { message: invalidMessage }
+  }
 
   const { min, max } = bounds
   if ((min !== undefined && result.value < min) || (max !== undefined && result.value > max)) {
-    return { message: rangeMessage(bounds, currency, locale) }
+    return { message: rangeMessage(bounds, currency, locale, decimals) }
   }
 
   return { value: result.value, message: undefined }
@@ -170,14 +236,33 @@ export function resolveMoneyInputEdit(
  * division is not exact for a `value` near `Number.MAX_SAFE_INTEGER` — see
  * `@spy4x/platform/universal/money`'s module doc.
  */
-export function editableText(value: number | null, currency: string, locale: string): string {
+export function editableText(
+  value: number | null,
+  currency: string,
+  locale: string,
+  decimals?: number,
+): string {
   if (value === null) return ""
-  const decimals = currencyDecimals(currency, locale)
+  const digits = currencyDecimals(currency, locale, { decimals })
   return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
     useGrouping: false,
-  }).format(moneyDecimalString(value, decimals) as unknown as number)
+  }).format(moneyDecimalString(value, digits) as unknown as number)
+}
+
+/**
+ * The currency's name in `language`, `"Euro"` for `EUR` in `en`, or `undefined` for a code `Intl`
+ * has no name for, such as an app's own `"USDT"`.
+ */
+function currencyName(currency: string, language: string): string | undefined {
+  if (!/^[A-Za-z]{3}$/.test(currency)) return undefined
+  try {
+    return new Intl.DisplayNames(language, { type: "currency", fallback: "none" }).of(currency)
+  } catch {
+    // An unknown language tag: the code alone still names the currency.
+    return undefined
+  }
 }
 
 /**
@@ -186,9 +271,16 @@ export function editableText(value: number | null, currency: string, locale: str
  * on a phone, and typing understands `locale`'s own decimal mark — `"12,5"` with `locale="de"`
  * becomes `1250`, the same way it would for `EUR`'s two decimals typed in German.
  *
+ * **The field always says which currency it is in.** The code (`EUR`, not `€`, which names a dozen
+ * currencies) sits at the inline end of one bordered box, muted and never truncated; the input
+ * shrinks instead. It describes the input through `aria-describedby`, with the currency's name for
+ * a screen reader when `Intl` knows it ("Currency: Euro (EUR)"). It is not a Tab stop; a click on
+ * it focuses the input.
+ *
  * **Typing something that does not parse — a letter, a second decimal mark, more fraction digits
  * than the currency allows — leaves `value` exactly where it was** and shows `invalidMessage`
- * (or `rangeMessage`, when the amount parses but sits outside `min`/`max`) in a live region that is
+ * (`decimalsMessage` for too many fraction digits, `rangeMessage` when the amount parses but sits
+ * outside `min`/`max`) in a live region that is
  * rendered, empty, from the very first render — the same shape `Combobox` uses for its own
  * status text, and for the same reason: a region that arrives with its message already inside it is
  * commonly not announced at all, only a *change* to a region already being watched is.
@@ -223,6 +315,7 @@ export function MoneyInput(
     onChange,
     currency,
     locale: localeProp,
+    decimals,
     min,
     max,
     name,
@@ -232,23 +325,33 @@ export function MoneyInput(
     placeholder,
     invalidMessage: invalidMessageProp,
     rangeMessage: rangeMessageProp,
+    decimalsMessage: decimalsMessageProp,
     class: className,
     "aria-describedby": callerDescribedBy,
     "aria-invalid": callerInvalid,
   }: MoneyInputProps,
 ): JSX.Element {
   const translator = useT()
-  const locale = localeProp ?? translator.language
+  // Read whether or not `locale` is given: a hook is never called conditionally.
+  const region = useFormat().locale
+  const locale = localeProp ?? region
   const invalidMessage = invalidMessageProp ??
     translate(translator, "MoneyInput.invalidMessage", "Enter a valid amount")
   const rangeMessage: MoneyInputRangeMessage = rangeMessageProp ??
-    ((bounds, code, format) => rangeWords(translator, bounds, code, format))
+    ((bounds, code, format, digits) => rangeWords(translator, bounds, code, format, digits))
+  const editOptions: MoneyInputEditOptions = {
+    decimals,
+    decimalsMessage: decimalsMessageProp ??
+      ((digits, code) => decimalsWords(translator, digits, code)),
+  }
   const generatedId = useId()
   const id = callerId ?? generatedId
   const statusId = `${id}-status`
+  const currencyId = `${id}-currency`
+  const currencyLabel = currencyName(currency, translator.language)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const draft = useSignal(editableText(value, currency, locale))
+  const draft = useSignal(editableText(value, currency, locale, decimals))
   const message = useSignal<string | undefined>(undefined)
   const focused = useRef(false)
   const synced = useRef({ value, currency, locale })
@@ -278,6 +381,7 @@ export function MoneyInput(
       { min, max },
       invalidMessage,
       rangeMessage,
+      editOptions,
     )
     message.value = edit.message
     // Both set here rather than left to their own paths. The field may already hold focus from
@@ -311,10 +415,10 @@ export function MoneyInput(
     const last = synced.current
     if (focused.current) return
     if (last.value === value && last.currency === currency && last.locale === locale) return
-    draft.value = editableText(value, currency, locale)
+    draft.value = editableText(value, currency, locale, decimals)
     message.value = undefined
     synced.current = { value, currency, locale }
-  }, [value, currency, locale])
+  }, [value, currency, locale, decimals])
 
   function handleInput(event: JSX.TargetedEvent<HTMLInputElement>) {
     const text = withoutBlankText(event.currentTarget)
@@ -327,6 +431,7 @@ export function MoneyInput(
       { min, max },
       invalidMessage,
       rangeMessage,
+      editOptions,
     )
     message.value = edit.message
     if ("value" in edit) onChange(edit.value as number | null)
@@ -341,35 +446,67 @@ export function MoneyInput(
     // Only re-format when the last edit resolved cleanly. A standing message means the typed text
     // was refused (or fell outside min/max), and blur must not discard it — see the class doc.
     if (message.value === undefined) {
-      draft.value = editableText(value, currency, locale)
+      draft.value = editableText(value, currency, locale, decimals)
       synced.current = { value, currency, locale }
     }
   }
 
-  const describedBy = [callerDescribedBy, message.value ? statusId : undefined]
-    .filter(Boolean).join(" ") || undefined
+  const describedBy = [callerDescribedBy, currencyId, message.value ? statusId : undefined]
+    .filter(Boolean).join(" ")
+  const invalid = Boolean(message.value) || callerInvalid === true || callerInvalid === "true"
 
   return (
     <>
-      <input
-        ref={inputRef}
-        id={id}
-        type="text"
-        inputMode="decimal"
-        autocomplete="off"
-        value={draft.value}
-        disabled={disabled}
-        required={required}
-        placeholder={placeholder}
-        class={cn("pc-input", className)}
-        aria-describedby={describedBy}
-        aria-invalid={message.value || callerInvalid === true || callerInvalid === "true"
-          ? true
-          : undefined}
-        onInput={handleInput}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-      />
+      <div
+        class={cn(
+          "flex h-12 w-full items-center gap-2 rounded-primary border bg-surface pe-3 focus-within:ring-2 focus-within:ring-focus",
+          invalid ? "border-danger" : "border-control",
+          disabled && "opacity-50",
+          className,
+        )}
+      >
+        <input
+          ref={inputRef}
+          id={id}
+          type="text"
+          inputMode="decimal"
+          autocomplete="off"
+          value={draft.value}
+          disabled={disabled}
+          required={required}
+          placeholder={placeholder}
+          class="h-full min-w-0 flex-1 rounded-primary bg-transparent ps-3 text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
+          aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
+          onInput={handleInput}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+        />
+        <span
+          id={currencyId}
+          class="shrink-0 select-none text-sm tabular-nums text-muted"
+          // A pointer on the unit means the field; it is text, not a control, so the keyboard
+          // never stops here.
+          onMouseDown={(event) => {
+            event.preventDefault()
+            inputRef.current?.focus()
+          }}
+        >
+          {currencyLabel === undefined ? currency : (
+            <>
+              <span aria-hidden="true">{currency}</span>
+              <span class="sr-only">
+                {translate(
+                  translator,
+                  "MoneyInput.currency",
+                  `Currency: ${currencyLabel} (${currency})`,
+                  { name: currencyLabel, code: currency },
+                )}
+              </span>
+            </>
+          )}
+        </span>
+      </div>
       {name !== undefined && (
         <input
           type="hidden"
