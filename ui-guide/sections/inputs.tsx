@@ -12,8 +12,10 @@
 
 import {
   Button,
+  Checkbox,
   Cluster,
   Combobox,
+  type ComboboxGroup,
   type ComboboxOptionState,
   DateRangePicker,
   type DateRangePickerLabels,
@@ -1002,8 +1004,97 @@ function AnnouncingCombobox() {
   )
 }
 
+/** A spending category: a parent leads its group, a child names its parent. */
+interface DemoCategory {
+  name: string
+  parent?: string
+  aliases?: readonly string[]
+}
+
+/** Parents with their children, then two categories with no parent, under "Other". */
+const demoCategories: readonly DemoCategory[] = [
+  { name: "Home", aliases: ["housing"] },
+  { name: "Rent", parent: "Home", aliases: ["mortgage"] },
+  { name: "Utilities", parent: "Home", aliases: ["electricity", "water", "gas bill"] },
+  { name: "Food" },
+  { name: "Groceries", parent: "Food", aliases: ["supermarket"] },
+  { name: "Eating out", parent: "Food", aliases: ["restaurant", "cafe", "dining"] },
+  { name: "Health" },
+  { name: "Doctor", parent: "Health", aliases: ["clinic", "medical"] },
+  { name: "Pharmacy", parent: "Health", aliases: ["medicine"] },
+  { name: "Gifts", aliases: ["presents", "birthday"] },
+  { name: "Charity", aliases: ["donation"] },
+]
+
+/** The group of a category without a parent or children: no lead, so a muted heading names it. */
+const otherGroup: ComboboxGroup = { id: "other", label: "Other" }
+
+/** How long the demo's "server" takes to create a category, so the spinner shows. */
+const CREATE_MS = 800
+
 /**
- * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, one
+ * Categories in parent groups, found by alias, with a "Create" row. A parent is its group's first
+ * row and stays choosable; "Other" has no parent, so a heading that is not an option names it. A
+ * new category takes {@link CREATE_MS} to "save"; ticking the box makes the next save fail.
+ */
+function CategoryCombobox() {
+  const items = useSignal<readonly DemoCategory[]>(demoCategories)
+  const category = useSignal<DemoCategory | null>(demoCategories[5])
+  const failNext = useSignal(false)
+  const created = useSignal("")
+
+  const groupOf = (item: DemoCategory): ComboboxGroup => {
+    const parent = item.parent ??
+      (items.value.some((other) => other.parent === item.name) ? item.name : undefined)
+    return parent === undefined ? otherGroup : { id: parent, label: parent }
+  }
+
+  const create = async (name: string): Promise<DemoCategory> => {
+    await new Promise((done) => setTimeout(done, CREATE_MS))
+    if (failNext.value) {
+      failNext.value = false
+      throw new Error("The demo refused it")
+    }
+    const made: DemoCategory = { name }
+    items.value = [...items.value, made]
+    created.value = name
+    return made
+  }
+
+  return (
+    <Stack gap="sm">
+      <Field id="guide-combobox-category" label="Category">
+        <Combobox
+          items={items.value}
+          value={category.value}
+          onChange={(next) => category.value = next}
+          getLabel={(item) => item.name}
+          aliasesOf={(item) => item.aliases ?? []}
+          groupOf={groupOf}
+          isGroupLead={(item) => item.parent === undefined && groupOf(item) !== otherGroup}
+          onCreate={create}
+          placeholder="Search or create a category…"
+        />
+      </Field>
+      <Checkbox
+        checked={failNext.value}
+        onChange={(event) => failNext.value = event.currentTarget.checked}
+      >
+        Make the next create fail
+      </Checkbox>
+      <Note e2e="controlled-value">
+        category: {category.value?.name ?? "(none)"}
+        {created.value === "" ? "" : `, created: ${created.value}`}
+      </Note>
+      <Note>
+        Try “out eat”, “eatng out”, “restaurant” or “щге уфештп”, then “Gym” and Enter.
+      </Note>
+    </Stack>
+  )
+}
+
+/**
+ * Every combobox on the card: strings, grouped categories with Create, objects, a controlled query, a long list, an empty one, one
  * whose screen-reader count uses the caller's own words, and one that fetches per keystroke.
  */
 function ComboboxDemo() {
@@ -1011,6 +1102,9 @@ function ComboboxDemo() {
     <Grid minColumnWidth="md" gap="lg">
       <Variant title="Strings">
         <CoinCombobox />
+      </Variant>
+      <Variant title="Groups, aliases and Create">
+        <CategoryCombobox />
       </Variant>
       <Variant title="Objects, one disabled">
         <CityCombobox />
@@ -1035,7 +1129,7 @@ function ComboboxDemo() {
 }
 
 /** Tags a task already uses elsewhere: what the tag field suggests. */
-const usedTags = ["work", "home", "errand", "waiting", "someday", "phone"]
+const usedTags = ["work", "home", "errand", "waiting", "someday", "wishlist"]
 
 /**
  * The tag field inside `Field`, with suggestions and the tags it holds reported back, and a disabled
@@ -1982,8 +2076,39 @@ export const inputDemos = {
       {
         name: "filter",
         type: "(items, query) => T[]",
-        default: "folded substring match",
-        description: "Replaces the built-in search.",
+        default: "searchEntries",
+        description:
+          "Replaces the built-in search, which takes words in any order, one typo and the other keyboard layout, best match first. Groups still apply.",
+      },
+      {
+        name: "aliasesOf",
+        type: "(item: T) => readonly string[]",
+        description: "Other names the built-in search finds an item by; never shown.",
+      },
+      {
+        name: "groupOf / isGroupLead",
+        type: "(item: T) => { id, label } | null / (item: T) => boolean",
+        description:
+          "Puts items in named groups. A lead (a parent category) is its group's first row and name, and stays choosable; a group without one gets a heading the arrow keys skip.",
+      },
+      {
+        name: "groupedLabel",
+        type: "(label, group) => string",
+        default: `"Eating out (Food)"`,
+        description: "How the closed field reads a chosen group member.",
+      },
+      {
+        name: "onCreate",
+        type: "(query: string) => T | void | Promise<T | void>",
+        description:
+          "Adds a last row, Create “Gym”, highlighted when nothing else matches. A returned item is chosen; a pending promise shows a spinner, a rejected one a field error.",
+      },
+      {
+        name: "createLabel / createOnlyMessage / createErrorMessage",
+        type: "(query: string) => string",
+        default:
+          `"Create “Gym”" / "No matches. You can create “Gym”." / "Couldn't create “Gym”. Try again."`,
+        description: "The Create row, what the live region says when it is alone, and the error.",
       },
       {
         name: "query / onQueryChange",
