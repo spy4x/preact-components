@@ -72,7 +72,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Coachmark` (`coachmark`): `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
-- `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`
+- `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`
 - `CommandPalette` (`command-palette`): `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
@@ -102,6 +102,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `FormatContext` (`format`): Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format
 - `Grid` (`layout`): `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row
 - `I18nContext` (`i18n`): Preact context: `<I18nContext.Provider value={createTranslator({ language, catalogs })}>`; every component reads its words from it through `useLabels`, an app's own screens through `useT()`; without a provider, English
+- `IconPicker` (`icon-picker`): `value` (an id from `@spy4x/preact-icons/registry`, or `null`), `onChange`, `icons?` (`CATEGORY_ICONS`), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `name?`, `labels?`, `disabled?` — a search box over a grid of icon tiles on native radios; search finds names and aliases in the reader's language and in English
 - `ImageGallery` (`image-gallery`): `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`
 - `Input` (`input`): native input attrs, `class`; forwards `ref`; `dir="ltr"` on an e-mail, URL or password input, by `type` or `autocomplete`
 - `InputButton` (`input-button`): `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input
@@ -568,6 +569,24 @@ black or white from `readableTextColor` in `@spy4x/platform/universal/color`, wh
 Every string it shows is a prop with an English default: `placeholder` (`"Select…"`), `emptyMessage`
 (`"No matches"`), `countMessage` (`"1 match"` / `"12 matches"`), `loadingMessage` (`"Loading…"`) and
 `clearLabel` (`"Clear selection"`).
+
+**Search.** Without `filter`, the field ranks `items` with `searchEntries` from
+`@spy4x/platform/universal/text`: the words of the query in any order, each at the start of a word,
+one typo in a longer word, the other keyboard layout (`щге уфештп` finds "Eating out"), and the
+words `aliasesOf(item)` returns. Best matches come first; equal ones keep the order of `items`. A
+caller's own `filter` replaces all of this, and the groups below still apply to what it returns.
+
+**Groups.** `groupOf(item)` puts items under a named `role="group"`. When `isGroupLead(item)` marks
+an item as its group's own, such as a parent category, that option is the group's heading and is
+drawn once, so it can be chosen; a group with no lead gets a muted heading that is not an option,
+and the arrow keys skip it. A closed field shows a member as `Eating out (Food)`.
+`comboboxSections(visible, all, groupOf, isGroupLead)` is the same split for a caller that draws its
+own list.
+
+**Create.** With `onCreate`, a query that names no item adds a last row, `Create “Gym”` (`createLabel`),
+which is highlighted when nothing else matches, so Enter creates. `onCreate(query)` may return the
+new item, which is then chosen, or a promise of it: the row shows a spinner until it settles, and a
+failure shows `createErrorMessage` under the field and keeps the query.
 
 Enter and Escape pressed while an input method is still composing a word neither select an option
 nor close the list: the key belongs to the input method. The list is not filtered while the word is

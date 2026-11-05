@@ -366,18 +366,21 @@ export function skeletonSimilarity(a: NormalizedElement[], b: NormalizedElement[
   return shared / Math.max(a.length, b.length)
 }
 
-/** One glyph exported by `+index.tsx`. */
+/** One glyph exported by `+index.tsx` or `lucide.tsx`. */
 export interface RepoGlyph {
   name: string
   doc: string
   elements: NormalizedElement[]
 }
 
-/** One exported glyph in `+index.tsx`: its JSDoc, its `Icon…` name and its function body. */
+/**
+ * One exported glyph: its JSDoc, its name (`Icon…` in `+index.tsx`, `Lucide…` in `lucide.tsx`, the
+ * registry's own drawings) and its function body.
+ */
 const ICON_BLOCK_PATTERN =
-  /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function (Icon\w+)\(props: Icon\w*Props\): JSX\.Element \{([\s\S]*?)\n\}\n/g
+  /\/\*\*((?:[^*]|\*(?!\/))*)\*\/\s*export function ((?:Icon|Lucide)\w+)\(props: Icon\w*Props\): JSX\.Element \{([\s\S]*?)\n\}\n/g
 
-/** Parse every exported glyph, with its JSDoc and its drawing, out of `+index.tsx`'s source. */
+/** Parse every exported glyph, with its JSDoc and its drawing, out of a glyph module's source. */
 export function repoGlyphs(source: string): RepoGlyph[] {
   return [...source.matchAll(ICON_BLOCK_PATTERN)].map(([, doc, name, body]) => ({
     name,
@@ -583,7 +586,13 @@ export interface ProvenanceResult {
   glyphs: { name: string; doc: string; match: Match }[]
 }
 
-/** Load every pack, parse every glyph this package exports, and compare each against the corpus. */
+/** The modules that draw glyphs: the main entry, and the registry's own Lucide drawings. */
+const GLYPH_SOURCES = [
+  new URL("./+index.tsx", import.meta.url),
+  new URL("./lucide.tsx", import.meta.url),
+]
+
+/** Load every pack, parse every glyph this package draws, and compare each against the corpus. */
 export async function runProvenanceCheck(indexSourcePath?: string): Promise<ProvenanceResult> {
   const corpus = [
     ...await loadHeroiconsV1(),
@@ -593,9 +602,9 @@ export async function runProvenanceCheck(indexSourcePath?: string): Promise<Prov
     ...await loadSimpleIcons(),
   ]
   const index = buildIndex(corpus)
-  const source = await Deno.readTextFile(
-    indexSourcePath ?? new URL("./+index.tsx", import.meta.url),
-  )
+  const sources = indexSourcePath === undefined ? GLYPH_SOURCES : [indexSourcePath]
+  let source = ""
+  for (const path of sources) source += await Deno.readTextFile(path)
   const glyphs = repoGlyphs(source).map((glyph) => ({
     name: glyph.name,
     doc: glyph.doc,

@@ -101,6 +101,7 @@ Every install line, the dependencies between packages and the UI guide as a comp
 | [`@spy4x/preact-signals`](signals/README.md)   | stores and state helpers; no components                           |
 | [`@spy4x/preact-cn`](cn/README.md)             | class-name join with Tailwind conflict resolution                 |
 | [`@spy4x/preact-ui-guide`](ui-guide/README.md) | the live component catalogue, mounted in one line                 |
+| [`@spy4x/preact-server`](server/README.md)     | website server: routes, pages, islands, static files              |
 | [`pages/`](pages/README.md)                    | the demo site and browser checks; not published                   |
 
 ## Development

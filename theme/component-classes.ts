@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1368 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1384 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -85,6 +85,7 @@ export const COMPONENT_CLASSES: string = [
   "[&:dir(rtl)]:shadow-[inset_1.5rem_0_0_0_var(--color-surface)]",
   "[&:dir(rtl)]:shadow-[inset_1.5rem_0_1rem_-1rem_color-mix(in_oklab,var(--color-foreground)_30%,transparent)]",
   "[&:dir(rtl)]:translate-x-1/2",
+  "[&:dir(rtl)]:translate-x-[calc(50%+var(--shift,0px))]",
   "[&:dir(rtl)]:translate-x-full",
   "[&:has(#radio-chips-read-only:checked)_[data-tool=delete]]:hidden",
   "[&>[role=status]]:sr-only",
@@ -485,6 +486,7 @@ export const COMPONENT_CLASSES: string = [
   "grid-cols-[auto_minmax(0,1fr)_auto]",
   "grid-cols-[minmax(0,1fr)_auto]",
   "grid-cols-[minmax(0,7rem)_minmax(0,1fr)_minmax(3.5rem,auto)]",
+  "grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))]",
   "grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]",
   "grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]",
   "grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]",
@@ -517,6 +519,7 @@ export const COMPONENT_CLASSES: string = [
   "group-hover/cell:opacity-100",
   "group-hover/cell:visible",
   "group-hover/heading:opacity-100",
+  "group-hover/icon:block",
   "group-hover/language:opacity-100",
   "group-hover/language:visible",
   "group-hover/loop:opacity-100",
@@ -981,10 +984,19 @@ export const COMPONENT_CLASSES: string = [
   "pe-2",
   "pe-3",
   "pe-4",
+  "peer-checked:bg-selected-soft",
   "peer-checked:ring-2",
   "peer-checked:ring-current",
+  "peer-checked:ring-inset",
   "peer-checked:ring-offset-2",
   "peer-checked:ring-offset-surface",
+  "peer-checked:text-selected",
+  "peer-disabled:cursor-not-allowed",
+  "peer-disabled:opacity-50",
+  "peer-focus-visible:block",
+  "peer-focus-visible:outline-(--color-ring)",
+  "peer-focus-visible:outline-2",
+  "peer-focus-visible:outline-offset-2",
   "peer-focus-visible:ring-2",
   "peer-focus-visible:ring-focus",
   "peer-focus-visible:ring-offset-2",
@@ -1147,6 +1159,8 @@ export const COMPONENT_CLASSES: string = [
   "sm:items-start",
   "sm:justify-between",
   "sm:justify-end",
+  "sm:max-h-80",
+  "sm:max-w-xs",
   "sm:mb-6",
   "sm:min-h-8",
   "sm:min-h-9",
@@ -1309,6 +1323,7 @@ export const COMPONENT_CLASSES: string = [
   "transition-transform",
   "translate-x-0",
   "translate-x-5",
+  "translate-x-[calc(-50%+var(--shift,0px))]",
   "translate-x-px",
   "translate-y-0.5",
   "truncate",
@@ -1333,6 +1348,7 @@ export const COMPONENT_CLASSES: string = [
   "w-32",
   "w-4",
   "w-48",
+  "w-5",
   "w-5/6",
   "w-56",
   "w-6",

@@ -16,6 +16,8 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
 - Not for new apps: `RailShell` (`system/rail-shell.tsx`) is the icons rail under its earlier name,
   kept until an app moves to `AppShell`. `Shell` (`system/shell.tsx`) draws a top bar and a
   sidebar, which the house app shell does not have.
+- The server of a public website (routes, pages, islands, static files) → `@spy4x/preact-server`
+  (`server/`). Example: `server/README.md`.
 
 ## Page
 
@@ -39,6 +41,10 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   `ui-guide/sections/inputs.tsx`.
 - Several lines or tags → `ListField` (`ui/list-field.tsx`), `TagInput` (`ui/tag-input.tsx`).
   Example: `ui-guide/sections/fields.tsx`.
+- Pick one item from a long list, with search, groups or "Create" → `Combobox`
+  (`ui/combobox.tsx`). Example: `ui-guide/sections/inputs.tsx`.
+- Pick an icon, such as a category's → `IconPicker` (`ui/icon-picker.tsx`). Example:
+  `ui-guide/sections/fields.tsx`.
 
 ## Dialogs, menus and messages
 

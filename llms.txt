@@ -251,11 +251,51 @@ IconWrench	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "w
 IconXMark	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconYouTube	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "youtube" from simple-icons@16.33.0 (#233).
 IconZap	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "zap" exactly.
+CATEGORY_ICONS	constant	@spy4x/preact-icons/registry	The ids of the category set, in the order a picker shows them: grouped by meaning (home and bills, food, getting around, shopping, health and family, leisure, money and work, other), not by alphabet, because a grid is read in rows.
+ICONS	constant	@spy4x/preact-icons/registry	Every glyph a picker can offer, by id.
+IconEntry	type	@spy4x/preact-icons/registry	One glyph of `ICONS`: its component, its English name and the words that find it.
+IconName	type	@spy4x/preact-icons/registry	The id of a glyph in `ICONS`: what an app stores.
 Map	component	@spy4x/preact-map	See this file's own doc.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.
 default	helper	@spy4x/preact-map/i18n/ar	The `map` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.
+Assets	type	@spy4x/preact-server	What the build tells the renderer: the stylesheets, the client script and the build id.
+Context	helper	@spy4x/preact-server	The request's context, as Fresh's `Context`.
+HandlerByMethod	type	@spy4x/preact-server	A route's handlers by HTTP method, such as `{ GET, POST }`.
+HandlerFn	type	@spy4x/preact-server	A route's handler: a response, or data for its page.
+Head	component	@spy4x/preact-server	Its children go into the page's `<head>`, as Fresh's `Head`.
+HttpError	helper	@spy4x/preact-server	An error with an HTTP status, as Fresh's `HttpError`.
+IslandRef	type	@spy4x/preact-server	An island: a component the client wakes, by its file and export.
+Middleware	type	@spy4x/preact-server	A step of the request chain: answers, or calls `ctx.next()` for the rest.
+PageComponent	type	@spy4x/preact-server	A page, a layout or the app wrapper.
+PageResponse	type	@spy4x/preact-server	What a handler may return instead of a response: data and status for its page.
+Preload	type	@spy4x/preact-server	The chunks a page with islands preloads, from the client build's manifest.
+RouteHandler	type	@spy4x/preact-server	One handler for every method, or one per method.
+RouteModule	type	@spy4x/preact-server	A route file's exports; `component` is the page's name in `app.route()`, as in Fresh.
+ServeInfo	type	@spy4x/preact-server	Who sent the request, as the runtime's server reports it.
+StaticBuild	type	@spy4x/preact-server	What the server entry hands `setStaticFiles`: the build's list and how to open a file.
+StaticFile	type	@spy4x/preact-server	One file of the build, as the build lists it (the `website()` Vite plugin).
+StaticFileHandle	type	@spy4x/preact-server	A file opened for streaming; the shape of `StaticFileHandle` in `@spy4x/server/static`, so its `denoStaticFs` fits `StaticBuild.fs` as it is.
+WebsiteBuild	type	@spy4x/preact-server	What the client build produced: the server entry hands it to `setAssets` and `setStaticFiles`.
+asset	helper	@spy4x/preact-server	`path` with the build id, when it is a path on this site.
+createDefine	helper	@spy4x/preact-server	Typed identity helpers, as Fresh's `createDefine`.
+fsRoutes	helper	@spy4x/preact-server	Adds every file of `files` (from `import.meta.glob("./routes/**\/*.{ts,tsx}")`, keyed `./routes/…`) to `app`.
+page	helper	@spy4x/preact-server	Fresh's `page()`: data and response options for a handler to give its page.
+registerIslands	helper	@spy4x/preact-server	Registers the exports of `islands/` files, each a component the browser wakes.
+setAssets	helper	@spy4x/preact-server	Sets what the build produced; the server entry calls it once.
+setStaticFiles	helper	@spy4x/preact-server	The build's files; the server entry calls it once.
+staticFiles	helper	@spy4x/preact-server	Answer with the file at the request's path, when the build has one; else the next step.
+hydrateIslands	helper	@spy4x/preact-server/client	Hydrates every island of the page, from `loaders` (`import.meta.glob("./islands/**\/*.tsx")`).
+BUILD_PLACEHOLDER	constant	@spy4x/preact-server/vite	The name `server-entry.ts` declares and assigns (`const build = __WEBSITE_BUILD__`): the build replaces it with the client build's `WebsiteBuild`, the dev server with `null`.
+WebsiteBuilder	type	@spy4x/preact-server/vite	The build's environments, as `builder.buildApp` receives them.
+WebsiteDevServer	type	@spy4x/preact-server/vite	The part of Vite's dev server the plugin uses.
+WebsiteDirEntry	type	@spy4x/preact-server/vite	The part of a directory entry `WebsiteOptions.readDir` yields, as `Deno.readDir` does.
+WebsiteNodeRequest	type	@spy4x/preact-server/vite	Node's request, as Vite's dev server hands it to a middleware.
+WebsiteNodeResponse	type	@spy4x/preact-server/vite	Node's response, as Vite's dev server hands it to a middleware.
+WebsitePlugin	type	@spy4x/preact-server/vite	The shape of the Vite plugin `website` returns, cut down to the hooks it implements.
+website	helper	@spy4x/preact-server/vite	The plugins that build and serve the website.
 CLIPBOARD_UNAVAILABLE	constant	@spy4x/preact-signals	Reason reported when the runtime has no clipboard at all (an insecure origin, a server render).
 ClipboardPort	type	@spy4x/preact-signals	Write port.
 ClipboardStore	type	@spy4x/preact-signals	A clipboard helper.
@@ -487,7 +527,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1368 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1384 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -588,12 +628,14 @@ CoachmarkTarget	type	@spy4x/preact-ui	The element a coachmark points at: a CSS s
 ColorField	component	@spy4x/preact-ui	A colour picker: preset swatches, an optional "None", and a "Custom" swatch that opens a native colour input and a hex text field.
 ColorPreset	type	@spy4x/preact-ui	One swatch of a `ColorField`: a `#rrggbb` colour and its name.
 Combobox	component	@spy4x/preact-ui	Searchable single-select: a text input filtering a `role="listbox"` of options.
+ComboboxGroup	type	@spy4x/preact-ui	A group of `Combobox` options, as the caller's `groupOf` names it.
 ComboboxKey	type	@spy4x/preact-ui	Keys the combobox acts on, and what each does.
 ComboboxKeyAction	type	@spy4x/preact-ui	What the DOM handler must do once `comboboxKeyAction` has decided.
 ComboboxKeyResult	type	@spy4x/preact-ui	What one key press produces: the next state, plus whether the key was ours to consume.
 ComboboxListboxContent	type	@spy4x/preact-ui	What the popup must render: either options with ids, or nothing at all.
 ComboboxNamingProps	type	@spy4x/preact-ui	How the combobox is named.
 ComboboxOptionState	type	@spy4x/preact-ui	Extra state handed to a `renderOption` callback, so the caller can style selection and highlight.
+ComboboxSection	type	@spy4x/preact-ui	One run of rows in the popup: a group with its lead and members, or ungrouped items.
 ComboboxState	type	@spy4x/preact-ui	Highlighted-or-not plus open-or-not of one combobox.
 CommandPalette	component	@spy4x/preact-ui	A search trigger and the dialog it opens: one field and a list of results that the arrow keys move through, as `Combobox` does.
 CommandPaletteBaseProps	type	@spy4x/preact-ui	Props every `CommandPalette` takes, whichever data mode it uses.
@@ -692,6 +734,7 @@ HotkeyBinding	type	@spy4x/preact-ui	One keyboard shortcut for `useHotkeys`: a co
 HotkeyPress	type	@spy4x/preact-ui	A key press as `pickHotkey` sees it: the key, the modifiers and where it landed.
 HotkeyProps	type	@spy4x/preact-ui	The props a component takes to bind a key to its own button: `hotkey` binds it and announces it, and a `Kbd` hint inside the button shows it.
 I18nContext	component	@spy4x/preact-ui	The translator the components read.
+IconPicker	component	@spy4x/preact-ui	An icon picker: a search box over a grid of icons, one of which a person chooses for a category, a list or a folder.
 ImageElementLike	type	@spy4x/preact-ui	The view of a clicked element this component needs.
 ImageGallery	component	@spy4x/preact-ui	Thumbnails that open the shared `Lightbox` on the one pressed: a wrapping grid by default, or a sideways-scrolling, snapping row of large images with `layout="strip"`.
 ImageGalleryImage	type	@spy4x/preact-ui	One image a gallery's strip can show, and hand to the lightbox it opens.
@@ -901,6 +944,7 @@ comboboxKey	helper	@spy4x/preact-ui	Map a DOM keyboard event onto a `ComboboxKey
 comboboxKeyAction	helper	@spy4x/preact-ui	The whole key decision table of the combobox: state, `preventDefault` and selection, decided purely from the key, the current state and the length of the filtered list.
 comboboxListboxId	helper	@spy4x/preact-ui	`id` of the popup listbox of the combobox whose base id is `id`.
 comboboxOptionId	helper	@spy4x/preact-ui	`id` of one option, which is also what `aria-activedescendant` points at.
+comboboxSections	helper	@spy4x/preact-ui	Arrange the items a filter left into the sections the popup draws.
 confirmVariant	helper	@spy4x/preact-ui	Button variant for the confirming action.
 counterText	helper	@spy4x/preact-ui	The counter text, e.g.
 createHotkeyListener	helper	@spy4x/preact-ui	The `keydown` listener `useHotkeys` attaches, on its own: it reads the bindings on every press, runs the first that matches and cancels the press's default action.
@@ -928,7 +972,7 @@ dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
 enhanceCodeCopy	helper	@spy4x/preact-ui	Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside `root`: a press copies the block's text as it reads, without its final newline, so a pasted command waits for Enter.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
-filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
+filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, the best match first.
 filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.
 fold	helper	@spy4x/preact-ui	Fold text for matching: accents removed and lower-cased.
@@ -958,7 +1002,7 @@ listboxContent	helper	@spy4x/preact-ui	Split a filtered list into "options to re
 matchOption	helper	@spy4x/preact-ui	How `query` matched one option, or `undefined` when it did not or the query is empty: what `matchEntry` from `@spy4x/platform/universal/text` says of its `label` and `aliases`, else `"detail"` when its `detail` holds the query.
 matchOptions	helper	@spy4x/preact-ui	The options that match `query`, best first, at most `limit` of them: the palette's default filter.
 matchesAccept	helper	@spy4x/preact-ui	Whether `file` matches an `<input accept>`-style pattern list: comma-separated extensions (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`) — exactly the three shapes the browser's own file chooser filters by.
-matchesQuery	helper	@spy4x/preact-ui	Whether one item matches a query.
+matchesQuery	helper	@spy4x/preact-ui	Whether one item matches a query, by the forgiving search of `@spy4x/platform/universal/text` (`matchEntry`).
 mergeLayout	helper	@spy4x/preact-ui	A saved layout made valid for the parts that exist now, in the saved order.
 moveKanbanItem	helper	@spy4x/preact-ui	Apply a reported move to an array of items, returning a new array.
 moveLayoutEntry	helper	@spy4x/preact-ui	`layout` with the entry at `from` moved to `to`, as `SortableList`'s `onMove` reports it.
@@ -1092,7 +1136,7 @@ demoHref	helper	@spy4x/preact-ui-guide	Canonical href of one demo card.
 demoRegistry	helper	@spy4x/preact-ui-guide	The flat registry the catalogue renders from: one entry per card, all sections merged.
 guidePageIds	helper	@spy4x/preact-ui-guide	The guide's pages, in navigation order: the overview, then one page per package.
 guidePages	helper	@spy4x/preact-ui-guide	Every page of the guide, resolved, in `guidePageIds` order.
-helperPackageIds	helper	@spy4x/preact-ui-guide	Packages that export no component: helpers only, so the guide shows none of their exports and no stylesheet needs to scan them.
+helperPackageIds	helper	@spy4x/preact-ui-guide	Packages that export helpers, so the guide shows none of their exports and no stylesheet needs to scan them.
 iconNames	helper	@spy4x/preact-ui-guide	Every glyph the icon package exports, in module order.
 missingDemos	helper	@spy4x/preact-ui-guide	Cards the sections mean to render that this registry does not carry.
 packageIds	helper	@spy4x/preact-ui-guide	Every package whose components the catalogue renders, in reading order.

@@ -55,10 +55,21 @@ describe("Prose", () => {
     expect(pre).not.toContain("wrap")
     expect(proseCss).toContain("& :where(pre:focus-visible) {")
     const html = render(<Prose html="<pre><code>deno task check</code></pre>" />)
-    expect(html).toContain('<pre tabindex="0"><code>deno task check</code></pre>')
+    expect(html).toContain('<pre dir="ltr" tabindex="0"><code>deno task check</code></pre>')
     // A block that is a Tab stop already, as a highlighter draws it, keeps its own.
     expect(render(<Prose html='<pre class="shiki" tabindex="-1"><code>x</code></pre>' />))
-      .toContain('<pre class="shiki" tabindex="-1"><code>x</code></pre>')
+      .toContain('<pre class="shiki" tabindex="-1" dir="ltr"><code>x</code></pre>')
+  })
+
+  it("lays a code block out left to right on a right-to-left page, unless it names its own dir", () => {
+    const html = render(
+      <div dir="rtl">
+        <Prose html="<p>نص</p><pre><code>const a = f(b)</code></pre>" />
+      </div>,
+    )
+    expect(html).toContain('<pre dir="ltr" tabindex="0"><code>const a = f(b)</code></pre>')
+    expect(render(<Prose html='<pre dir="rtl"><code>x</code></pre>' />))
+      .toContain('<pre dir="rtl" tabindex="0"><code>x</code></pre>')
   })
 
   it("draws no copy button without copyCode", () => {
