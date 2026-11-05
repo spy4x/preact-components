@@ -25,7 +25,7 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   (`ui/page-header.tsx`). Example: `ui-guide/sections/page-header.tsx`.
 - Settings with sub-pages → `SettingsLayout` (`system/settings-layout.tsx`). Example:
   `ui-guide/sections/settings-layout.tsx`.
-- Rows of settings → `SettingList`, `SettingGroup`, `SettingRow` (`ui/setting-row.tsx`). Example:
+- Rows of settings → `SettingList`, `SettingRow` (`ui/setting-row.tsx`). Example:
   `ui-guide/sections/settings-layout.tsx`.
 - One value edited in place → `InlineEdit` (`ui/inline-edit.tsx`). Example:
   `ui-guide/sections/fields.tsx`.
@@ -52,8 +52,8 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   `ui-guide/sections/feedback.tsx`.
 - A short form in a dialog → `Modal` (`ui/modal.tsx`) with `DialogActions`
   (`ui/dialog-actions.tsx`). Example: `ui-guide/sections/feedback.tsx`.
-- A menu of actions → `Dropdown` and `DropdownItem` (`ui/dropdown.tsx`); in a page header,
-  `MoreMenu`. Example: `ui-guide/sections/crud.tsx`.
+- A menu of actions → `Dropdown` and `DropdownItem` (`ui/dropdown.tsx`). Example:
+  `ui-guide/sections/crud.tsx`.
 - A toast → `Toastr` (`ui/toastr.tsx`) fed by `createToastStore` (`signals/toast.ts`). Example:
   `ui-guide/mini-app.tsx`.
 

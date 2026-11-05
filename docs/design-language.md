@@ -1,6 +1,7 @@
 # Design language
 
-Every rule below in one line each: [design-rules.md](./design-rules.md). Read that first.
+The main rules below, one line each: [design-rules.md](./design-rules.md). Read that first; the
+Storefront section, the Component patterns table and Taste are only here.
 
 One house style for every app built on this library, so that a person who uses two of them can
 tell they were made by the same hand, and can still tell at a glance which app they are in.
