@@ -385,6 +385,13 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "Save exists only in the browser; the second editor's region stays empty in both, " +
       "because its demo row passes that validation",
   },
+  "demo-CurrencyField": {
+    selector: `[role="listbox"]`,
+    parts: 1,
+    reason: "the demo names every currency with `Intl` where it runs, and the server's and the " +
+      "browser's locale data name some differently: Deno's names KGS Kyrgystani Som, Chromium's " +
+      "Kyrgyz Som",
+  },
   "demo-LineChart": {
     selector: `[data-chart="line"] > [aria-hidden="true"] .inset-x-3`,
     parts: 3,
