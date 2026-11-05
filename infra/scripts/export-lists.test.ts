@@ -214,11 +214,32 @@ describe("export lists", () => {
     ])
   })
 
-  it("reports a catalogued package whose README has no Components table", () => {
+  it("reports a catalogued package whose README has no Components table or list", () => {
     const input = docs()
     input.packageReadmes.crud = "## Usage\n\n| `Widget` | `widget` | |"
     expect(exportListProblems(input, packages())).toEqual([
-      `crud/README.md has no "## Components" table`,
+      `crud/README.md has no "## Components" table or list`,
+    ])
+  })
+
+  it("reads a Components list item as a row of its component and subpath", () => {
+    const input = docs()
+    input.packageReadmes.ui =
+      "## Components\n\n- `Widget` (`widget`): `value`\n- `Gadget` (`widget`)"
+    expect(exportListProblems(input, packages())).toEqual([
+      "ui/README.md says `widget` exports `Gadget`, and it does not",
+      "ui/README.md lists the component `Gadget`, which ui does not export",
+    ])
+  })
+
+  it("reports a component a Components list leaves out", () => {
+    const input = docs()
+    input.packageReadmes.ui = "## Components\n\n- `Widget` (`widget`): `value`"
+    const surfaces = packages()
+    surfaces.ui.names.push("Gadget")
+    surfaces.ui.components.push("Gadget")
+    expect(exportListProblems(input, surfaces)).toEqual([
+      "ui exports the component `Gadget`, and ui/README.md does not list it",
     ])
   })
 })
