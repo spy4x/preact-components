@@ -78,6 +78,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                                                                                                                                                                                                                    |
 | `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                                                                                                                                                                                                                   |
 | `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `title?` (visible label; without it, the icon alone), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with a `title`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                                                                                                             |
+| `CurrencyField`       | `currency-field`       | `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`                                                                                                                                                                                                                                  |
 | `DashboardGrid`       | `widget-card`          | `items` (`{ id, size: "stat" \| "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row                                                                                                                                                                                                                                                                                                                                                                                |
 | `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                                                                                                                                                                                                                                                |
 | `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -123,8 +124,8 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `LookTile`            | `look-tile`            | `href`, `name`, `price`, `photo` (`{ variants, alt, sizes? }`), `sizes?` (`{ label, soldOut? }[]`), `chosenSize?`, `colors?`, `soldOut?`, `viewTransitionName?`, `priority?`, `headingLevel?`, `labels?` — a 3:4 photo as the card, one link; no JavaScript                                                                                                                                                                                                                                    |
 | `LoopVideo`           | `loop-video`           | `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` and `darkSources?` (`{ src, type }[]`, WebM first), `title` (the video's name), `name` (the button says "Pause animation: {name}"), `pauseLabel?`, `playLabel?`, `class?` — a silent loop that plays while half of it is in view                                                                                                                                                                                        |
 | `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`                                                                                                                                                                                                                                                                                                                                                           |
-| `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                                                                                                                                                                                                                                          |
+| `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `tone?` (`"plain"`, `"negative"`, `"signed"`), `colorNegative?` (deprecated), `class?`                                                                                                                                                                                                                                                                                                  |
+| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `decimalsMessage?`, `required?`, `class?` (the bordered box)                                                                                                                                                                                                                                   |
 | `MoreMenu`            | `page-header`          | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty                                                                                                                                                                                                                                            |
 | `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`, `actionVariant?` (`primary` default, `secondary`)                                                                                                                                                                                                                                               |
@@ -138,6 +139,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `note?` (a caveat under the byline), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript                                                                                                                            |
 | `PageTitle`           | `page-title`           | `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `PeriodStepper`       | `period-stepper`       | `period`, `onChange`, `now`, `timeZone`, `options?` (first weekday), `labels?`, `locale?`, `currentHotkey?`, `singleKeys?` — steps through weeks or months with `[`, `]` and `t`; the period maths is `@spy4x/time/period`                                                                                                                                                                                                                                                                     |
 | `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                                                                                                                                                                              |
 | `PostList`            | `post-list`            | `posts` (`{ href, title, description?, publishedAt, readMinutes?, lang?, dir?, image? }[]`; `lang` sets the title's and description's language, `dir="auto"` unless `dir` is given; `image` is a decorative `{ src, width, height, srcset?, sizes? }` cover, above the text on a phone and 192×108 beside it from 640 px), `headingLevel?` (`2` default), `label?`, `labels?`, `eagerFirst?` (the first cover loads eagerly) — the whole row is the link's target; dates in UTC; no JavaScript |
 | `PrevNext`            | `prev-next`            | `previous?`, `next?` (`{ href, title }`), `labels?` — two whole-card links at a guide's end, next on the end side; no JavaScript                                                                                                                                                                                                                                                                                                                                                               |
@@ -184,6 +186,7 @@ one. See #257's own "What I suggest" for the two options this decides between.
 | `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`                                                                                                                                                                                                                                                        |
 | `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                                                                                                                                                                                                                                           |
 | `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab                                                                                                                                                                                                                   |
+| `UsageMeter`          | `usage-meter`          | `used`, `limit`, `format`, `label`, `warnAt?` (80), `labels?`, `locale?` — the figures, a bar and a line saying what is left or how far over; `role="meter"`                                                                                                                                                                                                                                                                                                                                   |
 | `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                                                                                                                                                                                                                                    |
 | `WidgetCard`          | `widget-card`          | `title`, `status` (`loading`/`error`/`empty`/`ready`), `size?`, `loadingLabel`, `caption?`, `menu?`, `href?`, `errorMessage?`, `onRetry?`, `emptyLabel?`, `skeletonDelay?`                                                                                                                                                                                                                                                                                                                     |
 | `WidgetStat`          | `widget-card`          | `value`, `valueLabel?`, `lines?`                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -1729,8 +1732,21 @@ grouping mark is accepted only where `Intl` itself would place one for that loca
 never stripped wherever it stands, which is what let `"12.50"` typed in a German field (where `.` is
 the grouping mark, not the decimal mark) silently become €1,250.00.
 
-`MoneyDisplay` is a bare `<span>` — this is text, not a control, so it carries no role or label of
-its own. `colorNegative` colours a negative amount red; every other style is the caller's `class`.
+Both format in the person's region, not the interface language: without a `locale` prop they use
+`useFormat().locale`, the region format the app gives `FormatContext`, so an English interface in a
+German region shows `1.234,56 €`, the same way its dates read. `decimals` gives a code the ISO table
+lacks its own, such as `8` for `BTC`.
+
+`MoneyDisplay` is a bare `<span>` with tabular figures — this is text, not a control, so it carries
+no role or label of its own. `tone="negative"` colours a negative amount with the danger token;
+`tone="signed"` adds a `+` to income in the success colour and keeps the minus sign of spending in
+the danger colour, and zero gets neither. `colorNegative` still works as `tone="negative"`. Every
+other style is the caller's `class`.
+
+`MoneyInput` shows the currency code inside its bordered box, after the amount, tied to the input by
+`aria-describedby` with a hidden "Currency: Euro (EUR)" when `Intl` knows the name. `class` styles
+that box. An amount with more decimals than the currency takes is refused with its own message,
+"EUR takes up to 2 decimal places" or "JPY takes whole amounts only"; `decimalsMessage` replaces it.
 
 `MoneyInput` keeps the typed text as local, purely visual state — the same allowance `Input`'s own
 draft state has — synced from `value`/`currency`/`locale` only while the field is not focused, so a
@@ -2852,9 +2868,12 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 
 - `dateRangePresets` lists every date preset in its presentation order: the single days and rolling
   day counts (`"today"` to `"last-90-days"`), then `"last-12-months"`, then the calendar periods
-  (`"this-month"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
+  (`"this-week"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
   `"last-hour"` then `"last-24-hours"`. They carry no labels: build a picker's option list from them
   and word each option yourself.
+- `rangeForPreset` and `presetForRange` take `firstWeekday` (1 Monday to 7 Sunday, default 1) for
+  the two week presets; pass the same one to both, and to `DateRangePicker`, so a Sunday-start week
+  the picker applied is still recognised as "This week".
 
 ### Dropdown (`./dropdown`)
 
@@ -2991,12 +3010,18 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 - `counterText(position, total)` is the counter's English default, `"3 of 8"`; the `counterLabel`
   prop replaces it.
 
+### CurrencyField (`./currency-field`)
+
+- `filterCurrencies(options, query, recent)` is the list `CurrencyField` shows for a query: the
+  `recent` codes first while nothing is typed; the option whose code is the query first, then the
+  rest as `searchEntries` ranks them; for a query of symbols only, the options with that symbol.
+
 ### MoneyInput (`./money-input`)
 
-- `editableText(value, currency, locale)` formats an amount in the currency's smallest unit as the
+- `editableText(value, currency, locale, decimals)` formats an amount in the currency's smallest unit as the
   text a person edits: digits and the decimal mark of `locale`, the currency's number of decimals,
   no symbol and no grouping. `null` gives `""`.
-- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage)` is exported
+- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage, options)` is exported
   for the package's own components and tests: the value and message one edit of a `MoneyInput`
   produces.
 
@@ -3034,6 +3059,11 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   (default `7`) is listed in full; a longer one keeps the first page, the last page and the current
   page with its neighbours. A `size` below `5` counts as `5`. Use it to draw pagination in markup of
   your own.
+
+### PeriodStepper (`./period-stepper`)
+
+- `periodStepperLabels` is the stepper's English words, one set per unit, the same as the
+  `PeriodStepper.*` keys of `i18n/en.ts`.
 
 ### Progress (`./progress`)
 
@@ -3085,6 +3115,14 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   `leaveGuard` prop) and the code that navigates. `leaveGuard.navigate(go)` runs `go` at once when
   nothing is unsaved and asks first otherwise. `navigate` is its only member; `UnsavedGuard`
   throws for a `leaveGuard` that `createLeaveGuard()` did not return.
+
+### UsageMeter (`./usage-meter`)
+
+- `usageReading(used, limit, warnAt?)` is the meter's arithmetic without the markup: the state
+  (`"under"`, `"near"`, `"reached"`, `"over"`), the percentage rounded down, what is left or over,
+  the fill's width and where the limit's tick sits.
+- `usageMeterLabels` is the meter's English words, the same as the `UsageMeter.*` keys of
+  `i18n/en.ts`.
 
 ### useSucceeded (`./use-succeeded`)
 

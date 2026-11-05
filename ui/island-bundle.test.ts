@@ -60,8 +60,9 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   "island-image-gallery.tsx": 37_000,
   // 31.1 KB.
   "island-lightbox.tsx": 33_000,
-  // 34.9 KB.
-  "island-pricing-table.tsx": 36_000,
+  // 34.9 KB. Prices in the person's region format, from `money-core`, which leaves arktype out
+  // (#1161, ts-libs#863): 36.4 KB.
+  "island-pricing-table.tsx": 38_000,
   // 45.8 KB.
   "island-screen-tour.tsx": 47_000,
   // Below the default: a docs page's only island, Preact and the clipboard helper alone. 14.1 KB.

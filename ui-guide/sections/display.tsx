@@ -36,6 +36,7 @@ import {
   Lightbox,
   type LightboxImage,
   MoneyDisplay,
+  type MoneyDisplayProps,
   OnDay,
   pageRange,
   PageTitle,
@@ -56,11 +57,13 @@ import {
   type TimelineItem,
   Tooltip,
   type TooltipPlacement,
+  UsageMeter,
   useFormat,
   useHotkeys,
   useT,
   When,
 } from "@spy4x/preact-ui"
+import { formatMoney } from "@spy4x/platform/universal/money"
 import uiAr from "@spy4x/preact-ui/i18n/ar"
 import uiDe from "@spy4x/preact-ui/i18n/de"
 import uiEn from "@spy4x/preact-ui/i18n/en"
@@ -455,6 +458,43 @@ function ProgressDemo() {
   )
 }
 
+/** Euros from cents, the way a finance app stores them. */
+const euros = (cents: number) => formatMoney(cents, "EUR", "en-GB")
+
+/** One budget per state of `UsageMeter`, then a long label, then a limit of nothing. */
+const usageMeterBudgets: readonly { label: string; used: number; limit: number }[] = [
+  { label: "Groceries", used: 21_200, limit: 50_000 },
+  { label: "Restaurants", used: 48_200, limit: 50_000 },
+  { label: "Fuel", used: 50_000, limit: 50_000 },
+  { label: "Clothes", used: 51_200, limit: 50_000 },
+  { label: "Home improvement and garden supplies", used: 120_000, limit: 50_000 },
+  { label: "Gifts, with no budget", used: 4_000, limit: 0 },
+]
+
+/**
+ * `UsageMeter` well under its limit, close to it, at it and past it: the state line and the fill's
+ * colour change at each step, and past the limit a tick marks where the limit falls. Then a label
+ * too long for the row, and a limit of 0, which has no percentage.
+ */
+function UsageMeterDemo() {
+  return (
+    <Grid minColumnWidth="lg" data-e2e="guide-usage-meter">
+      {usageMeterBudgets.map((budget) => (
+        <Card key={budget.label}>
+          <CardBody>
+            <UsageMeter
+              label={budget.label}
+              used={budget.used}
+              limit={budget.limit}
+              format={euros}
+            />
+          </CardBody>
+        </Card>
+      ))}
+    </Grid>
+  )
+}
+
 /** A benchmark half way through, failed on one step: five of the six states the list draws. */
 const runSteps: readonly RunStep[] = [
   {
@@ -516,31 +556,66 @@ function RunStepsDemo() {
   )
 }
 
-/** Three currencies with a different decimal count each, plus one negative amount coloured. */
-const moneyRows: { amount: number; currency: string; note: string; negative?: boolean }[] = [
-  { amount: 12345, currency: "EUR", note: "two decimals" },
-  { amount: 12345, currency: "JPY", note: "no decimals" },
-  { amount: 12345, currency: "KWD", note: "three decimals" },
-  { amount: -4599, currency: "EUR", note: "colorNegative", negative: true },
+/**
+ * One amount per row: plain, the signed tone on income, spending and zero, the negative tone, yen
+ * with no decimals, dinar with three, and BTC with the 8 decimals the caller gives.
+ */
+const moneyRows: { what: string; props: MoneyDisplayProps }[] = [
+  { what: "plain", props: { amount: 123456, currency: "EUR" } },
+  { what: "signed +", props: { amount: 320000, currency: "EUR", tone: "signed" } },
+  { what: "signed −", props: { amount: -8420, currency: "EUR", tone: "signed" } },
+  { what: "signed 0", props: { amount: 0, currency: "EUR", tone: "signed" } },
+  { what: "negative", props: { amount: -4599, currency: "EUR", tone: "negative" } },
+  { what: "JPY", props: { amount: 12345, currency: "JPY" } },
+  { what: "KWD", props: { amount: 12345, currency: "KWD" } },
+  { what: "BTC", props: { amount: 1, currency: "BTC", decimals: 8 } },
 ]
 
-/** Each amount beside what it shows, in two aligned columns. */
+/** The two regions the card compares: the same English words, two number formats. */
+const moneyRegions = [
+  { locale: "de-DE", format: createFormatters({ locale: "de-DE", timeZone: "UTC" }) },
+  { locale: "en-US", format: createFormatters({ locale: "en-US", timeZone: "UTC" }) },
+]
+
+/**
+ * Each amount in a German and an American region, side by side: no `locale` prop, so the column's
+ * `FormatContext` decides the number format, as an app's region setting does.
+ */
 function MoneyDisplayDemo() {
   return (
-    <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
-      {moneyRows.map((row) => (
-        <Fragment key={`${row.currency}${row.amount}`}>
-          <span class="text-end tabular-nums">
-            <MoneyDisplay
-              amount={row.amount}
-              currency={row.currency}
-              colorNegative={row.negative}
-            />
-          </span>
-          <span class="text-xs text-muted">{row.note}</span>
-        </Fragment>
-      ))}
-    </div>
+    // `bg-transparent` on both: the dark palette's base rules band a table head, which here would
+    // sit between the amounts and the card for no reason.
+    <table class="w-full bg-transparent text-sm" data-e2e="money-display-table">
+      <thead class="bg-transparent">
+        <tr class="text-xs text-muted">
+          <th scope="col" class="pb-2 text-start font-normal">Tone or currency</th>
+          {moneyRegions.map((region) => (
+            <th key={region.locale} scope="col" class="pb-2 text-end font-normal">
+              {region.locale}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {moneyRows.map((row) => (
+          <tr key={row.what}>
+            <th
+              scope="row"
+              class="whitespace-nowrap py-1 pe-4 text-start text-xs font-normal text-muted"
+            >
+              {row.what}
+            </th>
+            {moneyRegions.map((region) => (
+              <td key={region.locale} class="py-1 ps-4 text-end">
+                <FormatContext.Provider value={region.format}>
+                  <MoneyDisplay {...row.props} />
+                </FormatContext.Provider>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -1543,10 +1618,41 @@ export const displayDemos = {
   ...pageHeaderDemos,
   MoneyDisplay: {
     summary:
-      "Shows an amount kept in a currency's smallest unit, with that currency's own decimals.",
+      "Shows an amount kept in a currency's smallest unit, in the person's region format, with that currency's own decimals.",
     wide: false,
-    snippet: `<MoneyDisplay amount={12345} currency="EUR" />
-<MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
+    props: [
+      {
+        name: "amount",
+        type: "number",
+        description: "The amount in the currency's smallest unit.",
+      },
+      {
+        name: "currency",
+        type: "string",
+        description: "The ISO code, such as `EUR`, or a coin's.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        default: "useFormat().locale",
+        description: "The number format; by default the region of `FormatContext`.",
+      },
+      {
+        name: "decimals",
+        type: "number",
+        description: "A coin's own decimals, such as 8 for BTC.",
+      },
+      {
+        name: "tone",
+        type: `"plain" | "negative" | "signed"`,
+        default: `"plain"`,
+        description:
+          "`signed` adds a plus and the success colour to income, the danger colour to spending.",
+      },
+    ],
+    snippet: `<MoneyDisplay amount={123456} currency="EUR" />
+<MoneyDisplay amount={-8420} currency="EUR" tone="signed" />
+<MoneyDisplay amount={1} currency="BTC" decimals={8} />`,
     render: () => <MoneyDisplayDemo />,
   },
   I18nContext: {
@@ -1670,6 +1776,44 @@ const translator = createTranslator({
     snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
 <Progress value={null} ariaLabel="Sync" />`,
     render: () => <ProgressDemo />,
+  },
+  UsageMeter: {
+    summary:
+      "How much of a limit is used, such as a budget's spending: the figures, a bar, and a line that says what is left or how far over it is.",
+    wide: true,
+    props: [
+      { name: "used", type: "number", description: "The amount used so far." },
+      { name: "limit", type: "number", description: "The amount allowed, in the same unit." },
+      {
+        name: "format",
+        type: "(amount: number) => string",
+        description: "Turns an amount into text: money, storage or seats.",
+      },
+      { name: "label", type: "string", description: "What is measured; it names the meter." },
+      {
+        name: "warnAt",
+        type: "number",
+        default: "80",
+        description: "The percent of the limit from which the meter warns.",
+      },
+      {
+        name: "labels",
+        type: "Partial<UsageMeterLabels>",
+        description: "Overrides for the words; each state is one whole sentence.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the percentage; defaults to the translator's language.",
+      },
+    ],
+    snippet: `<UsageMeter
+  label="Groceries"
+  used={41200}
+  limit={50000}
+  format={(cents) => formatMoney(cents, "EUR", locale)}
+/>`,
+    render: () => <UsageMeterDemo />,
   },
   RunSteps: {
     summary:
