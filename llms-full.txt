@@ -4577,6 +4577,9 @@ classes keep their names: no app writes them as ordinary words.
 - **Surfaces** — `pc-card`, `pc-card-header`, `pc-card-body`, `pc-card-footer`, `pc-scrollbar`,
   `pc-focus-offset-surface`.
 - **Data display** — `pc-num`, `pc-kpi`, `pc-kpi-label`, `pc-kpi-value`, `pc-bar`.
+- **Print** — Tailwind's `print:hidden` on anything that means nothing on paper: navigation, menus,
+  buttons. `SiteHeader` and `SiteFooter` carry it on their root, so a public page prints as its
+  content alone; a page adds it to its own controls.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`
@@ -8200,6 +8203,16 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 - `enhanceCodeCopy(root, copy)` reveals and wires every copy button `Prose` drew with `copyCode`
   inside `root` (default `document`), once each, and returns a function that hides and unwires
   them; `ProseCodeCopy` calls it on mount.
+
+### Checklist (`./checklist`)
+
+- `enhanceChecklist(root, { key, storage, onChange })` wires the checkboxes a server rendered inside
+  `root` into a checklist whose ticks survive a reload: it restores and saves the ticked ids under
+  `key` in the `storage` port (a page passes `() => localStorage`), follows other tabs through the `storage`
+  event, counts per `data-checklist-section` and reports `{ checked, total, bySection, storageOk }`
+  to `onChange` on start and after each change. It returns the function that unwires it, carrying
+  `clear()` (returns the ids it unticked) and `restore(ids)`, enough for Clear with Undo. It never
+  draws anything, so the boxes keep their native semantics.
 
 ### SectionHeading (`./section-heading`)
 

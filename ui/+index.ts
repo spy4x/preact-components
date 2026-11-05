@@ -604,6 +604,14 @@ export { FeatureCard, type FeatureCardProps } from "./feature-card.tsx"
 export { Prose, PROSE_LABELS, type ProseLabels, type ProseProps } from "./prose.tsx"
 export { enhanceCodeCopy, ProseCodeCopy, type ProseCodeCopyProps } from "./prose-copy.tsx"
 export {
+  type ChecklistControl,
+  type ChecklistCount,
+  type ChecklistOptions,
+  type ChecklistState,
+  type ChecklistStorage,
+  enhanceChecklist,
+} from "./checklist.ts"
+export {
   SECTION_HEADING_LABELS,
   SectionHeading,
   type SectionHeadingLabels,
