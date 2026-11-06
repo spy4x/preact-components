@@ -23,6 +23,7 @@
  * deno task verify --only=e2e                  # only the Playwright specs under e2e/
  * deno task verify --except=ui,e2e             # every block but those two
  * deno task verify --only=e2e --e2e-shard=2/4  # the second of four shards of the e2e specs
+ * deno task verify --component=tag-input        # one ui component: checks/ui/, e2e/ui/
  * deno task verify --cpu-throttle=6             # the page's CPU six times slower, see below
  * ```
  *
@@ -116,7 +117,8 @@ import { pagesChecks } from "./checks/pages.ts"
 import { signalsChecks } from "./checks/signals.ts"
 import { systemChecks } from "./checks/system.ts"
 import { themeChecks } from "./checks/theme.ts"
-import { uiChecks } from "./checks/ui.ts"
+import { ofComponent, UI_CHECK_FILES, uiChecks } from "./checks/ui.ts"
+import { specsByFile } from "./e2e/ui.spec.ts"
 import { uiGuideChecks } from "./checks/ui-guide.ts"
 import { demoElementId } from "./src/deep-link.ts"
 import { renderApp } from "./src/prerender.tsx"
@@ -239,6 +241,15 @@ const E2E_SHARD = (() => {
   if (!arg) return undefined
   return parseShard(arg.slice("--e2e-shard=".length)) ?? null
 })()
+
+/**
+ * `--component=tag-input` runs only one `ui/` component's checks: the `ui` block's from
+ * `checks/ui/tag-input.ts` and the `e2e` block's from `e2e/ui/tag-input.spec.ts`, each with its
+ * `tag-input-*` siblings — `undefined` when the flag was not passed. Like `--only` it marks the
+ * run's last line as filtered, and a name that matches no file is a failed check.
+ */
+const COMPONENT = Deno.args.find((value) => value.startsWith("--component="))
+  ?.slice("--component=".length).trim()
 
 /**
  * The block names one flag lists, such as `--only=system,ui`.
@@ -854,6 +865,25 @@ async function browserPhase(): Promise<void> {
       return
     }
     activeBlocks = selection.selected
+  }
+  if (COMPONENT !== undefined) {
+    const blocks = [
+      UI_CHECK_FILES.some((file) => ofComponent(file, COMPONENT)) ? "ui" : undefined,
+      Object.keys(specsByFile).some((file) => ofComponent(file, COMPONENT)) ? "e2e" : undefined,
+    ]
+    if (ONLY || EXCEPT || !blocks.some((block) => block !== undefined)) {
+      check(
+        "--component names a file under checks/ui/ or e2e/ui/, without --only or --except",
+        false,
+        ONLY || EXCEPT
+          ? "--only or --except was passed too"
+          : `no file matches "${COMPONENT}" — known: ${
+            [...new Set([...UI_CHECK_FILES, ...Object.keys(specsByFile)])].sort().join(", ")
+          }`,
+      )
+      return
+    }
+    activeBlocks = PACKAGE_BLOCKS.filter((block) => blocks.includes(block.name))
   }
   if (E2E_SHARD === null) {
     check(
@@ -1529,7 +1559,11 @@ let e2eTarget: E2eTarget | undefined
  */
 async function e2eSpecs(): Promise<void> {
   if (!e2eTarget) throw new Error("the e2e block ran before the browser and the server existed")
-  const specs = await loadSpecs()
+  const specs = COMPONENT === undefined
+    ? await loadSpecs()
+    : Object.entries(specsByFile).flatMap(([file, specs]) =>
+      ofComponent(file, COMPONENT) ? specs : []
+    )
   if (!E2E_SHARD) return await runSpecs(e2eTarget, specs)
   const shard = inShard(specs, E2E_SHARD)
   // A thrown block is one failed check, so an empty shard cannot pass as a spotless short run.
@@ -1582,12 +1616,12 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
   { name: "crud", run: onPage("crud", crudChecks) },
   { name: "charts", run: onPage("charts", chartsChecks) },
   { name: "map", run: onPage("map", mapChecks) },
-  { name: "ui", run: onPage("ui", uiChecks) },
+  { name: "ui", run: onPage("ui", (devtools) => uiChecks(devtools, COMPONENT)) },
   { name: "e2e", run: e2eSpecs },
 ]
 
 /**
- * The line that marks a run filtered by `--only` or `--except` as filtered — `undefined` on every
+ * The line that marks a run filtered by `--only`, `--except` or `--component` as filtered — `undefined` on every
  * full run.
  *
  * Names the blocks that ran, from {@link ranBlockNames} — not the blocks `ONLY` asked for, and not
@@ -1604,7 +1638,7 @@ function filteredRunNote(): string | undefined {
   const sharded = E2E_SHARD
     ? `SHARDED: e2e ran shard ${E2E_SHARD.index}/${E2E_SHARD.count} of its specs (--e2e-shard)`
     : undefined
-  const filtered = ONLY || EXCEPT
+  const filtered = ONLY || EXCEPT || COMPONENT !== undefined
     ? filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
     : undefined
   return [filtered, sharded].filter((line) => line !== undefined).join("\n") || undefined
