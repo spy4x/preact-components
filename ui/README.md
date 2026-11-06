@@ -105,6 +105,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `I18nContext` (`i18n`): Preact context: `<I18nContext.Provider value={createTranslator({ language, catalogs })}>`; every component reads its words from it through `useLabels`, an app's own screens through `useT()`; without a provider, English
 - `IconPicker` (`icon-picker`): `value` (an id from `@spy4x/preact-icons/registry`, or `null`), `onChange`, `icons?` (`CATEGORY_ICONS`), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `name?`, `labels?`, `disabled?` — a search box over a grid of icon tiles on native radios; search finds names and aliases in the reader's language and in English
 - `ImageGallery` (`image-gallery`): `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`
+- `ImportMapper` (`import-mapper`): `header` (`null` without one), `sample`, `fields` (`{ key, label, required?, numeric? }`), `value` (field key → column index or `null`), `onChange(key, column)`, `errors?`, `settings?` (`{ key, label, value, options, error? }`), `onSettingsChange?`, `preview` (`{ line, values, errors? }`), `rowCount?`, `pending?`, `labels?`, `id?` — the middle of an import screen: file settings, a column per field, a checked preview
 - `Input` (`input`): native input attrs, `class`; forwards `ref`; `dir="ltr"` on an e-mail, URL or password input, by `type` or `autocomplete`
 - `InputButton` (`input-button`): `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input
 - `Isolated` (`bdi`): `message` (the sentence, as a label function of the value), `value` — the value drawn in a `<bdi>`; `isolate(value)` does the same for plain text
@@ -1716,6 +1717,37 @@ plain `<img>`.
   snap="center"
   counterLabel={(position, total) => `${position} / ${total}`}
   images={[{ src: shot, webpSrc: shotWebp, alt: "The dashboard", width: 1600, height: 900 }]}
+/>
+```
+
+## ImportMapper
+
+`ImportMapper` asks which column of a file holds each field, then shows the first rows as the app
+read them. It never reads the file: the app parses it, passes the header, the first rows and its
+settings in as strings, and re-reads on `onSettingsChange` while `pending` is true. Every cell is
+text, so `<b>x</b>` or `=SUM(A1)` shows as written.
+
+- A field's select has the id `${id}-${field.key}` and a setting's `${id}-setting-${setting.key}`,
+  so a page can focus the first one with an error. `id` defaults to `useId()`.
+- A required field left on "Not in this file" shows "Choose the column that holds this."; an entry
+  in `errors` replaces it. A column chosen for two fields gets a muted note under both.
+- Rows with `errors` are listed in an `ErrorSummary` above the preview; its "Line N" button moves
+  focus to that row. After 300 ms of `pending` the preview body becomes skeleton bars.
+- `defaultImportMapperLabels` holds the English words `labels` overrides.
+
+```tsx
+<ImportMapper
+  header={header}
+  sample={rows.slice(0, 5)}
+  fields={[{ key: "date", label: "Date", required: true }, {
+    key: "amount",
+    label: "Amount",
+    numeric: true,
+  }]}
+  value={map}
+  onChange={(key, column) => setMap({ ...map, [key]: column })}
+  preview={preview}
+  rowCount={rows.length}
 />
 ```
 

@@ -45,6 +45,7 @@ import uiEn from "@spy4x/preact-ui/i18n/en"
 import uiRu from "@spy4x/preact-ui/i18n/ru"
 import type { DemoFragment } from "../registry.ts"
 import { DemoNote } from "./demo-note.tsx"
+import { importMapperDemos } from "./import-mapper.tsx"
 import { swatchChipsDemo } from "./storefront.tsx"
 
 /** One profile form: a labelled field per control, plus the two that carry their own label. */
@@ -1724,4 +1725,5 @@ export const fieldDemos = {
 />`,
     render: () => <DateTimeFieldDemo />,
   },
+  ...importMapperDemos,
 } satisfies DemoFragment

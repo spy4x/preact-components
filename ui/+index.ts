@@ -253,6 +253,16 @@ export {
 } from "./i18n.tsx"
 export { ImageGallery, type ImageGalleryImage, type ImageGalleryProps } from "./image-gallery.tsx"
 export {
+  type ColumnMap,
+  defaultImportMapperLabels,
+  type ImportField,
+  ImportMapper,
+  type ImportMapperLabels,
+  type ImportMapperProps,
+  type ImportPreviewRow,
+  type ImportSetting,
+} from "./import-mapper.tsx"
+export {
   Input,
   type InputProps,
   Select,
