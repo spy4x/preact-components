@@ -92,6 +92,7 @@ const NOT_MIRRORED = [
   "IconArrowUp",
   "IconArrowsPointingOut",
   "IconAtSign",
+  "IconBank",
   "IconBars3",
   "IconBell",
   "IconBookOpen",
@@ -216,7 +217,7 @@ describe("icon set", () => {
     // The number is the documented total in README.md — bump both when adding a glyph.
     // Deliberately a literal, never `Object.keys(icons).length`: a guard derived from the
     // module would shrink with the thing it polices and catch nothing.
-    expect(names.length).toBe(125)
+    expect(names.length).toBe(126)
     expect(new Set(names).size).toBe(names.length)
   })
 

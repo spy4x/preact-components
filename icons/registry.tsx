@@ -19,7 +19,7 @@
  * @module
  */
 import type { JSX } from "preact"
-import { type IconProps, IconSprout, IconWallet } from "./+index.tsx"
+import { IconBank, type IconProps, IconSprout, IconWallet } from "./+index.tsx"
 import {
   LucideBaby,
   LucideBanknote,
@@ -42,7 +42,6 @@ import {
   LucideHandHeart,
   LucideHeartPulse,
   LucideHouse,
-  LucideLandmark,
   LucidePawPrint,
   LucidePiggyBank,
   LucidePill,
@@ -279,7 +278,7 @@ export const ICONS: Readonly<Record<IconName, IconEntry>> = {
     aliases: ["investments", "stocks", "shares", "returns"],
   },
   "landmark": {
-    Icon: LucideLandmark,
+    Icon: IconBank,
     name: "Bank building",
     aliases: ["bank", "taxes", "government", "fees"],
   },
