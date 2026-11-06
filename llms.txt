@@ -139,6 +139,7 @@ IconArrowUturnLeft	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.
 IconArrowUturnRight	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArrowsPointingOut	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconAtSign	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "at-sign" exactly, not Heroicons.
+IconBank	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "landmark" (lucide-static@1.47.0) exactly: a bank.
 IconBars3	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconBell	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconBookOpen	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
