@@ -1,6 +1,6 @@
 # `@spy4x/preact-icons`
 
-Merged icon set. 125 exports: 124 glyphs, one named export each, plus `IconLoading`, an alias of
+Merged icon set. 126 exports: 125 glyphs, one named export each, plus `IconLoading`, an alias of
 `IconSpinner`. No runtime dependencies beyond Preact.
 
 ```tsx
@@ -22,7 +22,7 @@ category's. A separate entry, so an app without a picker never loads these glyph
   the order a picker shows them (grouped by meaning: home and bills, food, getting around,
   shopping, health and family, leisure, money and work, other).
 - Every registry glyph is Lucide at stroke 2 (`lucide-static@1.47.0`), so a grid of them is one
-  family. Two are the main entry's own Lucide glyphs (`IconWallet`, `IconSprout`); the other 40 are
+  family. Three are the main entry's own Lucide glyphs (`IconWallet`, `IconSprout`, `IconBank`); the other 39 are
   drawn in `lucide.tsx` and reached only through `ICONS`, because several share a name with a glyph
   of another family here (`IconCreditCard` is Heroicons v1's). The main entry did not change.
 - `IconPicker` in `@spy4x/preact-ui` shows them as a searchable grid, named in nine languages.
@@ -52,9 +52,9 @@ export interface IconProps {
 - The root is always an `<svg xmlns="…" viewBox="…">`; sizing comes from the class, not from
   `width`/`height` attributes.
 - Colour comes from `currentColor`, so an icon inherits the text colour of its container.
-- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (83 glyphs) unless
+- `shrink-0` is always applied, on top of a per-icon default size — `size-5` (84 glyphs) unless
   the glyph already shipped elsewhere as `size-6` (39 glyphs). One glyph, `IconUpwork`, defaults to
-  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 122
+  `h-5 w-auto` instead, kept from when it was a wide wordmark. Every glyph is square now — 123
   draw on a 24-unit `viewBox`, `IconLockClosedFilled` on Heroicons v1 solid's 20-unit one — so
   `IconUpwork` renders 20 × 20 at its default.
 - Passing `class` replaces the default size rather than adding to it, because the default sits on
@@ -111,11 +111,11 @@ surface; mixing them is visible at small sizes.
 | Family                         | Count | Notes                                                                                                                                                                        |
 | ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Heroicons (v1 or v2)           | 74    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (7 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
-| Feather and/or Lucide outlines | 26    | round caps and joins; 17 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
+| Feather and/or Lucide outlines | 27    | round caps and joins; 18 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
 | Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
 | Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-The table is a partition of all 124 glyphs: every row above is disjoint from every other, the
+The table is a partition of all 125 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
@@ -150,7 +150,7 @@ must come from a FOSS pack, so every glyph that matched no pack exactly was repl
 drawing, under the same export name and props.
 
 `provenance.ts`, in this package's own source repository, compares every exported glyph's geometry,
-and the registry's 40 drawings in `lucide.tsx`,
+and the registry's 39 drawings in `lucide.tsx`,
 against the published Heroicons v1, Heroicons v2, Feather, Lucide and Simple Icons packs,
 normalising path and shape data so formatting differences (spacing, number precision, attribute
 order) do not hide a real match. Its own JSDoc explains the normalisation and its limits in full. It
@@ -164,14 +164,14 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 124 glyphs, **all 124 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Of the 125 glyphs, **all 125 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
 or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 31
 replaced in #233 also the upstream file name and version.
-[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs. The registry's 40 drawings in `lucide.tsx` all match Lucide
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs. The registry's 39 drawings in `lucide.tsx` all match Lucide
 exactly too.
 
-Six glyphs were added after the merge, straight from a pack rather than from a source app:
+Seven glyphs were added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
 ([issue #381](https://github.com/spy4x/preact-components/issues/381)); `IconCopy` is Feather's
 `copy` and `IconPen` Feather's `edit-2`, a plain pen
@@ -183,7 +183,10 @@ Heroicons v2's `exclamation-circle` (24, outline), the glyph of `Notice`'s dange
 (`BrandMark` in `@spy4x/preact-ui`) can hold (spy4x/template#444). `IconAdjustmentsHorizontal` is
 Heroicons v2's `adjustments-horizontal` (24, outline), drawn at `stroke-2`, the mark of an
 interactive figure (`Explorable` in `@spy4x/preact-ui`,
-[issue #958](https://github.com/spy4x/preact-components/issues/958)).
+[issue #958](https://github.com/spy4x/preact-components/issues/958)). `IconBank` is Lucide's
+`landmark`, a bank building for money accounts
+([issue #1207](https://github.com/spy4x/preact-components/issues/1207)); the registry's `landmark`
+id draws it too.
 
 ### Brand marks
 
