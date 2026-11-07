@@ -466,8 +466,10 @@ the URL with `useUrlFilters` from `@spy4x/preact-signals`.
   `type="search"` input; while it holds text a "Clear search" button empties it and hands focus
   back to the field. `hotkeyHint` shows a key the app already binds (such as `/`) while the field
   is empty, and announces it in `aria-keyshortcuts`; the bar binds no key itself.
-- Each menu is a `Dropdown` with a chip trigger that names the choice: "Tags", "Tags: Design",
-  "Tags: 3". An active trigger takes the accent fill. A `multiple` menu draws boxes and stays
+- Each menu is a `Dropdown` with a chip trigger that shows its `label`. While something is
+  chosen the trigger adds a count badge ("Tags 2") and the chips' soft tint with an outline, so it
+  keeps its width and never takes the accent fill of the page's primary button; its accessible
+  name names the choice: "Tags: Design", "Tags: 3", or the menu's `activeLabel`. A `multiple` menu draws boxes and stays
   open; a single one closes on a choice, and `anyLabel` adds a first item that clears it. `header`
   is drawn above the choices and a divider: give it `DropdownItem`s with `checked` and `keepOpen`,
   so the arrow keys reach them, inside a `role="group"`; or give `headerLabel` (such as "Show
@@ -487,13 +489,14 @@ the URL with `useUrlFilters` from `@spy4x/preact-signals`.
   and sort are not filters, so it leaves them. `count` sits at the end of that row, in a polite
   live region.
 - From `sm` up the search field and every control share one row that wraps, with the search field
-  first. On a phone the field has its own row, the controls scroll sideways on theirs, every
-  control is 44 px tall, and a menu opens as a sheet fixed to the bottom of the screen, with a
+  first, and the chips wrap under it. On a phone the field has its own row, the controls scroll
+  sideways on theirs and the chips on theirs, each row fading out at an edge that hides more (the
+  fade lifts while a menu is open), every control is 44 px tall, and a menu opens as a sheet fixed to the bottom of the screen, with a
   visible title and 44 px items, because a panel hanging from a scrolling row would be clipped.
 
 `activeFilterChips(filters, toggles)` returns the chips the bar draws, each with its `label`,
 `valueLabel` and a `remove()` that calls the right `onChange`. `filterTriggerLabel(menu)` returns
-a menu trigger's text.
+a menu trigger's accessible name.
 
 ```tsx
 const { filters: f } = useUrlFilters({

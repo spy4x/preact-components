@@ -13,6 +13,7 @@ import { Dropdown, DropdownItem } from "./dropdown.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, useApplePlatform } from "./hotkeys.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
+import { SCROLL_FADE, useScrollFade } from "./scroll-fade.ts"
 import { ToggleChips, toggleChipSelection } from "./toggle-chips.tsx"
 import { translate, useLabels, useT } from "./i18n.tsx"
 
@@ -35,8 +36,9 @@ interface FilterBarMenuBase {
   chipLabel?: string
   options: FilterBarOption[]
   /**
-   * The trigger's text while something is chosen. Defaults to {@link filterTriggerLabel}:
-   * "Tags: Design" for one choice, "Tags: 3" for several.
+   * The trigger's accessible name while something is chosen; the trigger itself keeps showing
+   * `label` and a count. Defaults to {@link filterTriggerLabel}: "Tags: Design" for one choice,
+   * "Tags: 3" for several.
    */
   activeLabel?: (chosen: FilterBarOption[]) => string
   /**
@@ -184,11 +186,12 @@ function chosenOptions(menu: FilterBarMenu): FilterBarOption[] {
 }
 
 /**
- * A filter menu's trigger text: its `label` with nothing chosen, "Tags: Design" with one choice,
- * and "Tags: 3" with several. A menu's own `activeLabel` replaces the last two.
+ * A filter menu trigger's accessible name: its `label` with nothing chosen, "Tags: Design" with one
+ * choice, and "Tags: 3" with several. A menu's own `activeLabel` replaces the last two.
  *
  * @param menu The menu.
- * @returns The trigger's visible text, which is also its accessible name.
+ * @returns The trigger's accessible name. On screen the trigger shows `label`, and a count badge
+ * while something is chosen.
  */
 export function filterTriggerLabel(menu: FilterBarMenu): string {
   const chosen = chosenOptions(menu)
@@ -255,25 +258,35 @@ function clearEach(filters: readonly FilterBarMenu[], toggles: readonly FilterBa
 
 /**
  * A chip-shaped trigger, the look of an unpressed `ToggleChips` chip: 44 px tall on a phone, 32 px
- * from `sm` up. An active menu takes the pressed chip's accent fill, so the row shows at a glance
- * which filters are on.
+ * from `sm` up.
  */
 const triggerBase =
   "normal-case shrink-0 gap-1 min-h-11 sm:min-h-8 px-3 cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden"
 
 /**
- * Trigger classes for a menu that is on or off.
+ * Trigger classes for a menu that is on or off. An active menu keeps its width and is marked by
+ * the chips' soft selection tint and an outline in the selection colour, not the accent fill, so
+ * it neither wraps the row nor competes with the page's primary button.
  *
  * @param active Whether the menu has a choice.
  * @returns The trigger's class list.
  */
 function triggerClasses(active: boolean): string {
-  return active ? badgeClasses("purple", "filled", triggerBase) : badgeClasses(
+  return badgeClasses(
     "gray",
     "outline",
-    cn(triggerBase, "bg-surface text-foreground border-subtle hover:bg-hover"),
+    cn(
+      triggerBase,
+      active
+        ? "border-selected bg-selected-soft text-selected hover:bg-selected-soft-hover"
+        : "bg-surface text-foreground border-subtle hover:bg-hover",
+    ),
   )
 }
+
+/** The count of an active menu's choices, a small filled pill beside the trigger's label. */
+const triggerCount =
+  "inline-flex min-w-5 items-center justify-center rounded-full bg-selected px-1 text-xs tabular-nums text-selected-foreground"
 
 /**
  * On a phone the controls row scrolls sideways, which would clip a panel hanging below it, so the
@@ -322,7 +335,15 @@ function FilterMenuButton(
       triggerNamedByContent
       trigger={
         <>
-          {filterTriggerLabel(menu)}
+          {active
+            ? (
+              <>
+                <span aria-hidden="true">{menu.label}</span>
+                <span aria-hidden="true" class={triggerCount}>{chosen.length}</span>
+                <span class="sr-only">{filterTriggerLabel(menu)}</span>
+              </>
+            )
+            : menu.label}
           <IconChevronDown class="size-3.5" />
         </>
       }
@@ -411,14 +432,16 @@ const FILTER_BAR_LABELS = {
  *
  * The bar is a `search` landmark. The search field is a labelled `type="search"` input with a
  * clear button that hands focus back to the field. Each menu is a `Dropdown` whose trigger is a
- * chip that names the choice ("Tags: Design"); a `multiple` menu draws boxes
+ * chip showing the menu's label; while something is chosen it adds a count ("Tags 2") and a soft
+ * tint and outline, and its accessible name names the choice ("Tags: Design"); a `multiple` menu draws boxes
  * (`menuitemcheckbox`) and stays open while the reader picks several. Toggles are `ToggleChips`.
  * Each chip's remove button takes one filter away and moves focus to the next chip, or to the
  * search field (else the first control) when it was the last; "Clear filters" does the same.
  *
- * From `sm` up the search field and every control share one row that wraps, search first. On a
- * phone the search field has its own row, the controls scroll sideways on theirs, and a menu opens
- * as a sheet fixed to the bottom of the screen, since a panel hanging from a scrolling row would be
+ * From `sm` up the search field and every control share one row that wraps, search first, and the
+ * chips wrap under it. On a phone the search field has its own row, the controls scroll sideways on
+ * theirs and the chips on theirs, each fading out at an edge that hides more, and a menu opens as a
+ * sheet fixed to the bottom of the screen, since a panel hanging from a scrolling row would be
  * clipped.
  */
 export function FilterBar(props: FilterBarProps): JSX.Element {
@@ -451,6 +474,8 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
   const refocus = useRef<Refocus | null>(null)
   const searchId = useId()
   const apple = useApplePlatform()
+  const controlsFade = useScrollFade()
+  const chipsFade = useScrollFade()
   const chips = activeFilterChips(filters, toggles)
 
   // After a chip went, focus the chip that took its place (or the one before it, when it was the
@@ -620,8 +645,12 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
         {hasControls
           ? (
             <div
+              ref={controlsFade}
               data-filter-controls=""
-              class="pc-scrollbar flex min-w-0 flex-1 items-center gap-2 p-1 sm:contents"
+              class={cn(
+                "pc-scrollbar flex min-w-0 flex-1 items-center gap-2 p-1 scroll-px-8 sm:contents",
+                SCROLL_FADE,
+              )}
             >
               {filters.map((menu) => (
                 <FilterMenuButton key={menu.id} menu={menu} doneLabel={doneLabel} />
@@ -653,11 +682,19 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
             {chips.length > 0
               ? (
                 <>
-                  <ul aria-label={chipsLabel} class="flex flex-wrap items-center gap-2">
+                  <ul
+                    ref={chipsFade}
+                    aria-label={chipsLabel}
+                    data-filter-chips=""
+                    class={cn(
+                      "flex items-center gap-2 max-sm:pc-scrollbar max-sm:w-full max-sm:p-1 max-sm:scroll-px-8 sm:flex-wrap",
+                      SCROLL_FADE,
+                    )}
+                  >
                     {chips.map((chip, index) => (
                       <li
                         key={chip.key}
-                        class="inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft ps-3 text-sm text-selected"
+                        class="inline-flex min-w-0 max-w-full shrink-0 items-center rounded-full bg-selected-soft ps-3 text-sm text-selected sm:shrink"
                       >
                         <span class="truncate">{chip.label}</span>
                         <button

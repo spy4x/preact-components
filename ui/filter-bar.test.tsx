@@ -139,16 +139,21 @@ describe("FilterBar", () => {
     expect(attrOf(typed, /<button[^>]*aria-label="Clear search"[^>]*>/, "type")).toBe("button")
   })
 
-  it("names each menu trigger by the choice and fills an active one with the accent", () => {
-    const html = render(<FilterBar filters={[tags(["design"]), author(null)]} />)
-    const active = html.match(/<summary[^>]*data-e2e="filter-tags"[^>]*>/)?.[0] ?? ""
-    const idle = html.match(/<summary[^>]*data-e2e="filter-author"[^>]*>/)?.[0] ?? ""
+  it("keeps an active trigger's label with a count badge, names the choice for a screen reader, and tints it instead of filling it with the accent", () => {
+    const html = render(<FilterBar filters={[tags(["design", "plans"]), author(null)]} />)
+    const active = attrOf(html, /<summary[^>]*data-e2e="filter-tags"[^>]*>/, "class") ?? ""
+    const idle = attrOf(html, /<summary[^>]*data-e2e="filter-author"[^>]*>/, "class") ?? ""
 
-    expect(html).toMatch(/data-e2e="filter-tags"[^>]*>Tags: Design<svg/)
+    expect(html).toMatch(
+      /data-e2e="filter-tags"[^>]*><span aria-hidden="true">Tags<\/span><span aria-hidden="true" class="[^"]*">2<\/span><span class="sr-only">Tags: 2<\/span><svg/,
+    )
     expect(html).toMatch(/data-e2e="filter-author"[^>]*>Author<svg/)
-    expect(active).toContain("bg-selected")
+    const classes = active.split(" ")
+    expect(classes).toContain("bg-selected-soft")
+    expect(classes).toContain("border-selected")
+    expect(classes).not.toContain("bg-selected")
     expect(idle).toContain("bg-surface")
-    expect(idle).not.toContain("bg-selected")
+    expect(idle).not.toContain("selected")
   })
 
   it("draws a multiple menu's options as boxes with their counts, and a single menu's as choices with an Anyone item", () => {
@@ -286,10 +291,24 @@ describe("FilterBar", () => {
     const panel = html.match(/<div class="[^"]*\babsolute\b[^"]*"/)?.[0] ?? ""
 
     expect(row).toContain("pc-scrollbar")
+    expect(row).toContain("data-[fade=right]:[mask-image:")
     for (const name of ["max-sm:fixed", "max-sm:inset-x-0", "max-sm:bottom-0", "max-sm:top-auto"]) {
       expect(panel).toContain(name)
     }
     expect(html).toMatch(/<div aria-hidden="true" class="[^"]*sm:hidden[^"]*">Tags<\/div>/)
+  })
+
+  it("lays the chips on one line that scrolls and fades on a phone, and wraps them from sm up", () => {
+    const html = render(<FilterBar filters={[tags(["design", "plans"])]} />)
+    const list = attrOf(html, /<ul[^>]*data-filter-chips[^>]*>/, "class") ?? ""
+    const chip = attrOf(html, /<li[^>]*>/, "class") ?? ""
+
+    expect(list.split(" ")).not.toContain("flex-wrap")
+    for (const name of ["max-sm:pc-scrollbar", "max-sm:w-full", "sm:flex-wrap"]) {
+      expect(list.split(" ")).toContain(name)
+    }
+    expect(list).toContain("data-[fade=both]:[mask-image:")
+    expect(chip.split(" ")).toContain("shrink-0")
   })
 
   it("puts search and every control in one wrapping row from sm up, search first", () => {

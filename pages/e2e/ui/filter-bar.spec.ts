@@ -206,6 +206,87 @@ function filterBarSpecs(): Spec[] {
         }
       },
     },
+    {
+      name:
+        "FilterBar at 1440 px with two filters on: each active trigger keeps its label with a " +
+        "count, names the choice, takes no accent fill, and Sort stays on the trigger row's line",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.tags.click()
+        await bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Plans" }).click()
+        await page.keyboard.press("Escape")
+        await bar.author.click()
+        await page.getByRole("menuitemradio", { name: "Maya Chen" }).click()
+        await bar.stateHas("tags: design, plans (any) · author: maya")
+        await bar.card.getByRole("button", { name: "Tags: 2", exact: true }).waitFor()
+        await bar.card.getByRole("button", { name: "Author: Maya Chen", exact: true }).waitFor()
+        await bar.tags.filter({ hasText: /^Tags2Tags: 2$/ }).waitFor()
+
+        const [tags, sort] = await Promise.all([bar.tags, bar.sort].map((c) => c.boundingBox()))
+        if (!tags || !sort) throw new Error("a control is not drawn")
+        if (Math.abs(sort.y - tags.y) > 1) {
+          throw new Error(`Sort wrapped: the Tags menu is at y ${tags.y}, Sort at y ${sort.y}`)
+        }
+        // The accent fill, read from a probe with the class, against every trigger's background.
+        const filled = await bar.card.evaluate((card) => {
+          const probe = document.createElement("span")
+          probe.className = "bg-selected"
+          card.append(probe)
+          const accent = getComputedStyle(probe).backgroundColor
+          probe.remove()
+          return Array.from(card.querySelectorAll<HTMLElement>(`[data-e2e^="filter-"]`))
+            .filter((el) => el.tagName === "BUTTON")
+            .filter((el) => getComputedStyle(el).backgroundColor === accent)
+            .map((el) => el.dataset.e2e)
+        })
+        if (filled.length > 0) throw new Error(`triggers with the accent fill: ${filled}`)
+      },
+    },
+    {
+      name: "FilterBar at 390 px with five filters on: the chips sit on one line that scrolls, " +
+        "the hidden edge fades, and focusing a hidden chip scrolls it into view",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 900 })
+        const bar = filterBarCard(page)
+        await bar.tags.click()
+        for (const tag of ["Plans", "Launch"]) {
+          await bar.tagsMenu.getByRole("menuitemcheckbox", { name: tag }).click()
+        }
+        await page.keyboard.press("Escape")
+        await bar.author.click()
+        await page.getByRole("menuitemradio", { name: "Maya Chen" }).click()
+        await bar.card.getByRole("button", { name: "Created by me", exact: true }).click()
+        await bar.stateHas("mine: on")
+
+        await page.setViewportSize({ width: 390, height: 844 })
+        const list = bar.card.locator("[data-filter-chips]")
+        await list.scrollIntoViewIfNeeded()
+        const tops = await list.locator("li").evaluateAll((items) =>
+          items.map((item) => (item as HTMLElement).offsetTop)
+        )
+        if (tops.length !== 5 || new Set(tops).size !== 1) {
+          throw new Error(`the chips are not on one line: offsetTop ${tops}`)
+        }
+        const scrolls = await list.evaluate((el) => el.scrollWidth > el.clientWidth)
+        if (!scrolls) throw new Error("the chips row does not overflow, so this proves nothing")
+        await list.and(page.locator(`[data-fade="right"]`)).waitFor()
+        await bar.card.locator(`[data-filter-controls][data-fade="right"]`).waitFor()
+
+        const last = bar.card.getByRole("button", { name: "Remove the Created by me filter" })
+        await last.focus()
+        await bar.focusIsOn(last)
+        await list.and(page.locator(`[data-fade="left"]`)).waitFor()
+        const shown = await last.evaluate((button) => {
+          const row = button.closest("ul")!.getBoundingClientRect()
+          const box = button.getBoundingClientRect()
+          return box.left >= row.left && box.right <= row.right + 1
+        })
+        if (!shown) throw new Error("the focused chip is still scrolled out of the row")
+      },
+    },
     axeSpec("light"),
     axeSpec("dark"),
   ]
