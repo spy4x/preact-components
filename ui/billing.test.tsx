@@ -15,6 +15,7 @@ import {
 import en from "./i18n/en.ts"
 import ru from "./i18n/ru.ts"
 import { I18nContext } from "./i18n.tsx"
+import { buttonClasses } from "./button.tsx"
 
 /** Another package's enums with the same values, the way `@spy4x/billing` would declare its own. */
 enum ForeignStatus {
@@ -525,6 +526,143 @@ describe("PlanCard", () => {
         labels={{ renews: (date) => `Verlängert am ${date}` }}
       />,
     )).toContain("Verlängert am 31. Oktober 2026")
+  })
+})
+
+describe("PlanCard on offer", () => {
+  const offer = {
+    planName: "Household",
+    description: "The cloud, run for you",
+    price: "$4 a month",
+    priceNote: "or $40 a year, 2 months free",
+    features: ["Up to 6 people", "No server to look after"],
+    action: { href: "/signup", children: "Create an account", "data-umami-event": "signup" },
+    notes: (
+      <>
+        <p>
+          Paid by card. <a href="/terms">Terms</a>
+        </p>
+        <p>Prices in US dollars.</p>
+      </>
+    ),
+  }
+
+  it("shows no status, date line or Manage billing without a status or manageAction", () => {
+    const html = render(<PlanCard {...offer} periodEnd={periodEnd} />)
+
+    expect(html).not.toContain("data-status")
+    expect(html).not.toContain("Renews")
+    expect(html).not.toContain("<form")
+    expect(html).not.toContain("Manage billing")
+  })
+
+  it("shows the tagline under the name, inside the heading's group", () => {
+    const html = render(<PlanCard {...offer} />)
+
+    expect(html).toMatch(
+      /<h2[^>]*>Household<\/h2><p class="text-sm text-muted">The cloud, run for you</,
+    )
+  })
+
+  it("shows a caller-formatted price as given, large, with its second price line under it", () => {
+    const html = render(<PlanCard {...offer} />)
+
+    expect(html).toMatch(
+      /<span class="font-semibold text-3xl">\$4 a month<\/span><\/p><p class="text-sm text-muted">or \$40 a year, 2 months free</,
+    )
+  })
+
+  it("keeps the current plan's price smaller than a plan on offer's", () => {
+    const price = { amount: 1200, currency: "EUR", interval: BillingInterval.Month }
+    const current = render(
+      <PlanCard planName="Pro" status={SubscriptionStatus.Active} price={price} />,
+    )
+
+    expect(current).toMatch(/class="font-semibold text-xl">€12\.00</)
+    expect(current).toContain("per month")
+  })
+
+  it("lists what the plan includes as a list, each item after a check mark screen readers skip", () => {
+    const html = render(<PlanCard {...offer} />)
+    const list = html.match(/<ul[^>]*>.*<\/ul>/)?.[0] ?? ""
+
+    expect(list).toMatch(/^<ul role="list"/)
+    expect(list.match(/<li /g)?.length).toBe(2)
+    expect(list.match(/<svg[^>]*aria-hidden="true"/g)?.length).toBe(2)
+    expect(list).toContain("<span>Up to 6 people</span>")
+  })
+
+  it("draws the action as a full-width link named by its text, with the caller's attributes", () => {
+    const html = render(<PlanCard {...offer} />)
+    const link = html.match(/<a [^>]*>Create an account<\/a>/)?.[0] ?? ""
+
+    expect(link).toContain('href="/signup"')
+    expect(link).toContain('data-umami-event="signup"')
+    expect(link).toMatch(/class="[^"]*\bw-full\b/)
+  })
+
+  it("makes the action primary on a highlighted card and outline otherwise, unless the caller picks", () => {
+    const primary = buttonClasses("primary")
+    const outline = buttonClasses("outline")
+
+    expect(render(<PlanCard {...offer} highlighted />)).toContain(primary)
+    expect(render(<PlanCard {...offer} />)).toContain(outline)
+    expect(
+      render(<PlanCard {...offer} highlighted action={{ ...offer.action, variant: "outline" }} />),
+    )
+      .toContain(outline)
+  })
+
+  it("shows the footnotes muted, after the action, with their links", () => {
+    const html = render(<PlanCard {...offer} />)
+
+    expect(html).toMatch(
+      /Create an account<\/a><div class="[^"]*text-muted[^"]*"><p>Paid by card\. <a href="\/terms">Terms<\/a><\/p><p>Prices in US dollars\.<\/p><\/div>/,
+    )
+  })
+
+  it("draws a stronger border only when highlighted", () => {
+    const rootClass = (html: string) => html.match(/^<div class="([^"]*)"/)?.[1] ?? ""
+
+    expect(rootClass(render(<PlanCard {...offer} highlighted />))).toContain(
+      "border-2 border-selected",
+    )
+    expect(rootClass(render(<PlanCard {...offer} />))).not.toContain("border-2")
+  })
+
+  it("joins its parent grid's three rows with subgrid, so a row's actions line up", () => {
+    const rootClass = (html: string) => html.match(/^<div class="([^"]*)"/)?.[1] ?? ""
+    const joined = rootClass(render(<PlanCard {...offer} subgrid />)).split(" ")
+    const alone = rootClass(render(<PlanCard {...offer} />)).split(" ")
+
+    expect(joined).toEqual(expect.arrayContaining(["grid", "grid-rows-subgrid", "row-span-3"]))
+    expect(joined).not.toContain("flex")
+    expect(render(<PlanCard {...offer} subgrid />)).toContain(
+      'class="pc-card-footer content-start"',
+    )
+    expect(alone).toEqual(expect.arrayContaining(["flex", "flex-col"]))
+    expect(alone).not.toContain("grid-rows-subgrid")
+  })
+
+  it("draws no price for an empty price string", () => {
+    const html = render(<PlanCard {...offer} price="" />)
+
+    expect(html).not.toContain("text-3xl")
+    expect(html).toMatch(/<div class="pc-card-body[^"]*"><p class="text-sm text-muted">or \$40/)
+  })
+
+  it("spaces the checklist off the price only when a price line sits above it", () => {
+    const list = (html: string) => html.match(/<ul[^>]*>/)?.[0] ?? ""
+
+    expect(list(render(<PlanCard {...offer} />))).toContain("pt-4")
+    expect(list(render(<PlanCard {...offer} price={undefined} priceNote={undefined} />))).not
+      .toContain("pt-4")
+  })
+
+  it("draws no footer when it has no action, form or footnote", () => {
+    const html = render(<PlanCard planName="Self-host" price="Free" />)
+
+    expect(html).not.toContain("pc-card-footer")
   })
 })
 

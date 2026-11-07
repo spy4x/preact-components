@@ -271,7 +271,52 @@ function PlanCardDemo() {
           headingLevel={4}
         />
       </Grid>
+      <PlanOfferDemo />
     </Stack>
+  )
+}
+
+/**
+ * Two plans on offer, as a pricing page draws them: no status, a caller-formatted price with a second
+ * price line, a checklist, a link action and footnotes on the highlighted card, and a quieter card
+ * with no price beside it. Both join the grid's rows with `subgrid`, so their buttons line up.
+ */
+function PlanOfferDemo() {
+  return (
+    <Grid>
+      <PlanCard
+        planName="Cloud"
+        description="Hosted and updated for you"
+        price="$4 a month"
+        priceNote="or $40 a year, 2 months free"
+        features={[
+          "Up to 6 people, each with their own login",
+          "Readable offline on every device",
+          "Export everything to a file at any time",
+        ]}
+        action={{ href: "#plan-card-offer", children: "Create an account" }}
+        notes={
+          <>
+            <p>You pay when you sign up. 30-day money-back guarantee.</p>
+            <p>
+              <a class="underline" href="#plan-card-offer">Terms</a> ·{" "}
+              <a class="underline" href="#plan-card-offer">Privacy</a>
+            </p>
+          </>
+        }
+        highlighted
+        subgrid
+        headingLevel={4}
+      />
+      <PlanCard
+        planName="Self-host"
+        description="Free, on your own server"
+        features={["The same code as the cloud", "No limit on members"]}
+        action={{ href: "#plan-card-offer", children: "Read the code" }}
+        subgrid
+        headingLevel={4}
+      />
+    </Grid>
   )
 }
 
@@ -342,14 +387,60 @@ export const billingDemos = {
   },
   PlanCard: {
     summary:
-      "The current plan with its status, the date it renews or ends, a warning when payment failed, and a Manage billing form that can wait while pending.",
+      "A plan: the current one with its status, renewal date, payment warning and a Manage billing form, or, with no status, one on offer with two price lines, a checklist, a link button and footnotes.",
     wide: true,
     props: [
       {
         name: "status",
         type: "SubscriptionStatusValue",
         description:
-          "Trialing, active, past due, canceled, incomplete or paused, shown in words; another package's same-valued enum passes too.",
+          "Trialing, active, past due, canceled, incomplete or paused, shown in words; another package's same-valued enum passes too. Left out, the card is a plan on offer: no pill, date line or warning, and a larger price.",
+      },
+      {
+        name: "description",
+        type: "string",
+        description: "One short line under the name.",
+      },
+      {
+        name: "price",
+        type: "PlanPrice | string",
+        description:
+          'An amount in the smallest unit, formatted with its "per month", or a string the caller formatted, such as "Free", shown as given.',
+      },
+      {
+        name: "priceNote",
+        type: "string",
+        description: 'A second price line, such as "or $40 a year".',
+      },
+      {
+        name: "features",
+        type: "string[]",
+        description: "What the plan includes, a list with a check mark per line.",
+      },
+      {
+        name: "action",
+        type: "ButtonLinkProps",
+        description:
+          "A full-width link button in the footer, named by its text; primary on a highlighted card, outline otherwise, unless `variant` says.",
+      },
+      {
+        name: "notes",
+        type: "ComponentChildren",
+        description:
+          "Small muted text under the footer's actions, one `<p>` per line; links are allowed.",
+      },
+      {
+        name: "highlighted",
+        type: "boolean",
+        default: "false",
+        description: "A stronger border, to set the card apart from those beside it.",
+      },
+      {
+        name: "subgrid",
+        type: "boolean",
+        default: "false",
+        description:
+          "Joins the parent grid's rows, header, body and footer, so the actions of every card in a row start at the same height.",
       },
       {
         name: "periodEnd",
@@ -365,7 +456,8 @@ export const billingDemos = {
       {
         name: "manageAction",
         type: "string",
-        description: "Where Manage billing posts: the app's billing-portal route.",
+        description:
+          "Where Manage billing posts: the app's billing-portal route. Left out, the card has no form.",
       },
       {
         name: "onSubmit",
@@ -401,6 +493,18 @@ export const billingDemos = {
   manageAction="/billing/portal"
   onSubmit={openPortal}
   pending={portal.pending}
+/>
+
+<PlanCard
+  planName="Cloud"
+  description="Hosted and updated for you"
+  price="$4 a month"
+  priceNote="or $40 a year, 2 months free"
+  features={["Up to 6 people", "Readable offline"]}
+  action={{ href: "/signup", children: "Create an account" }}
+  notes={<p>30-day money-back guarantee.</p>}
+  highlighted
+  subgrid
 />`,
     render: () => <PlanCardDemo />,
   },
