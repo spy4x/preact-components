@@ -18,9 +18,8 @@ export function scrollFade(
   overflow: number,
   rtl: boolean,
 ): ScrollFade | undefined {
-  // Under a pixel is rounding, not hidden content.
-  if (overflow < 1) return undefined
   const fromLeft = rtl ? scrollLeft + overflow : scrollLeft
+  // Under a pixel is rounding, not hidden content.
   const left = fromLeft >= 1
   const right = overflow - fromLeft >= 1
   return left && right ? "both" : left ? "left" : right ? "right" : undefined
