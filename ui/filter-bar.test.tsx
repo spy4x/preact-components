@@ -145,9 +145,9 @@ describe("FilterBar", () => {
     const idle = attrOf(html, /<summary[^>]*data-e2e="filter-author"[^>]*>/, "class") ?? ""
 
     expect(html).toMatch(
-      /data-e2e="filter-tags"[^>]*><span aria-hidden="true">Tags<\/span><span aria-hidden="true" class="[^"]*">2<\/span><span class="sr-only">Tags: 2<\/span><svg/,
+      /<summary[^>]*aria-label="Tags: 2"[^>]*>Tags<span class="[^"]*">2<\/span><svg/,
     )
-    expect(html).toMatch(/data-e2e="filter-author"[^>]*>Author<svg/)
+    expect(html).toMatch(/<summary[^>]*aria-label="Author"[^>]*>Author<svg/)
     const classes = active.split(" ")
     expect(classes).toContain("bg-selected-soft")
     expect(classes).toContain("border-selected")

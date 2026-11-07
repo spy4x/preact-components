@@ -332,18 +332,11 @@ function FilterMenuButton(
   }
   return (
     <Dropdown
-      triggerNamedByContent
+      triggerLabel={filterTriggerLabel(menu)}
       trigger={
         <>
-          {active
-            ? (
-              <>
-                <span aria-hidden="true">{menu.label}</span>
-                <span aria-hidden="true" class={triggerCount}>{chosen.length}</span>
-                <span class="sr-only">{filterTriggerLabel(menu)}</span>
-              </>
-            )
-            : menu.label}
+          {menu.label}
+          {active ? <span class={triggerCount}>{chosen.length}</span> : null}
           <IconChevronDown class="size-3.5" />
         </>
       }

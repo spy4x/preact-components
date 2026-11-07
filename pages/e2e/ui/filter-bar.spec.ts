@@ -46,7 +46,7 @@ function filterBarSpecs(): Spec[] {
         await bar.stateHas("tags: design, plans (any)")
         await plans.and(page.locator(`[aria-checked="true"]`)).waitFor()
         await bar.tagsMenu.waitFor()
-        await bar.tags.filter({ hasText: "Tags: 2" }).waitFor()
+        await bar.tags.and(page.locator(`[aria-label="Tags: 2"]`)).waitFor()
         // Unchecking a box takes its value out and leaves the others.
         const design = bar.tagsMenu.getByRole("menuitemcheckbox", { name: "Design" })
         await design.click()
@@ -54,7 +54,7 @@ function filterBarSpecs(): Spec[] {
         await design.and(page.locator(`[aria-checked="false"]`)).waitFor()
         await page.keyboard.press("Escape")
         await bar.tagsMenu.waitFor({ state: "hidden" })
-        await bar.tags.filter({ hasText: "Tags: Plans" }).waitFor()
+        await bar.tags.and(page.locator(`[aria-label="Tags: Plans"]`)).waitFor()
 
         await bar.card.getByRole("button", { name: "Created by me" }).click()
         await bar.stateHas("mine: on")
@@ -222,7 +222,7 @@ function filterBarSpecs(): Spec[] {
         await bar.stateHas("tags: design, plans (any) · author: maya")
         await bar.card.getByRole("button", { name: "Tags: 2", exact: true }).waitFor()
         await bar.card.getByRole("button", { name: "Author: Maya Chen", exact: true }).waitFor()
-        await bar.tags.filter({ hasText: /^Tags2Tags: 2$/ }).waitFor()
+        await bar.tags.filter({ hasText: /^Tags2$/ }).waitFor()
 
         const [tags, sort] = await Promise.all([bar.tags, bar.sort].map((c) => c.boundingBox()))
         if (!tags || !sort) throw new Error("a control is not drawn")
