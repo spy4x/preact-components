@@ -432,8 +432,11 @@ exclusive group `SiteHeader`'s mobile menu joins too, so the browser closes the 
 opens, with no JavaScript. A hydrated `Dropdown` closes the group's open members as it opens, and a
 press outside closes it. `MENU_GROUP` is exported for any other `<details>` menu that should join.
 
-`vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
-bottom of the viewport and there is more room above, as it does for the last row of a long table.
+`vertical` defaults to `"auto"`, which prefers down. The menu flips up only when it does not fit
+below its trigger but fits above it, as for the last row of a long table. When it fits neither
+way it opens down and scrolls the page just enough to show itself, so near the top of a short
+window it never runs off the top over the page's header; a downward menu that runs past the bottom
+of the viewport scrolls the page the same way.
 It is measured each time the menu opens, before the browser draws it, so an upward menu is never
 drawn downward first. The server renders it downward, which is where a menu without JavaScript
 would open. `"up"` and `"down"` fix the direction. It measures against the viewport only, and once
@@ -442,7 +445,7 @@ and scrolling while the menu is open does not flip it.
 
 `dropdownOpensUp(trigger, panelHeight, viewportHeight)` is that decision on its own, a pure function
 of the trigger's `top` and `bottom`, the panel's height and the viewport's height. It opens up when
-the panel and its 8px gap do not fit below and there is more room above than below.
+the panel and its 8px gap do not fit below and do fit above.
 
 `DropdownItem` given `checked` is one choice of a set: a `menuitemradio` with a check, and choosing
 it closes the menu. Add `multiple` for a set where any number can be on, such as tags: the item is

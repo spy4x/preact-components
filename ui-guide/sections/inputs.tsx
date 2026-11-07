@@ -1955,7 +1955,7 @@ export const inputDemos = {
         type: `"auto" | "up" | "down" / "start" | "end" | "left" | "right"`,
         default: `"auto" / "end"`,
         description:
-          "Which way the menu opens and which edge it lines up with. `auto` opens up when there is no room below. `start` and `end` follow the reading direction; `left` and `right` are their old names.",
+          "Which way the menu opens and which edge it lines up with. `auto` prefers down: it flips up only when the menu fits above but not below, and otherwise scrolls the page to show it. `start` and `end` follow the reading direction; `left` and `right` are their old names.",
       },
     ],
     snippet: `<Dropdown

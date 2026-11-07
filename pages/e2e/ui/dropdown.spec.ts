@@ -68,6 +68,58 @@ async function openScrollingTagsSheet(page: Page) {
   return { ...bar, size, tabStops }
 }
 
+/**
+ * Dropdown in a short window: a menu that fits neither below nor above its trigger, with more room
+ * above, opens down and scrolls the page to show itself instead of running off the top of the
+ * window over what sits above it, such as the page's header.
+ */
+const opensDownSpec: Spec = {
+  name: "Dropdown at 1280 by 400 px, its trigger mid-window with more room above than below and " +
+    "the menu fitting neither way: the menu opens down and the page scrolls to show all of it",
+  pageId: "ui",
+  run: async (page) => {
+    await page.setViewportSize({ width: 1280, height: 400 })
+    const bar = filterBarCard(page)
+    await bar.tags.scrollIntoViewIfNeeded()
+    await bar.tags.evaluate((trigger) => {
+      const top = globalThis.scrollY + trigger.getBoundingClientRect().top - 200
+      globalThis.scrollTo({ top, behavior: "instant" })
+    })
+    const before = await bar.tags.boundingBox()
+    if (!before) throw new Error("the trigger is not drawn")
+    const below = 400 - (before.y + before.height)
+    if (before.y <= below) {
+      throw new Error(`the trigger at y ${before.y} has no more room above than below`)
+    }
+    await bar.tags.click()
+    await bar.tagsMenu.waitFor()
+    const [trigger, menu] = await Promise.all(
+      [bar.tags, bar.tagsMenu].map((el) => el.boundingBox()),
+    )
+    if (!trigger || !menu) throw new Error("the trigger or the menu is not drawn")
+    if (menu.height + 8 <= below || menu.height + 8 <= before.y) {
+      throw new Error(
+        `the ${menu.height} px menu fits on one side (above ${before.y}, below ${below}), ` +
+          "so this proves nothing",
+      )
+    }
+    if (menu.y < trigger.y + trigger.height) {
+      throw new Error(`the menu opened up: trigger at y ${trigger.y}, menu at y ${menu.y}`)
+    }
+    // The page scrolls smoothly, so wait for the scroll to bring the menu's bottom into the window.
+    const menuElement = await bar.tagsMenu.elementHandle()
+    await page.waitForFunction(
+      (el) => el !== null && el.getBoundingClientRect().bottom <= globalThis.innerHeight + 1,
+      menuElement,
+      { timeout: 5_000 },
+    ).catch(async () => {
+      throw new Error(
+        `the menu runs past the window: ${JSON.stringify(await bar.tagsMenu.boundingBox())}`,
+      )
+    })
+  },
+}
+
 /** Dropdown: a menu shown as a phone sheet that scrolls passes axe and keeps its keys (#967). */
 function dropdownSheetSpecs(): Spec[] {
   return [
@@ -169,6 +221,7 @@ function dropdownSheetSpecs(): Spec[] {
 
 export const specs: readonly Spec[] = [
   ...dropdownSheetSpecs(),
+  opensDownSpec,
   ...dangerItemContrastSpecs(),
   {
     name:

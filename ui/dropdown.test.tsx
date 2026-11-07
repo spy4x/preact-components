@@ -466,7 +466,7 @@ describe("dropdownOpensUp", () => {
     expect(dropdownOpensUp({ top: 100, bottom: 140 }, 200, 800)).toBe(false)
   })
 
-  it("opens up when the panel does not fit below and there is more room above", () => {
+  it("opens up when the panel does not fit below but fits above", () => {
     expect(dropdownOpensUp({ top: 700, bottom: 740 }, 200, 800)).toBe(true)
   })
 
@@ -479,7 +479,13 @@ describe("dropdownOpensUp", () => {
     expect(dropdownOpensUp({ top: 100, bottom: 140 }, 900, 800)).toBe(false)
   })
 
-  it("opens up when the panel fits neither way but above is roomier", () => {
-    expect(dropdownOpensUp({ top: 500, bottom: 540 }, 900, 800)).toBe(true)
+  it("stays down when the panel fits neither way, though above is roomier, rather than running off the top", () => {
+    expect(dropdownOpensUp({ top: 200, bottom: 232 }, 330, 400)).toBe(false)
+    expect(dropdownOpensUp({ top: 500, bottom: 540 }, 900, 800)).toBe(false)
+  })
+
+  it("flips up only once the panel and its gap fit above", () => {
+    expect(dropdownOpensUp({ top: 337, bottom: 369 }, 330, 400)).toBe(false)
+    expect(dropdownOpensUp({ top: 338, bottom: 370 }, 330, 400)).toBe(true)
   })
 })
