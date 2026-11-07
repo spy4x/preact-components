@@ -565,6 +565,13 @@ export interface PlanCardProps {
   notes?: ComponentChildren
   /** Draws the card with a stronger border, to set it apart from the cards beside it. */
   highlighted?: boolean
+  /**
+   * Joins the rows of the parent grid, so the headers, bodies and footers of the cards in one row
+   * line up and their actions start at the same height. The card takes three rows of the parent
+   * (header, body, footer) through CSS subgrid, so the parent must be a grid, such as `Grid`, and
+   * every card in the row should set it. Defaults to `false`: the card lays itself out alone.
+   */
+  subgrid?: boolean
   /** When the current period ends: the renewal, the end of the trial, or the end of access. */
   periodEnd?: Date
   /** The plan stops at `periodEnd` instead of renewing. Defaults to `false`. */
@@ -667,6 +674,7 @@ export function PlanCard(
     action,
     notes,
     highlighted = false,
+    subgrid = false,
     periodEnd,
     cancelAtPeriodEnd = false,
     manageAction,
@@ -687,6 +695,8 @@ export function PlanCard(
     per: { ...intervalWords(translator, "PricingTable.per"), ...labels?.per },
   }
   const Heading = `h${headingLevel}` as "h2"
+  // An empty string draws no price, as `undefined` does, rather than an empty large line.
+  const hasPrice = price !== undefined && price !== ""
   const statusWord = status !== undefined && words.status[status]
   const date = status !== undefined && periodEnd &&
     dateLine(
@@ -704,7 +714,10 @@ export function PlanCard(
   return (
     <div
       class={join(
-        "pc-card flex flex-col",
+        "pc-card",
+        // A subgrid card's own gap overrides the parent's, so the parent's row gap stays between
+        // cards and never opens up inside one.
+        subgrid ? "row-span-3 grid grid-rows-subgrid gap-0" : "flex flex-col",
         highlighted && "border-2 border-selected shadow-raised",
         className,
       )}
@@ -718,7 +731,7 @@ export function PlanCard(
         {statusWord && <span class={join(pillClasses, BADGE_OUTLINE_GRAY)}>{statusWord}</span>}
       </div>
       <div class="pc-card-body flex flex-1 flex-col gap-2">
-        {price !== undefined && (
+        {hasPrice && (
           <p class="flex flex-wrap items-baseline gap-1">
             <span class={join("font-semibold", status === undefined ? "text-3xl" : "text-xl")}>
               {typeof price === "string"
@@ -744,7 +757,10 @@ export function PlanCard(
         )}
         {features && features.length > 0 && (
           // `role="list"` keeps the list semantics Safari drops from a list with no bullets.
-          <ul role="list" class="flex flex-col gap-2 pt-4 text-sm">
+          <ul
+            role="list"
+            class={join("flex flex-col gap-2 text-sm", (hasPrice || priceNote) && "pt-4")}
+          >
             {features.map((feature, index) => (
               <li key={index} class="flex items-start gap-2">
                 <span class="flex h-5 items-center">
@@ -756,8 +772,9 @@ export function PlanCard(
           </ul>
         )}
       </div>
+      {/* `content-start` keeps the actions at the top of a footer that a subgrid row made taller. */}
       {(manageAction !== undefined || action || notes) && (
-        <div class="pc-card-footer">
+        <div class="pc-card-footer content-start">
           {manageAction !== undefined && (
             <BillingForm
               action={manageAction}

@@ -630,6 +630,35 @@ describe("PlanCard on offer", () => {
     expect(rootClass(render(<PlanCard {...offer} />))).not.toContain("border-2")
   })
 
+  it("joins its parent grid's three rows with subgrid, so a row's actions line up", () => {
+    const rootClass = (html: string) => html.match(/^<div class="([^"]*)"/)?.[1] ?? ""
+    const joined = rootClass(render(<PlanCard {...offer} subgrid />)).split(" ")
+    const alone = rootClass(render(<PlanCard {...offer} />)).split(" ")
+
+    expect(joined).toEqual(expect.arrayContaining(["grid", "grid-rows-subgrid", "row-span-3"]))
+    expect(joined).not.toContain("flex")
+    expect(render(<PlanCard {...offer} subgrid />)).toContain(
+      'class="pc-card-footer content-start"',
+    )
+    expect(alone).toEqual(expect.arrayContaining(["flex", "flex-col"]))
+    expect(alone).not.toContain("grid-rows-subgrid")
+  })
+
+  it("draws no price for an empty price string", () => {
+    const html = render(<PlanCard {...offer} price="" />)
+
+    expect(html).not.toContain("text-3xl")
+    expect(html).toMatch(/<div class="pc-card-body[^"]*"><p class="text-sm text-muted">or \$40/)
+  })
+
+  it("spaces the checklist off the price only when a price line sits above it", () => {
+    const list = (html: string) => html.match(/<ul[^>]*>/)?.[0] ?? ""
+
+    expect(list(render(<PlanCard {...offer} />))).toContain("pt-4")
+    expect(list(render(<PlanCard {...offer} price={undefined} priceNote={undefined} />))).not
+      .toContain("pt-4")
+  })
+
   it("draws no footer when it has no action, form or footnote", () => {
     const html = render(<PlanCard planName="Self-host" price="Free" />)
 

@@ -278,7 +278,8 @@ function PlanCardDemo() {
 
 /**
  * Two plans on offer, as a pricing page draws them: no status, a caller-formatted price with a second
- * price line, a checklist, a link action and footnotes, the first card highlighted.
+ * price line, a checklist, a link action and footnotes on the highlighted card, and a quieter card
+ * with no price beside it. Both join the grid's rows with `subgrid`, so their buttons line up.
  */
 function PlanOfferDemo() {
   return (
@@ -304,14 +305,15 @@ function PlanOfferDemo() {
           </>
         }
         highlighted
+        subgrid
         headingLevel={4}
       />
       <PlanCard
         planName="Self-host"
-        description="On your own server"
-        price="Free"
+        description="Free, on your own server"
         features={["The same code as the cloud", "No limit on members"]}
         action={{ href: "#plan-card-offer", children: "Read the code" }}
+        subgrid
         headingLevel={4}
       />
     </Grid>
@@ -434,6 +436,13 @@ export const billingDemos = {
         description: "A stronger border, to set the card apart from those beside it.",
       },
       {
+        name: "subgrid",
+        type: "boolean",
+        default: "false",
+        description:
+          "Joins the parent grid's rows, header, body and footer, so the actions of every card in a row start at the same height.",
+      },
+      {
         name: "periodEnd",
         type: "Date",
         description: "When the period ends; the card words it by status.",
@@ -495,6 +504,7 @@ export const billingDemos = {
   action={{ href: "/signup", children: "Create an account" }}
   notes={<p>30-day money-back guarantee.</p>}
   highlighted
+  subgrid
 />`,
     render: () => <PlanCardDemo />,
   },
