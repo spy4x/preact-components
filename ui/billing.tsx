@@ -4,7 +4,7 @@ import { formatMoney } from "@spy4x/platform/universal/money-core"
 import type { Translator } from "@spy4x/platform/universal/i18n"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
-import { Button } from "./button.tsx"
+import { Button, type ButtonLinkProps } from "./button.tsx"
 import { EnhancedForm } from "./enhanced-form.tsx"
 import { ENGLISH, translate, useLabels, useT } from "./i18n.tsx"
 import {
@@ -531,18 +531,49 @@ function statusWords(translator: Translator<string>): PlanCardLabels["status"] {
 }
 
 export interface PlanCardProps {
-  /** The current plan's name, shown as the card's heading. */
+  /** The plan's name, shown as the card's heading. */
   planName: string
-  /** Where the subscription stands: this package's enum, or the same number from another's. */
-  status: SubscriptionStatusValue
-  /** The plan's price, shown under its name. Left out, the card shows none. */
-  price?: PlanPrice
+  /**
+   * Where the subscription stands: this package's enum, or the same number from another's. Left
+   * out, the card is a plan on offer rather than the current one: no status pill, no date line, no
+   * warning, and a larger price.
+   */
+  status?: SubscriptionStatusValue
+  /** One short line under the name, such as `"The cloud, run for you"`. */
+  description?: string
+  /**
+   * The plan's price, shown under its name: an amount formatted with `formatMoney`, or a string the
+   * caller formatted, such as `"Free"` or `"$4 a month"`, shown as given. Left out, the card shows
+   * none.
+   */
+  price?: PlanPrice | string
+  /** A second price line under the price, such as `"or $40 a year, 2 months free"`. */
+  priceNote?: string
+  /** What the plan includes, one item per line, each after a check mark, as a list. */
+  features?: string[]
+  /**
+   * A link drawn as a full-width button in the footer, such as "Create an account": `Button`'s link
+   * props, so `href`, `navigate`, `data-*` attributes and an icon in `children` pass through. Its
+   * text is its accessible name. `variant` defaults to `"primary"` on a `highlighted` card and
+   * `"outline"` otherwise.
+   */
+  action?: ButtonLinkProps
+  /**
+   * Small muted text under the footer's actions, such as how payment works and links to the terms.
+   * Pass one `<p>` per line; the lines stack with a small gap.
+   */
+  notes?: ComponentChildren
+  /** Draws the card with a stronger border, to set it apart from the cards beside it. */
+  highlighted?: boolean
   /** When the current period ends: the renewal, the end of the trial, or the end of access. */
   periodEnd?: Date
   /** The plan stops at `periodEnd` instead of renewing. Defaults to `false`. */
   cancelAtPeriodEnd?: boolean
-  /** Where "Manage billing" posts: the app's route that opens the provider's billing portal. */
-  manageAction: string
+  /**
+   * Where "Manage billing" posts: the app's route that opens the provider's billing portal. Left
+   * out, the card has no "Manage billing" form.
+   */
+  manageAction?: string
   /**
    * Called instead of posting to `manageAction` once the page runs a script: the card's submit
    * port. Left out, "Manage billing" always posts. While a promise it returns is outstanding, the
@@ -612,8 +643,9 @@ function dateLine(
 }
 
 /**
- * The current plan: its name, status, price and the date it renews or ends, with a "Manage billing"
- * form that posts to the app's billing-portal route.
+ * A plan: the current one, with its status, price and the date it renews or ends, and a "Manage
+ * billing" form that posts to the app's billing-portal route; or, with no `status`, a plan on offer,
+ * with its price, a second price line, what it includes, a link action and footnotes.
  *
  * A past-due or incomplete plan shows a warning in words beside a warning icon, so the state does
  * not rest on colour. The status is text too, in a pill next to the name.
@@ -628,7 +660,13 @@ export function PlanCard(
   {
     planName,
     status,
+    description,
     price,
+    priceNote,
+    features,
+    action,
+    notes,
+    highlighted = false,
     periodEnd,
     cancelAtPeriodEnd = false,
     manageAction,
@@ -649,8 +687,8 @@ export function PlanCard(
     per: { ...intervalWords(translator, "PricingTable.per"), ...labels?.per },
   }
   const Heading = `h${headingLevel}` as "h2"
-  const statusWord = words.status[status]
-  const date = periodEnd &&
+  const statusWord = status !== undefined && words.status[status]
+  const date = status !== undefined && periodEnd &&
     dateLine(
       words,
       status,
@@ -664,22 +702,36 @@ export function PlanCard(
     : null
 
   return (
-    <div class={join("pc-card", className)} data-status={status}>
+    <div
+      class={join(
+        "pc-card flex flex-col",
+        highlighted && "border-2 border-selected shadow-raised",
+        className,
+      )}
+      data-status={status}
+    >
       <div class="pc-card-header gap-2">
-        <Heading class="text-lg font-semibold">{planName}</Heading>
+        <div class="flex flex-col gap-1">
+          <Heading class="text-lg font-semibold">{planName}</Heading>
+          {description && <p class="text-sm text-muted">{description}</p>}
+        </div>
         {statusWord && <span class={join(pillClasses, BADGE_OUTLINE_GRAY)}>{statusWord}</span>}
       </div>
-      <div class="pc-card-body flex flex-col gap-2">
-        {price && (
+      <div class="pc-card-body flex flex-1 flex-col gap-2">
+        {price !== undefined && (
           <p class="flex flex-wrap items-baseline gap-1">
-            <span class="text-xl font-semibold">
-              {formatMoney(price.amount, price.currency, formatLocale)}
+            <span class={join("font-semibold", status === undefined ? "text-3xl" : "text-xl")}>
+              {typeof price === "string"
+                ? price
+                : formatMoney(price.amount, price.currency, formatLocale)}
             </span>
-            {price.interval !== undefined && words.per[price.interval] && (
+            {typeof price !== "string" && price.interval !== undefined &&
+              words.per[price.interval] && (
               <span class="text-sm text-muted">{words.per[price.interval]}</span>
             )}
           </p>
         )}
+        {priceNote && <p class="text-sm text-muted">{priceNote}</p>}
         {date && <p class="text-sm text-muted">{date}</p>}
         {warning && (
           <p
@@ -690,18 +742,43 @@ export function PlanCard(
             <span>{warning}</span>
           </p>
         )}
+        {features && features.length > 0 && (
+          // `role="list"` keeps the list semantics Safari drops from a list with no bullets.
+          <ul role="list" class="flex flex-col gap-2 pt-4 text-sm">
+            {features.map((feature, index) => (
+              <li key={index} class="flex items-start gap-2">
+                <span class="flex h-5 items-center">
+                  <IconCheck class="size-4 text-success" />
+                </span>
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <div class="pc-card-footer">
-        <BillingForm
-          action={manageAction}
-          pending={pending}
-          onSubmit={onSubmit}
-          pendingLabel={words.pending}
-          failedLabel={words.failed}
-        >
-          <Button type="submit" variant="outline" busy={pending}>{words.manage}</Button>
-        </BillingForm>
-      </div>
+      {(manageAction !== undefined || action || notes) && (
+        <div class="pc-card-footer">
+          {manageAction !== undefined && (
+            <BillingForm
+              action={manageAction}
+              pending={pending}
+              onSubmit={onSubmit}
+              pendingLabel={words.pending}
+              failedLabel={words.failed}
+            >
+              <Button type="submit" variant="outline" busy={pending}>{words.manage}</Button>
+            </BillingForm>
+          )}
+          {action && (
+            <Button
+              {...action}
+              variant={action.variant ?? (highlighted ? "primary" : "outline")}
+              class={join("w-full", action.class)}
+            />
+          )}
+          {notes && <div class="flex w-full flex-col gap-1 text-sm text-muted">{notes}</div>}
+        </div>
+      )}
     </div>
   )
 }

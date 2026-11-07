@@ -826,7 +826,7 @@ PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control r
 PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
 PeriodStepper	component	@spy4x/preact-ui	Steps a screen through weeks or months: "‹ › November 2026 This month".
-PlanCard	component	@spy4x/preact-ui	The current plan: its name, status, price and the date it renews or ends, with a "Manage billing" form that posts to the app's billing-portal route.
+PlanCard	component	@spy4x/preact-ui	A plan: the current one, with its status, price and the date it renews or ends, and a "Manage billing" form that posts to the app's billing-portal route; or, with no `status`, a plan on offer, with its price, a second price line, what it includes, a link action and footnotes.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.
 PostList	component	@spy4x/preact-ui	A list of articles, as a blog's index or its "Read next": per row the day it went live and its reading time, the title as a link, and a description cut to two lines, and an optional cover: above the text on a phone, beside it from 640 px.
 PostListImage	type	@spy4x/preact-ui	The cover of a `PostListItem`.
