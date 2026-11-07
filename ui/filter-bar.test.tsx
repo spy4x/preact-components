@@ -285,7 +285,7 @@ describe("FilterBar", () => {
     expect(html).toMatch(/>Reset<\/button>/)
   })
 
-  it("scrolls the controls sideways on a phone and opens each menu there as a sheet at the bottom", () => {
+  it("scrolls the controls sideways on a phone with an edge fade, and opens each menu there as a sheet at the bottom", () => {
     const html = render(<FilterBar filters={[tags([])]} />)
     const row = html.match(/<div data-filter-controls[^>]*>/)?.[0] ?? ""
     const panel = html.match(/<div class="[^"]*\babsolute\b[^"]*"/)?.[0] ?? ""

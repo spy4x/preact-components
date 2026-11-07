@@ -246,7 +246,8 @@ function filterBarSpecs(): Spec[] {
     },
     {
       name: "FilterBar at 390 px with five filters on: the chips sit on one line that scrolls, " +
-        "the hidden edge fades, and focusing a hidden chip scrolls it into view",
+        "the hidden edge fades, focusing a hidden chip scrolls it into view, and the controls " +
+        "row drops its fade while a menu's sheet is open",
       pageId: "ui",
       run: async (page) => {
         await page.setViewportSize({ width: 1280, height: 900 })
@@ -273,6 +274,8 @@ function filterBarSpecs(): Spec[] {
         const scrolls = await list.evaluate((el) => el.scrollWidth > el.clientWidth)
         if (!scrolls) throw new Error("the chips row does not overflow, so this proves nothing")
         await list.and(page.locator(`[data-fade="right"]`)).waitFor()
+        const mask = await list.evaluate((el) => getComputedStyle(el).maskImage)
+        if (!mask.includes("gradient")) throw new Error(`the chips row draws no fade: ${mask}`)
         await bar.card.locator(`[data-filter-controls][data-fade="right"]`).waitFor()
 
         const last = bar.card.getByRole("button", { name: "Remove the Created by me filter" })
@@ -285,6 +288,13 @@ function filterBarSpecs(): Spec[] {
           return box.left >= row.left && box.right <= row.right + 1
         })
         if (!shown) throw new Error("the focused chip is still scrolled out of the row")
+
+        // A mask paints over the fixed sheet too, so the controls row drops its fade while open.
+        const controls = bar.card.locator("[data-filter-controls]")
+        await bar.tags.click()
+        await bar.tagsMenu.waitFor()
+        const open = await controls.evaluate((el) => getComputedStyle(el).maskImage)
+        if (open !== "none") throw new Error(`the open sheet sits under the row's fade: ${open}`)
       },
     },
     axeSpec("light"),
