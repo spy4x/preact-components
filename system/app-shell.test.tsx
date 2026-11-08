@@ -88,6 +88,13 @@ describe("AppShell", () => {
     expect(plain).not.toContain('href="/profile/account"')
   })
 
+  it("ends the phone sheet's linked name row with a chevron, and only a linked one", () => {
+    const chevron = 'd="m9 18 6-6-6-6"'
+    const linked = shell({ account: { user, headerHref: "/profile/account" } })
+    expect(region(linked, "app-shell-sheet-account-header", "a")).toContain(chevron)
+    expect(region(shell(), "app-shell-sheet-account-header", "div")).not.toContain(chevron)
+  })
+
   it("keeps one live region outside the rail, present and empty with no connection", () => {
     const quiet = shell()
     expect(quiet.match(/data-e2e="shell-ws-status"/g)).toHaveLength(1)
