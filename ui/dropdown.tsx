@@ -153,6 +153,31 @@ export function dropdownOpensUp(
 }
 
 /**
+ * Scrolls a downward menu's nearest scroller, or the page, just enough to show the menu's bottom
+ * edge. Unlike `scrollIntoView`, it never scrolls a box that clips its content
+ * (`overflow: hidden`), which would slide that box's content out from under its own frame.
+ *
+ * @param panel The open menu panel.
+ */
+function revealBelow(panel: HTMLElement): void {
+  const page = document.documentElement
+  let scroller: Element = document.scrollingElement ?? page
+  for (let box = panel.parentElement; box && box !== page; box = box.parentElement) {
+    if (
+      /auto|scroll/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight
+    ) {
+      scroller = box
+      break
+    }
+  }
+  const visibleBottom = scroller === document.scrollingElement || scroller === page
+    ? page.clientHeight
+    : Math.min(scroller.getBoundingClientRect().bottom, page.clientHeight)
+  const overshoot = panel.getBoundingClientRect().bottom - visibleBottom
+  if (overshoot > 0) scroller.scrollBy({ top: overshoot })
+}
+
+/**
  * Whether the {@link Dropdown} around an item has taken over from its no-JavaScript fallback.
  * `true` outside any dropdown, so an item rendered on its own keeps the menu item's markup.
  */
@@ -540,16 +565,12 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     )
   }, [open, vertical])
 
-  // A downward menu that runs past the bottom of the viewport scrolls the page just enough to show
-  // it: the shift `dropdownOpensUp` chose over flipping off the top of the window. Runs once the panel sits below the
-  // trigger, a render after the decision when the menu opened upward last time.
+  // A downward menu that runs past the bottom of the viewport scrolls just enough to show it: the
+  // shift `dropdownOpensUp` chose over flipping off the top of the window. Runs once the panel
+  // sits below the trigger, a render after the decision when the menu opened upward last time.
   const autoDown = open && vertical === "auto" && !autoOpensUp.value
   useLayoutEffect(() => {
-    if (!autoDown) return
-    const panel = panelRef.current
-    if (panel && panel.getBoundingClientRect().bottom > document.documentElement.clientHeight) {
-      panel.scrollIntoView({ block: "nearest" })
-    }
+    if (autoDown && panelRef.current) revealBelow(panelRef.current)
   }, [autoDown])
 
   // A closed menu has no tab stop, as it hydrated: the roving one below is undone. A layout effect,
