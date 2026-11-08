@@ -16,7 +16,7 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconAlertTriangle, IconBell, type IconProps } from "@spy4x/preact-icons"
+import { IconAlertTriangle, IconBell, IconChevronRight, type IconProps } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { useApplePlatform } from "@spy4x/preact-ui/hotkeys"
 import { Kbd, type KbdLabels } from "@spy4x/preact-ui/kbd"
@@ -82,7 +82,8 @@ export interface AppShellAccount {
   user?: AccountMenuUser
   /**
    * Where the menu's header row (avatar, name, e-mail) leads, such as `/profile`: given, the row is
-   * a link in the rail's menu and in the phone sheet. Left out, it is plain text.
+   * a link in the rail's menu and in the phone sheet, where a trailing chevron shows it opens a
+   * page. Left out, it is plain text.
    */
   headerHref?: string
   /** The menu's own items, first, such as "Profile". */
@@ -438,6 +439,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
                 dataE2E="app-shell-sheet-account-header"
               >
                 <AccountIdentity user={user} tag={tag} />
+                <IconChevronRight class="size-4 shrink-0 text-muted" />
               </SheetControl>
             )}
           {(account.items ?? []).map((item, index) => (
