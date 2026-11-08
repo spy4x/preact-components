@@ -45,7 +45,8 @@ const tipOf = (entry: Locator) => entry.locator(`xpath=../*[@data-e2e="rail-shel
  * the browser on a loaded host cannot make the delay look shorter than it was.
  *
  * @returns Milliseconds from the pointer entering to the tooltip first showing, or `null` when it
- *   had not shown 3 seconds after the hover.
+ *   had not shown 10 seconds after the hover. The delay is timed in the page, so a long wait on a
+ *   loaded host cannot make it look shorter.
  */
 async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Promise<number | null> {
   await tip.evaluate((element, target) => {
@@ -66,7 +67,7 @@ async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Prom
   await page.waitForFunction(
     () => ((globalThis as Record<string, unknown>).__e2eHover as { shownAt: number }).shownAt >= 0,
     undefined,
-    { timeout: 3_000 },
+    { timeout: 10_000 },
   ).catch(() => undefined)
   return await page.evaluate(() => {
     const state = (globalThis as Record<string, unknown>).__e2eHover as {
