@@ -71,8 +71,9 @@ export interface DropdownBaseProps {
   /** Menu content. Items are {@link DropdownItem}s; anything else the keyboard cannot reach. */
   children: ComponentChildren
   /**
-   * Which way the menu opens. `"auto"`, the default, opens it down unless it would run past the
-   * bottom of the viewport and there is more room above the trigger (see {@link dropdownOpensUp}).
+   * Which way the menu opens. `"auto"`, the default, prefers down: it flips up only when the menu
+   * does not fit below the trigger but fits above it; otherwise a menu that runs past the bottom of
+   * the viewport scrolls the page to show itself (see {@link dropdownOpensUp}).
    */
   vertical?: "auto" | "up" | "down"
   /**
@@ -127,9 +128,11 @@ export function nextMenuIndex(key: string, current: number, count: number): numb
 const PANEL_GAP = 8
 
 /**
- * Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the
- * trigger and the bottom of the viewport, and there is more room above the trigger than below.
- * When neither side fits, the roomier side wins, because that is the side that hides less of it.
+ * Whether a `vertical="auto"` menu opens upward. Down is preferred: the menu flips up only when
+ * the panel does not fit between the trigger and the bottom of the viewport but does fit between
+ * the top of the viewport and the trigger, as for the last row of a long table. When neither side
+ * fits it opens down, and the page scrolls to show it, instead of running off the top of the
+ * window over what sits above the trigger, such as the page's header.
  *
  * Pure and exported so the decision is unit-testable without a layout: the component measures,
  * this decides.
@@ -144,9 +147,34 @@ export function dropdownOpensUp(
   panelHeight: number,
   viewportHeight: number,
 ): boolean {
-  const below = viewportHeight - trigger.bottom
-  if (panelHeight + PANEL_GAP <= below) return false
-  return trigger.top > below
+  const needed = panelHeight + PANEL_GAP
+  if (needed <= viewportHeight - trigger.bottom) return false
+  return needed <= trigger.top
+}
+
+/**
+ * Scrolls a downward menu's nearest scroller, or the page, just enough to show the menu's bottom
+ * edge. Unlike `scrollIntoView`, it never scrolls a box that clips its content
+ * (`overflow: hidden`), which would slide that box's content out from under its own frame.
+ *
+ * @param panel The open menu panel.
+ */
+function revealBelow(panel: HTMLElement): void {
+  const page = document.documentElement
+  let scroller: Element = document.scrollingElement ?? page
+  for (let box = panel.parentElement; box && box !== page; box = box.parentElement) {
+    if (
+      /auto|scroll/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight
+    ) {
+      scroller = box
+      break
+    }
+  }
+  const visibleBottom = scroller === document.scrollingElement || scroller === page
+    ? page.clientHeight
+    : Math.min(scroller.getBoundingClientRect().bottom, page.clientHeight)
+  const overshoot = panel.getBoundingClientRect().bottom - visibleBottom
+  if (overshoot > 0) scroller.scrollBy({ top: overshoot })
 }
 
 /**
@@ -536,6 +564,16 @@ export function Dropdown(props: DropdownProps): JSX.Element {
       document.documentElement.clientHeight,
     )
   }, [open, vertical])
+
+  // A downward menu that runs past the bottom of the viewport scrolls just enough to show it: the
+  // shift `dropdownOpensUp` chose over flipping off the top of the window. Runs once the panel
+  // sits below the trigger, a render after the decision when the menu opened upward last time.
+  // `autoDown` was read before the effect above decided, so it re-reads the decision: a menu that
+  // just flipped up must not scroll the page, which would push it off the top of the window.
+  const autoDown = open && vertical === "auto" && !autoOpensUp.value
+  useLayoutEffect(() => {
+    if (autoDown && panelRef.current && !autoOpensUp.peek()) revealBelow(panelRef.current)
+  }, [autoDown])
 
   // A closed menu has no tab stop, as it hydrated: the roving one below is undone. A layout effect,
   // so it lands in the same commit that closes the menu and nothing reads a closed menu with one.

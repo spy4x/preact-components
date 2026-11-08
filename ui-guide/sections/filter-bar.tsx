@@ -2,8 +2,8 @@
  * The `FilterBar` card: a list of notes searched, filtered and sorted live by one bar. Spread into
  * the page-header demos, right after `PageHeader`, because the bar sits under a list page's header.
  *
- * What only a browser shows — the menus' keys and focus, the sheet on a phone, the row that scrolls
- * sideways at 390 px — is driven by `pages/e2e/ui.spec.ts`.
+ * What only a browser shows — the menus' keys and focus, the sheet on a phone, the rows that scroll
+ * sideways at 390 px, the trigger row at 1440 px — is driven by `pages/e2e/ui.spec.ts`.
  */
 
 import { DropdownItem, FilterBar, type SortDirection } from "@spy4x/preact-ui"
@@ -224,7 +224,7 @@ export const filterBarDemos = {
         name: "filters",
         type: "FilterBarMenu[]",
         description:
-          "One menu each: `{ id, label, options, value, onChange }`, with `multiple: true` for boxes that keep the menu open (with a Done item on a phone), `chipLabel`, `anyLabel`, `activeLabel`, and a `header` slot with an optional `headerLabel`.",
+          "One menu each: `{ id, label, options, value, onChange }`, with `multiple: true` for boxes that keep the menu open (with a Done item on a phone), `chipLabel`, `anyLabel`, `activeLabel` (an active trigger's accessible name; on screen it shows `label` and a count), and a `header` slot with an optional `headerLabel`.",
       },
       {
         name: "toggles",

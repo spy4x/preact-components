@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1411 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1421 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -141,6 +141,7 @@ export const COMPONENT_CLASSES: string = [
   "after:border-b-2",
   "after:border-e-2",
   "after:content-['']",
+  "after:content-[attr(data-count)]",
   "after:h-2.5",
   "after:hidden",
   "after:inset-0",
@@ -360,6 +361,9 @@ export const COMPONENT_CLASSES: string = [
   "data-[deep-link]:outline-accent-600",
   "data-[deep-link]:outline-offset-2",
   "data-[deep-link]:outline-solid",
+  "data-[fade=both]:[mask-image:linear-gradient(to_right,transparent,#000_2rem,#000_calc(100%-2rem),transparent)]",
+  "data-[fade=left]:[mask-image:linear-gradient(to_right,transparent,#000_2rem)]",
+  "data-[fade=right]:[mask-image:linear-gradient(to_left,transparent,#000_2rem)]",
   "decoration-accent-300",
   "decoration-control",
   "delay-300",
@@ -574,6 +578,7 @@ export const COMPONENT_CLASSES: string = [
   "has-[:focus-visible]:ring-focus",
   "has-[:focus-visible]:ring-offset-2",
   "has-[:focus-visible]:ring-offset-focus",
+  "has-[[aria-expanded=true]]:data-[fade]:[mask-image:none]",
   "hidden",
   "hover:bg-[var(--color-hover,oklch(0.967_0.003_264.542))]",
   "hover:bg-accent-800",
@@ -784,10 +789,13 @@ export const COMPONENT_CLASSES: string = [
   "max-sm:open:flex",
   "max-sm:open:flex-col",
   "max-sm:overflow-y-auto",
+  "max-sm:p-1",
   "max-sm:pb-4",
+  "max-sm:pc-scrollbar",
   "max-sm:rounded-b-none",
   "max-sm:rounded-none",
   "max-sm:rounded-t-xl",
+  "max-sm:scroll-px-8",
   "max-sm:shadow-[0_0_0_100vmax_var(--color-scrim)]",
   "max-sm:sr-only",
   "max-sm:static",
@@ -1112,6 +1120,7 @@ export const COMPONENT_CLASSES: string = [
   "rtl:-scale-x-100",
   "scroll-mt-16",
   "scroll-px-1",
+  "scroll-px-8",
   "select-none",
   "select-text",
   "self-center",
@@ -1203,6 +1212,7 @@ export const COMPONENT_CLASSES: string = [
   "sm:px-6",
   "sm:py-8",
   "sm:rounded-lg",
+  "sm:shrink",
   "sm:shrink-0",
   "sm:size-24",
   "sm:size-4",
