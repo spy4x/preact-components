@@ -28,6 +28,34 @@ export async function unsavedGuardWithAChange(page: Page) {
   }
 }
 
+/**
+ * Holds back the page's next `setTimeout` of exactly `delay` milliseconds, such as a demo's
+ * simulated slow save, so a spec can assert what shows while it runs however slow the machine is.
+ * The timer is held only once; every other timer runs as usual.
+ *
+ * @returns `release`, which waits until the page has set that timer, then fires it.
+ */
+export async function holdTimer(page: Page, delay: number): Promise<() => Promise<void>> {
+  type Held = typeof globalThis & { e2eHeldTimer?: () => void }
+  await page.evaluate((delay) => {
+    const realSet = globalThis.setTimeout
+    globalThis.setTimeout = ((handler: TimerHandler, ms?: number, ...rest: unknown[]) => {
+      if (ms !== delay || typeof handler !== "function") return realSet(handler, ms, ...rest)
+      globalThis.setTimeout = realSet
+      ;(globalThis as Held).e2eHeldTimer = () => handler(...rest)
+      return 0
+    }) as typeof globalThis.setTimeout
+  }, delay)
+  return async () => {
+    await page.waitForFunction(() => (globalThis as Held).e2eHeldTimer !== undefined)
+    await page.evaluate(() => {
+      const fire = (globalThis as Held).e2eHeldTimer
+      delete (globalThis as Held).e2eHeldTimer
+      fire?.()
+    })
+  }
+}
+
 /** Throws with each violation's rule and targets when axe finds any in the given areas. */
 export async function axePasses(page: Page, selectors: readonly string[]): Promise<string> {
   let builder = new AxeBuilder({ page })

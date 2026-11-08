@@ -1,7 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
-import { unsavedGuardWithAChange } from "./shared.ts"
+import { holdTimer, unsavedGuardWithAChange } from "./shared.ts"
 
 /** The parts of the host page's `UnsavedGuard` Back and Forward demo a spec drives. */
 function unsavedHistoryDemo(page: Page) {
@@ -264,12 +264,16 @@ function unsavedHistorySpecs(): Spec[] {
         const { dialog, open, type, viewIs, dialogsAre } = unsavedHistoryDemo(page)
         await open("edit")
         await type()
+        // The demo's 3-second save is held until the dialog is seen, so on a slow machine it
+        // cannot finish before Back is pressed or before the editor is read.
+        const save = await holdTimer(page, 3_000)
         await page.locator(`[data-e2e="unsaved-history-save-late"]`).click()
 
         await page.goBack()
         // The question is asked first: the save has not finished, so the editor is still the view.
         await dialog.waitFor()
         await viewIs("edit")
+        await save()
         await viewIs("list")
         await dialogsAre(0)
       },
@@ -379,11 +383,15 @@ export const specs: readonly Spec[] = [
       const saveLate = card.locator(`[data-e2e="unsaved-save-late"]`)
       const saved = card.getByRole("checkbox", { name: "Unsaved changes", checked: false })
 
+      // Each 3-second save is held until the dialog is seen, so on a slow machine it cannot
+      // finish before the click or before the dialog is looked for.
+      let save = await holdTimer(page, 3_000)
       await saveLate.click()
       await card.locator(`[data-unsaved="owned"]`).click()
       // The question is asked first: the save has not finished, so nothing has navigated.
       await dialog.waitFor()
       await outcomeIs("nothing yet")
+      await save()
       await dialog.waitFor({ state: "detached" })
       await saved.waitFor()
       await card.locator(`[data-e2e="unsaved-outcome"]`)
@@ -391,9 +399,11 @@ export const specs: readonly Spec[] = [
 
       await draft.fill("Another unsaved change")
       await card.getByRole("checkbox", { name: "Unsaved changes", checked: true }).waitFor()
+      save = await holdTimer(page, 3_000)
       await saveLate.click()
       await lists.click()
       await dialog.waitFor()
+      await save()
       await dialog.waitFor({ state: "detached" })
       await saved.waitFor()
       await outcomeIs(`navigate("unsaved-demo/lists") from code`)

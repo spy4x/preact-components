@@ -1,6 +1,6 @@
 import type { Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
-import { axePasses } from "./shared.ts"
+import { axePasses, holdTimer } from "./shared.ts"
 
 /**
  * `Combobox` with `groupOf`, `isGroupLead`, `aliasesOf` and `onCreate`, on the card's category
@@ -95,8 +95,12 @@ function comboboxGroupSpecs(): Spec[] {
         await create.waitFor()
         const active = await activeText(page)
         if (active !== "option:Create “Gym”") throw new Error(`the highlight is on ${active}`)
+        // The demo's 800 ms save is held until the spinning row is seen, so a slow machine cannot
+        // finish the save before the check looks.
+        const save = await holdTimer(page, 800)
         await field(page).press("Enter")
         await list(page).locator(`[role="option"][aria-busy="true"]`).waitFor()
+        await save()
         await card(page).locator(`[data-e2e="controlled-value"]`)
           .getByText("category: Gym, created: Gym", { exact: true }).waitFor()
         const shown = await field(page).inputValue()

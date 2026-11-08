@@ -1926,8 +1926,17 @@ export const specs: readonly Spec[] = [
       const shell = page.locator(`[data-e2e="shell-demo"]`)
       const trigger = shell.locator(`[data-e2e="shell-user-menu-button"]`)
       // Centred, so the menu has room to open down inside the demo: near the window's bottom edge
-      // it opens up, out of the demo's clipped frame, and nothing in it can be clicked.
-      await trigger.evaluate((element) => element.scrollIntoView({ block: "center" }))
+      // it opens up, out of the demo's clipped frame, and nothing in it can be clicked. Instantly:
+      // the page's own smooth scroll could still be under way when the click lands, with the
+      // trigger near the edge. The click waits until the trigger stands in the window's middle
+      // half, so a late shift of the page cannot send the menu up either.
+      await trigger.evaluate((element) =>
+        element.scrollIntoView({ block: "center", behavior: "instant" })
+      )
+      await page.waitForFunction((element) => {
+        const { top, bottom } = element.getBoundingClientRect()
+        return top > innerHeight / 4 && bottom < innerHeight * 3 / 4
+      }, await trigger.elementHandle())
       await trigger.click()
       const profile = shell.getByRole("menuitem", { name: "Your profile", exact: true })
       if (!await clickCancelled(profile)) {
