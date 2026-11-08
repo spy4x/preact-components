@@ -44,7 +44,7 @@ steps:
       DENO_DIR: /woodpecker/deno-dir
     commands:
       - |
-          curl -fsSL -o /woodpecker/deno.zip https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o /woodpecker/deno.zip https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
           echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /woodpecker/deno.zip" | sha256sum -c -
           python3 -m zipfile -e /woodpecker/deno.zip /woodpecker/bin
           chmod +x /woodpecker/bin/deno
