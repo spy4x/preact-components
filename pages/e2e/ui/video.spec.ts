@@ -578,32 +578,49 @@ function loopVideoSpecs(): Spec[] {
         if (!/\/video-demo\/loop-dark\.webm$/.test(dark.src)) {
           throw new Error(`a dark page plays ${dark.src}`)
         }
-        await page.waitForTimeout(1_000)
-        const before = (await state()).time
-        await page.emulateMedia({ colorScheme: "light" })
+        type Seek = { atLoad: number; time: number; duration: number; paused: boolean }
+        type Watched = typeof globalThis & { e2eLightSeek?: Seek }
+        // The kept position is the clip's time when the component calls `load()` for the light
+        // files, not a time read before the theme changes: a slow render can delay that call for
+        // seconds, long enough for the six-second loop to wrap, and the clip rightly resumes from
+        // where it is then. The light files' seek to it is read in its own `seeked` callback,
+        // before playback moves the time on. Both listeners go in before the switch, and the
+        // switch waits until the clip is a second in, so the position to keep is not the start.
         await frame.locator("video").evaluate((element) =>
-          new Promise<void>((resolve, reject) => {
+          new Promise<void>((resolve) => {
             const clip = element as HTMLVideoElement
-            const timer = setTimeout(() =>
-              reject(
-                new Error(
-                  `the light files did not play: ${clip.currentSrc} at ${clip.currentTime}s`,
-                ),
-              ), 10_000)
-            const done = () => {
-              if (!/loop-light\.webm$/.test(clip.currentSrc) || clip.currentTime === 0) return
-              clearTimeout(timer)
-              clip.removeEventListener("timeupdate", done)
+            const load = clip.load.bind(clip)
+            let atLoad: number | undefined
+            clip.load = () => {
+              atLoad = clip.currentTime
+              load()
+            }
+            clip.addEventListener("seeked", function seeked() {
+              if (atLoad === undefined || !/loop-light\.webm$/.test(clip.currentSrc)) return
+              clip.removeEventListener("seeked", seeked)
+              const { currentTime: time, duration, paused } = clip
+              const seek = { atLoad, time, duration, paused }
+              ;(globalThis as Watched).e2eLightSeek = seek
+            })
+            const secondIn = () => {
+              if (clip.currentTime < 1) return
+              clip.removeEventListener("timeupdate", secondIn)
               resolve()
             }
-            clip.addEventListener("timeupdate", done)
-            done()
+            clip.addEventListener("timeupdate", secondIn)
+            secondIn()
           })
         )
-        const light = await state()
+        await page.emulateMedia({ colorScheme: "light" })
+        const light = await (await page.waitForFunction(() => (globalThis as Watched).e2eLightSeek))
+          .jsonValue() as Seek
         if (light.paused) throw new Error("the clip stopped on the theme change")
-        if (light.time < before) {
-          throw new Error(`the clip went back from ${before}s to ${light.time}s`)
+        // Forward along the loop: a clip that was at its very end resumes from the start. Playback
+        // can begin before the seek ends, so the light files may land a little past the kept time;
+        // a lost position starts them over, most of a loop away.
+        const ahead = (light.time - light.atLoad + light.duration) % light.duration
+        if (ahead > 1) {
+          throw new Error(`the clip went back from ${light.atLoad}s to ${light.time}s`)
         }
       },
     },
