@@ -80,10 +80,12 @@ function kanbanDragSpecs(): Spec[] {
         await slide(edge, to)
         const over = await kanban.read()
         await touch("touchEnd")
-        await twoFrames(page)
+        // The drop reaches `onMove` and the live region in a render after the release, which a
+        // loaded page can take longer than two frames to draw: wait for it, then read the board.
+        const moved = await kanban.movedTo("notes to doing at 1").then(() => true, () => false)
         const after = await kanban.read()
 
-        if (after.lastMove !== "Last move through onMove: notes to doing at 1") {
+        if (!moved) {
           throw new Error(
             `after the release: ${after.lastMove}, live "${after.live}"; before it: drop line in ` +
               `${over.indicator}, live "${over.live}"`,

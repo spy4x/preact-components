@@ -1,6 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Locator, Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
+import { QUICK_ADD_ANNOUNCE_PAUSE_MS } from "../../../ui/quick-add.tsx"
 
 /** The parts of the first `QuickAdd` on its guide card, and the line that lists what it added. */
 function quickAdd(page: Page) {
@@ -82,11 +83,21 @@ function quickAddSpecs(): Spec[] {
         "QuickAdd: a tag typed letter by letter is announced once, whole, after the typing stops",
       pageId: "ui",
       run: async (page) => {
+        // The page's clock, paused, sets the pace: on a loaded host the gap between two key
+        // presses sent from here can pass the pause, and then a part-typed tag is rightly spoken.
+        await page.clock.install()
+        await page.reload()
+        await page.locator(`html[data-hydrated="true"]`).waitFor()
+        await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
         const { input, chips, live } = quickAdd(page)
         const spoken = await recordSpoken(page, live)
         // A person's pace: slower than a frame, so each letter is drawn, and well inside the pause.
-        await input.pressSequentially("a #work", { delay: 100 })
+        for (const key of "a #work") {
+          await input.press(key)
+          await page.clock.runFor(100)
+        }
         await chips.locator("li").filter({ hasText: /^Tag work$/ }).waitFor()
+        await page.clock.runFor(QUICK_ADD_ANNOUNCE_PAUSE_MS)
         await live.filter({ hasText: /^Tag work$/ }).waitFor()
         const heard = await spoken()
         if (heard.join("|") !== "Tag work") {

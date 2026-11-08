@@ -1731,6 +1731,40 @@ async function waitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<bool
 }
 
 /**
+ * Reload the page and wait for the load event of the document the reload brings, without throwing.
+ *
+ * {@link waitForLoad} after `Page.reload` takes the next load event, and until the new document
+ * commits that can still be the old one's: a page whose own load had not finished when the reload
+ * was sent fires it then, and a reading taken on it meets the commit as "Inspected target navigated
+ * or closed". So this waits for the main frame's commit first, then for the load after it.
+ *
+ * @param devtools The connected session.
+ * @param timeoutMs How long the commit and the load may take together.
+ * @returns Whether the new document's load event arrived in time.
+ */
+async function reloadAndWaitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  const committed = (async () => {
+    while (true) {
+      const { frame } = await devtools.once<{ frame: { parentId?: string } }>(
+        "Page.frameNavigated",
+        Math.max(0, deadline - Date.now()),
+      )
+      if (frame.parentId === undefined) return
+    }
+  })()
+  committed.catch(() => {})
+  await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+  try {
+    await committed
+    await devtools.next("Page.loadEventFired", Math.max(0, deadline - Date.now()))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Wait until `scrollY` has held the same value for a full second, bounded.
  *
  * Written for `authFormNoScriptChecks`'s restoring reload specifically: the guide shell's
@@ -5007,8 +5041,8 @@ async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> 
       await devtools.send("Fetch.continueRequest", { requestId }).catch(() => {})
     }
     await devtools.send("Fetch.disable").catch(() => {})
-    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
-    await waitForLoad(devtools)
+    // The held reload's own load event is never waited for, so it can still be due here.
+    await reloadAndWaitForLoad(devtools)
 
     const strayed = await read(devtools, `location.href !== ${JSON.stringify(restoreUrl)}`, false)
     if (strayed) {
