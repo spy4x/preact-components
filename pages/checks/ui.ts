@@ -68,11 +68,7 @@ import { lightboxOptionsChecks, lightboxRefusesEmptyCheck } from "./ui/lightbox.
 import { zoomableImagesChecks, zoomableImagesReadErrorsCheck } from "./ui/zoomable-images.ts"
 import { moneyInputChecks, moneyInputPreHydrationChecks } from "./ui/money-input.ts"
 import { fileInputChecks } from "./ui/file-input.ts"
-import {
-  inlineEditChecks,
-  inlineEditHeadingNameCheck,
-  inlineEditInterruptionChecks,
-} from "./ui/inline-edit.ts"
+import { inlineEditHeadingNameCheck, inlineEditInterruptionChecks } from "./ui/inline-edit.ts"
 import { shortcutsChecks } from "./ui/shortcuts-dialog.ts"
 import { kbdSequenceNameChecks } from "./ui/kbd.ts"
 import { toggleChipsChecks } from "./ui/toggle-chips.ts"
@@ -156,7 +152,6 @@ const UI_CHECKS:
     ["money-input", moneyInputChecks],
     ["money-input", moneyInputPreHydrationChecks],
     ["file-input", fileInputChecks],
-    ["inline-edit", inlineEditChecks],
     ["inline-edit", inlineEditInterruptionChecks],
     ["inline-edit", inlineEditHeadingNameCheck],
     ["shortcuts-dialog", shortcutsChecks],

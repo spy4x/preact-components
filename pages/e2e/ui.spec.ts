@@ -62,6 +62,7 @@ import { specs as segmentedControl } from "./ui/segmented-control.spec.ts"
 import { specs as rightToLeft } from "./ui/right-to-left.spec.ts"
 import { specs as periodStepper } from "./ui/period-stepper.spec.ts"
 import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
+import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 
 /** Each file's specs, by its name under `e2e/ui/` without `.spec.ts`. */
 export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
@@ -124,6 +125,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "right-to-left": rightToLeft,
   "period-stepper": periodStepper,
   "date-range-picker": dateRangePicker,
+  "inline-edit": inlineEdit,
 }
 
 export const specs: readonly Spec[] = Object.values(specsByFile).flat()
