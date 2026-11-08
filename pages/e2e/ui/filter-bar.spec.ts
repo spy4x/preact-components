@@ -222,7 +222,11 @@ function filterBarSpecs(): Spec[] {
         await bar.stateHas("tags: design, plans (any) · author: maya")
         await bar.card.getByRole("button", { name: "Tags: 2", exact: true }).waitFor()
         await bar.card.getByRole("button", { name: "Author: Maya Chen", exact: true }).waitFor()
-        await bar.tags.filter({ hasText: /^Tags2$/ }).waitFor()
+        await bar.tags.filter({ hasText: /^Tags$/ }).locator(`[data-count="2"]`).waitFor()
+        const digit = await bar.tags.locator("[data-count]").evaluate((badge) =>
+          getComputedStyle(badge, "::after").content
+        )
+        if (digit !== `"2"`) throw new Error(`the count badge draws ${digit}, not "2"`)
 
         const [tags, sort] = await Promise.all([bar.tags, bar.sort].map((c) => c.boundingBox()))
         if (!tags || !sort) throw new Error("a control is not drawn")
