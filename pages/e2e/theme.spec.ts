@@ -185,6 +185,11 @@ async function readDarkChrome(page: Page): Promise<DarkChrome> {
   await page.keyboard.press("Shift+Tab")
   await page.keyboard.press("Tab")
   await button.and(page.locator(":focus-visible")).waitFor()
+  // `.btn` transitions every property for 75 ms, its outline colour included, so a reading taken
+  // as focus arrives can be a colour on the way to the ring's.
+  await button.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => {})))
+  )
   return await button.evaluate((element): DarkChrome => {
     const resolve = (value: string) => {
       const probe = document.createElement("span")
