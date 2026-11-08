@@ -56,9 +56,10 @@ function shownFor(log: readonly CopyRegionChange[], which: string, message: stri
 const COPY_WINDOW_MS = { min: 1_000, max: 2_200 } as const
 
 /**
- * `CopyButton` awaits its copy: a clipboard that rejects shows a cross and "Couldn't copy", both on
- * the button and in its live region, and a clipboard that resolves shows the checkmark and
- * "Copied". Either confirmation clears on its own after `copiedForMs`, 1500ms by default, which a
+ * `CopyButton` awaits its copy: a clipboard that resolves shows the checkmark and "Copied". That a
+ * clipboard that rejects shows a cross and "Couldn't copy" is proven in
+ * `e2e/ui/copy-button.spec.ts`; the failure is still driven here, for its contrast and its timeout.
+ * Either confirmation clears on its own after `copiedForMs`, 1500ms by default, which a
  * `MutationObserver` on each live region times. The failure's red text and cross are measured in
  * light and dark while they show. Two checks cover a second press: the always-failing demo button
  * pressed twice 1s apart empties its region in between and keeps the failure a full window past
@@ -215,19 +216,6 @@ export async function copyButtonStatusChecks(devtools: Devtools): Promise<void> 
         root.classList.toggle("dark", wasDark)
       }
     })()`)
-    const iconFailed = await read("icon")
-    const titledFailed = await read("titled")
-    const failedCopied = await devtools.evaluate<string[]>(`globalThis.__copyButtonCopied`)
-
-    check(
-      "a CopyButton whose clipboard rejects shows a cross and announces the failure, not a copy",
-      iconFailed.icon === COPY_BUTTON_CROSS && iconFailed.region === "Couldn't copy" &&
-        titledFailed.icon === COPY_BUTTON_CROSS && titledFailed.region === "Couldn't copy" &&
-        titledFailed.text === "Couldn't copy" && failedCopied.length === 2,
-      `icon-only ${JSON.stringify(iconFailed)}, titled ${JSON.stringify(titledFailed)}, ` +
-        `clipboard asked for ${JSON.stringify(failedCopied)}`,
-    )
-
     const lowest = contrast === null ? 0 : Math.min(contrast.light.label, contrast.dark.label)
     const lowestCross = contrast === null ? 0 : Math.min(contrast.light.cross, contrast.dark.cross)
     check(
