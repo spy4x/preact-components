@@ -223,6 +223,18 @@ passed, while throttled runs found failures on the first try. A check that fails
 check to fix, not to re-run: poll on the state it asserts, read in the same evaluate as the action,
 or measure a duration with the page's own clock.
 
+To prove such a fix, run the one spec many times instead of whole blocks:
+
+```bash
+deno task --cwd pages verify --grep="user-menu link" --repeat=20
+```
+
+`--grep` keeps only the e2e specs whose name contains the text, ignoring case, and leaves every
+other block out; with `--component` it narrows that component's specs. `--repeat` runs the kept
+specs that many times, four at once as always, and records each run as its own check. Add
+`--cpu-throttle` to repeat them under load. The last line says the run was filtered and repeated.
+A text that matches no spec, or `--grep` with `--only` or `--except`, is a failed check.
+
 This is also the repository's browser test path, and CI runs it. `.woodpecker.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
