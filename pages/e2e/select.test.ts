@@ -7,7 +7,7 @@ const specs = [
   { name: `TagInput: Backspace removes the last tag` },
 ]
 
-Deno.test("keeps only the specs whose name contains the text, ignoring case and order", () => {
+Deno.test("keeps only the specs whose name contains the text, ignoring case", () => {
   assertEquals(byName(specs, `USER-MENU LINK`), [specs[0]])
   assertEquals(byName(specs, ` shell: `), [specs[0], specs[1]])
   assertEquals(byName(specs, `nosuchspec`), [])
