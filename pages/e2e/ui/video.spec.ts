@@ -21,7 +21,9 @@ async function modifiedClicksOpenTheLink(
       page.context().waitForEvent("page"),
       link.click({ modifiers: [modifier] }),
     ])
-    await opened.waitForURL(href)
+    // The tab's address is what the click decides; its load event is the stub page's own business
+    // and, on a loaded host, can come long after.
+    await opened.waitForURL(href, { waitUntil: "commit" })
     await opened.close()
     if (await player.count() > 0) throw new Error(`${modifier}-click also played in place`)
     if (page.url() !== before) throw new Error(`${modifier}-click navigated to ${page.url()}`)
