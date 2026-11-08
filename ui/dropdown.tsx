@@ -568,9 +568,11 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   // A downward menu that runs past the bottom of the viewport scrolls just enough to show it: the
   // shift `dropdownOpensUp` chose over flipping off the top of the window. Runs once the panel
   // sits below the trigger, a render after the decision when the menu opened upward last time.
+  // `autoDown` was read before the effect above decided, so it re-reads the decision: a menu that
+  // just flipped up must not scroll the page, which would push it off the top of the window.
   const autoDown = open && vertical === "auto" && !autoOpensUp.value
   useLayoutEffect(() => {
-    if (autoDown && panelRef.current) revealBelow(panelRef.current)
+    if (autoDown && panelRef.current && !autoOpensUp.peek()) revealBelow(panelRef.current)
   }, [autoDown])
 
   // A closed menu has no tab stop, as it hydrated: the roving one below is undone. A layout effect,

@@ -120,6 +120,54 @@ const opensDownSpec: Spec = {
   },
 }
 
+const flipsUpSpec: Spec = {
+  name: "Dropdown at 1280 by 520 px, its trigger low enough that the menu fits above but not " +
+    "below, with page left to scroll: the menu flips up without scrolling the page",
+  pageId: "ui",
+  run: async (page) => {
+    await page.setViewportSize({ width: 1280, height: 520 })
+    const bar = filterBarCard(page)
+    await bar.tags.scrollIntoViewIfNeeded()
+    await bar.tags.evaluate((trigger) => {
+      const top = globalThis.scrollY + trigger.getBoundingClientRect().top - 300
+      globalThis.scrollTo({ top, behavior: "instant" })
+    })
+    const before = await bar.tags.boundingBox()
+    const scrollY = await page.evaluate(() => globalThis.scrollY)
+    if (!before) throw new Error("the trigger is not drawn")
+    const room = await page.evaluate(() =>
+      document.documentElement.scrollHeight - globalThis.scrollY - globalThis.innerHeight
+    )
+    if (room < 300) {
+      throw new Error(`only ${room} px of page below the window, so this proves nothing`)
+    }
+    await bar.tags.click()
+    await bar.tagsMenu.waitFor()
+    const menu = await bar.tagsMenu.boundingBox()
+    if (!menu) throw new Error("the menu is not drawn")
+    const below = 520 - (before.y + before.height)
+    if (menu.height + 8 <= below || menu.height + 8 > before.y) {
+      throw new Error(
+        `the ${menu.height} px menu does not fit above only (above ${before.y}, below ${below}), ` +
+          "so this proves nothing",
+      )
+    }
+    // The page scrolls smoothly, so give a scroll the time to show before reading the result.
+    const moved = await page.waitForFunction((start) => globalThis.scrollY !== start, scrollY, {
+      timeout: 1_000,
+    }).then(() => true, () => false)
+    const after = await bar.tagsMenu.boundingBox()
+    if (moved || !after || after.y < 0) {
+      throw new Error(
+        `the page scrolled from y ${scrollY} to ${await page.evaluate(() =>
+          globalThis.scrollY
+        )}, ` +
+          `menu at y ${after?.y}`,
+      )
+    }
+  },
+}
+
 /** Dropdown: a menu shown as a phone sheet that scrolls passes axe and keeps its keys (#967). */
 function dropdownSheetSpecs(): Spec[] {
   return [
@@ -222,6 +270,7 @@ function dropdownSheetSpecs(): Spec[] {
 export const specs: readonly Spec[] = [
   ...dropdownSheetSpecs(),
   opensDownSpec,
+  flipsUpSpec,
   ...dangerItemContrastSpecs(),
   {
     name:
