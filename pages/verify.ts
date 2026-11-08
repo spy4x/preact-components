@@ -25,6 +25,8 @@
  * deno task verify --only=e2e --e2e-shard=2/4  # the second of four shards of the e2e specs
  * deno task verify --component=tag-input        # one ui component: checks/ui/, e2e/ui/
  * deno task verify --cpu-throttle=6             # the page's CPU six times slower, see below
+ * deno task verify --grep="user-menu link"      # only the e2e specs whose name contains that
+ * deno task verify --grep=menu --repeat=20      # those specs, each run 20 times
  * ```
  *
  * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
@@ -72,7 +74,8 @@ import { pageHref, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { BUILD_HASH_FILE, computeBuildFingerprint } from "./build-fingerprint.ts"
 import { chartsChecks } from "./checks/charts.ts"
 import { crudChecks } from "./checks/crud.ts"
-import { type E2eTarget, loadSpecs, runSpecs } from "./e2e/runner.ts"
+import { type E2eTarget, loadSpecs, runSpecs, type Spec } from "./e2e/runner.ts"
+import { byName, parseRepeat, repeated } from "./e2e/select.ts"
 import { inShard, parseShard } from "./e2e/shard.ts"
 import {
   BlockOutcome,
@@ -250,6 +253,25 @@ const E2E_SHARD = (() => {
  */
 const COMPONENT = Deno.args.find((value) => value.startsWith("--component="))
   ?.slice("--component=".length).trim()
+
+/**
+ * `--grep=menu` runs only the `e2e` specs whose name contains `menu`, ignoring case — `undefined`
+ * when the flag was not passed. It leaves every other block out, narrows `--component`'s specs
+ * further, and marks the run's last line as filtered. Refused with `--only` or `--except`, when
+ * empty, and when it matches no spec.
+ */
+const GREP = Deno.args.find((value) => value.startsWith("--grep="))?.slice("--grep=".length)
+
+/**
+ * `--repeat=20` runs the `e2e` specs of this run 20 times each — `1` when the flag was not passed,
+ * `NaN` when its value is not a whole number of at least 1. It is how a flaky spec's fix is proven
+ * (#1224): `--grep` picks the spec, this runs it again and again, and the last line says so.
+ */
+const REPEAT = (() => {
+  const arg = Deno.args.find((value) => value.startsWith("--repeat="))
+  if (!arg) return 1
+  return parseRepeat(arg.slice("--repeat=".length)) ?? Number.NaN
+})()
 
 /**
  * The block names one flag lists, such as `--only=system,ui`.
@@ -885,6 +907,23 @@ async function browserPhase(): Promise<void> {
     }
     activeBlocks = PACKAGE_BLOCKS.filter((block) => blocks.includes(block.name))
   }
+  if (GREP !== undefined) {
+    const searched = await specsInScope(false)
+    const matched = ONLY || EXCEPT || GREP.trim() === "" ? [] : byName(searched, GREP)
+    if (matched.length === 0) {
+      check(
+        "--grep names text found in an e2e spec's name, without --only or --except",
+        false,
+        ONLY || EXCEPT
+          ? "--only or --except was passed too"
+          : GREP.trim() === ""
+          ? "--grep was empty"
+          : `no spec name contains "${GREP}" — searched ${searched.length} specs`,
+      )
+      return
+    }
+    activeBlocks = PACKAGE_BLOCKS.filter((block) => block.name === "e2e")
+  }
   if (E2E_SHARD === null) {
     check(
       "--e2e-shard names a shard such as 2/4",
@@ -898,6 +937,16 @@ async function browserPhase(): Promise<void> {
       "--e2e-shard is passed only to a run with the e2e block",
       false,
       "this run has no e2e block",
+    )
+    return
+  }
+  if (Number.isNaN(REPEAT) || (REPEAT > 1 && !activeBlocks.some((block) => block.name === "e2e"))) {
+    check(
+      "--repeat names a whole number of at least 1, for a run with the e2e block",
+      false,
+      Number.isNaN(REPEAT)
+        ? "the value is not a whole number of at least 1"
+        : "this run has no e2e block",
     )
     return
   }
@@ -1559,12 +1608,8 @@ let e2eTarget: E2eTarget | undefined
  */
 async function e2eSpecs(): Promise<void> {
   if (!e2eTarget) throw new Error("the e2e block ran before the browser and the server existed")
-  const specs = COMPONENT === undefined
-    ? await loadSpecs()
-    : Object.entries(specsByFile).flatMap(([file, specs]) =>
-      ofComponent(file, COMPONENT) ? specs : []
-    )
-  if (!E2E_SHARD) return await runSpecs(e2eTarget, specs)
+  const specs = await specsInScope(true)
+  if (!E2E_SHARD) return await runSpecs(e2eTarget, repeated(specs, REPEAT))
   const shard = inShard(specs, E2E_SHARD)
   // A thrown block is one failed check, so an empty shard cannot pass as a spotless short run.
   if (shard.length === 0) {
@@ -1575,7 +1620,20 @@ async function e2eSpecs(): Promise<void> {
   console.log(
     `e2e shard ${E2E_SHARD.index}/${E2E_SHARD.count}: ${shard.length} of ${specs.length} specs`,
   )
-  await runSpecs(e2eTarget, shard)
+  await runSpecs(e2eTarget, repeated(shard, REPEAT))
+}
+
+/**
+ * The `e2e` specs `--component` picks — every spec without it — then, when `grep` is set, only
+ * those `--grep` matches.
+ */
+async function specsInScope(grep: boolean): Promise<Spec[]> {
+  const specs = COMPONENT === undefined
+    ? await loadSpecs()
+    : Object.entries(specsByFile).flatMap(([file, specs]) =>
+      ofComponent(file, COMPONENT) ? specs : []
+    )
+  return grep && GREP !== undefined ? byName(specs, GREP) : specs
 }
 
 /**
@@ -1621,8 +1679,8 @@ const PACKAGE_BLOCKS: readonly CheckBlock<Devtools>[] = [
 ]
 
 /**
- * The line that marks a run filtered by `--only`, `--except` or `--component` as filtered — `undefined` on every
- * full run.
+ * The lines that mark a run filtered by `--only`, `--except`, `--component` or `--grep`, sharded
+ * or repeated — `undefined` on every full run.
  *
  * Names the blocks that ran, from {@link ranBlockNames} — not the blocks `ONLY` asked for, and not
  * the blocks committed: a refused request commits nothing, and a run whose browser never starts
@@ -1638,10 +1696,17 @@ function filteredRunNote(): string | undefined {
   const sharded = E2E_SHARD
     ? `SHARDED: e2e ran shard ${E2E_SHARD.index}/${E2E_SHARD.count} of its specs (--e2e-shard)`
     : undefined
-  const filtered = ONLY || EXCEPT || COMPONENT !== undefined
-    ? filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames())
+  const filtered = ONLY || EXCEPT || COMPONENT !== undefined || GREP !== undefined
+    ? filteredRunLine(PACKAGE_BLOCKS.map((block) => block.name), ranBlockNames()) +
+      (GREP === undefined || !ranBlockNames().includes("e2e")
+        ? ""
+        : `; e2e ran only specs containing "${GREP.trim()}" (--grep)`)
     : undefined
-  return [filtered, sharded].filter((line) => line !== undefined).join("\n") || undefined
+  const repeatedLine = REPEAT > 1 && ranBlockNames().includes("e2e")
+    ? `REPEATED: e2e specs ran ${REPEAT} times (--repeat)`
+    : undefined
+  return [filtered, sharded, repeatedLine].filter((line) => line !== undefined).join("\n") ||
+    undefined
 }
 
 if (!(await checkBuildFingerprint())) {
