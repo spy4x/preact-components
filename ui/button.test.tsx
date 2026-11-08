@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import type { VNode } from "preact"
-import { Button, buttonClasses, type ButtonProps } from "./button.tsx"
+import { Button, buttonClasses, type ButtonLinkProps, type ButtonProps } from "./button.tsx"
 import { onAppPage } from "./testdata/page-at.ts"
 
 /** The `class` attribute of the first element in `html`. */
@@ -214,6 +214,13 @@ describe("Button as a link", () => {
     )
 
     expect(html).toContain('href="/reports"')
+  })
+
+  it("accepts data-* attributes inline on a ButtonLinkProps object", () => {
+    const action: ButtonLinkProps = { href: "/", children: "x", "data-umami-event": "a" }
+    const html = render(<Button {...action} />)
+
+    expect(html).toContain('data-umami-event="a"')
   })
 
   it("refuses busy on a link at the type level", () => {
