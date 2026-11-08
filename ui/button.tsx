@@ -49,6 +49,11 @@ export interface ButtonLinkProps extends
     "class" | "href" | "target" | "download" | "onClick" | "size"
   >,
   HotkeyProps {
+  /**
+   * Any `data-*` attribute, such as an analytics event name. JSX accepts these on its own, but an
+   * object literal typed `ButtonLinkProps` (a `PlanCard` action) needs them declared.
+   */
+  [dataAttribute: `data-${string}`]: string | undefined
   /** Where the link goes. Rendered as a real `href`, so the link works before any script runs. */
   href: string
   /**

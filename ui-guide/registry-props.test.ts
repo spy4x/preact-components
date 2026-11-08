@@ -173,6 +173,16 @@ describe("propNames", () => {
       name: "Wide",
       declarations: [{ kind: "function", def: { params: [{ tsType: ref("NS.Inner") }] } }],
     },
+    {
+      name: "Tracked",
+      declarations: [{ kind: "function", def: { params: [{ tsType: ref("TrackedProps") }] } }],
+    },
+    { name: "TrackedProps", declarations: [indexed(["href"], "data-")] },
+    {
+      name: "Loose",
+      declarations: [{ kind: "function", def: { params: [{ tsType: ref("LooseProps") }] } }],
+    },
+    { name: "LooseProps", declarations: [indexed(["href"])] },
   ] as never])
 
   function ref(typeName: string) {
@@ -180,6 +190,21 @@ describe("propNames", () => {
   }
   function iface(names: string[]) {
     return { kind: "interface", def: { properties: names.map((name) => ({ name })) } }
+  }
+  /** An interface with an index signature: keyed `` `${prefix}${string}` ``, or plain `string`. */
+  function indexed(names: string[], prefix?: string) {
+    const key = prefix === undefined ? { kind: "keyword", value: "string" } : {
+      kind: "literal",
+      value: {
+        kind: "template",
+        tsTypes: [{ kind: "literal", value: { kind: "string", string: prefix } }, {
+          kind: "keyword",
+          value: "string",
+        }],
+      },
+    }
+    const { def } = iface(names)
+    return { kind: "interface", def: { ...def, indexSignatures: [{ params: [{ tsType: key }] }] } }
   }
 
   it("reads a function, a const of a function type and every call signature of an overloaded const", () => {
@@ -190,6 +215,11 @@ describe("propNames", () => {
 
   it("reads a namespace member by its qualified name", () => {
     expect(propNames("Wide", byName)).toEqual(new Set(["inner"]))
+  })
+
+  it("keeps a type with a data-* index signature closed, and one keyed by string open", () => {
+    expect(propNames("Tracked", byName)).toEqual(new Set(["href"]))
+    expect(propNames("Loose", byName)).toBeNull()
   })
 
   it("calls a name with no declaration open, not empty", () => {
