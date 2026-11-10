@@ -73,7 +73,14 @@ import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
 import { useId, useRef } from "preact/hooks"
-import { IconTrashBin } from "@spy4x/preact-icons"
+import {
+  IconLogout,
+  IconMoon,
+  IconPlus,
+  IconRefresh,
+  IconSun,
+  IconTrashBin,
+} from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { dashboardDemos } from "./dashboard.tsx"
@@ -2644,7 +2651,8 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
     props: [
       {
         name: "options",
-        type: "{ id, label, detail?, hint?, group?, aliases? }[]",
+        type:
+          "{ id, label, detail?, hint?, group?, aliases?, icon?, kbd?, state?, disabledReason?, run?, keepOpen? }[]",
         description:
           "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. Or `search`, not both.",
       },
@@ -2655,6 +2663,41 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
           "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
       { name: "onSelect", type: "(option) => void", description: "The picked option." },
+      {
+        name: "options[].run",
+        type: "() => void",
+        description:
+          "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`.",
+      },
+      {
+        name: "options[].keepOpen",
+        type: "boolean",
+        description:
+          "Keeps the palette open after `run`, the row still highlighted; re-render with the new `state` and the badge changes in place and is announced.",
+      },
+      {
+        name: "options[].icon",
+        type: "ComponentType<IconProps>",
+        description:
+          "An icon before the label, `size-4`; every row of its group keeps the space so the labels line up.",
+      },
+      {
+        name: "options[].state",
+        type: "string",
+        description: "A setting's value in one short word, shown in a grey badge: “Dark”, “On”.",
+      },
+      {
+        name: "options[].kbd",
+        type: "string",
+        description:
+          "The command's shortcut, as `useHotkeys` takes it: drawn as keys from `sm` for a fine pointer and announced in `aria-keyshortcuts`. The caller binds it.",
+      },
+      {
+        name: "options[].disabledReason",
+        type: "string",
+        description:
+          "Lists the row dimmed with this reason under its label; Enter or a click runs nothing and says the reason.",
+      },
       {
         name: "trigger",
         type: `"button" | "field"`,
@@ -2701,7 +2744,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "labels",
         type: "Partial<CommandPaletteLabels>",
         description:
-          "The field's name, placeholder, close button and the empty, loading and error words.",
+          "The field's name, placeholder, close button, the empty, loading and error words, and `stateChanged(label, state)`.",
       },
     ],
     snippet: `const options = [
@@ -2716,6 +2759,14 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   defaultQuery="ещфые"
   showMatch
   onSelect={(option) => run(option.id)}
+/>
+
+<CommandPalette
+  options={[
+    { id: "theme", label: "Theme", icon: IconMoon, state: theme, kbd: "mod+shift+l", keepOpen: true, run: toggleTheme },
+    { id: "sync", label: "Sync now", icon: IconRefresh, disabledReason: "Needs a connection" },
+  ]}
+  onSelect={() => {}}
 />
 
 <CommandPalette
@@ -2879,6 +2930,60 @@ const paletteComponents: readonly CommandPaletteOption[] = [
   { id: "modal", label: "Modal", detail: "Overlays", group: "Components" },
 ]
 
+/**
+ * The commands `CommandPalette` demo's options: a theme toggle that stays open and shows its state,
+ * a command with a shortcut, one that cannot run offline, and one with a hint.
+ *
+ * @param theme The theme the toggle shows.
+ * @param toggle Switches the theme.
+ * @param ran Records which command ran.
+ */
+function paletteCommands(
+  theme: string,
+  toggle: () => void,
+  ran: (label: string) => void,
+): CommandPaletteOption[] {
+  return [
+    {
+      id: "theme",
+      label: "Theme",
+      icon: theme === "Dark" ? IconMoon : IconSun,
+      state: theme,
+      hint: "Setting",
+      kbd: "mod+shift+l",
+      group: "Settings",
+      aliases: ["dark mode", "light mode"],
+      keepOpen: true,
+      run: toggle,
+    },
+    {
+      id: "new-note",
+      label: "New note",
+      icon: IconPlus,
+      hint: "Command",
+      kbd: "mod+alt+n",
+      group: "Commands",
+      run: () => ran("New note"),
+    },
+    {
+      id: "sync",
+      label: "Sync now",
+      icon: IconRefresh,
+      group: "Commands",
+      disabledReason: "Needs a connection",
+      run: () => ran("Sync now"),
+    },
+    {
+      id: "sign-out",
+      label: "Sign out",
+      icon: IconLogout,
+      hint: "Account",
+      group: "Commands",
+      run: () => ran("Sign out"),
+    },
+  ]
+}
+
 /** The names the remote `CommandPalette` demo's pretend server knows. */
 const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
 
@@ -2928,10 +3033,11 @@ function paletteFruitSearch(
 }
 
 /**
- * `CommandPalette` three ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * `CommandPalette` four ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
  * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
- * result matched. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
+ * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut and a
+ * command that cannot run. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
  * searches started and answered.
  */
 function CommandPaletteDemo() {
@@ -2941,6 +3047,8 @@ function CommandPaletteDemo() {
   const searches = useSignal(0)
   const answered = useSignal(0)
   const aborted = useSignal<string[]>([])
+  const theme = useSignal("Light")
+  const ran = useSignal("nothing yet")
   return (
     <Stack>
       <Cluster>
@@ -2978,6 +3086,17 @@ function CommandPaletteDemo() {
         labels={{ placeholder: "Find a component…" }}
         onSelect={(option) => pickedForgiving.value = option.label}
       />
+      <CommandPalette
+        options={paletteCommands(
+          theme.value,
+          () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
+          (label) => ran.value = label,
+        )}
+        hotkeys={[]}
+        dataE2E="palette-commands"
+        labels={{ placeholder: "Run a command…" }}
+        onSelect={(option) => ran.value = option.label}
+      />
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
@@ -2986,9 +3105,11 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-remote-aborted">
           {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
         </span>; component{" "}
-        <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>. One letter answers
-        slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long name, and
-        “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”.
+        <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
+        <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
+        <span data-e2e="palette-commands-ran">{ran.value}</span>. One letter answers slowly, longer
+        queries quickly, “slow” takes twenty seconds, “dragon” finds a long name, and “boom” fails.
+        The field above opens on “combobx”; try “ещфые” or “календарь”.
       </DemoNote>
     </Stack>
   )
