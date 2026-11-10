@@ -2664,36 +2664,36 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       { name: "onSelect", type: "(option) => void", description: "The picked option." },
       {
-        name: "options[].run",
+        name: "option.run",
         type: "() => void",
         description:
           "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`.",
       },
       {
-        name: "options[].keepOpen",
+        name: "option.keepOpen",
         type: "boolean",
         description:
           "Keeps the palette open after `run`, the row still highlighted; re-render with the new `state` and the badge changes in place and is announced.",
       },
       {
-        name: "options[].icon",
+        name: "option.icon",
         type: "ComponentType<IconProps>",
         description:
           "An icon before the label, `size-4`; every row of its group keeps the space so the labels line up.",
       },
       {
-        name: "options[].state",
+        name: "option.state",
         type: "string",
         description: "A setting's value in one short word, shown in a grey badge: “Dark”, “On”.",
       },
       {
-        name: "options[].kbd",
+        name: "option.kbd",
         type: "string",
         description:
           "The command's shortcut, as `useHotkeys` takes it: drawn as keys from `sm` for a fine pointer and announced in `aria-keyshortcuts`. The caller binds it.",
       },
       {
-        name: "options[].disabledReason",
+        name: "option.disabledReason",
         type: "string",
         description:
           "Lists the row dimmed with this reason under its label; Enter or a click runs nothing and says the reason.",
