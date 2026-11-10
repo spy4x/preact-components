@@ -1,7 +1,12 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { Link } from "./link.tsx"
-import { BADGE_BASE, BADGE_FILLED_ACCENT, BADGE_OUTLINE_GRAY } from "./plain-classes.ts"
+import {
+  BADGE_BASE,
+  BADGE_FILLED_ACCENT,
+  BADGE_FILLED_GRAY,
+  BADGE_OUTLINE_GRAY,
+} from "./plain-classes.ts"
 
 /**
  * Palette entries a {@link Badge} can use. `purple` and `purpleNav` are the theme's accent: they
@@ -70,7 +75,7 @@ const filledClasses: Record<BadgeColor, string> = {
   red: "border-transparent bg-danger-fill text-danger-fill-foreground",
   orange: "border-transparent bg-warning text-(--color-warning-foreground)",
   green: "border-transparent bg-success text-(--color-success-foreground)",
-  gray: "border-subtle bg-track text-foreground",
+  gray: BADGE_FILLED_GRAY,
   blue: "border-blue-600 bg-blue-600 text-blue-50",
   purple: BADGE_FILLED_ACCENT,
   purpleNav: "border-accent-700 bg-accent-900 text-accent-100",

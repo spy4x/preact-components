@@ -13,6 +13,9 @@ export const BADGE_BASE =
 /** A grey outline badge's colours: the muted text token on the control border. */
 export const BADGE_OUTLINE_GRAY = "border-control text-muted"
 
+/** A filled grey badge's colours: the foreground on the track fill. */
+export const BADGE_FILLED_GRAY = "border-subtle bg-track text-foreground"
+
 /** A filled accent badge's colours, `purple` by default. */
 export const BADGE_FILLED_ACCENT = "border-transparent bg-selected text-selected-foreground"
 
