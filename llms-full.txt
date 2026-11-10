@@ -5297,7 +5297,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`
-- `CommandPalette` (`command-palette`): `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
@@ -7434,6 +7434,20 @@ overrides them. `matchOption(query, option)` is that kind for one option. Option
 heading per group; `groupOptions(options)` is that grouping on its own: the unheaded options first,
 then each group in the order it first appears. `defaultCommandPaletteLabels` holds the English
 words, which `labels` overrides one by one.
+
+An option can be a command. `run` is called on Enter or a click in place of `onSelect`, after the
+palette closes. With `keepOpen` the palette stays open instead, the same row stays highlighted and
+the list is neither filtered nor sorted again: re-render with the option's new `state` and its
+badge changes in place, and the status region says `stateChanged(label, state)` ("Theme: Dark")
+once the state has really changed. `icon` is an icon component drawn at `size-4` before the label;
+when one row of a group has one, every row of that group keeps the space. `state` is one short word
+in a grey badge. `kbd` is the command's shortcut, one combination as `useHotkeys` takes it: the row
+shows its keys from `sm` for a fine pointer and announces it in `aria-keyshortcuts`, and the caller
+binds it. `disabledReason` keeps the row listed, dimmed and `aria-disabled`, with the reason in place
+of its `detail` and no badge or keys; the arrow keys still stop on it, and Enter or a click runs
+nothing, keeps the palette open and says the reason. A row's accessible name is its label; its
+detail or reason, match words, state and hint describe it. A destructive command opens its usual
+confirmation, never acts at once.
 
 ```tsx
 <CommandPalette

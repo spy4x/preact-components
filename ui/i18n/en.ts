@@ -87,6 +87,7 @@ export default {
   "CommandPalette.match.words": "Words in any order",
   "CommandPalette.placeholder": "Search…",
   "CommandPalette.search": "Search",
+  "CommandPalette.stateChanged": "{label}: {state}",
   "ComparisonTable.capability": "Capability",
   "ComparisonTable.checkedOn": "Checked on {date}.",
   "ComparisonTable.fit": "Fit",

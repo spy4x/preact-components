@@ -90,6 +90,7 @@ export default {
   "CommandPalette.match.words": "Palavras em qualquer ordem",
   "CommandPalette.placeholder": "Buscar…",
   "CommandPalette.search": "Buscar",
+  "CommandPalette.stateChanged": "{label}: {state}",
   "ComparisonTable.capability": "Recurso",
   "ComparisonTable.checkedOn": "Verificado em {date}.",
   "ComparisonTable.fit": "Para quem é",

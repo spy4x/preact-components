@@ -93,6 +93,7 @@ export default {
   "CommandPalette.match.words": "Слова в другом порядке",
   "CommandPalette.placeholder": "Поиск…",
   "CommandPalette.search": "Поиск",
+  "CommandPalette.stateChanged": "{label}: {state}",
   "ComparisonTable.capability": "Возможность",
   "ComparisonTable.checkedOn": "Данные проверены {date}.",
   "ComparisonTable.fit": "Кому подойдёт",

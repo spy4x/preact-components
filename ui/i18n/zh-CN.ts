@@ -84,6 +84,7 @@ export default {
   "CommandPalette.match.words": "词序不限",
   "CommandPalette.placeholder": "搜索…",
   "CommandPalette.search": "搜索",
+  "CommandPalette.stateChanged": "{label}：{state}",
   "ComparisonTable.capability": "功能",
   "ComparisonTable.checkedOn": "核对日期：{date}。",
   "ComparisonTable.fit": "适合谁",

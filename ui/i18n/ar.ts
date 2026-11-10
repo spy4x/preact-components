@@ -99,6 +99,7 @@ export default {
   "CommandPalette.match.words": "الكلمات بأي ترتيب",
   "CommandPalette.placeholder": "ابحث…",
   "CommandPalette.search": "بحث",
+  "CommandPalette.stateChanged": "{label}: {state}",
   "ComparisonTable.capability": "الميزة",
   "ComparisonTable.checkedOn": "آخر تحقق: {date}.",
   "ComparisonTable.fit": "لمن يناسب",

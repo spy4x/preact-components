@@ -1,6 +1,6 @@
 import { join } from "@spy4x/preact-cn/join"
-import { IconSearch, IconXMark } from "@spy4x/preact-icons"
-import type { JSX } from "preact"
+import { type IconProps, IconSearch, IconXMark } from "@spy4x/preact-icons"
+import type { ComponentType, JSX } from "preact"
 import { useSignal } from "@preact/signals"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
@@ -12,6 +12,7 @@ import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } fr
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
+import { BADGE_BASE, BADGE_FILLED_GRAY } from "./plain-classes.ts"
 import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
 import { useBackdropPress } from "./backdrop-press.ts"
 
@@ -32,6 +33,36 @@ export interface CommandPaletteOption {
    * Never shown.
    */
   aliases?: readonly string[]
+  /**
+   * An icon from `@spy4x/preact-icons` before the label, drawn at `size-4` and hidden from screen
+   * readers. When one option of a group has an icon, every row of that group keeps its space, so
+   * the labels line up.
+   */
+  icon?: ComponentType<IconProps>
+  /**
+   * The command's own shortcut, one combination written the way `useHotkeys` takes it, such as
+   * `"mod+shift+l"`. The row shows it as keys from `sm` up where the pointer is fine, and announces
+   * it in `aria-keyshortcuts`. The palette only shows it: binding it is the caller's.
+   */
+  kbd?: string
+  /** A setting's current value in one short word, such as `"Dark"` or `"On"`, shown as a badge. */
+  state?: string
+  /**
+   * Why the command cannot run now, such as `"Needs a connection"`. The row stays listed, dimmed,
+   * with this in place of its `detail`; Enter or a click runs nothing and says this instead.
+   */
+  disabledReason?: string
+  /**
+   * What Enter or a click does, called in place of `onSelect`: after the palette closes, or with it
+   * still open under `keepOpen`.
+   */
+  run?: () => void
+  /**
+   * Keeps the palette open after `run`, with the same row highlighted and the list neither filtered
+   * nor sorted again, for a toggle such as a theme switch. Re-render with the option's new `state`
+   * and its badge changes in place; the status region then says `stateChanged(label, state)`.
+   */
+  keepOpen?: boolean
 }
 
 /**
@@ -70,6 +101,8 @@ export interface CommandPaletteLabels {
   loading: string
   /** What the list says when a `search` call failed. */
   error: string
+  /** What the palette announces when a `keepOpen` command changed its option's `state`. */
+  stateChanged: (label: string, state: string) => string
 }
 
 /** English defaults for every {@link CommandPaletteLabels} entry. */
@@ -80,6 +113,7 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
   empty: "Nothing matches.",
   loading: "Searching…",
   error: "Couldn't search. Try again.",
+  stateChanged: (label, state) => `${label}: ${state}`,
 }
 
 /**
@@ -97,7 +131,10 @@ const SLOW_SEARCH_MS = 300
 
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
-  /** Called with the option the reader picked, after the palette has closed. */
+  /**
+   * Called with the option the reader picked, after the palette has closed. An option with `run`
+   * runs that instead, and a disabled one (`disabledReason`) neither.
+   */
   onSelect: (option: T) => void
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
@@ -110,7 +147,7 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
    * `firesInFields`.
    */
   hotkeys?: readonly string[]
-  /** The words the trigger's hotkey hint shows for a key; see `KBD_LABELS`. */
+  /** The words the trigger's hotkey hint and each option's `kbd` show for a key; see `KBD_LABELS`. */
   kbdLabels?: Partial<KbdLabels>
   /** Overrides for the palette's words; see {@link defaultCommandPaletteLabels}. */
   labels?: Partial<CommandPaletteLabels>
@@ -338,6 +375,10 @@ interface Remote<T> {
  * under headings. On a phone the trigger is an icon button unless `trigger` is `"field"`, and the
  * dialog fills the screen. `defaultQuery` opens it with a query already typed.
  *
+ * An option can be a command: an `icon`, a `state` badge, its `kbd` shortcut, a `run` that Enter or
+ * a click calls in place of `onSelect`, and `keepOpen` for a toggle whose badge changes in place
+ * and is announced. An option with a `disabledReason` stays listed, dimmed, and runs nothing.
+ *
  * @param props See {@link CommandPaletteProps}.
  */
 export function CommandPalette<T extends CommandPaletteOption>(
@@ -351,7 +392,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
     trigger: triggerShape = "button",
     showMatch = false,
   } = props
-  const labels = useLabels("CommandPalette", defaultCommandPaletteLabels, props.labels)
+  const labels = useLabels("CommandPalette", defaultCommandPaletteLabels, props.labels, {
+    stateChanged: ["label", "state"],
+  })
   const matchLabels = useLabels(
     "CommandPalette.match",
     defaultCommandPaletteMatchLabels,
@@ -375,6 +418,11 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const lock = useRef<ScrollLock | null>(null)
   const latest = useRef(props)
   latest.current = props
+  // What the status region says after Enter on a disabled row, or after a kept-open command changed
+  // its state. The next keystroke or opening clears it.
+  const notice = useSignal("")
+  // The kept-open command that ran last and the state it had then, until a render shows a new one.
+  const ranKeptOpen = useRef<{ id: string; state: string | undefined } | null>(null)
   // A click on the backdrop lands on the dialog element itself; the press has to begin there too.
   const backdrop = useBackdropPress((event) => event.target === dialog.current)
 
@@ -466,6 +514,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
     const text = typed ?? latest.current.defaultQuery ?? ""
     query.value = text
     activeIndex.value = 0
+    notice.value = ""
+    ranKeptOpen.current = null
     if (latest.current.search !== undefined) {
       remote.value = { status: Status.IDLE, options: [] }
       ask(text, 0)
@@ -495,11 +545,26 @@ export function CommandPalette<T extends CommandPaletteOption>(
     open(event.key)
   }
   const close = () => dialog.current?.close()
+  /**
+   * Picks `option`: a disabled one only says why, a kept-open command runs with the palette still
+   * open, and any other closes the palette, then runs its `run` or hands it to `onSelect`.
+   */
   const choose = (option: T | undefined) => {
     if (!option) return
+    if (option.disabledReason !== undefined) {
+      notice.value = option.disabledReason
+      return
+    }
+    if (option.run !== undefined && option.keepOpen) {
+      notice.value = ""
+      ranKeptOpen.current = { id: option.id, state: option.state }
+      option.run()
+      return
+    }
     close()
+    if (option.run !== undefined) option.run()
     // The latest `onSelect`: a pick that waited for a search runs after later renders.
-    latest.current.onSelect(option)
+    else latest.current.onSelect(option)
   }
 
   useHotkeys(
@@ -514,6 +579,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const onTyped = (text: string) => {
     query.value = text
     activeIndex.value = 0
+    notice.value = ""
+    ranKeptOpen.current = null
     if (remoteMode) ask(text, latest.current.debounce ?? 200)
   }
 
@@ -555,7 +622,18 @@ export function CommandPalette<T extends CommandPaletteOption>(
     if (active < 0 || !dialog.current?.open) return
     document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
   }, [active, flat.length, flat[active]?.id])
-  const status = !remoteMode || remote.value.status === Status.IDLE
+  // A kept-open command's caller re-renders with its new state: announce it once it shows.
+  useEffect(() => {
+    const ran = ranKeptOpen.current
+    if (ran === null) return
+    const now = flat.find((option) => option.id === ran.id)
+    if (now === undefined || now.state === ran.state) return
+    ranKeptOpen.current = null
+    if (now.state !== undefined) notice.value = labels.stateChanged(now.label, now.state)
+  })
+  const status = notice.value !== ""
+    ? notice.value
+    : !remoteMode || remote.value.status === Status.IDLE
     ? flat.length === 0 ? labels.empty : ""
     : remote.value.status === Status.SLOW
     ? labels.loading
@@ -567,50 +645,125 @@ export function CommandPalette<T extends CommandPaletteOption>(
     ? undefined
     : hotkeys.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
 
-  const row = (option: T, index: number) => {
+  /**
+   * One result row: its icon (or the group's empty icon slot), its label over its detail or its
+   * disabled reason, then the match words, the state badge, the hint and the shortcut's keys.
+   */
+  const row = (option: T, index: number, iconSlot: boolean) => {
     const how = matchOption(composedQuery, option)
     const shownMatch = showMatch && how !== undefined ? matchLabels[how] : undefined
+    const rowId = optionId(option)
+    const isActive = index === active
+    const disabled = option.disabledReason !== undefined
+    const second = option.disabledReason ?? option.detail
+    // A disabled row shows neither its state nor its shortcut: neither can be used now.
+    const state = disabled ? undefined : option.state
+    const kbd = disabled ? undefined : option.kbd
+    // The name is the label alone; the rest of the row describes it, in the order it is drawn.
+    const described = [
+      second !== undefined && `${rowId}-detail`,
+      shownMatch !== undefined && `${rowId}-match`,
+      state !== undefined && `${rowId}-state`,
+      option.hint !== undefined && `${rowId}-hint`,
+    ].filter(Boolean).join(" ")
+    const Icon = option.icon
     return (
       <li
         key={option.id}
-        id={optionId(option)}
+        id={rowId}
         role="option"
-        aria-selected={index === active}
+        aria-selected={isActive}
+        aria-disabled={disabled ? "true" : undefined}
+        aria-labelledby={`${rowId}-label`}
+        aria-describedby={described === "" ? undefined : described}
+        aria-keyshortcuts={kbd === undefined ? undefined : ariaKeyShortcuts(kbd, apple)}
         data-match={how}
+        // Focus stays in the field, as in `Combobox`: a kept-open or disabled row leaves the palette
+        // open, and the keys go on working.
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(option)}
         // No pointer handler moves the highlight, as in `Combobox`: `aria-activedescendant` is where a
         // screen reader is reading, and a pointer its user is not holding must not drag it around.
-        // The row under the pointer still lights up, in CSS, announcing nothing.
+        // The row under the pointer still lights up, in CSS, announcing nothing; a disabled one
+        // does not.
         class={join(
-          "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
+          "flex items-center gap-3 rounded-lg px-3 py-2",
           // A touch target on a phone, however short its text.
-          "max-sm:min-h-11 max-sm:items-center",
-          index === active ? "bg-selected-soft text-selected" : "hover:bg-hover",
+          "max-sm:min-h-11",
+          disabled ? "cursor-default" : "cursor-pointer",
+          isActive ? "bg-selected-soft text-selected" : !disabled && "hover:bg-hover",
         )}
       >
-        <span class="min-w-0">
+        {iconSlot && (
+          <span
+            aria-hidden="true"
+            class={join(
+              "flex size-4 shrink-0",
+              isActive && !disabled ? "text-selected" : "text-muted",
+            )}
+          >
+            {Icon !== undefined && <Icon class="size-4" />}
+          </span>
+        )}
+        <span class="min-w-0 flex-1">
           {
             /* A long name stops at two lines and a long detail at one, so one result cannot push the
         rest off the screen. */
           }
-          <span class="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]">
+          <span
+            id={`${rowId}-label`}
+            class={join(
+              "line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]",
+              disabled && "text-muted",
+            )}
+          >
             {option.label}
           </span>
-          {option.detail !== undefined && (
-            <span class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]">
-              {option.detail}
+          {second !== undefined && (
+            <span
+              id={`${rowId}-detail`}
+              class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]"
+            >
+              {second}
             </span>
           )}
         </span>
-        {(shownMatch !== undefined || option.hint !== undefined) && (
-          <span class="flex shrink-0 items-baseline gap-2">
+        {(shownMatch !== undefined || state !== undefined || option.hint !== undefined ||
+          kbd !== undefined) && (
+          <span class="flex shrink-0 items-center gap-3">
             {shownMatch !== undefined && (
               // How the query found the result, in words: a typo fixed, the other layout.
-              <span class="rounded-md border border-subtle px-2 text-xs text-muted">
+              <span
+                id={`${rowId}-match`}
+                class="rounded-md border border-subtle px-2 text-xs text-muted"
+              >
                 {shownMatch}
               </span>
             )}
-            {option.hint !== undefined && <span class="text-xs text-muted">{option.hint}</span>}
+            {state !== undefined && (
+              // One short word; a longer one is cut at about twelve letters.
+              <span id={`${rowId}-state`} class={join(BADGE_BASE, BADGE_FILLED_GRAY, "max-w-24")}>
+                <span class="truncate">{state}</span>
+              </span>
+            )}
+            {option.hint !== undefined && (
+              <span
+                id={`${rowId}-hint`}
+                // On a phone the badge or the reason says enough; the hint makes room for them.
+                class={join(
+                  "text-xs text-muted",
+                  (state !== undefined || disabled) && "max-sm:hidden",
+                )}
+              >
+                {option.hint}
+              </span>
+            )}
+            {kbd !== undefined && (
+              // A phone has no keys to press: the keys show from `sm`, for a fine pointer only.
+              <span class="hidden sm:contents">
+                <HotkeyHint keys={kbd} apple={apple} labels={kbdLabels} />
+              </span>
+            )}
           </span>
         )}
       </li>
@@ -618,6 +771,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
   }
 
   let index = 0
+  /** Whether a row of `group` has an icon, so that every row of it keeps the icon's space. */
+  const hasIcon = (group: CommandPaletteGroup<T>) =>
+    group.options.some((option) => option.icon !== undefined)
   return (
     <>
       <button
@@ -765,22 +921,24 @@ export function CommandPalette<T extends CommandPaletteOption>(
             )}
           >
             {groups.map((group, groupIndex) =>
-              group.label === undefined ? group.options.map((option) => row(option, index++)) : (
-                // A listbox holds options and groups of options; the `<li>` around the group is
-                // only there for the HTML list, so it has no role.
-                <li key={`group ${group.label}`} role="none">
-                  <ul role="group" aria-labelledby={`${id}-group-${groupIndex}`}>
-                    <li
-                      id={`${id}-group-${groupIndex}`}
-                      role="presentation"
-                      class="px-3 pb-1 pt-3 text-xs font-medium text-muted"
-                    >
-                      {group.label}
-                    </li>
-                    {group.options.map((option) => row(option, index++))}
-                  </ul>
-                </li>
-              )
+              group.label === undefined
+                ? group.options.map((option) => row(option, index++, hasIcon(group)))
+                : (
+                  // A listbox holds options and groups of options; the `<li>` around the group is
+                  // only there for the HTML list, so it has no role.
+                  <li key={`group ${group.label}`} role="none">
+                    <ul role="group" aria-labelledby={`${id}-group-${groupIndex}`}>
+                      <li
+                        id={`${id}-group-${groupIndex}`}
+                        role="presentation"
+                        class="px-3 pb-1 pt-3 text-xs font-medium text-muted"
+                      >
+                        {group.label}
+                      </li>
+                      {group.options.map((option) => row(option, index++, hasIcon(group)))}
+                    </ul>
+                  </li>
+                )
             )}
           </ul>
         </div>

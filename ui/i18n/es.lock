@@ -76,6 +76,7 @@ CommandPalette.match.typo	f18be1638f3c7c16
 CommandPalette.match.words	cd7dc3df67895f2d
 CommandPalette.placeholder	7336265a0467a255
 CommandPalette.search	49c266baaaa70981
+CommandPalette.stateChanged	e2acd428ea254ea4
 ComparisonTable.capability	5faf58a69db59058
 ComparisonTable.checkedOn	f90a00d2f155ccf7
 ComparisonTable.fit	9f872ed43d00d8bd
