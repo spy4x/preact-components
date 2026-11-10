@@ -587,7 +587,152 @@ function remotePaletteSpecs(): Spec[] {
   ]
 }
 
+/**
+ * The commands `CommandPalette` on its card, opened at `width`: its dialog, its rows by label, its
+ * status line and what the card says ran.
+ *
+ * @param page The guide's UI page.
+ * @param width The window's width.
+ */
+async function openCommandsPalette(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 800 })
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`dialog[data-e2e="palette-commands"]`)
+  const field = dialog.getByRole("combobox")
+  await card.locator(`[data-e2e="palette-commands-open"]`).click()
+  await field.and(page.locator(":focus")).waitFor()
+  const row = (label: string) => dialog.getByRole("option").filter({ hasText: label })
+  return {
+    dialog,
+    field,
+    row,
+    status: dialog.locator(`[data-e2e="palette-commands-status"]`),
+    ran: card.locator(`[data-e2e="palette-commands-ran"]`),
+    /** Waits until the highlighted row is the one labelled `label`. */
+    activeIs: (label: string) =>
+      page.waitForFunction(
+        (wanted) => {
+          const dialog = document.querySelector(`dialog[data-e2e="palette-commands"]`)
+          const id = dialog?.querySelector(`[role="combobox"]`)?.getAttribute(
+            "aria-activedescendant",
+          )
+          return document.getElementById(id ?? "")?.querySelector("span span")?.textContent ===
+            wanted
+        },
+        label,
+      ),
+  }
+}
+
+/** Specs for command rows: icon, state badge, shortcut, `keepOpen` and `disabledReason`. */
+function commandPaletteSpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette commands: a row shows its icon, its state badge and its shortcut's " +
+        "keys at 1440 px, and at 390 px the keys and the hint beside the badge hide",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        const theme = palette.row("Theme")
+        await theme.locator("svg").waitFor()
+        await theme.locator(`[id$="-state"]`).filter({ hasText: /^Light$/ }).waitFor()
+        await theme.locator("[data-hotkey-hint]").waitFor()
+        await theme.getByText("Setting", { exact: true }).waitFor()
+        const shortcut = await theme.getAttribute("aria-keyshortcuts")
+        if (shortcut !== "Control+Shift+L") throw new Error(`aria-keyshortcuts is ${shortcut}`)
+        await page.setViewportSize({ width: 390, height: 800 })
+        await theme.locator("[data-hotkey-hint]").waitFor({ state: "hidden" })
+        await theme.getByText("Setting", { exact: true }).waitFor({ state: "hidden" })
+        await theme.locator(`[id$="-state"]`).filter({ hasText: /^Light$/ }).waitFor()
+        await theme.locator("svg").waitFor()
+      },
+    },
+    {
+      name: "CommandPalette commands: Enter on a kept-open toggle runs it, changes its badge in " +
+        "place with the palette open and the row still highlighted, and announces the new state",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        const badge = palette.row("Theme").locator(`[id$="-state"]`)
+        await palette.activeIs("Theme")
+        await page.keyboard.press("Enter")
+        await badge.filter({ hasText: /^Dark$/ }).waitFor()
+        await palette.status.filter({ hasText: /^Theme: Dark$/ }).waitFor({ state: "attached" })
+        await palette.field.and(page.locator(":focus")).waitFor()
+        await palette.activeIs("Theme")
+        await page.keyboard.press("Enter")
+        await badge.filter({ hasText: /^Light$/ }).waitFor()
+        await palette.status.filter({ hasText: /^Theme: Light$/ }).waitFor({ state: "attached" })
+        if (!await palette.dialog.isVisible()) throw new Error("the toggle closed the palette")
+        const ran = await palette.ran.textContent()
+        if (ran !== "nothing yet") throw new Error(`the toggle also picked: ${ran}`)
+      },
+    },
+    {
+      name: "CommandPalette commands: a disabled row shows its reason, the arrow keys stop on " +
+        "it, hovering does not light it, and Enter or a click runs nothing, keeps the palette " +
+        "open with focus in the field and says the reason; Enter on a plain command runs it " +
+        "and closes",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        const sync = palette.row("Sync now")
+        await sync.and(page.locator(`[aria-disabled="true"]`)).waitFor()
+        await sync.getByText("Needs a connection", { exact: true }).waitFor()
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("ArrowDown")
+        await palette.activeIs("Sync now")
+        await page.keyboard.press("Enter")
+        await palette.status.filter({ hasText: /^Needs a connection$/ }).waitFor({
+          state: "attached",
+        })
+        await page.keyboard.press("ArrowUp")
+        await palette.activeIs("New note")
+        await sync.hover()
+        const background = await sync.evaluate((row) => getComputedStyle(row).backgroundColor)
+        if (background !== "rgba(0, 0, 0, 0)") {
+          throw new Error(`the hovered disabled row is lit: ${background}`)
+        }
+        // Playwright will not click an `aria-disabled` element on its own; a person still can.
+        await sync.click({ force: true })
+        if (!await palette.dialog.isVisible()) throw new Error("a disabled row closed the palette")
+        await palette.field.and(page.locator(":focus")).waitFor()
+        const ran = await palette.ran.textContent()
+        if (ran !== "nothing yet") throw new Error(`a disabled row ran: ${ran}`)
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.ran.filter({ hasText: /^New note$/ }).waitFor()
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1440].map((width): Spec => ({
+        name: `CommandPalette commands at ${width} px in the ${colorScheme} palette: axe finds ` +
+          "no violation in the dialog with icons, a state badge, keys and a disabled row, colour " +
+          "contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          const palette = await openCommandsPalette(page, width)
+          await palette.row("Sign out").waitFor()
+          const { violations, passes } = await new AxeBuilder({ page })
+            .include(`dialog[data-e2e="palette-commands"]`)
+            .analyze()
+          if (violations.length > 0) {
+            throw new Error(
+              violations.map(({ id, nodes }) =>
+                `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+              ).join(" | "),
+            )
+          }
+          return `${passes.length} rules pass`
+        },
+      }))
+    ),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...remotePaletteSpecs(),
   ...forgivingPaletteSpecs(),
+  ...commandPaletteSpecs(),
 ]
