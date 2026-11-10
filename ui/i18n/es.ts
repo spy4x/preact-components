@@ -493,6 +493,8 @@ export default {
   "ShortcutsDialog.closeLabel": "Cerrar",
   "ShortcutsDialog.defaultGroup": "General",
   "ShortcutsDialog.title": "Atajos de teclado",
+  "SiteSearch.empty": "Nada para «{query}»",
+  "SiteSearch.error": "No se pudo cargar la búsqueda. Revisa tu conexión y vuelve a escribir.",
   "SortableList.cancelled": "Cancelado. {item} ha vuelto a la posición {position} de {total}.",
   "SortableList.dropped": "Has soltado {item} en la posición {position} de {total}.",
   "SortableList.handle": "Reordenar {item}",

@@ -84,6 +84,7 @@ import {
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { dashboardDemos } from "./dashboard.tsx"
+import { siteSearchDemos } from "./site-search.tsx"
 import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
@@ -2662,7 +2663,17 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         description:
           "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
-      { name: "onSelect", type: "(option) => void", description: "The picked option." },
+      {
+        name: "onSelect",
+        type: "(option, { alternative }) => void",
+        description:
+          "The picked option; `alternative` is Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click, for a new tab. Focus `onSelect` moves stays where it went.",
+      },
+      {
+        name: "onOpenChange",
+        type: "(open: boolean) => void",
+        description: "Told when the palette opens and once it has closed.",
+      },
       {
         name: "options.run",
         type: "() => void",
@@ -2700,10 +2711,16 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "trigger",
-        type: `"button" | "field"`,
+        type: `"button" | "field" | "icon"`,
         default: `"button"`,
         description:
-          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter.",
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. `icon` is the icon button at every width.",
+      },
+      {
+        name: "triggerHref",
+        type: "string",
+        description:
+          "The trigger is a link to this address until the page hydrates, so a reader without JavaScript reaches a search page. `SiteSearch` shows it.",
       },
       {
         name: "defaultQuery",
@@ -2776,6 +2793,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
 />`,
     render: () => <CommandPaletteDemo />,
   },
+  ...siteSearchDemos,
   ...dashboardDemos,
 } satisfies DemoFragment
 

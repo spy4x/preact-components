@@ -109,6 +109,7 @@
     "./use-focus-on-change": "./use-focus-on-change.ts",
     "./kbd": "./kbd.tsx",
     "./shortcuts-dialog": "./shortcuts-dialog.tsx",
+    "./site-search": "./site-search.tsx",
     "./inline-edit": "./inline-edit.tsx",
     "./quick-add": "./quick-add.tsx",
     "./toggle-chips": "./toggle-chips.tsx",

@@ -51,6 +51,7 @@ import { specs as file } from "./ui/file.spec.ts"
 import { specs as screenTour } from "./ui/screen-tour.spec.ts"
 import { specs as avatar } from "./ui/avatar.spec.ts"
 import { specs as commandPalette } from "./ui/command-palette.spec.ts"
+import { specs as siteSearch } from "./ui/site-search.spec.ts"
 import { specs as tabsAndTable } from "./ui/tabs-and-table.spec.ts"
 import { specs as tabs } from "./ui/tabs.spec.ts"
 import { specs as feedback } from "./ui/feedback.spec.ts"
@@ -115,6 +116,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "screen-tour": screenTour,
   avatar,
   "command-palette": commandPalette,
+  "site-search": siteSearch,
   "tabs-and-table": tabsAndTable,
   tabs,
   feedback,

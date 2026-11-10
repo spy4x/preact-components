@@ -481,6 +481,9 @@ export default {
   "ShortcutsDialog.closeLabel": "Schließen",
   "ShortcutsDialog.defaultGroup": "Allgemein",
   "ShortcutsDialog.title": "Tastenkürzel",
+  "SiteSearch.empty": "Nichts zu „{query}“",
+  "SiteSearch.error":
+    "Die Suche ließ sich nicht laden. Prüfe deine Verbindung und tippe noch einmal.",
   "SortableList.cancelled": "Abgebrochen. {item} ist zurück auf Position {position} von {total}.",
   "SortableList.dropped": "{item} auf Position {position} von {total} abgelegt.",
   "SortableList.handle": "{item} verschieben",

@@ -430,6 +430,8 @@ SectionHeading.anchor	9dc5baf353535d6d
 ShortcutsDialog.closeLabel	7d9eb7acb13e2462
 ShortcutsDialog.defaultGroup	c910d474dcd724bf
 ShortcutsDialog.title	e9bef0b0f3c25e6e
+SiteSearch.empty	1f9b210575aa6f6b
+SiteSearch.error	705d6a928e971b64
 SortableList.cancelled	de2ba01193acbba1
 SortableList.dropped	db8131e44e0e3127
 SortableList.handle	1729d21c4a3a536f
