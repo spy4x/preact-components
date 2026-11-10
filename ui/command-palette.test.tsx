@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { IconMoon, IconPlus } from "@spy4x/preact-icons"
 import {
   CommandPalette,
   type CommandPaletteOption,
@@ -289,5 +290,88 @@ describe("CommandPalette", () => {
     // @ts-expect-error: neither `options` nor `search`.
     void <CommandPalette onSelect={() => {}} />
     void <CommandPalette search={search} debounce={50} onSelect={() => {}} />
+  })
+})
+
+describe("CommandPalette command rows", () => {
+  /** The `<li>` of the result `id` and everything inside it, from the rendered HTML. */
+  const rowOf = (html: string, id: string) =>
+    html.match(new RegExp(`<li id="[^"]+-result-${id}" role="option".*?</li>`))?.[0] ?? ""
+
+  it("names a row by its label alone and describes it by its detail, state and hint", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Theme", { detail: "Look", state: "Dark", hint: "Setting" })]}
+        onSelect={() => {}}
+      />,
+    )
+    const row = rowOf(html, "Theme")
+    const id = row.match(/<li id="([^"]+)"/)?.[1]
+    expect(row).toContain(`aria-labelledby="${id}-label"`)
+    expect(row).toContain(`aria-describedby="${id}-detail ${id}-state ${id}-hint"`)
+    expect(row).toMatch(new RegExp(`id="${id}-state"[^>]*><span class="truncate">Dark</span>`))
+  })
+
+  it("keeps an icon slot on every row of a group where one row has an icon", () => {
+    const html = render(
+      <CommandPalette
+        options={[
+          option("Theme", { group: "Settings", icon: IconMoon }),
+          option("Language", { group: "Settings" }),
+          option("Home", { group: "Pages" }),
+        ]}
+        onSelect={() => {}}
+      />,
+    )
+    const slot = /<span aria-hidden="true" class="flex size-4 shrink-0[^"]*">/
+    expect(rowOf(html, "Theme")).toMatch(slot)
+    expect(rowOf(html, "Theme")).toContain("<svg")
+    expect(rowOf(html, "Language")).toMatch(slot)
+    expect(rowOf(html, "Language")).not.toContain("<svg")
+    expect(rowOf(html, "Home")).not.toMatch(slot)
+  })
+
+  it("announces a row's kbd in aria-keyshortcuts and draws its keys only from sm", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("New note", { kbd: "ctrl+n", icon: IconPlus })]}
+        onSelect={() => {}}
+      />,
+    )
+    const row = rowOf(html, "New%20note")
+    expect(row).toContain(`aria-keyshortcuts="Control+N"`)
+    expect(row).toMatch(
+      /<span class="hidden sm:contents"><span aria-hidden="true" data-hotkey-hint /,
+    )
+  })
+
+  it("lists a disabled row with its reason in place of its detail, and no badge or keys", () => {
+    const html = render(
+      <CommandPalette
+        options={[
+          option("Sync now", {
+            detail: "Every device",
+            disabledReason: "Needs a connection",
+            state: "Off",
+            kbd: "ctrl+s",
+          }),
+        ]}
+        onSelect={() => {}}
+      />,
+    )
+    const row = rowOf(html, "Sync%20now")
+    const id = row.match(/<li id="([^"]+)"/)?.[1]
+    expect(row).toContain(`aria-disabled="true"`)
+    expect(row).toContain(`aria-describedby="${id}-detail"`)
+    expect(row).toContain(">Needs a connection<")
+    for (const absent of ["Every device", ">Off<", "aria-keyshortcuts", "data-hotkey-hint"]) {
+      expect(row).not.toContain(absent)
+    }
+    expect(row).not.toContain("hover:bg-hover")
+    expect(row).toMatch(/class="line-clamp-2 [^"]*text-muted"/)
+  })
+
+  it("says a changed state as the label and the state by default", () => {
+    expect(defaultCommandPaletteLabels.stateChanged("Theme", "Dark")).toBe("Theme: Dark")
   })
 })

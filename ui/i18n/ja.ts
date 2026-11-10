@@ -84,6 +84,7 @@ export default {
   "CommandPalette.match.words": "語順を問わず一致",
   "CommandPalette.placeholder": "検索…",
   "CommandPalette.search": "検索",
+  "CommandPalette.stateChanged": "{label}：{state}",
   "ComparisonTable.capability": "機能",
   "ComparisonTable.checkedOn": "{date}時点の情報です。",
   "ComparisonTable.fit": "対応状況",
