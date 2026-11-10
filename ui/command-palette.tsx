@@ -129,13 +129,25 @@ const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
  */
 const SLOW_SEARCH_MS = 300
 
+/** How the reader picked an option, the second argument of `onSelect`. */
+export interface CommandPaletteSelectDetail {
+  /**
+   * The reader asked for the other way to open it: Ctrl+Enter (⌘Enter on Apple platforms), a click
+   * with Ctrl or ⌘ held, or a middle click. A caller that opens a page opens it in a new tab.
+   */
+  alternative: boolean
+}
+
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /**
    * Called with the option the reader picked, after the palette has closed. An option with `run`
-   * runs that instead, and a disabled one (`disabledReason`) neither.
+   * runs that instead, and a disabled one (`disabledReason`) neither. When it moves focus, such as
+   * to a heading on the page, focus stays there instead of going back to the trigger.
    */
-  onSelect: (option: T) => void
+  onSelect: (option: T, detail: CommandPaletteSelectDetail) => void
+  /** Called with `true` when the palette opens and with `false` when it closes. */
+  onOpenChange?: (open: boolean) => void
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
    * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off.
@@ -165,11 +177,17 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /**
    * The trigger's shape. `"button"`, the default, is an icon button on a phone and a field-shaped
    * button with the placeholder and the hotkey hint from `sm`. `"field"` is the field-shaped button
-   * at every width, as wide as its container. A printable key typed on a focused `"field"` trigger
-   * opens the palette with that key as the query, as a real field would take it; a key that is
-   * one of `hotkeys` opens it as the hotkey does.
+   * at every width, as wide as its container. `"icon"` is the icon button at every width, for a
+   * tight spot. A printable key typed on a focused `"field"` trigger opens the palette with that key
+   * as the query, as a real field would take it; a key that is one of `hotkeys` opens it as the
+   * hotkey does.
    */
-  trigger?: "button" | "field"
+  trigger?: "button" | "field" | "icon"
+  /**
+   * Until the page hydrates, the trigger is a link to this address, drawn the same, so a reader
+   * without JavaScript reaches a search page instead of a button that does nothing.
+   */
+  triggerHref?: string
   /**
    * The query the field holds each time the palette opens, selected, so the first key typed
    * replaces it. Defaults to the empty query.
@@ -401,9 +419,15 @@ export function CommandPalette<T extends CommandPaletteOption>(
     props.matchLabels,
   )
   const field = triggerShape === "field"
+  const iconOnly = triggerShape === "icon"
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  // The link the trigger is until hydration, under `triggerHref`.
+  const link = useRef<HTMLAnchorElement>(null)
+  const hydrated = useSignal(false)
+  // `onSelect` moved focus: the close leaves it there.
+  const keepFocus = useRef(false)
   // What had focus when the palette opened: where focus goes back to while the trigger is hidden.
   const before = useRef<HTMLElement | null>(null)
   const id = useId()
@@ -500,9 +524,17 @@ export function CommandPalette<T extends CommandPaletteOption>(
     lock.current = null
   }
 
-  useEffect(() => () => {
-    cancel()
-    unlock()
+  useEffect(() => {
+    // The link becomes the button; focus on the link moves to the button with it.
+    if (link.current !== null) {
+      const focused = document.activeElement === link.current
+      hydrated.value = true
+      if (focused) requestAnimationFrame(() => trigger.current?.focus())
+    }
+    return () => {
+      cancel()
+      unlock()
+    }
   }, [])
 
   /**
@@ -526,7 +558,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
     // `Modal` the palette's `onSelect` opens keeps the page locked after the palette lets go.
     lock.current ??= acquireScrollLock()
     before.current = focusBefore(document.activeElement as HTMLElement | null, document.body)
+    keepFocus.current = false
     dialog.current?.showModal()
+    latest.current.onOpenChange?.(true)
     const box = input.current
     if (!box) return
     // The signal renders the text on the next frame; the field needs it now, to select it.
@@ -549,7 +583,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
    * Picks `option`: a disabled one only says why, a kept-open command runs with the palette still
    * open, and any other closes the palette, then runs its `run` or hands it to `onSelect`.
    */
-  const choose = (option: T | undefined) => {
+  const choose = (option: T | undefined, alternative = false) => {
     if (!option) return
     if (option.disabledReason !== undefined) {
       notice.value = option.disabledReason
@@ -562,9 +596,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
       return
     }
     close()
+    // The dialog's `close` event comes a task later and would send focus to the trigger; a pick
+    // that moved focus somewhere keeps it there.
+    const focused = document.activeElement
     if (option.run !== undefined) option.run()
     // The latest `onSelect`: a pick that waited for a search runs after later renders.
-    else latest.current.onSelect(option)
+    else latest.current.onSelect(option, { alternative })
+    keepFocus.current = document.activeElement !== focused
   }
 
   useHotkeys(
@@ -606,7 +644,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
       flat.length,
     )
     if (action.preventDefault) event.preventDefault()
-    if (action.select >= 0) return choose(flat[action.select])
+    if (action.select >= 0) {
+      return choose(flat[action.select], key === "Enter" && (event.ctrlKey || event.metaKey))
+    }
     activeIndex.value = action.state.activeIndex
   }
 
@@ -681,7 +721,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
         // Focus stays in the field, as in `Combobox`: a kept-open or disabled row leaves the palette
         // open, and the keys go on working.
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => choose(option)}
+        onClick={(event) => choose(option, event.ctrlKey || event.metaKey)}
+        onAuxClick={(event) => {
+          if (event.button === 1) choose(option, true)
+        }}
         // No pointer handler moves the highlight, as in `Combobox`: `aria-activedescendant` is where a
         // screen reader is reading, and a pointer its user is not holding must not drag it around.
         // The row under the pointer still lights up, in CSS, announcing nothing; a disabled one
@@ -770,35 +813,27 @@ export function CommandPalette<T extends CommandPaletteOption>(
     )
   }
 
-  let index = 0
-  /** Whether a row of `group` has an icon, so that every row of it keeps the icon's space. */
-  const hasIcon = (group: CommandPaletteGroup<T>) =>
-    group.options.some((option) => option.icon !== undefined)
-  return (
+  const triggerClass = join(
+    field
+      // A field-shaped button at every width, as wide as its container.
+      ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
+      : iconOnly
+      // An icon button at every width: 36 px square, 44 px on a phone.
+      ? "flex size-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-foreground max-sm:min-h-11 max-sm:min-w-11"
+      // An icon button on a phone; a field-shaped button with its placeholder and hotkey from `sm`.
+      : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
+    // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
+    // 44 px touch target either way.
+    "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden",
+    className,
+  )
+  // The same inside for the button and for the link it is until hydration.
+  const triggerBody = (
     <>
-      <button
-        ref={trigger}
-        type="button"
-        onClick={() => open()}
-        onKeyDown={onTriggerKeyDown}
-        aria-haspopup="dialog"
-        aria-label={labels.placeholder}
-        aria-keyshortcuts={shortcuts}
-        data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
-        class={join(
-          field
-            // A field-shaped button at every width, as wide as its container.
-            ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
-            // An icon button on a phone; a field-shaped button with its placeholder and hotkey
-            // from `sm`.
-            : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
-          // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
-          // 44 px touch target either way.
-          "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden",
-          className,
-        )}
-      >
-        <IconSearch class={field ? "size-4 shrink-0" : "size-5 shrink-0 sm:size-4"} />
+      <IconSearch
+        class={field ? "size-4 shrink-0" : iconOnly ? "size-5" : "size-5 shrink-0 sm:size-4"}
+      />
+      {!iconOnly && (
         <span
           class={field
             ? "min-w-0 flex-1 truncate text-start"
@@ -806,14 +841,50 @@ export function CommandPalette<T extends CommandPaletteOption>(
         >
           {labels.placeholder}
         </span>
-        {firstHotkey !== undefined && (
-          // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
-          // also keeps it off the icon-only trigger a narrow screen gets.
-          <span class={field ? "contents" : "hidden sm:contents"}>
-            <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
-          </span>
+      )}
+      {firstHotkey !== undefined && !iconOnly && (
+        // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
+        // also keeps it off the icon-only trigger a narrow screen gets.
+        <span class={field ? "contents" : "hidden sm:contents"}>
+          <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+        </span>
+      )}
+    </>
+  )
+
+  let index = 0
+  /** Whether a row of `group` has an icon, so that every row of it keeps the icon's space. */
+  const hasIcon = (group: CommandPaletteGroup<T>) =>
+    group.options.some((option) => option.icon !== undefined)
+  return (
+    <>
+      {props.triggerHref !== undefined && !hydrated.value
+        ? (
+          <a
+            ref={link}
+            href={props.triggerHref}
+            aria-label={labels.placeholder}
+            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
+            class={triggerClass}
+          >
+            {triggerBody}
+          </a>
+        )
+        : (
+          <button
+            ref={trigger}
+            type="button"
+            onClick={() => open()}
+            onKeyDown={onTriggerKeyDown}
+            aria-haspopup="dialog"
+            aria-label={labels.placeholder}
+            aria-keyshortcuts={shortcuts}
+            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
+            class={triggerClass}
+          >
+            {triggerBody}
+          </button>
         )}
-      </button>
       <dialog
         ref={dialog}
         aria-label={labels.search}
@@ -821,8 +892,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
         onClose={() => {
           cancel()
           unlock()
-          focusOnClose(trigger.current, before.current, input.current)
+          if (!keepFocus.current) focusOnClose(trigger.current, before.current, input.current)
+          keepFocus.current = false
           before.current = null
+          latest.current.onOpenChange?.(false)
         }}
         onPointerDown={backdrop.onPointerDown}
         onClick={(event) => {
