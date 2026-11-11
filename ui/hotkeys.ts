@@ -411,15 +411,24 @@ export function clickByHotkey(
 ): boolean {
   if (element === null || !element.isConnected) return false
   if (element.matches(":disabled, [aria-disabled='true']")) return false
-  if (element.closest("[inert]") !== null) return false
   if (shown === null || shown.getClientRects().length === 0) return false
-  // The target can be the document, which has no `closest`.
-  const target = event.target as Partial<Element> | null
-  const scope = target?.closest?.(DIALOG_SELECTOR) ?? openModal()
-  if (scope !== null && !scope.contains(element)) return false
+  if (!hotkeyReaches(element, event)) return false
   event.preventDefault()
   if (!event.repeat) element.click()
   return true
+}
+
+/**
+ * Whether a key press may act on `home`: it is not inert, and the press landed outside every
+ * dialog with no modal dialog open, or in the dialog that holds `home`. With `home` `null`, only
+ * outside every dialog with none modal open.
+ */
+function hotkeyReaches(home: Element | null, event: KeyboardEvent): boolean {
+  if (home !== null && home.closest("[inert]") !== null) return false
+  // The target can be the document, which has no `closest`.
+  const target = event.target as Partial<Element> | null
+  const scope = target?.closest?.(DIALOG_SELECTOR) ?? openModal()
+  return scope === null || (home !== null && scope.contains(home))
 }
 
 /**
@@ -461,16 +470,44 @@ export function hotkeyClickBinding(
   element: () => HTMLElement | null,
   shown?: () => Element | null,
 ): HotkeyBinding {
-  return {
-    keys,
-    inDialogs: true,
-    inFields: firesInFields(keys),
-    preventDefault: false,
-    handler: (event) => {
-      const target = element()
-      void clickByHotkey(target, event, shown === undefined ? target : shown())
-    },
-  }
+  return fieldAwareBinding(keys, (event) => {
+    const target = element()
+    void clickByHotkey(target, event, shown === undefined ? target : shown())
+  })
+}
+
+/**
+ * The {@link useHotkeys} binding that runs `action` directly, by the rules of
+ * {@link hotkeyClickBinding} but with no element that has to be rendered: the same chords fire in a
+ * text field, and the field keeps its editing chords. It runs when the press lands outside every
+ * dialog and menu with no modal dialog open, or inside the one that holds `home`, and not while
+ * `home` is inert. When it runs it cancels the key press's default action; a held key's repeat is
+ * cancelled too but runs nothing.
+ *
+ * @param keys The combination, such as `"mod+k"`.
+ * @param action What the press does, such as opening a palette.
+ * @param home Reads the element the action belongs to when the key is pressed, such as the
+ * palette's trigger, or `null` when nothing stands for it on screen.
+ * @throws {Error} When the combination cannot be read.
+ */
+export function hotkeyActionBinding(
+  keys: string,
+  action: () => void,
+  home: () => Element | null = () => null,
+): HotkeyBinding {
+  return fieldAwareBinding(keys, (event) => {
+    if (!hotkeyReaches(home(), event)) return
+    event.preventDefault()
+    if (!event.repeat) action()
+  })
+}
+
+/**
+ * A binding that fires in a dialog, and in a text field only for a chord {@link firesInFields}
+ * allows, leaving the key press for `handler` to cancel.
+ */
+function fieldAwareBinding(keys: string, handler: (event: KeyboardEvent) => void): HotkeyBinding {
+  return { keys, inDialogs: true, inFields: firesInFields(keys), preventDefault: false, handler }
 }
 
 /**

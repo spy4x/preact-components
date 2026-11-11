@@ -483,6 +483,7 @@ export {
   clickByHotkey,
   createHotkeyListener,
   firesInFields,
+  hotkeyActionBinding,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
