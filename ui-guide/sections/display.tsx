@@ -55,6 +55,7 @@ import {
   Tabs,
   Timeline,
   type TimelineItem,
+  ToggleField,
   Tooltip,
   type TooltipPlacement,
   UsageMeter,
@@ -102,6 +103,7 @@ import {
   CommandPalette,
   type CommandPaletteOption,
   type CommandPaletteSelectDetails,
+  type CommandPaletteTrigger,
 } from "@spy4x/preact-ui/command-palette"
 
 /**
@@ -2724,10 +2726,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "trigger",
-        type: `"button" | "field"`,
+        type: `"button" | "field" | ((api: CommandPaletteTrigger) => ComponentChildren)`,
         default: `"button"`,
         description:
-          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter.",
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. A function draws a trigger of its own from `{ open, ref, shortcuts, hotkey }`, or none with `null`: `open(query)` opens with that text typed, `ref` takes focus back on close. The hotkeys open the palette whatever trigger is drawn.",
       },
       {
         name: "defaultQuery",
@@ -2792,6 +2794,15 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
 />
 
 <CommandPalette
+  hotkeys={["mod+shift+p"]}
+  trigger={({ open, ref, shortcuts }) => (
+    <>
+      <Button ref={ref} aria-haspopup="dialog" aria-keyshortcuts={shortcuts} onClick={() => open()}>
+        Run a command…
+      </Button>
+      <Button variant="ghost" aria-haspopup="dialog" onClick={() => open(">")}>Commands only</Button>
+    </>
+  )}
   options={[
     { id: "theme", label: "Theme", icon: IconMoon, state: theme, kbd: "mod+shift+l", keepOpen: true, run: toggleTheme },
     { id: "sync", label: "Sync now", icon: IconRefresh, disabledReason: "Needs a connection" },
@@ -3060,6 +3071,44 @@ function paletteCommands(
   ]
 }
 
+/**
+ * The commands `CommandPalette` demo's own trigger: a button showing its hotkey, which focus comes
+ * back to, and one that opens the palette with ">" typed, listing only commands.
+ *
+ * @param api What the palette hands its trigger.
+ */
+function PaletteCommandsTrigger({ open, ref, shortcuts, hotkey }: CommandPaletteTrigger) {
+  return (
+    <Cluster>
+      <Button
+        ref={ref}
+        variant="outline"
+        size="sm"
+        aria-haspopup="dialog"
+        aria-keyshortcuts={shortcuts}
+        data-e2e="palette-commands-open"
+        onClick={() => open()}
+      >
+        Run a command…
+        {hotkey !== undefined && (
+          <span aria-hidden="true" class="max-sm:hidden">
+            <Kbd keys={hotkey} />
+          </span>
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-haspopup="dialog"
+        data-e2e="palette-commands-only"
+        onClick={() => open(">")}
+      >
+        Commands only
+      </Button>
+    </Cluster>
+  )
+}
+
 /** Where the remembering `CommandPalette` demo keeps its recent picks. */
 const PALETTE_RECENT = {
   storageKey: "ui-guide:command-palette-recent",
@@ -3120,7 +3169,8 @@ function paletteFruitSearch(
  * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
  * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut, a
  * command that cannot run, one that moves focus to the card's note, a quick-create row and a
- * submenu. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
+ * submenu. It draws a trigger of its own, which a switch can remove, and opens on Ctrl+Shift+P
+ * either way. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
  * searches started and answered.
  */
 function CommandPaletteDemo() {
@@ -3133,6 +3183,7 @@ function CommandPaletteDemo() {
   const theme = useSignal("Light")
   const ran = useSignal("nothing yet")
   const log = useRef<HTMLSpanElement>(null)
+  const commandsTrigger = useSignal(true)
   return (
     <Stack>
       <Cluster>
@@ -3177,10 +3228,18 @@ function CommandPaletteDemo() {
           (label, details) => ran.value = ranText(label, details),
           () => log.current?.focus(),
         )}
-        hotkeys={[]}
+        hotkeys={["mod+shift+p"]}
+        trigger={commandsTrigger.value ? PaletteCommandsTrigger : () => null}
         dataE2E="palette-commands"
         labels={{ placeholder: "Run a command…" }}
         onSelect={(option, details) => ran.value = ranText(option.label, details)}
+      />
+      <ToggleField
+        id="palette-commands-trigger"
+        label="Show the commands trigger"
+        description="Without it, Ctrl+Shift+P still opens the palette."
+        value={commandsTrigger.value}
+        onToggle={(value) => commandsTrigger.value = value}
       />
       <Cluster>
         <CommandPalette
@@ -3219,10 +3278,10 @@ function CommandPaletteDemo() {
         <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
         answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
         name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
-        the commands, “{">"}” lists only commands, Tab enters Account or Add a task, Backspace goes
-        back, PageDown jumps a group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as
-        the best match. The last palette remembers its picks across reloads and lists them on the
-        empty query.
+        the commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
+        lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
+        group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
+        last palette remembers its picks across reloads and lists them on the empty query.
       </DemoNote>
     </Stack>
   )
