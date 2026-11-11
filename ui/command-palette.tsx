@@ -21,6 +21,7 @@ import type { KbdLabels } from "./kbd-keys.tsx"
 import { BADGE_BASE, BADGE_FILLED_GRAY } from "./plain-classes.ts"
 import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
 import { useBackdropPress } from "./backdrop-press.ts"
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import { addRecent, bestMatch, readRecent, recentOptions, writeRecent } from "./palette-pins.ts"
 
 export { clearCommandPaletteRecent } from "./palette-pins.ts"
@@ -143,7 +144,7 @@ export interface CommandPaletteLabels {
   withText: (label: string, text: string) => string
   /** The accessible name of the button that leaves a submenu or a text mode. */
   back: string
-  /** The heading over the recent picks the empty query lists, with `storageKey`. */
+  /** The heading over the recent picks the empty query lists, with `recent`. */
   recent: string
   /** The heading over the one command whose name or alias starts with the query. */
   bestMatch: string
@@ -195,6 +196,19 @@ const SLOW_SEARCH_MS = 300
 
 /** How long, in milliseconds, typing has to pause before the palette announces the result count. */
 const COUNT_PAUSE_MS = 250
+
+/** Where a {@link CommandPalette} keeps its recent picks: its `recent` prop. */
+export interface CommandPaletteRecent {
+  /** The key the picks are kept under. Give each palette its own. */
+  storageKey: string
+  /**
+   * Where they are kept: pass `() => localStorage`, since reading `localStorage` itself throws
+   * where a browser blocks site data. Called when the palette opens and on a pick, never during a
+   * render, and always inside a guard: storage that throws, or holds something else, only means
+   * nothing is remembered. On sign-out call {@link clearCommandPaletteRecent} with the same two.
+   */
+  storage: () => KeyValueStore
+}
 
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
@@ -251,13 +265,10 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /** Overrides for the words `showMatch` shows; see {@link defaultCommandPaletteMatchLabels}. */
   matchLabels?: Partial<Record<CommandPaletteMatchKind, string>>
   /**
-   * Keeps the last 10 top-level picks in `localStorage` under this key, and lists up to 5 of them
-   * under "Recent" on the empty query, newest first, skipping any no option has now. Read when the
-   * palette opens and written on a pick, never during a render; blocked or full storage only
-   * means nothing is remembered. Give each palette its own key, and call
-   * {@link clearCommandPaletteRecent} with it on sign-out. Omit it to remember nothing.
+   * Remembers the last 10 top-level picks and lists up to 5 of them under "Recent" on the empty
+   * query, newest first, skipping any no option has now. Omit it to remember nothing.
    */
-  storageKey?: string
+  recent?: CommandPaletteRecent
 }
 
 /** The local data mode: the palette filters `options` itself. */
@@ -471,7 +482,7 @@ interface Remote<T> {
  * keeps it there once the palette closes.
  *
  * A command whose name or alias starts with the query is pinned on top under "Best match". With
- * `storageKey` the empty query lists the last picks under "Recent". Once typing pauses for 250 ms,
+ * `recent` the empty query lists the last picks under "Recent". Once typing pauses for 250 ms,
  * a polite live region says how many results there are. From `sm`, for a fine pointer, a line
  * under the list shows the keys.
  *
@@ -574,7 +585,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
     const best = bestMatch(listed, needleFor(at, text))
     const pinned: CommandPaletteGroup<T> | undefined = best !== undefined
       ? { label: labels.bestMatch, options: [best] }
-      : text === "" && latest.current.storageKey !== undefined
+      : text === "" && latest.current.recent !== undefined
       ? { label: labels.recent, options: recentOptions(recent.value, listed) }
       : undefined
     if (pinned === undefined || pinned.options.length === 0) return groupOptions(listed)
@@ -666,8 +677,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
     notice.value = ""
     path.value = []
     ranKeptOpen.current = null
-    const key = latest.current.storageKey
-    recent.value = key === undefined ? [] : readRecent(key)
+    const kept = latest.current.recent
+    recent.value = kept === undefined ? [] : readRecent(kept.storageKey, kept.storage)
     if (latest.current.search !== undefined) {
       remote.value = { status: Status.IDLE, options: [] }
       ask(text, 0)
@@ -739,9 +750,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
       : { alternative }
     // A top-level pick, a text row's included, joins the recent ones. The list on screen keeps its
     // order until the next opening, so a kept-open command stays where it is.
-    const key = latest.current.storageKey
-    if (key !== undefined && (levels.length === 0 || (levels.length === 1 && option === level))) {
-      writeRecent(key, addRecent(readRecent(key), option.id))
+    const kept = latest.current.recent
+    if (kept !== undefined && (levels.length === 0 || (levels.length === 1 && option === level))) {
+      const { storageKey, storage } = kept
+      writeRecent(storageKey, addRecent(readRecent(storageKey, storage), option.id), storage)
     }
     if (option.run !== undefined && option.keepOpen) {
       notice.value = ""

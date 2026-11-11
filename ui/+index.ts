@@ -522,6 +522,7 @@ export {
   type CommandPaletteMatchKind,
   type CommandPaletteOption,
   type CommandPaletteProps,
+  type CommandPaletteRecent,
   type CommandPaletteRemoteProps,
   defaultCommandPaletteLabels,
   defaultCommandPaletteMatchLabels,

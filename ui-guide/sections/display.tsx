@@ -2747,10 +2747,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         description: "The words `showMatch` shows; see `defaultCommandPaletteMatchLabels`.",
       },
       {
-        name: "storageKey",
-        type: "string",
+        name: "recent",
+        type: "{ storageKey, storage: () => KeyValueStore }",
         description:
-          "Keeps the last 10 top-level picks in `localStorage` under this key and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. Call `clearCommandPaletteRecent(storageKey)` on sign-out.",
+          "Keeps the last 10 top-level picks under `storageKey` in `storage()`, such as `() => localStorage`, and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. Call `clearCommandPaletteRecent(storageKey, storage)` on sign-out.",
       },
       {
         name: "hotkeys",
@@ -2801,9 +2801,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   onSelect={(option, { alternative, text }) => open(option.id, { newTab: alternative, text })}
 />
 
-<CommandPalette options={options} storageKey="app-palette" onSelect={(option) => run(option.id)} />
+const recent = { storageKey: "app-palette", storage: () => localStorage }
+<CommandPalette options={options} recent={recent} onSelect={(option) => run(option.id)} />
 // On sign-out:
-clearCommandPaletteRecent("app-palette")
+clearCommandPaletteRecent(recent.storageKey, recent.storage)
 
 <CommandPalette
   search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
@@ -3060,7 +3061,10 @@ function paletteCommands(
 }
 
 /** Where the remembering `CommandPalette` demo keeps its recent picks. */
-const PALETTE_RECENT_KEY = "ui-guide:command-palette-recent"
+const PALETTE_RECENT = {
+  storageKey: "ui-guide:command-palette-recent",
+  storage: () => localStorage,
+}
 
 /** The names the remote `CommandPalette` demo's pretend server knows. */
 const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
@@ -3186,7 +3190,7 @@ function CommandPaletteDemo() {
             (label, details) => ran.value = ranText(label, details),
             () => log.current?.focus(),
           )}
-          storageKey={PALETTE_RECENT_KEY}
+          recent={PALETTE_RECENT}
           hotkeys={[]}
           dataE2E="palette-recent"
           labels={{ placeholder: "Run, remembering…" }}
@@ -3196,7 +3200,8 @@ function CommandPaletteDemo() {
           variant="outline"
           size="sm"
           data-e2e="palette-recent-forget"
-          onClick={() => clearCommandPaletteRecent(PALETTE_RECENT_KEY)}
+          onClick={() =>
+            clearCommandPaletteRecent(PALETTE_RECENT.storageKey, PALETTE_RECENT.storage)}
         >
           Forget recent picks
         </Button>

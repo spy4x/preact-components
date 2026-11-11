@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconMoon, IconPlus } from "@spy4x/preact-icons"
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import {
   CommandPalette,
   type CommandPaletteOption,
@@ -388,40 +389,14 @@ describe("CommandPalette command rows", () => {
   })
 })
 
-/**
- * Runs `body` with `globalThis.localStorage` replaced by `value`, or by a getter that throws as a
- * browser that blocks site data does when `value` is `"blocked"`, and puts the real one back.
- */
-function withStorage(value: Storage | "blocked", body: () => void): void {
-  const before = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
-  Object.defineProperty(globalThis, "localStorage", {
-    configurable: true,
-    get: () => {
-      if (value === "blocked") throw new DOMException("The operation is insecure.", "SecurityError")
-      return value
-    },
-  })
-  try {
-    body()
-  } finally {
-    if (before) Object.defineProperty(globalThis, "localStorage", before)
-    else delete (globalThis as { localStorage?: Storage }).localStorage
-  }
-}
-
-/** A `Map`-backed `Storage`, or one whose every call throws, as a full or locked store does. */
-function fakeStorage(throws = false): Storage & { map: Map<string, string> } {
+/** A `Map`-backed store, or one whose every call throws, as a full or locked store does. */
+function fakeStorage(throws = false): KeyValueStore & { map: Map<string, string> } {
   const map = new Map<string, string>()
   const guard = () => {
     if (throws) throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
   }
   return {
     map,
-    get length() {
-      return map.size
-    },
-    clear: () => map.clear(),
-    key: (index) => [...map.keys()][index] ?? null,
     getItem: (key) => (guard(), map.get(key) ?? null),
     setItem: (key, value) => (guard(), void map.set(key, value)),
     removeItem: (key) => (guard(), void map.delete(key)),
@@ -466,42 +441,39 @@ describe("CommandPalette recent picks", () => {
 
   it("writes, reads back and clears the picks under the palette's key", () => {
     const storage = fakeStorage()
-    withStorage(storage, () => {
-      writeRecent("palette", ["b", "a"])
-      expect(storage.map.get("palette")).toBe(`["b","a"]`)
-      expect(readRecent("palette")).toEqual(["b", "a"])
-      clearCommandPaletteRecent("palette")
-      expect(storage.map.has("palette")).toBe(false)
-      expect(readRecent("palette")).toEqual([])
-    })
+    const open = () => storage
+    writeRecent("palette", ["b", "a"], open)
+    expect(storage.map.get("palette")).toBe(`["b","a"]`)
+    expect(readRecent("palette", open)).toEqual(["b", "a"])
+    clearCommandPaletteRecent("palette", open)
+    expect(storage.map.has("palette")).toBe(false)
+    expect(readRecent("palette", open)).toEqual([])
   })
 
   it("reads nothing and throws nowhere where storage is blocked or refuses every call", () => {
-    for (const storage of ["blocked", fakeStorage(true)] as const) {
-      withStorage(storage, () => {
-        expect(() => writeRecent("palette", ["a"])).not.toThrow()
-        expect(readRecent("palette")).toEqual([])
-        expect(() => clearCommandPaletteRecent("palette")).not.toThrow()
-      })
+    const blocked = (): KeyValueStore => {
+      throw new DOMException("The operation is insecure.", "SecurityError")
+    }
+    const refusing = fakeStorage(true)
+    for (const open of [blocked, () => refusing]) {
+      expect(() => writeRecent("palette", ["a"], open)).not.toThrow()
+      expect(readRecent("palette", open)).toEqual([])
+      expect(() => clearCommandPaletteRecent("palette", open)).not.toThrow()
     }
   })
 
   it("renders on a server without touching storage", () => {
-    let reads = 0
-    const counting = fakeStorage()
-    withStorage(
-      new Proxy(counting, {
-        get: (target, name) => (reads++, Reflect.get(target, name)),
-      }),
-      () => {
-        const html = render(
-          <CommandPalette options={[option("Home")]} storageKey="palette" onSelect={() => {}} />,
-        )
-        expect(html).toContain(">Home<")
-        expect(html).not.toContain(">Recent<")
-      },
+    let opened = 0
+    const html = render(
+      <CommandPalette
+        options={[option("Home")]}
+        recent={{ storageKey: "palette", storage: () => (opened++, fakeStorage()) }}
+        onSelect={() => {}}
+      />,
     )
-    expect(reads).toBe(0)
+    expect(html).toContain(">Home<")
+    expect(html).not.toContain(">Recent<")
+    expect(opened).toBe(0)
   })
 })
 

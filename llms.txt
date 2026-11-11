@@ -650,6 +650,7 @@ CommandPaletteGroup	type	@spy4x/preact-ui	One heading and the options under it, 
 CommandPaletteLocalProps	type	@spy4x/preact-ui	The local data mode: the palette filters `options` itself.
 CommandPaletteMatchKind	type	@spy4x/preact-ui	How a query matched an option, strongest first: one of `matchEntry`'s kinds from `@spy4x/platform/universal/text` (`exact`, `prefix`, `words`, `alias`, `layout`, `translit`, `typo`), or `detail` when only the option's `detail` holds the query.
 CommandPaletteOption	type	@spy4x/preact-ui	One result the palette lists.
+CommandPaletteRecent	type	@spy4x/preact-ui	Where a `CommandPalette` keeps its recent picks: its `recent` prop.
 CommandPaletteRemoteProps	type	@spy4x/preact-ui	The remote data mode: the palette asks `search` for the options of each query.
 ComparisonRow	type	@spy4x/preact-ui	One capability of a `ComparisonTable`: a row, with one value per product.
 ComparisonTable	component	@spy4x/preact-ui	A comparison of capabilities across products, for a public page: a legend, a real `<table>` and the method and fit that make it trustworthy.

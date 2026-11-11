@@ -2,6 +2,7 @@
 // storage of the recent picks. Only `clearCommandPaletteRecent` is public, re-exported by
 // `command-palette.tsx`.
 
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import { fold } from "./combobox.tsx"
 
 /** How many picked ids a palette keeps per storage key. */
@@ -85,24 +86,16 @@ export function bestMatch<
   )
 }
 
-/** `localStorage`, or `null` where the runtime has none or the browser blocks it. */
-function storage(): Storage | null {
-  try {
-    return globalThis.localStorage ?? null
-  } catch (_error) {
-    return null
-  }
-}
-
 /**
- * The recent ids kept under `key`, newest first; none where storage is missing, blocked or holds
- * something else. Never throws.
+ * The recent ids kept under `key`, newest first; none where storage is blocked, refuses the read or
+ * holds something else. Never throws.
  *
- * @param key The palette's `storageKey`.
+ * @param key The palette's `recent.storageKey`.
+ * @param storage The palette's `recent.storage`, called inside the guard.
  */
-export function readRecent(key: string): string[] {
+export function readRecent(key: string, storage: () => KeyValueStore): string[] {
   try {
-    return parseRecent(storage()?.getItem(key) ?? null)
+    return parseRecent(storage().getItem(key))
   } catch (_error) {
     return []
   }
@@ -112,12 +105,17 @@ export function readRecent(key: string): string[] {
  * Keeps `ids` under `key`. A write the browser refuses (storage blocked, the quota full) is
  * dropped: the palette works the same, it only forgets. Never throws.
  *
- * @param key The palette's `storageKey`.
+ * @param key The palette's `recent.storageKey`.
  * @param ids The recent ids, newest first.
+ * @param storage The palette's `recent.storage`, called inside the guard.
  */
-export function writeRecent(key: string, ids: readonly string[]): void {
+export function writeRecent(
+  key: string,
+  ids: readonly string[],
+  storage: () => KeyValueStore,
+): void {
   try {
-    storage()?.setItem(key, JSON.stringify(ids))
+    storage().setItem(key, JSON.stringify(ids))
   } catch (_error) {
     // Recent picks are a convenience: losing them must not break a pick.
   }
@@ -125,13 +123,18 @@ export function writeRecent(key: string, ids: readonly string[]): void {
 
 /**
  * Forgets the recent picks a `CommandPalette` keeps under `storageKey`, such as on sign-out, so the
- * next person on the device does not see them. Never throws, also where storage is blocked.
+ * next person on the device does not see them. Pass the palette's own `recent` settings. Never
+ * throws, also where storage is blocked.
  *
- * @param storageKey The palette's `storageKey`.
+ * @param storageKey The palette's `recent.storageKey`.
+ * @param storage The palette's `recent.storage`, such as `() => localStorage`.
  */
-export function clearCommandPaletteRecent(storageKey: string): void {
+export function clearCommandPaletteRecent(
+  storageKey: string,
+  storage: () => KeyValueStore,
+): void {
   try {
-    storage()?.removeItem(storageKey)
+    storage().removeItem(storageKey)
   } catch (_error) {
     // Nothing the browser lets us reach is stored, so there is nothing to forget.
   }
