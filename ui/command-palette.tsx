@@ -1009,8 +1009,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
         )}
       >
         <div class="flex items-center gap-2 border-b border-subtle px-4">
-          <IconSearch class="size-4 shrink-0 text-muted" />
-          {level !== undefined && (
+          {
+            /* Inside a submenu or a text mode the back button takes the search icon's place. */
+          }
+          {level === undefined ? <IconSearch class="size-4 shrink-0 text-muted" /> : (
             <>
               <button
                 type="button"
@@ -1019,7 +1021,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
                 // Focus stays in the field, as on a row.
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={back}
-                class="-ms-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground sm:size-9"
+                class="-ms-3 flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground sm:-ms-2 sm:size-9"
               >
                 <IconChevronLeft class="size-4" />
               </button>
@@ -1052,7 +1054,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-label={labels.search}
             aria-labelledby={level === undefined ? undefined : crumbId}
             aria-describedby={showHint ? hintId : undefined}
-            placeholder={textMode ? undefined : labels.placeholder}
+            // The path before the field says what it is for; the placeholder would only crowd it.
+            placeholder={level === undefined ? labels.placeholder : undefined}
             autocomplete="off"
             spellcheck={false}
             value={query.value}
