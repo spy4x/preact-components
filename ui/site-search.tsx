@@ -24,6 +24,9 @@ const RESULT_ROWS = 10
 /** Where the trigger leads until the page hydrates: the site's own search page. */
 const SEARCH_PAGE = "/search?q="
 
+/** What opens the palette by default: Ctrl/⌘+K first, the one the trigger's hint shows, then `/`. */
+const SITE_SEARCH_HOTKEYS: readonly string[] = ["mod+k", "/"]
+
 /** A client-side command, such as "Copy email" or "Toggle theme": a palette option that runs. */
 export interface SiteSearchCommand extends CommandPaletteOption {
   run: () => void
@@ -79,9 +82,15 @@ export interface SiteSearchProps {
    * sent anywhere by the component itself.
    */
   onSearched?: (event: SiteSearchEvent) => void
-  /** `"field"`, the default, reads the placeholder with the hotkey hint; `"icon"` is a magnifier. */
+  /**
+   * `"field"`, the default, reads the placeholder with the hotkey hint; `"icon"` is a magnifier
+   * whose tooltip shows both.
+   */
   trigger?: "field" | "icon"
-  /** What opens the palette; see `CommandPalette`'s `hotkeys`. Defaults to `/` and Ctrl/⌘+K. */
+  /**
+   * What opens the palette; see `CommandPalette`'s `hotkeys`. Defaults to `["mod+k", "/"]`:
+   * Ctrl/⌘+K first, so the trigger's hint shows it, then `/`.
+   */
   hotkeys?: readonly string[]
   /** The words the hotkey hint shows for a key; see `KBD_LABELS`. */
   kbdLabels?: Partial<KbdLabels>
@@ -220,7 +229,7 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
         debounce={0}
         trigger={trigger}
         triggerHref={SEARCH_PAGE}
-        hotkeys={props.hotkeys}
+        hotkeys={props.hotkeys ?? SITE_SEARCH_HOTKEYS}
         kbdLabels={props.kbdLabels}
         dataE2E={props.dataE2E}
         class={props.class}

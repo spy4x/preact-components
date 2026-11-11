@@ -2231,7 +2231,8 @@ confirmation, never acts at once.
 opens a page can open it in a new tab. When `onSelect` moves focus, such as to a heading on the
 page, focus stays there rather than going back to the trigger. `onOpenChange(open)` is called with
 `true` as the palette opens and `false` once it has closed. `trigger="icon"` is the icon button at
-every width, for a tight spot. `triggerHref` makes the trigger a link to that address, drawn the
+every width, for a tight spot; a tooltip below it shows its placeholder and its first hotkey on
+hover and on focus, since a magnifier alone names nothing to a sighted reader. `triggerHref` makes the trigger a link to that address, drawn the
 same, until the page hydrates, so a reader without JavaScript reaches a search page.
 
 ```tsx
@@ -2265,7 +2266,8 @@ it opens. A site supplies only its index and its commands.
 - **Words.** `labels` overrides the words one by one: `empty(query)` ("Nothing for “query”") and
   `error`, whose defaults are in `defaultSiteSearchLabels`, and `placeholder` (also the trigger's
   text), `loading`, `search`, `close` and `stateChanged`, whose defaults are `CommandPalette`'s. `groupOrder` lists groups first, in its order. `trigger="icon"` is a magnifier
-  for tight spots. No pulsing or pop-up hints.
+  for tight spots, with a tooltip that shows its name and hotkey. `hotkeys` defaults to
+  `["mod+k", "/"]`: Ctrl/⌘+K comes first, so it is the hint the trigger shows. No pulsing or pop-up hints.
 - **`onSearched`.** Called exactly once per palette session, when a result or command is chosen or
   the palette closes, with `{ query, results, chosenPosition, chosenKind, correction }`: the last
   query trimmed and cut to 64 characters, how many rows it listed, the chosen row's place from 1

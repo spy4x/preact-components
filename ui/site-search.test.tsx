@@ -146,9 +146,26 @@ describe("SiteSearch", () => {
 
   it("renders the icon trigger as a named link with no visible words", () => {
     const html = render(<SiteSearch fetch={noFetch} trigger="icon" />)
-    expect(html).toContain(`<a href="/search?q="`)
-    expect(html).toContain(`aria-label="Search…"`)
-    expect(html).not.toContain(">Search…</span>")
+    const link = html.match(/<a href="\/search\?q="[^>]*>.*?<\/a>/)?.[0] ?? ""
+    expect(link).toContain(`aria-label="Search…"`)
+    expect(link).not.toContain("Search…<")
+  })
+
+  it("gives the icon trigger a tooltip with its name and the Ctrl+K hint", () => {
+    const html = render(<SiteSearch fetch={noFetch} trigger="icon" />)
+    const tooltip = html.match(/<span id="[^"]*" role="tooltip".*$/)?.[0] ?? ""
+    expect(tooltip).toContain("Search…<span")
+    expect(tooltip).toContain(">Ctrl</kbd><span>+</span><kbd")
+    expect(tooltip).toContain(">K</kbd>")
+  })
+
+  it("hints Ctrl+K, not /, on the trigger when the site keeps the default hotkeys", () => {
+    const html = render(<SiteSearch fetch={noFetch} />)
+    const hint = html.match(/<span aria-hidden="true" data-hotkey-hint.*?<\/kbd><\/kbd><\/span>/)
+      ?.[0] ?? ""
+    expect(hint).toContain(">Ctrl</kbd><span>+</span><kbd")
+    expect(hint).toContain(">K</kbd>")
+    expect(hint).not.toContain(">/</kbd>")
   })
 
   it("says what failed and what to do in its default error", () => {

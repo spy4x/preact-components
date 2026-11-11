@@ -104,7 +104,14 @@ export const siteSearchDemos = {
         type: `"field" | "icon"`,
         default: `"field"`,
         description:
-          "The field-shaped button with the placeholder and hotkey hint, or a magnifier. A link to `/search?q=` until hydration.",
+          "The field-shaped button with the placeholder and hotkey hint, or a magnifier whose tooltip shows both. A link to `/search?q=` until hydration.",
+      },
+      {
+        name: "hotkeys",
+        type: "string[]",
+        default: `["mod+k", "/"]`,
+        description:
+          "What opens the palette; the trigger shows the first, Ctrl/⌘+K by default. `[]` turns them off.",
       },
       {
         name: "labels",
