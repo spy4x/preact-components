@@ -5297,7 +5297,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`
-- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
@@ -7448,6 +7448,23 @@ of its `detail` and no badge or keys; the arrow keys still stop on it, and Enter
 nothing, keeps the palette open and says the reason. A row's accessible name is its label; its
 detail or reason, match words, state and hint describe it. A destructive command opens its usual
 confirmation, never acts at once.
+
+A command whose label or one of whose `aliases` starts with the query is pinned on top under "Best
+match" (`labels.bestMatch`), moved out of its own group so it is listed once: "dark" pins a Theme
+command whose alias is "dark mode". With `recent={{ storageKey, storage: () => localStorage }}`, the palette keeps the
+last 10 top-level picks under `storageKey` and lists up to 5 of them under "Recent"
+(`labels.recent`) on the empty query, newest first, skipping any id no option has now. Storage is a
+port, as the library's components never reach for `localStorage` themselves; it is called when the
+palette opens and on a pick, never during a render, so the palette renders on a server. Storage
+that throws (blocked, full) or holds something else (over 8,192 characters, not a JSON array) only
+means nothing is remembered. `clearCommandPaletteRecent(storageKey, storage)` forgets the picks:
+call it on sign-out, so the next person on the device does not see them.
+
+Once typing pauses for 250 ms, a polite live region says how many results are listed,
+`results(count)` ("5 results", "1 result"); no result is said by `empty`, as before. From `sm`, for
+a fine pointer, a line under the list shows the keys: ↑ ↓ move, Enter open, and Ctrl+Enter (⌘Enter on
+a Mac) the alternative pick, in the words of `keysMove`, `keysOpen` and `keysAlternative`. It is
+hidden from screen readers, which know a listbox's keys.
 
 ```tsx
 <CommandPalette

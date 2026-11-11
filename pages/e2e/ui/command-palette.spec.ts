@@ -968,9 +968,318 @@ function paletteKeySpecs(): Spec[] {
   ]
 }
 
+/**
+ * A `CommandPalette` on its card, opened at `width`: its dialog, its field, its group headings with
+ * their rows, and its count region. `which` is the demo's `dataE2E`: `"palette-recent"` keeps its
+ * picks under a `storageKey`, `"palette-commands"` keeps none.
+ *
+ * @param page The guide's UI page.
+ * @param which The demo's `dataE2E`.
+ * @param width The window's width.
+ */
+async function openPinnedPalette(page: Page, which: string, width = 1440) {
+  await page.setViewportSize({ width, height: 800 })
+  const dialog = page.locator(`dialog[data-e2e="${which}"]`)
+  const field = dialog.getByRole("combobox")
+  await page.locator(`#demo-CommandPalette [data-e2e="${which}-open"]`).click()
+  await field.and(page.locator(":focus")).waitFor()
+  return {
+    dialog,
+    field,
+    count: dialog.locator(`[data-e2e="${which}-count"]`),
+    status: dialog.locator(`[data-e2e="${which}-status"]`),
+    keys: dialog.locator(`[data-e2e="${which}-keys"]`),
+    /** Waits until the group headings and their rows are exactly `wanted`, "Heading: A, B". */
+    groupsAre: (wanted: readonly string[]) =>
+      page.waitForFunction(
+        ([selector, expected]) =>
+          [...document.querySelectorAll(`${selector} [role="group"]`)].map((group) =>
+            `${
+              document.getElementById(group.getAttribute("aria-labelledby") ?? "")?.textContent
+            }: ${
+              [...group.querySelectorAll(`[role="option"]`)]
+                .map((row) => row.querySelector("span span")?.textContent).join(", ")
+            }`
+          ).join(" | ") === expected,
+        [`dialog[data-e2e="${which}"]`, wanted.join(" | ")] as const,
+      ),
+    /** Waits until the first group's heading is `heading` with `rows` under it. */
+    firstGroupIs: (heading: string, rows: readonly string[]) =>
+      page.waitForFunction(
+        ([selector, expected]) => {
+          const group = document.querySelector(`${selector} [role="group"]`)
+          const label = document.getElementById(group?.getAttribute("aria-labelledby") ?? "")
+          const names = [...group?.querySelectorAll(`[role="option"]`) ?? []]
+            .map((row) => row.querySelector("span span")?.textContent).join(", ")
+          return `${label?.textContent}: ${names}` === expected
+        },
+        [`dialog[data-e2e="${which}"]`, `${heading}: ${rows.join(", ")}`] as const,
+      ),
+    /** The group headings listed now. */
+    headings: () => dialog.locator(`[role="group"] > [role="presentation"]`).allTextContents(),
+  }
+}
+
+/** Picks the row `query` finds first in the remembering palette, which closes it. */
+async function pickRecent(page: Page, query: string) {
+  const palette = await openPinnedPalette(page, "palette-recent")
+  await page.keyboard.type(query)
+  await palette.dialog.getByRole("option").first().waitFor()
+  await page.keyboard.press("Enter")
+  await palette.dialog.waitFor({ state: "hidden" })
+}
+
+/** Reloads the guide and waits for it to hydrate again. */
+async function reload(page: Page) {
+  await page.reload()
+  await page.locator(`html[data-hydrated="true"]`).waitFor()
+}
+
+/** Throws when axe finds a violation in the open palette `which`, contrast included. */
+async function noViolationsIn(page: Page, which: string): Promise<number> {
+  const { violations, passes } = await new AxeBuilder({ page })
+    .include(`dialog[data-e2e="${which}"]`)
+    .analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+      ).join(" | "),
+    )
+  }
+  return passes.length
+}
+
+/** Specs for the Recent picks, the Best match row, the result count and the key hints (#1235). */
+function pinnedRowSpecs(): Spec[] {
+  const key = "ui-guide:command-palette-recent"
+  return [
+    {
+      name: "CommandPalette recent: the empty query lists the last picks under Recent, newest " +
+        "first and each once, after a reload too, and Forget recent picks clears them",
+      pageId: "ui",
+      run: async (page) => {
+        let palette = await openPinnedPalette(page, "palette-recent")
+        const before = await palette.headings()
+        if (before.includes("Recent")) throw new Error(`Recent before any pick: ${before}`)
+        await page.keyboard.press("Escape")
+        await pickRecent(page, "sign")
+        await pickRecent(page, "new note")
+        await pickRecent(page, "sign")
+        await reload(page)
+        palette = await openPinnedPalette(page, "palette-recent")
+        await palette.firstGroupIs("Recent", ["Sign out", "New note"])
+        const signOut = await palette.dialog.getByRole("option", { name: "Sign out" }).count()
+        if (signOut !== 1) throw new Error(`Sign out is listed ${signOut} times`)
+        // A query lists by relevance, without the Recent group.
+        await page.keyboard.type("acc")
+        await palette.dialog.getByRole("option", { name: "Account" }).waitFor()
+        if ((await palette.headings()).includes("Recent")) throw new Error("Recent on a query")
+        await page.keyboard.press("Escape")
+        await page.locator(`[data-e2e="palette-recent-forget"]`).click()
+        palette = await openPinnedPalette(page, "palette-recent")
+        await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
+        const after = await palette.headings()
+        if (after.includes("Recent")) throw new Error(`Recent after forgetting: ${after}`)
+      },
+    },
+    {
+      name: "CommandPalette recent: a stored id no option has is skipped, and broken JSON, a " +
+        "non-array or an oversized value lists no Recent group and is replaced by the next pick",
+      pageId: "ui",
+      run: async (page) => {
+        const store = (value: string) =>
+          page.evaluate(([name, raw]) => localStorage.setItem(name, raw), [key, value] as const)
+        await store(JSON.stringify(["gone", "sign-out", 7, "gone-too", "theme"]))
+        let palette = await openPinnedPalette(page, "palette-recent")
+        await palette.firstGroupIs("Recent", ["Sign out", "Theme"])
+        await page.keyboard.press("Escape")
+        // An oversized value names a real option, so only the length cap keeps it out.
+        const oversized = JSON.stringify(["sign-out", "x".repeat(8200)])
+        for (const raw of [`["sign-out"`, `{"0":"sign-out"}`, oversized]) {
+          await store(raw)
+          palette = await openPinnedPalette(page, "palette-recent")
+          await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
+          const headings = await palette.headings()
+          if (headings.includes("Recent")) {
+            throw new Error(`${raw.slice(0, 20)} listed Recent: ${headings}`)
+          }
+          await page.keyboard.press("Escape")
+        }
+        await pickRecent(page, "sign")
+        const stored = await page.evaluate((name) => localStorage.getItem(name), key)
+        if (stored !== `["sign-out"]`) throw new Error(`stored after a pick: ${stored}`)
+      },
+    },
+    {
+      name: "CommandPalette recent: with storage blocked the palette opens, picks and lists no " +
+        "Recent group, and nothing throws",
+      pageId: "ui",
+      run: async (page) => {
+        const errors: string[] = []
+        page.on("pageerror", (error) => errors.push(error.message))
+        await page.addInitScript(() => {
+          Object.defineProperty(globalThis, "localStorage", {
+            configurable: true,
+            get: () => {
+              throw new DOMException("The operation is insecure.", "SecurityError")
+            },
+          })
+        })
+        await reload(page)
+        const blocked = await page.evaluate(() => {
+          try {
+            return globalThis.localStorage === undefined
+          } catch (_error) {
+            return true
+          }
+        })
+        if (!blocked) throw new Error("storage is not blocked")
+        await pickRecent(page, "sign")
+        const ran = page.locator(`[data-e2e="palette-commands-ran"]`)
+        await ran.filter({ hasText: /^Sign out$/ }).waitFor()
+        const palette = await openPinnedPalette(page, "palette-recent")
+        await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
+        const headings = await palette.headings()
+        if (headings.includes("Recent")) throw new Error(`Recent with storage blocked: ${headings}`)
+        await page.keyboard.press("Escape")
+        await page.locator(`[data-e2e="palette-recent-forget"]`).click()
+        if (errors.length > 0) throw new Error(`errors: ${errors.join(" | ")}`)
+      },
+    },
+    {
+      name: 'CommandPalette best match: "dark" pins Theme, by its alias, under Best match on ' +
+        "top, highlighted and listed once; a query no command starts pins nothing",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openPinnedPalette(page, "palette-commands")
+        await page.keyboard.type("dark")
+        await palette.firstGroupIs("Best match", ["Theme"])
+        const themes = await palette.dialog.getByRole("option", { name: "Theme" }).count()
+        if (themes !== 1) throw new Error(`Theme is listed ${themes} times`)
+        const active = await palette.field.getAttribute("aria-activedescendant")
+        const theme = await palette.dialog.getByRole("option", { name: "Theme" }).getAttribute("id")
+        if (active !== theme) throw new Error(`the highlight is on ${active}, not Theme`)
+        await page.keyboard.press("Enter")
+        await palette.dialog.getByRole("option", { name: "Theme" }).locator(`[id$="-state"]`)
+          .filter({ hasText: /^Dark$/ }).waitFor()
+        await palette.field.fill("")
+        await page.keyboard.type("billing")
+        await palette.status.filter({ hasText: "Nothing matches." }).waitFor()
+        await palette.field.fill("")
+        await page.keyboard.type("note")
+        await palette.dialog.getByRole("option", { name: "New note" }).waitFor()
+        await palette.groupsAre(["Commands: New note"])
+      },
+    },
+    {
+      name: "CommandPalette count: the live region says the result count only after a 250 ms " +
+        "pause in typing, “1 result” for one, and nothing beside “Nothing matches.”",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openPinnedPalette(page, "palette-commands")
+        // Each change of the region's text and each keystroke, timed in the page.
+        await palette.dialog.evaluate((dialog) => {
+          const log: { at: number; text: string }[] = []
+          const region = dialog.querySelector(`[data-e2e="palette-commands-count"]`)!
+          new MutationObserver(() => log.push({ at: performance.now(), text: region.textContent! }))
+            .observe(region, { childList: true, characterData: true, subtree: true })
+          dialog.querySelector("input")!.addEventListener("input", () => {
+            log.push({ at: performance.now(), text: "<input>" })
+          })
+          Object.assign(globalThis, { paletteCountLog: log })
+        })
+        const live = await palette.count.getAttribute("role")
+        if (live !== "status") throw new Error(`the count region's role is ${live}`)
+        await page.keyboard.type("s", { delay: 60 })
+        await page.keyboard.type("ign", { delay: 60 })
+        await palette.count.filter({ hasText: /^\d+ results?$/ }).waitFor({ state: "attached" })
+        const rows = await palette.dialog.getByRole("option").count()
+        const said = await palette.count.textContent()
+        if (said !== (rows === 1 ? "1 result" : `${rows} results`)) {
+          throw new Error(`the region says ${said} for ${rows} rows`)
+        }
+        const early = await page.evaluate(() => {
+          const log = (globalThis as unknown as { paletteCountLog: { at: number; text: string }[] })
+            .paletteCountLog
+          let typed = 0
+          const found: string[] = []
+          for (const entry of log) {
+            if (entry.text === "<input>") typed = entry.at
+            else if (entry.text !== "" && entry.at - typed < 249) {
+              found.push(`${entry.text} ${Math.round(entry.at - typed)} ms after a key`)
+            }
+          }
+          return found
+        })
+        if (early.length > 0) throw new Error(`said before the pause: ${early.join(", ")}`)
+        await palette.field.fill("> sign")
+        await palette.count.filter({ hasText: /^1 result$/ }).waitFor({ state: "attached" })
+        await palette.field.fill("zzzz")
+        await palette.status.filter({ hasText: "Nothing matches." }).waitFor()
+        await palette.count.filter({ hasText: /^$/ }).waitFor({ state: "attached" })
+      },
+    },
+    {
+      name: "CommandPalette key hints: the line under the list shows at 1440 px for a fine " +
+        "pointer, hides at 390 px and for a touch screen, and is hidden from screen readers",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openPinnedPalette(page, "palette-commands", 1440)
+        await palette.keys.waitFor()
+        const text = await palette.keys.textContent() ?? ""
+        for (const word of ["move", "open", "alternative", "Enter"]) {
+          if (!text.includes(word)) throw new Error(`the key hints lack ${word}: ${text}`)
+        }
+        if (await palette.keys.getAttribute("aria-hidden") !== "true") {
+          throw new Error("the key hints reach screen readers")
+        }
+        await page.setViewportSize({ width: 390, height: 800 })
+        await palette.keys.waitFor({ state: "hidden" })
+        await page.setViewportSize({ width: 1440, height: 800 })
+        await palette.keys.waitFor()
+        const session = await page.context().newCDPSession(page)
+        await session.send("Emulation.setTouchEmulationEnabled", {
+          enabled: true,
+          maxTouchPoints: 5,
+        })
+        const coarse = await page.evaluate(() => matchMedia("(pointer: coarse)").matches)
+        if (!coarse) throw new Error("touch emulation left the pointer fine")
+        await palette.keys.waitFor({ state: "hidden" })
+        await session.send("Emulation.setTouchEmulationEnabled", { enabled: false })
+        await session.detach()
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1440].map((width): Spec => ({
+        name: `CommandPalette pinned rows at ${width} px in the ${colorScheme} palette: axe ` +
+          "finds no violation with the Recent group, the Best match row and the key hints, " +
+          "colour contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          await pickRecent(page, "sign")
+          let palette = await openPinnedPalette(page, "palette-recent", width)
+          await palette.firstGroupIs("Recent", ["Sign out"])
+          if (width === 1440) await palette.keys.waitFor()
+          const recent = await noViolationsIn(page, "palette-recent")
+          await page.keyboard.press("Escape")
+          palette = await openPinnedPalette(page, "palette-commands", width)
+          await page.keyboard.type("dark")
+          await palette.firstGroupIs("Best match", ["Theme"])
+          await palette.count.filter({ hasText: /results?$/ }).waitFor({ state: "attached" })
+          const best = await noViolationsIn(page, "palette-commands")
+          return `${recent} and ${best} rules pass`
+        },
+      }))
+    ),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...remotePaletteSpecs(),
   ...forgivingPaletteSpecs(),
   ...commandPaletteSpecs(),
   ...paletteKeySpecs(),
+  ...pinnedRowSpecs(),
 ]
