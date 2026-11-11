@@ -851,7 +851,7 @@ function paletteKeySpecs(): Spec[] {
             rows.map((row) => row.querySelector("span span")?.textContent).join("|")
           )
         const account = palette.dialog.getByRole("option", { name: "Account", exact: true })
-        // Account is the eighth row, so going back can only highlight it on purpose.
+        // Account is the seventh row, so going back can only highlight it on purpose.
         await page.keyboard.press("PageDown")
         await page.keyboard.press("PageDown")
         await page.keyboard.press("ArrowDown")
