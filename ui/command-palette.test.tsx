@@ -487,13 +487,21 @@ describe("CommandPalette recent picks", () => {
   })
 
   it("renders on a server without touching storage", () => {
-    withStorage("blocked", () => {
-      const html = render(
-        <CommandPalette options={[option("Home")]} storageKey="palette" onSelect={() => {}} />,
-      )
-      expect(html).toContain(">Home<")
-      expect(html).not.toContain(">Recent<")
-    })
+    let reads = 0
+    const counting = fakeStorage()
+    withStorage(
+      new Proxy(counting, {
+        get: (target, name) => (reads++, Reflect.get(target, name)),
+      }),
+      () => {
+        const html = render(
+          <CommandPalette options={[option("Home")]} storageKey="palette" onSelect={() => {}} />,
+        )
+        expect(html).toContain(">Home<")
+        expect(html).not.toContain(">Recent<")
+      },
+    )
+    expect(reads).toBe(0)
   })
 })
 
