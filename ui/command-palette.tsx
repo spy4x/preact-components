@@ -429,6 +429,12 @@ interface Remote<T> {
  * a click calls in place of `onSelect`, and `keepOpen` for a toggle whose badge changes in place
  * and is announced. An option with a `disabledReason` stays listed, dimmed, and runs nothing.
  *
+ * Ctrl+Enter (⌘Enter on a Mac), a middle click and a Ctrl/⌘+click pick a row the alternative way,
+ * such as in a new tab. PageUp and PageDown jump between groups. Tab or Enter enters a row with
+ * `children` or one that `takesText`, and Backspace in the empty field goes back. A query that
+ * starts with ">" lists only commands. A pick that moves focus, such as a command opening a dialog,
+ * keeps it there once the palette closes.
+ *
  * @param props See {@link CommandPaletteProps}.
  */
 export function CommandPalette<T extends CommandPaletteOption>(
@@ -479,7 +485,16 @@ export function CommandPalette<T extends CommandPaletteOption>(
 
   // The submenus and text mode entered, outermost first; empty at the top level.
   const path = useSignal<Level<T>[]>([])
-  const level = path.value.at(-1)?.option
+  // Each level as this render's options have it, found by id, so a re-rendered submenu shows its
+  // rows' new `state`; one that is gone stays as it was entered.
+  const levels: T[] = []
+  for (const entry of path.value) {
+    const above = levels.length === 0
+      ? props.search === undefined ? props.options : remote.value.options
+      : levels[levels.length - 1].children ?? []
+    levels.push(above.find((option) => option.id === entry.option.id) ?? entry.option)
+  }
+  const level = levels.at(-1)
   const textMode = level?.takesText === true
   const remoteMode = props.search !== undefined
   const busy = remoteMode && level === undefined &&
@@ -634,9 +649,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
     path.value = path.value.slice(0, -1)
     query.value = left.query
     notice.value = ""
-    const rows = groupOptions(listFor(path.value.at(-1)?.option, left.query))
-      .flatMap((group) => group.options)
-    activeIndex.value = Math.max(0, rows.indexOf(left.option))
+    const rows = groupOptions(listFor(levels.at(-2), left.query)).flatMap((group) => group.options)
+    activeIndex.value = Math.max(0, rows.findIndex((option) => option.id === left.option.id))
     input.current?.focus()
   }
 
@@ -1018,7 +1032,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
                 data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-path`}
                 class="max-w-[50%] shrink-0 truncate rounded-md bg-selected-soft px-2 py-1 text-sm font-medium text-selected"
               >
-                {path.value.map((entry) => entry.option.label).join(" › ")}
+                {levels.map((option) => option.label).join(" › ")}
               </span>
             </>
           )}
