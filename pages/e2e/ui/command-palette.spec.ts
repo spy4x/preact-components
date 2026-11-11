@@ -1094,7 +1094,9 @@ function pinnedRowSpecs(): Spec[] {
         let palette = await openPinnedPalette(page, "palette-recent")
         await palette.firstGroupIs("Recent", ["Sign out", "Theme"])
         await page.keyboard.press("Escape")
-        for (const raw of [`["sign-out"`, `{"0":"sign-out"}`, `["${"x".repeat(8200)}"]`]) {
+        // An oversized value names a real option, so only the length cap keeps it out.
+        const oversized = JSON.stringify(["sign-out", "x".repeat(8200)])
+        for (const raw of [`["sign-out"`, `{"0":"sign-out"}`, oversized]) {
           await store(raw)
           palette = await openPinnedPalette(page, "palette-recent")
           await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
@@ -1251,8 +1253,8 @@ function pinnedRowSpecs(): Spec[] {
     ...(["light", "dark"] as const).flatMap((colorScheme) =>
       [390, 1440].map((width): Spec => ({
         name: `CommandPalette pinned rows at ${width} px in the ${colorScheme} palette: axe ` +
-          "finds no violation with the Recent group, the Best match row, the count region and " +
-          "the key hints, colour contrast included",
+          "finds no violation with the Recent group, the Best match row and the key hints, " +
+          "colour contrast included",
         pageId: "ui",
         colorScheme,
         run: async (page) => {
