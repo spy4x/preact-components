@@ -1021,7 +1021,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
                 // Focus stays in the field, as on a row.
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={back}
-                class="-ms-3 flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground sm:-ms-2 sm:size-9"
+                class="-ms-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground sm:size-9"
               >
                 <IconChevronLeft class="size-4" />
               </button>
