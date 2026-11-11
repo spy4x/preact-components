@@ -172,6 +172,11 @@ export const specs: readonly Spec[] = [
       await trigger.scrollIntoViewIfNeeded()
       await trigger.hover()
       await tip.filter({ hasText: "Search…" }).waitFor()
+      // The tooltip sits under the magnifier, not centred on a wrapper stretched by the column.
+      const [icon, bubble] = await Promise.all([trigger.boundingBox(), tip.boundingBox()])
+      if (icon === null || bubble === null) throw new Error("the trigger or tooltip has no box")
+      const offset = Math.abs(icon.x + icon.width / 2 - (bubble.x + bubble.width / 2))
+      if (offset > 4) throw new Error(`the tooltip is centred ${offset}px away from the icon`)
       await page.mouse.move(0, 0)
       await tip.waitFor({ state: "hidden" })
       await trigger.focus()

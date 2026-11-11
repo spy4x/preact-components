@@ -3081,14 +3081,6 @@ function CommandPaletteDemo() {
           onSelect={(option) => picked.value = option.label}
         />
         <CommandPalette
-          options={paletteOptions}
-          trigger="icon"
-          hotkeys={["mod+shift+k"]}
-          dataE2E="palette-icon"
-          labels={{ placeholder: "Jump to…" }}
-          onSelect={(option) => picked.value = option.label}
-        />
-        <CommandPalette
           search={(query, signal) => {
             searches.value++
             const answer = paletteFruitSearch(query, signal, (stale) => {
@@ -3103,6 +3095,17 @@ function CommandPaletteDemo() {
           dataE2E="palette-remote"
           labels={{ placeholder: "Find a fruit…" }}
           onSelect={(option) => pickedRemote.value = option.label}
+        />
+      </Cluster>
+      {/* Centred on its own row, so the tooltip under the magnifier fits the column. */}
+      <Cluster justify="center">
+        <CommandPalette
+          options={paletteOptions}
+          trigger="icon"
+          hotkeys={["mod+shift+k"]}
+          dataE2E="palette-icon"
+          labels={{ placeholder: "Jump to…" }}
+          onSelect={(option) => picked.value = option.label}
         />
       </Cluster>
       <CommandPalette

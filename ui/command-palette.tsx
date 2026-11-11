@@ -910,7 +910,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             }
             focusable={false}
             placement="bottom"
-            class="shrink-0"
+            class="w-fit shrink-0"
           >
             {triggerElement}
           </TooltipCore>
