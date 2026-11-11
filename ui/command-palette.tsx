@@ -6,7 +6,7 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
-import { Tooltip } from "./tooltip.tsx"
+import { TooltipCore } from "./tooltip-core.tsx"
 import { useLabels } from "./i18n.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
 import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
@@ -820,8 +820,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
       // A field-shaped button at every width, as wide as its container.
       ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
       : iconOnly
-      // An icon button at every width: 36 px square, 44 px on a phone.
-      ? "flex size-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-foreground max-sm:min-h-11 max-sm:min-w-11"
+      // An icon button at every width: 36 px square, 44 px on a phone. Its own cursor, so it does
+      // not take the tooltip wrapper's help cursor.
+      ? "flex size-9 shrink-0 cursor-default items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-foreground max-sm:min-h-11 max-sm:min-w-11"
       // An icon button on a phone; a field-shaped button with its placeholder and hotkey from `sm`.
       : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
     // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
@@ -893,9 +894,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
       {iconOnly
         ? (
           // The magnifier alone gets the house tooltip, its name and hotkey, below it since a
-          // header holds it. Keyed on the link-to-button swap, so the description moves to the
-          // button that replaces the link.
-          <Tooltip
+          // header holds it. `join`, not `cn`, keeps tailwind-merge out of the bundle. Keyed on the
+          // link-to-button swap, so the description moves to the button that replaces the link.
+          <TooltipCore
+            merge={join}
             key={asLink ? "link" : "button"}
             label={labels.placeholder}
             content={
@@ -908,10 +910,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
             }
             focusable={false}
             placement="bottom"
-            class="shrink-0 cursor-auto"
+            class="shrink-0"
           >
             {triggerElement}
-          </Tooltip>
+          </TooltipCore>
         )
         : triggerElement}
       <dialog
