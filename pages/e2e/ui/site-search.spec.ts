@@ -160,6 +160,28 @@ export const specs: readonly Spec[] = [
       }
     },
   },
+  {
+    name: "SiteSearch icon trigger: after hydration, hovering or focusing the magnifier shows a " +
+      "tooltip with its name, and the button it becomes is described by it",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      const card = page.locator("#demo-SiteSearch")
+      const trigger = card.locator(`button[data-e2e="site-search-icon-open"]`)
+      const tip = card.getByRole("group", { name: "Search…" }).locator(`[role="tooltip"]`)
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.hover()
+      await tip.filter({ hasText: "Search…" }).waitFor()
+      await page.mouse.move(0, 0)
+      await tip.waitFor({ state: "hidden" })
+      await trigger.focus()
+      await tip.waitFor()
+      const described = await trigger.getAttribute("aria-describedby")
+      if (described === null || described !== await tip.getAttribute("id")) {
+        throw new Error(`the button is described by "${described}", not the tooltip`)
+      }
+    },
+  },
   ...(["light", "dark"] as const).map((colorScheme): Spec => ({
     name: `SiteSearch in the ${colorScheme} palette: axe finds no violation on either trigger or ` +
       "in the dialog with results, colour contrast included",

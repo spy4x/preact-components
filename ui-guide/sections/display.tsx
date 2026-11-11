@@ -2714,7 +2714,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         type: `"button" | "field" | "icon"`,
         default: `"button"`,
         description:
-          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. `icon` is the icon button at every width.",
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. `icon` is the icon button at every width, with a tooltip of its placeholder and first hotkey.",
       },
       {
         name: "triggerHref",
@@ -2769,6 +2769,8 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   { id: "invoices", label: "Invoices", detail: "Billing", group: "Pages" },
 ]
 <CommandPalette options={options} hotkeys={["mod+p"]} onSelect={(option) => run(option.id)} />
+
+<CommandPalette options={options} trigger="icon" hotkeys={["mod+shift+k"]} onSelect={(option) => run(option.id)} />
 
 <CommandPalette
   options={[{ id: "toast", label: "Toast", aliases: ["notification"] }]}
@@ -3051,12 +3053,13 @@ function paletteFruitSearch(
 }
 
 /**
- * `CommandPalette` four ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
- * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
- * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
- * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut and a
- * command that cannot run. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
- * searches started and answered.
+ * `CommandPalette` five ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * since this page's header search already owns `/` and Ctrl+K. The second puts the same options
+ * behind the icon trigger, whose tooltip shows Ctrl+Shift+K (⌘⇧K on a Mac). The third asks a
+ * pretend server and has no hotkey. The fourth is the field trigger, opening on a query with a
+ * typo, and says how each result matched. The fifth lists commands: a theme toggle that stays
+ * open, a shortcut and a command that cannot run. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts`
+ * read what each picked and how many searches started and answered.
  */
 function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
@@ -3074,6 +3077,14 @@ function CommandPaletteDemo() {
           options={paletteOptions}
           hotkeys={["mod+p"]}
           dataE2E="palette-local"
+          labels={{ placeholder: "Jump to…" }}
+          onSelect={(option) => picked.value = option.label}
+        />
+        <CommandPalette
+          options={paletteOptions}
+          trigger="icon"
+          hotkeys={["mod+shift+k"]}
+          dataE2E="palette-icon"
           labels={{ placeholder: "Jump to…" }}
           onSelect={(option) => picked.value = option.label}
         />

@@ -6,6 +6,7 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
+import { Tooltip } from "./tooltip.tsx"
 import { useLabels } from "./i18n.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
 import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
@@ -169,18 +170,19 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
    */
   dataE2E?: string
   /**
-   * Extra classes for the trigger, appended after its own and not merged into them, so
-   * `tailwind-merge` stays out of the bundle. To replace one of the trigger's own utilities, such
-   * as its width, mark the replacement important with a trailing `!`: `w-80!`.
+   * Extra classes for the trigger, appended after its own and not merged into them. To replace one
+   * of the trigger's own utilities, such as its width, mark the replacement important with a
+   * trailing `!`: `w-80!`.
    */
   class?: string
   /**
    * The trigger's shape. `"button"`, the default, is an icon button on a phone and a field-shaped
    * button with the placeholder and the hotkey hint from `sm`. `"field"` is the field-shaped button
    * at every width, as wide as its container. `"icon"` is the icon button at every width, for a
-   * tight spot. A printable key typed on a focused `"field"` trigger opens the palette with that key
-   * as the query, as a real field would take it; a key that is one of `hotkeys` opens it as the
-   * hotkey does.
+   * tight spot, with a tooltip below it that shows its placeholder and its first hotkey. A
+   * printable key typed on a focused `"field"` trigger opens the palette with that key as the
+   * query, as a real field would take it; a key that is one of `hotkeys` opens it as the hotkey
+   * does.
    */
   trigger?: "button" | "field" | "icon"
   /**
@@ -852,39 +854,66 @@ export function CommandPalette<T extends CommandPaletteOption>(
     </>
   )
 
+  // A link to `triggerHref` until hydration, then the button.
+  const asLink = props.triggerHref !== undefined && !hydrated.value
+  const triggerElement = asLink
+    ? (
+      <a
+        ref={link}
+        href={props.triggerHref}
+        aria-label={labels.placeholder}
+        data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
+        class={triggerClass}
+      >
+        {triggerBody}
+      </a>
+    )
+    : (
+      <button
+        ref={trigger}
+        type="button"
+        onClick={() => open()}
+        onKeyDown={onTriggerKeyDown}
+        aria-haspopup="dialog"
+        aria-label={labels.placeholder}
+        aria-keyshortcuts={shortcuts}
+        data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
+        class={triggerClass}
+      >
+        {triggerBody}
+      </button>
+    )
+
   let index = 0
   /** Whether a row of `group` has an icon, so that every row of it keeps the icon's space. */
   const hasIcon = (group: CommandPaletteGroup<T>) =>
     group.options.some((option) => option.icon !== undefined)
   return (
     <>
-      {props.triggerHref !== undefined && !hydrated.value
+      {iconOnly
         ? (
-          <a
-            ref={link}
-            href={props.triggerHref}
-            aria-label={labels.placeholder}
-            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
-            class={triggerClass}
+          // The magnifier alone gets the house tooltip, its name and hotkey, below it since a
+          // header holds it. Keyed on the link-to-button swap, so the description moves to the
+          // button that replaces the link.
+          <Tooltip
+            key={asLink ? "link" : "button"}
+            label={labels.placeholder}
+            content={
+              <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                {labels.placeholder}
+                {firstHotkey !== undefined && (
+                  <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+                )}
+              </span>
+            }
+            focusable={false}
+            placement="bottom"
+            class="shrink-0 cursor-auto"
           >
-            {triggerBody}
-          </a>
+            {triggerElement}
+          </Tooltip>
         )
-        : (
-          <button
-            ref={trigger}
-            type="button"
-            onClick={() => open()}
-            onKeyDown={onTriggerKeyDown}
-            aria-haspopup="dialog"
-            aria-label={labels.placeholder}
-            aria-keyshortcuts={shortcuts}
-            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
-            class={triggerClass}
-          >
-            {triggerBody}
-          </button>
-        )}
+        : triggerElement}
       <dialog
         ref={dialog}
         aria-label={labels.search}
