@@ -73,7 +73,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`
-- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"` or `"field"`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
@@ -2131,7 +2131,10 @@ and inside the dialog the press landed in (or inside the open modal dialog, when
 hidden until it is wanted, such as a closed menu's item, whose trigger is `shown`;
 `hotkeyClickBinding(keys, element, shown)` takes it as a function too.
 `hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
-binds several elements in one `useHotkeys` call, as `Tabs` does. `firesInFields(keys)` is its rule
+binds several elements in one `useHotkeys` call, as `Tabs` does.
+`hotkeyActionBinding(keys, action, home)` is its sibling with nothing to click: it runs `action` by
+the same field rules, wherever the press lands outside a dialog or inside the one holding `home`,
+whether or not anything is rendered. `firesInFields(keys)` is its rule
 for text fields, which `CommandPalette` shares: a combination with Control, Command or `mod` fires
 while the reader types, one with only Alt does not (Option types a character on a Mac), and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). `useApplePlatform(apple)` answers
@@ -2148,13 +2151,14 @@ The arrow keys move through the results, Home and End jump to either end, Enter 
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
 focus back on the button. When the button is hidden, as when an app opens the palette from controls
 of its own by clicking it, focus goes back to the element that had it before the palette opened,
-or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
-bound by the machinery of a button's `hotkey`: each clicks the button, which announces them all in
-`aria-keyshortcuts` and shows the first as a button's hotkey hint, from `sm` up and only where the
-main pointer is fine; `kbdLabels` changes its words. `hotkeys` names other keys, and `[]` turns them
-off. The keys work only while the button is shown: a palette whose button is hidden, by `hidden`
-or a `display: none` breakpoint, ignores them and passes them on, so a second palette shown in its
-place opens instead. While the reader types in a text field, the rule is `firesInFields`, the
+or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it
+directly (`hotkeyActionBinding`), whatever trigger is drawn: a custom one, none, or the button
+while it is hidden. The button announces them all in `aria-keyshortcuts` and shows the first as a
+button's hotkey hint, from `sm` up and only where the main pointer is fine; `kbdLabels` changes its
+words. `hotkeys` names other keys, and `[]` turns them off. Inside a dialog they open the palette
+only when that dialog holds its trigger, and while a modal dialog is open they wait. Two palettes
+bound to the same keys on one page: the first mounted opens, so give the other `hotkeys={[]}`.
+While the reader types in a text field, the rule is `firesInFields`, the
 same one a button's `hotkey` follows: a combination with Control, Command or `mod` still opens the
 palette; a plain key such as `/` or an Alt combination does not, since both type text; and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leaves Ctrl+K alone on a
@@ -2171,6 +2175,31 @@ Enter or Space opens the palette. A printable key typed on it opens the palette 
 the field and the caret after it, as a real field would take it; a key that is one of `hotkeys`
 opens it the hotkey's way. `defaultQuery` is the query the field holds each time the palette opens,
 selected, so the first key typed replaces it.
+
+`trigger` can also be a function, called on every render with a `CommandPaletteTrigger`:
+`open(query?)`, `ref`, `shortcuts` and `hotkey`. It draws a trigger of its own, such as an app
+shell's search button or a "Search for this" button on a 404 page, or returns `null` to draw none.
+`open()` opens the palette with `defaultQuery` selected; `open("x")` opens it with "x" typed and the
+caret after it. Put `ref` on the element so focus comes back to it on close; without it, focus goes
+back to the element that had it before. Give the element `aria-haspopup="dialog"` and
+`aria-keyshortcuts={shortcuts}`, and show `hotkey` with `Kbd` if you want a hint.
+
+```tsx
+<CommandPalette
+  options={options}
+  onSelect={(option) => run(option.id)}
+  trigger={({ open, ref, shortcuts }) => (
+    <Button
+      ref={ref}
+      aria-haspopup="dialog"
+      aria-keyshortcuts={shortcuts}
+      onClick={() => open()}
+    >
+      Search
+    </Button>
+  )}
+/>
+```
 
 The trigger's `class` is appended after its own classes and not merged into them, so a bundle that
 renders the palette carries no `tailwind-merge`. To replace one of the trigger's own utilities,

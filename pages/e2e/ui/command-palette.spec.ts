@@ -1276,10 +1276,156 @@ function pinnedRowSpecs(): Spec[] {
   ]
 }
 
+/** Throws when axe finds a violation in any of `selectors`, contrast included. */
+async function noViolationsAt(page: Page, ...selectors: string[]): Promise<void> {
+  const builder = new AxeBuilder({ page })
+  for (const selector of selectors) builder.include(selector)
+  const { violations } = await builder.analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+      ).join(" | "),
+    )
+  }
+}
+
+/**
+ * The commands `CommandPalette`'s custom trigger on its card, the switch that removes it, and the
+ * dialog, at `width`.
+ */
+async function customTrigger(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 800 })
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`dialog[data-e2e="palette-commands"]`)
+  const field = dialog.getByRole("combobox")
+  const open = card.locator(`[data-e2e="palette-commands-open"]`)
+  await open.scrollIntoViewIfNeeded()
+  return {
+    card,
+    dialog,
+    field,
+    open,
+    only: card.locator(`[data-e2e="palette-commands-only"]`),
+    toggle: card.locator("#palette-commands-trigger"),
+    /** Waits until focus is in the open palette's field. */
+    opened: () => field.and(page.locator(":focus")).waitFor(),
+    /** Presses Escape and waits for the palette to close. */
+    escape: async () => {
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "hidden" })
+    },
+  }
+}
+
+/** Specs for a trigger drawn by the `trigger` function, for none, and for `open(query)` (#1236). */
+function customTriggerSpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette custom trigger: its hotkey opens the palette from the page, and " +
+        "Escape gives focus back to the custom trigger through its ref",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await customTrigger(page, 1280)
+        if (await palette.open.getAttribute("aria-keyshortcuts") !== "Control+Shift+P") {
+          throw new Error(
+            `aria-keyshortcuts ${await palette.open.getAttribute("aria-keyshortcuts")}`,
+          )
+        }
+        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+        await page.keyboard.press("Control+Shift+P")
+        await palette.opened()
+        await palette.escape()
+        await palette.open.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette with no trigger: with the commands trigger switched off, its hotkey " +
+        "still opens the palette, and Escape gives focus back to the element focused before",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await customTrigger(page, 1280)
+        await palette.toggle.click()
+        await palette.open.waitFor({ state: "detached" })
+        await palette.only.waitFor({ state: "detached" })
+        await palette.toggle.and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("Control+Shift+P")
+        await palette.opened()
+        await palette.escape()
+        await palette.toggle.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette open(query): Commands only opens the palette with “>” typed and the " +
+        "caret after it, listing only commands, and focus goes back to the trigger's ref",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await customTrigger(page, 1280)
+        await palette.only.click()
+        await palette.opened()
+        const typed = await palette.field.evaluate((
+          input: HTMLInputElement,
+        ) => [input.value, input.selectionStart, input.selectionEnd])
+        if (JSON.stringify(typed) !== JSON.stringify([">", 1, 1])) {
+          throw new Error(`field value and selection ${JSON.stringify(typed)}`)
+        }
+        await palette.dialog.getByRole("option").filter({ hasText: "Theme" }).waitFor()
+        const rows = await palette.dialog.getByRole("option").evaluateAll((options) =>
+          options.map((option) => option.querySelector("span span")?.textContent ?? "")
+        )
+        if (rows.includes("Add a task") || rows.includes("Account")) {
+          throw new Error(`rows that are not commands are listed: ${rows.join(" | ")}`)
+        }
+        await palette.escape()
+        await palette.open.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette hotkeys open the palette while its own trigger is hidden: Ctrl+K " +
+        "opens the guide's search with its header button hidden",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 })
+        const button = page.locator(`[data-e2e="ui-guide-search-open"]`)
+        const dialog = page.locator(`dialog[data-e2e="ui-guide-search"]`)
+        await button.evaluate((element) => (element as HTMLElement).style.display = "none")
+        await button.waitFor({ state: "hidden" })
+        await page.keyboard.press("Control+K")
+        await dialog.getByRole("combobox").and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("Escape")
+        await dialog.waitFor({ state: "hidden" })
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1440].map((width): Spec => ({
+        name: `CommandPalette commands demo at ${width} px in the ${colorScheme} palette: axe ` +
+          "finds no violation on its custom trigger, its switch or its dialog opened on “>”, " +
+          "colour contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          const palette = await customTrigger(page, width)
+          await noViolationsAt(
+            page,
+            `[data-e2e="palette-commands-open"]`,
+            `[data-e2e="palette-commands-only"]`,
+            `#demo-CommandPalette div:has(> div > #palette-commands-trigger)`,
+          )
+          await palette.only.click()
+          await palette.opened()
+          await palette.dialog.getByRole("option").first().waitFor()
+          await noViolationsAt(page, `dialog[data-e2e="palette-commands"]`)
+        },
+      }))
+    ),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...remotePaletteSpecs(),
   ...forgivingPaletteSpecs(),
   ...commandPaletteSpecs(),
   ...paletteKeySpecs(),
   ...pinnedRowSpecs(),
+  ...customTriggerSpecs(),
 ]
