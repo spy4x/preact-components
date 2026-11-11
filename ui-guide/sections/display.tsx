@@ -76,10 +76,12 @@ import { useId, useRef } from "preact/hooks"
 import {
   IconLogout,
   IconMoon,
+  IconPencilSquare,
   IconPlus,
   IconRefresh,
   IconSun,
   IconTrashBin,
+  IconUser,
 } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -95,7 +97,11 @@ import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
 import type { DemoFragment } from "../registry.ts"
-import { CommandPalette, type CommandPaletteOption } from "@spy4x/preact-ui/command-palette"
+import {
+  CommandPalette,
+  type CommandPaletteOption,
+  type CommandPaletteSelectDetails,
+} from "@spy4x/preact-ui/command-palette"
 
 /**
  * A one-square image, inline so the catalogue needs no network and no asset directory.
@@ -2652,9 +2658,9 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       {
         name: "options",
         type:
-          "{ id, label, detail?, hint?, group?, aliases?, icon?, kbd?, state?, disabledReason?, run?, keepOpen? }[]",
+          "{ id, label, detail?, hint?, group?, aliases?, icon?, kbd?, state?, disabledReason?, run?, keepOpen?, takesText?, children? }[]",
         description:
-          "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. Or `search`, not both.",
+          "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. A query starting with “>” lists only commands. PageUp and PageDown jump between groups. Or `search`, not both.",
       },
       {
         name: "search",
@@ -2662,12 +2668,29 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         description:
           "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
-      { name: "onSelect", type: "(option) => void", description: "The picked option." },
+      {
+        name: "onSelect",
+        type: "(option, { alternative, text? }) => void",
+        description:
+          "The picked option. `alternative` is true for Ctrl/⌘+Enter, a middle click or a Ctrl/⌘+click (a new tab, for a link); `text` is what was typed for a `takesText` row.",
+      },
       {
         name: "options.run",
-        type: "() => void",
+        type: "({ alternative, text? }) => void",
         description:
-          "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`.",
+          "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`. A pick that moves focus, such as opening a dialog, keeps it there.",
+      },
+      {
+        name: "options.takesText",
+        type: "boolean",
+        description:
+          "A quick-create row such as “New note”: Tab or Enter shows its label as a chip before the field, and Enter then picks it with the typed `text`. Backspace in the empty field leaves.",
+      },
+      {
+        name: "options.children",
+        type: "options[]",
+        description:
+          "Sub-rows, such as Theme › Light and Dark: Tab or Enter lists them with the path before the field, Backspace in the empty field goes back. A top-level query does not search them.",
       },
       {
         name: "options.keepOpen",
@@ -2744,7 +2767,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "labels",
         type: "Partial<CommandPaletteLabels>",
         description:
-          "The field's name, placeholder, close button, the empty, loading and error words, and `stateChanged(label, state)`.",
+          "The field's name, placeholder, close button, the empty, loading and error words, `stateChanged(label, state)`, the “> for commands” hint, `withText(label, text)` and the back button's name.",
       },
     ],
     snippet: `const options = [
@@ -2765,8 +2788,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   options={[
     { id: "theme", label: "Theme", icon: IconMoon, state: theme, kbd: "mod+shift+l", keepOpen: true, run: toggleTheme },
     { id: "sync", label: "Sync now", icon: IconRefresh, disabledReason: "Needs a connection" },
+    { id: "note", label: "New note", takesText: true },
+    { id: "account", label: "Account", children: [{ id: "profile", label: "Profile" }] },
   ]}
-  onSelect={() => {}}
+  onSelect={(option, { alternative, text }) => open(option.id, { newTab: alternative, text })}
 />
 
 <CommandPalette
@@ -2931,17 +2956,29 @@ const paletteComponents: readonly CommandPaletteOption[] = [
 ]
 
 /**
+ * What the commands demo says ran: the label, the text typed for a quick-create row, and whether
+ * the pick was the alternative one.
+ */
+function ranText(label: string, { alternative, text }: CommandPaletteSelectDetails): string {
+  return `${label}${text === undefined ? "" : `: “${text}”`}${alternative ? " (alternative)" : ""}`
+}
+
+/**
  * The commands `CommandPalette` demo's options: a theme toggle that stays open and shows its state,
- * a command with a shortcut, one that cannot run offline, and one with a hint.
+ * a command with a shortcut, one that cannot run offline, one with a hint, a command that moves
+ * focus out of the palette, a quick-create row that takes text, and a submenu two levels deep.
+ * The last three are not commands, so a ">" query hides them.
  *
  * @param theme The theme the toggle shows.
  * @param toggle Switches the theme.
  * @param ran Records which command ran.
+ * @param jump Moves focus to the card's note.
  */
 function paletteCommands(
   theme: string,
   toggle: () => void,
-  ran: (label: string) => void,
+  ran: (label: string, details: CommandPaletteSelectDetails) => void,
+  jump: () => void,
 ): CommandPaletteOption[] {
   return [
     {
@@ -2963,7 +3000,7 @@ function paletteCommands(
       hint: "Command",
       kbd: "mod+alt+n",
       group: "Commands",
-      run: () => ran("New note"),
+      run: (details) => ran("New note", details),
     },
     {
       id: "sync",
@@ -2971,7 +3008,7 @@ function paletteCommands(
       icon: IconRefresh,
       group: "Commands",
       disabledReason: "Needs a connection",
-      run: () => ran("Sync now"),
+      run: (details) => ran("Sync now", details),
     },
     {
       id: "sign-out",
@@ -2979,7 +3016,34 @@ function paletteCommands(
       icon: IconLogout,
       hint: "Account",
       group: "Commands",
-      run: () => ran("Sign out"),
+      run: (details) => ran("Sign out", details),
+    },
+    { id: "jump", label: "Jump to the log", hint: "Command", group: "Commands", run: jump },
+    {
+      id: "add-task",
+      label: "Add a task",
+      icon: IconPencilSquare,
+      hint: "Type its name",
+      group: "Create and go",
+      takesText: true,
+    },
+    {
+      id: "account",
+      label: "Account",
+      icon: IconUser,
+      group: "Create and go",
+      children: [
+        { id: "profile", label: "Profile" },
+        { id: "billing", label: "Billing", detail: "Plan and invoices" },
+        {
+          id: "security",
+          label: "Security",
+          children: [
+            { id: "password", label: "Password" },
+            { id: "two-step", label: "Two-step sign-in" },
+          ],
+        },
+      ],
     },
   ]
 }
@@ -3036,8 +3100,9 @@ function paletteFruitSearch(
  * `CommandPalette` four ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
  * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
- * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut and a
- * command that cannot run. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
+ * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut, a
+ * command that cannot run, one that moves focus to the card's note, a quick-create row and a
+ * submenu. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
  * searches started and answered.
  */
 function CommandPaletteDemo() {
@@ -3049,6 +3114,7 @@ function CommandPaletteDemo() {
   const aborted = useSignal<string[]>([])
   const theme = useSignal("Light")
   const ran = useSignal("nothing yet")
+  const log = useRef<HTMLSpanElement>(null)
   return (
     <Stack>
       <Cluster>
@@ -3090,12 +3156,13 @@ function CommandPaletteDemo() {
         options={paletteCommands(
           theme.value,
           () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
-          (label) => ran.value = label,
+          (label, details) => ran.value = ranText(label, details),
+          () => log.current?.focus(),
         )}
         hotkeys={[]}
         dataE2E="palette-commands"
         labels={{ placeholder: "Run a command…" }}
-        onSelect={(option) => ran.value = option.label}
+        onSelect={(option, details) => ran.value = ranText(option.label, details)}
       />
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
@@ -3107,9 +3174,11 @@ function CommandPaletteDemo() {
         </span>; component{" "}
         <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
         <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
-        <span data-e2e="palette-commands-ran">{ran.value}</span>. One letter answers slowly, longer
-        queries quickly, “slow” takes twenty seconds, “dragon” finds a long name, and “boom” fails.
-        The field above opens on “combobx”; try “ещфые” or “календарь”.
+        <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
+        answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
+        name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
+        the commands, “{">"}” lists only commands, Tab enters Account or Add a task, Backspace goes
+        back, PageDown jumps a group, and Ctrl+Enter picks the alternative way.
       </DemoNote>
     </Stack>
   )

@@ -62,7 +62,9 @@ Combobox.inGroup	c8164158a3a09df5
 Combobox.loading	ba3bbbe10d8bef66
 Combobox.placeholder	731fe041ce28da1b
 Combobox.required	fb1cbc38fb4060f4
+CommandPalette.back	76900f1bfd16c8d4
 CommandPalette.close	9004dcc6726a3281
+CommandPalette.commandsHint	f89eea718ec5d432
 CommandPalette.empty	32ab4da69c2b250a
 CommandPalette.error	84d45b78ca0d728a
 CommandPalette.loading	c31723ab330289fe
@@ -77,6 +79,7 @@ CommandPalette.match.words	cd7dc3df67895f2d
 CommandPalette.placeholder	7336265a0467a255
 CommandPalette.search	49c266baaaa70981
 CommandPalette.stateChanged	e2acd428ea254ea4
+CommandPalette.withText	e0ab1cd5ea680952
 ComparisonTable.capability	5faf58a69db59058
 ComparisonTable.checkedOn	f90a00d2f155ccf7
 ComparisonTable.fit	9f872ed43d00d8bd
