@@ -480,7 +480,7 @@ export function hotkeyClickBinding(
  * The {@link useHotkeys} binding that runs `action` directly, by the rules of
  * {@link hotkeyClickBinding} but with no element that has to be rendered: the same chords fire in a
  * text field, and the field keeps its editing chords. It runs when the press lands outside every
- * dialog and menu with no modal dialog open, or inside the one that holds `home`, and not while
+ * dialog with no modal dialog open, or inside the one that holds `home`, and not while
  * `home` is inert. When it runs it cancels the key press's default action; a held key's repeat is
  * cancelled too but runs nothing.
  *
