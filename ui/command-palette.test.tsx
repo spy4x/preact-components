@@ -158,6 +158,40 @@ describe("CommandPalette", () => {
     )
   })
 
+  it("draws a custom trigger from the trigger function, handed the hotkeys, in place of its own", () => {
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        dataE2E="palette"
+        trigger={({ shortcuts, hotkey }) => (
+          <a href="#search" aria-keyshortcuts={shortcuts} data-hotkey={hotkey}>Search</a>
+        )}
+      />,
+    )
+    const trigger = html.slice(0, html.indexOf("<dialog"))
+    expect(trigger).toBe(
+      `<a href="#search" aria-keyshortcuts="/ Control+K" data-hotkey="/">Search</a>`,
+    )
+  })
+
+  it("draws no trigger when the trigger function returns null, and no hotkeys with none", () => {
+    let handed: unknown = "not called"
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        hotkeys={[]}
+        trigger={({ shortcuts, hotkey }) => {
+          handed = [shortcuts, hotkey]
+          return null
+        }}
+      />,
+    )
+    expect(html.startsWith("<dialog")).toBe(true)
+    expect(handed).toEqual([undefined, undefined])
+  })
+
   it("takes the hint's words from kbdLabels", () => {
     const html = render(
       <CommandPalette

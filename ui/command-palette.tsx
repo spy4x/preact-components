@@ -6,15 +6,15 @@ import {
   IconSearch,
   IconXMark,
 } from "@spy4x/preact-icons"
-import type { ComponentType, JSX } from "preact"
+import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useSignal } from "@preact/signals"
-import { useEffect, useId, useRef } from "preact/hooks"
+import { useCallback, useEffect, useId, useRef } from "preact/hooks"
 import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { useLabels } from "./i18n.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
-import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
+import { ariaKeyShortcuts, hotkeyActionBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
@@ -210,6 +210,30 @@ export interface CommandPaletteRecent {
   storage: () => KeyValueStore
 }
 
+/**
+ * What a {@link CommandPalette}'s `trigger` function gets to draw a trigger of its own, such as an
+ * app shell's search button.
+ */
+export interface CommandPaletteTrigger {
+  /**
+   * Opens the palette. With `query`, the field holds that text with the caret after it, as if the
+   * reader had typed it; without, it holds `defaultQuery`, selected. Does nothing while it is open.
+   */
+  open: (query?: string) => void
+  /**
+   * The ref for the trigger's element, so focus goes back to it when the palette closes. A trigger
+   * without it gets focus back as a hidden one does: on the element that had it before.
+   */
+  ref: (element: HTMLElement | null) => void
+  /**
+   * The hotkeys for the trigger's `aria-keyshortcuts`, such as `"/ Control+K"`, or `undefined`
+   * when `hotkeys` is `[]`.
+   */
+  shortcuts: string | undefined
+  /** The first of `hotkeys`, for a hint such as `<Kbd keys={hotkey} />`, or `undefined`. */
+  hotkey: string | undefined
+}
+
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /**
@@ -221,12 +245,13 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
    * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off.
-   * Each one clicks the trigger, by the rule a button's `hotkey` follows, so it does nothing while
-   * the trigger is hidden. The trigger announces them all in `aria-keyshortcuts` and shows the
-   * first one, as a button's `hotkey` hint, where the screen is wide and the pointer fine. While the reader types in a text field, a combination with
-   * Control, Command or `mod` still opens it; a plain key or an Alt combination does not, since
-   * both type text, and the field keeps its editing chords (`mod` with A, C, V, X, Z or Y). See
-   * `firesInFields`.
+   * Each one opens the palette itself, with a custom trigger, with none, and while the trigger is
+   * hidden; inside a dialog it opens only when that dialog holds the trigger, and while a modal
+   * dialog is open it waits. The trigger announces them all in `aria-keyshortcuts` and shows the
+   * first one, as a button's `hotkey` hint, where the screen is wide and the pointer fine. While
+   * the reader types in a text field, a combination with Control, Command or `mod` still opens it;
+   * a plain key or an Alt combination does not, since both type text, and the field keeps its
+   * editing chords (`mod` with A, C, V, X, Z or Y). See `firesInFields`.
    */
   hotkeys?: readonly string[]
   /** The words the trigger's hotkey hint and each option's `kbd` show for a key; see `KBD_LABELS`. */
@@ -250,8 +275,12 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
    * at every width, as wide as its container. A printable key typed on a focused `"field"` trigger
    * opens the palette with that key as the query, as a real field would take it; a key that is
    * one of `hotkeys` opens it as the hotkey does.
+   *
+   * A function draws a trigger of its own instead, from what {@link CommandPaletteTrigger} hands
+   * it; returning `null` draws none, leaving the hotkeys. Give its element `aria-haspopup="dialog"`
+   * and `aria-keyshortcuts={shortcuts}`.
    */
-  trigger?: "button" | "field"
+  trigger?: "button" | "field" | ((api: CommandPaletteTrigger) => ComponentChildren)
   /**
    * The query the field holds each time the palette opens, selected, so the first key typed
    * replaces it. Defaults to the empty query.
@@ -460,9 +489,11 @@ interface Remote<T> {
  * A search trigger and the dialog it opens: one field and a list of results that the arrow keys
  * move through, as `Combobox` does. Home and End jump to either end, Enter picks the highlighted
  * result, and Escape, the close button or a click on the backdrop closes it, with focus back on the
- * trigger. When the trigger is hidden, such as when an app opens the palette from controls of its
- * own by clicking it, focus goes back to the element that had it before the palette opened. `/` and ⌘K (Ctrl+K off Apple platforms) open it unless `hotkeys` says otherwise. The page
- * behind does not scroll while it is open.
+ * trigger. `trigger` can be a function that draws a trigger of its own, or none, and opens the
+ * palette with text already typed. When the trigger is hidden, or a custom one gives no ref, focus
+ * goes back to the element that had it before the palette opened. `/` and ⌘K (Ctrl+K off Apple
+ * platforms) open it unless `hotkeys` says otherwise, whatever trigger is drawn. The page behind
+ * does not scroll while it is open.
  *
  * Give `options` to have it filter a list itself, or `search` to ask a server, which it calls after
  * a pause in typing, cancelling a stale call. The default filter forgives typos, word order, the
@@ -513,6 +544,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  // A custom trigger's element, from the ref its function was handed.
+  const custom = useRef<HTMLElement | null>(null)
+  const attachCustom = useCallback((element: HTMLElement | null) => {
+    custom.current = element
+  }, [])
+  /** The trigger focus goes back to: the custom one's element, or the palette's own button. */
+  const triggerElement = () => typeof triggerShape === "function" ? custom.current : trigger.current
   // What had focus when the palette opened: where focus goes back to while the trigger is hidden.
   const before = useRef<HTMLElement | null>(null)
   const id = useId()
@@ -768,9 +806,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
   }
 
   useHotkeys(
-    // A button's `hotkey` binding on the trigger: a Control, Command or `mod` chord opens the
-    // palette from a text field too, unless it is one of the field's editing chords.
-    hotkeys.map((keys) => hotkeyClickBinding(keys, () => trigger.current)),
+    // Opens the palette whatever trigger is drawn: a Control, Command or `mod` chord opens it from
+    // a text field too, unless it is one of the field's editing chords.
+    hotkeys.map((keys) => hotkeyActionBinding(keys, () => open(), triggerElement)),
     { enabled: hotkeys.length > 0 },
   )
   const apple = useApplePlatform()
@@ -889,6 +927,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const shortcuts = hotkeys.length === 0
     ? undefined
     : hotkeys.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
+  const triggerApi: CommandPaletteTrigger = {
+    // A string only: `onClick={open}` hands over the click event.
+    open: (typed) => open(typeof typed === "string" ? typed : undefined),
+    ref: attachCustom,
+    shortcuts,
+    hotkey: firstHotkey,
+  }
 
   /**
    * One result row: its icon (or the group's empty icon slot), its label over its detail or its
@@ -1036,44 +1081,46 @@ export function CommandPalette<T extends CommandPaletteOption>(
     group.options.some((option) => option.icon !== undefined)
   return (
     <>
-      <button
-        ref={trigger}
-        type="button"
-        onClick={() => open()}
-        onKeyDown={onTriggerKeyDown}
-        aria-haspopup="dialog"
-        aria-label={labels.placeholder}
-        aria-keyshortcuts={shortcuts}
-        data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
-        class={join(
-          field
-            // A field-shaped button at every width, as wide as its container.
-            ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
-            // An icon button on a phone; a field-shaped button with its placeholder and hotkey
-            // from `sm`.
-            : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
-          // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
-          // 44 px touch target either way.
-          "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden",
-          className,
-        )}
-      >
-        <IconSearch class={field ? "size-4 shrink-0" : "size-5 shrink-0 sm:size-4"} />
-        <span
-          class={field
-            ? "min-w-0 flex-1 truncate text-start"
-            : "hidden flex-1 text-start sm:inline"}
+      {typeof triggerShape === "function" ? triggerShape(triggerApi) : (
+        <button
+          ref={trigger}
+          type="button"
+          onClick={() => open()}
+          onKeyDown={onTriggerKeyDown}
+          aria-haspopup="dialog"
+          aria-label={labels.placeholder}
+          aria-keyshortcuts={shortcuts}
+          data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
+          class={join(
+            field
+              // A field-shaped button at every width, as wide as its container.
+              ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
+              // An icon button on a phone; a field-shaped button with its placeholder and hotkey
+              // from `sm`.
+              : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
+            // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
+            // 44 px touch target either way.
+            "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden",
+            className,
+          )}
         >
-          {labels.placeholder}
-        </span>
-        {firstHotkey !== undefined && (
-          // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
-          // also keeps it off the icon-only trigger a narrow screen gets.
-          <span class={field ? "contents" : "hidden sm:contents"}>
-            <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+          <IconSearch class={field ? "size-4 shrink-0" : "size-5 shrink-0 sm:size-4"} />
+          <span
+            class={field
+              ? "min-w-0 flex-1 truncate text-start"
+              : "hidden flex-1 text-start sm:inline"}
+          >
+            {labels.placeholder}
           </span>
-        )}
-      </button>
+          {firstHotkey !== undefined && (
+            // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
+            // also keeps it off the icon-only trigger a narrow screen gets.
+            <span class={field ? "contents" : "hidden sm:contents"}>
+              <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+            </span>
+          )}
+        </button>
+      )}
       <dialog
         ref={dialog}
         aria-label={labels.search}
@@ -1086,8 +1133,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
           // focused the new page, keeps it there.
           const now = document.activeElement
           const moved = now !== null && now !== document.body && now !== before.current &&
-            now !== trigger.current && !dialog.current?.contains(now)
-          if (!moved) focusOnClose(trigger.current, before.current, input.current)
+            now !== triggerElement() && !dialog.current?.contains(now)
+          if (!moved) focusOnClose(triggerElement(), before.current, input.current)
           before.current = null
         }}
         onPointerDown={backdrop.onPointerDown}

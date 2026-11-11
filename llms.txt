@@ -1009,6 +1009,7 @@ groupSplit	helper	@spy4x/preact-ui	Split a group's member count into the avatars
 guardedHref	helper	@spy4x/preact-ui	The in-app address a click must be held back for while there are unsaved changes, as `pathname + search + hash`; `null` when the browser or the link itself should handle the click.
 hasQuestion	helper	@spy4x/preact-ui	Whether the panel's body holds something worth being described by.
 honeypotField	helper	@spy4x/preact-ui	A field simple bots fill in and people never see: off-screen rather than `display: none` or `type="hidden"`, since a scraper that already skips those two is exactly the bot this stops nothing against, and a sighted visitor tabbing past it never lands on it — `tabindex="-1"` keeps it out of the tab order on top of being off-screen, and `aria-hidden` keeps a screen reader from ever announcing it.
+hotkeyActionBinding	helper	@spy4x/preact-ui	The `useHotkeys` binding that runs `action` directly, by the rules of `hotkeyClickBinding` but with no element that has to be rendered: the same chords fire in a text field, and the field keeps its editing chords.
 hotkeyClickBinding	helper	@spy4x/preact-ui	The `useHotkeys` binding that clicks an element through `clickByHotkey`.
 inlineEditCommit	helper	@spy4x/preact-ui	What an edit saves: the trimmed draft, or `null` when there is nothing to save because the draft is empty or matches the current value.
 isBackdropClick	helper	@spy4x/preact-ui	Whether a click landed on the dialog's backdrop rather than on the dialog's content.
@@ -1090,6 +1091,7 @@ failedAfterSrcChange	helper	@spy4x/preact-ui/avatar	Carry an avatar's "this imag
 BillingIntervalValue	type	@spy4x/preact-ui/billing	A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast.
 SubscriptionStatusValue	type	@spy4x/preact-ui/billing	A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast.
 CommandPaletteSelectDetails	type	@spy4x/preact-ui/command-palette	What a pick tells `onSelect` and `run` besides the option.
+CommandPaletteTrigger	type	@spy4x/preact-ui/command-palette	What a `CommandPalette`'s `trigger` function gets to draw a trigger of its own, such as an app shell's search button.
 MENU_GROUP	constant	@spy4x/preact-ui/dropdown	The `name` of the exclusive `<details>` group that every library menu drawn as a `<details>` joins: a `Dropdown` before it hydrates, and `SiteHeader`'s mobile menu.
 dropdownOpensUp	helper	@spy4x/preact-ui/dropdown	Whether a `vertical="auto"` menu opens upward.
 enhancedFormMessage	helper	@spy4x/preact-ui/enhanced-form	The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run.
