@@ -50,7 +50,8 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   // A palette and a toaster, the forgiving matcher and the hotkeys included: 50.8 KB (#943, #524).
   // Command rows (icon, state badge, keys, disabled and kept-open commands): 52.6 KB (#878).
   // The alternative pick, PageUp/PageDown, submenus, the text mode and ">": 55.8 KB (#1234).
-  "island-command-palette.tsx": 57_000,
+  // Recent picks, the best match, the result count and the key hints: 58.1 KB (#1235).
+  "island-command-palette.tsx": 59_000,
   // A modal over a combobox, with the modal's `Button` and its hotkey code: 46.6 KB (#943, #524).
   // The forgiving matcher the palette already carries, groups and Create: 53.0 KB (#1164).
   "island-modal-combobox.tsx": 54_000,

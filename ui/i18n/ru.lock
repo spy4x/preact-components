@@ -63,10 +63,14 @@ Combobox.loading	ba3bbbe10d8bef66
 Combobox.placeholder	731fe041ce28da1b
 Combobox.required	fb1cbc38fb4060f4
 CommandPalette.back	76900f1bfd16c8d4
+CommandPalette.bestMatch	d83ab68f742891bc
 CommandPalette.close	9004dcc6726a3281
 CommandPalette.commandsHint	f89eea718ec5d432
 CommandPalette.empty	32ab4da69c2b250a
 CommandPalette.error	84d45b78ca0d728a
+CommandPalette.keysAlternative	27747689baf9903c
+CommandPalette.keysMove	683a62ce15fbabb1
+CommandPalette.keysOpen	2348f99874421257
 CommandPalette.loading	c31723ab330289fe
 CommandPalette.match.alias	b33e98e59d664637
 CommandPalette.match.detail	de86553cc409aca8
@@ -77,6 +81,8 @@ CommandPalette.match.translit	d803d1ed3179cf89
 CommandPalette.match.typo	f18be1638f3c7c16
 CommandPalette.match.words	cd7dc3df67895f2d
 CommandPalette.placeholder	7336265a0467a255
+CommandPalette.recent	690dbe9dc0993c42
+CommandPalette.results	44c59fe6d10e0678
 CommandPalette.search	49c266baaaa70981
 CommandPalette.stateChanged	e2acd428ea254ea4
 CommandPalette.withText	e0ab1cd5ea680952

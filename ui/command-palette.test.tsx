@@ -12,6 +12,16 @@ import {
   matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
+import {
+  addRecent,
+  bestMatch,
+  clearCommandPaletteRecent,
+  parseRecent,
+  readRecent,
+  RECENT_MAX_LENGTH,
+  recentOptions,
+  writeRecent,
+} from "./palette-pins.ts"
 
 const option = (
   label: string,
@@ -133,7 +143,9 @@ describe("CommandPalette", () => {
 
   it("draws no hotkey hint and announces no hotkey when the hotkeys are turned off", () => {
     const html = render(<CommandPalette options={options} onSelect={() => {}} hotkeys={[]} />)
-    expect(html).not.toContain("<kbd")
+    // The dialog's key hints under the list are the palette's own keys, not its hotkeys.
+    const trigger = html.slice(0, html.indexOf("<dialog"))
+    expect(trigger).not.toContain("<kbd")
     expect(html).not.toContain("aria-keyshortcuts")
   })
 
@@ -373,5 +385,181 @@ describe("CommandPalette command rows", () => {
 
   it("says a changed state as the label and the state by default", () => {
     expect(defaultCommandPaletteLabels.stateChanged("Theme", "Dark")).toBe("Theme: Dark")
+  })
+})
+
+/**
+ * Runs `body` with `globalThis.localStorage` replaced by `value`, or by a getter that throws as a
+ * browser that blocks site data does when `value` is `"blocked"`, and puts the real one back.
+ */
+function withStorage(value: Storage | "blocked", body: () => void): void {
+  const before = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    get: () => {
+      if (value === "blocked") throw new DOMException("The operation is insecure.", "SecurityError")
+      return value
+    },
+  })
+  try {
+    body()
+  } finally {
+    if (before) Object.defineProperty(globalThis, "localStorage", before)
+    else delete (globalThis as { localStorage?: Storage }).localStorage
+  }
+}
+
+/** A `Map`-backed `Storage`, or one whose every call throws, as a full or locked store does. */
+function fakeStorage(throws = false): Storage & { map: Map<string, string> } {
+  const map = new Map<string, string>()
+  const guard = () => {
+    if (throws) throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+  }
+  return {
+    map,
+    get length() {
+      return map.size
+    },
+    clear: () => map.clear(),
+    key: (index) => [...map.keys()][index] ?? null,
+    getItem: (key) => (guard(), map.get(key) ?? null),
+    setItem: (key, value) => (guard(), void map.set(key, value)),
+    removeItem: (key) => (guard(), void map.delete(key)),
+  }
+}
+
+describe("CommandPalette recent picks", () => {
+  const ids = (count: number) => Array.from({ length: count }, (_, index) => `id-${index}`)
+
+  it("reads nothing from a missing, too long, broken or non-array value", () => {
+    expect(parseRecent(null)).toEqual([])
+    expect(parseRecent(`["a",${'"b",'.repeat(RECENT_MAX_LENGTH)}"c"]`)).toEqual([])
+    expect(parseRecent('["a"')).toEqual([])
+    expect(parseRecent(`{"0":"a"}`)).toEqual([])
+    expect(parseRecent(`"a"`)).toEqual([])
+  })
+
+  it("keeps the strings of a stored array, at most ten, and skips the rest", () => {
+    expect(parseRecent(`["a",1,null,{"id":"b"},"c"]`)).toEqual(["a", "c"])
+    expect(parseRecent(JSON.stringify(ids(12)))).toEqual(ids(10))
+  })
+
+  it("puts a pick first, drops its earlier place and keeps the last ten", () => {
+    expect(addRecent(["a", "b", "c"], "b")).toEqual(["b", "a", "c"])
+    expect(addRecent(ids(10), "new")).toEqual(["new", ...ids(9)])
+  })
+
+  it("lists at most five recent options, newest first, skipping ids no option has now", () => {
+    const options = ids(8).map((id) => option(id))
+    expect(recentOptions(["gone", "id-3", "id-1"], options).map((found) => found.id)).toEqual([
+      "id-3",
+      "id-1",
+    ])
+    expect(recentOptions(ids(8).reverse(), options).map((found) => found.id)).toEqual([
+      "id-7",
+      "id-6",
+      "id-5",
+      "id-4",
+      "id-3",
+    ])
+  })
+
+  it("writes, reads back and clears the picks under the palette's key", () => {
+    const storage = fakeStorage()
+    withStorage(storage, () => {
+      writeRecent("palette", ["b", "a"])
+      expect(storage.map.get("palette")).toBe(`["b","a"]`)
+      expect(readRecent("palette")).toEqual(["b", "a"])
+      clearCommandPaletteRecent("palette")
+      expect(storage.map.has("palette")).toBe(false)
+      expect(readRecent("palette")).toEqual([])
+    })
+  })
+
+  it("reads nothing and throws nowhere where storage is blocked or refuses every call", () => {
+    for (const storage of ["blocked", fakeStorage(true)] as const) {
+      withStorage(storage, () => {
+        expect(() => writeRecent("palette", ["a"])).not.toThrow()
+        expect(readRecent("palette")).toEqual([])
+        expect(() => clearCommandPaletteRecent("palette")).not.toThrow()
+      })
+    }
+  })
+
+  it("renders on a server without touching storage", () => {
+    withStorage("blocked", () => {
+      const html = render(
+        <CommandPalette options={[option("Home")]} storageKey="palette" onSelect={() => {}} />,
+      )
+      expect(html).toContain(">Home<")
+      expect(html).not.toContain(">Recent<")
+    })
+  })
+})
+
+describe("CommandPalette best match", () => {
+  const theme = option("Theme", { group: "Settings", aliases: ["dark mode"], run: () => {} })
+  const options = [
+    option("Dark patterns", { group: "Articles" }),
+    option("Darken", { group: "Commands", run: () => {} }),
+    theme,
+  ]
+
+  it("picks the first command whose label or alias starts with the query, ignoring case", () => {
+    expect(bestMatch(options, "DARK")?.label).toBe("Darken")
+    expect(bestMatch([options[0], theme], "dark")?.label).toBe("Theme")
+    expect(bestMatch([options[0], theme], "Thè")?.label).toBe("Theme")
+  })
+
+  it("picks none for an empty query, a plain option or a name that only contains the query", () => {
+    expect(bestMatch(options, " ")).toBeUndefined()
+    expect(bestMatch([options[0]], "dark")).toBeUndefined()
+    expect(bestMatch([theme], "mode")).toBeUndefined()
+  })
+
+  it("pins the best match on top under its heading and lists it there only", () => {
+    const html = render(
+      <CommandPalette options={[options[0], theme]} defaultQuery="dark" onSelect={() => {}} />,
+    )
+    const headings = [...html.matchAll(/role="presentation"[^>]*>([^<]+)</g)].map((m) => m[1])
+    expect(headings).toEqual(["Best match", "Articles"])
+    expect(html.match(/<li id="[^"]+-result-Theme"/g)?.length).toBe(1)
+  })
+
+  it("pins nothing when no command starts with the query", () => {
+    const html = render(
+      <CommandPalette options={[options[0], theme]} defaultQuery="patt" onSelect={() => {}} />,
+    )
+    expect(html).not.toContain(">Best match<")
+  })
+})
+
+describe("CommandPalette count and key hints", () => {
+  it("counts one result and many by default", () => {
+    expect(defaultCommandPaletteLabels.results(1)).toBe("1 result")
+    expect(defaultCommandPaletteLabels.results(5)).toBe("5 results")
+  })
+
+  it("keeps the count region empty until typing pauses", () => {
+    const html = render(
+      <CommandPalette options={[option("Home")]} dataE2E="palette" onSelect={() => {}} />,
+    )
+    expect(html).toMatch(/<p role="status" data-e2e="palette-count" class="sr-only"><\/p>/)
+  })
+
+  it("draws the key hints hidden from screen readers, from sm for a fine pointer only", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Home")]}
+        dataE2E="palette"
+        labels={{ keysMove: "bouger", keysOpen: "ouvrir", keysAlternative: "autre" }}
+        onSelect={() => {}}
+      />,
+    )
+    const keys = html.match(/<div aria-hidden="true" data-e2e="palette-keys".*?<\/div>/)?.[0] ?? ""
+    expect(keys).toMatch(/class="hidden [^"]* sm:pointer-fine:flex"/)
+    for (const word of [">bouger<", ">ouvrir<", ">autre<", "Down arrow", "Ctrl"]) {
+      expect(keys).toContain(word)
+    }
   })
 })

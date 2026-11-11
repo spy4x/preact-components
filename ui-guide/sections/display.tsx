@@ -98,6 +98,7 @@ import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/k
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
 import type { DemoFragment } from "../registry.ts"
 import {
+  clearCommandPaletteRecent,
   CommandPalette,
   type CommandPaletteOption,
   type CommandPaletteSelectDetails,
@@ -2746,6 +2747,12 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         description: "The words `showMatch` shows; see `defaultCommandPaletteMatchLabels`.",
       },
       {
+        name: "storageKey",
+        type: "string",
+        description:
+          "Keeps the last 10 top-level picks in `localStorage` under this key and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. Call `clearCommandPaletteRecent(storageKey)` on sign-out.",
+      },
+      {
         name: "hotkeys",
         type: "string[]",
         default: `["/", "mod+k"]`,
@@ -2767,7 +2774,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "labels",
         type: "Partial<CommandPaletteLabels>",
         description:
-          "The field's name, placeholder, close button, the empty, loading and error words, `stateChanged(label, state)`, the “> for commands” hint, `withText(label, text)` and the back button's name.",
+          "The field's name, placeholder, close button, the empty, loading and error words, `stateChanged(label, state)`, the “> for commands” hint, `withText(label, text)`, the back button's name, the “Recent” and “Best match” headings, `results(count)` and the key hints' words (`keysMove`, `keysOpen`, `keysAlternative`).",
       },
     ],
     snippet: `const options = [
@@ -2793,6 +2800,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
   ]}
   onSelect={(option, { alternative, text }) => open(option.id, { newTab: alternative, text })}
 />
+
+<CommandPalette options={options} storageKey="app-palette" onSelect={(option) => run(option.id)} />
+// On sign-out:
+clearCommandPaletteRecent("app-palette")
 
 <CommandPalette
   search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
@@ -3048,6 +3059,9 @@ function paletteCommands(
   ]
 }
 
+/** Where the remembering `CommandPalette` demo keeps its recent picks. */
+const PALETTE_RECENT_KEY = "ui-guide:command-palette-recent"
+
 /** The names the remote `CommandPalette` demo's pretend server knows. */
 const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
 
@@ -3164,6 +3178,29 @@ function CommandPaletteDemo() {
         labels={{ placeholder: "Run a command…" }}
         onSelect={(option, details) => ran.value = ranText(option.label, details)}
       />
+      <Cluster>
+        <CommandPalette
+          options={paletteCommands(
+            theme.value,
+            () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
+            (label, details) => ran.value = ranText(label, details),
+            () => log.current?.focus(),
+          )}
+          storageKey={PALETTE_RECENT_KEY}
+          hotkeys={[]}
+          dataE2E="palette-recent"
+          labels={{ placeholder: "Run, remembering…" }}
+          onSelect={(option, details) => ran.value = ranText(option.label, details)}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="palette-recent-forget"
+          onClick={() => clearCommandPaletteRecent(PALETTE_RECENT_KEY)}
+        >
+          Forget recent picks
+        </Button>
+      </Cluster>
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
@@ -3178,7 +3215,9 @@ function CommandPaletteDemo() {
         answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
         name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
         the commands, “{">"}” lists only commands, Tab enters Account or Add a task, Backspace goes
-        back, PageDown jumps a group, and Ctrl+Enter picks the alternative way.
+        back, PageDown jumps a group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as
+        the best match. The last palette remembers its picks across reloads and lists them on the
+        empty query.
       </DemoNote>
     </Stack>
   )

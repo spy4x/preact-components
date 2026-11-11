@@ -513,6 +513,7 @@ export {
   type ShortcutsDialogProps,
 } from "./shortcuts-dialog.tsx"
 export {
+  clearCommandPaletteRecent,
   CommandPalette,
   type CommandPaletteBaseProps,
   type CommandPaletteGroup,

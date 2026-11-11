@@ -21,6 +21,9 @@ import type { KbdLabels } from "./kbd-keys.tsx"
 import { BADGE_BASE, BADGE_FILLED_GRAY } from "./plain-classes.ts"
 import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
 import { useBackdropPress } from "./backdrop-press.ts"
+import { addRecent, bestMatch, readRecent, recentOptions, writeRecent } from "./palette-pins.ts"
+
+export { clearCommandPaletteRecent } from "./palette-pins.ts"
 
 /** One result the palette lists. Extend it with whatever `onSelect` needs, such as an `href`. */
 export interface CommandPaletteOption {
@@ -140,6 +143,21 @@ export interface CommandPaletteLabels {
   withText: (label: string, text: string) => string
   /** The accessible name of the button that leaves a submenu or a text mode. */
   back: string
+  /** The heading over the recent picks the empty query lists, with `storageKey`. */
+  recent: string
+  /** The heading over the one command whose name or alias starts with the query. */
+  bestMatch: string
+  /**
+   * What the palette announces once typing pauses, for one result or more. No result is said by
+   * `empty`.
+   */
+  results: (count: number) => string
+  /** The word after ↑ ↓ in the key hints under the list. */
+  keysMove: string
+  /** The word after Enter in the key hints under the list. */
+  keysOpen: string
+  /** The word after Ctrl+Enter (⌘Enter on a Mac) in the key hints under the list. */
+  keysAlternative: string
 }
 
 /** English defaults for every {@link CommandPaletteLabels} entry. */
@@ -154,6 +172,12 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
   commandsHint: "> for commands",
   withText: (label, text) => `${label}: “${text}”`,
   back: "Back",
+  recent: "Recent",
+  bestMatch: "Best match",
+  results: (count) => count === 1 ? "1 result" : `${count} results`,
+  keysMove: "move",
+  keysOpen: "open",
+  keysAlternative: "alternative",
 }
 
 /**
@@ -168,6 +192,9 @@ const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
  * it is searching. A quicker answer changes the list without a flash of the loading label in between.
  */
 const SLOW_SEARCH_MS = 300
+
+/** How long, in milliseconds, typing has to pause before the palette announces the result count. */
+const COUNT_PAUSE_MS = 250
 
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
@@ -223,6 +250,14 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   showMatch?: boolean
   /** Overrides for the words `showMatch` shows; see {@link defaultCommandPaletteMatchLabels}. */
   matchLabels?: Partial<Record<CommandPaletteMatchKind, string>>
+  /**
+   * Keeps the last 10 top-level picks in `localStorage` under this key, and lists up to 5 of them
+   * under "Recent" on the empty query, newest first, skipping any no option has now. Read when the
+   * palette opens and written on a pick, never during a render; blocked or full storage only
+   * means nothing is remembered. Give each palette its own key, and call
+   * {@link clearCommandPaletteRecent} with it on sign-out. Omit it to remember nothing.
+   */
+  storageKey?: string
 }
 
 /** The local data mode: the palette filters `options` itself. */
@@ -435,6 +470,11 @@ interface Remote<T> {
  * starts with ">" lists only commands. A pick that moves focus, such as a command opening a dialog,
  * keeps it there once the palette closes.
  *
+ * A command whose name or alias starts with the query is pinned on top under "Best match". With
+ * `storageKey` the empty query lists the last picks under "Recent". Once typing pauses for 250 ms,
+ * a polite live region says how many results there are. From `sm`, for a fine pointer, a line
+ * under the list shows the keys.
+ *
  * @param props See {@link CommandPaletteProps}.
  */
 export function CommandPalette<T extends CommandPaletteOption>(
@@ -451,6 +491,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const labels = useLabels("CommandPalette", defaultCommandPaletteLabels, props.labels, {
     stateChanged: ["label", "state"],
     withText: ["label", "text"],
+    results: ["count"],
   })
   const matchLabels = useLabels(
     "CommandPalette.match",
@@ -480,6 +521,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const notice = useSignal("")
   // The kept-open command that ran last and the state it had then, until a render shows a new one.
   const ranKeptOpen = useRef<{ id: string; state: string | undefined } | null>(null)
+  // The recent picks, newest first, as storage had them when the palette last opened.
+  const recent = useSignal<readonly string[]>([])
+  // The result count the live region says, once typing has paused; `null` while it has not.
+  const counted = useSignal<number | null>(null)
   // A click on the backdrop lands on the dialog element itself; the press has to begin there too.
   const backdrop = useBackdropPress((event) => event.target === dialog.current)
 
@@ -518,8 +563,25 @@ export function CommandPalette<T extends CommandPaletteOption>(
       needleFor(at, text),
     )
   }
+  /**
+   * The groups listed at `at` for `text`. At the top level one group is pinned above the rest: the
+   * Best match for a query, or the Recent picks on the empty query. Its rows leave their own group,
+   * so no option is listed twice.
+   */
+  const groupsFor = (at: T | undefined, text: string): CommandPaletteGroup<T>[] => {
+    const listed = listFor(at, text)
+    if (at !== undefined) return groupOptions(listed)
+    const best = bestMatch(listed, needleFor(at, text))
+    const pinned: CommandPaletteGroup<T> | undefined = best !== undefined
+      ? { label: labels.bestMatch, options: [best] }
+      : text === "" && latest.current.storageKey !== undefined
+      ? { label: labels.recent, options: recentOptions(recent.value, listed) }
+      : undefined
+    if (pinned === undefined || pinned.options.length === 0) return groupOptions(listed)
+    return [pinned, ...groupOptions(listed.filter((option) => !pinned.options.includes(option)))]
+  }
   const needle = needleFor(level, composedQuery)
-  const groups = groupOptions(listFor(level, composedQuery))
+  const groups = groupsFor(level, composedQuery)
   const flat = groups.flatMap((group) => group.options)
 
   /**
@@ -604,6 +666,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
     notice.value = ""
     path.value = []
     ranKeptOpen.current = null
+    const key = latest.current.storageKey
+    recent.value = key === undefined ? [] : readRecent(key)
     if (latest.current.search !== undefined) {
       remote.value = { status: Status.IDLE, options: [] }
       ask(text, 0)
@@ -649,7 +713,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
     path.value = path.value.slice(0, -1)
     query.value = left.query
     notice.value = ""
-    const rows = groupOptions(listFor(levels.at(-2), left.query)).flatMap((group) => group.options)
+    const rows = groupsFor(levels.at(-2), left.query).flatMap((group) => group.options)
     activeIndex.value = Math.max(0, rows.findIndex((option) => option.id === left.option.id))
     input.current?.focus()
   }
@@ -673,6 +737,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
     const details: CommandPaletteSelectDetails = option.takesText
       ? { alternative, text }
       : { alternative }
+    // A top-level pick, a text row's included, joins the recent ones. The list on screen keeps its
+    // order until the next opening, so a kept-open command stays where it is.
+    const key = latest.current.storageKey
+    if (key !== undefined && (levels.length === 0 || (levels.length === 1 && option === level))) {
+      writeRecent(key, addRecent(readRecent(key), option.id))
+    }
     if (option.run !== undefined && option.keepOpen) {
       notice.value = ""
       ranKeptOpen.current = { id: option.id, state: option.state }
@@ -791,6 +861,17 @@ export function CommandPalette<T extends CommandPaletteOption>(
     ? labels.loading
     : remote.value.status === Status.ERROR
     ? labels.error
+    : ""
+  // The count is said once typing pauses, so a screen reader is not told it on every keystroke.
+  // Emptied on each change, so the same count is said again after the next pause.
+  const countFor = `${needle}\n${flat.length}\n${remote.value.status}\n${path.value.length}`
+  useEffect(() => {
+    counted.value = null
+    const pause = setTimeout(() => counted.value = flat.length, COUNT_PAUSE_MS)
+    return () => clearTimeout(pause)
+  }, [countFor])
+  const countText = status === "" && counted.value !== null && counted.value > 0
+    ? labels.results(counted.value)
     : ""
   const firstHotkey = hotkeys[0]
   const shortcuts = hotkeys.length === 0
@@ -1117,6 +1198,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
           >
             {status}
           </p>
+          <p
+            role="status"
+            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-count`}
+            class="sr-only"
+          >
+            {countText}
+          </p>
           <ul
             id={listbox}
             role="listbox"
@@ -1148,6 +1236,29 @@ export function CommandPalette<T extends CommandPaletteOption>(
                 )
             )}
           </ul>
+        </div>
+        {
+          /* The keys, for a reader with a mouse and a keyboard: from `sm`, where the main pointer
+          is fine. Hidden from screen readers, which hear the listbox's own keys. */
+        }
+        <div
+          aria-hidden="true"
+          data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-keys`}
+          class="hidden flex-wrap items-center gap-x-4 gap-y-1 border-t border-subtle px-4 py-2 text-xs text-muted sm:pointer-fine:flex"
+        >
+          <span class="inline-flex items-center gap-1">
+            <HotkeyHint keys="arrowup" apple={apple} labels={kbdLabels} />
+            <HotkeyHint keys="arrowdown" apple={apple} labels={kbdLabels} />
+            {labels.keysMove}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <HotkeyHint keys="enter" apple={apple} labels={kbdLabels} />
+            {labels.keysOpen}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <HotkeyHint keys="mod+enter" apple={apple} labels={kbdLabels} />
+            {labels.keysAlternative}
+          </span>
         </div>
       </dialog>
     </>
