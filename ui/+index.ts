@@ -509,6 +509,7 @@ export {
   rowCursorClass,
   type RowCursorOptions,
   type RowCursorRowProps,
+  stepRowCursor,
   useRowCursor,
 } from "./row-cursor.ts"
 export {

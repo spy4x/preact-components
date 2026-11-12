@@ -3344,6 +3344,8 @@ useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
   modifier, in a text field or inside a dialog; Enter on a link or a button stays with it. Only
   one list on a page should listen: give the others `enabled: false`. `DataTable`'s `cursor` uses
   it.
+- `stepRowCursor(from, step, count)` is where the cursor lands: `step` rows from `from`, held to
+  the ends; from no row (`-1`) on the first row, and in an empty list on none (`-1`).
 - `rowCursorClass` is the highlighted row's look, a selected background inside a selected
   outline, which `rowProps` already sets.
 

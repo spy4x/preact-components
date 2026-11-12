@@ -1071,6 +1071,7 @@ sliderFraction	helper	@spy4x/preact-ui	Where a value sits along the track, as a 
 sortableOffsets	helper	@spy4x/preact-ui	How far each row is shifted while the item at `from` is shown at `to`.
 sortableTarget	helper	@spy4x/preact-ui	The index a held item would drop at, from where its middle is now.
 splitTagText	helper	@spy4x/preact-ui	Split the input's text at commas: every part before the last comma is a finished tag, and the part after it is still being typed.
+stepRowCursor	helper	@spy4x/preact-ui	Where a row cursor lands: the row `step` rows from `from` (`1` for `j`, `-1` for `k`), held to the list's ends.
 swipeStep	helper	@spy4x/preact-ui	The step a finished touch asks for: `1` for a leftward swipe (next image), `-1` for a rightward one (previous image), `0` for anything that is not a swipe.
 tagInputKeyAction	helper	@spy4x/preact-ui	The whole key table of `TagInput`, decided without a DOM.
 tagSuggestions	helper	@spy4x/preact-ui	The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling once.

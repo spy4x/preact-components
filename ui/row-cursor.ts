@@ -38,6 +38,21 @@ const CONTROLS = "a[href], button, input, select, textarea, summary, [role='butt
   "[role='link'], [role='checkbox'], [role='switch'], [role='tab'], [role='option']"
 
 /**
+ * Where a row cursor lands: the row `step` rows from `from` (`1` for `j`, `-1` for `k`), held to
+ * the list's ends. From no row (`-1`) either step lands on the first row; in an empty list it lands
+ * on none (`-1`). A `from` past a list that shrank counts from its new last row.
+ *
+ * @param from The highlighted row's index, or `-1` for none.
+ * @param step How many rows to move, down for a positive number.
+ * @param count How many rows the list shows.
+ */
+export function stepRowCursor(from: number, step: number, count: number): number {
+  if (count === 0) return -1
+  const current = Math.min(from, count - 1)
+  return current < 0 ? 0 : Math.max(0, Math.min(count - 1, current + step))
+}
+
+/**
  * A keyboard cursor over a list of rows, card rows or a table's: `j` highlights the next row and
  * `k` the one before, scrolling it into view, and Enter opens the highlighted row through `onOpen`.
  * Nothing is highlighted until the first `j` or `k`, which both start on the first row; the cursor
@@ -58,9 +73,8 @@ export function useRowCursor({ count, onOpen, enabled = true }: RowCursorOptions
   const index = Math.min(cursor.value, count - 1)
 
   const move = (step: number) => {
-    if (count === 0) return
-    const from = Math.min(cursor.peek(), count - 1)
-    const next = from < 0 ? 0 : Math.max(0, Math.min(count - 1, from + step))
+    const next = stepRowCursor(cursor.peek(), step, count)
+    if (next < 0) return
     cursor.value = next
     rows.current[next]?.scrollIntoView({ block: "nearest" })
   }
