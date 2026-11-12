@@ -76,6 +76,20 @@ export const specs: Spec[] = [
     },
   },
   {
+    name: "EnhancedForm: an empty required field whose own code set a message keeps that message",
+    pageId: "ui",
+    run: async (page) => {
+      const form = requiredDemo(page)
+      // What an app's own check, or a component with native `required`, does to an empty field.
+      await form.email.evaluate((node) =>
+        (node as HTMLInputElement).setCustomValidity("This address is taken.")
+      )
+      await form.submit.click()
+      await form.email.and(page.locator(":invalid:focus")).waitFor()
+      await says(form.email, "the email field with its own message", "This address is taken.")
+    },
+  },
+  {
     name:
       "EnhancedForm: typing clears every required message the form set, picking one radio releases its sibling, and the filled form submits",
     pageId: "ui",
