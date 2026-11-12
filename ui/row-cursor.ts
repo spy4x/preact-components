@@ -33,9 +33,14 @@ export interface RowCursor {
 /** How the highlighted row looks: a quiet selected background inside a selected outline. */
 export const rowCursorClass = "bg-selected-soft outline-2 -outline-offset-2 outline-selected"
 
-/** A control that answers Enter itself, so Enter on it never opens the highlighted row. */
-const CONTROLS = "a[href], button, input, select, textarea, summary, [role='button'], " +
-  "[role='link'], [role='checkbox'], [role='switch'], [role='tab'], [role='option']"
+/**
+ * A control that answers Enter itself, so Enter on it never opens the highlighted row. A checkbox,
+ * a switch or a radio does nothing with Enter, so it is left out and Enter there opens the row.
+ */
+const CONTROLS = "a[href], button, select, textarea, summary, " +
+  "input:is([type='button'], [type='submit'], [type='reset'], [type='image']), " +
+  "[role='button'], [role='link'], [role='tab'], [role='option'], [role='menuitem'], " +
+  "[role='combobox']"
 
 /**
  * Where a row cursor lands: the row `step` rows from `from` (`1` for `j`, `-1` for `k`), held to

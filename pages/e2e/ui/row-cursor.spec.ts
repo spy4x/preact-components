@@ -86,7 +86,7 @@ export const specs: readonly Spec[] = [
       if (await currentRow(rows) !== -1) throw new Error("j moved the cursor while it was off")
 
       await keys.check()
-      // Focus is on the checkbox: Enter there belongs to it, and no row is highlighted yet anyway.
+      // No row is highlighted yet, so Enter opens nothing, on the checkbox or off it.
       await page.keyboard.press("Enter")
       await blur(page)
       await page.keyboard.press("Enter")
@@ -117,10 +117,11 @@ export const specs: readonly Spec[] = [
       }
       await highlightIs(rows, 1)
 
-      await keys.focus()
+      // Enter on a button stays with the button; on the checkbox, which ignores Enter, it opens.
+      await card.locator(`[data-e2e="elapsed-step"]`).focus()
       await page.keyboard.press("Enter")
       await nothingOpened(opened)
-      await blur(page)
+      await keys.focus()
       await page.keyboard.press("Enter")
       await opened.getByText("Opened: Nightly backup", { exact: true }).waitFor()
       return await axePasses(page, ["#demo-Elapsed"])
