@@ -114,4 +114,23 @@ export const specs: Spec[] = [
       await form.submits.getByText("submits: 1", { exact: true }).waitFor()
     },
   },
+  {
+    name:
+      "EnhancedForm: a value set by code after a refused submit, with no event, does not keep the form's message blocking the next submit",
+    pageId: "ui",
+    run: async (page) => {
+      const form = requiredDemo(page)
+      await form.email.fill("someone@example.com")
+      await form.free.check()
+      await form.size.selectOption("small")
+      await form.tags.pressSequentially("work,")
+      await form.demo.getByRole("button", { name: "Remove tag work", exact: true }).waitFor()
+      await form.submit.click()
+      await says(form.terms, "the unticked checkbox", en["EnhancedForm.requiredCheckbox"])
+      // What FileInput's drop does to its input: a value written in code, which fires no event.
+      await form.terms.evaluate((node) => (node as HTMLInputElement).checked = true)
+      await form.submit.click()
+      await form.submits.getByText("submits: 1", { exact: true }).waitFor()
+    },
+  },
 ]

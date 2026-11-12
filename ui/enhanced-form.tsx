@@ -251,8 +251,9 @@ export interface EnhancedFormProps {
  * instead. The next `input` anywhere in the form clears every message the form set, so
  * the browser checks again on the next submit; clearing them all, not only the edited one, is what
  * lets a picked radio release its unpicked siblings. `change` needs no listener of its own: every
- * control that fires it fires `input` first. A value set by script, with no event, keeps the
- * message until the next edit.
+ * control that fires it fires `input` first. A `click` anywhere in the form clears them too, before
+ * the browser checks again: a submit button's click, or the one Enter sends to the default button,
+ * so a value set in code with no event (`FileInput`'s drop) never stays blocked by a stale message.
  */
 export function EnhancedForm(
   {
@@ -288,7 +289,7 @@ export function EnhancedForm(
   // Read by the focus-restoring effect below, which must never move focus for a visitor who was
   // never engaging with this form's own controls in the first place.
   const focusInFormAtSubmitRef = useRef(false)
-  // The controls this form gave its own required message, cleared on the next edit.
+  // The controls this form gave its own required message, cleared on the next edit or click.
   const markedRef = useRef(new Set<FormControl>())
 
   useEffect(() => {
@@ -420,6 +421,7 @@ export function EnhancedForm(
       onSubmit={handleSubmit}
       onInvalidCapture={handleInvalid}
       onInputCapture={clearRequired}
+      onClickCapture={clearRequired}
       class={join("space-y-4", className)}
     >
       <div>
