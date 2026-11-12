@@ -15,8 +15,12 @@ export const specs: readonly Spec[] = [
       await page.locator(`#demo-MoneyInput [data-e2e="money-dialog-open"]`).click()
       // `showModal()` moves focus before it returns, so once the dialog is modal, focus is set.
       await page.locator(`dialog[data-e2e="guide-money-dialog"]:modal`).waitFor()
-      const focused = await page.evaluate(() => document.activeElement?.id ?? "nothing")
-      if (focused !== "guide-money-dialog-amount") throw new Error(`focus is on #${focused}`)
+      const focused = await page.evaluate(() => {
+        const active = document.activeElement
+        if (active === null) return "nothing"
+        return active.id || active.getAttribute("aria-label") || active.tagName
+      })
+      if (focused !== "guide-money-dialog-amount") throw new Error(`focus is on ${focused}`)
       return await axeCleanIn(page, `dialog[data-e2e="guide-money-dialog"]`)
     },
   },
