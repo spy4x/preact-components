@@ -377,7 +377,6 @@ export function EnhancedForm(
     const control = event.target as FormControl
     if (!control.validity?.valueMissing || control.validity.customError) return
     const text = requiredMessage(control, copy)
-    if (text === "") return
     control.setCustomValidity(text)
     markedRef.current.add(control)
   }
