@@ -148,7 +148,9 @@ describe("Elapsed", () => {
 
   it("counts to the end when there is one, whatever now is", () => {
     const end = START + (3600 + 2 * 60 + 3) * 1000
-    const html = render(<Elapsed start={new Date(START)} end={new Date(end).toISOString()} />)
+    const html = render(
+      <Elapsed start={new Date(START)} end={new Date(end).toISOString()} now={NOW} />,
+    )
     expect(html).toContain(`datetime="PT1H2M3S">1:02:03</time>`)
   })
 
@@ -182,18 +184,13 @@ describe("Elapsed", () => {
     expect(html).toContain(">125000 en</time>")
   })
 
-  it("writes the clock face in the reading language", () => {
-    const arabic = createTranslator({ language: "ar", catalogs: [] })
+  it("writes the clock face in the reading language, with its own digits", () => {
+    const egyptian = createTranslator({ language: "ar-EG", catalogs: [] })
     const html = render(
-      <I18nContext.Provider value={arabic}>
+      <I18nContext.Provider value={egyptian}>
         <Elapsed start={START} now={NOW} />
       </I18nContext.Provider>,
     )
-    expect(html).toContain(
-      `datetime="PT2M5S">${
-        new Intl.DurationFormat("ar", { style: "digital", hoursDisplay: "auto" })
-          .format({ minutes: 2, seconds: 5 })
-      }</time>`,
-    )
+    expect(html).toContain(`datetime="PT2M5S">٠٢:٠٥</time>`)
   })
 })
