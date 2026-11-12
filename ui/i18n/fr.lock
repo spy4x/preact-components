@@ -136,6 +136,9 @@ DocsNav.summary	beae47fb0bb284a8
 DocsNav.summaryNone	572cd72feb9a84e0
 EnhancedForm.done	74bb54faa1e3bd1c
 EnhancedForm.failed	4def98c892406e31
+EnhancedForm.requiredCheckbox	bb8d35d1cbc328b2
+EnhancedForm.requiredChoice	0a2d6b586843b61f
+EnhancedForm.requiredField	35a238faf5f16aba
 EnhancedForm.sending	b8ed5279e897be5d
 ErrorBoundary.description	bc6f761a9a77bf31
 ErrorBoundary.reloadLabel	fdb615579fd060a0
