@@ -64,6 +64,7 @@ import { specs as periodStepper } from "./ui/period-stepper.spec.ts"
 import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 import { specs as copyButton } from "./ui/copy-button.spec.ts"
+import { specs as enhancedForm } from "./ui/enhanced-form.spec.ts"
 
 /** Each file's specs, by its name under `e2e/ui/` without `.spec.ts`. */
 export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
@@ -128,6 +129,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "date-range-picker": dateRangePicker,
   "inline-edit": inlineEdit,
   "copy-button": copyButton,
+  "enhanced-form": enhancedForm,
 }
 
 export const specs: readonly Spec[] = Object.values(specsByFile).flat()
