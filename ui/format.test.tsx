@@ -4,7 +4,7 @@ import type { ComponentChild } from "preact"
 import { render } from "preact-render-to-string"
 import { createFormatters, type Formatters } from "@spy4x/time/format"
 import { createTranslator } from "@spy4x/platform/universal/i18n"
-import { FormatContext, OnDay, useFormat, When } from "./format.tsx"
+import { Elapsed, FormatContext, OnDay, useFormat, When } from "./format.tsx"
 import { I18nContext } from "./i18n.tsx"
 
 const NOW = Date.parse("2026-10-17T12:00:00.000Z")
@@ -135,5 +135,65 @@ describe("useFormat", () => {
     }
     inZone(tokyo, <Probe />)
     expect(seen).toBe(tokyo)
+  })
+})
+
+describe("Elapsed", () => {
+  const START = NOW - (2 * 60 + 5) * 1000
+
+  it("shows the time from start to now as a clock face in a time element with an ISO duration", () => {
+    const html = render(<Elapsed start={START} now={NOW} />)
+    expect(html).toBe(`<time class="tabular-nums" datetime="PT2M5S">02:05</time>`)
+  })
+
+  it("counts to the end when there is one, whatever now is", () => {
+    const end = START + (3600 + 2 * 60 + 3) * 1000
+    const html = render(<Elapsed start={new Date(START)} end={new Date(end).toISOString()} />)
+    expect(html).toContain(`datetime="PT1H2M3S">1:02:03</time>`)
+  })
+
+  it("rounds down to whole seconds and writes PT0S for no time at all", () => {
+    expect(render(<Elapsed start={NOW} end={NOW + 999} />)).toContain(`datetime="PT0S">00:00<`)
+    expect(render(<Elapsed start={NOW} end={NOW + 3_600_000} />)).toContain(`datetime="PT1H">`)
+  })
+
+  it("counts a start after the end as no time, never a negative duration", () => {
+    expect(render(<Elapsed start={NOW} end={NOW - 60_000} />)).toContain(`datetime="PT0S">00:00<`)
+  })
+
+  it("treats a null end as still running", () => {
+    expect(render(<Elapsed start={START} end={null} now={NOW} />)).toContain(">02:05</time>")
+  })
+
+  it("shows the missing label for a start it cannot read", () => {
+    expect(render(<Elapsed start="not a date" now={NOW} />)).toBe("<span>-</span>")
+    expect(render(<Elapsed start={null} labels={{ missing: "Not started" }} />))
+      .toBe("<span>Not started</span>")
+  })
+
+  it("takes the duration text from labels, given the milliseconds and the language", () => {
+    const html = render(
+      <Elapsed
+        start={START}
+        now={NOW}
+        labels={{ duration: (ms, language) => `${ms} ${language}` }}
+      />,
+    )
+    expect(html).toContain(">125000 en</time>")
+  })
+
+  it("writes the clock face in the reading language", () => {
+    const arabic = createTranslator({ language: "ar", catalogs: [] })
+    const html = render(
+      <I18nContext.Provider value={arabic}>
+        <Elapsed start={START} now={NOW} />
+      </I18nContext.Provider>,
+    )
+    expect(html).toContain(
+      `datetime="PT2M5S">${
+        new Intl.DurationFormat("ar", { style: "digital", hoursDisplay: "auto" })
+          .format({ minutes: 2, seconds: 5 })
+      }</time>`,
+    )
   })
 })
