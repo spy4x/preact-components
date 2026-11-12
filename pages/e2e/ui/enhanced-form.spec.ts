@@ -110,6 +110,9 @@ export const specs: Spec[] = [
       await says(form.free, "the first radio", en["EnhancedForm.requiredChoice"])
       await submitted(form.submits, 0)
       await form.team.check()
+      if ((await validity(form.free)).custom) {
+        throw new Error(`picking Team left Free's message set`)
+      }
       await form.submit.click()
       await form.submits.getByText("submits: 1", { exact: true }).waitFor()
     },
