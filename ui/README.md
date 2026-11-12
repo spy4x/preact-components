@@ -1502,6 +1502,14 @@ string for a key of `labels` makes the region say nothing in that status, and
 — the server's error, say — is the only message. The region still renders, empty, and still takes
 focus when the visitor's submit button is disabled under them.
 
+An empty required control says so in the app's language rather than the browser's. The browser's
+own check stays on, but when it reports a control whose value is missing and whose component set
+no message of its own (`TagInput`, `Combobox`, `MoneyInput` and `ColorField` do), the form gives it
+the catalog's `requiredField` ("Fill in this field."), `requiredCheckbox` ("Check this box to
+continue.") or `requiredChoice` ("Choose an option.", for a radio group or a `<select>`) through
+`setCustomValidity`. The next `input` in the form clears every message it set, so the
+next submit checks again. Each is a `labels` key; `""` keeps the browser's own message.
+
 A form built on this can carry a honeypot from `honeypot`: `honeypotField(name?, label?)` renders
 an off-screen field simple bots fill in. Its server half comes from
 `@spy4x/platform/universal/honeypot`: `HONEYPOT_FIELD_NAME` (`hp-field`, deliberately not a word a
