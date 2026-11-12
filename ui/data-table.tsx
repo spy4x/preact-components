@@ -474,9 +474,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
 
   return (
     <Stack class={className}>
-      {cursor && bodyKeys !== undefined
-        ? <CursorTable {...table} rows={visible} cursor={cursor} />
-        : <Table {...table} />}
+      {cursor ? <CursorTable {...table} rows={visible} cursor={cursor} /> : <Table {...table} />}
       {paging && (
         <Pagination
           page={currentPage ?? 1}
