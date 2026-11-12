@@ -670,6 +670,7 @@ DataTableBaseProps	type	@spy4x/preact-ui	The props both modes share — see `Dat
 DataTableClientProps	type	@spy4x/preact-ui	Client mode: `DataTable` sorts and pages the whole row set — see `DataTableMode`.
 DataTableColumn	type	@spy4x/preact-ui	One column of a `DataTable`: a field to read and maybe sort by, or a display-only slot.
 DataTableColumnAlign	type	@spy4x/preact-ui	Horizontal alignment of one column's header and cells.
+DataTableCursor	type	@spy4x/preact-ui	`DataTableBaseProps.cursor`: what Enter does, and whether the keys listen.
 DataTableDataColumn	type	@spy4x/preact-ui	A column that reads one field of a row, and may be sorted by it.
 DataTableDisplayColumn	type	@spy4x/preact-ui	A column with no field of its own — an actions column, typically — that only ever renders what `render` returns.
 DataTableMode	type	@spy4x/preact-ui	Where a `DataTable`'s rows are sorted and paged.
@@ -702,7 +703,9 @@ DropdownAlign	type	@spy4x/preact-ui	The edge of the trigger a `Dropdown` menu li
 DropdownBaseProps	type	@spy4x/preact-ui	Everything about a dropdown except how its trigger is named.
 DropdownItem	component	@spy4x/preact-ui	One item of a `Dropdown`'s menu.
 DropdownTriggerName	type	@spy4x/preact-ui	How the trigger button gets its accessible name.
+ELAPSED_LABELS	constant	@spy4x/preact-ui	The default words of `Elapsed`.
 ENGLISH	constant	@spy4x/preact-ui	The translator the components read when no `I18nContext` provider is around them.
+Elapsed	component	@spy4x/preact-ui	How long something has run, `02:05`, in a `<time>` whose `datetime` is the same duration in ISO form (`PT2M5S`).
 EmptyState	component	@spy4x/preact-ui	"Nothing here" placeholder for a list, table or search that produced no rows.
 EnhancedForm	component	@spy4x/preact-ui	A real `<form>` that posts on its own, and gets nicer once JavaScript has run.
 EnhancedFormStatus	type	@spy4x/preact-ui	Where one `EnhancedForm` is in its submit cycle.
@@ -851,6 +854,9 @@ RadioOption	type	@spy4x/preact-ui	One choice of a `RadioGroup`.
 ResendButton	component	@spy4x/preact-ui	The "Not there?" line under a "Check your inbox" message: a sentence counting down until the mail may be sent again, then a ghost button that sends it.
 ResolvedDateTime	type	@spy4x/preact-ui	What `resolveDateTime` found for one wall-clock value in one zone.
 Rich	component	@spy4x/preact-ui	A translated message with spans the caller renders, such as a link inside a sentence.
+RowCursor	type	@spy4x/preact-ui	The cursor `useRowCursor` returns.
+RowCursorOptions	type	@spy4x/preact-ui	Options of `useRowCursor`.
+RowCursorRowProps	type	@spy4x/preact-ui	What `RowCursor.rowProps` gives each row: spread it on the row's element.
 RowId	type	@spy4x/preact-ui	The id of a row: what the caller's list of ids holds.
 RunStep	type	@spy4x/preact-ui	One step of a `RunSteps` list.
 RunStepState	type	@spy4x/preact-ui	Where a step of a run stands.
@@ -886,8 +892,8 @@ SortableList	component	@spy4x/preact-ui	A list whose items are reordered by drag
 SortablePlace	type	@spy4x/preact-ui	Where an item is, as the announcements describe it.
 SpinnerSize	type	@spy4x/preact-ui	Rendered size of a `LoadingSpinner`.
 Stack	component	@spy4x/preact-ui	Children in a column, a named `gap` apart.
-StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `In progress`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`.
-StatusMarkStatus	type	@spy4x/preact-ui	A project or feature's lifecycle state.
+StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `In progress`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline` for a project; `Running`, `Done`, `Parked`, `Blocked`, `Waiting`, `Failed`, `Out of time`, `Out of budget`, `Out of turns`, `Stopped`, `Queued`, `Claimed` for a job or a queued task.
+StatusMarkStatus	type	@spy4x/preact-ui	A project's or feature's lifecycle state (`ready` to `offline`), or the state of a background job or a queued task (`running` to `claimed`).
 StepItem	type	@spy4x/preact-ui	One step of a `Steps` list.
 Steps	component	@spy4x/preact-ui	A numbered "how it works" list: each step a heading and a line of text, joined by a thin line.
 StoryTile	component	@spy4x/preact-ui	One post of a photo-led blog, made to sit beside `LookTile`s: a tall 3:4 cover with no border, then the topic, the title and a muted line with the date and the reading time.
@@ -1054,6 +1060,7 @@ resolveDuration	helper	@spy4x/preact-ui	How long one toast has, in milliseconds:
 resolveImage	helper	@spy4x/preact-ui	Turn an event target into a lightbox image, or `null` when the event missed an image.
 resolveMoneyInputEdit	helper	@spy4x/preact-ui	The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result.
 restoreFocus	helper	@spy4x/preact-ui	Move focus back to a captured element.
+rowCursorClass	helper	@spy4x/preact-ui	How the highlighted row looks: a quiet selected background inside a selected outline.
 rowKeyAttribute	helper	@spy4x/preact-ui	Attribute a row's first cell carries so a page — or a browser check — can find that row by the identity `DataTableProps.rowKey` gives it, without depending on rendered cell text.
 scrollLockPadding	helper	@spy4x/preact-ui	Padding, in pixels, that keeps a scroll-locked page from shifting.
 selectTextareaLine	helper	@spy4x/preact-ui	Focuses a textarea, selects one of its lines and scrolls the textarea so that line sits in the middle of it.
@@ -1084,6 +1091,7 @@ useFreshError	hook	@spy4x/preact-ui	Hides an error left from an earlier attempt,
 useHotkeyClick	hook	@spy4x/preact-ui	Bind a key to one element: pressing it clicks the element through `clickByHotkey`.
 useHotkeys	hook	@spy4x/preact-ui	Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches.
 useLabels	hook	@spy4x/preact-ui	The words a component shows: each field of `defaults` taken from the caller's `labels` when it gives one, else from the catalog key `<name>.<field>`, else from `defaults`.
+useRowCursor	hook	@spy4x/preact-ui	A keyboard cursor over a list of rows, card rows or a table's: `j` highlights the next row and `k` the one before, scrolling it into view, and Enter opens the highlighted row through `onOpen`.
 useSucceeded	hook	@spy4x/preact-ui	Calls `onDone` once when an action that was pending ends without failing: how a dialog learns that its form went through and it can close.
 useT	hook	@spy4x/preact-ui	The translator of the nearest `I18nContext`: `useT().t("Pagination.nextLabel")`.
 wrapIndex	helper	@spy4x/preact-ui	Move `delta` steps through a sequence of `total` items, wrapping at either end.

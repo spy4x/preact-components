@@ -80,7 +80,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `title?` (visible label; without it, the icon alone), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with a `title`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
 - `CurrencyField` (`currency-field`): `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`
 - `DashboardGrid` (`widget-card`): `items` (`{ id, size: "stat" | "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row
-- `DataTable` (`data-table`): `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`
+- `DataTable` (`data-table`): `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `cursor?` (`{ onOpen(row), enabled? }`: `j`/`k` highlight a row, Enter opens it, through `useRowCursor`), `class?`
 - `DateRangePicker` (`date-range-picker`): `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)
 - `DateTimeField` (`date-time-field`): `id`, `label`, `value` (ISO instant or `null`), `onChange`, `timeZone` (IANA; the zone and its offset show beside the input), `min?`, `max?`, `hint?`, `error?`, `required?`, `disabled?`, `labels?` — a `datetime-local` read and written as an instant
 - `DemoVideo` (`demo-video`): `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link
@@ -88,6 +88,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `DocsNav` (`docs-nav`): `groups` (`{ title, items: { href, title }[] }[]`), `current?` (the `href` on screen, `aria-current="page"`), `labels?` — a side list from `lg`, a `<details>` below it; no JavaScript
 - `Dropdown` (`dropdown`): `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal` (`"end"` by default; `"start"`, or the aliases `"left"` and `"right"`, all mirroring under `dir="rtl"`)
 - `DropdownItem` (`dropdown`): `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?`, `checked?`, `multiple?`, `keepOpen?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before
+- `Elapsed` (`format`): `start`, `end?` (left out or `null`: still running, ticks each second), `now?` (epoch milliseconds; given, nothing ticks), `labels?` (`duration`, `missing`), `class?` — `02:05` in a `<time datetime="PT2M5S">`
 - `EmptyState` (`empty-state`): `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)
 - `EnhancedForm` (`enhanced-form`): `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration
 - `ErrorBoundary` (`error-boundary`): `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`
@@ -167,11 +168,11 @@ Each line: the component, its subpath, then its ports and key props.
 - `Slider` (`slider`): `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`
 - `SortableList` (`sortable-list`): `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard
 - `Stack` (`layout`): `gap?` (default `md`), `as?`, `class?` — a column
-- `StatusMark` (`status-mark`): `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape
+- `StatusMark` (`status-mark`): `status` (a project's `ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`, or a job's `running`/`done`/`parked`/`blocked`/`waiting`/`failed`/`out-of-time`/`out-of-budget`/`out-of-turns`/`stopped`/`queued`/`claimed`; `running` pulses, and holds still under reduced motion), `label?` — a sibling of `Badge`, which has no shape
 - `Steps` (`steps`): `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter
 - `StoryTile` (`story-tile`): `href`, `title`, `publishedAt`, `topic?`, `readMinutes?`, `cover?` (`{ variants, alt, sizes? }`), `lead?`, `priority?`, `viewTransitionName?`, `headingLevel?`, `navigate?`, `labels?` — a 3:4 cover (or the title on a panel) as the card, one link; dates in UTC; no JavaScript
 - `SwatchChips` (`swatch-chips`): `legend`, `name`, `options` (`{ value, name, color, disabled?, id? }[]`), `defaultValue?` or `value?`, `onChange?` — `RadioChips` with a colour swatch before each name; works without JavaScript
-- `Table` (`table`): `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`
+- `Table` (`table`): `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`, `rowProps?` (props per body row, such as `useRowCursor`'s)
 - `Tabs` (`tabs`): `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`
 - `TagInput` (`tag-input`): `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip
 - `Textarea` (`input`): native textarea attrs, `class`; forwards `ref`
@@ -1902,6 +1903,16 @@ The distance is English (`a moment ago`, `3 days ago`, from `WHEN_LABELS.relativ
 never changes the language. `labels.relative(at, now)` replaces the distance text.
 `now` fixes the present for a render whose text must not depend on the clock (a test, a demo).
 
+`Elapsed` shows how long something has run, `02:05` or `1:02:03`, in a `<time>` whose `datetime`
+is the ISO duration (`PT2M5S`). Without an `end` (or with `end={null}`) it ticks once a second, from
+an effect, so the server draws the time of the render and the browser carries on; give `now` for
+text that must not move. A start after the end counts as no time.
+
+```tsx
+<StatusMark status="running" /> <Elapsed start={job.startedAt} />
+<StatusMark status="done" /> <Elapsed start={job.startedAt} end={job.endedAt} />
+```
+
 ## FileInput
 
 A real `<input type="file">`, hidden with `sr-only` rather than `display: none`, so it keeps the
@@ -3024,6 +3035,8 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 - `useFormat()` returns the nearest `FormatContext` value, for a component that writes a date
   itself (`useFormat().dateTime(at)`).
 - `WHEN_LABELS` holds the English words `When` and `OnDay` use: `missing`, `title` and `relative`.
+- `ELAPSED_LABELS` holds the words of `Elapsed`: `missing` (`-`) and `duration(milliseconds, language)`,
+  the clock face `Intl.DurationFormat` writes in that language (`02:05`, `1:02:03`).
 
 ### DateTimeField (`./date-time-field`)
 
@@ -3319,6 +3332,25 @@ useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
   (`!==`, so a message with the same text) moves nothing: clear it while the next attempt runs if a
   repeat must take focus again. `T` defaults to `HTMLInputElement`, so the ref goes straight onto
   an `<input>`.
+
+### useRowCursor (`./row-cursor`)
+
+- `useRowCursor({ count, onOpen, enabled? })` is a keyboard cursor over a list of rows: `j`
+  highlights the next row and `k` the one before, scrolling it into view, and Enter calls
+  `onOpen(index)`. It returns `{ index, rowProps }`; spread `rowProps(index)` on each row for its
+  `aria-current`, its highlight and a ref. Nothing is highlighted before the first `j` or `k`, both
+  start on the first row, the cursor stops at either end, and an empty list ignores the keys. The
+  keys match the physical key too, so they work on a Cyrillic layout, and do nothing with a
+  modifier, in a text field or inside a dialog; Enter on a link or a button stays with it. Only
+  one list on a page should listen: give the others `enabled: false`. `DataTable`'s `cursor` uses
+  it.
+- `rowCursorClass` is the highlighted row's look, a selected background inside a selected
+  outline, which `rowProps` already sets.
+
+```tsx
+const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[index]) })
+<ul>{jobs.map((job, index) => <li key={job.id} {...cursor.rowProps(index)}>{job.name}</li>)}</ul>
+```
 
 ### useFocusOnChange (`./use-focus-on-change`)
 
