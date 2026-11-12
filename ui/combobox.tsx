@@ -597,6 +597,11 @@ export interface ComboboxProps<T> extends ComboboxNamingProps {
   /** Shown in the input while nothing is selected. English default, `"Select…"`; override at will. */
   placeholder?: string
   /**
+   * Renders `autofocus` on the input, so a `Modal` focuses it on open; the list then opens as on
+   * any other focus.
+   */
+  autoFocus?: boolean
+  /**
    * Shown instead of the list when the query matches nothing. A string, or a function of the query.
    *
    * English default, `"No matches"`; pass your own to translate it or to say something more
@@ -806,6 +811,7 @@ export function Combobox<T>({
   renderOption,
   isItemDisabled,
   placeholder: placeholderProp,
+  autoFocus,
   emptyMessage: emptyMessageProp,
   countMessage: countMessageProp,
   loading = false,
@@ -1199,6 +1205,7 @@ export function Combobox<T>({
           role="combobox"
           value={inputValue}
           placeholder={placeholder}
+          autofocus={autoFocus}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
           // Described by the region while the empty message is what it holds, and never while the

@@ -2153,6 +2153,12 @@ export const inputDemos = {
         type: "string / boolean",
         description: "Set by `Field`: its messages describe the input, and an error marks it.",
       },
+      {
+        name: "autoFocus",
+        type: "boolean",
+        default: "false",
+        description: "Focuses the input when a `Modal` around it opens; the list opens with it.",
+      },
     ],
     snippet: `<Combobox
   items={cities}

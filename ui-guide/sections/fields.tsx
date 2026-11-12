@@ -23,6 +23,7 @@ import {
   Input,
   InputButton,
   ListField,
+  Modal,
   MoneyInput,
   QuickAdd,
   Radio,
@@ -582,7 +583,61 @@ function MoneyInputDemo() {
       >
         <MoneyInput value={yen.value} currency="JPY" onChange={(value) => yen.value = value} />
       </Field>
+      <MoneyInputDialogDemo />
     </Stack>
+  )
+}
+
+/**
+ * A `MoneyInput` with `autoFocus` as the first field of a `Modal`: the dialog opens with the
+ * amount focused, not the close button, so typing and Enter go to the form.
+ */
+function MoneyInputDialogDemo() {
+  const open = useSignal(false)
+  const limit = useSignal<number | null>(50000)
+  const close = () => open.value = false
+  return (
+    <Cluster>
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="money-dialog-open"
+        onClick={() => open.value = true}
+      >
+        Set a limit
+      </Button>
+      {open.value && (
+        <Modal
+          open
+          onClose={close}
+          title="Monthly limit"
+          dataE2E="guide-money-dialog"
+          footer={
+            <>
+              <Button variant="outline" onClick={close}>Cancel</Button>
+              <Button type="submit" form="guide-money-dialog-form">Save limit</Button>
+            </>
+          }
+        >
+          <form
+            id="guide-money-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              close()
+            }}
+          >
+            <Field id="guide-money-dialog-amount" label="Limit (EUR)">
+              <MoneyInput
+                value={limit.value}
+                currency="EUR"
+                autoFocus
+                onChange={(value) => limit.value = value}
+              />
+            </Field>
+          </form>
+        </Modal>
+      )}
+    </Cluster>
   )
 }
 
@@ -1236,6 +1291,12 @@ export const fieldDemos = {
         default: "false",
         description: "The browser refuses a submit while the field is empty; `Field` sets it.",
       },
+      {
+        name: "autoFocus",
+        type: "boolean",
+        default: "false",
+        description: "Focuses the field when a `Modal` around it opens, instead of Close.",
+      },
     ],
     snippet: `<Field id="price" label="Price">
   <MoneyInput
@@ -1268,6 +1329,12 @@ export const fieldDemos = {
         name: "recent",
         type: "string[]",
         description: "Codes listed first while nothing is typed.",
+      },
+      {
+        name: "autoFocus",
+        type: "boolean",
+        default: "false",
+        description: "Focuses the field when a `Modal` around it opens.",
       },
     ],
     snippet: `<Field id="currency" label="Currency">
