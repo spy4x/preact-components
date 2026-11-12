@@ -15,9 +15,57 @@ const LABELS: Record<StatusMarkStatus, string> = {
   outcome: "Outcome",
   live: "Live",
   offline: "Offline",
+  running: "Running",
+  done: "Done",
+  parked: "Parked",
+  blocked: "Blocked",
+  waiting: "Waiting",
+  failed: "Failed",
+  "out-of-time": "Out of time",
+  "out-of-budget": "Out of budget",
+  "out-of-turns": "Out of turns",
+  stopped: "Stopped",
+  queued: "Queued",
+  claimed: "Claimed",
 }
 
 const STATUSES = Object.keys(LABELS) as StatusMarkStatus[]
+
+/** A project's lifecycle states, shown side by side and told apart by shape. */
+const PROJECT_STATUSES: StatusMarkStatus[] = [
+  "ready",
+  "in-use",
+  "beta",
+  "wip",
+  "paused",
+  "archived",
+  "known-issue",
+  "outcome",
+  "live",
+  "offline",
+]
+
+/** A job's and a queued task's states, shown side by side and told apart by shape. */
+const JOB_STATUSES: StatusMarkStatus[] = [
+  "running",
+  "done",
+  "parked",
+  "blocked",
+  "waiting",
+  "failed",
+  "out-of-time",
+  "out-of-budget",
+  "out-of-turns",
+  "stopped",
+  "queued",
+  "claimed",
+]
+
+/** The SVG markup a status draws. */
+function shapeOf(status: StatusMarkStatus): string {
+  const html = render(<StatusMark status={status} />)
+  return html.slice(html.indexOf("<svg"), html.indexOf("</svg>"))
+}
 
 describe("StatusMark", () => {
   it("renders the default English label for every status", () => {
@@ -63,7 +111,7 @@ describe("StatusMark", () => {
     for (const status of STATUSES) {
       const html = render(<StatusMark status={status} />)
       const outer = html.slice(0, html.indexOf(">") + 1)
-      expect(outer).not.toMatch(/text-(success|muted|warning|danger|foreground)/)
+      expect(outer).not.toMatch(/text-(success|muted|warning|danger|foreground|info)/)
     }
   })
 
@@ -81,6 +129,18 @@ describe("StatusMark", () => {
       outcome: "text-foreground",
       live: "text-success",
       offline: "text-muted",
+      running: "text-info animate-pulse motion-reduce:animate-none",
+      done: "text-success",
+      parked: "text-muted",
+      blocked: "text-warning",
+      waiting: "text-warning",
+      failed: "text-danger",
+      "out-of-time": "text-danger",
+      "out-of-budget": "text-danger",
+      "out-of-turns": "text-danger",
+      stopped: "text-muted",
+      queued: "text-muted",
+      claimed: "text-muted",
     }
     const actual = Object.fromEntries(STATUSES.map((status) => {
       const html = render(<StatusMark status={status} />)
@@ -93,12 +153,24 @@ describe("StatusMark", () => {
     expect(actual).toEqual(expected)
   })
 
-  it("renders a different SVG for every status, so the shapes are distinct", () => {
-    const svgs = STATUSES.map((status) => {
+  it("splits every status into the project set or the job set, never both", () => {
+    expect([...PROJECT_STATUSES, ...JOB_STATUSES].sort()).toEqual([...STATUSES].sort())
+  })
+
+  it("renders a different SVG for every project status, so the shapes are distinct", () => {
+    expect(new Set(PROJECT_STATUSES.map(shapeOf)).size).toBe(PROJECT_STATUSES.length)
+  })
+
+  it("renders a different SVG for every job status, so the shapes are distinct", () => {
+    expect(new Set(JOB_STATUSES.map(shapeOf)).size).toBe(JOB_STATUSES.length)
+  })
+
+  it("gives only the running shape the pulse class and its reduced-motion switch", () => {
+    for (const status of STATUSES) {
       const html = render(<StatusMark status={status} />)
-      return html.slice(html.indexOf("<svg"), html.indexOf("</svg>"))
-    })
-    expect(new Set(svgs).size).toBe(STATUSES.length)
+      const pulses = html.includes("animate-pulse motion-reduce:animate-none")
+      expect({ status, pulses }).toEqual({ status, pulses: status === "running" })
+    }
   })
 
   it("draws every shape in the tone's colour or a theme token, never a literal colour", () => {

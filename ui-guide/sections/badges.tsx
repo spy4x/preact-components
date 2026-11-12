@@ -107,19 +107,47 @@ const statuses: Record<StatusMarkStatus, string> = {
   outcome: "outcome",
   live: "live",
   offline: "offline",
+  running: "running",
+  done: "done",
+  parked: "parked",
+  blocked: "blocked",
+  waiting: "waiting",
+  failed: "failed",
+  "out-of-time": "out-of-time",
+  "out-of-budget": "out-of-budget",
+  "out-of-turns": "out-of-turns",
+  stopped: "stopped",
+  queued: "queued",
+  claimed: "claimed",
 }
 
-/** The ten statuses in rows of at most three, so no row wraps a lone status at half width. */
+/**
+ * The ten project statuses, then the twelve job and queue statuses, in rows of at most three, so no
+ * row wraps a lone status at half width. `data-e2e="status-mark-jobs"` holds the job set, which
+ * `pages/e2e/ui/status-mark.spec.ts` reads.
+ */
 function StatusMarkRow() {
   const all = entries(statuses)
-  const rows = [all.slice(0, 3), all.slice(3, 6), all.slice(6, 8), all.slice(8)]
+  const project = all.slice(0, 10)
+  const jobs = all.slice(10)
+  const rows = [project.slice(0, 3), project.slice(3, 6), project.slice(6, 8), project.slice(8)]
+  const jobRows = [0, 3, 6, 9].map((start) => jobs.slice(start, start + 3))
   return (
-    <Stack gap="sm">
-      {rows.map((row) => (
-        <Cluster key={row[0][0]} gap="md">
-          {row.map(([status]) => <StatusMark key={status} status={status} />)}
-        </Cluster>
-      ))}
+    <Stack gap="md">
+      <Stack gap="sm">
+        {rows.map((row) => (
+          <Cluster key={row[0][0]} gap="md">
+            {row.map(([status]) => <StatusMark key={status} status={status} />)}
+          </Cluster>
+        ))}
+      </Stack>
+      <Stack gap="sm" data-e2e="status-mark-jobs">
+        {jobRows.map((row) => (
+          <Cluster key={row[0][0]} gap="md">
+            {row.map(([status]) => <StatusMark key={status} status={status} />)}
+          </Cluster>
+        ))}
+      </Stack>
     </Stack>
   )
 }
@@ -184,11 +212,13 @@ export const badgeDemos = {
   },
   StatusMark: {
     summary:
-      "A project's or a feature's lifecycle state, as a shape and a word that read without colour.",
+      "A project's, a feature's or a job's state, as a shape and a word that read without colour.",
     wide: false,
     snippet: `<StatusMark status="ready" />
 <StatusMark status="known-issue" label="Flaky on Safari" />
-<StatusMark status="outcome" label="Acquired 2023" />`,
+<StatusMark status="outcome" label="Acquired 2023" />
+<StatusMark status="running" />
+<StatusMark status="out-of-budget" />`,
     render: () => <StatusMarkRow />,
   },
 } satisfies DemoFragment
