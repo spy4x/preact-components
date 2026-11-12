@@ -611,6 +611,7 @@ function MoneyInputDialogDemo() {
           open
           onClose={close}
           title="Monthly limit"
+          cancelLabel="Close"
           dataE2E="guide-money-dialog"
           footer={
             <>
