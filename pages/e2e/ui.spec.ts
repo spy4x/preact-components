@@ -62,6 +62,7 @@ import { specs as smallFixes } from "./ui/small-fixes.spec.ts"
 import { specs as segmentedControl } from "./ui/segmented-control.spec.ts"
 import { specs as rightToLeft } from "./ui/right-to-left.spec.ts"
 import { specs as periodStepper } from "./ui/period-stepper.spec.ts"
+import { specs as usageMeter } from "./ui/usage-meter.spec.ts"
 import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 import { specs as copyButton } from "./ui/copy-button.spec.ts"
@@ -127,6 +128,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "segmented-control": segmentedControl,
   "right-to-left": rightToLeft,
   "period-stepper": periodStepper,
+  "usage-meter": usageMeter,
   "date-range-picker": dateRangePicker,
   "inline-edit": inlineEdit,
   "copy-button": copyButton,
