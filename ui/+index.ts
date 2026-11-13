@@ -161,6 +161,13 @@ export {
   type DateRangePresetOption,
 } from "./date-range-picker.tsx"
 export {
+  DecisionCard,
+  type DecisionCardHeadingLevel,
+  type DecisionCardLabels,
+  type DecisionCardOption,
+  type DecisionCardProps,
+} from "./decision-card.tsx"
+export {
   DemoVideo,
   type DemoVideoDarkPoster,
   type DemoVideoPoster,

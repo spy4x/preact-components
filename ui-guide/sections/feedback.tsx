@@ -54,6 +54,7 @@ import { render } from "preact"
 import { useEffect, useMemo, useRef, useState } from "preact/hooks"
 import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
+import { decisionCardDemos } from "./decision-card.tsx"
 import { DemoNote } from "./demo-note.tsx"
 import { onboardingDemos } from "./onboarding.tsx"
 import type { DemoFragment } from "../registry.ts"
@@ -1911,4 +1912,6 @@ export const leaveGuard = createLeaveGuard()
 />`,
     render: () => <ResendButtonDemo />,
   },
+  // After ResendButton, so the narrow cards above keep their columns.
+  ...decisionCardDemos,
 } satisfies DemoFragment
