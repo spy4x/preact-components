@@ -915,8 +915,15 @@ export function CommandPalette<T extends CommandPaletteOption>(
   // The count is said once typing pauses, so a screen reader is not told it on every keystroke.
   // Emptied on each change, so the same count is said again after the next pause.
   const countFor = `${needle}\n${flat.length}\n${remote.value.status}\n${path.value.length}`
+  const mounted = useRef(false)
   useEffect(() => {
     counted.value = null
+    // Nothing is said for what the palette shows when it mounts: nobody has typed yet, and a count
+    // drawn a moment after the page loaded made it differ from the server's page.
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
     const pause = setTimeout(() => counted.value = flat.length, COUNT_PAUSE_MS)
     return () => clearTimeout(pause)
   }, [countFor])
