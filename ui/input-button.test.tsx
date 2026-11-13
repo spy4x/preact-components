@@ -7,7 +7,7 @@ describe("InputButton", () => {
   it("renders an input with the shipped input class and a trailing button", () => {
     const html = render(<InputButton icon="🔍" iconLabel="Search" />)
 
-    expect(html).toContain('class="pc-input pr-12"')
+    expect(html).toContain('class="pc-input pe-12"')
     expect(html).toContain('class="btn-input-icon"')
     expect(html.indexOf("<input")).toBeLessThan(html.indexOf("<button"))
   })
@@ -16,7 +16,7 @@ describe("InputButton", () => {
     const html = render(<InputButton icon="🔍" iconLabel="Search" />)
 
     expect(html).toContain('class="relative"')
-    expect(html).toContain('class="absolute top-1.5 right-1.5"')
+    expect(html).toContain('class="absolute top-1.5 end-1.5"')
   })
 
   it("names the icon button and gives it a tooltip", () => {
@@ -68,11 +68,11 @@ describe("InputButton", () => {
 
   it("takes a wider icon margin for a text button", () => {
     const html = render(
-      <InputButton icon="Go" iconLabel="Run" iconMarginClass="pr-16" />,
+      <InputButton icon="Go" iconLabel="Run" iconMarginClass="pe-16" />,
     )
 
-    expect(html).toContain('class="pc-input pr-16"')
-    expect(html).not.toContain("pr-12")
+    expect(html).toContain('class="pc-input pe-16"')
+    expect(html).not.toContain("pe-12")
   })
 
   it("merges a caller class over the reserved right padding", () => {
@@ -81,7 +81,7 @@ describe("InputButton", () => {
     )
 
     expect(html).toContain("w-full")
-    expect(html).toContain("pr-12")
+    expect(html).toContain("pe-12")
     expect(html).toContain('class="relative max-w-xs"')
   })
 })

@@ -49,6 +49,13 @@ export type DropdownTriggerName =
     triggerLabel?: never
   }
 
+/**
+ * The `name` of the exclusive `<details>` group that every library menu drawn as a `<details>` joins:
+ * a `Dropdown` before it hydrates, and `SiteHeader`'s mobile menu. The browser closes the other
+ * members when one opens, with no JavaScript. A hydrated `Dropdown` closes them as it opens too.
+ */
+export const MENU_GROUP = "pc-menu"
+
 /** Everything about a dropdown except how its trigger is named. */
 export interface DropdownBaseProps {
   /** Content of the trigger button. */
@@ -57,24 +64,32 @@ export interface DropdownBaseProps {
   triggerClasses?: string
   /** Sets `data-e2e` on the trigger button. */
   triggerDataE2E?: string
-  /** Utilities for the root container; defaults to `relative inline-flex text-left`. */
+  /** Utilities for the root container; defaults to `relative inline-flex text-start`. */
   containerClasses?: string
   /** Extra utilities for the panel. */
   panelClasses?: string
   /** Menu content. Items are {@link DropdownItem}s; anything else the keyboard cannot reach. */
   children: ComponentChildren
   /**
-   * Which way the menu opens. `"auto"`, the default, opens it down unless it would run past the
-   * bottom of the viewport and there is more room above the trigger (see {@link dropdownOpensUp}).
+   * Which way the menu opens. `"auto"`, the default, prefers down: it flips up only when the menu
+   * does not fit below the trigger but fits above it; otherwise a menu that runs past the bottom of
+   * the viewport scrolls the page to show itself (see {@link dropdownOpensUp}).
    */
   vertical?: "auto" | "up" | "down"
-  /** Horizontal anchor relative to the trigger. Defaults to `"right"`. */
-  horizontal?: "left" | "right"
+  /**
+   * Which edge of the trigger the menu lines up with: `"end"`, the default, or `"start"`, the ends
+   * of a line in the page's reading direction, so the menu mirrors in a right-to-left page.
+   * `"left"` and `"right"` are the old names of `"start"` and `"end"`, and mirror the same way.
+   */
+  horizontal?: DropdownAlign
   /** Accessible name for the menu, applied as `aria-label` on the panel. */
   menuLabel?: string
 }
 
 export type DropdownProps = DropdownBaseProps & DropdownTriggerName
+
+/** The edge of the trigger a {@link Dropdown} menu lines up with; `left` and `right` are aliases. */
+export type DropdownAlign = "start" | "end" | "left" | "right"
 
 /**
  * Index the open menu moves focus to for `key`, or `undefined` for a key the menu does not own.
@@ -113,9 +128,11 @@ export function nextMenuIndex(key: string, current: number, count: number): numb
 const PANEL_GAP = 8
 
 /**
- * Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the
- * trigger and the bottom of the viewport, and there is more room above the trigger than below.
- * When neither side fits, the roomier side wins, because that is the side that hides less of it.
+ * Whether a `vertical="auto"` menu opens upward. Down is preferred: the menu flips up only when
+ * the panel does not fit between the trigger and the bottom of the viewport but does fit between
+ * the top of the viewport and the trigger, as for the last row of a long table. When neither side
+ * fits it opens down, and the page scrolls to show it, instead of running off the top of the
+ * window over what sits above the trigger, such as the page's header.
  *
  * Pure and exported so the decision is unit-testable without a layout: the component measures,
  * this decides.
@@ -130,9 +147,34 @@ export function dropdownOpensUp(
   panelHeight: number,
   viewportHeight: number,
 ): boolean {
-  const below = viewportHeight - trigger.bottom
-  if (panelHeight + PANEL_GAP <= below) return false
-  return trigger.top > below
+  const needed = panelHeight + PANEL_GAP
+  if (needed <= viewportHeight - trigger.bottom) return false
+  return needed <= trigger.top
+}
+
+/**
+ * Scrolls a downward menu's nearest scroller, or the page, just enough to show the menu's bottom
+ * edge. Unlike `scrollIntoView`, it never scrolls a box that clips its content
+ * (`overflow: hidden`), which would slide that box's content out from under its own frame.
+ *
+ * @param panel The open menu panel.
+ */
+function revealBelow(panel: HTMLElement): void {
+  const page = document.documentElement
+  let scroller: Element = document.scrollingElement ?? page
+  for (let box = panel.parentElement; box && box !== page; box = box.parentElement) {
+    if (
+      /auto|scroll/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight
+    ) {
+      scroller = box
+      break
+    }
+  }
+  const visibleBottom = scroller === document.scrollingElement || scroller === page
+    ? page.clientHeight
+    : Math.min(scroller.getBoundingClientRect().bottom, page.clientHeight)
+  const overshoot = panel.getBoundingClientRect().bottom - visibleBottom
+  if (overshoot > 0) scroller.scrollBy({ top: overshoot })
 }
 
 /**
@@ -152,7 +194,7 @@ const DropdownTrigger = createContext<RefObject<HTMLButtonElement> | null>(null)
  * pressable.
  */
 const itemClasses =
-  "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
+  "flex w-full items-center gap-2 px-4 py-2 text-start text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
 /**
  * Text colour of a {@link DropdownItemProps.danger} item, in both themes. A disabled item leaves it
  * out, so a disabled destructive action looks like any other disabled item rather than a live one.
@@ -167,6 +209,10 @@ const dangerClasses = "text-danger dark:hover:text-red-300 dark:focus:text-red-3
 export interface DropdownItemProps extends HotkeyProps {
   /** Target of the item. It is a link when this is set and a `<button>` otherwise. */
   href?: string
+  /** The language of the page `href` leads to, as `hreflang` on the link. Ignored without `href`. */
+  hreflang?: string
+  /** The language of the item's text, as `lang`, such as a language's own name in a switcher. */
+  lang?: string
   /**
    * Called with `href` on a plain click instead of the browser following the link — the app's
    * router, passed in, so choosing the item does not reload the app. A click with a modifier or a
@@ -212,9 +258,24 @@ export interface DropdownItemProps extends HotkeyProps {
    * Makes the item one choice of a set, such as the current group of a switcher. Given at all, the
    * item is a `menuitemradio` with `aria-checked`, and draws a check before its text when `true`
    * and an empty space of the same width when `false`, so the names of a set line up. Left out,
-   * the item is a plain `menuitem` with no space before its text.
+   * the item is a plain `menuitem` with no space before its text. Before its dropdown hydrates, a
+   * checked link says `aria-current="page"`, since it leads to this very page, and a checked button
+   * `aria-current="true"`.
    */
   checked?: boolean
+  /**
+   * Makes a `checked` item one of a set where any number can be on, such as the tags a list is
+   * filtered by. The item is a `menuitemcheckbox`, draws a box before its text (filled with a check
+   * when `true`), and choosing it leaves the menu open, so several can be chosen in one visit.
+   * Ignored without `checked`.
+   */
+  multiple?: boolean
+  /**
+   * Leaves the menu open when the item is chosen, for a choice that changes what the rest of the
+   * menu means, such as "Any of these tags" above a list of tags. `multiple` items stay open
+   * without it.
+   */
+  keepOpen?: boolean
   children: ComponentChildren
 }
 
@@ -226,8 +287,10 @@ export interface DropdownItemProps extends HotkeyProps {
  * menu with nothing in it. Rendering the item here is what puts the role on the element the user
  * actually activates.
  *
- * The item is out of the tab order (`tabindex="-1"`): inside a menu the arrow keys move between
- * items and Tab leaves the menu altogether, which is the behaviour {@link Dropdown} implements.
+ * The item renders out of the tab order (`tabindex="-1"`): inside a menu the arrow keys move
+ * between items and Tab leaves the menu altogether, which is the behaviour {@link Dropdown}
+ * implements. {@link Dropdown} gives the focused item `tabindex="0"`, a roving tab stop, so a menu
+ * that scrolls holds one item in the tab order, as axe's `scrollable-region-focusable` asks.
  * Before its dropdown hydrates, the item is a plain link or button instead: it carries no
  * `role="menuitem"`, because no script answers the arrow keys yet, and it stays in the tab order,
  * because Tab is the only way a keyboard reaches it.
@@ -248,6 +311,8 @@ export interface DropdownItemProps extends HotkeyProps {
 export function DropdownItem(
   {
     href,
+    hreflang,
+    lang,
     navigate,
     onClick,
     type = "button",
@@ -260,6 +325,8 @@ export function DropdownItem(
     kbdLabels,
     keyshortcuts = [],
     checked,
+    multiple = false,
+    keepOpen = false,
     children,
   }: DropdownItemProps,
 ): JSX.Element {
@@ -277,7 +344,7 @@ export function DropdownItem(
     ? undefined
     : announced.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
   const hint = announced.length > 0 && hotkeyHint
-    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ml-auto pl-4" />
+    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ms-auto ps-4" />
     : null
 
   // `disabled` disables the button form only, so only there does it take the red away.
@@ -285,28 +352,41 @@ export function DropdownItem(
   const classes = cn(itemClasses, danger && !disabledButton && dangerClasses, className)
   const enhanced = useContext(DropdownEnhanced)
   const choice = checked !== undefined
-  const role = enhanced ? (choice ? "menuitemradio" : "menuitem") : undefined
+  const box = choice && multiple
+  const choiceRole = box ? "menuitemcheckbox" : "menuitemradio"
+  const role = enhanced ? (choice ? choiceRole : "menuitem") : undefined
   const tabindex = enhanced ? -1 : undefined
   // The no-JavaScript fallback is a plain link or button, where `aria-checked` means nothing, so a
-  // checked item there says it is the current one instead.
+  // checked item there says it is the current one instead (a link: the current page), and a box
+  // says it is pressed.
   const ariaChecked = enhanced && choice ? checked : undefined
-  const ariaCurrent = !enhanced && checked === true ? "true" : undefined
-  const mark = choice
+  const ariaCurrent = !enhanced && checked === true && !box
+    ? (href === undefined ? "true" : "page")
+    : undefined
+  const ariaPressed = !enhanced && box ? checked : undefined
+  const mark = box
+    ? <CheckBoxMark checked={checked === true} />
+    : choice
     ? checked ? <IconCheck class="size-4" /> : <span class="size-4 shrink-0" aria-hidden="true" />
     : null
+  const stayOpen = keepOpen || box ? "" : undefined
 
   return href !== undefined
     ? (
       <a
         ref={item as RefObject<HTMLAnchorElement>}
         href={href}
+        hreflang={hreflang}
+        lang={lang}
         class={classes}
         role={role}
         tabindex={tabindex}
         aria-checked={ariaChecked}
         aria-current={ariaCurrent}
+        aria-pressed={ariaPressed}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
+        data-keep-open={stayOpen}
         onClick={(event) => {
           onClick?.()
           followLinkClick(event, { href, navigate })
@@ -321,14 +401,17 @@ export function DropdownItem(
       <button
         ref={item as RefObject<HTMLButtonElement>}
         type={type}
+        lang={lang}
         class={classes}
         role={role}
         tabindex={tabindex}
         disabled={disabled}
         aria-checked={ariaChecked}
         aria-current={ariaCurrent}
+        aria-pressed={ariaPressed}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E}
+        data-keep-open={stayOpen}
         onClick={onClick}
       >
         {mark}
@@ -338,8 +421,32 @@ export function DropdownItem(
     )
 }
 
-/** The roles {@link DropdownItem} renders: the arrow keys move between them, a click closes. */
-const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"]`
+/**
+ * The box a {@link DropdownItemProps.multiple} item draws before its text: empty, or filled with
+ * the selection colour and a check. Hidden from screen readers, which hear `aria-checked`.
+ */
+function CheckBoxMark({ checked }: { checked: boolean }): JSX.Element {
+  return (
+    <span
+      aria-hidden="true"
+      class={cn(
+        "flex size-4 shrink-0 items-center justify-center rounded-sm border",
+        checked ? "border-selected bg-selected text-selected-foreground" : "border-control",
+      )}
+    >
+      {checked ? <IconCheck class="size-3" /> : null}
+    </span>
+  )
+}
+
+/**
+ * The roles {@link DropdownItem} renders: the arrow keys move between them, and a click closes the
+ * menu unless the item carries `data-keep-open`.
+ */
+const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]`
+
+/** An open member of {@link MENU_GROUP}. */
+const GROUP_OPEN = `details[name="${MENU_GROUP}"][open]`
 
 /**
  * The menu's focusable items, in DOM order.
@@ -347,6 +454,9 @@ const MENU_ITEM = `[role="menuitem"], [role="menuitemradio"]`
  * Read out of the DOM rather than counted from props, because the panel takes arbitrary children:
  * a caller may wrap its items in a divider row or a `role="none"` group, and only the rendered
  * tree knows where the items ended up. {@link DropdownItem} is what marks them.
+ *
+ * An item that is not drawn (`display: none` at this width) is left out too: `focus()` on it does
+ * nothing, so the arrow keys would stall on it.
  *
  * A disabled item is left out rather than focused-but-inert. ARIA allows either, and this is the
  * half a native `<button disabled>` can actually do: it is not focusable at all, so landing on it
@@ -360,7 +470,9 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
 
   return Array.from(panel.querySelectorAll<HTMLElement>(MENU_ITEM))
     .filter((item) =>
-      !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true"
+      !item.hasAttribute("disabled") && item.getAttribute("aria-disabled") !== "true" &&
+      // An item hidden at this width, such as one shown on a phone only, takes no focus.
+      item.getClientRects().length > 0
     )
 }
 
@@ -387,6 +499,10 @@ function menuItems(panel: HTMLElement | null): HTMLElement[] {
  * `aria-orientation` or menu name on the panel and no `role="menuitem"` on its items, which a
  * screen reader would otherwise announce as a menu whose keys do nothing (#537).
  *
+ * **One menu open at a time.** The fallback joins the {@link MENU_GROUP} `<details>` group, so the
+ * browser closes any other member, another fallback or `SiteHeader`'s mobile menu, as it opens. A
+ * hydrated menu closes the group's open members as it opens, and a press outside closes it.
+ *
  * @param props See {@link DropdownProps}.
  */
 export function Dropdown(props: DropdownProps): JSX.Element {
@@ -399,7 +515,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     panelClasses,
     children,
     vertical = "auto",
-    horizontal = "right",
+    horizontal = "end",
     menuLabel,
   } = props
 
@@ -449,9 +565,37 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     )
   }, [open, vertical])
 
+  // A downward menu that runs past the bottom of the viewport scrolls just enough to show it: the
+  // shift `dropdownOpensUp` chose over flipping off the top of the window. Runs once the panel
+  // sits below the trigger, a render after the decision when the menu opened upward last time.
+  // `autoDown` was read before the effect above decided, so it re-reads the decision: a menu that
+  // just flipped up must not scroll the page, which would push it off the top of the window.
+  const autoDown = open && vertical === "auto" && !autoOpensUp.value
+  useLayoutEffect(() => {
+    if (autoDown && panelRef.current && !autoOpensUp.peek()) revealBelow(panelRef.current)
+  }, [autoDown])
+
+  // A closed menu has no tab stop, as it hydrated: the roving one below is undone. A layout effect,
+  // so it lands in the same commit that closes the menu and nothing reads a closed menu with one.
+  useLayoutEffect(() => {
+    if (open) return
+    for (const item of panelRef.current?.querySelectorAll<HTMLElement>(MENU_ITEM) ?? []) {
+      item.tabIndex = -1
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     menuItems(panelRef.current)[0]?.focus()
+  }, [open])
+
+  // A hydrated menu is no `<details>`, so the browser's exclusive group no longer closes the
+  // others for it: an open `<details>` menu, such as `SiteHeader`'s, is closed here.
+  useEffect(() => {
+    if (!open) return
+    for (const other of document.querySelectorAll<HTMLDetailsElement>(GROUP_OPEN)) {
+      if (!rootRef.current?.contains(other)) other.open = false
+    }
   }, [open])
 
   const close = (returnFocus: boolean) => {
@@ -483,8 +627,23 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     items[target]?.focus()
   }
 
-  // Tab is deliberately not handled here. The items are out of the tab order, so one Tab press
-  // already takes focus out of the menu; this listener is what notices and closes behind it.
+  // A roving tab stop: the focused item alone is in the tab order. A scrolling menu then holds a
+  // tabbable element, which axe's `scrollable-region-focusable` asks for. Tab and Shift+Tab from
+  // an item still leave the menu in one press, since every other item stays at `tabindex="-1"`;
+  // Tab from the trigger of an open menu goes back to that item, as in ARIA's menu pattern. Set
+  // on the DOM, not through props: the items are the caller's children, rendered before the menu
+  // sees them, and their render writes `-1` again only when that prop itself changes.
+  const handleFocusIn = (event: FocusEvent) => {
+    const focused = event.target as HTMLElement | null
+    const panel = panelRef.current
+    if (!panel || !focused?.matches(MENU_ITEM) || !panel.contains(focused)) return
+    for (const item of panel.querySelectorAll<HTMLElement>(MENU_ITEM)) {
+      item.tabIndex = item === focused ? 0 : -1
+    }
+  }
+
+  // Tab is deliberately not handled here. Only the focused item is in the tab order, so one Tab
+  // press already takes focus out of the menu; this listener is what notices and closes behind it.
   const handleFocusOut = (event: FocusEvent) => {
     const next = event.relatedTarget as Node | null
     if (next) {
@@ -523,20 +682,29 @@ export function Dropdown(props: DropdownProps): JSX.Element {
   // Activating an item ends the interaction, so the menu closes and hands focus back. The click
   // lands on whatever is inside the item — an icon, a span — hence `closest` rather than `target`.
   // An item's hotkey clicks it while the menu is closed too; focus then stays where the reader is.
+  // An item that keeps the menu open (a box among many, a mode switch) leaves focus on itself.
   const handlePanelClick = (event: MouseEvent) => {
     if (!isOpen.value) return
-    if (!(event.target as HTMLElement | null)?.closest(MENU_ITEM)) return
+    const item = (event.target as HTMLElement | null)?.closest(MENU_ITEM)
+    if (!item || item.hasAttribute("data-keep-open")) return
     close(true)
   }
 
   const opensUp = vertical === "up" || (vertical === "auto" && autoOpensUp.value)
   const verticalClass = opensUp ? "bottom-full mb-2" : "top-full mt-2"
-  const horizontalClass = horizontal === "left" ? "left-0" : "right-0"
+  // `left` and `right` are the old names of `start` and `end`. `transform-origin` has no logical
+  // keyword, so the corner the menu grows from swaps under `rtl:`.
+  const atStart = horizontal === "start" || horizontal === "left"
+  const horizontalClass = atStart ? "start-0" : "end-0"
   const originClass = opensUp
-    ? (horizontal === "left" ? "origin-bottom-left" : "origin-bottom-right")
-    : (horizontal === "left" ? "origin-top-left" : "origin-top-right")
+    ? (atStart
+      ? "origin-bottom-left [&:dir(rtl)]:origin-bottom-right"
+      : "origin-bottom-right [&:dir(rtl)]:origin-bottom-left")
+    : (atStart
+      ? "origin-top-left [&:dir(rtl)]:origin-top-right"
+      : "origin-top-right [&:dir(rtl)]:origin-top-left")
 
-  const rootClasses = cn("relative inline-flex text-left", containerClasses)
+  const rootClasses = cn("relative inline-flex text-start", containerClasses)
   const defaultTriggerClasses = triggerClasses ?? buttonClasses("icon")
   const panel = (
     <div
@@ -567,7 +735,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
 
   if (!isEnhanced) {
     return (
-      <details class={rootClasses}>
+      <details class={rootClasses} name={MENU_GROUP}>
         <summary
           // `cursor-default` first: a `<summary>` shows a text cursor where a `<button>` shows the
           // arrow, and a cursor the caller's classes set still wins the merge.
@@ -591,6 +759,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
       class={rootClasses}
       ref={rootRef}
       onKeyDown={handleKeyDown}
+      onFocusIn={handleFocusIn}
       onFocusOut={handleFocusOut}
     >
       <button

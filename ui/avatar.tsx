@@ -4,6 +4,7 @@ import type { JSX } from "preact"
 import { useSignal } from "@preact/signals"
 import { useEffect, useRef } from "preact/hooks"
 import { initials } from "@spy4x/platform/universal/text"
+import { translate, useT } from "./i18n.tsx"
 
 /** Which of the three faces an {@link Avatar} renders. */
 export type AvatarFace = "image" | "initials" | "icon"
@@ -107,10 +108,15 @@ export function groupSplit(total: number, max: number): GroupSplit {
  *
  * @param label The caller's description of the group. Blank falls back to `"Avatars"`.
  * @param total Total members, the ones behind the chip included.
+ * @param fallback The description a blank `label` falls back to, in the reader's language.
  * @returns `"<label> (<total>)"`.
  */
-export function groupLabel(label: string | null | undefined, total: number): string {
-  const description = typeof label === "string" && label.trim() ? label.trim() : "Avatars"
+export function groupLabel(
+  label: string | null | undefined,
+  total: number,
+  fallback: string = "Avatars",
+): string {
+  const description = typeof label === "string" && label.trim() ? label.trim() : fallback
 
   return `${description} (${total})`
 }
@@ -274,11 +280,16 @@ export function AvatarGroup(
   { items, max = 4, label, size = "md", class: className }: AvatarGroupProps,
 ): JSX.Element {
   const { visible, overflow } = groupSplit(items.length, max)
+  const translator = useT()
 
   return (
     <div
       role="group"
-      aria-label={groupLabel(label, items.length)}
+      aria-label={groupLabel(
+        label,
+        items.length,
+        translate(translator, "AvatarGroup.label", "Avatars"),
+      )}
       class={cn("-space-x-2 flex flex-wrap items-center", className)}
     >
       {items.slice(0, visible).map((item, index) => (

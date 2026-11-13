@@ -11,11 +11,16 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twelve exports.** Most components pass a caller's `class` through
-  `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the same
-  group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`, `Textarea`, `Select`
-  `EnhancedForm` (#511), `DemoVideo` and `ScreenTour` use `join` instead, and `CopyButton` and `ZoomableImages` hand their
-  `class` to `Button` and `Lightbox`, so a browser bundle that renders them carries no
+- **A `class` is merged, except on thirty-three exports.** Most components pass a caller's
+  `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
+  of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
+  `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `DialogActions`, `YouTubeVideo`,
+  `ScreenTour`, `PricingTable`, `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its
+  `optionsClass`), `CommandPalette`, `LanguagePicker`,
+  `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
+  `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips`, `OrderBar` and `LoopVideo` use `join`
+  instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
+  `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
   before. Their `class` is appended after their own classes, and replaces one of them only when
   it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
@@ -23,11 +28,11 @@ Preact + Tailwind primitives extracted from earlier source applications.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
   the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Fourteen of this package's exports load it — counted once, by hand, by walking
+  component itself. Fifteen of this package's exports load it — counted once, by hand, by walking
   each subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four
   components themselves — `./button`'s only other export is `buttonClasses`, so a caller who imports
   that alone still installs the hook; the package root (`.`), which carries every export;
-  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./modal`, `./on-off-buttons` and
+  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./language-picker`, `./modal`, `./on-off-buttons` and
   `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses
   `buttonClasses` without ever rendering a `Button`; and `./copy-block` and `./data-table`, which
   load it transitively — through `./copy-button` and `./pagination` respectively.
@@ -49,101 +54,147 @@ one. See #257's own "What I suggest" for the two options this decides between.
 
 ## Components
 
-| Component             | Subpath                | Ports / key props                                                                                                                                                                                                                                                                                                                                                   |
-| --------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Avatar`              | `avatar`               | `name`, `src`, `alt`, `size`                                                                                                                                                                                                                                                                                                                                        |
-| `AvatarGroup`         | `avatar`               | `items`, `max`, `label`, `size` (a `role="group"`, not a list)                                                                                                                                                                                                                                                                                                      |
-| `Badge`               | `badge`                | `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`                                                                                                                                                                                                                                                                         |
-| `BrandMark`           | `brand-mark`           | `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header                                                                                                                                                                                                                      |
-| `Button`              | `button`               | `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                        |
-| `Card`                | `card`                 | `children`, `class` — a bordered surface; forwards `ref` to its `<div>`                                                                                                                                                                                                                                                                                             |
-| `CardBody`            | `card`                 | `children`, `class`                                                                                                                                                                                                                                                                                                                                                 |
-| `CardFooter`          | `card`                 | `children`, `class`                                                                                                                                                                                                                                                                                                                                                 |
-| `CardHeader`          | `card`                 | `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`                                                                                                                                                                                                                                      |
-| `Checkbox`            | `checkbox`             | `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`                                                                                                                                                                                                                                                     |
-| `Coachmark`           | `coachmark`            | `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`                                                                                                                    |
-| `Cluster`             | `layout`               | `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row                                                                                                                                                                                                                                                                                       |
-| `Combobox`            | `combobox`             | `items`, `value`, `onChange`, `getLabel?`, `filter?`, `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`                                                                                                                                                                                                       |
-| `CommandPalette`      | `command-palette`      | `options` (filtered locally) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`                                                                                                                                                                                       |
-| `ComparisonTable`     | `comparison-table`     | `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held                                                                                                                          |
-| `ConfirmDialog`       | `confirm-dialog`       | `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`                                                                                                                                                                         |
-| `CopyBlock`           | `copy-block`           | `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`                                                                                                                                                                                        |
-| `CopyButton`          | `copy-button`          | `textToCopy` (string, or function read on click), `copy?` (port; `false` or a throw is a failure), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`                                                                                                                                                                                                              |
-| `DataTable`           | `data-table`           | `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`                                                                                                                                                                     |
-| `DateRangePicker`     | `date-range-picker`    | `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)                                                                                                                                                                                                                                                                            |
-| `DemoVideo`           | `demo-video`           | `poster` (`{ src, srcset?, sizes?, width, height }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link                       |
-| `Dropdown`            | `dropdown`             | `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal`                                                                                                                                                                                                                                 |
-| `DropdownItem`        | `dropdown`             | `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before                                                                                                                  |
-| `EmptyState`          | `empty-state`          | `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)                                                                                                                                                                      |
-| `EnhancedForm`        | `enhanced-form`        | `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration                                                                                                                                                                                                                                       |
-| `ErrorBoundary`       | `error-boundary`       | `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`                                                                                                                                                                               |
-| `ErrorState`          | `error-state`          | `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`                                                                                                                                                                                                                                      |
-| `FaqList`             | `faq-list`             | `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript                                                                                                                                                                                              |
-| `FeatureCard`         | `feature-card`         | `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript                                                                                               |
-| `Field`               | `field`                | `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`                                                                                                                                                                 |
-| `FileInput`           | `file-input`           | `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`                                                                                                                                                                                                                                              |
-| `FormatContext`       | `format`               | Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format                                                                                                                                                                                                  |
-| `Grid`                | `layout`               | `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row                                                                                                                                                                                                                                                        |
-| `ImageGallery`        | `image-gallery`        | `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`                                                                                                                                                                       |
-| `Input`               | `input`                | native input attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                         |
-| `InputButton`         | `input-button`         | `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input                                                                                                                                                                                                                                                                                    |
-| `Kbd`                 | `kbd`                  | `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`                                                                                                                                                                                                                                                                                                      |
-| `InlineEdit`          | `inline-edit`          | `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`                                                                                                                                                                                              |
-| `KanbanBoard`         | `kanban-board`         | `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; touch or mouse drag, and keyboard moves                                                                                                                                                                                                                |
-| `Lightbox`            | `lightbox`             | `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`                                                                                                                                                                                                            |
-| `Link`                | `link`                 | `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`                                                                                                                                                                                                                                               |
-| `LoadingSkeleton`     | `loading-skeleton`     | `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion                                                                                                                                                                                                                                               |
-| `LoadingSpinner`      | `loading-spinner`      | `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion                                                                                                                                                                                                                                            |
-| `Modal`               | `modal`                | `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?`, `cancelLabel?`                                                                                                                                                                                                                                                              |
-| `MoneyDisplay`        | `money-display`        | `amount` (smallest unit), `currency`, `locale?`, `colorNegative?`, `class?`                                                                                                                                                                                                                                                                                         |
-| `MoneyInput`          | `money-input`          | `value` (smallest unit or `null`), `onChange`, `currency`, `locale?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `required?`                                                                                                                                                                                                               |
-| `MoreMenu`            | `page-header`          | `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`                                                                                                                                                                                                                                                                          |
-| `Notice`              | `notice`               | `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty                                                                                                                 |
-| `OnboardingChecklist` | `onboarding-checklist` | `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`                                                                                                                                                                       |
-| `OnDay`               | `format`               | `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`                                                                                                                                                                                                         |
-| `OnOffButtons`        | `on-off-buttons`       | `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`                                                                                                                                                                                                                                                                  |
-| `Page`                | `layout`               | `as?`, `class?` — the content column: max width, page gutter, `xl` between sections                                                                                                                                                                                                                                                                                 |
-| `PageAction`          | `page-header`          | `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`                                                                                                                                                                                                           |
-| `PageHeader`          | `page-header`          | `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`                                                                                                                     |
-| `PageHero`            | `page-hero`            | `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `note?` (a caveat under the byline), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript |
-| `PageTitle`           | `page-title`           | `children`, `headingLevel?` (default 1), `class`                                                                                                                                                                                                                                                                                                                    |
-| `Pagination`          | `pagination`           | `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`                                                                                                                                                                                                                                                                                 |
-| `PlanCard`            | `billing`              | `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`                                                                                                                                                   |
-| `PricingTable`        | `billing`              | `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan                                                                                                                                                              |
-| `Progress`            | `progress`             | `value`, `max`, `label`, `id` (a caption needs an `id`), `ariaLabel?` (the name when there is no caption)                                                                                                                                                                                                                                                           |
-| `QuickAdd`            | `quick-add`            | `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood                                                                                                                          |
-| `Radio`               | `radio`                | `children` (the label), `labelClass`, native radio attrs; forwards `ref`                                                                                                                                                                                                                                                                                            |
-| `RadioChips`          | `radio-chips`          | `legend`, `name`, `options` (`id?`, `inputAttributes?` each), `defaultValue?` or `value?`, `onChange?`, `hideLegend?` — `ToggleChips`' look on native radios; works without JavaScript                                                                                                                                                                              |
-| `RadioGroup`          | `radio`                | `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)                                                                                                                                                                                                                                                                                    |
-| `Section`             | `layout`               | `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`                                                                                                                                                                                                                       |
-| `Select`              | `input`                | `options`, `placeholder?`, native select attrs; forwards `ref`                                                                                                                                                                                                                                                                                                      |
-| `ScreenTour`          | `screen-tour`          | `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps                                                                                                         |
-| `SettingGroup`        | `setting-row`          | `title` (its `h2`), `description?`, `children`, `dataE2E?`                                                                                                                                                                                                                                                                                                          |
-| `SettingList`         | `setting-row`          | `children` (`SettingRow`s) — a card with a rule between rows                                                                                                                                                                                                                                                                                                        |
-| `SettingRow`          | `setting-row`          | `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`                                                                                                                                                                                                                                                                                          |
-| `ShortcutsDialog`     | `shortcuts-dialog`     | `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`                                                                                                                                                                                                                                                                    |
-| `SortableList`        | `sortable-list`        | `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard                                                                                                                                                                                                           |
-| `Stack`               | `layout`               | `gap?` (default `md`), `as?`, `class?` — a column                                                                                                                                                                                                                                                                                                                   |
-| `StatusMark`          | `status-mark`          | `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape                                                                                                                                                                                                          |
-| `Steps`               | `steps`                | `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter                                                                                                                                                                                              |
-| `Table`               | `table`                | `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`                                                                                                                                                                                                                       |
-| `Tabs`                | `tabs`                 | `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`                                                                                                                                                                                                                                                                                 |
-| `TagInput`            | `tag-input`            | `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip                                                                                                                                                                         |
-| `Textarea`            | `input`                | native textarea attrs, `class`; forwards `ref`                                                                                                                                                                                                                                                                                                                      |
-| `ThemePreview`        | `theme-preview`        | `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?` — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`                                                                                                                                                |
-| `ThemeToggle`         | `theme-toggle`         | `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`                                                                                                                                                                                                              |
-| `Timeline`            | `timeline`             | `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line                                                                                                                                                                                                                               |
-| `Toastr`              | `toastr`               | `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`                                                                                                                                                                                                                                            |
-| `ToggleChips`         | `toggle-chips`         | `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`                                                                                                                                                                                                                                |
-| `ToggleField`         | `toggle-field`         | `id`, `label`, `value`, `onToggle`, `description?`, `error?`                                                                                                                                                                                                                                                                                                        |
-| `ToggleSwitch`        | `toggle-switch`        | `value`, `onToggle`, `disabled`, `label`, `aria-invalid?`; no `required`: a switch is never empty                                                                                                                                                                                                                                                                   |
-| `Tooltip`             | `tooltip`              | `content`, `label`, `placement`, `focusable`                                                                                                                                                                                                                                                                                                                        |
-| `Tour`                | `tour`                 | `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`                                                                                                                             |
-| `UpgradePrompt`       | `billing`              | `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card                                                                                                                                                                                                                                                |
-| `UnsavedGuard`        | `unsaved-guard`        | `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab                                                                                        |
-| `When`                | `format`               | `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant                                                                                                                                                                         |
-| `WindowFrame`         | `window-frame`         | `variant` (`"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`                                                                                                                                                                                            |
-| `ZoomableImages`      | `zoomable-images`      | `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`                                                                                                                                                                                                                                                     |
+Each line: the component, its subpath, then its ports and key props.
+
+- `AttachmentList` (`attachment-list`): `id`, `items` (`{ id, name, size, type?, status, progress?, thumbnailSrc?, src?, detail?, error? }[]`), `onDownload?`, `onRemove?`, `onCancel?`, `onRetry?`, `removingId?`, `focusAfterLast?`, `labels?`, `lightboxLabels?` — a ready image opens in `Lightbox`
+- `Avatar` (`avatar`): `name`, `src`, `alt`, `size`
+- `AvatarGroup` (`avatar`): `items`, `max`, `label`, `size` (a `role="group"`, not a list)
+- `Badge` (`badge`): `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`
+- `BrandMark` (`brand-mark`): `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header
+- `Breadcrumbs` (`breadcrumbs`): `items` (`{ label, href? }`; the last one without `href` is the current page, `aria-current="page"`), `label?` ("Breadcrumb"), `class?` — a named `<nav>` with an ordered list, chevrons between steps that turn around right to left
+- `Button` (`button`): `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`
+- `Card` (`card`): `children`, `class` — a bordered surface; forwards `ref` to its `<div>`
+- `CardBody` (`card`): `children`, `class`
+- `CardFooter` (`card`): `children`, `class`
+- `CardHeader` (`card`): `title`, `action` and `headingLevel?` (`2`–`6`: the title becomes that heading; plain text without it), or `children`; `class`
+- `ChangeList` (`change-list`): `months` (`{ id, title, added, fixed, note? }[]`, newest first; entries `{ text, number?, href? }`), `headingLevel?` (`2` default), `labels?` — new things open, fixes in a counted `<details>`, an anchor on every heading; no JavaScript
+- `Checkbox` (`checkbox`): `children` (the label), `labelClass`, `shape?` (`"square"` or `"round"`), native checkbox attrs; forwards `ref`
+- `Coachmark` (`coachmark`): `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`
+- `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
+- `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
+- `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`, `autoFocus?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
+- `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
+- `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
+- `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `title?` (visible label; without it, the icon alone), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with a `title`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
+- `CurrencyField` (`currency-field`): `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `autoFocus?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`
+- `DashboardGrid` (`widget-card`): `items` (`{ id, size: "stat" | "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row
+- `DataTable` (`data-table`): `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `cursor?` (`{ onOpen(row), enabled? }`: `j`/`k` highlight a row, Enter opens it, through `useRowCursor`), `class?`
+- `DateRangePicker` (`date-range-picker`): `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)
+- `DateTimeField` (`date-time-field`): `id`, `label`, `value` (ISO instant or `null`), `onChange`, `timeZone` (IANA; the zone and its offset show beside the input), `min?`, `max?`, `hint?`, `error?`, `required?`, `disabled?`, `labels?` — a `datetime-local` read and written as an instant
+- `DemoVideo` (`demo-video`): `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link
+- `DialogActions` (`dialog-actions`): `children` (Cancel first, the submit last), `class?`, any other attribute — a dialog's button row: stacked full width on a phone with the submit at the bottom, right-aligned in one row from `sm`. `Modal`'s `footer` draws the same row
+- `DocsNav` (`docs-nav`): `groups` (`{ title, items: { href, title }[] }[]`), `current?` (the `href` on screen, `aria-current="page"`), `labels?` — a side list from `lg`, a `<details>` below it; no JavaScript
+- `Dropdown` (`dropdown`): `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal` (`"end"` by default; `"start"`, or the aliases `"left"` and `"right"`, all mirroring under `dir="rtl"`)
+- `DropdownItem` (`dropdown`): `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?`, `checked?`, `multiple?`, `keepOpen?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before
+- `Elapsed` (`format`): `start`, `end?` (left out or `null`: still running, ticks each second), `now?` (epoch milliseconds; given, nothing ticks), `labels?` (`duration`, `missing`), `class?` — `02:05` in a `<time datetime="PT2M5S">`
+- `EmptyState` (`empty-state`): `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)
+- `EnhancedForm` (`enhanced-form`): `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration
+- `ErrorBoundary` (`error-boundary`): `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`
+- `ErrorState` (`error-state`): `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`
+- `ErrorSummary` (`error-summary`): `title` (names the region), `children?` (one line under it), `items` (`{ key, label, message }`: a button and its message per row), `onSelect(item, index)`, `countMessage?` (`"2 problems"`), `noneMessage?` (`"No problems left"`), `id?`, `data-*` — a warning panel listing problems, drawn while `items` is not empty, with a polite status line on the count
+- `Explorable` (`explorable`): `title`, `children` (the result), `lead?`, `controls?` (in a `<fieldset>` disabled until live), `caption?` (`<figcaption>`), `live?` (default: on once hydrated), `noScriptNote?`, `interactiveLabel?`, `id?`, `class?` — a `<figure>` for an interactive figure
+- `FactList` (`fact-list`): `facts` (`{ label, value, hint?, id? }[]`), `class?` — a `<dl>` of label and value rows; a long value drops under its label; no JavaScript
+- `FaqList` (`faq-list`): `items` of `{ question, answer, id? }`, `headingLevel?` (`2`–`4`, `3` default), `name?` (exclusive open where supported), `class?` — native `<details>`, no JavaScript
+- `FeatureCard` (`feature-card`): `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript
+- `Field` (`field`): `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`
+- `FileInput` (`file-input`): `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`, `appearance?` (`"button"`: one button, no list), `buttonVariant?`, `busy?`, `busyLabel?`
+- `FilterBar` (`filter-bar`): `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips
+- `FormatContext` (`format`): Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format
+- `Grid` (`layout`): `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row
+- `I18nContext` (`i18n`): Preact context: `<I18nContext.Provider value={createTranslator({ language, catalogs })}>`; every component reads its words from it through `useLabels`, an app's own screens through `useT()`; without a provider, English
+- `IconPicker` (`icon-picker`): `value` (an id from `@spy4x/preact-icons/registry`, or `null`), `onChange`, `icons?` (`CATEGORY_ICONS`), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `name?`, `labels?`, `disabled?` — a search box over a grid of icon tiles on native radios; search finds names and aliases in the reader's language and in English
+- `ImageGallery` (`image-gallery`): `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`
+- `ImportMapper` (`import-mapper`): `header` (`null` without one), `sample`, `fields` (`{ key, label, required?, numeric? }`), `value` (field key → column index or `null`), `onChange(key, column)`, `errors?`, `settings?` (`{ key, label, value, options, error? }`), `onSettingsChange?`, `preview` (`{ line, values, errors? }`), `rowCount?`, `pending?`, `labels?`, `id?` — the middle of an import screen: file settings, a column per field, a checked preview
+- `Input` (`input`): native input attrs, `class`; forwards `ref`; `dir="ltr"` on an e-mail, URL or password input, by `type` or `autocomplete`
+- `InputButton` (`input-button`): `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input
+- `Isolated` (`bdi`): `message` (the sentence, as a label function of the value), `value` — the value drawn in a `<bdi>`; `isolate(value)` does the same for plain text
+- `Kbd` (`kbd`): `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`
+- `InlineEdit` (`inline-edit`): `value`, `onSave` (may return a promise), `editLabel?`, `inputLabel?`, `savingLabel?`, `errorMessage?`, `disabled?`, `textId?` (names a heading around it), `dataE2E?`
+- `KanbanBoard` (`kanban-board`): `columns`, `items`, `renderItem`, `itemLabel`, `onMove`, `onOpen?`, `labels?`, `headingLevel?` — controlled; touch or mouse drag, and keyboard moves
+- `LayoutCustomiser` (`layout-customiser`): `open`, `onClose`, `title`, `items` (`{ id, title, hidden }[]`), `onChange(layout)`, `onReset?`, `error?`, `labels?`
+- `Lightbox` (`lightbox`): `images`, `index`, `open`, `onClose`, `onIndexChange`, `label?`, `closeLabel?`, `previousLabel?`, `nextLabel?`, `counterLabel?`, `controls?`, `caption?`
+- `Link` (`link`): `href`, `navigate?` (router port), `class`, native anchor attrs — a real `<a>`; a plain click goes through `navigate`
+- `ListField` (`list-field`): `id`, `label` (the `<legend>`), `value` (`string[]`), `onChange`, `max?`, `maxLength?`, `name?`, `placeholder?`, `hint?`, `error?`, `disabled?`, `labels?` — Enter adds a line, Backspace in an empty one removes it
+- `LanguageButton` (`language-picker`): The `LanguageDialog` props without `open` and `onClose`, plus `buttonDataE2E?` — a ghost button with `IconGlobe` and the language in use named in itself, opening the dialog; focus returns to it on close
+- `LanguageDialog` (`language-picker`): `open`, `onClose`, `languages`, `current`, `onSelect`, `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?`, `pickerLabels?` — a `Modal` holding the list; a choice applies at once and the dialog stays open
+- `LanguagePicker` (`language-picker`): `languages` (tags), `current` (`null` = automatic), `mode?` (`"list"` radio group or `"links"`), `href?` (links), `onSelect?` (list), `pending?`, `unavailable?`, `failed?`, `automatic?`, `labels?` — each language by its own name; links work without JavaScript
+- `LoadingSkeleton` (`loading-skeleton`): `rows`; `fields` draws a form's fields instead, with no card, for inside a card; the pulse stops under reduced motion
+- `LoadingSpinner` (`loading-spinner`): `label`, `loadingLabel?` (hidden word without a `label`, default `"Loading"`), `size`; stands still under reduced motion
+- `LookGrid` (`look-grid`): `children` (the looks), `label?` — aligned columns: one on a phone, two from `md`, three from `lg`; a child with `lead` (a lead `StoryTile`) spans two from `lg`; no JavaScript
+- `LookTile` (`look-tile`): `href`, `name`, `price`, `photo` (`{ variants, alt, sizes? }`), `sizes?` (`{ label, soldOut? }[]`), `chosenSize?`, `colors?`, `soldOut?`, `viewTransitionName?`, `priority?`, `headingLevel?`, `labels?` — a 3:4 photo as the card, one link; no JavaScript
+- `LoopVideo` (`loop-video`): `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` and `darkSources?` (`{ src, type }[]`, WebM first), `title` (the video's name), `name` (the button says "Pause animation: {name}"), `pauseLabel?`, `playLabel?`, `class?` — a silent loop that plays while half of it is in view
+- `Modal` (`modal`): `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`
+- `MoneyDisplay` (`money-display`): `amount` (smallest unit), `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `tone?` (`"plain"`, `"negative"`, `"signed"`), `colorNegative?` (deprecated), `class?`
+- `MoneyInput` (`money-input`): `value` (smallest unit or `null`), `onChange`, `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `decimalsMessage?`, `required?`, `autoFocus?`, `class?` (the bordered box)
+- `MoreMenu` (`page-header`): `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`
+- `Notice` (`notice`): `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty
+- `OnboardingChecklist` (`onboarding-checklist`): `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`, `actionVariant?` (`primary` default, `secondary`)
+- `OnDay` (`format`): `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`
+- `OnOffButtons` (`on-off-buttons`): `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`
+- `OnThisPage` (`on-this-page`): `links` (`{ label, href }` plus any anchor attribute, such as `data-*`), `label?` ("On this page"), `openFrom?` (`lg` default, `xl`) — a named `<nav>`: a sticky list in a side column from `openFrom`, a `<details>` below it; nothing for an empty list
+- `OrderBar` (`order-bar`): `message`, `actions` (one or two `{ label, shortLabel?, icon?, href?, name?, value?, attributes? }`), `secondary?`, `status?`, `note?`, `form?`, `labels?` — sticky bar on a phone, sticky panel from `lg`; links or submit buttons
+- `Page` (`layout`): `as?`, `class?` — the content column: max width, page gutter, `xl` between sections
+- `PageAction` (`page-header`): `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`
+- `PageHeader` (`page-header`): `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`
+- `PageHero` (`page-hero`): `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `note?` (a caveat under the byline), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript
+- `PageTitle` (`page-title`): `children`, `headingLevel?` (default 1), `class`
+- `Pagination` (`pagination`): `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`
+- `PeriodStepper` (`period-stepper`): `period`, `onChange`, `now`, `timeZone`, `options?` (first weekday), `labels?`, `locale?`, `currentHotkey?`, `singleKeys?` — steps through weeks or months with `[`, `]` and `t`; the period maths is `@spy4x/time/period`
+- `PlanCard` (`billing`): `planName`, `status` (`SubscriptionStatusValue`), `price?`, `periodEnd?`, `cancelAtPeriodEnd?`, `manageAction` (a form posts there), `onSubmit?`, `pending?`, `locale?`, `timeZone?` (default `"UTC"`), `labels?`
+- `PostList` (`post-list`): `posts` (`{ href, title, description?, publishedAt, readMinutes?, lang?, dir?, image? }[]`; `lang` sets the title's and description's language, `dir="auto"` unless `dir` is given; `image` is a decorative `{ src, width, height, srcset?, sizes? }` cover, above the text on a phone and 192×108 beside it from 640 px), `headingLevel?` (`2` default), `label?`, `labels?`, `eagerFirst?` (the first cover loads eagerly) — the whole row is the link's target; dates in UTC; no JavaScript
+- `PrevNext` (`prev-next`): `previous?`, `next?` (`{ href, title }`), `labels?` — two whole-card links at a guide's end, next on the end side; no JavaScript
+- `PricingTable` (`billing`): `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan
+- `Progress` (`progress`): `value`, `max`, `label`, `id` (a caption needs an `id`), `ariaLabel?` (the name when there is no caption)
+- `Prose` (`prose`): `html` (already safe rendered Markdown) or `children`, `as?` (`"div"`/`"article"`), `anchors?` (a link beside each `h2` and `h3` with an `id`), `copyCode?` (a hidden copy button beside each `<pre>`, wired by `ProseCodeCopy`), `labels?`, `class?` — article type from the tokens at about 65 characters a line; each table of `html` in a focusable scroll region named after the heading before it; code blocks scroll sideways and are Tab stops; no JavaScript
+- `ProseCodeCopy` (`prose-copy`): `copy?` (clipboard port) — renders nothing; reveals and wires the copy buttons of `Prose` with `copyCode`, as a Fresh page's one island
+- `QuickAdd` (`quick-add`): `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood
+- `Radio` (`radio`): `children` (the label), `labelClass`, native radio attrs; forwards `ref`
+- `RadioChips` (`radio-chips`): `legend`, `name`, `options` (`id?`, `inputAttributes?` each), `defaultValue?` or `value?`, `onChange?`, `hideLegend?` — `ToggleChips`' look on native radios; works without JavaScript
+- `RadioGroup` (`radio`): `legend`, `name`, `options`, `value?`, `onChange?`, `required?` (on every radio)
+- `ResendButton` (`resend-button`): `onResend`, `readyAt?` (ms since the epoch), `busy?`, `label?`, `busyLabel?`, `waitingText?` (seconds → text), `readyText?`, `sentText?` — the "Not there?" line under "Check your inbox": a countdown sentence out of live regions, then a ghost button; focus goes to a status line after a resend
+- `RunSteps` (`run-steps`): `steps` (`{ id, label, state, hint?, value?, verdict?, progress?, detail? }`; state is `pending`, `running`, `done`, `failed`, `unavailable` or `stopped`), `labels?` (the state words), `aria-labelledby?` — a fixed list of a run's steps that fills in as it goes
+- `SegmentedControl` (`segmented-control`): `options` (`{ value, label }`), `value`, `onChange`, `ariaLabel` (required); a radio group with one tab stop, arrows and Home/End choose
+- `Rich` (`i18n`): `parts` (from `useT().parts(key, values)`), `tags?` (a renderer per tag, given its text) — a translated sentence with spans the caller draws; a message or a value never becomes markup
+- `Section` (`layout`): `title?`, `description?`, `headingLevel?` (2–4), `action?` (controls beside the heading), `as?` (`section`/`article`/`aside`/`div`), `class?`
+- `SectionHeading` (`section-heading`): `children`, `id` (the heading's), `targetId?` (where the anchor links, default `id`; give that element `scroll-mt-16`), `headingLevel?` (`2`–`4`, default 2, `Prose`'s sizes), `labels?`, `class?` (merged) — a heading with `Prose`'s "Link to this section" anchor beside it; no JavaScript
+- `Select` (`input`): `options`, `placeholder?`, native select attrs; forwards `ref`
+- `ScreenTour` (`screen-tour`): `steps` (`{ id, label, text?, group?, image: { src, alt, width, height, srcset?, sizes? } }[]`), `frame` (`"plain"`, `"browser"`, `"phone"`), `browserUrl?`, `numbered?`, `fetchPriority?`, `onSelect?`, labels, `class?` — tabs beside a framed screenshot that swaps
+- `SettingGroup` (`setting-row`): `title` (its `h2`), `description?`, `children`, `dataE2E?`
+- `SettingList` (`setting-row`): `children` (`SettingRow`s) — a card with a rule between rows
+- `SettingRow` (`setting-row`): `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`
+- `ShortcutsDialog` (`shortcuts-dialog`): `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`
+- `Slider` (`slider`): `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`
+- `SortableList` (`sortable-list`): `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard
+- `Stack` (`layout`): `gap?` (default `md`), `as?`, `class?` — a column
+- `StatusMark` (`status-mark`): `status` (a project's `ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`, or a job's `running`/`done`/`parked`/`blocked`/`waiting`/`failed`/`out-of-time`/`out-of-budget`/`out-of-turns`/`stopped`/`queued`/`claimed`; `running` pulses, and holds still under reduced motion), `label?` — a sibling of `Badge`, which has no shape
+- `Steps` (`steps`): `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter
+- `StoryTile` (`story-tile`): `href`, `title`, `publishedAt`, `topic?`, `readMinutes?`, `cover?` (`{ variants, alt, sizes? }`), `lead?`, `priority?`, `viewTransitionName?`, `headingLevel?`, `navigate?`, `labels?` — a 3:4 cover (or the title on a panel) as the card, one link; dates in UTC; no JavaScript
+- `SwatchChips` (`swatch-chips`): `legend`, `name`, `options` (`{ value, name, color, disabled?, id? }[]`), `defaultValue?` or `value?`, `onChange?` — `RadioChips` with a colour swatch before each name; works without JavaScript
+- `Table` (`table`): `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`, `rowProps?` (props per body row, such as `useRowCursor`'s)
+- `Tabs` (`tabs`): `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`
+- `TagInput` (`tag-input`): `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip
+- `Textarea` (`input`): native textarea attrs, `class`; forwards `ref`
+- `ThemePreview` (`theme-preview`): `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?`, `inputAttributes?` (per radio, by value) — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`
+- `ThemeToggle` (`theme-toggle`): `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`
+- `Timeline` (`timeline`): `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line
+- `TldrBox` (`tldr-box`): `items`, `title?` ("In short"), `headingLevel?` (`2` default), `id?`, `class?` — a named `<section>` in a hairline box; nothing for no items
+- `Toastr` (`toastr`): `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`
+- `ToggleChips` (`toggle-chips`): `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`
+- `ToggleField` (`toggle-field`): `id`, `label`, `value`, `onToggle`, `description?`, `error?`
+- `ToggleSwitch` (`toggle-switch`): `value`, `onToggle`, `disabled`, `label`, `aria-invalid?`; no `required`: a switch is never empty
+- `Tooltip` (`tooltip`): `content`, `label`, `placement`, `focusable`
+- `Tour` (`tour`): `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`
+- `UpgradePrompt` (`billing`): `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card
+- `UnsavedGuard` (`unsaved-guard`): `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab
+- `UsageMeter` (`usage-meter`): `used`, `limit`, `format`, `label`, `warnAt?` (80), `labels?`, `locale?` — the figures, a bar and a line saying what is left or how far over; `role="meter"`
+- `When` (`format`): `at`, `now?` (epoch milliseconds; default the time of the render), `labels?` (`relative`, `missing`, `title`), `class?` — `3 days ago` in a `<time datetime>` titled with the exact instant
+- `WidgetCard` (`widget-card`): `title`, `status` (`loading`/`error`/`empty`/`ready`), `size?`, `loadingLabel`, `caption?`, `menu?`, `href?`, `errorMessage?`, `onRetry?`, `emptyLabel?`, `skeletonDelay?`
+- `WidgetStat` (`widget-card`): `value`, `valueLabel?`, `lines?`
+- `WindowFrame` (`window-frame`): `variant` (`"plain"`, `"browser"`, `"terminal"`, `"phone"`), `title?` (address or terminal title; names the terminal's output), `children`, `caption?` (a `<figcaption>`), `class?`
+- `YouTubeVideo` (`youtube-video`): `videoId`, `poster` (`{ src, srcset?, sizes?, width, height }`, the caller's own file), `title` (names the link "Play video: {title}" and the player), `playLabel?`, `eager?`, `class?`, any other attribute (`id`, `data-*`) on the play link — YouTube's player only after the press
+- `ZoomableImages` (`zoomable-images`): `containerSelector?`, `imageSelector?`, `fallbackAlt?`, `zoomLabel?`, `previousLabel?`, `nextLabel?`, `onOpen?`
 
 ## Usage
 
@@ -377,8 +428,16 @@ An item a caller renders by hand keeps whatever role and `tabindex` it sets. For
 posts, wrap a `DropdownItem` with `type="submit"` in a `<form role="none">`, as `Shell`'s form-post
 item does: it follows the same rule and posts with or without JavaScript.
 
-`vertical` defaults to `"auto"`: the menu opens below its trigger unless it would run past the
-bottom of the viewport and there is more room above, as it does for the last row of a long table.
+One menu is open at a time. The fallback `<details>` carries `name="pc-menu"`, `MENU_GROUP`, the
+exclusive group `SiteHeader`'s mobile menu joins too, so the browser closes the others as one
+opens, with no JavaScript. A hydrated `Dropdown` closes the group's open members as it opens, and a
+press outside closes it. `MENU_GROUP` is exported for any other `<details>` menu that should join.
+
+`vertical` defaults to `"auto"`, which prefers down. The menu flips up only when it does not fit
+below its trigger but fits above it, as for the last row of a long table. When it fits neither
+way it opens down and scrolls the page just enough to show itself, so near the top of a short
+window it never runs off the top over the page's header; a downward menu that runs past the bottom
+of the viewport scrolls the page the same way.
 It is measured each time the menu opens, before the browser draws it, so an upward menu is never
 drawn downward first. The server renders it downward, which is where a menu without JavaScript
 would open. `"up"` and `"down"` fix the direction. It measures against the viewport only, and once
@@ -387,7 +446,79 @@ and scrolling while the menu is open does not flip it.
 
 `dropdownOpensUp(trigger, panelHeight, viewportHeight)` is that decision on its own, a pure function
 of the trigger's `top` and `bottom`, the panel's height and the viewport's height. It opens up when
-the panel and its 8px gap do not fit below and there is more room above than below.
+the panel and its 8px gap do not fit below and do fit above.
+
+`DropdownItem` given `checked` is one choice of a set: a `menuitemradio` with a check, and choosing
+it closes the menu. Add `multiple` for a set where any number can be on, such as tags: the item is
+a `menuitemcheckbox`, draws a box (filled, with a check, when on) and leaves the menu open, so the
+reader can pick several in one visit. `keepOpen` leaves the menu open for any other item, such as a
+mode switch drawn above the choices. The arrow keys reach all three kinds, and skip an item that is
+not drawn at the current width. Before hydration a
+`multiple` item is a plain button with `aria-pressed`.
+
+## FilterBar
+
+Search, filter menus, one-tap toggles and a sort over a list, with the active filters as removable
+chips and a result count. It is controlled and pure: every value is a prop and every change goes
+out through that control's `onChange`, so the caller keeps the values where it likes, usually in
+the URL with `useUrlFilters` from `@spy4x/preact-signals`.
+
+- The bar is a `search` landmark named by `label`. The search field is a labelled
+  `type="search"` input; while it holds text a "Clear search" button empties it and hands focus
+  back to the field. `hotkeyHint` shows a key the app already binds (such as `/`) while the field
+  is empty, and announces it in `aria-keyshortcuts`; the bar binds no key itself.
+- Each menu is a `Dropdown` with a chip trigger that shows its `label`. While something is
+  chosen the trigger adds a count badge ("Tags 2") and the chips' soft tint with an outline, so it
+  keeps its width and never takes the accent fill of the page's primary button; its accessible
+  name names the choice: "Tags: Design", "Tags: 3", or the menu's `activeLabel`. A `multiple` menu draws boxes and stays
+  open; a single one closes on a choice, and `anyLabel` adds a first item that clears it. `header`
+  is drawn above the choices and a divider: give it `DropdownItem`s with `checked` and `keepOpen`,
+  so the arrow keys reach them, inside a `role="group"`; or give `headerLabel` (such as "Show
+  notes with"), and the bar draws it as a visible heading over the items and wraps them in the
+  group it names. On a phone a `multiple` menu ends with a "Done" item (`doneLabel`) that closes
+  the sheet; from `sm` up it is not drawn and the arrow keys skip it.
+- Toggles are one `ToggleChips` group named by `togglesLabel`. The sort menu sits at the end,
+  pushed right from `sm` up, with its `label` ("Sort by") shown from `sm` up and always in its name.
+  An option with `directions` ("Newest first" / "Oldest first"), with `direction` and
+  `onDirectionChange` given, adds an "Order" group under the orders; the trigger then shows an up
+  or down arrow and names the direction. While any option has directions, the menu stays open on
+  a pick and ends with "Done" on a phone. The caller sets each order's starting direction.
+- Under the bar, every active filter is a chip ("Tag: Design") whose remove button ("Remove the
+  Design filter") takes that one filter away and moves focus to the chip that took its place, or to
+  the search field when it was the last. "Clear filters" clears every menu and toggle (through
+  `onClear` when given, else through each one's `onChange`) and moves focus the same way. Search
+  and sort are not filters, so it leaves them. `count` sits at the end of that row, in a polite
+  live region.
+- From `sm` up the search field and every control share one row that wraps, with the search field
+  first, and the chips wrap under it. On a phone the field has its own row, the controls scroll
+  sideways on theirs and the chips on theirs, each row fading out at an edge that hides more (the
+  fade lifts while a menu is open), every control is 44 px tall, and a menu opens as a sheet fixed to the bottom of the screen, with a
+  visible title and 44 px items, because a panel hanging from a scrolling row would be clipped.
+
+`activeFilterChips(filters, toggles)` returns the chips the bar draws, each with its `label`,
+`valueLabel` and a `remove()` that calls the right `onChange`. `filterTriggerLabel(menu)` returns
+a menu trigger's accessible name.
+
+```tsx
+const { filters: f } = useUrlFilters({
+  q: { signal: useSignal(""), urlParam: "q", initialValue: "" },
+  tags: { signal: useSignal(""), urlParam: "tags", initialValue: "" },
+})
+
+<FilterBar
+  search={{ value: f.q.value, onChange: (q) => f.q.value = q, label: "Search notes" }}
+  filters={[{
+    id: "tags",
+    label: "Tags",
+    chipLabel: "Tag",
+    multiple: true,
+    options: tagOptions,
+    value: f.tags.value === "" ? [] : f.tags.value.split(","),
+    onChange: (next) => f.tags.value = next.join(","),
+  }]}
+  count={`${shown.length} notes`}
+/>
+```
 
 ## Tooltip
 
@@ -409,8 +540,12 @@ one control and gives the name an element the tree keeps. After hydration the fi
 element inside the group carries `aria-describedby`, so a screen reader hears the hint on the
 control it is focused on.
 
+`placement` takes `"top"` (the default), `"bottom"`, `"end"` or `"start"`. `"end"` opens toward the
+end of the line, to the right in a left-to-right page and to the left in a right-to-left one;
+`"right"` and `"left"` are the old names of `"end"` and `"start"` and mirror the same way.
+
 ```tsx
-<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
+<Tooltip content="Supplements the trigger" label="Total revenue" placement="end">
   <span>Revenue</span>
 </Tooltip>
 ```
@@ -424,11 +559,45 @@ drive both paths: one moves a real pointer onto the trigger and asserts the hint
 goes away again, and another asserts the hit testing that lets the pointer travel onto the hint and
 rest there.
 
+## ColorField
+
+A colour choice for things a person tells apart by colour, such as tags and groups. Round 32 px
+swatches with a 44 px touch area sit on native radios in a `<fieldset>`, so the group is one tab
+stop, the arrow keys move the choice and Space checks it. The checked swatch shows a check in the
+text colour that reads on it. `COLOR_PRESETS` are the 16 default swatches, a gray and 15 hues. Black
+or white text from `readableTextColor` reaches 4.5:1 on any colour, presets and custom ones
+alike. `allowNone` adds a first "No colour" swatch that sends `null`.
+
+The last swatch, "Pick a custom colour", shows a native colour input and a "Hex code" field. A
+picked colour reaches `onChange` at once, a typed one once it is a full `#rrggbb` (sent in lower
+case); anything else shows "Enter # and 6 characters, such as #59168b." when the field loses focus.
+`preview(color, textColor)` draws the caller's own sample under the swatches, given the colour and
+black or white from `readableTextColor` in `@spy4x/platform/universal/color`, which also has the
+`isHexColor` check and the arktype `hexColor` a server validator uses.
+
 ## Combobox
 
 Every string it shows is a prop with an English default: `placeholder` (`"Select…"`), `emptyMessage`
 (`"No matches"`), `countMessage` (`"1 match"` / `"12 matches"`), `loadingMessage` (`"Loading…"`) and
 `clearLabel` (`"Clear selection"`).
+
+**Search.** Without `filter`, the field ranks `items` with `searchEntries` from
+`@spy4x/platform/universal/text`: the words of the query in any order, each at the start of a word,
+one typo in a longer word, the other keyboard layout (`щге уфештп` finds "Eating out"), and the
+words `aliasesOf(item)` returns. Best matches come first; equal ones keep the order of `items`. A
+caller's own `filter` replaces all of this, and the groups below still apply to what it returns.
+
+**Groups.** `groupOf(item)` puts items under a named `role="group"`. When `isGroupLead(item)` marks
+an item as its group's own, such as a parent category, that option is the group's heading and is
+drawn once, so it can be chosen; a group with no lead gets a muted heading that is not an option,
+and the arrow keys skip it. A closed field shows a member as `Eating out (Food)`.
+`comboboxSections(visible, all, groupOf, isGroupLead)` is the same split for a caller that draws its
+own list.
+
+**Create.** With `onCreate`, a query that names no item adds a last row, `Create “Gym”` (`createLabel`),
+which is highlighted when nothing else matches, so Enter creates. `onCreate(query)` may return the
+new item, which is then chosen, or a promise of it: the row shows a spinner until it settles, and a
+failure shows `createErrorMessage` under the field and keeps the query.
 
 Enter and Escape pressed while an input method is still composing a word neither select an option
 nor close the list: the key belongs to the input method. The list is not filtered while the word is
@@ -670,7 +839,7 @@ Every other time comes back exactly as typed.
   after `toInstant`, so the first-pass `02:50` through the second-pass `02:10` is a valid
   twenty-minute range, and the second-pass `02:30` through the first-pass `02:45` is not. When both
   ends resolve and are out of order — a skipped `02:30` read as `03:30` with To at `03:10`, say — a
-  note above Apply says "From comes after To, so there is nothing to apply."
+  note above Apply says "The From date is after the To date. Change one of them to apply."
 - **Tied to its field.** Each field's `aria-describedby` names its skipped-time note or its radio
   group whenever one is shown, and the order note too while it shows; Apply is described by the
   order note. Each radio group is named by its field's label and its legend ("From This time happens
@@ -692,6 +861,30 @@ The maths is in `date-range.ts`, on top of `resolveWallClock` from `@spy4x/time/
   the second pass of a repeated time, `"earlier"` otherwise.
 - `isValidDateTimeRange(range)` orders by `fromInstant`/`toInstant` when the range carries both, and
   by the strings, as it always has, when it does not.
+
+A picker's choice in the page's address (`date-range-search`), one format for every page:
+
+- `rangeFromSearch(search, { now, timeZone, defaultPreset, presets? })` reads `?range=<preset>` or
+  `?from=YYYY-MM-DD&to=YYYY-MM-DD` and answers `{ preset, range }`; an unknown preset, a reversed or
+  malformed range, or a preset the page does not offer reads as `defaultPreset`.
+- `rangeToSearch(search, choice, defaultPreset)` writes the choice into a copy of `search`, every
+  other parameter kept, and leaves the default preset out of the address.
+
+`DateRangePicker`'s `onChange` gets the preset as its second argument (`"custom"` from the panel),
+so a caller keeps the person's choice instead of guessing it with `presetForRange`.
+
+Focus in a dashboard: "Try again" moves focus to its `WidgetCard` (a named group with
+`tabindex="-1"`), where it stays when the data arrives. A card that a caller hides from its own menu
+unmounts with the menu, so the caller moves focus to the next card's heading, or the previous one
+when it was the last.
+
+Dashboard helpers beside `WidgetCard` and `LayoutCustomiser`:
+
+- `dashboardRows(items)` groups widgets into rows the way `DashboardGrid` draws them.
+- `mergeLayout(saved, available)` makes a stored layout valid for the parts that exist now: unknown,
+  repeated and malformed entries dropped, new parts added at the end and shown.
+- `setLayoutHidden(layout, id, hidden)` and `moveLayoutEntry(layout, from, to)` are the two changes
+  a person makes; `defaultLayoutCustomiserLabels` holds the dialog's English words.
 
 `rangeForTimePreset` and `presetForTimeRange` are the two presets' own maths — plain functions of an
 injected `now` and `timeZone`, the same convention `rangeForPreset` and `presetForRange` follow. Both
@@ -730,17 +923,25 @@ No `<video>` element exists before the press, so the browser requests no video b
 `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but `loop` is
 ignored.
 
+One clip plays at a time. When a clip starts, by the press or by its own controls (its `play`
+event), every other `DemoVideo` on the page pauses where it is, so two soundtracks never overlap.
+
 The link is named `"Play video: {title}"` (`playLabel` replaces the first two words) and the video
 `title`. The poster is decorative, `alt=""` and `aria-hidden="true"`, since the link carries the
 name. The poster is lazy unless `eager` makes it `loading="eager"` with `fetchpriority="high"`,
 for a clip on the first screen. `class` is joined, not merged, so an island that renders the
 component carries no `tailwind-merge`. Any other attribute, such as `id` or a `data-*` analytics
-attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`.
+attribute, goes onto the play link, so a caller can count the press. It fits inside `WindowFrame`,
+whose `plain` variant suits it best.
 
 When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its size
 and shows `errorLabel` ("The video didn't load.") with a link, `openFileLabel` ("Open the video
 file"), to the first source, in a `role="status"` region. Focus moves to that link when it was on
 the video.
+
+`poster.dark` (`{ srcset, media }`) adds the poster's dark file: the image becomes a `<picture>`
+whose dark `<source>` shows while `media` matches, so a dark page never shows a light still.
+`YouTubeVideo` takes the same poster.
 
 ```tsx
 <DemoVideo
@@ -753,12 +954,82 @@ the video.
 />
 ```
 
+## LoopVideo
+
+A silent loop, five to eight seconds long, that proves a claim on a public page, such as "the
+other window updates by itself". The server renders the poster: an `<img>` with its `width` and
+`height`, or a `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. Without
+JavaScript the still stays, named by `title`, so the page still says something true.
+
+After hydration a `<video muted loop playsinline preload="none">` lies over the poster, invisible
+until it has a frame, so nothing moves when it takes the poster's place and no video byte loads
+before it is in view. It plays while at least half of it is on screen (an `IntersectionObserver`)
+and pauses when it leaves, so several loops on one page each play only while seen. With
+`darkSources`, the dark files play while `poster.dark.media` matches; when the theme changes, the
+clip loads the other files and keeps its position. `darkSources` need `poster.dark`, which holds
+that query.
+
+One 44 px round button on the scrim, 12 px in from the bottom and the inline end (the left in a
+right-to-left page), pauses and plays the clip, and so does a click on the clip. It is named
+`"Pause animation: {name}"` or `"Play animation: {name}"` (`pauseLabel` and `playLabel` replace
+the first words), and shows the same words in a hint on hover and focus, which Escape hides. A
+pause by the visitor holds for the rest of the visit, also when the clip scrolls back into view;
+nothing is stored. Under `prefers-reduced-motion: reduce` the clip never starts by itself: a press
+plays it once, and it stops on its last frame. When no source can play, the poster stays and the
+button goes away. `class` is joined, not merged. It fits inside `WindowFrame variant="plain"`.
+
+```tsx
+<LoopVideo
+  name="Realtime sync"
+  title="A note saved in one window appears in the other within a second."
+  poster={{
+    src: "/realtime-light.webp",
+    width: 1440,
+    height: 900,
+    dark: { srcset: "/realtime-dark.webp", media: "(prefers-color-scheme: dark)" },
+  }}
+  sources={[{ src: "/realtime-light.webm", type: "video/webm" }]}
+  darkSources={[{ src: "/realtime-dark.webm", type: "video/webm" }]}
+/>
+```
+
+## YouTubeVideo
+
+A YouTube video that asks YouTube for nothing until a reader presses it. The server renders the
+caller's own poster `<img>`, with its `width` and `height`, inside a link to the video's watch page
+on youtube.com, and draws the same round play mark as `DemoVideo` over it. Without JavaScript the
+link opens the video on YouTube.
+
+After hydration, a click, Enter or Space on the link stays on the page and swaps the poster for an
+`<iframe>` of `https://www.youtube-nocookie.com/embed/{videoId}?autoplay=1`, titled `title`, in the
+same box: the box keeps the poster's aspect, so nothing below it moves. Focus moves into the player,
+so a keyboard reader can pause it at once. Space acts on its release, as on a button, so the key
+never reaches the player. The poster is the caller's file, so a site can host it itself and needs
+no image origin of YouTube's.
+
+The link is named `"Play video: {title}"` (`playLabel` replaces the first two words). The poster is
+decorative, `alt=""` and `aria-hidden="true"`. The poster is lazy unless `eager` makes it
+`loading="eager"` with `fetchpriority="high"`, for a video on the first screen. `class` is joined,
+not merged. Any other attribute, such as a `data-*` analytics attribute, goes onto the play link.
+
+A page that shows it needs `frame-src https://www.youtube-nocookie.com` in its
+Content-Security-Policy, and a referrer policy that sends at least the origin (the browser default
+does): YouTube's player refuses an embed that sends no referrer.
+
+```tsx
+<YouTubeVideo
+  videoId="aqz-KE-bpKQ"
+  title="Big Buck Bunny"
+  poster={{ src: "/img/big-buck-bunny-poster.webp", width: 1280, height: 720 }}
+/>
+```
+
 ## ScreenTour
 
-A product walkthrough for a product or case-study page: named steps as tabs beside one browser or
-phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is picked.
-Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View full
-size" link.
+A product walkthrough for a product or case-study page: named steps as tabs beside one plain,
+browser or phone frame (the same chrome `WindowFrame` draws) whose screenshot swaps when a step is
+picked. Under the frame go the step's caption, which is its image's `alt`, its `text`, and a "View
+full size" link.
 
 The tabs are a column from 1024 px and, below it, a row that scrolls inside itself, so a phone page
 never scrolls sideways. The tab list is one Tab stop: Left/Right and Up/Down move and select (the
@@ -812,6 +1083,134 @@ empty, and so does an empty `steps`.
   ]}
 />
 ```
+
+## Prose, TldrBox and PostList
+
+The blocks of a blog, all plain markup and CSS, so a server-rendered page shows them with no
+JavaScript. `Prose` puts the theme's `pc-prose` class on one wrapper and sets the article's HTML
+inside it; that HTML must already be safe (rendered from Markdown with raw HTML stripped and links
+limited to safe schemes), because `Prose` styles and never cleans. Start the body at `h2`: the page
+draws the `h1`.
+
+```tsx
+<PageHero eyebrow={post.topic} title={post.title} />
+<TldrBox items={post.tldr} />
+<Prose as="article" html={post.html} />
+<PostList posts={next} label="Read next" headingLevel={3} />
+```
+
+`PostList` reads each `publishedAt` as its UTC day, through the nearest `FormatContext`, so a post
+shows the same date to every reader and on the server.
+
+A post with an `image` gets a cover: above its text on a phone, beside it at 192×108 from 640 px.
+It is decorative (`alt=""`), since the title already names the row, and every cover loads lazily
+unless the list is on the first screen and passes `eagerFirst`, which loads the first one at once.
+
+A docs site adds `anchors` to `Prose`, so every `h2` and `h3` gets a "Link to this section" link,
+puts `DocsNav` beside the body, and ends each guide with `PrevNext`. A changelog draws its months
+with `ChangeList`. A page that is not one article, such as a feature page, gives each section's
+heading the same anchor with `SectionHeading`. All of them are plain markup and native `<details>`.
+
+`copyCode` gives every code block a copy button, rendered `hidden` so a page without JavaScript
+shows no dead control. One island reveals and wires them all: a file in `islands/` re-exports
+`ProseCodeCopy` (`export { ProseCodeCopy as default } from "@spy4x/preact-ui/prose-copy"`), and
+the page renders it once as `<CodeCopy />`. It ships Preact and the clipboard helper only, about
+14 KB minified.
+
+```tsx
+<DocsNav groups={guides} current={`/docs/${slug}`} />
+<Prose as="article" html={doc.html} anchors copyCode />
+<CodeCopy />
+<PrevNext previous={before} next={after} />
+<ChangeList months={months} labels={{ pullRequest: (n) => `Pull request ${n} on GitHub` }} />
+<SectionHeading id="pricing">Pricing</SectionHeading>
+```
+
+## Storefront: LookTile, StoryTile, LookGrid, SwatchChips and OrderBar
+
+The patterns of a shop's catalog that takes orders by chat ("Storefront" in
+`docs/design-language.md`). `LookTile`, `StoryTile`, `LookGrid` and `SwatchChips` are plain markup and CSS,
+and `OrderBar`'s actions are links or submit buttons, so the catalog works with no JavaScript.
+
+```tsx
+<LookGrid label="New in">
+  {items.map((item, index) => (
+    <LookTile
+      key={item.id}
+      href={item.href}
+      name={item.name}
+      price={item.price}
+      photo={{ variants: item.photoVariants, alt: item.photoAlt }}
+      sizes={item.sizes}
+      chosenSize={size}
+      viewTransitionName={`look-${item.id}`}
+      priority={index === 0}
+    />
+  ))}
+</LookGrid>
+
+<form id="order" method="post" action="/order">
+  <SwatchChips legend="Colour" name="colour" options={colours} defaultValue={colour} />
+  <RadioChips legend="Size" name="size" options={sizes} defaultValue={size} />
+</form>
+<OrderBar
+  form="order"
+  message={message}
+  actions={[
+    { label: "Order on Telegram", shortLabel: "Telegram", href: telegramLink },
+    { label: "Order on Zalo", shortLabel: "Zalo", name: "via", value: "zalo" },
+  ]}
+  secondary={{ label: "Add to list", icon: <IconPlus />, name: "add", value: item.id }}
+  note="Same-day delivery in Da Nang if you order before 16:00."
+/>
+```
+
+A photo's `variants` are what `responsiveImage` of `@spy4x/platform/universal/srcset` takes: the
+widths it is stored at, cropped to 3:4. For the photo to grow from the tile into the item page,
+give the item page's photo the tile's `viewTransitionName` and put
+`@view-transition { navigation: auto; }` in both pages' CSS.
+
+A shop's blog lists its posts as `StoryTile`s in the same `LookGrid`, so a post looks like an item.
+Mark the newest one `lead`: from `lg` it spans two columns with a 3:2 cover. A post with no cover
+gets its title, large, on a plain panel. The date and the reading time use `PostList`'s words.
+
+```tsx
+<LookGrid label="Stories">
+  {posts.map((post, index) => (
+    <StoryTile
+      key={post.id}
+      href={post.href}
+      title={post.title}
+      topic={post.topic}
+      publishedAt={post.publishedAt}
+      readMinutes={post.readMinutes}
+      cover={post.cover && { variants: post.cover.variants, alt: "" }}
+      lead={index === 0}
+      priority={index === 0}
+    />
+  ))}
+</LookGrid>
+```
+
+What the page does for `OrderBar` on a phone, below `lg`:
+
+- Put it last in the main column, outside the page's side padding, so the bar spans the screen,
+  and not inside an element that scrolls on its own: it sticks to the page's scroll.
+- Leave room under the controls above it. Once scripts run, while the bar is stuck to the bottom
+  of the screen and focus is in its form (the `form` it names, else the form or the element around
+  it), the bar sets the page's `scroll-padding-bottom` to its own height and scrolls the focused
+  control above it. Focus elsewhere leaves the page as it was. For a page that also works without
+  scripts, set a starting value in the page's CSS, about the bar's height:
+  `@media (width < 64rem) { html { scroll-padding-bottom: 14rem; } }`.
+
+## ListField and DateTimeField
+
+`ListField` edits a short list of lines (a post's key points): Enter in a line adds the next one
+instead of submitting the form, Backspace in an empty line other than the first removes it, and a
+removed line hands focus to the line that took its place. `DateTimeField` edits one instant in a
+named zone: the person types the wall clock of `timeZone`, the field shows that zone and its offset
+beside the input, and `onChange` receives `toISOString()`. A time a clock change skips moves
+forward by the gap; a repeated one is the earlier of the two.
 
 ## Timeline
 
@@ -1011,7 +1410,7 @@ is no English default; `captionHidden` keeps it for assistive tech while hiding 
 unaffected.
 
 **`empty` replaces the whole body, not just one cell's worth**, when `rows` is empty: a single row
-spanning every column, defaulting to `<EmptyState title="No rows" />`. The header stays, so a
+spanning every column, defaulting to `<EmptyState title="Nothing to show" />`. The header stays, so a
 sortable column stays clickable even when a filter elsewhere on the page is what emptied the list.
 
 **`rowKey` is each row's identity.** `DataTable` hands it to `Table` as `bodyKeys`, so every
@@ -1278,12 +1677,15 @@ carries `loading="lazy"`, so only the image a reader sees first loads up front.
 />
 ```
 
-Five more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
+Six more props shape the strip, and the grid ignores all of them. Each defaults to off, and a strip
 that sets none renders exactly what it did before they existed.
 
 - `hero` is for a strip that is the page's hero. Its first image loads with `loading="eager"` and
   `fetchpriority="high"`, often the page's largest paint; every later one with `loading="lazy"` and
   `decoding="async"`.
+- `lazy` is for a strip below the page's own first media, such as a separate hero image. Every image
+  in it loads with `loading="lazy"`, the first included, and none carries `fetchpriority`, so the
+  strip does not compete with that hero for bandwidth. `hero` wins when both are set.
 - `captions` shows each image's `alt` under it, in a `<figcaption>`. The image then carries the same
   `alt`, which names its button, and the button drops its `aria-label`: the visible caption and the
   button's accessible name are the same text.
@@ -1325,6 +1727,37 @@ plain `<img>`.
 />
 ```
 
+## ImportMapper
+
+`ImportMapper` asks which column of a file holds each field, then shows the first rows as the app
+read them. It never reads the file: the app parses it, passes the header, the first rows and its
+settings in as strings, and re-reads on `onSettingsChange` while `pending` is true. Every cell is
+text, so `<b>x</b>` or `=SUM(A1)` shows as written.
+
+- A field's select has the id `${id}-${field.key}` and a setting's `${id}-setting-${setting.key}`,
+  so a page can focus the first one with an error. `id` defaults to `useId()`.
+- A required field left on "Not in this file" shows "Choose the column that holds this."; an entry
+  in `errors` replaces it. A column chosen for two fields gets a muted note under both.
+- Rows with `errors` are listed in an `ErrorSummary` above the preview; its "Line N" button moves
+  focus to that row. After 300 ms of `pending` the preview body becomes skeleton bars.
+- `defaultImportMapperLabels` holds the English words `labels` overrides.
+
+```tsx
+<ImportMapper
+  header={header}
+  sample={rows.slice(0, 5)}
+  fields={[{ key: "date", label: "Date", required: true }, {
+    key: "amount",
+    label: "Amount",
+    numeric: true,
+  }]}
+  value={map}
+  onChange={(key, column) => setMap({ ...map, [key]: column })}
+  preview={preview}
+  rowCount={rows.length}
+/>
+```
+
 ## MoneyDisplay and MoneyInput
 
 Money in this convention is a whole number in a currency's smallest unit — `1250` means `€12.50`.
@@ -1338,8 +1771,21 @@ grouping mark is accepted only where `Intl` itself would place one for that loca
 never stripped wherever it stands, which is what let `"12.50"` typed in a German field (where `.` is
 the grouping mark, not the decimal mark) silently become €1,250.00.
 
-`MoneyDisplay` is a bare `<span>` — this is text, not a control, so it carries no role or label of
-its own. `colorNegative` colours a negative amount red; every other style is the caller's `class`.
+Both format in the person's region, not the interface language: without a `locale` prop they use
+`useFormat().locale`, the region format the app gives `FormatContext`, so an English interface in a
+German region shows `1.234,56 €`, the same way its dates read. `decimals` gives a code the ISO table
+lacks its own, such as `8` for `BTC`.
+
+`MoneyDisplay` is a bare `<span>` with tabular figures — this is text, not a control, so it carries
+no role or label of its own. `tone="negative"` colours a negative amount with the danger token;
+`tone="signed"` adds a `+` to income in the success colour and keeps the minus sign of spending in
+the danger colour, and zero gets neither. `colorNegative` still works as `tone="negative"`. Every
+other style is the caller's `class`.
+
+`MoneyInput` shows the currency code inside its bordered box, after the amount, tied to the input by
+`aria-describedby` with a hidden "Currency: Euro (EUR)" when `Intl` knows the name. `class` styles
+that box. An amount with more decimals than the currency takes is refused with its own message,
+"EUR takes up to 2 decimal places" or "JPY takes whole amounts only"; `decimalsMessage` replaces it.
 
 `MoneyInput` keeps the typed text as local, purely visual state — the same allowance `Input`'s own
 draft state has — synced from `value`/`currency`/`locale` only while the field is not focused, so a
@@ -1377,6 +1823,56 @@ never a stale one; a form submitted right after posts what was actually typed, o
 is empty; `aria-invalid` marks it for a reason of the caller's. `Field` sets both, from its own
 `required` and `error`.
 
+## Translations
+
+Every word a component shows comes from the package's catalog, `@spy4x/preact-ui/i18n/<language>`,
+in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. Each key is `<Component>.<field>`, the field of the
+component's `labels` prop or its label prop: `Pagination.nextLabel`. An app builds one translator
+with `createTranslator` from `@spy4x/platform/universal/i18n`, the library's catalog first and its
+own after it, and provides it once with `I18nContext`:
+
+```tsx
+import uiDe from "@spy4x/preact-ui/i18n/de"
+import uiEn from "@spy4x/preact-ui/i18n/en"
+import { I18nContext } from "@spy4x/preact-ui/i18n"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
+
+const translator = createTranslator({
+  language: "de",
+  catalogs: [{ source: uiEn, translation: uiDe }, { source: appEn, translation: appDe }],
+})
+
+<I18nContext.Provider value={translator}>
+  <div lang={translator.language} dir={translator.dir}>{app}</div>
+</I18nContext.Provider>
+```
+
+Dates and numbers outside a message follow `FormatContext`, not the language, so an app provides
+both: `I18nContext` for the words and `FormatContext` for the person's region format and zone.
+Without a provider every component renders the English it always has. A word passed as a prop
+still wins over the catalog, and a translator that lacks the library's catalog leaves each word at
+its English default rather than showing the key. Numbers inside a message are written in the
+translator's number format (`1.234` in German). `When` says its distance in the translator's
+language (`vor 3 Tagen`), and in its old English words when that language is English. The layout does not mirror for right-to-left
+languages yet: `dir` is the app's to set.
+
+`Rich` draws a translated sentence whose spans the caller renders, such as a link inside it. Every
+part is text: a message or a value never becomes markup, and an `href` comes only from the `tags`
+the caller passes. Translating the catalogs, and stamping their locks, is in the repository's
+`TRANSLATING.md`.
+
+`Isolated` (`@spy4x/preact-ui/bdi`) keeps a value, such as a name the person typed, in its own
+direction inside a translated sentence, so a Latin file name in an Arabic sentence stays whole and
+its punctuation stays at its end. `isolate(value)` does the same for text that cannot hold markup,
+such as an `aria-label`:
+
+```tsx
+import { isolate, Isolated } from "@spy4x/preact-ui/bdi"
+
+<Isolated message={(name) => `Delete ${name}?`} value={file.name} />
+<button aria-label={`Remove ${isolate(file.name)}`}>×</button>
+```
+
 ## When and OnDay
 
 An app shows every date through one formatter: `Formatters` from `@spy4x/time/format`, built
@@ -1401,10 +1897,21 @@ Both render a `<time>` whose `datetime` is the instant in ISO form and whose `ti
 instant to the second in the person's zone, so hovering answers "when exactly". A missing or
 unreadable date renders `labels.missing` (`-`) in a plain `<span>`, with no `<time>`.
 
-The words are English by default, as everywhere in this library, and the region format changes how
-a date is written, never the language of the app. `labels.relative(at, now)` replaces the distance
-text: pass `(at) => format.relative(at)` for the region format's own words, or your translation.
+The distance is English (`a moment ago`, `3 days ago`, from `WHEN_LABELS.relative`) without an
+`I18nContext` provider and under an English one. Under a provider of another language it is
+`Intl`'s words in that language (`vor 3 Tagen`), in the person's zone. The region format alone
+never changes the language. `labels.relative(at, now)` replaces the distance text.
 `now` fixes the present for a render whose text must not depend on the clock (a test, a demo).
+
+`Elapsed` shows how long something has run, `02:05` or `1:02:03`, in a `<time>` whose `datetime`
+is the ISO duration (`PT2M5S`). Without an `end` (or with `end={null}`) it ticks once a second, from
+an effect, so the server draws the time of the render and the browser carries on; give `now` for
+text that must not move. A start after the end counts as no time.
+
+```tsx
+<StatusMark status="running" /> <Elapsed start={job.startedAt} />
+<StatusMark status="done" /> <Elapsed start={job.startedAt} end={job.endedAt} />
+```
 
 ## FileInput
 
@@ -1459,6 +1966,73 @@ refuses the rest with reason `"too-many"` (`labels.tooMany`), reported through `
 announced the same way a `maxSize`/`accept` refusal is, rather than silently dropped.
 
 It does not upload — sending the chosen files is the caller's own form post or `fetch` call.
+
+`appearance="button"` draws one `Button` instead of the zone, for a caller that keeps the files
+itself, such as an attachment list that uploads each choice at once or a profile picture's "Change".
+It opens the same chooser and runs the same `classifyFiles` checks, keeps no list, and hands each
+choice to `onFiles` (the accepted files of that choice, only when there are any) and `onReject`. The
+button keeps the 44 px touch target on a phone. Inside a `Field`, `id` is the button's, so `Field`'s
+label names the button, which still shows its own text. The input is hidden and out of the tab
+order, under the id `${id}-input`; `id` names the button. The input is emptied after every choice,
+so choosing the same file again still counts. The button's text is `label`, else `labels.browse`;
+`busy` and `busyLabel` show an upload in progress, and a busy button opens nothing. `hint`, `error`,
+`required` and `previews` do nothing in this mode, and it shows no refusal text: word the refusals
+from `onReject`.
+
+```tsx
+<FileInput
+  id="attach"
+  appearance="button"
+  label="Attach files"
+  accept="image/*,application/pdf"
+  maxSize={2 * 1024 * 1024}
+  multiple
+  onFiles={upload}
+  onReject={showRefusals}
+/>
+```
+
+## AttachmentList
+
+The files attached to a record, one row each: a 40 px thumbnail (`thumbnailSrc`) or an icon tile,
+the name (two lines at most, broken anywhere), and a line that says where the file stands.
+
+| `status`      | The row shows                                                | Its action                     |
+| ------------- | ------------------------------------------------------------ | ------------------------------ |
+| `"uploading"` | a `Progress` bar and "Uploading, 45%" (`progress`, 0 to 100) | cancel (`onCancel`)            |
+| `"waiting"`   | "Waiting to upload"                                          | remove (`onRemove`)            |
+| `"checking"`  | an indeterminate bar and "Checking…"                         | none                           |
+| `"failed"`    | "Upload failed." in the danger tone, or the item's `error`   | Retry (`onRetry`) and remove   |
+| `"ready"`     | kind, size and `detail`: "Image · 820 KB · Maya Chen"        | a `MoreMenu`: Download, Remove |
+
+A ready image with a `src` opens in `Lightbox`, which pages through every ready image of the list in
+order (`attachmentImages`); a ready file's name calls `onDownload`. That open or download target
+covers the tile, the name and the meta line, and is described by the meta line, so a row has at most
+two tab stops. The name is cut to two lines and carries the whole of it in a `title`. When the
+control that holds focus goes because its row changed state (Retry gives way to "Checking…", Cancel
+to a finished upload), focus stays in the row: on its first control, else on the row itself until a
+control comes back. Every callback left out takes its control with it: a read-only page passes
+`onDownload` alone. The list uploads, downloads and removes nothing; ask before a removal in the
+caller (`ConfirmDialog`), and pass `removingId` while it runs: when that row leaves `items`, focus
+moves to the next row's action (`useFocusAfterRemoval`), and after the last row to
+`focusAfterLast()`. An empty `items` renders nothing, so the caller draws its own empty state, such
+as a `FileInput` drop zone. Every word comes from the catalog (`AttachmentList.*`, the kind
+words `kindImage`, `kindPdf` and `kindFile`, and `uploading` with `uploadingUnknown` for no
+percentage); `labels` overrides any of them, and `ATTACHMENT_LIST_LABELS` holds the English. The
+lightbox's own words go in `lightboxLabels`.
+
+```tsx
+<AttachmentList
+  id="note-files"
+  items={files}
+  removingId={removingId}
+  focusAfterLast={() => attachButton.current}
+  onDownload={download}
+  onRemove={confirmRemove}
+  onCancel={cancelUpload}
+  onRetry={retryUpload}
+/>
+```
 
 ## Keyboard shortcuts
 
@@ -1568,7 +2142,10 @@ and inside the dialog the press landed in (or inside the open modal dialog, when
 hidden until it is wanted, such as a closed menu's item, whose trigger is `shown`;
 `hotkeyClickBinding(keys, element, shown)` takes it as a function too.
 `hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
-binds several elements in one `useHotkeys` call, as `Tabs` does. `firesInFields(keys)` is its rule
+binds several elements in one `useHotkeys` call, as `Tabs` does.
+`hotkeyActionBinding(keys, action, home)` is its sibling with nothing to click: it runs `action` by
+the same field rules, wherever the press lands outside a dialog or inside the one holding `home`,
+whether or not anything is rendered. `firesInFields(keys)` is its rule
 for text fields, which `CommandPalette` shares: a combination with Control, Command or `mod` fires
 while the reader types, one with only Alt does not (Option types a character on a Mac), and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). `useApplePlatform(apple)` answers
@@ -1585,13 +2162,14 @@ The arrow keys move through the results, Home and End jump to either end, Enter 
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
 focus back on the button. When the button is hidden, as when an app opens the palette from controls
 of its own by clicking it, focus goes back to the element that had it before the palette opened,
-or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
-bound by the machinery of a button's `hotkey`: each clicks the button, which announces them all in
-`aria-keyshortcuts` and shows the first as a button's hotkey hint, from `sm` up and only where the
-main pointer is fine; `kbdLabels` changes its words. `hotkeys` names other keys, and `[]` turns them
-off. The keys work only while the button is shown: a palette whose button is hidden, by `hidden`
-or a `display: none` breakpoint, ignores them and passes them on, so a second palette shown in its
-place opens instead. While the reader types in a text field, the rule is `firesInFields`, the
+or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it
+directly (`hotkeyActionBinding`), whatever trigger is drawn: a custom one, none, or the button
+while it is hidden. The button announces them all in `aria-keyshortcuts` and shows the first as a
+button's hotkey hint, from `sm` up and only where the main pointer is fine; `kbdLabels` changes its
+words. `hotkeys` names other keys, and `[]` turns them off. Inside a dialog they open the palette
+only when that dialog holds its trigger, and while a modal dialog is open they wait. Two palettes
+bound to the same keys on one page: the first mounted opens, so give the other `hotkeys={[]}`.
+While the reader types in a text field, the rule is `firesInFields`, the
 same one a button's `hotkey` follows: a combination with Control, Command or `mod` still opens the
 palette; a plain key such as `/` or an Alt combination does not, since both type text; and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leaves Ctrl+K alone on a
@@ -1602,6 +2180,42 @@ into view as it moves: the listbox is the box that scrolls, so focus stays in th
 phone the button is an icon, the dialog fills the screen, and the close button and every result
 row are at least 44 px tall. A long label stops at two lines and a long `detail` at one.
 
+`trigger="field"` draws the field-shaped button at every width, phones included, with the
+placeholder and the hotkey hint, as wide as its container. It is still a button: Tab reaches it and
+Enter or Space opens the palette. A printable key typed on it opens the palette with that key in
+the field and the caret after it, as a real field would take it; a key that is one of `hotkeys`
+opens it the hotkey's way. `defaultQuery` is the query the field holds each time the palette opens,
+selected, so the first key typed replaces it.
+
+`trigger` can also be a function, called on every render with a `CommandPaletteTrigger`:
+`open(query?)`, `ref`, `shortcuts` and `hotkey`. It draws a trigger of its own, such as an app
+shell's search button or a "Search for this" button on a 404 page, or returns `null` to draw none.
+`open()` opens the palette with `defaultQuery` selected; `open("x")` opens it with "x" typed and the
+caret after it. Put `ref` on the element so focus comes back to it on close; without it, focus goes
+back to the element that had it before. Give the element `aria-haspopup="dialog"` and
+`aria-keyshortcuts={shortcuts}`, and show `hotkey` with `Kbd` if you want a hint.
+
+```tsx
+<CommandPalette
+  options={options}
+  onSelect={(option) => run(option.id)}
+  trigger={({ open, ref, shortcuts }) => (
+    <Button
+      ref={ref}
+      aria-haspopup="dialog"
+      aria-keyshortcuts={shortcuts}
+      onClick={() => open()}
+    >
+      Search
+    </Button>
+  )}
+/>
+```
+
+The trigger's `class` is appended after its own classes and not merged into them, so a bundle that
+renders the palette carries no `tailwind-merge`. To replace one of the trigger's own utilities,
+such as its width, mark the replacement important: `class="w-80!"`.
+
 While an input method is still composing a word, the results stay those of the text from before
 and no `search` is asked; they follow once the word is finished. Enter and Escape pressed to
 confirm or cancel the word neither pick a result nor close the dialog.
@@ -1609,9 +2223,14 @@ confirm or cancel the word neither pick a result nor close the dialog.
 It takes its results one of two ways, never both:
 
 - `options`: the palette filters the list itself as the reader types. Its default `filter` is
-  `rankOptions(options, query, limit)`: names equal to the query first, then names starting with
-  it, then names containing it, then options whose `detail` contains it, folding case and accents
-  the way `Combobox` does. Pass `filter` to rank differently.
+  `matchOptions(options, query, limit)`, built on `matchEntry` from
+  `@spy4x/platform/universal/text`. It ignores case, accents and word order, and each query word
+  only has to start a word of the label or of one of the option's `aliases`. A word of four letters
+  or more may carry one typo, and a query typed in the other keyboard layout (ЙЦУКЕН and QWERTY) or
+  the other alphabet (Cyrillic and Latin) is read too: "combobx" finds Combobox, "ещфые" finds
+  Toast. Options whose `detail` alone holds the query come last. Pass `filter` to rank
+  differently; `rankOptions(options, query, limit)` is the plain substring ranking the palette used
+  before.
 - `search(query, signal)`: the palette calls it with the empty query when it opens and then after
   each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
   and the stale answer is ignored even when the function does not listen to it. While a call runs
@@ -1621,11 +2240,47 @@ It takes its results one of two ways, never both:
   waits for its answer and picks the answer's first result, never a row of the previous query. A
   rejection says the search failed.
 
-An option is `{ id, label, detail?, hint?, group? }`, and `onSelect` receives the same object, so
-it can carry whatever the app needs, such as an `href`. Options with a `group` are listed under a
+An option is `{ id, label, detail?, hint?, group?, aliases? }`, and `onSelect` receives the same
+object, so it can carry whatever the app needs, such as an `href`. Every result row carries how the
+query matched it in `data-match`, whichever filter or `search` listed it: `exact`, `prefix`,
+`words`, `alias`, `layout`, `translit`, `typo`, or `detail` when only the `detail` holds the query
+(`CommandPaletteMatchKind`). `showMatch` also says it in words beside the result, such as "Typo
+fixed" or "Other keyboard layout"; `defaultCommandPaletteMatchLabels` holds them and `matchLabels`
+overrides them. `matchOption(query, option)` is that kind for one option. Options with a `group` are listed under a
 heading per group; `groupOptions(options)` is that grouping on its own: the unheaded options first,
 then each group in the order it first appears. `defaultCommandPaletteLabels` holds the English
 words, which `labels` overrides one by one.
+
+An option can be a command. `run` is called on Enter or a click in place of `onSelect`, after the
+palette closes. With `keepOpen` the palette stays open instead, the same row stays highlighted and
+the list is neither filtered nor sorted again: re-render with the option's new `state` and its
+badge changes in place, and the status region says `stateChanged(label, state)` ("Theme: Dark")
+once the state has really changed. `icon` is an icon component drawn at `size-4` before the label;
+when one row of a group has one, every row of that group keeps the space. `state` is one short word
+in a grey badge. `kbd` is the command's shortcut, one combination as `useHotkeys` takes it: the row
+shows its keys from `sm` for a fine pointer and announces it in `aria-keyshortcuts`, and the caller
+binds it. `disabledReason` keeps the row listed, dimmed and `aria-disabled`, with the reason in place
+of its `detail` and no badge or keys; the arrow keys still stop on it, and Enter or a click runs
+nothing, keeps the palette open and says the reason. A row's accessible name is its label; its
+detail or reason, match words, state and hint describe it. A destructive command opens its usual
+confirmation, never acts at once.
+
+A command whose label or one of whose `aliases` starts with the query is pinned on top under "Best
+match" (`labels.bestMatch`), moved out of its own group so it is listed once: "dark" pins a Theme
+command whose alias is "dark mode". With `recent={{ storageKey, storage: () => localStorage }}`, the palette keeps the
+last 10 top-level picks under `storageKey` and lists up to 5 of them under "Recent"
+(`labels.recent`) on the empty query, newest first, skipping any id no option has now. Storage is a
+port, as the library's components never reach for `localStorage` themselves; it is called when the
+palette opens and on a pick, never during a render, so the palette renders on a server. Storage
+that throws (blocked, full) or holds something else (over 8,192 characters, not a JSON array) only
+means nothing is remembered. `clearCommandPaletteRecent(storageKey, storage)` forgets the picks:
+call it on sign-out, so the next person on the device does not see them.
+
+Once typing pauses for 250 ms, a polite live region says how many results are listed,
+`results(count)` ("5 results", "1 result"); no result is said by `empty`, as before. From `sm`, for
+a fine pointer, a line under the list shows the keys: ↑ ↓ move, Enter open, and Ctrl+Enter (⌘Enter on
+a Mac) the alternative pick, in the words of `keysMove`, `keysOpen` and `keysAlternative`. It is
+hidden from screen readers, which know a listbox's keys.
 
 ```tsx
 <CommandPalette
@@ -1725,6 +2380,35 @@ so the markup works server-rendered with JavaScript off. `defaultValue` checks a
 markup; an island can pass `value` and `onChange` instead. An option's `id` lets page CSS read
 `:has(#id:checked)`, and its `inputAttributes` (analytics `data-*`, say) go on the radio.
 
+## LanguagePicker, LanguageDialog and LanguageButton
+
+Every language is named in itself, from `Intl.DisplayNames`, with its first letter capitalised the
+way that language does it ("русский" becomes "Русский") and `lang` and `dir` on the name, so a
+person who landed in a language they cannot read still finds their own.
+
+`mode="list"` is a radio group for an app: one tab stop on the chosen row, the arrow keys move and
+choose (Left and Right swap in a right-to-left page), Home and End go to the ends. `onSelect` gets
+the tag, or `null` for the "Automatic" row that `automatic` (the device's language) adds first.
+While the app loads a language, `pending` puts a spinner on its row and a live region says
+"Loading …"; once `current` changes, the region says the new language's name in that language.
+`unavailable` disables languages that cannot load now, with "Needs a connection" under each, and
+`failed` names one that could not load under the list. Rows are at least 44 px and wrap.
+
+`mode="links"` is a `<nav>` of plain `<a href hreflang lang>` links, `href(tag)` giving each
+address, with `aria-current="page"` on the current one: a website's footer, working with JavaScript
+off.
+
+`LanguageDialog` puts the list in a `Modal`. A choice applies at once and the dialog stays open in
+the new language, so a wrong tap is undone with one more; Done closes it. It opens with focus on
+the chosen row, which keeps focus through every switch. `AccountMenu` (`system/`) opens it from its
+`language` item.
+
+`LanguageButton` is the switch for a signed-out header: a ghost button with `IconGlobe` and the
+language in use (`current`, else `automatic`) named in itself, that opens `LanguageDialog` with the
+props it is given and returns focus to itself when the dialog closes. A screen reader hears the
+dialog's title before the name ("Language Deutsch"); with neither `current` nor `automatic` the
+title is shown instead. `buttonDataE2E` names the button for tests; `dataE2E` stays the dialog's.
+
 ## ThemePreview
 
 A Dark / Light `RadioChips` pair, dark by default, over a frame whose children are a slot. The app
@@ -1732,11 +2416,16 @@ imports `@spy4x/preact-theme`'s `theme-preview.css`, which declares the checked 
 the frame alone through `:has()`, so it switches with JavaScript off and the page around it keeps
 its own palette. The preset's `dark` variant follows the frame too, so everything inside it, `dark:`
 utilities included, is drawn in the frame's palette. More in the theme README, "Theme preview".
+`inputAttributes` adds attributes to each radio by its value, such as an analytics event:
+`{ light: { "data-umami-event": "theme-light" } }`; the radio's own `data-preview-theme` wins over
+one of the same name.
 
 ## ToggleChips
 
 Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
-chip is a filled badge in `color`, an unpressed one a grey outlined badge. In `mode="single"`,
+chip is a filled badge in `color`, an unpressed one a grey outlined badge. An option with its own
+`color` (`#rrggbb`, such as a tag's) is filled with it when pressed, in black or white text, and
+shows it as a dot before its text when not. In `mode="single"`,
 pressing another chip moves the selection and pressing the pressed chip clears it to `null`.
 
 `toggleChipSelection(options, selected, pressed)` is the multiple-mode press on its own: it adds or
@@ -2120,13 +2809,13 @@ Both forms are `EnhancedForm`s. While the app is still working on a submit (open
 portal), it passes `pending`: the form is disabled, its button shows a spinner, and a second submit
 is refused, with or without a script. While a promise returned from `onChoose` or `onSubmit` is
 outstanding, the form refuses another submit too, though it stays enabled. A screen reader hears
-the `pending` label ("Please wait…") from the form the visitor submitted. A callback that returns
+the `pending` label ("One moment…") from the form the visitor submitted. A callback that returns
 at once leaves focus on the button the visitor pressed, and when `pending` ends, focus the wait had
 parked on the form goes back to its button.
 
 A callback that throws or rejects is not swallowed: the error goes to the global `reportError`, so
 it reaches the console and the app's `error` listener, and the form shows and announces the `failed`
-label ("Something went wrong. Please try again.") under its button until the next submit.
+label ("Something went wrong. Try again.") under its button until the next submit.
 
 The app owns `pending`, so the app clears it when the browser restores the page from its
 back/forward cache. Otherwise a visitor who comes Back from checkout finds every "Choose" still
@@ -2174,6 +2863,13 @@ from the component's own subpath. Most exist so a rule can be unit-tested withou
 ones a caller has a use for say when. A line that says a helper is exported for the package's own
 components and tests means exactly that: nothing outside this package should build on it.
 
+### AttachmentList (`./attachment-list`)
+
+- `attachmentImages(items)` lists the files an `AttachmentList`'s lightbox shows, in order: the
+  ready images with a `src`, each named by its file name. Use it to open the lightbox at the same
+  position from a control of your own.
+- `ATTACHMENT_LIST_LABELS` holds the list's English words; spread it to override a few.
+
 ### Avatar (`./avatar`)
 
 - `avatarFace({ src, failed, name })` picks which face an `Avatar` shows: `"image"` while `src` is
@@ -2220,6 +2916,10 @@ components and tests means exactly that: nothing outside this package should bui
   anything that renders.
 
 ### Modal (`./modal`)
+
+The title row and the button row are a `<header>` and a `<footer>` with `role="none"`: a `Modal`
+opened from a page's `<header>` (`LanguageButton`, an account button) sits inside that banner, and a
+landmark there would be a nested banner or contentinfo (axe's `landmark-banner-is-top-level`).
 
 - `backdropDismissesByDefault` is `true`: a click on the backdrop dismisses a `Modal` whose
   `closeOnBackdrop` is left out.
@@ -2277,9 +2977,12 @@ components and tests means exactly that: nothing outside this package should bui
 
 - `dateRangePresets` lists every date preset in its presentation order: the single days and rolling
   day counts (`"today"` to `"last-90-days"`), then `"last-12-months"`, then the calendar periods
-  (`"this-month"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
+  (`"this-week"` to `"last-year"`), then `"custom"`. `timeRangePresets` lists the two time presets,
   `"last-hour"` then `"last-24-hours"`. They carry no labels: build a picker's option list from them
   and word each option yourself.
+- `rangeForPreset` and `presetForRange` take `firstWeekday` (1 Monday to 7 Sunday, default 1) for
+  the two week presets; pass the same one to both, and to `DateRangePicker`, so a Sunday-start week
+  the picker applied is still recognised as "This week".
 
 ### Dropdown (`./dropdown`)
 
@@ -2309,6 +3012,22 @@ components and tests means exactly that: nothing outside this package should bui
 - `resolveLabels(labels)` is exported for the package's own components and tests: it fills every
   message label a `FileInput` was not given with its English default.
 
+### I18n (`./i18n`)
+
+- `ENGLISH` is the translator every component reads without an `I18nContext` provider. It knows
+  no key, so each component shows the English written in its own code, and an island bundles only
+  its own words.
+- `useT()` returns the nearest `I18nContext` translator, for an app's own screens
+  (`useT().t("notes.empty")`); called outside a render it returns `ENGLISH`.
+- `useLabels(name, defaults, labels?, params?)` is how a component reads its words: each field of
+  `defaults` from `labels`, else from the catalog key `<name>.<field>`, else from `defaults`.
+  `params` names the arguments of a field that is a function. `labelsFrom(translator, …)` is the
+  same for a given translator, outside a component.
+- `translate(translator, key, english, values?)` returns one `ui` message, or `english` when the
+  translator lacks the key; a component calls it for a word that is not a field of its labels.
+- Each language subpath, `./i18n/de` and the rest, has one `default` export: that language's
+  catalog, to pass to `createTranslator`.
+
 ### Format (`./format`)
 
 - `FormatContext` is the Preact context holding the `Formatters` every date text reads; its value
@@ -2316,6 +3035,72 @@ components and tests means exactly that: nothing outside this package should bui
 - `useFormat()` returns the nearest `FormatContext` value, for a component that writes a date
   itself (`useFormat().dateTime(at)`).
 - `WHEN_LABELS` holds the English words `When` and `OnDay` use: `missing`, `title` and `relative`.
+- `ELAPSED_LABELS` holds the words of `Elapsed`: `missing` (`-`) and `duration(milliseconds, language)`,
+  the clock face `Intl.DurationFormat` writes in that language (`02:05`, `1:02:03`).
+
+### DateTimeField (`./date-time-field`)
+
+- `DATE_TIME_FIELD_LABELS` holds the English words of `DateTimeField`: `zone`, the line that names
+  the time zone.
+
+### ListField (`./list-field`)
+
+- `LIST_FIELD_LABELS` holds the English words of `ListField`: `item`, `remove`, `add` and `count`.
+
+### PostList (`./post-list`)
+
+- `POST_LIST_LABELS` holds the English words of `PostList`: `readTime`.
+
+### Prose (`./prose`)
+
+- `PROSE_LABELS` holds the English words `Prose` adds: `anchor`, `table`, and the copy button's
+  `copy`, `copied` and `copyFailed`.
+
+### ProseCodeCopy (`./prose-copy`)
+
+- `enhanceCodeCopy(root, copy)` reveals and wires every copy button `Prose` drew with `copyCode`
+  inside `root` (default `document`), once each, and returns a function that hides and unwires
+  them; `ProseCodeCopy` calls it on mount.
+
+### Checklist (`./checklist`)
+
+- `enhanceChecklist(root, { key, storage, onChange })` wires the checkboxes a server rendered inside
+  `root` into a checklist whose ticks survive a reload: it restores and saves the ticked ids under
+  `key` in the `storage` port (a page passes `() => localStorage`), follows other tabs through the `storage`
+  event, counts per `data-checklist-section` and reports `{ checked, total, bySection, storageOk }`
+  to `onChange` on start and after each change. It returns the function that unwires it, carrying
+  `clear()` (returns the ids it unticked) and `restore(ids)`, enough for Clear with Undo. It never
+  draws anything, so the boxes keep their native semantics.
+
+### SectionHeading (`./section-heading`)
+
+- `SECTION_HEADING_LABELS` holds the English words of `SectionHeading`: `anchor`.
+
+### DocsNav (`./docs-nav`)
+
+- `DOCS_NAV_LABELS` holds the English words of `DocsNav`: `label`, `summary` and `summaryNone`.
+
+### PrevNext (`./prev-next`)
+
+- `PREV_NEXT_LABELS` holds the English words of `PrevNext`: `label`, `previous` and `next`.
+
+### ChangeList (`./change-list`)
+
+- `CHANGE_LIST_LABELS` holds the English words of `ChangeList`: `added`, `fixed`, `changes`,
+  `fixes`, `pullRequest` and `anchor`.
+
+### LookTile (`./look-tile`)
+
+- `LOOK_TILE_LABELS` holds the English words of `LookTile`: `sizes`, `colors`, `sizeSoldOut`,
+  `chosenSize` and `soldOut`.
+
+### OrderBar (`./order-bar`)
+
+- `ORDER_BAR_LABELS` holds the English words of `OrderBar`: `region` and `message`.
+- `bindScrollRoom(bar, scope, page)` is exported for the package's own components and tests: it
+  listens on `page` (a `ScrollRoomPage`, `window` in a browser) for focus in `scope` and keeps a focused
+  control above the bar while the bar is stuck to the bottom of a phone's screen. It returns the
+  unbind, which removes the listener and restores the page's `scroll-padding-bottom`.
 
 ### ImageGallery (`./image-gallery`)
 
@@ -2336,14 +3121,25 @@ components and tests means exactly that: nothing outside this package should bui
 - `counterText(position, total)` is the counter's English default, `"3 of 8"`; the `counterLabel`
   prop replaces it.
 
+### CurrencyField (`./currency-field`)
+
+- `filterCurrencies(options, query, recent)` is the list `CurrencyField` shows for a query: the
+  `recent` codes first while nothing is typed; the option whose code is the query first, then the
+  rest as `searchEntries` ranks them; for a query of symbols only, the options with that symbol.
+
 ### MoneyInput (`./money-input`)
 
-- `editableText(value, currency, locale)` formats an amount in the currency's smallest unit as the
+- `editableText(value, currency, locale, decimals)` formats an amount in the currency's smallest unit as the
   text a person edits: digits and the decimal mark of `locale`, the currency's number of decimals,
   no symbol and no grouping. `null` gives `""`.
-- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage)` is exported
+- `resolveMoneyInputEdit(text, currency, locale, bounds, invalidMessage, rangeMessage, options)` is exported
   for the package's own components and tests: the value and message one edit of a `MoneyInput`
   produces.
+
+### LanguagePicker (`./language-picker`)
+
+- `languageName(tag)` is a language's name in that language, first letter capitalised for it:
+  `"Русский"` for `"ru"`; a tag `Intl` cannot read comes back unchanged.
 
 ### Link (`./link`)
 
@@ -2375,6 +3171,11 @@ components and tests means exactly that: nothing outside this package should bui
   page with its neighbours. A `size` below `5` counts as `5`. Use it to draw pagination in markup of
   your own.
 
+### PeriodStepper (`./period-stepper`)
+
+- `periodStepperLabels` is the stepper's English words, one set per unit, the same as the
+  `PeriodStepper.*` keys of `i18n/en.ts`.
+
 ### Progress (`./progress`)
 
 - `clampProgress(value, max)` clamps a reading into `0…max` (`max` defaults to `100`) and returns it
@@ -2384,6 +3185,11 @@ components and tests means exactly that: nothing outside this package should bui
   `width: <n>%`; `null` gives `0`.
 - `formatProgressPercent(fraction)` formats a fraction as a whole percentage for display, rounded
   down so a bar that is not full never reads `100%`.
+
+### Slider (`./slider`)
+
+- `sliderFraction(value, min, max)` is where a value sits along a `Slider`'s track, from `0` to
+  `1`, clamped; a range with no width or a non-finite bound gives `0`.
 
 ### ScreenTour (`./screen-tour`)
 
@@ -2401,6 +3207,14 @@ components and tests means exactly that: nothing outside this package should bui
 - `tagInputKeyAction(event, state, count, text)` is the field's whole key table: `Combobox`'s arrow
   keys, plus Enter and comma adding a tag and Backspace removing the last one.
 
+### Textarea lines (`./textarea-line`)
+
+- `selectTextareaLine(textarea, line)` focuses a textarea, selects its 1-based line and scrolls the
+  textarea so the line sits in its middle, soft wraps counted. Use it from an `ErrorSummary` row
+  or a "next problem" key to take the reader to a problem on a line.
+- `textLineRange(text, line)` is the `[start, end]` offsets of a 1-based line, its line break left
+  out; a line out of range is the nearest one.
+
 ### UnsavedGuard (`./unsaved-guard`)
 
 - `guardedHref(click, link, here, owns)` is the rule `UnsavedGuard` applies to a click: the in-app
@@ -2412,6 +3226,14 @@ components and tests means exactly that: nothing outside this package should bui
   `leaveGuard` prop) and the code that navigates. `leaveGuard.navigate(go)` runs `go` at once when
   nothing is unsaved and asks first otherwise. `navigate` is its only member; `UnsavedGuard`
   throws for a `leaveGuard` that `createLeaveGuard()` did not return.
+
+### UsageMeter (`./usage-meter`)
+
+- `usageReading(used, limit, warnAt?)` is the meter's arithmetic without the markup: the state
+  (`"under"`, `"near"`, `"reached"`, `"over"`), the percentage rounded down, what is left or over,
+  the fill's width and where the limit's tick sits.
+- `usageMeterLabels` is the meter's English words, the same as the `UsageMeter.*` keys of
+  `i18n/en.ts`.
 
 ### useSucceeded (`./use-succeeded`)
 
@@ -2510,6 +3332,27 @@ useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
   (`!==`, so a message with the same text) moves nothing: clear it while the next attempt runs if a
   repeat must take focus again. `T` defaults to `HTMLInputElement`, so the ref goes straight onto
   an `<input>`.
+
+### useRowCursor (`./row-cursor`)
+
+- `useRowCursor({ count, onOpen, enabled? })` is a keyboard cursor over a list of rows: `j`
+  highlights the next row and `k` the one before, scrolling it into view, and Enter calls
+  `onOpen(index)`. It returns `{ index, rowProps }`; spread `rowProps(index)` on each row for its
+  `aria-current`, its highlight and a ref. Nothing is highlighted before the first `j` or `k`, both
+  start on the first row, the cursor stops at either end, and an empty list ignores the keys. The
+  keys match the physical key too, so they work on a Cyrillic layout, and do nothing with a
+  modifier, in a text field or inside a dialog; Enter on a link or a button stays with it. Only
+  one list on a page should listen: give the others `enabled: false`. `DataTable`'s `cursor` uses
+  it.
+- `stepRowCursor(from, step, count)` is where the cursor lands: `step` rows from `from`, held to
+  the ends; from no row (`-1`) on the first row, and in an empty list on none (`-1`).
+- `rowCursorClass` is the highlighted row's look, a selected background inside a selected
+  outline, which `rowProps` already sets.
+
+```tsx
+const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[index]) })
+<ul>{jobs.map((job, index) => <li key={job.id} {...cursor.rowProps(index)}>{job.name}</li>)}</ul>
+```
 
 ### useFocusOnChange (`./use-focus-on-change`)
 

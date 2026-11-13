@@ -1,14 +1,11 @@
 import type { JSX } from "preact"
 import { IconCheck, IconXMark } from "@spy4x/preact-icons"
-import { copyToClipboard } from "@spy4x/platform/browser/clipboard"
 import { Button } from "./button.tsx"
 import type { HotkeyProps } from "./hotkeys.ts"
+import { useLabels } from "./i18n.tsx"
+import type { CopyPort } from "./copy-text.ts"
 
-/**
- * A clipboard port. It fails by throwing, by rejecting or by returning `false`; anything else,
- * `undefined` included, counts as a copy that worked.
- */
-export type CopyPort = (text: string) => void | boolean | Promise<void | boolean>
+export { type CopyPort, copyText, DEFAULT_COPIED_FOR_MS } from "./copy-text.ts"
 
 /** What a {@link CopyButton} shows: nothing yet, a copy that worked, or one that did not. */
 export type CopyStatus = "idle" | "copied" | "failed"
@@ -31,6 +28,11 @@ export interface CopyButtonProps extends
    */
   title?: string
   /**
+   * Look of a button with a `title`: `"outline"` (the default) or `"primary"`, for a page whose
+   * main action is the copy. A button without a title stays icon-only.
+   */
+  variant?: "outline" | "primary"
+  /**
    * Injected clipboard port, e.g. the host app's `clipboard.copy`. It reports a failure by
    * throwing, rejecting or returning `false`.
    *
@@ -45,7 +47,7 @@ export interface CopyButtonProps extends
   copyLabel?: string
   /** Shown and announced after a copy that worked. Defaults to `"Copied"`. */
   copiedLabel?: string
-  /** Shown and announced after a copy that failed. Defaults to `"Copy failed"`. */
+  /** Shown and announced after a copy that failed. Defaults to `"Couldn't copy"`. */
   failedLabel?: string
   /** Milliseconds a confirmation, of either kind, stays visible. Defaults to 1500. */
   copiedForMs?: number
@@ -66,35 +68,10 @@ export interface CopyButtonBodyProps extends Omit<CopyButtonProps, "copy" | "cop
   onPress: () => void
 }
 
-/** Default milliseconds a confirmation stays visible. */
-export const DEFAULT_COPIED_FOR_MS = 1500
-
-/**
- * Copy `text` through `copy`, or the browser clipboard when there is none, and say whether it
- * worked. Never throws: a text function or a port that throws, or a port that rejects, is a failed
- * copy.
- *
- * @param text What to copy, or a function that returns it now.
- * @param copy The caller's clipboard port, if any.
- * @returns `true` when the copy worked.
- */
-export async function copyText(
-  text: string | (() => string),
-  copy?: CopyPort,
-): Promise<boolean> {
-  try {
-    if (typeof text === "function") text = text()
-    const result = await (copy ? copy(text) : copyToClipboard(text))
-    return result !== false
-  } catch {
-    return false
-  }
-}
-
 /** The glyph for each status: a clipboard, a checkmark, a cross. */
-function StatusIcon({ status }: { status: CopyStatus }): JSX.Element {
+function StatusIcon({ status, danger }: { status: CopyStatus; danger: string }): JSX.Element {
   if (status === "copied") return <IconCheck class="size-4" />
-  if (status === "failed") return <IconXMark class="size-4 text-danger" />
+  if (status === "failed") return <IconXMark class={`size-4 ${danger}`.trim()} />
   return (
     <svg
       class="size-4 shrink-0"
@@ -110,6 +87,15 @@ function StatusIcon({ status }: { status: CopyStatus }): JSX.Element {
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
   )
+}
+
+/** The English words of `CopyButton`, each one a prop of its own. */
+const COPY_BUTTON_LABELS: Required<
+  Pick<CopyButtonBodyProps, "copyLabel" | "copiedLabel" | "failedLabel">
+> = {
+  copyLabel: "Copy",
+  copiedLabel: "Copied",
+  failedLabel: "Couldn't copy",
 }
 
 /**
@@ -129,9 +115,10 @@ export function CopyButtonBody(
   {
     textToCopy: _textToCopy,
     title,
-    copyLabel = "Copy",
-    copiedLabel = "Copied",
-    failedLabel = "Copy failed",
+    variant = "outline",
+    copyLabel: copyLabelProp,
+    copiedLabel: copiedLabelProp,
+    failedLabel: failedLabelProp,
     onClick,
     class: className,
     status,
@@ -140,13 +127,20 @@ export function CopyButtonBody(
     ...rest
   }: CopyButtonBodyProps,
 ): JSX.Element {
+  const { copyLabel, copiedLabel, failedLabel } = useLabels(
+    "CopyButton",
+    COPY_BUTTON_LABELS,
+    { copyLabel: copyLabelProp, copiedLabel: copiedLabelProp, failedLabel: failedLabelProp },
+  )
   const message = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : ""
+  // The danger colour has no contrast on the primary fill: there the cross alone marks a failure.
+  const danger = title && variant === "primary" ? "" : "text-danger"
   return (
     <>
       <Button
         {...rest}
         type="button"
-        variant={title ? "outline" : "icon"}
+        variant={title ? variant : "icon"}
         class={className}
         title={copyLabel}
         aria-label={ariaLabel ?? (title ? undefined : copyLabel)}
@@ -155,11 +149,11 @@ export function CopyButtonBody(
           onPress()
         }}
       >
-        <StatusIcon status={status} />
+        <StatusIcon status={status} danger={danger} />
         {title === undefined
           ? null
           : status === "failed"
-          ? <span class="text-danger">{failedLabel}</span>
+          ? <span class={danger || undefined}>{failedLabel}</span>
           : message || title}
       </Button>
       <span role="status" aria-live="polite" class="sr-only">{message}</span>

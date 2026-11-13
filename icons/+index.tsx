@@ -10,6 +10,7 @@
  */
 
 import type { JSX } from "preact"
+import { svgIcon } from "./glyph.tsx"
 
 /**
  * Common prop surface for every icon.
@@ -26,67 +27,15 @@ export interface IconProps {
   title?: string
 }
 
-/** The accessibility attributes an icon's root `<svg>` carries. */
-interface IconA11yAttributes {
-  "aria-hidden"?: "true"
-  "aria-label"?: string
-  role?: "img"
-}
-
 /**
- * Accessibility attributes for an icon's root `<svg>`: hidden when the caller gives no name, a
- * labelled image (`role="img"`) when it passes `aria-label` or `title`.
+ * Heroicons v2 outline (stroke-2); Heroicons v2's "adjustments-horizontal" (2.2.0), added for the
+ * "Interactive" line of `Explorable` in `@spy4x/preact-ui` (#958).
  */
-function iconA11y(props: IconProps): IconA11yAttributes {
-  const label = props["aria-label"]
-  if (!label && !props.title) return { "aria-hidden": "true" }
-  return label ? { role: "img", "aria-label": label } : { role: "img" }
-}
-
-/** The `<title>` child for an icon given a `title`, or nothing. */
-function iconTitle(props: IconProps): JSX.Element | null {
-  return props.title ? <title>{props.title}</title> : null
-}
-
-/** How one glyph's root `<svg>` differs from the default: a filled 24-unit glyph at `size-5`. */
-interface SvgIconStyle {
-  /** Stroke width; set, the glyph is outlined in `currentColor` with no fill. */
-  stroke?: string
-  /** Round line caps and joins; `"cap"` rounds the caps alone. */
-  round?: true | "cap"
-  /** Root `fill`, when it differs from what `stroke` implies. */
-  fill?: string
-  /** Default size classes, used when the caller passes no `class`. Defaults to `"size-5"`. */
-  size?: string
-  /** Defaults to `"0 0 24 24"`. */
-  viewBox?: string
-  /** Spins, and stands still under reduced motion. */
-  spin?: true
-}
-
-/**
- * The root `<svg>` every icon renders: `currentColor` paint, the caller's name or a hidden
- * decoration, `shrink-0` plus the caller's `class` or the glyph's default size, then the optional
- * `<title>` and the drawing.
- */
-function svgIcon(props: IconProps, style: SvgIconStyle, ...drawing: JSX.Element[]): JSX.Element {
-  const outlined = style.stroke !== undefined
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox={style.viewBox ?? "0 0 24 24"}
-      fill={style.fill ?? (outlined ? "none" : "currentColor")}
-      stroke={outlined ? "currentColor" : undefined}
-      stroke-width={style.stroke}
-      stroke-linecap={style.round ? "round" : undefined}
-      stroke-linejoin={style.round === true ? "round" : undefined}
-      {...iconA11y(props)}
-      class={`${style.spin ? "animate-spin motion-reduce:animate-none " : ""}shrink-0 ${
-        props.class || style.size || "size-5"
-      }`}
-    >
-      {[iconTitle(props), ...drawing]}
-    </svg>
+export function IconAdjustmentsHorizontal(props: IconProps): JSX.Element {
+  return svgIcon(
+    props,
+    { stroke: "2", round: true },
+    <path d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />,
   )
 }
 
@@ -140,7 +89,7 @@ export function IconArrowDownTray(props: IconProps): JSX.Element {
 export function IconArrowLeft(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "2" },
+    { stroke: "2", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -166,7 +115,7 @@ export function IconArrowPath(props: IconProps): JSX.Element {
 export function IconArrowRight(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "2" },
+    { stroke: "2", mirror: true },
     <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />,
   )
 }
@@ -184,7 +133,7 @@ export function IconArrowUp(props: IconProps): JSX.Element {
 export function IconArrowUpRight(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <line x1="7" y1="17" x2="17" y2="7" />,
     <polyline points="7 7 17 7 17 17" />,
   )
@@ -194,7 +143,7 @@ export function IconArrowUpRight(props: IconProps): JSX.Element {
 export function IconArrowUturnLeft(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.5", size: "size-6" },
+    { stroke: "1.5", size: "size-6", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -207,7 +156,7 @@ export function IconArrowUturnLeft(props: IconProps): JSX.Element {
 export function IconArrowUturnRight(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.5", size: "size-6" },
+    { stroke: "1.5", size: "size-6", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -223,6 +172,20 @@ export function IconAtSign(props: IconProps): JSX.Element {
     { stroke: "2", round: true },
     <circle cx="12" cy="12" r="4" />,
     <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />,
+  )
+}
+
+/** Lucide outline (stroke-2); matches Lucide's "landmark" (lucide-static@1.47.0) exactly: a bank. */
+export function IconBank(props: IconProps): JSX.Element {
+  return svgIcon(
+    props,
+    { stroke: "2", round: true },
+    <path d="M10 18v-7" />,
+    <path d="M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z" />,
+    <path d="M14 18v-7" />,
+    <path d="M18 18v-7" />,
+    <path d="M3 22h18" />,
+    <path d="M6 18v-7" />,
   )
 }
 
@@ -414,12 +377,12 @@ export function IconChevronDown(props: IconProps): JSX.Element {
 
 /** Lucide outline (stroke-2); matches Lucide's "chevron-left" exactly, not Heroicons. */
 export function IconChevronLeft(props: IconProps): JSX.Element {
-  return svgIcon(props, { stroke: "2", round: true }, <path d="m15 18-6-6 6-6" />)
+  return svgIcon(props, { stroke: "2", round: true, mirror: true }, <path d="m15 18-6-6 6-6" />)
 }
 
 /** Lucide outline (stroke-2); matches Lucide's "chevron-right" exactly, not Heroicons. */
 export function IconChevronRight(props: IconProps): JSX.Element {
-  return svgIcon(props, { stroke: "2", round: true }, <path d="m9 18 6-6-6-6" />)
+  return svgIcon(props, { stroke: "2", round: true, mirror: true }, <path d="m9 18 6-6-6-6" />)
 }
 
 /** Heroicons v1 outline (stroke-2) · "chip" from heroicons@1.0.6 (#233). */
@@ -612,7 +575,7 @@ export function IconExclamationCircle(props: IconProps): JSX.Element {
 export function IconExternal(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />,
     <polyline points="15 3 21 3 21 9" />,
     <line x1="10" y1="14" x2="21" y2="3" />,
@@ -884,7 +847,7 @@ export function IconLinkedIn(props: IconProps): JSX.Element {
 export function IconList(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <line x1="8" y1="6" x2="21" y2="6" />,
     <line x1="8" y1="12" x2="21" y2="12" />,
     <line x1="8" y1="18" x2="21" y2="18" />,
@@ -922,7 +885,7 @@ export function IconLocationMarker(props: IconProps): JSX.Element {
 export function IconLogout(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "1.75", round: true },
+    { stroke: "1.75", round: true, mirror: true },
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />,
     <polyline points="16 17 21 12 16 7" />,
     <line x1="21" y1="12" x2="9" y2="12" />,
@@ -1463,7 +1426,7 @@ export function IconDownload(props: IconProps): JSX.Element {
 export function IconExternalLink(props: IconProps): JSX.Element {
   return svgIcon(
     props,
-    { stroke: "2" },
+    { stroke: "2", mirror: true },
     <path
       stroke-linecap="round"
       stroke-linejoin="round"

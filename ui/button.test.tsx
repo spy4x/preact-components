@@ -2,7 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import type { VNode } from "preact"
-import { Button, buttonClasses, type ButtonProps } from "./button.tsx"
+import { Button, buttonClasses, type ButtonLinkProps, type ButtonProps } from "./button.tsx"
 import { onAppPage } from "./testdata/page-at.ts"
 
 /** The `class` attribute of the first element in `html`. */
@@ -52,6 +52,18 @@ describe("Button", () => {
     )
     expect(render(<Button variant="danger">Delete</Button>)).toContain("bg-danger-fill")
     expect(render(<Button variant="ghost">More</Button>)).toContain("bg-transparent")
+  })
+
+  it("draws the danger-ghost variant transparent in the danger text colour with a danger-tinted hover", () => {
+    const classes = classOf(render(<Button variant="danger-ghost">Remove limit</Button>)).split(
+      " ",
+    )
+
+    expect(classes).toContain("bg-transparent")
+    expect(classes).toContain("text-danger")
+    expect(classes).toContain("hover:bg-danger-soft")
+    expect(classes, "no body-text colour to fight the danger one").not.toContain("text-foreground")
+    expect(classes, "ghost's padding at the default size").toContain("px-3")
   })
 
   it("draws the secondary variant's edge in the button border token, since its fill can match the page", () => {
@@ -214,6 +226,13 @@ describe("Button as a link", () => {
     )
 
     expect(html).toContain('href="/reports"')
+  })
+
+  it("accepts data-* attributes inline on a ButtonLinkProps object", () => {
+    const action: ButtonLinkProps = { href: "/", children: "x", "data-umami-event": "a" }
+    const html = render(<Button {...action} />)
+
+    expect(html).toContain('data-umami-event="a"')
   })
 
   it("refuses busy on a link at the type level", () => {

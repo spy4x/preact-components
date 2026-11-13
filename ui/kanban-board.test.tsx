@@ -142,6 +142,16 @@ describe("KanbanBoard", () => {
 })
 
 describe("nextKanbanSlot", () => {
+  it("swaps Left and Right on a right-to-left board, where the first column is on the right", () => {
+    const lengths = [2, 2, 2]
+    expect(nextKanbanSlot("ArrowLeft", { column: 0, index: 1 }, lengths, true))
+      .toEqual({ column: 1, index: 1 })
+    expect(nextKanbanSlot("ArrowRight", { column: 1, index: 1 }, lengths, true))
+      .toEqual({ column: 0, index: 1 })
+    expect(nextKanbanSlot("ArrowRight", { column: 0, index: 1 }, lengths, true))
+      .toEqual({ column: 0, index: 1 })
+  })
+
   const lengths = [2, 0, 4]
 
   it("steps up and down within the column, stopping at both ends", () => {

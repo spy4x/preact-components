@@ -12,6 +12,7 @@ import { IconAlertTriangle } from "@spy4x/preact-icons"
 import { formatTime as formatClockTime } from "@spy4x/platform/universal/time"
 import type { JSX } from "preact"
 import { useMemo } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Every word {@link SavedCopyNotice} shows. */
 export interface SavedCopyNoticeLabels {
@@ -19,7 +20,7 @@ export interface SavedCopyNoticeLabels {
   title: string
   /**
    * The sentence under the title, given the time of the copy as the notice words it. Defaults to
-   * `"The server is out of reach. This copy was saved on this device: 12/10/2026 14:05."`.
+   * `"Can't reach the server. You're seeing the copy saved on this device at 12/10/2026 14:05."`.
    */
   body: (time: string) => string
 }
@@ -27,7 +28,7 @@ export interface SavedCopyNoticeLabels {
 /** The English words {@link SavedCopyNotice} shows when the caller passes none. */
 export const DEFAULT_SAVED_COPY_NOTICE_LABELS: SavedCopyNoticeLabels = {
   title: "Saved copy",
-  body: (time) => `The server is out of reach. This copy was saved on this device: ${time}.`,
+  body: (time) => `Can't reach the server. You're seeing the copy saved on this device at ${time}.`,
 }
 
 /**
@@ -83,7 +84,9 @@ function clockTime(savedAt: Date): string {
 export function SavedCopyNotice(
   { savedAt, formatTime = clockTime, labels, class: className, ...rest }: SavedCopyNoticeProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_SAVED_COPY_NOTICE_LABELS, ...labels }
+  const words = useLabels("SavedCopyNotice", DEFAULT_SAVED_COPY_NOTICE_LABELS, labels, {
+    body: ["time"],
+  })
   const time = copyTime(savedAt)
   // Worded once for each copy: text that changed between two renders would be announced again.
   const worded = useMemo(() => time === null ? "" : formatTime(new Date(time)), [time])

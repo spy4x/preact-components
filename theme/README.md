@@ -316,10 +316,12 @@ classes keep their names: no app writes them as ordinary words.
 - **Colour atoms** — `text-primary`, `bg-primary`, `bg-primary-muted` (the accent as a fill,
   which stays visible in dark where `bg-primary` is near-black chrome), `border-primary`,
   `rounded-primary`, `text-muted`, `bg-canvas`, `bg-surface`, `border-subtle`,
-  `border-control`, `bg-danger`, `bg-warning`, `bg-success` and the `text-*`
-  status tones.
+  `border-control`, `border-frame` (`WindowFrame`'s edge: `--color-border-frame`, none in light
+  and the subtle border in dark, or the subtle border in every theme for an app that never sets
+  the token), `bg-danger`, `bg-warning`, `bg-success` and the `text-*` status tones.
 - **Type** — `pc-h1`–`pc-h5`, `pc-link`, `page-layout` (deprecated: use `Page` from
-  `@spy4x/preact-ui/layout`), `list-ul`, plus `theme-base` for
+  `@spy4x/preact-ui/layout`), `list-ul`, `pc-prose` (an article's rendered Markdown, which
+  `Prose` from `@spy4x/preact-ui` puts on its wrapper), plus `theme-base` for
   the document-level font, colour and canvas. Nothing is applied to the host
   page by importing the preset; `theme-base` is put on `<body>` when wanted, and
   every rule that would otherwise restyle the host is gated behind it — the
@@ -347,10 +349,13 @@ classes keep their names: no app writes them as ordinary words.
 - **Surfaces** — `pc-card`, `pc-card-header`, `pc-card-body`, `pc-card-footer`, `pc-scrollbar`,
   `pc-focus-offset-surface`.
 - **Data display** — `pc-num`, `pc-kpi`, `pc-kpi-label`, `pc-kpi-value`, `pc-bar`.
+- **Print** — Tailwind's `print:hidden` on anything that means nothing on paper: navigation, menus,
+  buttons. `SiteHeader` and `SiteFooter` carry it on their root, so a public page prints as its
+  content alone; a page adds it to its own controls.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`
-  (step 3 plus that inset) and `pl-safe` (left padding that clears a landscape phone's notch). The inset is the device's, not a step, so it gets a name here instead
+  (step 3 plus that inset) and `ps-safe` (inline-start padding that clears a landscape phone's notch, from the left or right inset as `dir` says). The inset is the device's, not a step, so it gets a name here instead
   of an arbitrary value in a component.
 
 ## Spacing
@@ -360,11 +365,12 @@ Padding, margin, gap, `space-x`/`space-y` and scroll margin/padding use one fixe
 the named gaps, the no-outer-margin rule and a page built from the layout components — is in
 [`docs/spacing.md`](../docs/spacing.md).
 
-| Export                        | What it is                                                                                                |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `SPACING_STEPS`               | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                                              |
-| `SPACING_GAPS`                | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12`                     |
-| `findOffScaleSpacing(source)` | every off-scale or arbitrary spacing class, spacing arbitrary property and `--spacing()` call in `source` |
+| Export                          | What it is                                                                                                |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `SPACING_STEPS`                 | `0 px 1 2 3 4 6 8 12 16`: every step a spacing class may use                                              |
+| `SPACING_GAPS`                  | the named gaps of the layout components: `none xs sm md lg xl 2xl` → `0 1 2 4 6 8 12`                     |
+| `findOffScaleSpacing(source)`   | every off-scale or arbitrary spacing class, spacing arbitrary property and `--spacing()` call in `source` |
+| `findPhysicalDirection(source)` | every class in `source` that names a physical side, with the logical class to write instead               |
 
 `findOffScaleSpacing` returns one `{ line, column, className, reason }` per finding, with the
 variant prefix and any `-` kept in `className` (`sm:-mt-4`). Besides spacing classes it reports an
@@ -405,9 +411,72 @@ imports no test framework: you pass your own `test` function, and a failure is a
 - `SpacingRunnerOptions` and `GuardWalkOptions` type the options, `GuardTest` the test function and
   `GuardFileSystem` the reader passed as `fs` (Deno's file system by default).
 
+### Logical sides
+
+A class that names a left or right side stays there when the page is right to left (`dir="rtl"`,
+for Arabic or Hebrew). Write the logical class instead; under `dir="ltr"` it draws exactly the same:
+
+| Physical                                      | Logical                                |
+| --------------------------------------------- | -------------------------------------- |
+| `ml-` `mr-` `pl-` `pr-` (and `scroll-` forms) | `ms-` `me-` `ps-` `pe-`                |
+| `left-` `right-`                              | `start-` `end-`                        |
+| `text-left` `text-right`                      | `text-start` `text-end`                |
+| `float-left`, `clear-right` and the like      | `float-start`, `clear-end`             |
+| `rounded-l` `rounded-r` `rounded-tl` …        | `rounded-s` `rounded-e` `rounded-ss` … |
+| `border-l` `border-r`                         | `border-s` `border-e`                  |
+
+`findPhysicalDirection(source)` returns one `{ line, column, className, logical, reason }` per
+physical class (`DirectionViolation`), reading text the way `findOffScaleSpacing` does. A class
+behind an `rtl:` or `ltr:` variant is not reported: it already says which direction it is for.
+`registerSpacingTests({ ..., logicalDirection: true })` registers a second test that fails on each
+one; it is off by default, because an app that only ever renders left to right loses nothing.
+
+This repository holds its own packages to it in `infra/scripts/spacing-scale.test.ts`, with a list
+of the files that still have physical classes until #876 converts them.
+
 Leave test files out: they spell out classes to assert on. Comments are read, because Tailwind's
 own scanner reads them and emits CSS for a class it finds there; a word counts only when it has the
 exact shape of a spacing class, so "a gap-free layout" or "top-5 results" is never reported.
+
+## Untranslated text
+
+`@spy4x/preact-theme/lint` exports a `deno lint` plugin as its `default`, named `ui-text`, with one rule, `no-literal`, for an
+app that translates its UI. It flags text a person reads or hears that is written into the JSX
+instead of taken from the app's translations:
+
+- JSX text with a letter in it, in any script (`<p>Saved</p>`), and a string or template literal
+  written as a child (`<p>{"Saved"}</p>`);
+- a literal `aria-label`, `title`, `placeholder`, `alt` or `label` attribute with a letter in it,
+  on an element or a component (`<Field label="Email" />`). `TRANSLATED_ATTRIBUTES` lists them.
+
+Spaces, punctuation, digits and symbols alone are never flagged, and neither is the code inside
+`<style>` and `<script>`. A literal may stay in two cases only:
+
+- **`translate="no"`** on the element or an ancestor, for text no language changes: a brand, a
+  code, a key name. Browsers' page translators skip it too.
+- **An ignore comment** on the line before: `// deno-lint-ignore ui-text/no-literal`, or inside
+  JSX `{/* deno-lint-ignore ui-text/no-literal */}`, which also works earlier on the same line.
+
+An app lists the subpath under `lint.plugins` in its `deno.json`, at the version its import of
+`@spy4x/preact-theme` uses. `deno lint` resolves a plugin by its full specifier and does not read
+the import map, so the version is written out here:
+
+```json
+{
+  "lint": {
+    "plugins": ["jsr:@spy4x/preact-theme@^10.11.0/lint"]
+  }
+}
+```
+
+A file the app has yet to translate starts with `// deno-lint-ignore-file ui-text/no-literal`.
+That keeps every other lint rule on the file, unlike `lint.exclude`, and once the file has no
+literal left, `deno lint` reports the comment as unused (`ban-unused-ignore`), so the list of
+untranslated files can only shrink.
+
+The plugin runs on `deno lint` with no flag; this repository checks it on Deno 2.9.7. This
+repository does not turn it on for itself: the guide's demos and the tests spell out their sample
+text in English on purpose.
 
 ## Theming
 
@@ -571,6 +640,13 @@ won over an app's own `@theme --font-sans` (#470). An app that wants that font s
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
 }
 ```
+
+**Arabic.** Under `:lang(ar)`, inside `.theme-base`, the preset sets letter-spacing to 0 (every
+`tracking-*` step reads 0 there), gives each `text-*` size a line about a quarter rem taller and the
+body 1.75rem, and keeps `em`, `i` and `italic` upright. The face is the app's to self-host, like
+Geist: [`docs/design-language.md`](../docs/design-language.md) → "Type" has the `@font-face` with
+its `unicode-range`, so a page without an Arabic letter never downloads it. The guide does the same
+in `pages/styles.css`, and `pages/e2e/theme.spec.ts` checks it on `pages/src/type-page.ts`'s pages.
 
 ### Headings, weights, shapes and shadows
 

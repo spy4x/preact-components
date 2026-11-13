@@ -66,6 +66,51 @@
   }
 }
 
+/*
+ * Arabic type (#876, docs/design-language.md → "Type"). Arabic letters join, so any tracking pulls
+ * a word apart: every `tracking-*` step reads 0 here, and so does the inherited letter-spacing.
+ * Arabic's marks sit above and below the line, so each `text-*` size gets a line about a quarter
+ * rem taller, and the body 1.75rem. Arabic has no italic: a slanted Arabic face is a synthetic
+ * oblique that reads as broken, so `em`, `i` and the `italic` class stay upright. The variables
+ * apply because Tailwind's `tracking-*` and `text-*` read them where they are used.
+ */
+@layer base {
+  :where(.theme-base, .theme-base *):lang(ar) {
+    letter-spacing: 0;
+    font-style: normal;
+    --tracking-tighter: 0em;
+    --tracking-tight: 0em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0em;
+    --tracking-wider: 0em;
+    --tracking-widest: 0em;
+    --text-xs--line-height: calc(1.25 / 0.75);
+    --text-sm--line-height: calc(1.5 / 0.875);
+    --text-base--line-height: 1.75;
+    --text-lg--line-height: calc(2 / 1.125);
+    --text-xl--line-height: calc(2 / 1.25);
+    --text-2xl--line-height: calc(2.25 / 1.5);
+    --text-3xl--line-height: calc(2.5 / 1.875);
+    --text-4xl--line-height: calc(2.75 / 2.25);
+    --text-5xl--line-height: 1.15;
+    --text-6xl--line-height: 1.15;
+    --text-7xl--line-height: 1.15;
+    --text-8xl--line-height: 1.15;
+    --text-9xl--line-height: 1.15;
+  }
+
+  .theme-base:lang(ar) {
+    line-height: 1.75rem;
+  }
+}
+
+/* The `italic` class sits in the utilities layer, so only a rule there keeps Arabic upright. */
+@layer utilities {
+  :where(.theme-base, .theme-base *):lang(ar) {
+    font-style: normal;
+  }
+}
+
 /* #region Colour atoms */
 
 /*
@@ -134,6 +179,12 @@
 
 @utility border-subtle {
   border-color: var(--color-border-subtle, oklch(0.928 0.006 264.531));
+}
+
+/* `WindowFrame`'s edge. An app that does not set --color-border-frame (one that maps its own
+   palette instead of loading tokens.css) gets the subtle border in every theme. */
+@utility border-frame {
+  border-color: var(--color-border-frame, var(--color-border-subtle, oklch(0.928 0.006 264.531)));
 }
 
 @utility border-control {
@@ -462,7 +513,193 @@
 }
 
 @utility list-ul {
-  @apply list-disc list-inside text-sm space-y-1 pl-1;
+  @apply list-disc list-inside text-sm space-y-1 ps-1;
+}
+
+/*
+ * The type of an article (`Prose` from `@spy4x/preact-ui`): rendered Markdown, which carries no
+ * classes, set from the tokens at a measure of about 65 characters. Every rule reads an element
+ * inside the wrapper through `:where()`, so each weighs one class and a class on the element wins.
+ * A code block keeps its lines: a wide one scrolls inside the block, which `Prose` makes a Tab
+ * stop, so a copied command stays one line. With `copyCode`, the block's copy button sits in its
+ * top corner, over the code, on the block's own background. On a phone inline code may break anywhere, so a long path in a
+ * table cell wraps instead of taking the whole width from the columns beside it; from `sm` it
+ * breaks only when it is longer than its line, so a file name that fits stays whole. A table cell
+ * holding code keeps room for a short name on a phone too. A table too wide for the screen
+ * scrolls inside the focusable region `Prose` puts it in (`[data-prose-table]`), so the page
+ * itself never scrolls sideways.
+ */
+@utility pc-prose {
+  @apply max-w-2xl text-base/7 text-pretty wrap-break-word;
+  color: var(--color-foreground, oklch(0.13 0.028 261.692));
+
+  & > :where(* + *) {
+    @apply mt-4;
+  }
+  & :where(h2, h3, h4) {
+    @apply scroll-mt-16 font-semibold text-balance;
+    color: var(--color-foreground, oklch(0.13 0.028 261.692));
+  }
+  & :where(h2) {
+    @apply mt-12 text-2xl/8 tracking-tight;
+  }
+  & :where(h3) {
+    @apply mt-8 text-xl/7;
+  }
+  & :where(h4) {
+    @apply mt-6 text-base/7;
+  }
+  & :where(h2, h3, h4) + :where(*) {
+    @apply mt-3;
+  }
+  & > :where(:first-child) {
+    @apply mt-0;
+  }
+  & :where(strong) {
+    @apply font-semibold;
+  }
+  & :where(a) {
+    @apply rounded-sm font-medium text-primary underline underline-offset-4;
+  }
+  & :where(a:hover) {
+    @apply decoration-2;
+  }
+  & :where(a:focus-visible) {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  & :where(:not(pre) > code) {
+    @apply rounded-sm bg-hover px-1 py-px font-mono text-sm max-sm:wrap-anywhere;
+  }
+  & :where(ul) {
+    @apply list-disc ps-6;
+  }
+  & :where(ol) {
+    @apply list-decimal ps-6;
+  }
+  & :where(li)::marker {
+    color: var(--color-muted-foreground, oklch(0.446 0.03 256.802));
+  }
+  & :where(li + li, li > ul, li > ol, li > p) {
+    @apply mt-2;
+  }
+  & :where(pre) {
+    @apply overflow-x-auto rounded-primary border border-subtle bg-canvas p-4 font-mono text-sm/6
+      whitespace-pre;
+  }
+  & :where(pre:focus-visible) {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  /* A code block with its copy button: the button sits in the block's top corner, above the first
+     line, so a long line that scrolls never passes under it. */
+  & :where([data-prose-code]) {
+    @apply relative;
+  }
+  & :where([data-prose-code]:has(> [data-prose-copy]:not([hidden])) > pre) {
+    @apply pt-12;
+  }
+  & [data-prose-copy] {
+    @apply absolute end-2 top-2 inline-flex size-8 cursor-pointer items-center justify-center
+      rounded-primary bg-canvas text-muted hover:bg-hover hover:text-foreground;
+  }
+  & [data-prose-copy][hidden] {
+    @apply hidden;
+  }
+  & [data-prose-copy]:focus-visible {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  & [data-prose-copy] > svg {
+    @apply hidden;
+  }
+  /* Its glyphs, in order: a clipboard at rest, a checkmark after a copy, a cross after a failure. */
+  & [data-prose-copy]:not([data-status]) > svg:nth-child(1),
+  & [data-prose-copy][data-status="copied"] > svg:nth-child(2),
+  & [data-prose-copy][data-status="failed"] > svg:nth-child(3) {
+    @apply block;
+  }
+  & [data-prose-copy][data-status="failed"] {
+    @apply text-danger;
+  }
+  & [data-prose-copy-status] {
+    @apply sr-only;
+  }
+  & :where(blockquote) {
+    @apply border-s-2 border-strong ps-4 text-muted;
+  }
+  & :where(blockquote > * + *) {
+    @apply mt-2;
+  }
+  & :where(hr) {
+    @apply mt-8 border-subtle;
+  }
+  & :where(hr + *) {
+    @apply mt-8;
+  }
+  & :where(img, video) {
+    @apply h-auto max-w-full rounded-primary;
+  }
+  & :where(figcaption) {
+    @apply mt-2 text-sm text-muted;
+  }
+  & :where(table, thead) {
+    @apply bg-transparent;
+  }
+  & :where(table) {
+    @apply w-full border-collapse text-sm;
+  }
+  & :where(th, td) {
+    @apply border-b border-subtle px-3 py-2 text-start align-top wrap-break-word;
+  }
+  & :where(th) {
+    @apply font-medium;
+  }
+  /*
+   * Code that may break anywhere gives its cell a min-content width of one letter, so on a phone
+   * the table squeezed a column of file names to "den / o.j / son" while the text beside it had
+   * room. A cell holding code keeps room for about 12 letters of the mono type, with its padding;
+   * a longer path still wraps, and a table that no longer fits scrolls in its region.
+   */
+  & :where(td:has(> code), th:has(> code)) {
+    @apply max-sm:min-w-34;
+  }
+  & :where(thead th) {
+    @apply border-strong;
+  }
+  /* A table scrolls sideways in its own focusable region, so the page never does. */
+  & :where([data-prose-table]) {
+    @apply overflow-x-auto rounded-sm;
+  }
+  & :where([data-prose-table]:focus-visible) {
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-focus;
+  }
+  /* A heading with its anchor link: the wrapper takes the heading's spacing. */
+  & :where([data-prose-heading]) {
+    @apply flex items-baseline gap-2;
+  }
+  & > :where([data-prose-heading]:has(> h2)) {
+    @apply mt-12;
+  }
+  & > :where([data-prose-heading]:has(> h3)) {
+    @apply mt-8;
+  }
+  & > :where([data-prose-heading]:first-child),
+  & :where([data-prose-heading] > *) {
+    @apply mt-0;
+  }
+  & :where([data-prose-heading]) + :where(*) {
+    @apply mt-3;
+  }
+  & [data-prose-anchor] {
+    @apply rounded-sm px-1 font-normal text-muted no-underline opacity-0;
+  }
+  & [data-prose-heading]:hover [data-prose-anchor],
+  & [data-prose-anchor]:focus-visible {
+    @apply opacity-100;
+  }
+  @media (hover: none) {
+    & [data-prose-anchor] {
+      @apply opacity-100;
+    }
+  }
 }
 
 /* #endregion Typography */
@@ -483,22 +720,29 @@
 }
 
 /*
- * Left padding that clears a notch or rounded corner on a phone or tablet held sideways: `Rail`'s
- * desktop column pads itself by it, so its 72 px of cells never sit under the cut-out.
+ * Inline-start padding that clears a notch or rounded corner on a phone or tablet held sideways:
+ * `Rail`'s desktop column pads itself by it, so its 72 px of cells never sit under the cut-out.
+ * The start side is the left on a left-to-right page and the right under `dir="rtl"`, so it takes
+ * the inset of the side it pads.
  */
-@utility pl-safe {
-  padding-left: env(safe-area-inset-left, 0px);
+@utility ps-safe {
+  padding-inline-start: env(safe-area-inset-left, 0px);
+
+  &:dir(rtl) {
+    padding-inline-start: env(safe-area-inset-right, 0px);
+  }
 }
 
 /*
  * Scroll padding that keeps a focused control clear of `RailShell`'s phone tab bar, which sticks to
- * the bottom of the window: the bar's 64 px row and its 1 px top rule, the device's bottom inset the
- * bar pads itself by, and step 2 (8 px) more so the focus ring clears the bar too. `RailShell` sets
- * it on the root element below `md`, while the bar is on the page.
+ * the bottom of the window: the bar's 64 px row and its 1 px top rule, the 24 px fade band above
+ * it, the device's bottom inset the bar pads itself by, and step 2 (8 px) more so the focus ring
+ * clears the band too. `RailShell` sets it on the root element below `md`, while the bar is on the
+ * page.
  */
 @utility pc-scroll-pb-tab-bar {
-  scroll-padding-bottom: calc(--spacing(16) + --spacing(2) + 1px + env(safe-area-inset-bottom,
-    0px));
+  scroll-padding-bottom: calc(--spacing(16) + --spacing(6) + --spacing(2) + 1px +
+    env(safe-area-inset-bottom, 0px));
 }
 
 /* #endregion Spacing */

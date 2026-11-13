@@ -79,4 +79,23 @@ describe("ThemePreview", () => {
       expect.arrayContaining(["bg-canvas", "text-foreground", "border", "border-subtle"]),
     )
   })
+
+  it("puts each radio's own extra attributes on it, and keeps its data-preview-theme", () => {
+    const html = render(
+      <ThemePreview
+        inputAttributes={{
+          dark: { "data-umami-event": "theme-dark", "data-preview-theme": "light" },
+          light: { "data-umami-event": "theme-light" },
+        }}
+      >
+        <p>Sample</p>
+      </ThemePreview>,
+    )
+    const [dark, light] = radios(html)
+
+    expect(dark).toContain(`data-umami-event="theme-dark"`)
+    expect(dark).toContain(`data-preview-theme="dark"`)
+    expect(light).toContain(`data-umami-event="theme-light"`)
+    expect(light).toContain(`data-preview-theme="light"`)
+  })
 })

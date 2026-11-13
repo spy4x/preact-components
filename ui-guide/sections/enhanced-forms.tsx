@@ -133,13 +133,13 @@ function EnhancedFormDemo() {
 const signUpLabels = {
   sending: "Sending…",
   done: "You're subscribed. Check your inbox to confirm.",
-  failed: "Something went wrong. Please try again.",
+  failed: "Something went wrong. Try again.",
 }
 
 const contactLabels = {
   sending: "Sending…",
   done: "Thanks — your message is on its way. We'll be in touch.",
-  failed: "Something went wrong. Please try again.",
+  failed: "Something went wrong. Try again.",
 }
 
 /**

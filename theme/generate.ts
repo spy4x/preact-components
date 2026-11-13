@@ -18,6 +18,14 @@
  * the guard against it.
  */
 
+/**
+ * Writes `text` as a template literal, so the generated file keeps the CSS's own lines and a
+ * search such as `rg radius-card` prints one short line instead of the whole stylesheet.
+ */
+function templateLiteral(text: string): string {
+  return "`" + text.replaceAll("\\", "\\\\").replaceAll("`", "\\`").replaceAll("${", "\\${") + "`"
+}
+
 /** Read one CSS file and write its text as a generated `.ts` module. */
 async function generate(cssFile: string, tsFile: string, exportName: string): Promise<void> {
   const css = await Deno.readTextFile(new URL(cssFile, import.meta.url))
@@ -25,7 +33,7 @@ async function generate(cssFile: string, tsFile: string, exportName: string): Pr
 // Run \`deno task --cwd theme generate\` after editing ${cssFile}; see css-text.test.ts.
 
 /** ${cssFile}'s exact contents. Generated — see this file's own header. */
-export const ${exportName}: string = ${JSON.stringify(css)}
+export const ${exportName}: string = ${templateLiteral(css)}
 `
   await Deno.writeTextFile(new URL(tsFile, import.meta.url), body)
 }

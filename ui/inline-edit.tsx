@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
 import { isImeKeyPress } from "./ime.ts"
 import { Input } from "./input.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 export interface InlineEditProps {
   /** The saved text. The field shows it, and an edit starts from it. */
@@ -21,7 +22,7 @@ export interface InlineEditProps {
   inputLabel?: string
   /** Shown, and announced, while a returned promise runs. Defaults to `"Saving…"`. */
   savingLabel?: string
-  /** Words a rejected save. Defaults to `"Could not save. Try again."` whatever the error. */
+  /** Words a rejected save. Defaults to `"Couldn't save. Try again."` whatever the error. */
   errorMessage?: (error: unknown) => string
   /**
    * Turns the value's button off. Turning it on while the field is open cancels the edit, as Escape
@@ -52,8 +53,11 @@ export function inlineEditCommit(draft: string, value: string): string | null {
   return next === "" || next === value ? null : next
 }
 
-const defaultEditLabel = (value: string): string => `Edit ${value}`
-const defaultErrorMessage = (): string => "Could not save. Try again."
+/** The English words of `InlineEdit`, each one a prop of its own. */
+const INLINE_EDIT_LABELS: Required<Pick<InlineEditProps, "inputLabel" | "savingLabel">> = {
+  inputLabel: "New name",
+  savingLabel: "Saving…",
+}
 
 /**
  * A value shown as text that turns into a text field in place, for renaming a list, a tag or a
@@ -85,16 +89,27 @@ export function InlineEdit(
   {
     value,
     onSave,
-    editLabel = defaultEditLabel,
-    inputLabel = "New name",
-    savingLabel = "Saving…",
-    errorMessage = defaultErrorMessage,
+    editLabel: editLabelProp,
+    inputLabel: inputLabelProp,
+    savingLabel: savingLabelProp,
+    errorMessage: errorMessageProp,
     disabled = false,
     textId,
     dataE2E,
     class: className,
   }: InlineEditProps,
 ): JSX.Element {
+  const translator = useT()
+  const editLabel = editLabelProp ??
+    ((current: string) =>
+      translate(translator, "InlineEdit.editLabel", `Edit ${current}`, { value: current }))
+  const errorMessage = errorMessageProp ??
+    (() => translate(translator, "InlineEdit.errorMessage", "Couldn't save. Try again."))
+  const { inputLabel, savingLabel } = useLabels(
+    "InlineEdit",
+    INLINE_EDIT_LABELS,
+    { inputLabel: inputLabelProp, savingLabel: savingLabelProp },
+  )
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
   const [busy, setBusy] = useState(false)

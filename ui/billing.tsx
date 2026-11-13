@@ -1,10 +1,12 @@
 import { join } from "@spy4x/preact-cn/join"
 import { IconAlertTriangle, IconCheck, IconLockClosed } from "@spy4x/preact-icons"
-import { formatMoney } from "@spy4x/platform/universal/money"
+import { formatMoney } from "@spy4x/platform/universal/money-core"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
-import { Button } from "./button.tsx"
+import { Button, type ButtonLinkProps } from "./button.tsx"
 import { EnhancedForm } from "./enhanced-form.tsx"
+import { ENGLISH, translate, useLabels, useT } from "./i18n.tsx"
 import {
   BADGE_BASE,
   BADGE_FILLED_ACCENT,
@@ -106,12 +108,12 @@ export interface PricingTableLabels {
   chooseName: (planName: string) => string
   /**
    * Announced to screen readers from the plan whose "Choose" started the work, while `pending`
-   * holds. Defaults to `"Please wait…"`.
+   * holds. Defaults to `"One moment…"`.
    */
   pending: string
   /**
    * Shown and announced under a plan's "Choose" when `onChoose` threw or its promise rejected.
-   * Defaults to `"Something went wrong. Please try again."`.
+   * Defaults to `"Something went wrong. Try again."`.
    */
   failed: string
 }
@@ -119,17 +121,47 @@ export interface PricingTableLabels {
 /** The English words {@link PricingTable} uses when a caller passes none. */
 export const defaultPricingTableLabels: PricingTableLabels = {
   intervalLegend: "Billing period",
-  intervals: { [BillingInterval.Month]: "Monthly", [BillingInterval.Year]: "Yearly" },
-  per: { [BillingInterval.Month]: "per month", [BillingInterval.Year]: "per year" },
-  perUnit: (unit, interval) =>
-    interval === undefined
-      ? `per ${unit}`
-      : `per ${unit} / ${interval === BillingInterval.Month ? "month" : "year"}`,
+  intervals: intervalWords(ENGLISH, "PricingTable.intervals"),
+  per: intervalWords(ENGLISH, "PricingTable.per"),
+  perUnit: (unit, interval) => perUnitWords(ENGLISH, unit, interval),
   highlighted: "Most popular",
   choose: "Choose",
   chooseName: (planName) => `Choose ${planName}`,
-  pending: "Please wait…",
-  failed: "Something went wrong. Please try again.",
+  pending: "One moment…",
+  failed: "Something went wrong. Try again.",
+}
+
+/** One word per interval, from the catalog keys `<prefix>.month` and `<prefix>.year`. */
+function intervalWords(
+  translator: Translator<string>,
+  prefix: "PricingTable.intervals" | "PricingTable.per",
+): Partial<Record<1 | 2, string>> {
+  return {
+    [BillingInterval.Month]: translate(
+      translator,
+      `${prefix}.month`,
+      prefix === "PricingTable.per" ? "per month" : "Monthly",
+    ),
+    [BillingInterval.Year]: translate(
+      translator,
+      `${prefix}.year`,
+      prefix === "PricingTable.per" ? "per year" : "Yearly",
+    ),
+  }
+}
+
+/** The text after a price with a unit, per interval: `per seat / month`. */
+function perUnitWords(
+  translator: Translator<string>,
+  unit: string,
+  interval: BillingIntervalValue | undefined,
+): string {
+  if (interval === undefined) {
+    return translate(translator, "PricingTable.perUnit", `per ${unit}`, { unit })
+  }
+  return interval === BillingInterval.Month
+    ? translate(translator, "PricingTable.perUnitMonth", `per ${unit} / month`, { unit })
+    : translate(translator, "PricingTable.perUnitYear", `per ${unit} / year`, { unit })
 }
 
 /** Heading level of a billing component's own heading. */
@@ -171,7 +203,10 @@ export interface PricingTableProps {
   fieldName?: string
   /** The interval shown first, when the plans have both. Defaults to monthly. */
   defaultInterval?: BillingIntervalValue
-  /** BCP 47 locale the prices are formatted in. Defaults to `"en"`. */
+  /**
+   * BCP 47 locale the prices are formatted in. Defaults to the language of the nearest
+   * `I18nContext`, which is `"en"` without a provider.
+   */
   locale?: string
   /** Level of each plan's name heading. Defaults to `3`. */
   headingLevel?: BillingHeadingLevel
@@ -291,20 +326,26 @@ export function PricingTable(
     action,
     fieldName = "planId",
     defaultInterval = BillingInterval.Month,
-    locale = "en",
+    locale,
     headingLevel = 3,
     labels,
     class: className,
   }: PricingTableProps,
 ): JSX.Element {
+  const translator = useT()
+  const base = useLabels("PricingTable", defaultPricingTableLabels, labels, {
+    chooseName: ["planName"],
+  })
   const words = {
-    ...defaultPricingTableLabels,
-    ...labels,
-    intervals: { ...defaultPricingTableLabels.intervals, ...labels?.intervals },
-    per: { ...defaultPricingTableLabels.per, ...labels?.per },
-    perUnit: labels?.perUnit ?? defaultPricingTableLabels.perUnit,
+    ...base,
+    intervals: { ...intervalWords(translator, "PricingTable.intervals"), ...labels?.intervals },
+    per: { ...intervalWords(translator, "PricingTable.per"), ...labels?.per },
+    perUnit: labels?.perUnit ??
+      ((unit: string, interval?: BillingIntervalValue) => perUnitWords(translator, unit, interval)),
   }
-  const chooseName = labels?.chooseName ?? ((name: string) => `${words.choose} ${name}`)
+  // A caller that renamed "Choose" alone renames the button's accessible name with it.
+  const chooseName = labels?.chooseName ??
+    (labels?.choose === undefined ? base.chooseName : (name: string) => `${words.choose} ${name}`)
   const groupName = useId()
   const [interval, setInterval] = useState<BillingIntervalValue>(defaultInterval)
   // The plan whose "Choose" started the current work: only its form announces `pending`, so a
@@ -368,7 +409,7 @@ export function PricingTable(
               </div>
               <p class="flex flex-wrap items-baseline gap-1">
                 <span class="text-3xl font-semibold">
-                  {formatMoney(plan.amount, plan.currency, locale)}
+                  {formatMoney(plan.amount, plan.currency, locale ?? translator.language)}
                 </span>
                 {plan.unit
                   ? (
@@ -441,50 +482,105 @@ export interface PlanCardLabels {
   incomplete: string
   /** The button that posts to `manageAction`. Defaults to `"Manage billing"`. */
   manage: string
-  /** Announced to screen readers while `pending` holds. Defaults to `"Please wait…"`. */
+  /** Announced to screen readers while `pending` holds. Defaults to `"One moment…"`. */
   pending: string
   /**
    * Shown and announced under "Manage billing" when `onSubmit` threw or its promise rejected.
-   * Defaults to `"Something went wrong. Please try again."`.
+   * Defaults to `"Something went wrong. Try again."`.
    */
   failed: string
 }
 
 /** The English words {@link PlanCard} uses when a caller passes none. */
 export const defaultPlanCardLabels: PlanCardLabels = {
-  status: {
-    [SubscriptionStatus.Trialing]: "Trial",
-    [SubscriptionStatus.Active]: "Active",
-    [SubscriptionStatus.PastDue]: "Past due",
-    [SubscriptionStatus.Canceled]: "Canceled",
-    [SubscriptionStatus.Incomplete]: "Incomplete",
-    [SubscriptionStatus.Paused]: "Paused",
-  },
+  status: statusWords(ENGLISH),
   per: defaultPricingTableLabels.per,
   trialEnds: (date) => `Trial ends on ${date}`,
   renews: (date) => `Renews on ${date}`,
   ends: (date) => `Ends on ${date}`,
   ended: (date) => `Ended on ${date}`,
   pastDue: "Your last payment failed. Update your payment method to keep your plan.",
-  incomplete: "Your first payment has not gone through. Complete it to start your plan.",
+  incomplete: "Your first payment hasn't gone through yet. Complete it to start your plan.",
   manage: "Manage billing",
-  pending: "Please wait…",
-  failed: "Something went wrong. Please try again.",
+  pending: "One moment…",
+  failed: "Something went wrong. Try again.",
+}
+
+/** The argument names of {@link PlanCardLabels}' date lines. */
+const PLAN_CARD_PARAMS = {
+  trialEnds: ["date"],
+  renews: ["date"],
+  ends: ["date"],
+  ended: ["date"],
+} as const
+
+/** Each status in words, from the catalog keys `PlanCard.status.<name>`. */
+function statusWords(translator: Translator<string>): PlanCardLabels["status"] {
+  return {
+    [SubscriptionStatus.Trialing]: translate(translator, "PlanCard.status.trialing", "Trial"),
+    [SubscriptionStatus.Active]: translate(translator, "PlanCard.status.active", "Active"),
+    [SubscriptionStatus.PastDue]: translate(translator, "PlanCard.status.pastDue", "Past due"),
+    [SubscriptionStatus.Canceled]: translate(translator, "PlanCard.status.canceled", "Canceled"),
+    [SubscriptionStatus.Incomplete]: translate(
+      translator,
+      "PlanCard.status.incomplete",
+      "Incomplete",
+    ),
+    [SubscriptionStatus.Paused]: translate(translator, "PlanCard.status.paused", "Paused"),
+  }
 }
 
 export interface PlanCardProps {
-  /** The current plan's name, shown as the card's heading. */
+  /** The plan's name, shown as the card's heading. */
   planName: string
-  /** Where the subscription stands: this package's enum, or the same number from another's. */
-  status: SubscriptionStatusValue
-  /** The plan's price, shown under its name. Left out, the card shows none. */
-  price?: PlanPrice
+  /**
+   * Where the subscription stands: this package's enum, or the same number from another's. Left
+   * out, the card is a plan on offer rather than the current one: no status pill, no date line, no
+   * warning, and a larger price.
+   */
+  status?: SubscriptionStatusValue
+  /** One short line under the name, such as `"The cloud, run for you"`. */
+  description?: string
+  /**
+   * The plan's price, shown under its name: an amount formatted with `formatMoney`, or a string the
+   * caller formatted, such as `"Free"` or `"$4 a month"`, shown as given. Left out, the card shows
+   * none.
+   */
+  price?: PlanPrice | string
+  /** A second price line under the price, such as `"or $40 a year, 2 months free"`. */
+  priceNote?: string
+  /** What the plan includes, one item per line, each after a check mark, as a list. */
+  features?: string[]
+  /**
+   * A link drawn as a full-width button in the footer, such as "Create an account": `Button`'s link
+   * props, so `href`, `navigate`, `data-*` attributes and an icon in `children` pass through. Its
+   * text is its accessible name. `variant` defaults to `"primary"` on a `highlighted` card and
+   * `"outline"` otherwise.
+   */
+  action?: ButtonLinkProps
+  /**
+   * Small muted text under the footer's actions, such as how payment works and links to the terms.
+   * Pass one `<p>` per line; the lines stack with a small gap.
+   */
+  notes?: ComponentChildren
+  /** Draws the card with a stronger border, to set it apart from the cards beside it. */
+  highlighted?: boolean
+  /**
+   * Joins the rows of the parent grid, so the headers, bodies and footers of the cards in one row
+   * line up and their actions start at the same height. The card takes three rows of the parent
+   * (header, body, footer) through CSS subgrid, so the parent must be a grid, such as `Grid`, and
+   * every card in the row should set it. Defaults to `false`: the card lays itself out alone.
+   */
+  subgrid?: boolean
   /** When the current period ends: the renewal, the end of the trial, or the end of access. */
   periodEnd?: Date
   /** The plan stops at `periodEnd` instead of renewing. Defaults to `false`. */
   cancelAtPeriodEnd?: boolean
-  /** Where "Manage billing" posts: the app's route that opens the provider's billing portal. */
-  manageAction: string
+  /**
+   * Where "Manage billing" posts: the app's route that opens the provider's billing portal. Left
+   * out, the card has no "Manage billing" form.
+   */
+  manageAction?: string
   /**
    * Called instead of posting to `manageAction` once the page runs a script: the card's submit
    * port. Left out, "Manage billing" always posts. While a promise it returns is outstanding, the
@@ -508,7 +604,10 @@ export interface PlanCardProps {
    * ```
    */
   pending?: boolean
-  /** BCP 47 locale for the price and the date. Defaults to `"en"`. */
+  /**
+   * BCP 47 locale for the price and the date. Defaults to the language of the nearest
+   * `I18nContext`, which is `"en"` without a provider.
+   */
   locale?: string
   /**
    * Time zone the date is shown in. Defaults to `"UTC"`, so the server and the browser print the
@@ -551,8 +650,9 @@ function dateLine(
 }
 
 /**
- * The current plan: its name, status, price and the date it renews or ends, with a "Manage billing"
- * form that posts to the app's billing-portal route.
+ * A plan: the current one, with its status, price and the date it renews or ends, and a "Manage
+ * billing" form that posts to the app's billing-portal route; or, with no `status`, a plan on offer,
+ * with its price, a second price line, what it includes, a link action and footnotes.
  *
  * A past-due or incomplete plan shows a warning in words beside a warning icon, so the state does
  * not rest on colour. The status is text too, in a pill next to the name.
@@ -567,33 +667,43 @@ export function PlanCard(
   {
     planName,
     status,
+    description,
     price,
+    priceNote,
+    features,
+    action,
+    notes,
+    highlighted = false,
+    subgrid = false,
     periodEnd,
     cancelAtPeriodEnd = false,
     manageAction,
     onSubmit,
     pending = false,
-    locale = "en",
+    locale,
     timeZone = "UTC",
     headingLevel = 2,
     labels,
     class: className,
   }: PlanCardProps,
 ): JSX.Element {
+  const translator = useT()
+  const formatLocale = locale ?? translator.language
   const words = {
-    ...defaultPlanCardLabels,
-    ...labels,
-    status: { ...defaultPlanCardLabels.status, ...labels?.status },
-    per: { ...defaultPlanCardLabels.per, ...labels?.per },
+    ...useLabels("PlanCard", defaultPlanCardLabels, labels, PLAN_CARD_PARAMS),
+    status: { ...statusWords(translator), ...labels?.status },
+    per: { ...intervalWords(translator, "PricingTable.per"), ...labels?.per },
   }
   const Heading = `h${headingLevel}` as "h2"
-  const statusWord = words.status[status]
-  const date = periodEnd &&
+  // An empty string draws no price, as `undefined` does, rather than an empty large line.
+  const hasPrice = price !== undefined && price !== ""
+  const statusWord = status !== undefined && words.status[status]
+  const date = status !== undefined && periodEnd &&
     dateLine(
       words,
       status,
       cancelAtPeriodEnd,
-      new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone }).format(periodEnd),
+      new Intl.DateTimeFormat(formatLocale, { dateStyle: "long", timeZone }).format(periodEnd),
     )
   const warning = status === SubscriptionStatus.PastDue
     ? words.pastDue
@@ -602,22 +712,39 @@ export function PlanCard(
     : null
 
   return (
-    <div class={join("pc-card", className)} data-status={status}>
+    <div
+      class={join(
+        "pc-card",
+        // A subgrid card's own gap overrides the parent's, so the parent's row gap stays between
+        // cards and never opens up inside one.
+        subgrid ? "row-span-3 grid grid-rows-subgrid gap-0" : "flex flex-col",
+        highlighted && "border-2 border-selected shadow-raised",
+        className,
+      )}
+      data-status={status}
+    >
       <div class="pc-card-header gap-2">
-        <Heading class="text-lg font-semibold">{planName}</Heading>
+        <div class="flex flex-col gap-1">
+          <Heading class="text-lg font-semibold">{planName}</Heading>
+          {description && <p class="text-sm text-muted">{description}</p>}
+        </div>
         {statusWord && <span class={join(pillClasses, BADGE_OUTLINE_GRAY)}>{statusWord}</span>}
       </div>
-      <div class="pc-card-body flex flex-col gap-2">
-        {price && (
+      <div class="pc-card-body flex flex-1 flex-col gap-2">
+        {hasPrice && (
           <p class="flex flex-wrap items-baseline gap-1">
-            <span class="text-xl font-semibold">
-              {formatMoney(price.amount, price.currency, locale)}
+            <span class={join("font-semibold", status === undefined ? "text-3xl" : "text-xl")}>
+              {typeof price === "string"
+                ? price
+                : formatMoney(price.amount, price.currency, formatLocale)}
             </span>
-            {price.interval !== undefined && words.per[price.interval] && (
+            {typeof price !== "string" && price.interval !== undefined &&
+              words.per[price.interval] && (
               <span class="text-sm text-muted">{words.per[price.interval]}</span>
             )}
           </p>
         )}
+        {priceNote && <p class="text-sm text-muted">{priceNote}</p>}
         {date && <p class="text-sm text-muted">{date}</p>}
         {warning && (
           <p
@@ -628,18 +755,47 @@ export function PlanCard(
             <span>{warning}</span>
           </p>
         )}
+        {features && features.length > 0 && (
+          // `role="list"` keeps the list semantics Safari drops from a list with no bullets.
+          <ul
+            role="list"
+            class={join("flex flex-col gap-2 text-sm", (hasPrice || priceNote) && "pt-4")}
+          >
+            {features.map((feature, index) => (
+              <li key={index} class="flex items-start gap-2">
+                <span class="flex h-5 items-center">
+                  <IconCheck class="size-4 text-success" />
+                </span>
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <div class="pc-card-footer">
-        <BillingForm
-          action={manageAction}
-          pending={pending}
-          onSubmit={onSubmit}
-          pendingLabel={words.pending}
-          failedLabel={words.failed}
-        >
-          <Button type="submit" variant="outline" busy={pending}>{words.manage}</Button>
-        </BillingForm>
-      </div>
+      {/* `content-start` keeps the actions at the top of a footer that a subgrid row made taller. */}
+      {(manageAction !== undefined || action || notes) && (
+        <div class="pc-card-footer content-start">
+          {manageAction !== undefined && (
+            <BillingForm
+              action={manageAction}
+              pending={pending}
+              onSubmit={onSubmit}
+              pendingLabel={words.pending}
+              failedLabel={words.failed}
+            >
+              <Button type="submit" variant="outline" busy={pending}>{words.manage}</Button>
+            </BillingForm>
+          )}
+          {action && (
+            <Button
+              {...action}
+              variant={action.variant ?? (highlighted ? "primary" : "outline")}
+              class={join("w-full", action.class)}
+            />
+          )}
+          {notes && <div class="flex w-full flex-col gap-1 text-sm text-muted">{notes}</div>}
+        </div>
+      )}
     </div>
   )
 }
@@ -648,7 +804,7 @@ export function PlanCard(
 export interface UpgradePromptLabels {
   /** The prompt's heading. Defaults to `"Upgrade to use this feature"`. */
   title: string
-  /** The line under the heading. Defaults to `"Your plan does not include this feature."`. */
+  /** The line under the heading. Defaults to `"Your plan doesn't include this feature."`. */
   message: string
   /** The link's text. Defaults to `"See plans"`. */
   action: string
@@ -657,7 +813,7 @@ export interface UpgradePromptLabels {
 /** The English words {@link UpgradePrompt} uses when a caller passes none. */
 export const defaultUpgradePromptLabels: UpgradePromptLabels = {
   title: "Upgrade to use this feature",
-  message: "Your plan does not include this feature.",
+  message: "Your plan doesn't include this feature.",
   action: "See plans",
 }
 
@@ -687,7 +843,7 @@ export interface UpgradePromptProps {
 export function UpgradePrompt(
   { href, navigate, headingLevel = 2, labels, class: className }: UpgradePromptProps,
 ): JSX.Element {
-  const words = { ...defaultUpgradePromptLabels, ...labels }
+  const words = useLabels("UpgradePrompt", defaultUpgradePromptLabels, labels)
   const Heading = `h${headingLevel}` as "h2"
 
   return (

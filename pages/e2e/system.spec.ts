@@ -45,7 +45,8 @@ const tipOf = (entry: Locator) => entry.locator(`xpath=../*[@data-e2e="rail-shel
  * the browser on a loaded host cannot make the delay look shorter than it was.
  *
  * @returns Milliseconds from the pointer entering to the tooltip first showing, or `null` when it
- *   had not shown 3 seconds after the hover.
+ *   had not shown 10 seconds after the hover. The delay is timed in the page, so a long wait on a
+ *   loaded host cannot make it look shorter.
  */
 async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Promise<number | null> {
   await tip.evaluate((element, target) => {
@@ -66,7 +67,7 @@ async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Prom
   await page.waitForFunction(
     () => ((globalThis as Record<string, unknown>).__e2eHover as { shownAt: number }).shownAt >= 0,
     undefined,
-    { timeout: 3_000 },
+    { timeout: 10_000 },
   ).catch(() => undefined)
   return await page.evaluate(() => {
     const state = (globalThis as Record<string, unknown>).__e2eHover as {
@@ -128,41 +129,46 @@ async function appShellAdmin(page: Page): Promise<void> {
   await inCard(page, APP, "app-shell-connection").waitFor({ state: "attached" })
 }
 
+/** The four frames {@link frameAxeSpecs} measures: a card, and how its demo is set before. */
+const AXE_FRAMES = [
+  { card: RAIL_CARD, label: "Rail labels" },
+  { card: RAIL_CARD, label: "Rail icons", icons: true },
+  { card: APP, label: "AppShell product" },
+  { card: APP, label: "AppShell admin, reconnecting", admin: true },
+] as const
+
 /**
- * Axe over the `Rail` card (both variants) and the `AppShell` card (product, then the admin panel
- * reconnecting), each made the whole page, at 390 and 1440 px. Every case is measured before the
- * check fails, so a failure names each case it holds in.
+ * One spec per frame of {@link AXE_FRAMES} in `colorScheme`: the card's demo made the whole page,
+ * then axe over it at 390 and 1440 px. Both widths are measured before the check fails, so a
+ * failure names each width it holds in.
+ *
+ * Each spec measures one frame on the page the runner loaded and never reloads it, because eight
+ * loads of the guide page in one spec overran its 60 seconds on a loaded CI agent (#1050).
  */
-async function shellsAxeClean(page: Page): Promise<string> {
-  const results: string[] = []
-  const failures: string[] = []
-  const measure = async (where: string) => {
-    try {
-      results.push(`${where}: ${await expectPageAxeClean(page)}`)
-    } catch (error) {
-      failures.push(`${where}: ${error instanceof Error ? error.message : error}`)
-    }
-  }
-  const cases = [
-    [RAIL_CARD, "labels"],
-    [RAIL_CARD, "icons"],
-    [APP, "product"],
-    [APP, "admin"],
-  ] as const
-  for (const [card, name] of cases) {
-    for (const width of [390, 1440]) {
-      // Each case starts from a fresh guide page, since the last one replaced the body.
-      await page.reload()
-      await page.locator(`html[data-hydrated="true"]`).waitFor()
-      await page.setViewportSize({ width, height: 900 })
-      if (name === "icons") await inCard(page, card, "rail-demo-variant-icons").check()
-      if (name === "admin") await appShellAdmin(page)
-      await demoFrameAlone(page, card)
-      await measure(`${card} ${name} at ${width} px`)
-    }
-  }
-  if (failures.length > 0) throw new Error(failures.join(" | "))
-  return results.join("; ")
+function frameAxeSpecs(colorScheme: "light" | "dark"): Spec[] {
+  return AXE_FRAMES.map((frame) => ({
+    name: `${frame.label} as the page frame passes axe at 390 and 1440 px in ${colorScheme}, ` +
+      "colour contrast and landmarks included",
+    pageId: "system",
+    colorScheme,
+    run: async (page: Page) => {
+      if ("icons" in frame) await inCard(page, frame.card, "rail-demo-variant-icons").check()
+      if ("admin" in frame) await appShellAdmin(page)
+      await demoFrameAlone(page, frame.card)
+      const results: string[] = []
+      const failures: string[] = []
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 900 })
+        try {
+          results.push(`${width} px: ${await expectPageAxeClean(page)}`)
+        } catch (error) {
+          failures.push(`${width} px: ${error instanceof Error ? error.message : error}`)
+        }
+      }
+      if (failures.length > 0) throw new Error(failures.join(" | "))
+      return results.join("; ")
+    },
+  }))
 }
 
 /** The `useRouteAnnouncer` demo's page region, its heading, and the tab title it sets. */
@@ -387,7 +393,277 @@ function recordUnsentStatus(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Each of the `Shell` card's two sign-out form items as `"<role> <tabindex>"`, sign out first.
+ *
+ * @param page A page on the system guide.
+ */
+function shellFormItems(page: Page): Promise<string> {
+  return page.locator(`#demo-Shell [data-e2e="shell-demo"]`).evaluate((shell) =>
+    [`signout`, `signout-everywhere`].map((hook) => {
+      const item = shell.querySelector(`[data-e2e="${hook}"]`)
+      return `${item?.getAttribute("role")} ${item?.getAttribute("tabindex")}`
+    }).join(", ")
+  )
+}
+
+/** The card's second header: a `LanguagePicker` menu, then a button, then the links' menu. */
+const LANGUAGE_HEADER = `#demo-SiteHeader [data-e2e="site-header-language-demo"]`
+
+/**
+ * Open the system page in a context of its own, with JavaScript on or off, at a phone's width,
+ * laid out in `dir`, and scroll the language header into view. The caller closes the context.
+ */
+async function openLanguageHeader(
+  page: Page,
+  javaScriptEnabled: boolean,
+  dir: "ltr" | "rtl",
+) {
+  const browser = page.context().browser()
+  if (browser === null) throw new Error("the spec's page has no browser to open a context in")
+  const context = await browser.newContext({
+    javaScriptEnabled,
+    viewport: { width: 390, height: 844 },
+  })
+  const tab = await context.newPage()
+  await tab.goto(page.url())
+  if (javaScriptEnabled) await tab.locator(`html[data-hydrated="true"]`).waitFor()
+  await tab.evaluate((value) => document.documentElement.dir = value, dir)
+  const header = tab.locator(LANGUAGE_HEADER)
+  await header.scrollIntoViewIfNeeded()
+  return {
+    context,
+    tab,
+    header,
+    globe: header.locator(`[data-e2e="language-menu"]`),
+    // The panel follows the trigger in both forms: the `<summary>` and the hydrated button.
+    languages: header.locator(`[data-e2e="language-menu"] + div`),
+    menuButton: header.locator(`[data-e2e="site-header-menu-button"]`),
+    links: header.locator(`[data-e2e="site-header-panel"]`),
+  }
+}
+
+/** The `MailedCodeStep` demo, opened: "Email me a code" pressed and the code field focused. */
+async function openMailedCodeStep(page: Page) {
+  const demo = page.locator(`[data-e2e="mailed-code-step-demo"]`)
+  await demo.getByRole("button", { name: "Email me a code", exact: true }).click()
+  const field = demo.locator(`[data-e2e="mailed-code-step-code"]`)
+  await field.and(page.locator(":focus")).waitFor()
+  const received = demo.locator(`[data-e2e="mailed-code-step-demo-received"]`)
+  return { demo, field, received }
+}
+
+/**
+ * Pastes `text` into `field` over its selection, as the browser does: the selected text replaced
+ * and an `input` event whose `inputType` is `insertFromPaste`. Playwright has no paste of its own
+ * that does not depend on the system clipboard, and this is the event the step reads.
+ */
+function paste(field: Locator, text: string): Promise<void> {
+  return field.evaluate((element: HTMLInputElement, value: string) => {
+    element.setRangeText(value, element.selectionStart ?? 0, element.selectionEnd ?? 0, "end")
+    element.dispatchEvent(
+      new InputEvent("input", { inputType: "insertFromPaste", data: value, bubbles: true }),
+    )
+  }, text)
+}
+
+/** True when `field` has focus and its whole value is selected. */
+function focusedAndSelected(field: Locator): Promise<boolean> {
+  return field.evaluate((element: HTMLInputElement) =>
+    document.activeElement === element && element.value.length > 0 &&
+    element.selectionStart === 0 && element.selectionEnd === element.value.length
+  )
+}
+
 export const specs: readonly Spec[] = [
+  {
+    name: "AuthForm: the login starts as defaultLogin, onLoginInput reports each value typed " +
+      "into the login, and typing the password reports nothing",
+    pageId: "system",
+    run: async (page) => {
+      const demo = page.locator(`[data-e2e="auth-form-login-input-demo"]`)
+      const login = demo.locator(`[data-e2e="auth-form-login"]`)
+      const value = demo.locator(`[data-e2e="auth-form-login-input-value"]`)
+      const reports = demo.locator(`[data-e2e="auth-form-login-input-reports"]`)
+      await login.scrollIntoViewIfNeeded()
+      if (await login.inputValue() !== "ana@example.com") {
+        throw new Error(`the login starts as "${await login.inputValue()}"`)
+      }
+      await login.fill("")
+      await login.pressSequentially("bo@x.io")
+      await value.filter({ hasText: /^bo@x\.io$/ }).waitFor()
+      await reports.filter({ hasText: /^8$/ }).waitFor()
+      await demo.locator(`[data-e2e="auth-form-password"]`).pressSequentially("hunter2")
+      await demo.locator(`[data-e2e="auth-form-password"]`).blur()
+      const after = `${await value.textContent()} ${await reports.textContent()}`
+      if (after !== "bo@x.io 8") throw new Error(`after typing the password: ${after}`)
+    },
+  },
+  {
+    name: "AuthForm: when busy ends after a pressed submit, focus moves to the form-level " +
+      "message, or to the login a field error names",
+    pageId: "system",
+    run: async (page) => {
+      const demo = page.locator(`[data-e2e="auth-form-round-trip"]`)
+      const login = demo.locator(`[data-e2e="auth-form-login"]`)
+      const submit = demo.locator(`[data-e2e="auth-form-submit"]`)
+      await login.scrollIntoViewIfNeeded()
+      await login.fill("ana@example.com")
+      await demo.locator(`[data-e2e="auth-form-password"]`).fill("hunter2")
+      await submit.focus()
+      await page.keyboard.press("Enter")
+      await demo.locator(`[data-e2e="auth-form-error"]`).and(page.locator(":focus")).waitFor()
+      await login.fill("nobody")
+      await submit.focus()
+      await page.keyboard.press("Enter")
+      await login.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name:
+      "MailedCodeStep: opens with focus in the field and passes axe; a typed code with spaces " +
+      "reaches onSubmit without them, dashes and underscores kept, only on Continue; a refused code puts focus back " +
+      "in the field with its text selected",
+    pageId: "system",
+    run: async (page) => {
+      const { field, received } = await openMailedCodeStep(page)
+      const { violations } = await new AxeBuilder({ page })
+        .include(`[data-e2e="mailed-code-step"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(violations.map((v) => `${v.id}: ${v.help}`).join("; "))
+      }
+      await field.pressSequentially("k_q - 2xm")
+      if (await received.textContent() !== "onSubmit received: nothing yet") {
+        throw new Error(`typing submitted by itself: ${await received.textContent()}`)
+      }
+      await page.locator(`[data-e2e="mailed-code-step-submit"]`).click()
+      await received.filter({ hasText: /^onSubmit received: k_q-2xm$/ }).waitFor()
+      await page.locator(`[data-e2e="mailed-code-step"]`)
+        .getByText("That code is wrong or has expired.").waitFor()
+      await field.and(page.locator(":focus")).waitFor()
+      if (!await focusedAndSelected(field)) throw new Error("the refused code is not selected")
+    },
+  },
+  {
+    name: "MailedCodeStep: a paste that makes a whole code submits by itself, spaces removed; " +
+      "one that does not waits, and Enter then shows the pattern error without calling onSubmit",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field, received } = await openMailedCodeStep(page)
+      await page.keyboard.insertText("nope")
+      await page.keyboard.press("Enter")
+      await demo.getByText("That doesn't look like the code we sent. Check it and try again.")
+        .waitFor()
+      if (!await focusedAndSelected(field)) throw new Error("the refused code is not selected")
+      if (await received.textContent() !== "onSubmit received: nothing yet") {
+        throw new Error(
+          `a code the pattern refuses reached onSubmit: ${await received.textContent()}`,
+        )
+      }
+      await paste(field, " K7Q - 2XM ")
+      await received.filter({ hasText: /^Accepted\. onSubmit received: K7Q-2XM$/ }).waitFor()
+    },
+  },
+  {
+    name: "MailedCodeStep: a paste over a refused code's selected text submits by itself, though " +
+      "the new code is just as long",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field, received } = await openMailedCodeStep(page)
+      await field.pressSequentially("AAA-BBB")
+      await page.keyboard.press("Enter")
+      await demo.getByText("That code is wrong or has expired.").waitFor()
+      if (!await focusedAndSelected(field)) throw new Error("the refused code is not selected")
+      await paste(field, "K7Q-2XM")
+      await received.filter({ hasText: /^Accepted\. onSubmit received: AAA-BBB, K7Q-2XM$/ })
+        .waitFor()
+    },
+  },
+  {
+    name: "MailedCodeStep: while a code is being checked, a pasted whole code is not submitted " +
+      "a second time",
+    pageId: "system",
+    run: async (page) => {
+      // The page's clock, paused from Enter on, holds the demo's 300 ms answer back: on a busy
+      // machine the select and paste below outlast 300 ms, busy has ended by then, and the
+      // pasted code is rightly submitted. Installed in the open page, no reload: the demo looks
+      // its timers up when it sets them.
+      const { demo, field, received } = await openMailedCodeStep(page)
+      await page.clock.install()
+      await field.pressSequentially("AAA-BBB")
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
+      await page.keyboard.press("Enter")
+      await demo.locator(`[data-e2e="mailed-code-step-submit"][aria-busy="true"]`).waitFor()
+      await field.selectText()
+      await paste(field, "K7Q-2XM")
+      if (await received.textContent() !== "onSubmit received: AAA-BBB") {
+        throw new Error(`a second code went out while busy: ${await received.textContent()}`)
+      }
+      await page.clock.runFor(1_000)
+      await demo.getByText("That code is wrong or has expired.").waitFor()
+      if (await received.textContent() !== "onSubmit received: AAA-BBB") {
+        throw new Error(`a second code went out while busy: ${await received.textContent()}`)
+      }
+    },
+  },
+  {
+    name: "MailedCodeStep: after Send a new code, the on-its-way line is in the status region " +
+      "and focus is back in the code field",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field } = await openMailedCodeStep(page)
+      await demo.getByRole("button", { name: "Send a new code", exact: true }).click()
+      await demo.locator(`[role="status"][data-e2e="resend-button-sent"]`)
+        .filter({ hasText: "A new code is on its way." }).waitFor()
+      await demo.locator(`[data-e2e="resend-button-waiting"]`).waitFor()
+      await field.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name:
+      "MailedCodeStep: a pattern error goes away when a new code is sent, and Use a different " +
+      "one closes the step with focus back on the button that opened it",
+    pageId: "system",
+    run: async (page) => {
+      const { demo, field } = await openMailedCodeStep(page)
+      await field.pressSequentially("nope")
+      await page.keyboard.press("Enter")
+      const invalid = demo.getByText(
+        "That doesn't look like the code we sent. Check it and try again.",
+      )
+      await invalid.waitFor()
+      await demo.getByRole("button", { name: "Send a new code", exact: true }).click()
+      await demo.locator(`[data-e2e="resend-button-waiting"]`).waitFor()
+      await invalid.waitFor({ state: "detached" })
+      await demo.locator(`[data-e2e="mailed-code-step-change-email"]`).click()
+      await demo.getByRole("button", { name: "Email me a code", exact: true })
+        .and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name: "Shell: after hydration its form items are menu items, and only the focused one is in " +
+      "the tab order, the roving tab stop of Dropdown (#535, #967)",
+    pageId: "system",
+    run: async (page) => {
+      const shell = page.locator(`#demo-Shell [data-e2e="shell-demo"]`)
+      await shell.locator(`[data-e2e="shell-user-menu-button"]`).click()
+      await shell.locator(`[role="menuitem"]`).first().and(page.locator(":focus")).waitFor()
+      for (
+        const [hook, expected] of [
+          ["signout", "menuitem 0, menuitem -1"],
+          ["signout-everywhere", "menuitem -1, menuitem 0"],
+        ] as const
+      ) {
+        await page.keyboard.press("ArrowDown")
+        await shell.locator(`[data-e2e="${hook}"]`).and(page.locator(":focus")).waitFor()
+        const items = await shellFormItems(page)
+        if (items !== expected) {
+          throw new Error(`role and tabindex of sign out, sign out everywhere: ${items}`)
+        }
+      }
+      return "sign out, then sign out everywhere, each the one tab stop in turn"
+    },
+  },
   {
     name: "useRouteAnnouncer with keepPageFocus: a page that focuses its own field as it opens " +
       "keeps focus there, the heading never takes focus, and the tab title is still set",
@@ -484,7 +760,7 @@ export const specs: readonly Spec[] = [
       await textChanges(region)
 
       await press("lose")
-      await region.filter({ hasText: "saved on this device: 14:05." }).waitFor()
+      await region.filter({ hasText: "saved on this device at 14:05." }).waitFor()
       const arrived = await textChanges(region)
       if (arrived === 0) throw new Error("the region's text did not change when the copy arrived")
 
@@ -495,12 +771,12 @@ export const specs: readonly Spec[] = [
         .filter({ hasText: "Rendered again 2 times" }).waitFor()
       const rerendered = await textChanges(region)
       const said = await region.innerText()
-      if (rerendered !== 0 || !said.includes("saved on this device: 14:05.")) {
+      if (rerendered !== 0 || !said.includes("saved on this device at 14:05.")) {
         throw new Error(`rendering again changed the region ${rerendered} times, to "${said}"`)
       }
 
       await press("newer")
-      await region.filter({ hasText: "saved on this device: 14:07, render 2." }).waitFor()
+      await region.filter({ hasText: "saved on this device at 14:07, render 2." }).waitFor()
       if (await textChanges(region) === 0) throw new Error("a newer copy changed no text")
 
       await press("reach")
@@ -644,6 +920,112 @@ export const specs: readonly Spec[] = [
       )
       if (wide !== "auto") throw new Error(`from md up the root keeps scroll padding ${wide}`)
       return `focused control ends at y ${box.y + box.height}, bar starts at y ${barBox.y}`
+    },
+  },
+  {
+    name: "RailShell below md: a text link half under the dock's top edge passes axe's " +
+      "target-size, because the fade band keeps every tab 24 px from that edge",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      // Lift the demo's 600 px box, as the scroll-padding check above does, so the dock sticks to
+      // the window, and add a text link after the page's last line.
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
+        if (!frame) throw new Error("the RailShell demo frame is missing")
+        frame.className = ""
+        document.documentElement.style.scrollBehavior = "auto"
+        const link = document.createElement("a")
+        link.href = "#half-covered"
+        link.textContent = "Half-covered link"
+        link.setAttribute("data-e2e", "rail-shell-demo-half-covered")
+        // Page under the link, so the dock can stick over it instead of sitting after it.
+        const rest = document.createElement("div")
+        rest.style.height = "400px"
+        document.querySelector(`[data-e2e="rail-shell-demo-last-line"]`)?.after(link, rest)
+      })
+      const link = page.locator(`[data-e2e="rail-shell-demo-half-covered"]`)
+      // The link's top 10 px above the fade band's, so the band covers its lower half.
+      await link.evaluate((element) => {
+        const band = document.querySelector(`#demo-RailShell [data-e2e="rail-shell-dock-fade"]`)
+        if (!band) throw new Error("the RailShell dock has no fade band")
+        const top = element.getBoundingClientRect().top + globalThis.scrollY
+        // Bring the link to mid-window first, so the dock is stuck where it is measured.
+        globalThis.scrollTo({ top: top - globalThis.innerHeight / 2, behavior: "instant" })
+        const wanted = band.getBoundingClientRect().top - 10
+        globalThis.scrollTo({ top: top - wanted, behavior: "instant" })
+      })
+      const [box, band] = await Promise.all([
+        link.boundingBox(),
+        page.locator(`#demo-RailShell [data-e2e="rail-shell-dock-fade"]`).boundingBox(),
+      ])
+      if (!box || !band) throw new Error("the link or the fade band is not drawn")
+      if (!(box.y < band.y && box.y + box.height > band.y)) {
+        throw new Error(`the link spans y ${box.y}–${box.y + box.height}, not the band's top edge`)
+      }
+      const { violations, passes } = await new AxeBuilder({ page })
+        .include(`[data-e2e="rail-shell-demo-half-covered"]`)
+        .withRules(["target-size"])
+        .analyze()
+      if (violations.length > 0) {
+        const messages = violations.flatMap((rule) =>
+          rule.nodes.map((node) => node.failureSummary ?? rule.help)
+        )
+        throw new Error(`link at y ${box.y}: ${messages.join("; ")}`)
+      }
+      if (!passes.some((rule) => rule.id === "target-size")) {
+        throw new Error("axe did not measure the link's target size")
+      }
+      return `link at y ${box.y}–${box.y + box.height}, band from y ${band.y}`
+    },
+  },
+  {
+    name:
+      "RailShell below md: an open listbox in the page's last row hangs past the frame's foot, " +
+      "and its last option can be scrolled to and tapped, because the frame clips nothing",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      // A popup positioned like Listbox's, Combobox's and DateRangePicker's: absolute, under its
+      // trigger, in the last row of the page, so its options hang below the frame's foot.
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
+        if (!frame) throw new Error("the RailShell demo frame is missing")
+        frame.className = ""
+        document.documentElement.style.scrollBehavior = "auto"
+        const row = document.createElement("div")
+        row.style.position = "relative"
+        const list = document.createElement("ul")
+        list.setAttribute("role", "listbox")
+        list.setAttribute("aria-label", "Status")
+        Object.assign(list.style, { position: "absolute", top: "100%", zIndex: "20" })
+        for (let index = 1; index <= 12; index++) {
+          const option = document.createElement("li")
+          option.setAttribute("role", "option")
+          option.setAttribute("data-e2e", `rail-shell-demo-option-${index}`)
+          option.textContent = `Option ${index}`
+          option.style.height = "40px"
+          option.addEventListener("click", () => option.setAttribute("aria-selected", "true"))
+          list.append(option)
+        }
+        row.append("Last row", list)
+        const content = document.querySelector(`#demo-RailShell [data-e2e="rail-shell-content"]`)
+        if (!content) throw new Error("the RailShell demo has no content")
+        content.append(row)
+      })
+      const last = page.locator(`[data-e2e="rail-shell-demo-option-12"]`)
+      await last.evaluate((element) => element.scrollIntoView({ block: "center" }))
+      const hit = await last.evaluate((element) => {
+        const box = element.getBoundingClientRect()
+        const found = document.elementFromPoint(box.left + 10, box.top + box.height / 2)
+        return found === element ? "" : `${found?.tagName}.${found?.className}`.slice(0, 120)
+      })
+      if (hit) throw new Error(`the last option's centre hits ${hit}, not the option`)
+      await last.click()
+      if (await last.getAttribute("aria-selected") !== "true") {
+        throw new Error("tapping the last option did not reach it")
+      }
+      return "the last option is on screen and takes the tap"
     },
   },
   {
@@ -1339,6 +1721,77 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AppShell below md: the sheet's Language row names the language in use, closes the " +
+      "sheet and opens LanguageDialog; Escape returns focus to the account tab, and the row then " +
+      "reads in the new language; axe passes on the sheet in Arabic",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tab = inCard(page, APP, "rail-shell-more")
+      const sheet = inCard(page, APP, "rail-shell-dialog")
+      const row = inCard(page, APP, "app-shell-sheet-language")
+      const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+      const focused = page.locator(":focus")
+      await tab.scrollIntoViewIfNeeded()
+      await tab.click()
+      await sheet.waitFor({ state: "visible" })
+      await row.filter({ hasText: "Language" }).locator(`[lang="en"].notranslate`)
+        .filter({ hasText: "English" }).waitFor()
+      const box = await row.boundingBox()
+      if (box === null || box.height < 44) throw new Error(`the row is ${box?.height} px tall`)
+      await row.click()
+      await sheet.waitFor({ state: "hidden" })
+      await dialog.getByRole("radio", { name: /^Automatic/, checked: true }).and(focused).waitFor()
+      await dialog.getByRole("radio", { name: "Deutsch", exact: true }).click()
+      await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "detached" })
+      await tab.and(focused).waitFor()
+
+      await tab.click()
+      await sheet.waitFor({ state: "visible" })
+      await row.filter({ hasText: "Sprache" }).locator(`[lang="de"]`).filter({ hasText: "Deutsch" })
+        .waitFor()
+      await row.click()
+      await dialog.getByRole("radio", { name: "العربية", exact: true }).click()
+      await dialog.getByRole("heading", { name: "اللغة" }).waitFor()
+      await dialog.locator(`[data-e2e="language-dialog-done"]`).click()
+      await dialog.waitFor({ state: "detached" })
+      await tab.and(focused).waitFor()
+      await tab.click()
+      await sheet.waitFor({ state: "visible" })
+      await row.locator(`[lang="ar"][dir="rtl"]`).filter({ hasText: "العربية" }).waitFor()
+      const axe = await expectAxeClean(page, `${APP} [data-e2e="rail-shell-dialog"]`)
+      return `English → Deutsch (Escape) → العربية (Done), focus back on the tab; ${axe}`
+    },
+  },
+  {
+    name: "AppShell at 1440 px: the rail's account menu carries the Language item from " +
+      "account.language, and closing its dialog returns focus to the account button",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const trigger = inCard(page, APP, "account-menu-button")
+      const item = inCard(page, APP, "account-menu-language")
+      const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+      const focused = page.locator(":focus")
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      await item.filter({ hasText: "Language" }).locator(`[lang="en"]`)
+        .filter({ hasText: "English" }).waitFor()
+      await item.click()
+      await dialog.getByRole("radio", { name: "Deutsch", exact: true }).click()
+      await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "detached" })
+      await trigger.and(focused).waitFor()
+      await trigger.click()
+      await item.filter({ hasText: "Sprache" }).locator(`[lang="de"]`)
+        .filter({ hasText: "Deutsch" }).waitFor()
+      return "English → Deutsch from the rail's menu, focus back on the account button"
+    },
+  },
+  {
     name: 'AppShell admin: a neutral "Admin" badge under the avatar, spoken in the account ' +
       "button's name and printed as the phone's last tab",
     pageId: "system",
@@ -1376,19 +1829,8 @@ export const specs: readonly Spec[] = [
       return `badge ${fill}, channel spread ${chroma}; last tab "${words}"`
     },
   },
-  {
-    name: "Rail and AppShell as the page frame pass axe at 390 and 1440 px in light, colour " +
-      "contrast and landmarks included",
-    pageId: "system",
-    run: shellsAxeClean,
-  },
-  {
-    name: "Rail and AppShell as the page frame pass axe at 390 and 1440 px in dark, colour " +
-      "contrast and landmarks included",
-    pageId: "system",
-    colorScheme: "dark",
-    run: shellsAxeClean,
-  },
+  ...frameAxeSpecs("light"),
+  ...frameAxeSpecs("dark"),
   {
     name: "AccountMenu: the menu opens upward, marks the current theme as a checked radio item, " +
       "announces and shows an item's key, and choosing another theme reports it",
@@ -1429,6 +1871,38 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "AccountMenu: the Language item names the language in use and opens LanguageDialog on " +
+      "the chosen row; a choice there switches the menu's words, and Done returns focus to the " +
+      "trigger",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`[data-e2e="account-menu-demo"]`)
+      const trigger = card.locator(`[data-e2e="account-menu-button"]`)
+      const item = card.locator(`[data-e2e="account-menu-language"]`)
+      const focused = page.locator(":focus")
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.click()
+      await item.filter({ hasText: "Language" }).locator(`[lang="en"]`)
+        .filter({ hasText: "English" }).waitFor()
+      await item.click()
+      const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+      await dialog.getByRole("radio", { name: /^Automatic/, checked: true }).and(focused).waitFor()
+      await dialog.getByRole("radio", { name: "Deutsch", exact: true }).click()
+      await dialog.getByRole("heading", { name: "Sprache" }).waitFor()
+      await dialog.getByRole("radio", { name: "Deutsch", checked: true, exact: true }).and(focused)
+        .waitFor()
+      await dialog.locator(`[data-e2e="language-dialog-done"]`).click()
+      await dialog.waitFor({ state: "detached" })
+      await trigger.and(focused).waitFor()
+      await trigger.click()
+      await item.filter({ hasText: "Sprache" }).locator(`[lang="de"]`)
+        .filter({ hasText: "Deutsch" }).waitFor()
+      await card.getByRole("group", { name: "Design" }).waitFor()
+      await expectAxeClean(page, `[data-e2e="account-menu-demo"]`)
+      return "English → Deutsch; the menu reads Sprache and Design; focus back on the trigger"
+    },
+  },
+  {
     name:
       "AccountMenu: a plain click on a link item calls navigate instead of following the link, " +
       "and a Ctrl-click leaves the link to the browser",
@@ -1462,7 +1936,18 @@ export const specs: readonly Spec[] = [
     run: async (page) => {
       const shell = page.locator(`[data-e2e="shell-demo"]`)
       const trigger = shell.locator(`[data-e2e="shell-user-menu-button"]`)
-      await trigger.scrollIntoViewIfNeeded()
+      // Centred, so the menu has room to open down inside the demo: near the window's bottom edge
+      // it opens up, out of the demo's clipped frame, and nothing in it can be clicked. Instantly:
+      // the page's own smooth scroll could still be under way when the click lands, with the
+      // trigger near the edge. The click waits until the trigger stands in the window's middle
+      // half, so a late shift of the page cannot send the menu up either.
+      await trigger.evaluate((element) =>
+        element.scrollIntoView({ block: "center", behavior: "instant" })
+      )
+      await page.waitForFunction((element) => {
+        const { top, bottom } = element.getBoundingClientRect()
+        return top > innerHeight / 4 && bottom < innerHeight * 3 / 4
+      }, await trigger.elementHandle())
       await trigger.click()
       const profile = shell.getByRole("menuitem", { name: "Your profile", exact: true })
       if (!await clickCancelled(profile)) {
@@ -1730,6 +2215,250 @@ export const specs: readonly Spec[] = [
         throw new Error(`card at mount: ${hiddenAtMount}; focus after unmount: ${focused}`)
       }
       return "card absent at mount; after the unmount, focus is on the returnFocus line"
+    },
+  },
+  {
+    name: "Calendar right to left: ArrowLeft moves to the next day and ArrowRight to the day " +
+      "before, as the grid's columns run",
+    pageId: "system",
+    run: async (page) => {
+      await page.locator(`[data-e2e="calendar-arabic"]`).check()
+      const grid = page.locator(
+        `[data-e2e="calendar-direction"][dir="rtl"] [data-e2e="calendar-interactive"] [role="grid"]`,
+      )
+      const day = (date: string) => grid.locator(`[data-calendar-date="${date}"]`)
+      const focusedDay = () =>
+        page.evaluate(() => document.activeElement?.getAttribute("data-calendar-date"))
+      await day("2026-03-11").focus()
+      await page.keyboard.press("ArrowLeft")
+      const left = await focusedDay()
+      await page.keyboard.press("ArrowRight")
+      await page.keyboard.press("ArrowRight")
+      const right = await focusedDay()
+      if (left !== "2026-03-12" || right !== "2026-03-10") {
+        throw new Error(`from 11 March, ArrowLeft reached ${left} and two ArrowRights ${right}`)
+      }
+      return `ArrowLeft → ${left}, then ArrowRight twice → ${right}`
+    },
+  },
+  {
+    name: "Calendar in Arabic: at 390 px each weekday header shows its one-letter name, at " +
+      "1440 px the full name",
+    pageId: "system",
+    run: async (page) => {
+      const card = page.locator(`#demo-Calendar`)
+      await card.locator(`[data-e2e="calendar-locale-ar-EG"]`).first().click()
+      const row = card.locator(`[role="row"][lang="ar-EG"]`).first()
+      await row.waitFor()
+      const read = () =>
+        row.evaluate((element) =>
+          [...element.children].map((header) => ({
+            letter: getComputedStyle(header, "::before").content,
+            word: (header.firstElementChild as HTMLElement).checkVisibility(),
+            text: header.textContent,
+          }))
+        )
+      await page.setViewportSize({ width: 390, height: 900 })
+      const phone = await read()
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const desktop = await read()
+      const letters = phone.map((header) => header.letter.replaceAll(`"`, ""))
+      if (
+        phone.length !== 7 || phone.some((header) => header.word) ||
+        letters.some((letter) => [...letter].length !== 1) || new Set(letters).size !== 7 ||
+        desktop.some((header) => !header.word || header.letter !== "none")
+      ) {
+        throw new Error(`390 px: ${JSON.stringify(phone)}; 1440 px: ${JSON.stringify(desktop)}`)
+      }
+      return `390 px: ${letters.join(" ")}; 1440 px: ${desktop.map((h) => h.text).join(" ")}`
+    },
+  },
+  {
+    name: "RailShell right to left from md: the column stands on the right edge, its tooltip " +
+      "opens 8 px to its left, and the skip link shows at the right",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 900 })
+      await page.locator(`[data-e2e="rail-shell-arabic"]`).check()
+      const frame = page.locator(`[data-e2e="rail-shell-direction"][dir="rtl"]`)
+      const column = frame.locator(`[data-e2e="rail-shell-column"]`)
+      await column.scrollIntoViewIfNeeded()
+      const entry = frame.locator(`[data-e2e="rail-shell-rail"] [data-e2e="rail-shell-entry"]`)
+        .first()
+      const tip = tipOf(entry)
+      await entry.focus()
+      await page.keyboard.press("Shift+Tab")
+      await page.keyboard.press("Tab")
+      await tip.waitFor({ state: "visible" })
+      const skip = frame.locator(`[data-e2e="rail-shell-skip-link"]`)
+      await skip.focus()
+      const [columnBox, tipBox, skipBox, frameBox] = await Promise.all([
+        column.boundingBox(),
+        tip.boundingBox(),
+        skip.boundingBox(),
+        frame.boundingBox(),
+      ])
+      if (!columnBox || !tipBox || !skipBox || !frameBox) throw new Error("a box is not drawn")
+      const frameEnd = frameBox.x + frameBox.width
+      const columnEnd = columnBox.x + columnBox.width
+      const tipEnd = tipBox.x + tipBox.width
+      // The skip link is `fixed`, so its `end-4` is measured from the layout viewport, which stops
+      // short of a classic scrollbar: `clientWidth`, not the window's width.
+      const viewport = await page.evaluate(() => document.documentElement.clientWidth)
+      if (
+        Math.abs(columnEnd - frameEnd) > 1 || Math.abs(tipEnd - (columnBox.x - 8)) > 1 ||
+        Math.abs(skipBox.x + skipBox.width - (viewport - 16)) > 1
+      ) {
+        throw new Error(
+          `column ${columnBox.x}–${columnEnd} in a frame ending at ${frameEnd}; tooltip ends at ` +
+            `${tipEnd}, column starts at ${columnBox.x}; skip link ends at ` +
+            `${skipBox.x + skipBox.width} of ${viewport}`,
+        )
+      }
+      return `column ends at ${columnEnd}; tooltip ends at ${tipEnd}; skip link ends at ` +
+        `${skipBox.x + skipBox.width}`
+    },
+  },
+  {
+    name: "RailShell from md pads the column's start side by that side's safe-area inset: the " +
+      "left inset on the left left to right, the right inset on the right right to left",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1024, height: 900 })
+      const session = await page.context().newCDPSession(page)
+      // Two different insets, so a column padded by the wrong side's inset shows it too.
+      await session.send("Emulation.setSafeAreaInsetsOverride", {
+        insets: { left: 20, right: 36, top: 0, bottom: 0 },
+      })
+      const padding = async () => {
+        const column = page.locator(
+          `[data-e2e="rail-shell-direction"] [data-e2e="rail-shell-column"]`,
+        )
+        await column.scrollIntoViewIfNeeded()
+        return await column.evaluate((element) => {
+          const style = getComputedStyle(element)
+          return `${style.direction} left ${style.paddingLeft} right ${style.paddingRight}`
+        })
+      }
+      try {
+        const ltr = await padding()
+        await page.locator(`[data-e2e="rail-shell-arabic"]`).check()
+        await page.locator(`[data-e2e="rail-shell-direction"][dir="rtl"]`).waitFor()
+        const rtl = await padding()
+        if (ltr !== "ltr left 20px right 0px" || rtl !== "rtl left 0px right 36px") {
+          throw new Error(`left to right: ${ltr}; right to left: ${rtl}`)
+        }
+        return `${ltr}; ${rtl}`
+      } finally {
+        await session.send("Emulation.setSafeAreaInsetsOverride", {
+          insets: { left: 0, right: 0, top: 0, bottom: 0 },
+        })
+        await session.detach()
+      }
+    },
+  },
+  {
+    name: "AuthForm right to left: the password box stays left to right with its toggle inside " +
+      "the right padding, before and after the password is shown",
+    pageId: "system",
+    run: async (page) => {
+      await page.locator(`[data-e2e="auth-form-arabic"]`).check()
+      const frame = page.locator(`[data-e2e="auth-form-direction"][dir="rtl"]`)
+      const password = frame.locator(`[data-e2e="auth-form-password"]`).first()
+      const toggle = frame.locator(`[data-e2e="auth-form-password-toggle"]`).first()
+      await password.scrollIntoViewIfNeeded()
+      const measure = async () => {
+        const [box, toggleBox, direction, padding] = await Promise.all([
+          password.boundingBox(),
+          toggle.boundingBox(),
+          password.evaluate((input) => getComputedStyle(input).direction),
+          password.evaluate((input) => parseFloat(getComputedStyle(input).paddingRight)),
+        ])
+        if (!box || !toggleBox) throw new Error("the password box is not drawn")
+        return { direction, padding, toggleStart: toggleBox.x - (box.x + box.width - padding) }
+      }
+      const hidden = await measure()
+      await toggle.click()
+      await password.and(page.locator(`[type="text"]`)).waitFor()
+      const shown = await measure()
+      for (const state of [hidden, shown]) {
+        if (state.direction !== "ltr" || state.padding < 40 || state.toggleStart < 0) {
+          throw new Error(`hidden ${JSON.stringify(hidden)}; shown ${JSON.stringify(shown)}`)
+        }
+      }
+      return `ltr both times; the toggle starts ${hidden.toggleStart} px into the right padding`
+    },
+  },
+  {
+    name: "SiteHeader with a LanguagePicker menu, at 320 and 390 px: the open language panel " +
+      "stays 16 px inside both edges of the bar and of the screen, left to right and right to " +
+      "left, with JavaScript and without",
+    pageId: "system",
+    run: async (page) => {
+      const seen: string[] = []
+      for (const javaScriptEnabled of [true, false]) {
+        for (const dir of ["ltr", "rtl"] as const) {
+          const { context, tab, header, globe, languages } = await openLanguageHeader(
+            page,
+            javaScriptEnabled,
+            dir,
+          )
+          try {
+            await globe.click()
+            await languages.waitFor()
+            for (const width of [390, 320]) {
+              await tab.setViewportSize({ width, height: 844 })
+              const [box, bar] = [await languages.boundingBox(), await header.boundingBox()]
+              const where = `${width} px, ${dir}, JavaScript ${javaScriptEnabled ? "on" : "off"}`
+              if (!box || !bar) throw new Error(`no language panel or bar at ${where}`)
+              const [start, end] = [Math.round(box.x), Math.round(box.x + box.width)]
+              const [barStart, barEnd] = [Math.round(bar.x), Math.round(bar.x + bar.width)]
+              if (start < Math.max(16, barStart + 16) || end > Math.min(width, barEnd) - 16) {
+                throw new Error(
+                  `the panel spans ${start} to ${end} px, the bar ${barStart} to ${barEnd}, at ${where}`,
+                )
+              }
+              seen.push(`${start}-${end} in ${barStart}-${barEnd}`)
+            }
+          } finally {
+            await context.close()
+          }
+        }
+      }
+      return `panel spans ${seen.join(", ")} px`
+    },
+  },
+  {
+    name: "SiteHeader with a LanguagePicker menu at 390 px: opening the language menu closes " +
+      "the links' menu and opening the links' menu closes the language menu, with JavaScript " +
+      "and without",
+    pageId: "system",
+    run: async (page) => {
+      for (const javaScriptEnabled of [true, false]) {
+        const { context, globe, languages, menuButton, links } = await openLanguageHeader(
+          page,
+          javaScriptEnabled,
+          "ltr",
+        )
+        const mode = `JavaScript ${javaScriptEnabled ? "on" : "off"}`
+        try {
+          await menuButton.click()
+          await links.waitFor()
+          await globe.click()
+          await languages.waitFor()
+          await links.waitFor({ state: "hidden" }).catch(() => {
+            throw new Error(`the links' menu stayed open under the language menu, ${mode}`)
+          })
+          await menuButton.click()
+          await links.waitFor()
+          await languages.waitFor({ state: "hidden" }).catch(() => {
+            throw new Error(`the language menu stayed open under the links' menu, ${mode}`)
+          })
+        } finally {
+          await context.close()
+        }
+      }
+      return "each menu closed the other, with JavaScript and without"
     },
   },
 ]

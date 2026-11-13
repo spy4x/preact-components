@@ -11,12 +11,19 @@ import {
   Button,
   Checkbox,
   Cluster,
+  ColorField,
   Combobox,
+  CurrencyField,
+  DateTimeField,
   Field,
   Grid,
+  I18nContext,
+  IconPicker,
   InlineEdit,
   Input,
   InputButton,
+  ListField,
+  Modal,
   MoneyInput,
   QuickAdd,
   Radio,
@@ -27,11 +34,20 @@ import {
   TagInput,
   Textarea,
   ToggleChips,
+  useT,
 } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
+import { currencyOptions } from "@spy4x/platform/universal/money-core"
 import { useEffect, useRef } from "preact/hooks"
 import { IconSearch } from "@spy4x/preact-icons"
+import type { IconName } from "@spy4x/preact-icons/registry"
+import { createTranslator, type Translator } from "@spy4x/platform/universal/i18n"
+import uiEn from "@spy4x/preact-ui/i18n/en"
+import uiRu from "@spy4x/preact-ui/i18n/ru"
 import type { DemoFragment } from "../registry.ts"
+import { DemoNote } from "./demo-note.tsx"
+import { importMapperDemos } from "./import-mapper.tsx"
+import { swatchChipsDemo } from "./storefront.tsx"
 
 /** One profile form: a labelled field per control, plus the two that carry their own label. */
 function FieldDemo() {
@@ -506,50 +522,154 @@ function RadioDemo() {
  */
 function MoneyInputDemo() {
   const amount = useSignal<number | null>(1999)
+  const coins = useSignal<number | null>(1)
+  const yen = useSignal<number | null>(null)
   const submits = useSignal(0)
   const lastSubmitted = useSignal("")
   return (
-    <form
-      class="max-w-xs"
-      onSubmit={(event) => {
-        event.preventDefault()
-        submits.value++
-        const data = new FormData(event.currentTarget)
-        lastSubmitted.value = String(data.get("guide-money-amount") ?? "")
-      }}
-    >
-      <Stack gap="sm">
-        <Field id="guide-money-input" label="Price (EUR, German locale)">
-          <MoneyInput
-            value={amount.value}
-            currency="EUR"
-            locale="de"
-            name="guide-money-amount"
-            onChange={(value) => amount.value = value}
-          />
-        </Field>
-        <p class="text-xs text-muted" data-e2e="controlled-value">
-          amount: {amount.value === null ? "(empty)" : amount.value}
-        </p>
-        <p class="text-xs text-muted" data-e2e="money-input-submits">
-          submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
-        </p>
-        <Cluster gap="sm">
-          <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-e2e="money-input-add-five"
-            onClick={() => amount.value = (amount.value ?? 0) + 500}
-          >
-            Add 5.00
-          </Button>
-        </Cluster>
-      </Stack>
-    </form>
+    <Stack gap="md">
+      <form
+        class="max-w-xs"
+        onSubmit={(event) => {
+          event.preventDefault()
+          submits.value++
+          const data = new FormData(event.currentTarget)
+          lastSubmitted.value = String(data.get("guide-money-amount") ?? "")
+        }}
+      >
+        <Stack gap="sm">
+          <Field id="guide-money-input" label="Price (EUR, German locale)">
+            <MoneyInput
+              value={amount.value}
+              currency="EUR"
+              locale="de"
+              name="guide-money-amount"
+              onChange={(value) => amount.value = value}
+            />
+          </Field>
+          <p class="text-xs text-muted" data-e2e="controlled-value">
+            amount: {amount.value === null ? "(empty)" : amount.value}
+          </p>
+          <p class="text-xs text-muted" data-e2e="money-input-submits">
+            submits: {submits.value}, posted: {lastSubmitted.value || "(none)"}
+          </p>
+          <Cluster gap="sm">
+            <Button type="submit" size="sm" data-e2e="money-input-submit">Save</Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-e2e="money-input-add-five"
+              onClick={() => amount.value = (amount.value ?? 0) + 500}
+            >
+              Add 5.00
+            </Button>
+          </Cluster>
+        </Stack>
+      </form>
+      <Field id="guide-money-btc" label="Balance (BTC, 8 decimals)" class="max-w-xs">
+        <MoneyInput
+          value={coins.value}
+          currency="BTC"
+          decimals={8}
+          onChange={(value) => coins.value = value}
+        />
+      </Field>
+      <Field
+        id="guide-money-jpy"
+        label="Price (JPY, whole amounts)"
+        hint="Type 0.5 to see the decimals message."
+        class="max-w-xs"
+      >
+        <MoneyInput value={yen.value} currency="JPY" onChange={(value) => yen.value = value} />
+      </Field>
+      <MoneyInputDialogDemo />
+    </Stack>
   )
 }
+
+/**
+ * A `MoneyInput` with `autoFocus` as the first field of a `Modal`: the dialog opens with the
+ * amount focused, not the close button, so typing and Enter go to the form.
+ */
+function MoneyInputDialogDemo() {
+  const open = useSignal(false)
+  const limit = useSignal<number | null>(50000)
+  const close = () => open.value = false
+  return (
+    <Cluster>
+      <Button
+        variant="outline"
+        size="sm"
+        data-e2e="money-dialog-open"
+        onClick={() => open.value = true}
+      >
+        Set a limit
+      </Button>
+      {open.value && (
+        <Modal
+          open
+          onClose={close}
+          title="Monthly limit"
+          cancelLabel="Close"
+          dataE2E="guide-money-dialog"
+          footer={
+            <>
+              <Button variant="outline" onClick={close}>Cancel</Button>
+              <Button type="submit" form="guide-money-dialog-form">Save limit</Button>
+            </>
+          }
+        >
+          <form
+            id="guide-money-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              close()
+            }}
+          >
+            <Field id="guide-money-dialog-amount" label="Limit (EUR)">
+              <MoneyInput
+                value={limit.value}
+                currency="EUR"
+                autoFocus
+                onChange={(value) => limit.value = value}
+              />
+            </Field>
+          </form>
+        </Modal>
+      )}
+    </Cluster>
+  )
+}
+
+/**
+ * A currency field with three recent codes, so an empty query lists them first, and the chosen code
+ * printed under it. Options in English plus one coin the app adds, which `Intl` does not know.
+ */
+function CurrencyFieldDemo() {
+  const code = useSignal<string | null>(null)
+  return (
+    <Stack gap="sm" class="max-w-xs">
+      <Field id="guide-currency" label="Account currency">
+        <CurrencyField
+          ariaLabel="Account currency"
+          value={code.value}
+          onChange={(next) => code.value = next}
+          options={currencyChoices}
+          recent={["EUR", "USD", "THB"]}
+        />
+      </Field>
+      <p class="text-xs text-muted" data-e2e="currency-value">
+        code: {code.value ?? "(none)"}
+      </p>
+    </Stack>
+  )
+}
+
+/** Every ISO currency, named in English, plus a coin `Intl` has no data for. */
+const currencyChoices = currencyOptions("en", [
+  { code: "BTC", name: "Bitcoin", decimals: 8 },
+])
 
 /**
  * Two rename fields: one whose save takes a moment and succeeds, one whose save always fails, so
@@ -694,6 +814,125 @@ function QuickAddDemo() {
   )
 }
 
+/**
+ * A tag's colour with the tag chip as its live sample, the value it stores, and a reset that changes
+ * it from outside; then a group's colour, which may have none. Both sit in a real `<form>`, so a
+ * browser check can prove an invalid hex refuses the submit and every valid choice saves.
+ */
+function ColorFieldDemo() {
+  const color = useSignal<string | null>("#0369a1")
+  const groupColor = useSignal<string | null>(null)
+  const saves = useSignal(0)
+  const saved = useSignal("")
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        saves.value++
+        saved.value = `${color.value ?? "none"}, group ${groupColor.value ?? "none"}`
+      }}
+    >
+      <Stack gap="lg">
+        <Stack gap="sm">
+          <ColorField
+            value={color.value}
+            onChange={(next) => color.value = next}
+            legend="Tag colour"
+            hint="Text on the tag turns black or white, whichever reads better."
+            preview={(background, text) => (
+              <span
+                class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
+                style={{ backgroundColor: background, color: text }}
+                data-e2e="color-field-chip"
+              >
+                Groceries
+              </span>
+            )}
+          />
+          <Cluster gap="sm">
+            <p class="text-xs text-muted">
+              Stored: <code data-e2e="color-field-value">{color.value ?? "none"}</code>
+            </p>
+            <Button variant="outline" size="sm" onClick={() => color.value = "#0369a1"}>
+              Reset to Sky
+            </Button>
+          </Cluster>
+        </Stack>
+        <ColorField
+          value={groupColor.value}
+          onChange={(next) => groupColor.value = next}
+          legend="Group colour"
+          allowNone
+          noneLabel="No group colour"
+        />
+        <Cluster gap="sm">
+          <Button type="submit" size="sm">Save</Button>
+          <p class="text-xs text-muted" data-e2e="color-field-saves">
+            saves: {saves.value}, saved: {saved.value || "(none)"}
+          </p>
+        </Cluster>
+      </Stack>
+    </form>
+  )
+}
+
+/** The picker's own words and icon names in Russian; English is whatever the page around it speaks. */
+const russian: Translator<string> = createTranslator({
+  language: "ru",
+  catalogs: [{ source: uiEn, translation: uiRu }],
+})
+
+/**
+ * A category's icon in a real `<form>`, so a browser check can prove Enter in the search box chooses
+ * and never submits. The language chips switch the picker to Russian: its names, its search and
+ * the tiles' accessible names follow, and English words still find an icon.
+ */
+function IconPickerDemo() {
+  const icon = useSignal<IconName | null>("car")
+  const language = useSignal("en")
+  const saves = useSignal(0)
+  const outer = useT()
+  const translator = language.value === "ru" ? russian : outer
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        saves.value++
+      }}
+    >
+      <Stack gap="md">
+        <RadioChips
+          legend="Language"
+          name="icon-picker-demo-language"
+          value={language.value}
+          onChange={(value) => language.value = value}
+          options={[
+            { value: "en", label: <span lang="en">English</span> },
+            { value: "ru", label: <span lang="ru">Русский</span> },
+          ]}
+        />
+        <I18nContext.Provider value={translator}>
+          <div lang={translator.language} dir={translator.dir}>
+            <IconPicker
+              value={icon.value}
+              onChange={(next) => icon.value = next}
+              allowNone
+              name="icon"
+              hint="Shown next to the category in lists and reports."
+            />
+          </div>
+        </I18nContext.Provider>
+        <Cluster gap="sm">
+          <Button type="submit" size="sm">Save</Button>
+          <p class="text-xs text-muted" data-e2e="icon-picker-value">
+            Stored: <code>{icon.value ?? "none"}</code>, saves: {saves.value}
+          </p>
+        </Cluster>
+      </Stack>
+    </form>
+  )
+}
+
 /** A server-rendered single choice: page CSS reads the checked radio, no script needed. */
 function RadioChipsDemo() {
   return (
@@ -715,9 +954,13 @@ function RadioChipsDemo() {
   )
 }
 
-/** A multi-select tag filter and a single-select status filter, each echoing its value. */
+/**
+ * A multi-select tag filter, tags in colours of their own, and a single-select status filter, the
+ * first and last echoing their value.
+ */
 function ToggleChipsDemo() {
   const tags = useSignal<string[]>(["work"])
+  const colored = useSignal<string[]>(["urgent"])
   const status = useSignal<string | null>("open")
   return (
     <Stack gap="md">
@@ -731,6 +974,16 @@ function ToggleChipsDemo() {
         ]}
         value={tags.value}
         onChange={(next) => tags.value = next}
+      />
+      <ToggleChips
+        label="Coloured tags"
+        options={[
+          { value: "urgent", label: "Urgent", color: "#dc2626" },
+          { value: "ideas", label: "Ideas", color: "#fde047" },
+          { value: "q4", label: "Q4", color: "#2563eb" },
+        ]}
+        value={colored.value}
+        onChange={(next) => colored.value = next}
       />
       <ToggleChips
         mode="single"
@@ -747,6 +1000,63 @@ function ToggleChipsDemo() {
       <p class="text-xs text-muted" data-e2e="toggle-chips-value">
         tags: {tags.value.join(", ") || "(none)"} · status: {status.value ?? "(none)"}
       </p>
+    </Stack>
+  )
+}
+
+/** Key points of a post: up to five lines, in a form whose submits the note counts. */
+function ListFieldDemo() {
+  const points = useSignal(["Jobs are written down first.", "A failed run retries on its own."])
+  const submits = useSignal(0)
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        submits.value++
+      }}
+    >
+      <Stack gap="sm">
+        <ListField
+          id="guide-points"
+          label="Key points"
+          value={points.value}
+          onChange={(next) => points.value = next}
+          max={5}
+          maxLength={160}
+          placeholder="One sentence"
+          hint="Shown in a box above the post. Enter adds a point."
+          labels={{
+            item: (n) => `Key point ${n}`,
+            remove: (n) => `Remove key point ${n}`,
+            add: "Add point",
+          }}
+        />
+        <Cluster gap="sm">
+          <Button type="submit" variant="secondary">Save points</Button>
+        </Cluster>
+        <DemoNote e2e="list-field-value">
+          {JSON.stringify(points.value)}; submitted {submits.value} times
+        </DemoNote>
+      </Stack>
+    </form>
+  )
+}
+
+/** A publish time typed in Berlin, stored as an instant. */
+function DateTimeFieldDemo() {
+  const at = useSignal<string | null>("2026-10-25T08:30:00.000Z")
+  return (
+    <Stack gap="sm">
+      <DateTimeField
+        id="guide-publish-at"
+        label="Goes live at"
+        value={at.value}
+        onChange={(next) => at.value = next}
+        timeZone="Europe/Berlin"
+        hint="The post goes live on its own at that time."
+        required
+      />
+      <DemoNote e2e="date-time-field-value">Stored: {at.value ?? "none"}</DemoNote>
     </Stack>
   )
 }
@@ -950,12 +1260,21 @@ export const fieldDemos = {
         type: "(value: number | null) => void",
         description: "Called when the typed text reads as a new amount.",
       },
-      { name: "currency", type: "string", description: "The ISO code, such as `EUR`." },
+      {
+        name: "currency",
+        type: "string",
+        description: "The ISO code, such as `EUR`, shown inside the field.",
+      },
       {
         name: "locale",
         type: "string",
-        default: `"en"`,
-        description: "How the amount is shown and how typed text is read.",
+        default: "useFormat().locale",
+        description: "How the amount is shown and typed text is read; by default the region.",
+      },
+      {
+        name: "decimals",
+        type: "number",
+        description: "A coin's own decimals, such as 8 for BTC.",
       },
       {
         name: "min / max",
@@ -973,17 +1292,61 @@ export const fieldDemos = {
         default: "false",
         description: "The browser refuses a submit while the field is empty; `Field` sets it.",
       },
+      {
+        name: "autoFocus",
+        type: "boolean",
+        default: "false",
+        description: "Focuses the field when a `Modal` around it opens, instead of Close.",
+      },
     ],
     snippet: `<Field id="price" label="Price">
   <MoneyInput
     value={amount.value}
     currency="EUR"
-    locale="de"
     name="price"
     onChange={(value) => amount.value = value}
   />
-</Field>`,
+</Field>
+<MoneyInput value={sats.value} currency="BTC" decimals={8} onChange={setSats} />`,
     render: () => <MoneyInputDemo />,
+  },
+  CurrencyField: {
+    summary:
+      "Picks a currency by its code, its name or its symbol, with the ones used lately first.",
+    wide: false,
+    props: [
+      { name: "value", type: "string | null", description: "The chosen code, such as `EUR`." },
+      {
+        name: "onChange",
+        type: "(code: string | null) => void",
+        description: "Called with the chosen code, or `null` when cleared.",
+      },
+      {
+        name: "options",
+        type: "CurrencyOption[]",
+        description: "ts-libs' `currencyOptions(locale)`, plus any coin the app adds.",
+      },
+      {
+        name: "recent",
+        type: "string[]",
+        description: "Codes listed first while nothing is typed.",
+      },
+      {
+        name: "autoFocus",
+        type: "boolean",
+        default: "false",
+        description: "Focuses the field when a `Modal` around it opens.",
+      },
+    ],
+    snippet: `<Field id="currency" label="Currency">
+  <CurrencyField
+    value={code.value}
+    onChange={(next) => code.value = next}
+    options={currencyOptions("en")}
+    recent={["EUR", "USD"]}
+  />
+</Field>`,
+    render: () => <CurrencyFieldDemo />,
   },
   InlineEdit: {
     summary:
@@ -1025,7 +1388,7 @@ export const fieldDemos = {
       {
         name: "errorMessage",
         type: "(error: unknown) => string",
-        default: `"Could not save. Try again."`,
+        default: `"Couldn't save. Try again."`,
         description: "Words a rejected save; the field stays open with the typed text.",
       },
       {
@@ -1135,6 +1498,114 @@ export const fieldDemos = {
 />`,
     render: () => <QuickAddDemo />,
   },
+  ColorField: {
+    summary:
+      "A colour from 16 readable swatches or a custom hex, with a live sample of the thing being coloured.",
+    wide: false,
+    props: [
+      {
+        name: "value / onChange",
+        type: "string | null / (value: string | null) => void",
+        description:
+          "The chosen `#rrggbb`, or `null` for none; a custom hex arrives in lower case.",
+      },
+      {
+        name: "presets",
+        type: "{ value, label }[]",
+        default: "COLOR_PRESETS",
+        description: "The swatches before Custom: a gray and 15 hues.",
+      },
+      {
+        name: "allowNone / noneLabel",
+        type: "boolean / string",
+        default: `false / "No colour"`,
+        description: "A first swatch that sends `null`.",
+      },
+      {
+        name: "legend / hint / error",
+        type: "ComponentChildren / ComponentChildren / string | null",
+        default: `"Colour"`,
+        description: "The group's name, and messages tied to it with `aria-describedby`.",
+      },
+      {
+        name: "preview",
+        type: "(color, textColor) => ComponentChildren",
+        description:
+          "The caller's live sample, such as a tag chip, drawn while a colour is chosen.",
+      },
+      {
+        name: "labels",
+        type: "{ custom?, picker?, hexCode?, hexPlaceholder?, hexError? }",
+        description:
+          "Every word of the Custom swatch and its hex field, each with an English default.",
+      },
+      {
+        name: "name / class",
+        type: "string",
+        description:
+          "The radios' shared name (generated when left out), and utilities on the fieldset.",
+      },
+    ],
+    snippet: `<ColorField
+  value={color.value}
+  onChange={(next) => color.value = next}
+  legend="Tag colour"
+  preview={(background, text) => (
+    <span style={{ backgroundColor: background, color: text }}>Groceries</span>
+  )}
+/>`,
+    render: () => <ColorFieldDemo />,
+  },
+  IconPicker: {
+    summary:
+      "An icon for a category or a list, from 42 named icons, with a search that speaks the reader's language.",
+    wide: false,
+    props: [
+      {
+        name: "value / onChange",
+        type: "IconName | null / (value: IconName | null) => void",
+        description:
+          "The chosen id from `@spy4x/preact-icons/registry`, which an app stores, or `null` for none.",
+      },
+      {
+        name: "icons",
+        type: "readonly IconName[]",
+        default: "CATEGORY_ICONS",
+        description: "The ids offered, in the order shown.",
+      },
+      {
+        name: "allowNone / noneLabel",
+        type: "boolean / string",
+        default: `false / "No icon"`,
+        description: "A first tile that sends `null`, hidden while a search is typed.",
+      },
+      {
+        name: "legend / hint / error",
+        type: "ComponentChildren / ComponentChildren / string | null",
+        default: `"Icon"`,
+        description:
+          "The group's name, followed by the chosen icon's name, and messages tied to it with `aria-describedby`.",
+      },
+      {
+        name: "labels",
+        type: "{ search?, empty?(query), clearSearch?, count?(n) }",
+        description: "The search box's words, each with an English default.",
+      },
+      {
+        name: "name / disabled / class",
+        type: "string / boolean / string",
+        description:
+          "The radios' shared name (generated when left out), so a form submits the id; disables everything; utilities on the fieldset.",
+      },
+    ],
+    snippet: `<IconPicker
+  value={category.icon}
+  onChange={(icon) => category.icon = icon}
+  allowNone
+  name="icon"
+/>`,
+    render: () => <IconPickerDemo />,
+  },
   RadioChips: {
     summary:
       "One choice drawn as `ToggleChips` chips, on native radios, so it works with JavaScript off.",
@@ -1189,6 +1660,7 @@ export const fieldDemos = {
 />`,
     render: () => <RadioChipsDemo />,
   },
+  ...swatchChipsDemo,
   ToggleChips: {
     summary:
       "A row of pressable chips for filtering a list, in the colours of `Badge`, one or many pressed at once.",
@@ -1196,8 +1668,9 @@ export const fieldDemos = {
     props: [
       {
         name: "options",
-        type: "{ value, label, disabled? }[]",
-        description: "One chip per option.",
+        type: "{ value, label, disabled?, color? }[]",
+        description:
+          "One chip per option. An option's own `color` (`#rrggbb`, such as a tag's) fills it when pressed and shows as a dot before its text when not.",
       },
       {
         name: "value / onChange",
@@ -1240,4 +1713,85 @@ export const fieldDemos = {
 />`,
     render: () => <ToggleChipsDemo />,
   },
+  ListField: {
+    summary:
+      "An ordered list of short lines, such as a post's key points: an input per line, add and remove, up to a limit.",
+    wide: false,
+    props: [
+      {
+        name: "id / label",
+        type: "string / ComponentChildren",
+        description: "The first line's `id`, and the group's `<legend>`.",
+      },
+      {
+        name: "value / onChange",
+        type: "string[] / (value: string[]) => void",
+        description: "The lines, and the whole new list after every change.",
+      },
+      {
+        name: "max / maxLength",
+        type: "number",
+        description: "The most lines, and the most characters one line takes.",
+      },
+      {
+        name: "hint / error / disabled / name / placeholder",
+        type: "ComponentChildren / string / boolean / string / string",
+        description: "Messages tied to the group, and attributes on every line.",
+      },
+      {
+        name: "labels",
+        type: "{ item?, remove?, add?, count? }",
+        description: `Each line's name, the remove button's, "Add item" and "3 of 5".`,
+      },
+    ],
+    snippet: `<ListField
+  id="tldr"
+  label="Key points"
+  value={points.value}
+  onChange={(next) => points.value = next}
+  max={5}
+/>`,
+    render: () => <ListFieldDemo />,
+  },
+  DateTimeField: {
+    summary:
+      "One date and time typed in a named time zone, which shows beside the input with its offset, read and written as an instant.",
+    wide: false,
+    props: [
+      {
+        name: "value / onChange",
+        type: "string | null / (value: string | null) => void",
+        description: "The moment as an ISO 8601 instant, or `null` for none.",
+      },
+      {
+        name: "timeZone",
+        type: "string",
+        description: "The IANA zone the person types in; an unknown one reads as UTC.",
+      },
+      {
+        name: "min / max",
+        type: "string",
+        description: "The range the browser's picker offers, as instants.",
+      },
+      {
+        name: "id / label / hint / error / required / disabled",
+        type: "string / ComponentChildren / ComponentChildren / string / boolean / boolean",
+        description: "As on `Field`.",
+      },
+      {
+        name: "labels",
+        type: "{ zone? }",
+        description: `The zone line, "Time zone: Berlin, Europe · GMT+1" by default.`,
+      },
+    ],
+    snippet: `<DateTimeField
+  id="publish-at"
+  label="Goes live at"
+  value={at.value}
+  onChange={(next) => at.value = next}
+  timeZone="Europe/Berlin"
+/>`,
+    render: () => <DateTimeFieldDemo />,
+  },
+  ...importMapperDemos,
 } satisfies DemoFragment

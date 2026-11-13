@@ -20,9 +20,10 @@
  * package's source the demo can import (`ui/`, `system/`, `charts/`, …), `pages/` itself — which
  * covers `pages/src` and every other file the build or the browser checks read — the config files
  * that change how a specifier resolves (the root `deno.jsonc`, `deno.lock`, and each package's own
- * `deno.json`, picked up by the walk since it lives inside that package's directory), and the four
+ * `deno.json`, picked up by the walk since it lives inside that package's directory), and the five
  * static fixture directories `build.ts` copies into the artefact verbatim and the browser checks
- * are served from — `pages/sw-demo`, `pages/form-demo`, `pages/map-demo`, `pages/video-demo` —
+ * are served from — `pages/sw-demo`, `pages/form-demo`, `pages/map-demo`, `pages/video-demo`,
+ * `pages/fonts` —
  * covered whole, regardless
  * of extension, since a stale copy of a served file is exactly what #280 is about. `deno bundle`
  * does not expose the module graph it built from, only the emitted bundle, so reading it back out
@@ -73,6 +74,7 @@ const STATIC_FIXTURE_DIRECTORIES = [
   "pages/form-demo",
   "pages/map-demo",
   "pages/video-demo",
+  "pages/fonts",
 ] as const
 
 /** Directory names walked past without descending — build output and caches, never a source. */

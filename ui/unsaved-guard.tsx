@@ -21,6 +21,7 @@ import {
   type LeaveGuard,
   leaveGuardInternals,
 } from "./unsaved-guard-internals.ts"
+import { useLabels } from "./i18n.tsx"
 
 /** The parts of a click that decide whether the browser would follow a link in this tab. */
 export interface UnsavedClick extends ClickModifiers {
@@ -77,7 +78,7 @@ export function guardedHref(
 export interface UnsavedGuardLabels {
   /** The dialog's title. Defaults to `"Leave without saving?"`. */
   title: string
-  /** The sentence under it. Defaults to `"Your changes have not been saved. If you leave, they are lost."`. */
+  /** The sentence under it. Defaults to `"You have unsaved changes. If you leave now, you'll lose them."`. */
   message: string
   /** The button that leaves. Defaults to `"Leave"`. */
   leave: string
@@ -90,7 +91,7 @@ export interface UnsavedGuardLabels {
 /** The English words of {@link UnsavedGuard}'s dialog. */
 export const defaultUnsavedGuardLabels: UnsavedGuardLabels = {
   title: "Leave without saving?",
-  message: "Your changes have not been saved. If you leave, they are lost.",
+  message: "You have unsaved changes. If you leave now, you'll lose them.",
   leave: "Leave",
   stay: "Stay",
 }
@@ -180,7 +181,7 @@ export interface UnsavedGuardProps {
 export function UnsavedGuard(
   { when, navigate, owns, onDiscard, labels, leaveGuard }: UnsavedGuardProps,
 ): JSX.Element | null {
-  const words = { ...defaultUnsavedGuardLabels, ...labels }
+  const words = useLabels("UnsavedGuard", defaultUnsavedGuardLabels, labels)
   const own = useMemo(createLeaveGuard, [])
   const guard = leaveGuard ?? own
   const asking = leaveGuardInternals(guard)

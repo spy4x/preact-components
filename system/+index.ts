@@ -44,6 +44,12 @@ export {
   type InstallPromptProps,
 } from "./install-prompt.tsx"
 export {
+  DEFAULT_MAILED_CODE_STEP_LABELS,
+  MailedCodeStep,
+  type MailedCodeStepLabels,
+  type MailedCodeStepProps,
+} from "./mailed-code-step.tsx"
+export {
   DEFAULT_PUSH_SETTINGS_LABELS,
   PushSettings,
   type PushSettingsAction,
@@ -62,6 +68,7 @@ export {
   AccountMenu,
   type AccountMenuItem,
   type AccountMenuLabels,
+  type AccountMenuLanguage,
   type AccountMenuProps,
   type AccountMenuTheme,
   type AccountMenuUser,

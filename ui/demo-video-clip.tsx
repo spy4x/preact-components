@@ -70,7 +70,7 @@ export function DemoVideoClip(
  * Starts the clip with sound. When the browser refuses (autoplay with sound is not allowed), it
  * mutes the clip and plays again, so the clip always starts; the reader can unmute it in the
  * controls. A second refusal is ignored: the controls stay, and a failed load shows its own
- * message.
+ * message. Any other rejection, such as a pause that cancels the play, leaves the clip as it is.
  *
  * @param video The clip's `<video>`, or anything with its `play()` and `muted`.
  * @returns Settles once the clip plays, or once both attempts were refused.
@@ -80,8 +80,37 @@ export async function playClip(
 ): Promise<void> {
   try {
     await video.play()
-  } catch {
+  } catch (error) {
+    // Only a refusal of sound is retried muted. An `AbortError` means a pause (another clip
+    // starting) cancelled this play, and the reader did not ask for this clip any more.
+    if (!(error instanceof DOMException && error.name === "NotAllowedError")) return
     video.muted = true
     await video.play().catch(() => {})
+  }
+}
+
+/** What {@link playOneAtATime} needs of a clip: its `play` event and `pause()`. */
+export type OneAtATimeClip = EventTarget & Pick<HTMLMediaElement, "pause">
+
+/** Every `DemoVideo` clip on the page, so the one that starts can pause the rest. */
+const clips = new Set<OneAtATimeClip>()
+
+/**
+ * Makes `video` the only clip that plays: whenever it starts (its `play` event, so the native
+ * controls count too), every other clip registered here pauses and keeps its position, so two
+ * soundtracks never overlap.
+ *
+ * @param video The clip's `<video>`, or any event target with `pause()`.
+ * @returns Removes the clip from the set and its listener, for an effect's cleanup.
+ */
+export function playOneAtATime(video: OneAtATimeClip): () => void {
+  const pauseOthers = () => {
+    for (const other of clips) if (other !== video) other.pause()
+  }
+  clips.add(video)
+  video.addEventListener("play", pauseOthers)
+  return () => {
+    clips.delete(video)
+    video.removeEventListener("play", pauseOthers)
   }
 }

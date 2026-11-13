@@ -8,6 +8,7 @@ import {
   clickByHotkey,
   createHotkeyListener,
   firesInFields,
+  hotkeyActionBinding,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
@@ -547,5 +548,77 @@ describe("hotkeyClickBinding", () => {
       .handler(keyEvent())
     hotkeyClickBinding("n", () => item.element, () => trigger.element).handler(keyEvent())
     expect(item.clicks).toBe(1)
+  })
+})
+
+describe("hotkeyActionBinding", () => {
+  /** A binding that counts its runs, its home read from `home`. */
+  const counted = (keys: string, home: () => Element | null = () => null) => {
+    const runs = { count: 0 }
+    return { runs, bound: hotkeyActionBinding(keys, () => void runs.count++, home) }
+  }
+
+  it("runs for a press on the page with no home, or a home that is not rendered", () => {
+    for (const home of [null, fakeButton({ rendered: false }).element]) {
+      const { runs, bound } = counted("mod+k", () => home)
+      const event = keyEvent()
+      bound.handler(event)
+      expect([runs.count, event.prevented]).toEqual([1, true])
+    }
+  })
+
+  it("fires in a text field by the rules of hotkeyClickBinding", () => {
+    for (
+      const [keys, key, ctrlKey, inField] of [
+        ["mod+k", "k", true, true],
+        ["mod+z", "z", true, false],
+        ["/", "/", false, false],
+      ] as const
+    ) {
+      const { bound } = counted(keys)
+      const picked = pickHotkey([bound], press(key, { typing: true, ctrlKey }), false)
+      expect([keys, picked === bound]).toEqual([keys, inField])
+      expect(pickHotkey([bound], press(key, { ctrlKey, inDialog: true }), false)).toBe(bound)
+    }
+  })
+
+  it("does nothing inside a dialog that does not hold its home, or while its home is inert", () => {
+    const dialog = { contains: () => false }
+    for (const home of [null, fakeButton().element]) {
+      const { runs, bound } = counted("mod+k", () => home)
+      const event = keyEvent({ closest: () => dialog })
+      bound.handler(event)
+      expect([runs.count, event.prevented]).toEqual([0, false])
+    }
+    const { runs, bound } = counted("mod+k", () => fakeButton({ inert: true }).element)
+    bound.handler(keyEvent())
+    expect(runs.count).toBe(0)
+  })
+
+  it("runs inside the dialog that holds its home, and not while a modal without it is open", () => {
+    const home = fakeButton().element
+    const holder = { contains: (node: unknown) => node === home }
+    const inside = counted("mod+k", () => home)
+    inside.bound.handler(keyEvent({ closest: () => holder }))
+    const saved = Object.getOwnPropertyDescriptor(globalThis, "document")
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { querySelector: (selector: string) => selector === "dialog:modal" ? holder : null },
+    })
+    const outside = counted("mod+k")
+    try {
+      outside.bound.handler(keyEvent({ closest: () => null }))
+    } finally {
+      if (saved === undefined) delete (globalThis as { document?: unknown }).document
+      else Object.defineProperty(globalThis, "document", saved)
+    }
+    expect([inside.runs.count, outside.runs.count]).toEqual([1, 0])
+  })
+
+  it("cancels a held key's repeat without running again", () => {
+    const { runs, bound } = counted("mod+k")
+    const event = keyEvent(null, true)
+    bound.handler(event)
+    expect([runs.count, event.prevented]).toEqual([0, true])
   })
 })

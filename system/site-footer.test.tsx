@@ -33,6 +33,11 @@ function footerTag(html: string): string {
 }
 
 describe("SiteFooter", () => {
+  it("is left out when the page is printed", () => {
+    const classes = footerTag(render(<SiteFooter groups={groups} />)).match(/class="([^"]*)"/)?.[1]
+    expect(classes?.split(" ")).toContain("print:hidden")
+  })
+
   it("renders each group as a nav named by its title, holding its heading and its links", () => {
     const html = render(<SiteFooter groups={groups} />)
     const [product, community] = navs(html)
@@ -100,6 +105,12 @@ describe("SiteFooter", () => {
     expect(link).toMatch(/class="[^"]*\bpy-3\b/)
     expect(link).toMatch(/class="[^"]*\btext-sm\b/)
     expect(link).toMatch(/class="[^"]*\blg:py-1\b/)
+  })
+
+  it("breaks a long label with no spaces, such as an e-mail address, inside its column", () => {
+    const html = render(<SiteFooter groups={groups} />)
+
+    expect(linkTo(html, "/pricing")).toMatch(/class="[^"]*\bwrap-anywhere\b/)
   })
 
   it("renders the brand, aside and bottom slots as given", () => {

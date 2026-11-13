@@ -10,11 +10,13 @@
  * the same markup, and the browser prints what the server did.
  */
 
-import { type BarDatum, Bars } from "@spy4x/preact-charts/bars"
+import { type BarDatum, Bars, type StackedBarDatum } from "@spy4x/preact-charts/bars"
+import { DotPlot, type DotPlotRow } from "@spy4x/preact-charts/dot-plot"
 import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
 import { LineChart, type LineSeries } from "@spy4x/preact-charts/line-chart"
+import { type RankedBarColumns, RankedBars } from "@spy4x/preact-charts/ranked-bars"
 import { useInView } from "@spy4x/preact-charts/use-in-view"
 import { useSignal } from "@preact/signals"
 import { useEffect } from "preact/hooks"
@@ -93,6 +95,116 @@ function KpiToneMatrix() {
   )
 }
 
+/** A ranked list's columns: visits draw the bar, order clicks and the rate follow it. */
+const sourceColumns: RankedBarColumns = {
+  label: "Source",
+  value: "Visits",
+  extra: [{ label: "Order clicks" }, {
+    label: "Order rate",
+    format: (value) => `${value.toFixed(1)}%`,
+  }],
+}
+
+/** Visits per source with their order clicks; a source with too few visits has no rate. */
+const sourceRows = [
+  { label: "Zalo group A", value: 480, values: [24, 5] },
+  { label: "Facebook: Da Nang market, second-hand and handmade", value: 310, values: [14, 4.5] },
+  { label: "Instagram", value: 90, values: [2, 2.2] },
+  { label: "Friends", value: 8, values: [0, null], lowSample: true },
+  { label: "No source", value: 360, values: [12, 3.3] },
+]
+
+/** A 40 px square of one colour, standing in for an item's photo. */
+function swatch(fill: string): string {
+  return `data:image/svg+xml,${
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="${fill}"/></svg>`,
+    )
+  }`
+}
+
+/**
+ * `RankedBars` two ways: sources whose rows are buttons that set a filter, and items with a photo
+ * and a note whose rows are links. The filter line under the first says which source was chosen.
+ */
+function RankedBarsDemo() {
+  const source = useSignal<string | null>(null)
+  const opened = useSignal<string | null>(null)
+  return (
+    <div class="flex flex-col gap-6" data-e2e="bars-ranked">
+      <div class="flex flex-col gap-2">
+        <RankedBars
+          title="Where visits come from"
+          columns={sourceColumns}
+          data={sourceRows.map((row) => ({ ...row, onSelect: () => source.value = row.label }))}
+        />
+        <p class="text-xs text-muted" data-e2e="bars-ranked-filter">
+          Chart shows: {source.value ?? "All sources"}
+        </p>
+      </div>
+      <RankedBars
+        title="Most ordered"
+        columns={{ label: "Item", value: "Order clicks", extra: [{ label: "Views" }] }}
+        data={[
+          {
+            label: "Linen shirt, sand",
+            value: 9,
+            values: [210],
+            href: "?item=linen-shirt",
+            image: { src: swatch("#d6c3a1"), alt: "" },
+            note: "mostly Zalo A",
+          },
+          {
+            label: "Áo dài lụa hoa sen",
+            value: 6,
+            values: [150],
+            href: "?item=ao-dai",
+            image: { src: swatch("#e7a1b0"), alt: "" },
+            note: "mostly Facebook",
+          },
+          {
+            label: "Cotton dress",
+            value: 4,
+            values: [96],
+            href: "?item=cotton-dress",
+            image: { src: swatch("#8fb3c9"), alt: "" },
+          },
+        ]}
+        navigate={(href) => opened.value = href}
+      />
+      <p class="text-xs text-muted" data-e2e="bars-ranked-opened">
+        Opened in place: {opened.value ?? "nothing yet"}
+      </p>
+    </div>
+  )
+}
+
+/** Three key figures with their change against the period before, as a stats page draws them. */
+function KpiChangeDemo() {
+  return (
+    <div data-e2e="kpi-change">
+      <KpiGrid minWidth="9rem">
+        <Kpi
+          label="Visits"
+          value="1,240"
+          change={{ text: "+120 vs previous 30 days", direction: "up", tone: "positive" }}
+        />
+        <Kpi
+          label="Order clicks"
+          value={52}
+          change={{ text: "−3 vs previous 30 days", direction: "down", tone: "negative" }}
+        />
+        <Kpi
+          label="Order rate"
+          value="4.2%"
+          sub="52 of 1,240 visits"
+          change={{ text: "No change vs previous 30 days", direction: "flat" }}
+        />
+      </KpiGrid>
+    </div>
+  )
+}
+
 /** Hourly revenue on one fixed day, with a reading missing at 14:00. */
 const today = [6.1, 5.4, 7.2, 9.8, 11.6, 12.4, 12.9, null, 10.2, 8.8, 7.3, 6.6]
 
@@ -152,13 +264,52 @@ function DeferredDonut() {
   )
 }
 
+/** Monthly spending split into three series, for the stacked `Bars` demo. */
+const spending: StackedBarDatum[] = [
+  {
+    label: "January",
+    segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 420 }, {
+      series: "Transport",
+      value: 130,
+    }],
+  },
+  {
+    label: "February",
+    segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 380 }, {
+      series: "Transport",
+      value: 210,
+    }],
+  },
+  {
+    label: "March",
+    segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 510 }, {
+      series: "Transport",
+      value: 90,
+    }],
+  },
+]
+
+/** Hours of sleep by age group, with one group too small to trust and one not surveyed. */
+const sleep: DotPlotRow[] = [
+  { id: "18-24", label: "18 to 24", value: 7.6, detail: "1,204 people" },
+  { id: "25-34", label: "25 to 34", value: 6.9, detail: "2,310 people" },
+  { id: "35-49", label: "35 to 49", value: 6.4, detail: "1,876 people" },
+  { id: "50-64", label: "50 to 64", value: 6.8, detail: "1,102 people" },
+  { id: "65+", label: "65 and over", value: 7.9, muted: true, note: "Only 48 people" },
+  { id: "under-18", label: "Under 18", value: null, detail: "Not surveyed" },
+]
+
 export const chartsDemos = {
   Bars: {
     summary:
       "A labelled bar chart drawn as a table of proportions: no d3, no client JavaScript, no width to measure.",
     wide: false,
     props: [
-      { name: "data", type: "BarDatum[]", description: "The rows: a label and a value each." },
+      {
+        name: "data",
+        type: "(BarDatum | StackedBarDatum)[]",
+        description: "The rows: a label and a value each, or a label and stacked `segments`.",
+      },
       {
         name: "max",
         type: "number",
@@ -178,9 +329,29 @@ export const chartsDemos = {
         default: "3",
         description: "The level of the title's heading, so it fits the page's outline.",
       },
+      {
+        name: "reference",
+        type: "{ value, label }",
+        description: "A dashed line at one value across every bar, named in the legend.",
+      },
     ],
-    snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />`,
-    render: () => <Bars data={bars} title="Orders by plan" />,
+    snippet: `<Bars data={[{ label: "Starter", value: 41 }]} title="Orders by plan" />
+<Bars
+  title="Spending by month"
+  data={[{ label: "March", segments: [{ series: "Rent", value: 900 }, { series: "Food", value: 510 }] }]}
+  reference={{ value: 1500, label: "Budget" }}
+/>`,
+    render: () => (
+      <div class="flex flex-col gap-6">
+        <Bars data={bars} title="Orders by plan" />
+        <Bars
+          data={spending}
+          title="Spending by month"
+          reference={{ value: 1480, label: "Budget" }}
+          labelWidth="6rem"
+        />
+      </div>
+    ),
   },
   DonutChart: {
     summary:
@@ -232,6 +403,55 @@ export const chartsDemos = {
           <DeferredDonut />
         </div>
       </div>
+    ),
+  },
+  DotPlot: {
+    summary:
+      "A dot plot read as a list: one row per item, a dot on a shared scale, shaded bands named in a legend, and a bolder summary row.",
+    wide: true,
+    props: [
+      {
+        name: "rows",
+        type: "{ id, label, value, detail?, muted?, note? }[]",
+        description: "The rows; a `null` value draws no dot and a muted one a hollow dot.",
+      },
+      { name: "summary", type: "DotPlotRow", description: "A bolder last row under a hairline." },
+      { name: "domain", type: "[number, number]", description: "The ends of the scale." },
+      {
+        name: "bands",
+        type: "{ from, to, label, strength }[]",
+        description: "Shaded stretches behind the dots, each named in the legend.",
+      },
+      {
+        name: "zero",
+        type: "boolean",
+        default: "false",
+        description: "A rule at zero, when zero is inside the domain.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How a value and the scale's ends print.",
+      },
+    ],
+    snippet: `<DotPlot
+  ariaLabel="Hours of sleep by age"
+  domain={[5, 9]}
+  rows={[{ id: "18-24", label: "18 to 24", value: 7.6, detail: "1,204 people" }]}
+  summary={{ id: "all", label: "Everyone", value: 7 }}
+  bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
+  format={(value) => \`\${value} h\`}
+/>`,
+    render: () => (
+      <DotPlot
+        ariaLabel="Hours of sleep by age"
+        domain={[5, 9]}
+        rows={sleep}
+        summary={{ id: "all", label: "Everyone", value: 7 }}
+        bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
+        format={(value) => `${value} h`}
+      />
     ),
   },
   LineChart: {
@@ -310,10 +530,36 @@ export const chartsDemos = {
   },
   Kpi: {
     summary:
-      "One key figure with its label and caption, in five tones that say what the number is for.",
+      "One key figure with its label and caption, in five tones that say what the number is for, or with a change line that alone takes the tone.",
     wide: true,
-    snippet: `<Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />`,
-    render: () => <KpiToneMatrix />,
+    props: [
+      { name: "label", type: "string", description: "What the number counts." },
+      { name: "value", type: "string | number", description: "The number, in tabular figures." },
+      {
+        name: "tone",
+        type: `"accent" | "positive" | "warning" | "negative" | "neutral"`,
+        default: `"accent"`,
+        description: "The value's colour; with `change` the value stays the foreground colour.",
+      },
+      {
+        name: "change",
+        type: `{ text, direction: "up" | "down" | "flat", tone? }`,
+        description:
+          "A line under the value with a trend icon and the change in words; only it takes `tone`, muted by default.",
+      },
+    ],
+    snippet: `<Kpi label="Uptime" value="99.95%" sub="last 30 days" tone="positive" />
+<Kpi
+  label="Visits"
+  value="1,240"
+  change={{ text: "+120 vs previous 30 days", direction: "up", tone: "positive" }}
+/>`,
+    render: () => (
+      <div class="flex flex-col gap-6">
+        <KpiToneMatrix />
+        <KpiChangeDemo />
+      </div>
+    ),
   },
   KpiGrid: {
     summary:
@@ -344,5 +590,43 @@ export const chartsDemos = {
         </KpiGrid>
       </div>
     ),
+  },
+  RankedBars: {
+    summary:
+      "A ranked list with several numbers per row, such as visits per source: a bar under each label, one to three more right-aligned columns, and rows that are links or buttons.",
+    wide: true,
+    props: [
+      {
+        name: "data",
+        type: "{ label, value, values?, href?, onSelect?, lowSample?, image?, note? }[]",
+        description:
+          "The rows, ranked by the caller; `values` fills the extra columns, `null` printing a dash. `image` (`{ src, alt }`) draws a 40 px thumbnail before the label, `note` a muted line under it. A row with `onSelect` needs JavaScript.",
+      },
+      {
+        name: "columns",
+        type: "{ label, value, extra }",
+        description:
+          "The headers of the label, the bar's number and one to three `extra` columns, each with an optional `format`.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How the bar's own number is printed.",
+      },
+      { name: "title", type: "string", description: "The heading, and the table's name." },
+      {
+        name: "navigate",
+        type: "(href: string) => void",
+        description:
+          "The app's router: a plain click on a row's `href` calls it instead of loading the page, as `Link` does. A modified click or another origin stays the browser's.",
+      },
+    ],
+    snippet: `<RankedBars
+  title="Where visits come from"
+  columns={{ label: "Source", value: "Visits", extra: [{ label: "Order clicks" }] }}
+  data={[{ label: "Zalo group A", value: 480, values: [24], onSelect: () => filter("zalo") }]}
+/>`,
+    render: () => <RankedBarsDemo />,
   },
 } satisfies DemoFragment

@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useFormat } from "./format.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The person who wrote a page, named in {@link PageHero}'s meta line. */
 export interface PageHeroAuthor {
@@ -19,7 +20,10 @@ export interface PageHeroLabels {
 }
 
 /** The English words {@link PageHero} shows when the caller passes none. */
-export const PAGE_HERO_LABELS: PageHeroLabels = { by: "By", updated: "Updated" }
+export const PAGE_HERO_LABELS: PageHeroLabels = {
+  by: "By",
+  updated: "Updated",
+}
 
 const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -92,7 +96,7 @@ export function PageHero(
   if (updated !== undefined && !isCalendarDay(updated)) {
     throw new Error(`PageHero: updated must be a calendar day, YYYY-MM-DD, got "${updated}"`)
   }
-  const words = { ...PAGE_HERO_LABELS, ...labels }
+  const words = useLabels("PageHero", PAGE_HERO_LABELS, labels)
   return (
     <div class={cn("border-b border-subtle", className)} data-e2e="page-hero">
       <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-12 sm:px-6 lg:px-8 lg:py-16">

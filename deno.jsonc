@@ -1,15 +1,6 @@
 {
-  // Every package a parallel agent will add is listed here up front. Deno skips
-  // workspace members whose directory does not exist yet (warning, exit 0), so a
-  // package becomes a real member the moment its own `<pkg>/deno.json` lands.
-  // That keeps this file untouched by every package PR — no shared-file conflicts.
-  //
-  // `./map` sat here on that same basis for a while and never arrived — `Map` was a recorded
-  // "deliberately not built" entry (see `docs/not-building.md`), because it needed Leaflet, a
-  // dependency decision nobody had taken — and was dropped rather than kept as a phantom, so
-  // `deno task check` stopped printing `Workspace member "./map" not found` on every invocation.
-  // Issue #143 took that decision (Leaflet is one of the "keep" libraries in the owner's global
-  // policy) and added the package back here, together with `map/deno.json`, in the same change.
+  // A member joins or leaves this list in the same change as its own `<pkg>/deno.json`, never
+  // ahead of it: Deno only warns about a listed member whose directory does not exist.
   "workspace": [
     "./charts",
     "./cn",
@@ -19,6 +10,7 @@
     // Not a package: the GitHub Pages demo. It is a member so it can pin its own build-only
     // dependencies in `pages/deno.json` instead of adding them to the import map below.
     "./pages",
+    "./server",
     "./signals",
     "./system",
     "./theme",
@@ -36,6 +28,9 @@
     // Rewrites `llms.txt` and `llms-full.txt` from the packages' exports and READMEs
     // (`infra/scripts/llms-txt.ts`). Run after changing an export, a JSDoc summary or a README.
     "llms": "deno run --allow-read --allow-write --allow-run=deno infra/scripts/llms-txt.ts",
+    // Writes `<package>/i18n/<language>.lock` for every translated catalog
+    // (`infra/scripts/i18n-stamp.ts`). Run once the translations match the English: TRANSLATING.md.
+    "i18n:stamp": "deno run --allow-read --allow-write infra/scripts/i18n-stamp.ts",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
@@ -60,7 +55,9 @@
     // holds the guide's snippets and props tables to them. No other test gets that grant,
     // except `system/playwright-config.test.ts`, which runs last with `--allow-write` too: it writes
     // the setup from `docs/app-checks.md` into a new folder and lists a spec there through Playwright.
-    "test": "deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts,infra/scripts/llms-txt.test.ts,ui/island-bundle.test.ts,ui-guide/registry-props.test.ts,system/playwright-config.test.ts && deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts && deno test --no-prompt --allow-read --allow-env --allow-run=deno infra/scripts/llms-txt.test.ts ui/island-bundle.test.ts ui-guide/registry-props.test.ts && deno test --no-prompt --allow-read --allow-env --allow-write --allow-run=deno system/playwright-config.test.ts",
+    // Each run goes through `infra/scripts/quiet.ts`: a passing run prints only its summary line, a
+    // failing one prints everything. `CHECK_VERBOSE=1 deno task check` prints every test as it runs.
+    "test": "deno run --allow-run=deno --allow-env=CHECK_VERBOSE infra/scripts/quiet.ts deno test --no-prompt --allow-read --allow-env --ignore=theme/component-classes.test.ts,infra/scripts/llms-txt.test.ts,ui/island-bundle.test.ts,ui-guide/registry-props.test.ts,system/playwright-config.test.ts && deno run --allow-run=deno --allow-env=CHECK_VERBOSE infra/scripts/quiet.ts deno test --no-prompt --allow-read --allow-env --allow-ffi theme/component-classes.test.ts && deno run --allow-run=deno --allow-env=CHECK_VERBOSE infra/scripts/quiet.ts deno test --no-prompt --allow-read --allow-env --allow-run=deno infra/scripts/llms-txt.test.ts ui/island-bundle.test.ts ui-guide/registry-props.test.ts && deno run --allow-run=deno --allow-env=CHECK_VERBOSE infra/scripts/quiet.ts deno test --no-prompt --allow-read --allow-env --allow-write --allow-run=deno system/playwright-config.test.ts",
     // Dry-runs the publish for every named workspace member (`pages/` has no `name`, so `deno
     // publish` skips it on its own — nothing here excludes it by hand). Named `publish:dry`
     // rather than `publish`: this only ever simulates; the real `deno publish` runs in Woodpecker
@@ -104,6 +101,8 @@
     "@std/expect": "jsr:@std/expect@1.0.20",
     // Parses the repository's own JSONC configs in `infra/scripts/workspace.ts`; no package ships it.
     "@std/jsonc": "jsr:@std/jsonc@1.0.2",
+    // Content types of a built site's files, in `server/vite.ts`.
+    "@std/media-types": "jsr:@std/media-types@1.1.0",
     "@std/path": "jsr:@std/path@1.1.6",
     "@std/semver": "jsr:@std/semver@1.0.8",
     "@std/testing": "jsr:@std/testing@1.0.20",
@@ -116,16 +115,16 @@
     // entries map every subpath of a package (`@spy4x/platform/universal/csv`) to the same release;
     // `deno publish` rewrites each import to that exact `jsr:` version, so only a package that
     // imports one of these gains it as a dependency.
-    "@spy4x/platform/": "jsr:/@spy4x/platform@1.79.0/",
-    "@spy4x/time/": "jsr:/@spy4x/time@1.79.0/",
-    "@spy4x/validation": "jsr:@spy4x/validation@1.79.0",
-    "@spy4x/validation/": "jsr:/@spy4x/validation@1.79.0/",
+    "@spy4x/platform/": "jsr:/@spy4x/platform@1.126.0/",
+    "@spy4x/time/": "jsr:/@spy4x/time@1.126.0/",
+    "@spy4x/validation": "jsr:@spy4x/validation@1.126.0",
+    "@spy4x/validation/": "jsr:/@spy4x/validation@1.126.0/",
 
-    // Test-only HTML renderer every package's suite imports. One pin here (#133) replaces six
-    // identical per-package copies that all resolved the same version. Unlike `leaflet`, this is
-    // safe to centralise: every import of it is in a `*.test.tsx` file or the unpublished `pages/`
-    // demo, never in a package's `exports`, so no published package's consumer ever resolves this
-    // specifier — moving it here adds nothing to what a consumer's own dependency graph pulls in.
+    // The HTML renderer every package's suite imports. One pin here (#133) replaces six identical
+    // per-package copies that all resolved the same version. `server/` renders its pages with it,
+    // so `@spy4x/preact-server` publishes it as a dependency; in every other package each import
+    // of it is in a `*.test.tsx` file or the unpublished `pages/` demo, so their consumers never
+    // resolve it.
     "preact-render-to-string": "npm:preact-render-to-string@6.7.0",
 
     // Class name helper — see `cn/` for the small function built on it

@@ -306,6 +306,24 @@ export function IconStar(props: IconStarProps): JSX.Element {
   })
 })
 
+describe("repoGlyphs on the registry's own drawings", () => {
+  it("reads a Lucide-named glyph from lucide.tsx-shaped source", () => {
+    const source = `
+/** Lucide outline (stroke-2); matches Lucide's "car" (lucide-static@1.47.0) exactly. */
+export function LucideCar(props: IconProps): JSX.Element {
+  return svgIcon(
+    props,
+    { stroke: "2", round: true },
+    <circle cx="7" cy="17" r="2" />,
+  )
+}
+`
+    const glyphs = repoGlyphs(source)
+    expect(glyphs.map((glyph) => glyph.name)).toEqual(["LucideCar"])
+    expect(glyphs[0].elements.map((element) => element.tag)).toEqual(["circle"])
+  })
+})
+
 describe("exact vs near vs none — the mutation this check exists to catch", () => {
   // `IconArchive`'s own three elements, byte-identical to `lucide-static@1.47.0`'s `archive.svg`
   // (confirmed by hand and by `deno task --cwd icons provenance`, which reports this pair as an

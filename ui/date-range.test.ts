@@ -83,6 +83,8 @@ describe("rangeForPreset", () => {
       "last-30-days": { from: "2026-07-25", to: "2026-08-23" },
       "last-90-days": { from: "2026-05-26", to: "2026-08-23" },
       "last-12-months": { from: "2025-09-01", to: "2026-08-31" },
+      "this-week": { from: "2026-08-17", to: "2026-08-23" },
+      "last-week": { from: "2026-08-10", to: "2026-08-16" },
       "this-month": { from: "2026-08-01", to: "2026-08-31" },
       "last-month": { from: "2026-07-01", to: "2026-07-31" },
       "this-quarter": { from: "2026-07-01", to: "2026-09-30" },
@@ -457,12 +459,14 @@ describe("presetForRange", () => {
   })
 
   it("resolves the preset whose range matches, at one instant", () => {
-    // One instant in Q3, where no two presets coincide. That is all this establishes: precedence
+    // One instant in Q3, where no two presets coincide once weeks start on Sunday (a Monday-start
+    // week ends on this Sunday, as `last-7-days` does). That is all this establishes: precedence
     // between coinciding presets is a separate, pinned rule below.
+    const options = { now: NOW, timeZone: "Europe/Paris", firstWeekday: 7 }
     for (const preset of dateRangePresets.filter((entry) => entry !== "custom")) {
-      const range = rangeForPreset(preset, { now: NOW, timeZone: "Europe/Paris" })
+      const range = rangeForPreset(preset, options)
 
-      expect(presetForRange(range, { now: NOW, timeZone: "Europe/Paris" })).toBe(preset)
+      expect(presetForRange(range, options)).toBe(preset)
     }
   })
 
@@ -488,6 +492,12 @@ describe("presetForRange", () => {
         "last-90-days",
         { from: "2025-01-01", to: "2025-03-31" },
       ],
+      [
+        "2026-11-01T12:00:00Z",
+        "this-week",
+        "last-7-days",
+        { from: "2026-10-26", to: "2026-11-01" },
+      ],
     ]
 
     for (const [instant, later, earlier, range] of coincidences) {
@@ -500,9 +510,10 @@ describe("presetForRange", () => {
   })
 
   it("never names a preset later than the one that produced the range", () => {
-    // Every day of 2024–2027 × the 14 defined presets. 143 of these 20 454 pairs coincide with an
-    // earlier preset, and the rule is the same for all of them: the winner describes the range and
-    // never sits later in the canonical order.
+    // Every day of 2024–2027 × the 16 defined presets. 351 of these 23 376 pairs coincide with an
+    // earlier preset: 143 among months, quarters and years, and 208 Sundays, where a Monday-start
+    // `this-week` is `last-7-days`. The rule is the same for all of them: the winner describes the
+    // range and never sits later in the canonical order.
     const presets: readonly DateRangePreset[] = dateRangePresets.filter((entry) =>
       entry !== "custom"
     )
@@ -522,7 +533,7 @@ describe("presetForRange", () => {
       }
     }
 
-    expect(coincidences).toBe(143)
+    expect(coincidences).toBe(351)
   })
 })
 
@@ -989,5 +1000,40 @@ describe("a timed preset converted back to instants", () => {
         }
       }
     }
+  })
+})
+
+describe("week presets", () => {
+  /** Sunday 1 November 2026, midday in Berlin. */
+  const SUNDAY = new Date("2026-11-01T11:00:00Z")
+  const zone = "Europe/Berlin"
+
+  it("this-week on a Sunday is the Monday-start week ending that day by default", () => {
+    expect(rangeForPreset("this-week", { now: SUNDAY, timeZone: zone }))
+      .toEqual({ from: "2026-10-26", to: "2026-11-01" })
+  })
+
+  it("this-week with firstWeekday 7 starts on that Sunday", () => {
+    expect(rangeForPreset("this-week", { now: SUNDAY, timeZone: zone, firstWeekday: 7 }))
+      .toEqual({ from: "2026-11-01", to: "2026-11-07" })
+  })
+
+  it("last-week is the seven days before this week, on the same first weekday", () => {
+    expect(rangeForPreset("last-week", { now: SUNDAY, timeZone: zone }))
+      .toEqual({ from: "2026-10-19", to: "2026-10-25" })
+    expect(rangeForPreset("last-week", { now: SUNDAY, timeZone: zone, firstWeekday: 7 }))
+      .toEqual({ from: "2026-10-25", to: "2026-10-31" })
+  })
+
+  it("presetForRange recognises a Sunday-start week only when told weeks start on Sunday", () => {
+    const week = { from: "2026-11-01", to: "2026-11-07" }
+
+    expect(presetForRange(week, { now: SUNDAY, timeZone: zone, firstWeekday: 7 })).toBe("this-week")
+    expect(presetForRange(week, { now: SUNDAY, timeZone: zone })).toBeUndefined()
+  })
+
+  it("throws on a firstWeekday outside 1 to 7", () => {
+    expect(() => rangeForPreset("this-week", { now: SUNDAY, timeZone: zone, firstWeekday: 0 }))
+      .toThrow(RangeError)
   })
 })

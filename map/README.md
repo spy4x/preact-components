@@ -289,3 +289,16 @@ reports no contrast for the whole page, so the page scan runs every rule except 
 credit line. `pages/e2e/map.spec.ts` measures its contrast with axe instead, in the dark theme
 only, with the tiles kept away, which is also what a reader sees when the tile server is down. In
 the light theme nothing measures the credit line's contrast.
+
+## Translations
+
+Every word the map components show by default comes from this package's catalog,
+`@spy4x/preact-map/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. It is read from
+the same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`), so an app
+adds it beside the `ui` catalog in one `createTranslator`. Each language subpath, `./i18n/de` and
+the rest, has one `default` export: that language's catalog. Each key is `<Component>.<field>`, the
+prop it fills (`LineChart.emptyLabel`). A word passed as a prop still wins, and without a provider
+every component renders the English it always has.
+
+The status words come from `MapStatus.on`, `MapStatus.off` and `MapStatus.unknown`. The zoom
+control's two names are read once, when the map mounts, like the rest of its props.

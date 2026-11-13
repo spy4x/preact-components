@@ -19,10 +19,14 @@ import {
   DateRangePicker,
   defaultToastActionDuration,
   defaultToastDuration,
+  DialogActions,
   type DialogTone,
   EmptyState,
   ErrorBoundary,
   ErrorState,
+  ErrorSummary,
+  type ErrorSummaryItem,
+  Field,
   Input,
   LoadingSkeleton,
   LoadingSpinner,
@@ -30,9 +34,12 @@ import {
   Notice,
   type NoticeTone,
   RadioGroup,
+  ResendButton,
+  selectTextareaLine,
   type SpinnerSize,
   Stack,
   TagInput,
+  Textarea,
   type ToastCorner,
   Toastr,
   type ToastVariant,
@@ -365,7 +372,7 @@ function ToastrDemo() {
         onDismiss={store.remove}
         dataE2E="guide-toastr"
         {...(placement.value === "card"
-          ? { class: "static max-w-sm" }
+          ? { class: "static! max-w-sm!" }
           : { corner: placement.value })}
       />
     </Stack>
@@ -952,6 +959,35 @@ const removalLeads = {
 type RemovalLead = keyof typeof removalLeads
 
 /**
+ * A `Notice` the reader can close, and a button that brings it back, so the browser check can
+ * press the close button and see the caller hide it.
+ */
+function DismissibleNoticeDemo() {
+  const shown = useSignal(true)
+  return shown.value
+    ? (
+      <Notice
+        data-e2e="notice-dismissible"
+        onDismiss={() => shown.value = false}
+        dismissLabel="Hide this message"
+        action={<Button size="sm" variant="outline">Keep your account</Button>}
+      >
+        This account lives only in this browser. Add a sign-in method to keep it.
+      </Notice>
+    )
+    : (
+      <Button
+        size="sm"
+        variant="outline"
+        data-e2e="notice-show-again"
+        onClick={() => shown.value = true}
+      >
+        Show the notice again
+      </Button>
+    )
+}
+
+/**
  * A list whose rows are removed behind a confirmation, with a pretend request that the first
  * checkbox makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
  * focus), `useFreshError` (the dialog opens again without it) and `useFocusAfterRemoval` (a removed
@@ -1115,6 +1151,128 @@ function RemovalRow(
   )
 }
 
+/** The cooldown in the `ResendButton` demo: short, so a reader sees the button come back. */
+const RESEND_DEMO_COOLDOWN_MS = 5_000
+/** How long the demo's pretend resend takes. */
+const RESEND_DEMO_SEND_MS = 800
+
+/**
+ * A "Check your inbox" card that opens with the button ready. A press is busy for a moment, then
+ * starts a 5-second cooldown, as a caller's server round trip would, and the line counts down
+ * until the button comes back; the line under the card counts the resends.
+ * `pages/e2e/ui.spec.ts` drives it.
+ *
+ * It opens ready, not counting down, so the card never changes height on its own: a card that
+ * grew a few seconds after load moved every card below it while the page checks scrolled to them.
+ */
+function ResendButtonDemo() {
+  const readyAt = useSignal<number | undefined>(undefined)
+  const busy = useSignal(false)
+  const resends = useSignal(0)
+
+  return (
+    <Stack gap="sm" class="max-w-sm" data-e2e="resend-button-demo">
+      <Card>
+        <Stack gap="sm">
+          <p class="text-lg font-semibold">Check your inbox</p>
+          <p class="text-sm">
+            We sent a sign-in link to{" "}
+            <strong>ana@example.com</strong>. It works once, for 15 minutes.
+          </p>
+          <ResendButton
+            label="Send a new link"
+            waitingText={(seconds) =>
+              `Not there? Check your spam folder. You can send a new link in ${seconds} ${
+                seconds === 1 ? "second" : "seconds"
+              }.`}
+            sentText="A new link is on its way. Earlier links still work until one is used."
+            busy={busy.value}
+            readyAt={readyAt.value}
+            onResend={() => {
+              busy.value = true
+              setTimeout(() => {
+                readyAt.value = Date.now() + RESEND_DEMO_COOLDOWN_MS
+                busy.value = false
+                resends.value += 1
+              }, RESEND_DEMO_SEND_MS)
+            }}
+          />
+        </Stack>
+      </Card>
+      <DemoNote>
+        resends: <span data-e2e="resend-button-demo-count">{resends.value}</span>
+      </DemoNote>
+    </Stack>
+  )
+}
+
+/** The draft the `ErrorSummary` card starts from: two tags the demo's check calls broken. */
+const ERROR_SUMMARY_DRAFT = `# Pricing, explained
+
+Every plan starts free.
+
+<CostCalc users={500} />
+
+What you pay grows with use.
+
+<Chart year={2026} />
+
+- <Gauge level={3} />
+`
+
+/**
+ * The demo's own check: a line holding a tag other than `<Chart>` is a problem. A real editor asks
+ * its server.
+ */
+function draftProblems(draft: string): ErrorSummaryItem[] {
+  return draft.split("\n").flatMap((text, index) => {
+    const tag = /<([A-Z][A-Za-z]*)/.exec(text)?.[1]
+    if (!tag || tag === "Chart") return []
+    const line = index + 1
+    return [{
+      key: `${line}:${tag}`,
+      label: `Line ${line}`,
+      message: `There's no component called ${tag}.`,
+    }]
+  })
+}
+
+/**
+ * A Markdown draft over its problems: a row's button selects its line in the textarea, and fixing
+ * the last line empties the list, which the status line says.
+ */
+function ErrorSummaryDemo() {
+  const draft = useSignal(ERROR_SUMMARY_DRAFT)
+  const textarea = useRef<HTMLTextAreaElement>(null)
+  const items = draftProblems(draft.value)
+  return (
+    <Stack>
+      <Field id="guide-error-summary-draft" label="Post">
+        <Textarea
+          ref={textarea}
+          rows={12}
+          class="font-mono"
+          data-e2e="error-summary-draft"
+          value={draft.value}
+          onInput={(event) => draft.value = event.currentTarget.value}
+        />
+      </Field>
+      <ErrorSummary
+        data-e2e="error-summary"
+        title={items.length === 1
+          ? "1 problem in this post"
+          : `${items.length} problems in this post`}
+        items={items}
+        onSelect={(item) => {
+          if (textarea.current) selectTextareaLine(textarea.current, Number(item.key.split(":")[0]))
+        }}
+      >
+        Readers won't see these lines. The rest of the post shows as written.
+      </ErrorSummary>
+    </Stack>
+  )
+}
+
 export const feedbackDemos = {
   EmptyState: {
     summary: "What a list, a table or a search shows when it has no rows yet.",
@@ -1225,6 +1383,48 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
       </Stack>
     ),
   },
+  ErrorSummary: {
+    summary:
+      "A titled list of problems in what the reader is editing, each row a button that takes them to it.",
+    wide: true,
+    props: [
+      { name: "title", type: "string", description: "The panel's title; it names the region." },
+      { name: "children", type: "ComponentChildren", description: "One line under the title." },
+      {
+        name: "items",
+        type: "readonly ErrorSummaryItem[]",
+        description:
+          "`{ key, label, message }` per problem: the row's button and what is wrong. With none, only the status line is drawn.",
+      },
+      {
+        name: "onSelect",
+        type: "(item: ErrorSummaryItem, index: number) => void",
+        description: "Takes the reader to the problem, such as with `selectTextareaLine`.",
+      },
+      {
+        name: "countMessage",
+        type: "(count: number) => string",
+        default: `"2 problems"`,
+        description: "The polite status line's text while there are problems.",
+      },
+      {
+        name: "noneMessage",
+        type: "string",
+        default: `"No problems left"`,
+        description: "The status line's text once the last problem is gone.",
+      },
+    ],
+    snippet: `const textarea = useRef<HTMLTextAreaElement>(null)
+
+<ErrorSummary
+  title="2 problems in this post"
+  items={problems.map((p) => ({ key: \`\${p.line}\`, label: \`Line \${p.line}\`, message: p.message }))}
+  onSelect={(_, index) => selectTextareaLine(textarea.current!, problems[index].line)}
+>
+  Readers won't see these lines. The rest of the post shows as written.
+</ErrorSummary>`,
+    render: () => <ErrorSummaryDemo />,
+  },
   Notice: {
     summary: "A page-wide banner: a trial that ends soon, a change that saved, a failed payment.",
     wide: true,
@@ -1251,6 +1451,18 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         description:
           'A polite status (`role="status"`) that a screen reader reads out when it appears. `false` drops the role, for standing instructions that the reader should find while reading.',
       },
+      {
+        name: "onDismiss",
+        type: "() => void",
+        description:
+          "Draws a close button in the top-right corner and calls this when it is pressed. The caller hides the notice.",
+      },
+      {
+        name: "dismissLabel",
+        type: "string",
+        default: `"Dismiss"`,
+        description: "The close button's accessible name.",
+      },
     ],
     snippet: `<Notice
   tone="warning"
@@ -1273,7 +1485,18 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
 // Standing instructions that arrive after a fetch, found while reading:
 <Notice live={false} title="Public demo">
   Anyone can sign in with this account.
-</Notice>`,
+</Notice>
+
+// One the reader can close; the caller hides it and remembers that:
+{shown.value && (
+  <Notice
+    onDismiss={() => shown.value = false}
+    dismissLabel="Hide this message"
+    action={<Button size="sm" variant="outline" href="/keep">Keep your account</Button>}
+  >
+    This account lives only in this browser. Add a sign-in method to keep it.
+  </Notice>
+)}`,
     render: () => (
       <Stack>
         {entries(noticeTones).map(([tone, { title, body, action, href }]) => (
@@ -1290,6 +1513,7 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
             {body}
           </Notice>
         ))}
+        <DismissibleNoticeDemo />
       </Stack>
     ),
   },
@@ -1379,7 +1603,11 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         type: "string",
         description: "The close button's name; without it there is no close button.",
       },
-      { name: "footer", type: "ComponentChildren", description: "The row of buttons at the end." },
+      {
+        name: "footer",
+        type: "ComponentChildren",
+        description: "The buttons at the end, laid out as `DialogActions` lays them out.",
+      },
       {
         name: "tone",
         type: `"default" | "danger"`,
@@ -1397,6 +1625,42 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
   <p>Modal body.</p>
 </Modal>`,
     render: () => <ModalDemo />,
+  },
+  DialogActions: {
+    summary:
+      "A dialog's button row: Cancel then the submit, stacked full width on a phone with the submit at the bottom, right-aligned from `sm`.",
+    wide: false,
+    props: [
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities added after the row's own, for anything that is not its layout.",
+      },
+    ],
+    snippet: `<form onSubmit={rename}>
+  <Stack>
+    <Input aria-label="List name" value={name} />
+    <DialogActions>
+      <Button variant="outline" onClick={close}>Cancel</Button>
+      <Button type="submit">Rename</Button>
+    </DialogActions>
+  </Stack>
+</form>`,
+    render: () => (
+      <form
+        class="rounded-lg border border-subtle bg-surface p-6"
+        data-e2e="dialog-actions-demo"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <Stack>
+          <Input aria-label="List name" value="Groceries" />
+          <DialogActions data-e2e="dialog-actions-row">
+            <Button variant="outline" type="button">Cancel</Button>
+            <Button type="submit">Rename</Button>
+          </DialogActions>
+        </Stack>
+      </form>
+    ),
   },
   ConfirmDialog: {
     summary: "Asks the user to confirm an action before it happens, with two labelled buttons.",
@@ -1577,4 +1841,74 @@ export const leaveGuard = createLeaveGuard()
     render: () => <ToastrDemo />,
   },
   ...onboardingDemos,
+  // Last in the section: a narrow card placed before the onboarding cards moves each of them to
+  // the other column, and the Coachmark spec needs its card in the left column at 1280 px.
+  ResendButton: {
+    summary:
+      'The "Not there?" line under "Check your inbox": a countdown sentence, then a button that sends the mail again.',
+    wide: false,
+    props: [
+      {
+        name: "onResend",
+        type: "() => void",
+        description: "Called on a press. The caller sends the mail again.",
+      },
+      {
+        name: "busy",
+        type: "boolean",
+        default: `false`,
+        description:
+          "The resend is running: the button shows `busyLabel` and keeps focus. Set the new `readyAt` no later than the render that clears it.",
+      },
+      {
+        name: "readyAt",
+        type: "number",
+        description:
+          "When the button may be pressed again, in milliseconds since the epoch. Until then a sentence counts down, kept out of live regions. Left out, the button shows at once.",
+      },
+      {
+        name: "label",
+        type: "string",
+        default: `"Send it again"`,
+        description: "The button's text.",
+      },
+      {
+        name: "busyLabel",
+        type: "string",
+        default: `"Sending…"`,
+        description: "The button's text while `busy`.",
+      },
+      {
+        name: "waitingText",
+        type: "(seconds: number) => ComponentChildren",
+        description:
+          'The countdown sentence, given the whole seconds left. Defaults to "Not there? Check your spam folder. You can send it again in 45 seconds."',
+      },
+      {
+        name: "readyText",
+        type: "ComponentChildren",
+        default: `"Not there? Check your spam folder, or"`,
+        description: "The words before the button.",
+      },
+      {
+        name: "sentText",
+        type: "ComponentChildren",
+        default: `"Sent again. Check your inbox."`,
+        description:
+          'The `role="status"` line that takes focus once a resend went out, since the button is gone.',
+      },
+    ],
+    snippet: `<ResendButton
+  label="Send a new link"
+  readyAt={sentAt + 60_000} // a sentence counts down until then
+  busy={sending}
+  onResend={async () => {
+    sending = true
+    await api.sendLink(address)
+    sentAt = Date.now() // set it before clearing busy
+    sending = false
+  }}
+/>`,
+    render: () => <ResendButtonDemo />,
+  },
 } satisfies DemoFragment

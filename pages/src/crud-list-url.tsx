@@ -85,7 +85,7 @@ function LiveList() {
         searchLabel="Search the addressed teams"
         paginationLabels={{ label: "Pages of addressed teams" }}
         class="w-full"
-        header={<th scope="col" class="text-left">Name</th>}
+        header={<th scope="col" class="text-start">Name</th>}
         row={(row) => <td class="text-foreground">{row.name}</td>}
       />
     </div>

@@ -7,8 +7,19 @@ import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, type HotkeyProps, useApplePlatform, useHotkeyClick } from "./hotkeys.ts"
 import { followLinkClick } from "./link.tsx"
 
-/** Visual role of a {@link Button}. */
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "icon" | "danger"
+/**
+ * Visual role of a {@link Button}. `"danger-ghost"` is the quiet destructive action: transparent
+ * like `"ghost"`, in the danger text colour, for a dialog footer or a menu where a confirmation
+ * guards it; `"danger"` is the filled one that confirms.
+ */
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "ghost"
+  | "icon"
+  | "danger"
+  | "danger-ghost"
 
 /** Control height and text scale of a {@link Button}. */
 export type ButtonSize = "sm" | "md" | "lg"
@@ -49,6 +60,11 @@ export interface ButtonLinkProps extends
     "class" | "href" | "target" | "download" | "onClick" | "size"
   >,
   HotkeyProps {
+  /**
+   * Any `data-*` attribute, such as an analytics event name. JSX accepts these on its own, but an
+   * object literal typed `ButtonLinkProps` (a `PlanCard` action) needs them declared.
+   */
+  [dataAttribute: `data-${string}`]: string | undefined
   /** Where the link goes. Rendered as a real `href`, so the link works before any script runs. */
   href: string
   /**
@@ -91,6 +107,10 @@ const baseLook =
  *
  * The secondary fill is the hover step, which in light is the canvas itself, so its edge is a
  * `--color-border-button` border that stands 3:1 off the page and a card in every palette.
+ *
+ * The quiet danger text is `--color-danger`, and its hover the `--color-danger-soft` tint: in
+ * light red-700 reads 5.8:1 or better on the canvas, a card and the tint; in dark red-400 reads
+ * 4.7:1 or better on the gray-800 card, the ink card and the tint over either.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
@@ -100,6 +120,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: "bg-transparent text-foreground hover:bg-hover",
   icon: "bg-transparent text-muted hover:bg-hover hover:text-foreground",
   danger: "bg-danger-fill text-danger-fill-foreground hover:bg-danger-fill-hover",
+  "danger-ghost": "bg-transparent text-danger hover:bg-danger-soft",
 }
 
 const sizeClasses: Record<ButtonSize | "none", string> = {

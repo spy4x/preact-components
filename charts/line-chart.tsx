@@ -1,6 +1,7 @@
 import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks"
 import { twMerge } from "tailwind-merge"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_AXIS_COLOR,
@@ -107,6 +108,13 @@ export interface LineChartProps {
   emptyLabel?: string
   /** Added to the accessible name once the chart responds to keys. */
   keyboardHint?: string
+  /**
+   * Print the points as a visually hidden table after the plot, one row per X position and one
+   * column per series, so a screen reader can read every value. Defaults to `true`.
+   */
+  dataTable?: boolean
+  /** Heading of the hidden table's first column, the X positions. Defaults to `"Point"`. */
+  xLabel?: string
   class?: string
 }
 
@@ -139,6 +147,16 @@ interface Line {
   values: (number | null | undefined)[]
   /** Per {@link Slot}: whether that point's dot is drawn hollow. */
   hollow: boolean[]
+}
+
+/** The chart's English words, each a key `LineChart.<field>` of the catalog. */
+const LINE_CHART_LABELS = {
+  missingValuesLabel: "Dashed grey lines mark gaps in the data.",
+  loadingLabel: "Loading…",
+  emptyLabel: "No data",
+  keyboardHint: "Use the arrow keys to move between points.",
+  xLabel: "Point",
+  chartLabel: (count: number) => `Line chart with ${count} series`,
 }
 
 /**
@@ -178,13 +196,23 @@ export function LineChart({
   referenceLabel,
   referenceColor,
   ignoreZeroes = false,
-  missingValuesLabel = "Dashed grey segments bridge missing values.",
+  missingValuesLabel: missingValuesLabelProp,
   isLoading = false,
-  loadingLabel = "Loading…",
-  emptyLabel = "No data",
-  keyboardHint = "Arrow keys step through the points.",
+  loadingLabel: loadingLabelProp,
+  emptyLabel: emptyLabelProp,
+  keyboardHint: keyboardHintProp,
+  dataTable = true,
+  xLabel: xLabelProp,
   class: className,
 }: LineChartProps): JSX.Element {
+  const { missingValuesLabel, loadingLabel, emptyLabel, keyboardHint, xLabel, chartLabel } =
+    useLabels("LineChart", LINE_CHART_LABELS, {
+      missingValuesLabel: missingValuesLabelProp,
+      loadingLabel: loadingLabelProp,
+      emptyLabel: emptyLabelProp,
+      keyboardHint: keyboardHintProp,
+      xLabel: xLabelProp,
+    }, { chartLabel: ["count"] })
   const rootRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -240,7 +268,7 @@ export function LineChart({
   const plotted = lines.flatMap((line) => line.values.filter(isDefined))
   const hasReference = referenceValue !== undefined && Number.isFinite(referenceValue)
   const bounds = extent(hasReference ? [...plotted, referenceValue] : plotted)
-  const label = ariaLabel ?? title ?? `Line chart with ${series.length} series`
+  const label = ariaLabel ?? title ?? chartLabel(series.length)
 
   const y = resolveYDomain(yDomain, bounds ?? [0, 1], yTicks)
   const toFraction = (value: number) => y.max === y.min ? 0.5 : (y.max - value) / (y.max - y.min)
@@ -523,6 +551,38 @@ export function LineChart({
                 </span>
               )
               : null}
+          </div>
+        )
+        : null}
+      {dataTable
+        ? (
+          // The wrapper hides the table: `sr-only` on a table itself keeps the table's content size,
+          // which would add blank scroll under the chart and sideways scroll on a phone.
+          <div class="sr-only" data-chart-table="">
+            <table>
+              <caption>{label}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{xLabel}</th>
+                  {lines.map((line, lineIndex) => (
+                    <th key={`th-${lineIndex}`} scope="col">{line.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {slots.map((slot, slotIndex) => (
+                  <tr key={`tr-${slot.key}`}>
+                    <th scope="row">{slot.label}</th>
+                    {lines.map((line, lineIndex) => {
+                      const value = line.values[slotIndex]
+                      return (
+                        <td key={`td-${lineIndex}`}>{isDefined(value) ? yFormat(value) : "–"}</td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )
         : null}

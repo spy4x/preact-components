@@ -4,7 +4,9 @@
 # Use: deno add jsr:<package>, then import { <name> } from "<import specifier>".
 # Left out: a type or interface that describes the parameters of a listed function or class Foo, foo or createFoo and is named Foo plus Props, Labels, Options, Config, Deps, Input. Its signature: https://jsr.io/<package>/doc
 # Full READMEs: https://spy4x.github.io/preact-components/llms-full.txt
-BarDatum	type	@spy4x/preact-charts	
+BarDatum	type	@spy4x/preact-charts	One row of `Bars`: a label and the value its bar draws.
+BarReference	type	@spy4x/preact-charts	A dashed line across every bar at one value, such as a target or an average.
+BarSegment	type	@spy4x/preact-charts	One part of a stacked bar: how much of the row one series holds.
 Bars	component	@spy4x/preact-charts	Server-rendered horizontal bar list — the "Top N" chart.
 ChartPayload	type	@spy4x/preact-charts	
 DEFAULT_AXIS_COLOR	constant	@spy4x/preact-charts	Axis and frame line colour.
@@ -18,10 +20,15 @@ DonutChart	component	@spy4x/preact-charts	Server-rendered donut built from a sin
 DonutDatum	type	@spy4x/preact-charts	
 DonutGeometry	type	@spy4x/preact-charts	
 DonutSegment	type	@spy4x/preact-charts	
+DotPlot	component	@spy4x/preact-charts	A server-rendered dot plot: one row per item, a dot on a shared scale, and shaded bands.
+DotPlotBand	type	@spy4x/preact-charts	A shaded stretch of the scale behind every row, such as "Typical range".
+DotPlotRow	type	@spy4x/preact-charts	One row of a `DotPlot`: a label, a value and the words around it.
 InViewHandle	type	@spy4x/preact-charts	Handle returned by `createInViewObserver`.
 InViewOptions	type	@spy4x/preact-charts	
 InViewRef	type	@spy4x/preact-charts	`useInView`'s `ref`: a callback ref that also keeps the element in `current`.
-Kpi	component	@spy4x/preact-charts	Key-performance-indicator card: label, value, optional caption.
+Kpi	component	@spy4x/preact-charts	Key-performance-indicator card: label, value, optional change line and caption.
+KpiChange	type	@spy4x/preact-charts	How a `Kpi` value moved against an earlier period, as one line of words and an icon.
+KpiDirection	type	@spy4x/preact-charts	Which way a `KpiChange` went, drawn as its icon.
 KpiGrid	component	@spy4x/preact-charts	Responsive grid for `Kpi` cards: two columns on a phone, as many as fit on a desktop.
 KpiTone	type	@spy4x/preact-charts	Colour role of a `Kpi` value.
 LineChart	component	@spy4x/preact-charts	The line chart: drawn complete on the server, interactive once it runs in a browser.
@@ -30,13 +37,23 @@ LineSeries	type	@spy4x/preact-charts
 LineX	type	@spy4x/preact-charts	A point's place on the X axis: a label, or — on a time axis — an instant.
 LoadPayloadResult	type	@spy4x/preact-charts	
 NiceScale	type	@spy4x/preact-charts	
+PeriodChange	type	@spy4x/preact-charts	A number in the current period and the same number in the period before it.
+RankedBarColumn	type	@spy4x/preact-charts	One more number column of a `RankedBars` table.
+RankedBarColumns	type	@spy4x/preact-charts	The columns of a `RankedBars` table: the label's and the bar's own number, each with a header, and one to three more numbers per row.
+RankedBarImage	type	@spy4x/preact-charts	The thumbnail of a `RankedBarRow`.
+RankedBarRow	type	@spy4x/preact-charts	One row of `RankedBars`: a `Bars` row with more numbers, and a link or a button.
+RankedBars	component	@spy4x/preact-charts	A ranked list with several numbers per row, such as visits per source: `Bars`' scale and bars in a table with a header row, server-rendered like `Bars`.
+StackedBarDatum	type	@spy4x/preact-charts	A row drawn as stacked segments instead of one value: its total is the sum of the segments, and each series keeps one colour across every row.
 TIME_FRAMES	constant	@spy4x/preact-charts	The bucket granularities a series can be aggregated at.
 TimeFrame	type	@spy4x/preact-charts	Bucket granularity of a series.
 TimeSeriesPoint	type	@spy4x/preact-charts	
 barPercent	helper	@spy4x/preact-charts	Percentage of the longest bar, clamped to `[0, 100]`.
+barTotal	helper	@spy4x/preact-charts	A row's total: its value, or the sum of its segments' finite, positive values.
+changeText	helper	@spy4x/preact-charts	A change as one neutral line of text: `+3 vs previous 7 days`, `−1 vs yesterday`, or `No change vs previous 7 days`.
 chartPayloadSchema	helper	@spy4x/preact-charts	Payload of a stats loader: the points plus the granularity they were bucketed at.
 createInViewObserver	helper	@spy4x/preact-charts	Observe one element and report intersection changes.
 donutGeometry	helper	@spy4x/preact-charts	Slice maths for `DonutChart`: cumulative shares plus the `conic-gradient` string.
+dotPercent	helper	@spy4x/preact-charts	Where a value sits on a plot's scale, as a percentage from `0` to `100`.
 extent	helper	@spy4x/preact-charts	Finite-only `[min, max]`, or `null` when nothing is plottable.
 linearScale	helper	@spy4x/preact-charts	Map a domain onto a pixel range.
 loadChartPayload	helper	@spy4x/preact-charts	Call a stats loader and validate what it returns.
@@ -50,6 +67,7 @@ timeSeriesPointSchema	helper	@spy4x/preact-charts	One bucket of a time series, a
 useInView	hook	@spy4x/preact-charts	Report whether the element behind `ref` has scrolled into view.
 xLabelStride	helper	@spy4x/preact-charts	Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label count without dropping the right-hand end.
 CHART_PALETTE_CLASS	constant	@spy4x/preact-charts/colors	Classes a chart puts on its root so `DEFAULT_CHART_PALETTE` resolves to the light steps, or to the dark ones under a `.dark` ancestor — the theme package's class-based dark mode.
+default	helper	@spy4x/preact-charts/i18n/ar	The `charts` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 cn	helper	@spy4x/preact-cn	Join conditional class names and resolve conflicting Tailwind utilities.
 join	helper	@spy4x/preact-cn	Join conditional class names, with no Tailwind conflict resolution.
 ArchiveConfig	type	@spy4x/preact-crud	The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form already submits, plus whatever has to be archived first for it to be allowed.
@@ -106,6 +124,8 @@ setField	helper	@spy4x/preact-crud	Merge one field into a model signal.
 submitEditor	helper	@spy4x/preact-crud	Route a submit to the store operation the mode implies.
 toggleArchiveState	helper	@spy4x/preact-crud	The archive toggle's next state.
 typedNumber	helper	@spy4x/preact-crud	The number a keystroke may commit, or `undefined` while the box holds a half-typed value.
+default	helper	@spy4x/preact-crud/i18n/ar	The `crud` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+IconAdjustmentsHorizontal	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-2); Heroicons v2's "adjustments-horizontal" (2.2.0), added for the "Interactive" line of `Explorable` in `@spy4x/preact-ui` (#958).
 IconAlertTriangle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArchive	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons.
 IconArrowDown	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from template.
@@ -119,6 +139,7 @@ IconArrowUturnLeft	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.
 IconArrowUturnRight	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArrowsPointingOut	component	@spy4x/preact-icons	Heroicons v1 outline (stroke-2) · from a source application.
 IconAtSign	component	@spy4x/preact-icons	Feather outline (stroke-2); matches Feather's "at-sign" exactly, not Heroicons.
+IconBank	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "landmark" (lucide-static@1.47.0) exactly: a bank.
 IconBars3	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconBell	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconBookOpen	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
@@ -231,10 +252,51 @@ IconWrench	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · "w
 IconXMark	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconYouTube	component	@spy4x/preact-icons	Brand mark (trademarked), filled · "youtube" from simple-icons@16.33.0 (#233).
 IconZap	component	@spy4x/preact-icons	Feather outline (stroke 1.75) · matches Feather's "zap" exactly.
+CATEGORY_ICONS	constant	@spy4x/preact-icons/registry	The ids of the category set, in the order a picker shows them: grouped by meaning (home and bills, food, getting around, shopping, health and family, leisure, money and work, other), not by alphabet, because a grid is read in rows.
+ICONS	constant	@spy4x/preact-icons/registry	Every glyph a picker can offer, by id.
+IconEntry	type	@spy4x/preact-icons/registry	One glyph of `ICONS`: its component, its English name and the words that find it.
+IconName	type	@spy4x/preact-icons/registry	The id of a glyph in `ICONS`: what an app stores.
 Map	component	@spy4x/preact-map	See this file's own doc.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.
+default	helper	@spy4x/preact-map/i18n/ar	The `map` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.
+Assets	type	@spy4x/preact-server	What the build tells the renderer: the stylesheets, the client script and the build id.
+Context	helper	@spy4x/preact-server	The request's context, as Fresh's `Context`.
+HandlerByMethod	type	@spy4x/preact-server	A route's handlers by HTTP method, such as `{ GET, POST }`.
+HandlerFn	type	@spy4x/preact-server	A route's handler: a response, or data for its page.
+Head	component	@spy4x/preact-server	Its children go into the page's `<head>`, as Fresh's `Head`.
+HttpError	helper	@spy4x/preact-server	An error with an HTTP status, as Fresh's `HttpError`.
+IslandRef	type	@spy4x/preact-server	An island: a component the client wakes, by its file and export.
+Middleware	type	@spy4x/preact-server	A step of the request chain: answers, or calls `ctx.next()` for the rest.
+PageComponent	type	@spy4x/preact-server	A page, a layout or the app wrapper.
+PageResponse	type	@spy4x/preact-server	What a handler may return instead of a response: data and status for its page.
+Preload	type	@spy4x/preact-server	The chunks a page with islands preloads, from the client build's manifest.
+RouteHandler	type	@spy4x/preact-server	One handler for every method, or one per method.
+RouteModule	type	@spy4x/preact-server	A route file's exports; `component` is the page's name in `app.route()`, as in Fresh.
+ServeInfo	type	@spy4x/preact-server	Who sent the request, as the runtime's server reports it.
+StaticBuild	type	@spy4x/preact-server	What the server entry hands `setStaticFiles`: the build's list and how to open a file.
+StaticFile	type	@spy4x/preact-server	One file of the build, as the build lists it (the `website()` Vite plugin).
+StaticFileHandle	type	@spy4x/preact-server	A file opened for streaming; the shape of `StaticFileHandle` in `@spy4x/server/static`, so its `denoStaticFs` fits `StaticBuild.fs` as it is.
+WebsiteBuild	type	@spy4x/preact-server	What the client build produced: the server entry hands it to `setAssets` and `setStaticFiles`.
+asset	helper	@spy4x/preact-server	`path` with the build id, when it is a path on this site.
+createDefine	helper	@spy4x/preact-server	Typed identity helpers, as Fresh's `createDefine`.
+fsRoutes	helper	@spy4x/preact-server	Adds every file of `files` (from `import.meta.glob("./routes/**\/*.{ts,tsx}")`, keyed `./routes/…`) to `app`.
+page	helper	@spy4x/preact-server	Fresh's `page()`: data and response options for a handler to give its page.
+registerIslands	helper	@spy4x/preact-server	Registers the exports of `islands/` files, each a component the browser wakes.
+setAssets	helper	@spy4x/preact-server	Sets what the build produced; the server entry calls it once.
+setStaticFiles	helper	@spy4x/preact-server	The build's files; the server entry calls it once.
+staticFiles	helper	@spy4x/preact-server	Answer with the file at the request's path, when the build has one; else the next step.
+hydrateIslands	helper	@spy4x/preact-server/client	Hydrates every island of the page, from `loaders` (`import.meta.glob("./islands/**\/*.tsx")`).
+BUILD_PLACEHOLDER	constant	@spy4x/preact-server/vite	The name `server-entry.ts` declares and assigns (`const build = __WEBSITE_BUILD__`): the build replaces it with the client build's `WebsiteBuild`, the dev server with `null`.
+WebsiteBuilder	type	@spy4x/preact-server/vite	The build's environments, as `builder.buildApp` receives them.
+WebsiteDevServer	type	@spy4x/preact-server/vite	The part of Vite's dev server the plugin uses.
+WebsiteDirEntry	type	@spy4x/preact-server/vite	The part of a directory entry `WebsiteOptions.readDir` yields, as `Deno.readDir` does.
+WebsiteNodeRequest	type	@spy4x/preact-server/vite	Node's request, as Vite's dev server hands it to a middleware.
+WebsiteNodeResponse	type	@spy4x/preact-server/vite	Node's response, as Vite's dev server hands it to a middleware.
+WebsitePlugin	type	@spy4x/preact-server/vite	The shape of the Vite plugin `website` returns, cut down to the hooks it implements.
+website	helper	@spy4x/preact-server/vite	The plugins that build and serve the website.
 CLIPBOARD_UNAVAILABLE	constant	@spy4x/preact-signals	Reason reported when the runtime has no clipboard at all (an insecure origin, a server render).
 ClipboardPort	type	@spy4x/preact-signals	Write port.
 ClipboardStore	type	@spy4x/preact-signals	A clipboard helper.
@@ -336,8 +398,10 @@ filterSearch	helper	@spy4x/preact-signals/use-url-filters	The query string a set
 filterWrite	helper	@spy4x/preact-signals/use-url-filters	What one field's value means for its parameter.
 readAddress	helper	@spy4x/preact-signals/use-url-filters	Read the address into the filters, and answer with the query string they now agree on.
 restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the write should have left behind, or `undefined` when that is already the address.
+default	helper	@spy4x/preact-signals/i18n/ar	The `signals` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
+AccountMenuLanguage	type	@spy4x/preact-system	The language choice `AccountMenu` offers: `LanguageDialog`'s props without its open state, which the menu owns.
 AccountMenuTheme	type	@spy4x/preact-system	The theme preferences `AccountMenu` offers; `"system"` follows the device.
 AccountMenuUser	type	@spy4x/preact-system	The signed-in person `AccountMenu` names and draws.
 AccountTag	component	@spy4x/preact-system	The neutral role badge `AccountMenuProps.tag` draws.
@@ -363,6 +427,7 @@ ConflictKind	type	@spy4x/preact-system	Why a change was not taken, the same thre
 ContainerLike	type	@spy4x/preact-system	The slice of `ServiceWorkerContainer` this package uses.
 DEFAULT_CONFLICT_CHOOSER_LABELS	constant	@spy4x/preact-system	The English words `ConflictChooser` shows when the caller passes none.
 DEFAULT_INSTALL_PROMPT_LABELS	constant	@spy4x/preact-system	The English words `InstallPrompt` shows when the caller passes none.
+DEFAULT_MAILED_CODE_STEP_LABELS	constant	@spy4x/preact-system	The English words `MailedCodeStep` shows when the caller passes none.
 DEFAULT_PUSH_SETTINGS_LABELS	constant	@spy4x/preact-system	The English words `PushSettings` shows when the caller passes none.
 DEFAULT_SAVED_COPY_NOTICE_LABELS	constant	@spy4x/preact-system	The English words `SavedCopyNotice` shows when the caller passes none.
 DEFAULT_SYNC_STATUS_LABELS	constant	@spy4x/preact-system	The English words `SyncStatus` shows when the caller passes none.
@@ -372,6 +437,7 @@ HeadStore	type	@spy4x/preact-system	A head signal with the defaults it was creat
 HeadTag	type	@spy4x/preact-system	A serialisable `<head>` element, in document order.
 HeadTagName	type	@spy4x/preact-system	Which `<head>` element a `HeadTag` describes.
 InstallPrompt	component	@spy4x/preact-system	Offer to install the app, or explain how to on iOS.
+MailedCodeStep	component	@spy4x/preact-system	"Check your inbox", the address the code went to, a code field with Continue as the one primary action, a `ResendButton`, and the way back to another address.
 OgType	type	@spy4x/preact-system	Open Graph object type a page declares.
 PageHead	type	@spy4x/preact-system	Every field `SEOHead` renders, plus the JSON-LD inputs.
 PushSettings	component	@spy4x/preact-system	Say whether this device gets notifications, and turn them on or off.
@@ -459,17 +525,22 @@ PlaywrightBaseOptions	type	@spy4x/preact-system/playwright	What an app tells `pl
 PlaywrightBaseUse	type	@spy4x/preact-system/playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-system/playwright	One reporter: its name, then its options when it takes any.
 playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright configuration every app shares.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1119 classes).
+SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
+translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
+default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1432 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
 TOKENS_CSS	constant	@spy4x/preact-theme	./tokens.css's exact contents.
+DirectionViolation	type	@spy4x/preact-theme/spacing	One class that names a physical side, and the logical class that replaces it.
 SPACING_GAPS	constant	@spy4x/preact-theme/spacing	The named gaps a layout component offers, and the step each one stands for: 0, 4, 8, 16, 24, 32 and 48 px.
 SPACING_STEPS	constant	@spy4x/preact-theme/spacing	Every spacing step a class may use, smallest first: 0, 1 px, then 4, 8, 12, 16, 24, 32, 48 and 64 px (Tailwind's step times 4 px).
 SpacingGap	type	@spy4x/preact-theme/spacing	A named gap: a key of `SPACING_GAPS`.
 SpacingStep	type	@spy4x/preact-theme/spacing	One of `SPACING_STEPS`.
 SpacingViolation	type	@spy4x/preact-theme/spacing	One spacing class that breaks the scale, and where it is.
 findOffScaleSpacing	helper	@spy4x/preact-theme/spacing	Finds every spacing class in `source` that uses a step outside `SPACING_STEPS` or an arbitrary value, written in square brackets or as a custom property in parentheses; every arbitrary property that sets padding, margin, a gap or their scroll forms; and every use of Tailwind's spacing function whose argument is not a numeric step.
+findPhysicalDirection	helper	@spy4x/preact-theme/spacing	Finds every class in `source` that names a physical side, so it stays on the left or right whatever the page's `dir` is: left and right margin and padding and their scroll forms, the `left` and `right` insets, a left or right padding or inset by the `safe` area, left and right text alignment, `float` and `clear`, a radius on a left or right side or corner, and a left or right border.
 DEFAULT_SKIPPED_DIRECTORIES	constant	@spy4x/preact-theme/spacing-runner	Directory names a guard does not descend into by default: installed packages, build output and caches, which hold compiled classes and bundled code rather than source.
 DEFAULT_SPACING_EXTENSIONS	constant	@spy4x/preact-theme/spacing-runner	The file extensions the spacing guard reads by default.
 GuardFileSystem	type	@spy4x/preact-theme/spacing-runner	The file access a guard needs: the three reading methods of `FileSystemPort` from `@spy4x/platform/server/ports`.
@@ -503,8 +574,17 @@ preactThemeCss	helper	@spy4x/preact-theme/vite	Gives the app's stylesheet the `@
 requireComponentCss	helper	@spy4x/preact-theme/vite	Fails `vite build` when the CSS it wrote lacks the library's classes.
 serviceWorker	helper	@spy4x/preact-theme/vite	Builds the worker at `entry` into the output folder once the app build is written, as one classic script (`iife`).
 webManifest	helper	@spy4x/preact-theme/vite	Writes the manifest into the output folder in `writeBundle`, once the app build is written, and serves it from the dev server at `/<fileName>` (under Vite's `base`).
+TRANSLATED_ATTRIBUTES	constant	@spy4x/preact-theme/lint	The attributes whose literal text the rule flags: each is read or heard by a person.
+UiTextLintNode	type	@spy4x/preact-theme/lint	One node of Deno's lint syntax tree, as much of it as the rule reads.
+UiTextLintPlugin	type	@spy4x/preact-theme/lint	A Deno lint plugin, typed as far as this module builds one.
+UiTextRuleContext	type	@spy4x/preact-theme/lint	What the rule gets from Deno's linter: the source, its comments and a way to report.
+default	helper	@spy4x/preact-theme/lint	The `ui-text` plugin for `deno lint`, with its one rule, `no-literal`.
+ATTACHMENT_LIST_LABELS	constant	@spy4x/preact-ui	The English words `AttachmentList` shows when the caller passes none and no catalog.
 AddTagsResult	type	@spy4x/preact-ui	What `addTags` did with the texts it was given.
 AnyDateRangePickerProps	type	@spy4x/preact-ui	Every shape `DateRangePicker` itself accepts, chosen by `withTime`: the default, `DateRangePickerProps`, carries a calendar-day `DateRange`, and `withTime: true` carries a timed `DateTimeRange` instead — see `DateRangePickerTimeProps`.
+AttachmentItem	type	@spy4x/preact-ui	One file of an `AttachmentList`.
+AttachmentList	component	@spy4x/preact-ui	The files attached to a record: one row each with a thumbnail or a file icon, the name, its kind and size, and what it is doing — uploading with a bar, waiting, checking, failed with Retry, or ready with a menu (Download, Remove).
+AttachmentStatus	type	@spy4x/preact-ui	Where one file of an `AttachmentList` stands: `"uploading"` (bytes on the way), `"waiting"` (queued, such as offline or before its record exists), `"checking"` (uploaded, the server is still confirming it), `"failed"` and `"ready"`.
 Avatar	component	@spy4x/preact-ui	Round image with an initials fallback and a generic-icon last resort.
 AvatarFace	type	@spy4x/preact-ui	Which of the three faces an `Avatar` renders.
 AvatarGroup	component	@spy4x/preact-ui	Overlapping avatar stack for a handful of members, with a `+N` chip for the rest.
@@ -518,19 +598,31 @@ BadgeType	type	@spy4x/preact-ui	Whether a `Badge` is tinted (`filled`, the defau
 BillingHeadingLevel	type	@spy4x/preact-ui	Heading level of a billing component's own heading.
 BillingInterval	type	@spy4x/preact-ui	How often a plan bills.
 BrandMark	component	@spy4x/preact-ui	A product's brand mark: a rounded square at `--radius-card`, filled with the brand hue and holding one glyph, followed by the product's name in weight 500 — the construction the design language gives every app's mark (`docs/design-language.md`, "The brand mark").
+BreadcrumbItem	type	@spy4x/preact-ui	One step of a `Breadcrumbs` trail.
+Breadcrumbs	component	@spy4x/preact-ui	Where a page sits on a site, as a trail of links above its `h1`: `Seed › Features › Sign-in`.
 Button	component	@spy4x/preact-ui	Native button with the library's variant and size vocabulary, or a link that looks like one.
 ButtonLinkProps	type	@spy4x/preact-ui	A `Button` that is a link: given `href`, it renders an `<a>` with the classes the same `variant`, `size` and `class` give a `<button>`.
 ButtonOverloads	type	@spy4x/preact-ui	`Button`'s two call shapes: given `href`, a link with an anchor's ref, or a native `<button>` with its ref.
 ButtonSize	type	@spy4x/preact-ui	Control height and text scale of a `Button`.
 ButtonVariant	type	@spy4x/preact-ui	Visual role of a `Button`.
 CANCEL_LABEL	constant	@spy4x/preact-ui	English default for the cancelling action.
+CHANGE_LIST_LABELS	constant	@spy4x/preact-ui	The English words `ChangeList` shows when the caller passes none.
+COLOR_PRESETS	constant	@spy4x/preact-ui	The 16 swatches `ColorField` offers by default: a neutral gray and 15 hues, dark enough to take white text except Yellow, which takes black.
 CONFIRM_LABEL	constant	@spy4x/preact-ui	English default for the confirming action, used when the caller names no verb.
 Card	component	@spy4x/preact-ui	Card surface.
 CardBody	component	@spy4x/preact-ui	Card body: the content region of a `Card`.
 CardFooter	component	@spy4x/preact-ui	Card footer: a divider-separated action row at the bottom of a `Card`.
 CardHeader	component	@spy4x/preact-ui	Card header: a title plus a right-aligned action, or raw children.
+ChangeEntry	type	@spy4x/preact-ui	One change of a `ChangeList`: a sentence and, optionally, the pull request it came in.
+ChangeList	component	@spy4x/preact-ui	What changed, month by month: per month its heading with an anchor, a muted count, what is new as an open list, and the fixes folded in a `<details>` that counts them, so fixes are there without burying the new things.
+ChangeMonth	type	@spy4x/preact-ui	One month of a `ChangeList`.
 Checkbox	component	@spy4x/preact-ui	Render the box and its label.
 CheckboxShape	type	@spy4x/preact-ui	The box's outline: the theme's square `.pc-checkbox`, or a circle, as a task list's check.
+ChecklistControl	type	@spy4x/preact-ui	What `enhanceChecklist` returns: call it to unwire the list.
+ChecklistCount	type	@spy4x/preact-ui	Ticked and total boxes of one group: the whole list, or one section of it.
+ChecklistOptions	type	@spy4x/preact-ui	Options of `enhanceChecklist`.
+ChecklistState	type	@spy4x/preact-ui	What `enhanceChecklist` reports to `onChange`.
+ChecklistStorage	type	@spy4x/preact-ui	Where `enhanceChecklist` keeps the ticks: the two `Storage` members it calls, so a page passes `localStorage` as it is and a test passes a fake.
 ClickModifiers	type	@spy4x/preact-ui	The part of a `MouseEvent` `isPlainClick` reads.
 Cluster	component	@spy4x/preact-ui	Children in a row that wraps, a named `gap` apart: a toolbar, a row of buttons, a list of tags.
 ClusterAlign	type	@spy4x/preact-ui	How a `Cluster`'s children line up across the row.
@@ -539,19 +631,26 @@ Coachmark	component	@spy4x/preact-ui	One hint anchored to one element of the pag
 CoachmarkCloseReason	type	@spy4x/preact-ui	Why a coachmark asked to close: Escape anywhere on the page, or its own × button.
 CoachmarkPlacement	type	@spy4x/preact-ui	Side of the target a coachmark sits on.
 CoachmarkTarget	type	@spy4x/preact-ui	The element a coachmark points at: a CSS selector, which names its first visible match, or a ref the app holds.
+ColorField	component	@spy4x/preact-ui	A colour picker: preset swatches, an optional "None", and a "Custom" swatch that opens a native colour input and a hex text field.
+ColorPreset	type	@spy4x/preact-ui	One swatch of a `ColorField`: a `#rrggbb` colour and its name.
+ColumnMap	type	@spy4x/preact-ui	Which column of the file each field reads: a field key to a column index, or `null`.
 Combobox	component	@spy4x/preact-ui	Searchable single-select: a text input filtering a `role="listbox"` of options.
+ComboboxGroup	type	@spy4x/preact-ui	A group of `Combobox` options, as the caller's `groupOf` names it.
 ComboboxKey	type	@spy4x/preact-ui	Keys the combobox acts on, and what each does.
 ComboboxKeyAction	type	@spy4x/preact-ui	What the DOM handler must do once `comboboxKeyAction` has decided.
 ComboboxKeyResult	type	@spy4x/preact-ui	What one key press produces: the next state, plus whether the key was ours to consume.
 ComboboxListboxContent	type	@spy4x/preact-ui	What the popup must render: either options with ids, or nothing at all.
 ComboboxNamingProps	type	@spy4x/preact-ui	How the combobox is named.
 ComboboxOptionState	type	@spy4x/preact-ui	Extra state handed to a `renderOption` callback, so the caller can style selection and highlight.
+ComboboxSection	type	@spy4x/preact-ui	One run of rows in the popup: a group with its lead and members, or ungrouped items.
 ComboboxState	type	@spy4x/preact-ui	Highlighted-or-not plus open-or-not of one combobox.
 CommandPalette	component	@spy4x/preact-ui	A search trigger and the dialog it opens: one field and a list of results that the arrow keys move through, as `Combobox` does.
 CommandPaletteBaseProps	type	@spy4x/preact-ui	Props every `CommandPalette` takes, whichever data mode it uses.
 CommandPaletteGroup	type	@spy4x/preact-ui	One heading and the options under it, in the order the palette lists them.
 CommandPaletteLocalProps	type	@spy4x/preact-ui	The local data mode: the palette filters `options` itself.
+CommandPaletteMatchKind	type	@spy4x/preact-ui	How a query matched an option, strongest first: one of `matchEntry`'s kinds from `@spy4x/platform/universal/text` (`exact`, `prefix`, `words`, `alias`, `layout`, `translit`, `typo`), or `detail` when only the option's `detail` holds the query.
 CommandPaletteOption	type	@spy4x/preact-ui	One result the palette lists.
+CommandPaletteRecent	type	@spy4x/preact-ui	Where a `CommandPalette` keeps its recent picks: its `recent` prop.
 CommandPaletteRemoteProps	type	@spy4x/preact-ui	The remote data mode: the palette asks `search` for the options of each query.
 ComparisonRow	type	@spy4x/preact-ui	One capability of a `ComparisonTable`: a row, with one value per product.
 ComparisonTable	component	@spy4x/preact-ui	A comparison of capabilities across products, for a public page: a legend, a real `<table>` and the method and fit that make it trustworthy.
@@ -559,12 +658,19 @@ ComparisonValue	type	@spy4x/preact-ui	How far a product covers one capability.
 ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions.
 CopyBlock	component	@spy4x/preact-ui	A box of monospace text with a copy control beside it: an install command, an API key, an id.
 CopyButton	component	@spy4x/preact-ui	Copy a string to the clipboard through an injected port or the browser API, and say whether it worked.
+CurrencyField	component	@spy4x/preact-ui	Picks a currency by its code, its name or its symbol: a `Combobox` of `options`.
+DATE_TIME_FIELD_LABELS	constant	@spy4x/preact-ui	The English words `DateTimeField` shows when the caller passes none.
 DISMISS_KEY	constant	@spy4x/preact-ui	The key that asks a `Modal` to close.
+DOCS_NAV_LABELS	constant	@spy4x/preact-ui	The English words `DocsNav` shows when the caller passes none.
+DashboardGrid	component	@spy4x/preact-ui	Lays widgets out in their order: consecutive stats share one row that fills the width (two columns on a phone, as many as fit wider), and a full widget takes a row of its own.
+DashboardItem	type	@spy4x/preact-ui	One widget placed by `DashboardGrid`.
+DashboardRow	type	@spy4x/preact-ui	One row of a dashboard: a run of stats, or one full widget.
 DataTable	component	@spy4x/preact-ui	A sortable, optionally paged table: `Table`'s markup, `@spy4x/platform/universal/sort`'s sort rules, one component joining them.
 DataTableBaseProps	type	@spy4x/preact-ui	The props both modes share — see `DataTableProps`.
 DataTableClientProps	type	@spy4x/preact-ui	Client mode: `DataTable` sorts and pages the whole row set — see `DataTableMode`.
 DataTableColumn	type	@spy4x/preact-ui	One column of a `DataTable`: a field to read and maybe sort by, or a display-only slot.
 DataTableColumnAlign	type	@spy4x/preact-ui	Horizontal alignment of one column's header and cells.
+DataTableCursor	type	@spy4x/preact-ui	`DataTableBaseProps.cursor`: what Enter does, and whether the keys listen.
 DataTableDataColumn	type	@spy4x/preact-ui	A column that reads one field of a row, and may be sorted by it.
 DataTableDisplayColumn	type	@spy4x/preact-ui	A column with no field of its own — an actions column, typically — that only ever renders what `render` returns.
 DataTableMode	type	@spy4x/preact-ui	Where a `DataTable`'s rows are sorted and paged.
@@ -572,29 +678,45 @@ DataTablePaging	type	@spy4x/preact-ui	Client-mode paging, all of it caller-owned
 DataTablePagingBase	type	@spy4x/preact-ui	What both paging shapes share: the caller-owned page, its size, and the pager's labels.
 DataTableServerPaging	type	@spy4x/preact-ui	Server-mode paging: the same caller-owned page, plus how many rows the whole set holds, which only the caller knows because `rows` is one page of it.
 DataTableServerProps	type	@spy4x/preact-ui	Server mode: `rows` is one page, already sorted — see `DataTableMode`.
+DateRangeChoice	type	@spy4x/preact-ui	A picker's choice: the preset, or `"custom"`, and the days it covers.
 DateRangePicker	component	@spy4x/preact-ui	Preset menu plus a custom from/to panel over `rangeForPreset`.
 DateRangePickerTimeProps	type	@spy4x/preact-ui	`AnyDateRangePickerProps` with `withTime` on: From and To are `datetime-local` fields, and the panel also offers `"last-hour"` and `"last-24-hours"`, the two presets that only make sense with a time of day.
 DateRangePreset	type	@spy4x/preact-ui	Every preset the maths knows.
 DateRangePresetOption	type	@spy4x/preact-ui	One option of the preset list: the maths identifier plus the caller's label for it.
 DateTextLabels	type	@spy4x/preact-ui	The words `OnDay` shows around a date.
+DateTimeField	component	@spy4x/preact-ui	One date and time, typed in a named time zone that the field shows beside the input: the browser's own `datetime-local` picker, read and written as an instant, so the caller stores `2026-10-25T08:30:00.000Z` while the person types 09:30 in Berlin.
 DateTimeOccurrences	type	@spy4x/preact-ui	The occurrence chosen for each end of a range; an end left out means `"earlier"`.
 DateTimeRange	type	@spy4x/preact-ui	Inclusive wall-clock range, minute precision, in the caller's zone.
 DemoVideo	component	@spy4x/preact-ui	A demo clip that costs nothing until it is asked for: a poster with a play mark, swapped for the clip on press.
-DemoVideoPoster	type	@spy4x/preact-ui	The still frame a `DemoVideo` shows until it is pressed.
+DemoVideoDarkPoster	type	@spy4x/preact-ui	The dark variant of a poster, drawn while its media query matches.
+DemoVideoPoster	type	@spy4x/preact-ui	The still frame a `DemoVideo` or `LoopVideo` shows before its clip.
 DemoVideoSource	type	@spy4x/preact-ui	One file of the clip, rendered as a `<source>`.
+DialogActions	component	@spy4x/preact-ui	A dialog's button row: stacked full width on a phone, right-aligned in one row from `sm`.
 DialogRect	type	@spy4x/preact-ui	Rectangle in viewport coordinates: a structural subset of `DOMRect`, so tests need no DOM.
 DialogRole	type	@spy4x/preact-ui	How a `Modal` announces itself to assistive technology.
 DialogTone	type	@spy4x/preact-ui	Visual register of a `Modal`: a plain surface or a destructive one.
+DocsNav	component	@spy4x/preact-ui	The side list of a set of guides, grouped under their names, with the guide on screen marked by `aria-current="page"` and a bar on the list's inner edge.
+DocsNavGroup	type	@spy4x/preact-ui	One group of guides of a `DocsNav`, such as "Use" or "Build".
+DocsNavItem	type	@spy4x/preact-ui	One guide of a `DocsNav`.
 Dropdown	component	@spy4x/preact-ui	Trigger plus a real menu: opening moves focus into it, the arrow keys move between its items, Escape closes it and gives the trigger its focus back, and it closes as soon as focus leaves.
+DropdownAlign	type	@spy4x/preact-ui	The edge of the trigger a `Dropdown` menu lines up with; `left` and `right` are aliases.
 DropdownBaseProps	type	@spy4x/preact-ui	Everything about a dropdown except how its trigger is named.
 DropdownItem	component	@spy4x/preact-ui	One item of a `Dropdown`'s menu.
 DropdownTriggerName	type	@spy4x/preact-ui	How the trigger button gets its accessible name.
+ELAPSED_LABELS	constant	@spy4x/preact-ui	The default words of `Elapsed`.
+ENGLISH	constant	@spy4x/preact-ui	The translator the components read when no `I18nContext` provider is around them.
+Elapsed	component	@spy4x/preact-ui	How long something has run, `02:05`, in a `<time>` whose `datetime` is the same duration in ISO form (`PT2M5S`).
 EmptyState	component	@spy4x/preact-ui	"Nothing here" placeholder for a list, table or search that produced no rows.
 EnhancedForm	component	@spy4x/preact-ui	A real `<form>` that posts on its own, and gets nicer once JavaScript has run.
 EnhancedFormStatus	type	@spy4x/preact-ui	Where one `EnhancedForm` is in its submit cycle.
 ErrorBoundary	component	@spy4x/preact-ui	Catches an error thrown while its children render and shows a reload screen in their place, so the person sees a way out instead of a blank page.
 ErrorState	component	@spy4x/preact-ui	Message for an expected failure, shown where the result that failed would have been, such as a list whose request failed.
+ErrorSummary	component	@spy4x/preact-ui	A titled list of problems in something the reader is editing, each row a button that takes the reader to its problem: a document's broken lines under its editor, or a long form's errors above its fields.
+ErrorSummaryItem	type	@spy4x/preact-ui	One problem an `ErrorSummary` lists.
 ExactDateTimeRange	type	@spy4x/preact-ui	A `DateTimeRange` that always carries the exact instant behind each end, so a caller never has to guess which of a repeated hour a wall-clock string meant.
+Explorable	component	@spy4x/preact-ui	A frame for an interactive figure inside an article: a result and the controls that change it.
+Fact	type	@spy4x/preact-ui	One label and value of a `FactList`.
+FactList	component	@spy4x/preact-ui	Labels and their values, such as the details of a record: a description list (`<dl>`) of rows divided by hairlines.
 FaqItem	type	@spy4x/preact-ui	One question of a `FaqList`.
 FaqList	component	@spy4x/preact-ui	Questions and answers as native `<details>` disclosures: they open and close with no JavaScript, so the list works on a server-rendered page with scripts off.
 FeatureCard	component	@spy4x/preact-ui	One feature of a product on its public site: an optional icon, a heading, a line or two of text, an optional link and an optional picture under them, on a library `Card`.
@@ -604,6 +726,16 @@ FieldControlWiring	type	@spy4x/preact-ui	The DOM attributes of one `Field`, hand
 FieldWiring	type	@spy4x/preact-ui	The full `Field` wiring: the control's attributes plus the ids of the messages.
 FileInput	component	@spy4x/preact-ui	File picker built on a real `<input type="file">`, with a drop zone and a keyboard/screen-reader story the input already has for free.
 FileRejection	type	@spy4x/preact-ui	One file a `FileInput` refused, and why.
+FilterBar	component	@spy4x/preact-ui	Search, filter menus, one-tap toggles and a sort over a list, with the active filters as removable chips under them and a result count.
+FilterBarChip	type	@spy4x/preact-ui	One active filter, drawn as a removable chip under the bar.
+FilterBarMenu	type	@spy4x/preact-ui	One filter menu of a `FilterBar`: one shape per `multiple`.
+FilterBarMultipleMenu	type	@spy4x/preact-ui	A menu where any number of choices can be on, drawn as boxes; the menu stays open on a choice.
+FilterBarOption	type	@spy4x/preact-ui	One choice of a `FilterBarMenu`.
+FilterBarSearch	type	@spy4x/preact-ui	The search field of a `FilterBar`.
+FilterBarSingleMenu	type	@spy4x/preact-ui	A menu with at most one choice; choosing closes the menu.
+FilterBarSort	type	@spy4x/preact-ui	The sort menu of a `FilterBar`.
+FilterBarSortOption	type	@spy4x/preact-ui	One order of a `FilterBarSort`.
+FilterBarToggle	type	@spy4x/preact-ui	A one-tap filter of a `FilterBar`, such as "Created by me".
 FocusAfterRemovalOptions	type	@spy4x/preact-ui	Options of `useFocusAfterRemoval`.
 FocusableElement	type	@spy4x/preact-ui	Anything the browser can move focus to.
 FormatContext	component	@spy4x/preact-ui	The formatter the components read.
@@ -613,12 +745,19 @@ GroupSplit	type	@spy4x/preact-ui	How an `AvatarGroup` splits its members between
 HotkeyBinding	type	@spy4x/preact-ui	One keyboard shortcut for `useHotkeys`: a combination, what it does and how it is listed.
 HotkeyPress	type	@spy4x/preact-ui	A key press as `pickHotkey` sees it: the key, the modifiers and where it landed.
 HotkeyProps	type	@spy4x/preact-ui	The props a component takes to bind a key to its own button: `hotkey` binds it and announces it, and a `Kbd` hint inside the button shows it.
+I18nContext	component	@spy4x/preact-ui	The translator the components read.
+IconPicker	component	@spy4x/preact-ui	An icon picker: a search box over a grid of icons, one of which a person chooses for a category, a list or a folder.
 ImageElementLike	type	@spy4x/preact-ui	The view of a clicked element this component needs.
 ImageGallery	component	@spy4x/preact-ui	Thumbnails that open the shared `Lightbox` on the one pressed: a wrapping grid by default, or a sideways-scrolling, snapping row of large images with `layout="strip"`.
 ImageGalleryImage	type	@spy4x/preact-ui	One image a gallery's strip can show, and hand to the lightbox it opens.
+ImportField	type	@spy4x/preact-ui	One thing the app reads from each row of a file, such as a date or an amount.
+ImportMapper	component	@spy4x/preact-ui	The step of an import where a person says which column of their file holds what, checked against the first rows as the app read them.
+ImportPreviewRow	type	@spy4x/preact-ui	One row of the file as the app read it.
+ImportSetting	type	@spy4x/preact-ui	One way the app reads the file, such as its separator, with the app's guess chosen.
 InlineEdit	component	@spy4x/preact-ui	A value shown as text that turns into a text field in place, for renaming a list, a tag or a column where it stands.
 Input	component	@spy4x/preact-ui	Controlled text input.
 InputButton	component	@spy4x/preact-ui	Render the input, the button and the chrome that positions them.
+Isolated	component	@spy4x/preact-ui	`message` filled with `value`, the value drawn in a `<bdi>`.
 KBD_LABELS	constant	@spy4x/preact-ui	English defaults for every `KbdLabels` entry.
 KanbanBoard	component	@spy4x/preact-ui	A board of columns; see the module doc.
 KanbanColumn	type	@spy4x/preact-ui	One column of the board.
@@ -628,32 +767,60 @@ KanbanPlace	type	@spy4x/preact-ui	Where a card is, as the announcements describe
 KanbanSlot	type	@spy4x/preact-ui	A place on the board by indices: which column, and which index in it.
 Kbd	component	@spy4x/preact-ui	One key, a combination of keys or a sequence of presses, as the HTML `<kbd>` element: `<Kbd keys="mod+k" />` renders an outer `<kbd>` holding one `<kbd>` per key.
 KeyFace	type	@spy4x/preact-ui	How one key of a combination is drawn: what is on the key, and its name when that is a glyph.
+LIST_FIELD_LABELS	constant	@spy4x/preact-ui	The English words `ListField` shows when the caller passes none.
+LOOK_TILE_LABELS	constant	@spy4x/preact-ui	The English words `LookTile` shows when the caller passes none.
+LabelParams	type	@spy4x/preact-ui	For a label that is a function, the names its arguments take in the message, in order: `{ page: ["page"] }` turns `"Page {page}"` into `(page) => "Page 3"`.
+LanguageButton	component	@spy4x/preact-ui	A ghost button with `IconGlobe` and the language in use, named in itself, that opens `LanguageDialog`: the language switch of a signed-out header, so a visitor who landed in a language they cannot read finds their own before signing in.
+LanguageDialog	component	@spy4x/preact-ui	A `Modal` holding the `LanguagePicker` list.
+LanguagePicker	component	@spy4x/preact-ui	The language picker: every language by its own name, as a radio group (`mode="list"`) or as links (`mode="links"`).
+LayoutCustomiser	component	@spy4x/preact-ui	A dialog that reorders and hides the parts of a page: a `SortableList` (drag a handle, or use the keyboard) with a switch per row.
+LayoutCustomiserItem	type	@spy4x/preact-ui	One row of the `LayoutCustomiser`: an entry and the name the person knows it by.
 LayoutElement	type	@spy4x/preact-ui	The block elements a layout component may render as.
+LayoutEntry	type	@spy4x/preact-ui	One part's place in a saved layout: its id and whether the person hid it.
 LeaveGuard	type	@spy4x/preact-ui	The question "leave with unsaved changes?" for navigation an app starts from code: a sidebar button, a keyboard shortcut, a redirect.
 Lightbox	component	@spy4x/preact-ui	The shared image dialog — see the module doc for what it is built on and why.
 LightboxImage	type	@spy4x/preact-ui	One image a `Lightbox` can show.
 Link	component	@spy4x/preact-ui	A real `<a href>` that hands plain clicks to a `navigate` port.
 LinkClickEvent	type	@spy4x/preact-ui	The part of a `MouseEvent` `followLinkClick` reads and cancels.
 LinkClickTarget	type	@spy4x/preact-ui	The anchor a click landed on, as `followLinkClick` needs it.
+ListField	component	@spy4x/preact-ui	An ordered list of short lines, such as an article's key points: one input per line, a remove button on each, and an "Add item" button under them, up to `max` lines.
 LoadingSkeleton	component	@spy4x/preact-ui	Placeholder layout shown while a result loads.
 LoadingSpinner	component	@spy4x/preact-ui	Inline spinner with an accessible live region.
+LookColor	type	@spy4x/preact-ui	One colour of a `LookTile`'s item, drawn as a dot.
+LookGrid	component	@spy4x/preact-ui	The looks of a shop's catalog in aligned columns: one per screen width on a phone, two from 768 px and three from 1024 px.
+LookPhoto	type	@spy4x/preact-ui	The photo of a `LookTile` or the cover of a `StoryTile`.
+LookSize	type	@spy4x/preact-ui	One size of a `LookTile`'s item, such as `"M"`.
+LookTile	component	@spy4x/preact-ui	One look of a shop's catalog: a tall 3:4 photo as the whole card, and under it the name, the price, the sizes and the colours.
+LoopVideo	component	@spy4x/preact-ui	A silent, looping clip that proves a claim on a public page: it plays while at least half of it is on screen, and the visitor can pause it.
+MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read of an option.
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
-MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat` — `<MoneyDisplay amount={12345} currency="EUR" />` is `€123.45`, `currency="JPY"` is `¥12,345`, `currency="KWD"` is three decimals.
+MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat`, in the person's region format: `<MoneyDisplay amount={123456} currency="EUR" />` is `1.234,56 €` under a `FormatContext` for `de-DE` and `€1,234.56` for `en-US`, whatever language the words around it are in.
 MoneyInput	component	@spy4x/preact-ui	A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it.
 MoneyInputBounds	type	@spy4x/preact-ui	
+MoneyInputDecimalsMessage	type	@spy4x/preact-ui	A `MoneyInputProps.decimalsMessage` function: `decimals` is how many the currency takes, `0` for one with whole amounts only.
 MoneyInputEdit	type	@spy4x/preact-ui	What one edit of `MoneyInput`'s text resolves to — see `resolveMoneyInputEdit`.
+MoneyInputEditOptions	type	@spy4x/preact-ui	The optional inputs of `resolveMoneyInputEdit`.
 MoneyInputRangeMessage	type	@spy4x/preact-ui	A `MoneyInputProps.rangeMessage` function.
+MoneyTone	type	@spy4x/preact-ui	How `MoneyDisplay` marks an amount's direction:
 MoreMenu	component	@spy4x/preact-ui	A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list.
 Notice	component	@spy4x/preact-ui	A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed.
 NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`).
+ORDER_BAR_LABELS	constant	@spy4x/preact-ui	The English words `OrderBar` shows when the caller passes none.
 OnDay	component	@spy4x/preact-ui	A calendar day in the person's format (`FormatContext`), `17 Oct 2026`, in a `<time datetime>` whose hover text is the exact instant.
 OnOffButtons	component	@spy4x/preact-ui	Segmented ON/OFF pair, optionally annotated with counts.
-OnboardingChecklist	component	@spy4x/preact-ui	A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one primary button, and Dismiss.
+OnThisPage	component	@spy4x/preact-ui	The anchors of a long page.
+OnThisPageLink	type	@spy4x/preact-ui	One anchor of `OnThisPage`.
+OnboardingChecklist	component	@spy4x/preact-ui	A card of first steps for a new user: each step with its state, a progress bar, the next open step's action as the card's one footer button (primary unless `actionVariant` says otherwise), and Dismiss.
 OnboardingStep	type	@spy4x/preact-ui	One step of an `OnboardingChecklist`.
 OnboardingStepAction	type	@spy4x/preact-ui	What a step offers to get it done: a button, or a link.
 OnboardingStepButton	type	@spy4x/preact-ui	A step's action that runs in place, such as opening a dialog.
 OnboardingStepLink	type	@spy4x/preact-ui	A step's action that goes to another page, such as the form that creates a first project.
+OrderBar	component	@spy4x/preact-ui	The order step of a shop that takes orders by chat: the message about to be sent, in a chat bubble, above the buttons that send it.
+OrderBarAction	type	@spy4x/preact-ui	One button of an `OrderBar`: a link to a chat, or a submit button of the page's form.
 PAGE_HERO_LABELS	constant	@spy4x/preact-ui	The English words `PageHero` shows when the caller passes none.
+POST_LIST_LABELS	constant	@spy4x/preact-ui	The English words `PostList` shows when the caller passes none.
+PREV_NEXT_LABELS	constant	@spy4x/preact-ui	The English words `PrevNext` shows when the caller passes none.
+PROSE_LABELS	constant	@spy4x/preact-ui	The English words `Prose` adds when the caller passes none.
 Page	component	@spy4x/preact-ui	The content column of a page: a readable maximum width, centred, with the page gutter (16 px on a phone, 24 px from `sm`, 32 px from `lg`) and the `xl` gap (32 px) between its sections.
 PageAction	component	@spy4x/preact-ui	A page header's primary action: icon and label from `sm` up, the icon alone on a phone.
 PageHeader	component	@spy4x/preact-ui	The header a page starts with: an optional back arrow, the title (and a subtitle) on the left, the primary action and an optional "More actions" menu on the right.
@@ -662,12 +829,20 @@ PageHeroAuthor	type	@spy4x/preact-ui	The person who wrote a page, named in `Page
 PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control renders: a real page, or a collapsed run of pages.
 PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
-PlanCard	component	@spy4x/preact-ui	The current plan: its name, status, price and the date it renews or ends, with a "Manage billing" form that posts to the app's billing-portal route.
+PeriodStepper	component	@spy4x/preact-ui	Steps a screen through weeks or months: "‹ › November 2026 This month".
+PlanCard	component	@spy4x/preact-ui	A plan: the current one, with its status, price and the date it renews or ends, and a "Manage billing" form that posts to the app's billing-portal route; or, with no `status`, a plan on offer, with its price, a second price line, what it includes, a link action and footnotes.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.
+PostList	component	@spy4x/preact-ui	A list of articles, as a blog's index or its "Read next": per row the day it went live and its reading time, the title as a link, and a description cut to two lines, and an optional cover: above the text on a phone, beside it from 640 px.
+PostListImage	type	@spy4x/preact-ui	The cover of a `PostListItem`.
+PostListItem	type	@spy4x/preact-ui	One post of a `PostList`.
+PrevNext	component	@spy4x/preact-ui	Two cards at the end of a guide: the previous one and the next one, each a whole-card link with a muted "Previous" or "Next" over the title.
+PrevNextLink	type	@spy4x/preact-ui	One neighbour of a `PrevNext`.
 PricingPlan	type	@spy4x/preact-ui	One plan of a `PricingTable`.
 PricingTable	component	@spy4x/preact-ui	Plans side by side, each with its price, its features and a "Choose" button.
 Progress	component	@spy4x/preact-ui	Determinate progress bar, or an indeterminate track when the reading is unknown.
 ProgressTone	type	@spy4x/preact-ui	Semantic colour of the filled portion, mapped onto the `theme/` colour atoms.
+Prose	component	@spy4x/preact-ui	The typography of an article: rendered Markdown (headings `h2` to `h4`, paragraphs, lists, code, quotes, tables, images, links and rules) set from the design tokens at a reading measure of about 65 characters, in light and dark.
+ProseCodeCopy	component	@spy4x/preact-ui	Renders nothing; once mounted, wires every copy button `Prose` drew with `copyCode` on the page, through `enhanceCodeCopy`, and unwires them when it unmounts.
 QUICK_ADD_ANNOUNCE_PAUSE_MS	constant	@spy4x/preact-ui	How long the typing must pause before the live region reads the recognised parts out.
 QuickAdd	component	@spy4x/preact-ui	One field that adds an item to a list: type, press Enter.
 QuickAddDueLabel	type	@spy4x/preact-ui	Words a due day for a badge.
@@ -676,10 +851,19 @@ RadioChipOption	type	@spy4x/preact-ui	One chip of a `RadioChips` group.
 RadioChips	component	@spy4x/preact-ui	A single choice drawn as `ToggleChips` chips, built on native radios so it works before, or without, any JavaScript.
 RadioGroup	component	@spy4x/preact-ui	Radio set with an accessible group name.
 RadioOption	type	@spy4x/preact-ui	One choice of a `RadioGroup`.
+ResendButton	component	@spy4x/preact-ui	The "Not there?" line under a "Check your inbox" message: a sentence counting down until the mail may be sent again, then a ghost button that sends it.
 ResolvedDateTime	type	@spy4x/preact-ui	What `resolveDateTime` found for one wall-clock value in one zone.
+Rich	component	@spy4x/preact-ui	A translated message with spans the caller renders, such as a link inside a sentence.
+RowCursor	type	@spy4x/preact-ui	The cursor `useRowCursor` returns.
+RowCursorOptions	type	@spy4x/preact-ui	Options of `useRowCursor`.
+RowCursorRowProps	type	@spy4x/preact-ui	What `RowCursor.rowProps` gives each row: spread it on the row's element.
 RowId	type	@spy4x/preact-ui	The id of a row: what the caller's list of ids holds.
+RunStep	type	@spy4x/preact-ui	One step of a `RunSteps` list.
+RunStepState	type	@spy4x/preact-ui	Where a step of a run stands.
+RunSteps	component	@spy4x/preact-ui	A fixed list of the steps of a run, such as a benchmark or an import, each with its state, a hint, and once done its value and a verdict.
+SECTION_HEADING_LABELS	constant	@spy4x/preact-ui	The English words `SectionHeading` shows when the caller passes none.
 SWIPE_MIN_PX	constant	@spy4x/preact-ui	How far, in CSS pixels, one finger must travel sideways for a swipe to change the image.
-ScreenTour	component	@spy4x/preact-ui	A product walkthrough: named steps as tabs, beside one browser or phone frame whose screenshot swaps when a step is picked, with the step's caption and line of text under it.
+ScreenTour	component	@spy4x/preact-ui	A product walkthrough: named steps as tabs, beside one plain, browser or phone frame whose screenshot swaps when a step is picked, with the step's caption and line of text under it.
 ScreenTourImage	type	@spy4x/preact-ui	The screenshot of one `ScreenTourStep`.
 ScreenTourStep	type	@spy4x/preact-ui	One step of a `ScreenTour`: a tab, its screenshot and its line of text.
 ScrollLock	type	@spy4x/preact-ui	A held lock, undone by `ScrollLock.release`.
@@ -687,7 +871,10 @@ ScrollLockHost	type	@spy4x/preact-ui	The scrollable element whose scrollbar a lo
 ScrollLockTarget	type	@spy4x/preact-ui	The two elements a page-level scroll lock has to touch, and the styles it replaces.
 Section	component	@spy4x/preact-ui	A titled block of a page: an optional heading and description, then the children.
 SectionElement	type	@spy4x/preact-ui	The elements a `Section` may render as: ones that can hold its `<header>`.
+SectionHeading	component	@spy4x/preact-ui	A heading with a "Link to this section" link beside it, outside it so the heading's name stays its text: the anchor `Prose`'s `anchors` draws, for a heading written as elements.
 SectionHeadingLevel	type	@spy4x/preact-ui	Heading level of a `Section`'s title.
+SegmentedControl	component	@spy4x/preact-ui	A single choice among two to five short options, drawn as joined segments: a period picker ("7 days, 30 days, 90 days"), a view switch.
+SegmentedOption	type	@spy4x/preact-ui	One segment of a `SegmentedControl`.
 Select	component	@spy4x/preact-ui	Controlled select.
 SelectOption	type	@spy4x/preact-ui	One option of a `Select`.
 SettingGroup	component	@spy4x/preact-ui	A named group of settings, such as Account or Security: a small `h2` over its rows, so the page title stays the one large heading on a settings page.
@@ -696,17 +883,23 @@ SettingRow	component	@spy4x/preact-ui	One setting: its name, its current value u
 Shortcut	type	@spy4x/preact-ui	One row of `ShortcutsDialog`.
 ShortcutGroup	type	@spy4x/preact-ui	A heading of `ShortcutsDialog` and the shortcuts under it, in the order given.
 ShortcutsDialog	component	@spy4x/preact-ui	A dialog that lists keyboard shortcuts, each with what it does and its keys, under group headings.
+Slider	component	@spy4x/preact-ui	A labelled range slider on the native `<input type="range">`.
+SliderMark	type	@spy4x/preact-ui	One labelled point under a `Slider`'s track, such as "Typical" or "Today".
+SortDirection	type	@spy4x/preact-ui	Which way a sorted list runs: ascending or descending.
 SortableBox	type	@spy4x/preact-ui	One row's place inside the list, measured when an item is picked up.
 SortableItem	type	@spy4x/preact-ui	The one field the list reads off an item.
 SortableList	component	@spy4x/preact-ui	A list whose items are reordered by dragging a handle, by touch or mouse, or from the keyboard.
 SortablePlace	type	@spy4x/preact-ui	Where an item is, as the announcements describe it.
 SpinnerSize	type	@spy4x/preact-ui	Rendered size of a `LoadingSpinner`.
 Stack	component	@spy4x/preact-ui	Children in a column, a named `gap` apart.
-StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `WIP`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline`.
-StatusMarkStatus	type	@spy4x/preact-ui	A project or feature's lifecycle state.
+StatusMark	component	@spy4x/preact-ui	A shape paired with a word: `Ready`, `In use`, `Beta`, `In progress`, `Paused`, `Archived`, `Known issue`, `Outcome`, `Live`, `Offline` for a project; `Running`, `Done`, `Parked`, `Blocked`, `Waiting`, `Failed`, `Out of time`, `Out of budget`, `Out of turns`, `Stopped`, `Queued`, `Claimed` for a job or a queued task.
+StatusMarkStatus	type	@spy4x/preact-ui	A project's or feature's lifecycle state (`ready` to `offline`), or the state of a background job or a queued task (`running` to `claimed`).
 StepItem	type	@spy4x/preact-ui	One step of a `Steps` list.
 Steps	component	@spy4x/preact-ui	A numbered "how it works" list: each step a heading and a line of text, joined by a thin line.
+StoryTile	component	@spy4x/preact-ui	One post of a photo-led blog, made to sit beside `LookTile`s: a tall 3:4 cover with no border, then the topic, the title and a muted line with the date and the reading time.
 SubscriptionStatus	type	@spy4x/preact-ui	Where a subscription stands.
+SwatchChips	component	@spy4x/preact-ui	A choice of colour drawn as chips with a swatch before each colour's name, on native radios, so it works before, or without, any JavaScript.
+SwatchOption	type	@spy4x/preact-ui	One colour of a `SwatchChips` group.
 TOUCH_TARGET	constant	@spy4x/preact-ui	A touch target of 44 px on a phone and the library's own 36 px from `sm` up, for a small button a thumb has to hit.
 TabItem	type	@spy4x/preact-ui	One tab and the panel it controls.
 Table	component	@spy4x/preact-ui	Table shell with header, body and optional footer slots.
@@ -721,6 +914,7 @@ TimeRangePreset	type	@spy4x/preact-ui	Every sub-day preset the maths knows.
 Timeline	component	@spy4x/preact-ui	A vertical list of events: a dot per entry on a line that joins them, the title and its time on the first line, and an optional description under them.
 TimelineItem	type	@spy4x/preact-ui	One thing that happened.
 TimelineTone	type	@spy4x/preact-ui	The colour of an entry's dot.
+TldrBox	component	@spy4x/preact-ui	The few points a reader takes away from an article, before its body: a hairline box with a heading ("In short") and a bulleted list.
 ToastAction	type	@spy4x/preact-ui	A button on a toast, such as "Undo" after a delete.
 ToastCorner	type	@spy4x/preact-ui	The window corner a `Toastr` stack sits in.
 ToastId	type	@spy4x/preact-ui	What identifies one toast in a stack: the type of `ToastItem.id` and of the id `ToastrProps.onDismiss` is called with.
@@ -738,42 +932,59 @@ TooltipPlacement	type	@spy4x/preact-ui	Side of the trigger the tooltip is anchor
 Tour	component	@spy4x/preact-ui	A guided tour: one `Coachmark` for the step at `index`, with the step count, Skip, Back and Next (Done on the last step).
 TourCloseReason	type	@spy4x/preact-ui	Why a tour asked to close: Done on the last step, Skip or × on any step, or Escape.
 TourStep	type	@spy4x/preact-ui	One stop of a `Tour`.
+UiKey	type	@spy4x/preact-ui	A key of the `ui` package's own catalog, `"Pagination.previous"`.
 UnsavedClick	type	@spy4x/preact-ui	The parts of a click that decide whether the browser would follow a link in this tab.
 UnsavedGuard	component	@spy4x/preact-ui	Asks before a person leaves a page with unsaved changes.
 UnsavedLink	type	@spy4x/preact-ui	The parts of a link that decide where it goes.
 UpgradePrompt	component	@spy4x/preact-ui	A short message and an upgrade link, shown in place of a feature the current plan does not include.
-WHEN_LABELS	constant	@spy4x/preact-ui	The English words `When` and `OnDay` show when the caller passes none.
+UsageMeter	component	@spy4x/preact-ui	How much of a limit is used: a budget's spending, a plan's storage, a team's seats.
+UsageMeterState	type	@spy4x/preact-ui	Where a reading stands against its limit.
+UsageReading	type	@spy4x/preact-ui	The numbers `UsageMeter` draws, worked out from a reading and its limit.
+WHEN_LABELS	constant	@spy4x/preact-ui	The English words of `When` and `OnDay`.
 WallClockOccurrence	type	@spy4x/preact-ui	Which of the two instants a repeated wall-clock time names: before or after the clocks go back.
 When	component	@spy4x/preact-ui	A moment as its distance from now, `3 days ago`, in a `<time datetime>` whose hover text is the exact instant in the person's format (`FormatContext`).
-WindowFrame	component	@spy4x/preact-ui	Draws a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
-WindowFrameVariant	type	@spy4x/preact-ui	Which device a `WindowFrame` or a `ScreenTour` draws around its content.
+WidgetCard	component	@spy4x/preact-ui	One dashboard widget's card: the title (a link when `href` is set), a muted caption, an optional three-dots menu, and a body that shows the widget, a skeleton while it loads, its error with a retry, or one line when it has nothing to show.
+WidgetSize	type	@spy4x/preact-ui	How much room a widget takes: a number that shares its row, or a whole row.
+WidgetStat	component	@spy4x/preact-ui	A stat widget's body: one large number in tabular figures, then muted lines in the text colour, never coloured as good or bad.
+WidgetStatus	type	@spy4x/preact-ui	Where a widget's data stands.
+WindowFrame	component	@spy4x/preact-ui	Draws a plain frame, a browser window, a terminal or a phone around a screenshot or a snippet, for a marketing page.
+WindowFrameVariant	type	@spy4x/preact-ui	Which frame a `WindowFrame` or a `ScreenTour` draws around its content.
+YouTubeVideo	component	@spy4x/preact-ui	A YouTube video that costs nothing until it is asked for: the caller's own poster with a play mark, swapped for YouTube's player on press.
 ZoomableImages	component	@spy4x/preact-ui	Zoomable images inside a container, opening the shared `Lightbox`.
 acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the returned lock is released.
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.
+activeFilterChips	helper	@spy4x/preact-ui	Every active filter as a chip: one per chosen option of each menu, in menu order, then one per pressed toggle.
 activeShortcuts	helper	@spy4x/preact-ui	The shortcuts that work now: all of them, or, while single keys are off, the ones that are not `isSingleKey`.
 addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported.
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
 ariaKeyShortcuts	helper	@spy4x/preact-ui	A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key` names them, joined by `+`.
+attachmentImages	helper	@spy4x/preact-ui	The images of `items` the lightbox can show, in order: ready images with a `src`, named by their file name.
 avatarFace	helper	@spy4x/preact-ui	Pick an avatar's face: the image while it is usable, then the initials, then the generic icon.
 backdropClickDismisses	helper	@spy4x/preact-ui	Whether one click should dismiss the dialog.
 badgeClasses	helper	@spy4x/preact-ui	Compose a badge's class list without rendering one, so a pill that is not a `Badge` — a pressable chip, say — draws from the same palette.
 buttonClasses	helper	@spy4x/preact-ui	Compose the class list of a button without rendering one.
 clampProgress	helper	@spy4x/preact-ui	Clamp a progress reading into `0…max` and derive its completion fraction.
+clearCommandPaletteRecent	helper	@spy4x/preact-ui	Forgets the recent picks a `CommandPalette` keeps under `storageKey`, such as on sign-out, so the next person on the device does not see them.
 clickByHotkey	helper	@spy4x/preact-ui	Click an element for a key press, the way a hotkey should: only when the reader could have clicked it themselves.
 clientWidthWithoutScrollbar	helper	@spy4x/preact-ui	Read the layout width once the scrollbar clamping is in place.
 comboboxKey	helper	@spy4x/preact-ui	Map a DOM keyboard event onto a `ComboboxKey`.
 comboboxKeyAction	helper	@spy4x/preact-ui	The whole key decision table of the combobox: state, `preventDefault` and selection, decided purely from the key, the current state and the length of the filtered list.
 comboboxListboxId	helper	@spy4x/preact-ui	`id` of the popup listbox of the combobox whose base id is `id`.
 comboboxOptionId	helper	@spy4x/preact-ui	`id` of one option, which is also what `aria-activedescendant` points at.
+comboboxSections	helper	@spy4x/preact-ui	Arrange the items a filter left into the sections the popup draws.
 confirmVariant	helper	@spy4x/preact-ui	Button variant for the confirming action.
 counterText	helper	@spy4x/preact-ui	The counter text, e.g.
 createHotkeyListener	helper	@spy4x/preact-ui	The `keydown` listener `useHotkeys` attaches, on its own: it reads the bindings on every press, runs the first that matches and cancels the press's default action.
 createLeaveGuard	helper	@spy4x/preact-ui	Creates a `LeaveGuard`.
-dateRangePresets	helper	@spy4x/preact-ui	Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods, then custom.
+dashboardRows	helper	@spy4x/preact-ui	Groups widgets into rows, in order: each run of consecutive stats is one row, and each full widget is a row of its own.
+dateRangePresets	helper	@spy4x/preact-ui	Canonical presentation order: single days and rolling day counts, then the last 12 months, then calendar periods from the shortest (weeks) to the longest, then custom.
 defaultCommandPaletteLabels	helper	@spy4x/preact-ui	English defaults for every `CommandPaletteLabels` entry.
+defaultCommandPaletteMatchLabels	helper	@spy4x/preact-ui	English defaults for the words `showMatch` puts beside a result, one per `CommandPaletteMatchKind`.
 defaultComparisonTableLabels	helper	@spy4x/preact-ui	The English defaults of `ComparisonTableLabels`.
 defaultGetLabel	helper	@spy4x/preact-ui	The identity rule for item text: `String(item)`.
+defaultImportMapperLabels	helper	@spy4x/preact-ui	The English defaults of `ImportMapperLabels`.
 defaultKanbanLabels	helper	@spy4x/preact-ui	The English defaults of `KanbanBoardLabels`.
+defaultLayoutCustomiserLabels	helper	@spy4x/preact-ui	The English defaults of `LayoutCustomiserLabels`.
 defaultPlanCardLabels	helper	@spy4x/preact-ui	The English words `PlanCard` uses when a caller passes none.
 defaultPricingTableLabels	helper	@spy4x/preact-ui	The English words `PricingTable` uses when a caller passes none.
 defaultQuickAddLabels	helper	@spy4x/preact-ui	The English defaults of `QuickAddLabels`.
@@ -787,8 +998,12 @@ describedImages	helper	@spy4x/preact-ui	Keep only the images with a real descrip
 dialogHeldFocus	helper	@spy4x/preact-ui	Whether the dialog still holds the focused element.
 dialogTitleId	helper	@spy4x/preact-ui	Build the id of a dialog's title element.
 edgeScrollStep	helper	@spy4x/preact-ui	How far to scroll in one animation frame while a held item is dragged near an edge.
+enhanceChecklist	helper	@spy4x/preact-ui	Wire the checkboxes a server rendered inside `root` into a checklist whose ticks survive a reload: restore the ticks from storage, save them on every change and follow another tab's changes through the `storage` event.
+enhanceCodeCopy	helper	@spy4x/preact-ui	Reveal and wire every code block's copy button that `Prose` rendered with `copyCode` inside `root`: a press copies the block's text as it reads, without its final newline, so a pasted command waits for Enter.
 exactDateTimeRange	helper	@spy4x/preact-ui	A wall-clock range resolved to the exact instants it means in `timeZone`.
-filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, in the order they arrived.
+filterCurrencies	helper	@spy4x/preact-ui	The options `CurrencyField` lists for `query`, best first.
+filterItems	helper	@spy4x/preact-ui	Filter a list down to the items matching a query, the best match first.
+filterTriggerLabel	helper	@spy4x/preact-ui	A filter menu trigger's accessible name: its `label` with nothing chosen, "Tags: Design" with one choice, and "Tags: 3" with several.
 firesInFields	helper	@spy4x/preact-ui	Whether a combination may fire while the reader types in a field: it holds Control, Command or `mod`, so pressing it types no text.
 fold	helper	@spy4x/preact-ui	Fold text for matching: accents removed and lower-cased.
 followLinkClick	helper	@spy4x/preact-ui	Follow a link click through the `navigate` port when the page may take it over, and report whether it did.
@@ -800,6 +1015,7 @@ groupSplit	helper	@spy4x/preact-ui	Split a group's member count into the avatars
 guardedHref	helper	@spy4x/preact-ui	The in-app address a click must be held back for while there are unsaved changes, as `pathname + search + hash`; `null` when the browser or the link itself should handle the click.
 hasQuestion	helper	@spy4x/preact-ui	Whether the panel's body holds something worth being described by.
 honeypotField	helper	@spy4x/preact-ui	A field simple bots fill in and people never see: off-screen rather than `display: none` or `type="hidden"`, since a scraper that already skips those two is exactly the bot this stops nothing against, and a sighted visitor tabbing past it never lands on it — `tabindex="-1"` keeps it out of the tab order on top of being off-screen, and `aria-hidden` keeps a screen reader from ever announcing it.
+hotkeyActionBinding	helper	@spy4x/preact-ui	The `useHotkeys` binding that runs `action` directly, by the rules of `hotkeyClickBinding` but with no element that has to be rendered: the same chords fire in a text field, and the field keeps its editing chords.
 hotkeyClickBinding	helper	@spy4x/preact-ui	The `useHotkeys` binding that clicks an element through `clickByHotkey`.
 inlineEditCommit	helper	@spy4x/preact-ui	What an edit saves: the trimmed draft, or `null` when there is nothing to save because the draft is empty or matches the current value.
 isBackdropClick	helper	@spy4x/preact-ui	Whether a click landed on the dialog's backdrop rather than on the dialog's content.
@@ -807,13 +1023,20 @@ isDismissKey	helper	@spy4x/preact-ui	Whether a keyboard event is a request to di
 isPlainClick	helper	@spy4x/preact-ui	Whether a click is one the page may take over: the primary button with no modifier.
 isSingleKey	helper	@spy4x/preact-ui	Whether a switch for single-key shortcuts turns these keys off: every press types a character, such as `"?"`, `"n"`, `"shift+n"`, `"space"` or `"g i"`.
 isValidDateTimeRange	helper	@spy4x/preact-ui	Whether a `DateTimeRange` is two well-formed wall-clock values, in order — not necessarily two real ones: nothing here checks whether a named local time actually occurs in any zone, since this function is not handed one.
+isolate	helper	@spy4x/preact-ui	`value` between Unicode's first-strong isolate and its closing mark: what `<bdi>` does, for text that cannot hold markup, such as a message kept in state or an `aria-label`.
 keyFaces	helper	@spy4x/preact-ui	The faces of every key in a combination, modifiers first, in the order the platform writes them: ⌃ ⌥ ⇧ ⌘ on Apple platforms, Ctrl Alt Shift Meta elsewhere.
 labelOr	helper	@spy4x/preact-ui	The caller's label, or the library's English default.
+labelsFrom	helper	@spy4x/preact-ui	`useLabels` for a given translator, outside a component.
+languageName	helper	@spy4x/preact-ui	The name of a language in that language, first letter capitalised the way the language does it: `languageName("ru")` is `"Русский"`, `languageName("pt-BR")` `"Português (Brasil)"`.
 leavesCombobox	helper	@spy4x/preact-ui	Whether a focus change **out of the input** closes the popup.
 listboxContent	helper	@spy4x/preact-ui	Split a filtered list into "options to render" and "message to announce".
+matchOption	helper	@spy4x/preact-ui	How `query` matched one option, or `undefined` when it did not or the query is empty: what `matchEntry` from `@spy4x/platform/universal/text` says of its `label` and `aliases`, else `"detail"` when its `detail` holds the query.
+matchOptions	helper	@spy4x/preact-ui	The options that match `query`, best first, at most `limit` of them: the palette's default filter.
 matchesAccept	helper	@spy4x/preact-ui	Whether `file` matches an `<input accept>`-style pattern list: comma-separated extensions (`.png`), MIME types (`image/png`) and MIME wildcards (`image/*`) — exactly the three shapes the browser's own file chooser filters by.
-matchesQuery	helper	@spy4x/preact-ui	Whether one item matches a query.
+matchesQuery	helper	@spy4x/preact-ui	Whether one item matches a query, by the forgiving search of `@spy4x/platform/universal/text` (`matchEntry`).
+mergeLayout	helper	@spy4x/preact-ui	A saved layout made valid for the parts that exist now, in the saved order.
 moveKanbanItem	helper	@spy4x/preact-ui	Apply a reported move to an array of items, returning a new array.
+moveLayoutEntry	helper	@spy4x/preact-ui	`layout` with the entry at `from` moved to `to`, as `SortableList`'s `onMove` reports it.
 naming	helper	@spy4x/preact-ui	Whether the combobox has a usable accessible name, and which channel carries it.
 nextComboboxState	helper	@spy4x/preact-ui	Decide what one key press does to the active option and the open state.
 nextKanbanSlot	helper	@spy4x/preact-ui	Where an arrow key sends a picked-up card.
@@ -822,31 +1045,43 @@ nextTabIndex	helper	@spy4x/preact-ui	Index the tablist should move focus to for 
 occurrenceOf	helper	@spy4x/preact-ui	Which pass of its wall clock an instant is: `"later"` when `value` is a repeated time in `timeZone` and `instant` is its second occurrence, `"earlier"` otherwise — including when either argument cannot be resolved.
 openingState	helper	@spy4x/preact-ui	The state a fresh list opens into: open, highlighting the selected item when the filter kept it, else the first enabled one.
 pageRange	helper	@spy4x/preact-ui	Collapse a page range into the items a pagination control renders.
+periodStepperLabels	helper	@spy4x/preact-ui	The English words of `PeriodStepper`, the same as the `PeriodStepper.*` keys of `i18n/en.ts`.
 pickHotkey	helper	@spy4x/preact-ui	The binding a key press runs, or `undefined`: the first binding whose combination matches and that may fire where the press landed.
 presetForRange	helper	@spy4x/preact-ui	The first preset whose range equals `range`, or `undefined` when none does.
 presetForTimeRange	helper	@spy4x/preact-ui	The first sub-day preset whose range equals `range`, or `undefined` when none does — the `TimeRangePreset` counterpart of `presetForRange`.
 progressWidthPercent	helper	@spy4x/preact-ui	Turn a completion fraction into the percentage a declaration can take.
 rangeForPreset	helper	@spy4x/preact-ui	The inclusive range a preset describes.
 rangeForTimePreset	helper	@spy4x/preact-ui	The inclusive wall-clock range a sub-day preset describes, minute precision.
-rankOptions	helper	@spy4x/preact-ui	The options that match `query`, best first, at most `limit` of them: names equal to the query, then names that start with it, then names that contain it, then options whose `detail` contains it.
+rangeFromSearch	helper	@spy4x/preact-ui	The range an address asks for, or the default preset's when it asks for none or for one that cannot be read.
+rangeToSearch	helper	@spy4x/preact-ui	`search` with the choice written into it, every other parameter kept.
+rankOptions	helper	@spy4x/preact-ui	The plain substring ranking, kept for callers that want it over `matchOptions`: the options that match `query`, best first, at most `limit` of them: names equal to the query, then names that start with it, then names that contain it, then options whose `detail` contains it.
 resolveDateTime	helper	@spy4x/preact-ui	Whether a `YYYY-MM-DDTHH:mm` wall-clock value happens once, never or twice in `timeZone`, with the instants behind it — `resolveWallClock` from `@spy4x/time/tz`, taking this module's value shape and answering in its string instants.
 resolveDuration	helper	@spy4x/preact-ui	How long one toast has, in milliseconds: what it asked for, or `defaultToastDuration` (`defaultToastActionDuration` for a toast with an action).
 resolveImage	helper	@spy4x/preact-ui	Turn an event target into a lightbox image, or `null` when the event missed an image.
 resolveMoneyInputEdit	helper	@spy4x/preact-ui	The whole decision one edit of `MoneyInput`'s text makes, as a pure function with no signal, ref or DOM in it — everything `MoneyInput` itself does with an edit is call this and apply the result.
 restoreFocus	helper	@spy4x/preact-ui	Move focus back to a captured element.
+rowCursorClass	helper	@spy4x/preact-ui	How the highlighted row looks: a quiet selected background inside a selected outline.
 rowKeyAttribute	helper	@spy4x/preact-ui	Attribute a row's first cell carries so a page — or a browser check — can find that row by the identity `DataTableProps.rowKey` gives it, without depending on rendered cell text.
 scrollLockPadding	helper	@spy4x/preact-ui	Padding, in pixels, that keeps a scroll-locked page from shifting.
+selectTextareaLine	helper	@spy4x/preact-ui	Focuses a textarea, selects one of its lines and scrolls the textarea so that line sits in the middle of it.
 selectableIndex	helper	@spy4x/preact-ui	Index a freshly opened list should highlight: `preferred` when it is still in the list and taking it is allowed, else the first enabled item, else `-1` when nothing can be highlighted.
+setLayoutHidden	helper	@spy4x/preact-ui	`layout` with the entry `id` hidden or shown; unchanged when `id` is not in it.
 shouldRetargetFocus	helper	@spy4x/preact-ui	Decide whether focus should go back to the element that opened the dialog.
+sliderFraction	helper	@spy4x/preact-ui	Where a value sits along the track, as a fraction from `0` to `1`.
 sortableOffsets	helper	@spy4x/preact-ui	How far each row is shifted while the item at `from` is shown at `to`.
 sortableTarget	helper	@spy4x/preact-ui	The index a held item would drop at, from where its middle is now.
 splitTagText	helper	@spy4x/preact-ui	Split the input's text at commas: every part before the last comma is a finished tag, and the part after it is still being typed.
+stepRowCursor	helper	@spy4x/preact-ui	Where a row cursor lands: the row `step` rows from `from` (`1` for `j`, `-1` for `k`), held to the list's ends.
 swipeStep	helper	@spy4x/preact-ui	The step a finished touch asks for: `1` for a leftward swipe (next image), `-1` for a rightward one (previous image), `0` for anything that is not a swipe.
 tagInputKeyAction	helper	@spy4x/preact-ui	The whole key table of `TagInput`, decided without a DOM.
 tagSuggestions	helper	@spy4x/preact-ui	The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling once.
+textLineRange	helper	@spy4x/preact-ui	Where a 1-based line starts and ends in a text, its line break left out.
 timeRangePresets	helper	@spy4x/preact-ui	Canonical presentation order — the `TimeRangePreset` counterpart of `dateRangePresets`.
 toggleChipSelection	helper	@spy4x/preact-ui	The selection after one chip is pressed, in multiple mode: the chip is added or removed, and the result keeps the order of `options` rather than the order of presses.
+translate	helper	@spy4x/preact-ui	The `ui` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels, such as one that switches on a case.
 typingState	helper	@spy4x/preact-ui	The state a keystroke leaves behind after the caller has re-filtered for the new query.
+usageMeterLabels	helper	@spy4x/preact-ui	The English words of `UsageMeter`, the same as the `UsageMeter.*` keys of `i18n/en.ts`.
+usageReading	helper	@spy4x/preact-ui	Work out where `used` stands against `limit`.
 useApplePlatform	hook	@spy4x/preact-ui	Whether this browser is an Apple platform, for drawing or announcing `mod` as Command.
 useFocusAfterRemoval	hook	@spy4x/preact-ui	Keeps focus on the page when a row leaves a list because its own removal went through.
 useFocusFallback	hook	@spy4x/preact-ui	Keeps focus on the page when the focused control inside `container` leaves it, or when the whole container leaves.
@@ -856,17 +1091,24 @@ useFormat	hook	@spy4x/preact-ui	The formatter of the person whose screen this is
 useFreshError	hook	@spy4x/preact-ui	Hides an error left from an earlier attempt, so a dialog opened again does not start on the last refusal.
 useHotkeyClick	hook	@spy4x/preact-ui	Bind a key to one element: pressing it clicks the element through `clickByHotkey`.
 useHotkeys	hook	@spy4x/preact-ui	Page-wide keyboard shortcuts: listens for `keydown` on `document` while the component is mounted, and runs the first binding that matches.
+useLabels	hook	@spy4x/preact-ui	The words a component shows: each field of `defaults` taken from the caller's `labels` when it gives one, else from the catalog key `<name>.<field>`, else from `defaults`.
+useRowCursor	hook	@spy4x/preact-ui	A keyboard cursor over a list of rows, card rows or a table's: `j` highlights the next row and `k` the one before, scrolling it into view, and Enter opens the highlighted row through `onOpen`.
 useSucceeded	hook	@spy4x/preact-ui	Calls `onDone` once when an action that was pending ends without failing: how a dialog learns that its form went through and it can close.
+useT	hook	@spy4x/preact-ui	The translator of the nearest `I18nContext`: `useT().t("Pagination.nextLabel")`.
 wrapIndex	helper	@spy4x/preact-ui	Move `delta` steps through a sequence of `total` items, wrapping at either end.
 failedAfterSrcChange	helper	@spy4x/preact-ui/avatar	Carry an avatar's "this image failed" flag across a change of `src`.
 BillingIntervalValue	type	@spy4x/preact-ui/billing	A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast.
 SubscriptionStatusValue	type	@spy4x/preact-ui/billing	A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast.
-dropdownOpensUp	helper	@spy4x/preact-ui/dropdown	Whether a `vertical="auto"` menu opens upward: it does when the panel does not fit between the trigger and the bottom of the viewport, and there is more room above the trigger than below.
+CommandPaletteSelectDetails	type	@spy4x/preact-ui/command-palette	What a pick tells `onSelect` and `run` besides the option.
+CommandPaletteTrigger	type	@spy4x/preact-ui/command-palette	What a `CommandPalette`'s `trigger` function gets to draw a trigger of its own, such as an app shell's search button.
+MENU_GROUP	constant	@spy4x/preact-ui/dropdown	The `name` of the exclusive `<details>` group that every library menu drawn as a `<details>` joins: a `Dropdown` before it hydrates, and `SiteHeader`'s mobile menu.
+dropdownOpensUp	helper	@spy4x/preact-ui/dropdown	Whether a `vertical="auto"` menu opens upward.
 enhancedFormMessage	helper	@spy4x/preact-ui/enhanced-form	The live region's text for one status — the one piece of `EnhancedForm`'s behaviour a render-to-string test can assert directly, since the status it runs against never leaves `"idle"` without an effect or an event `preact-render-to-string` does not run.
 FieldLabelFor	type	@spy4x/preact-ui/field	What `Field`'s own label points at through `for`.
 labelTarget	helper	@spy4x/preact-ui/field	The `for` value of `Field`'s label, given the caller's `FieldProps.labelFor`.
 classifyFiles	helper	@spy4x/preact-ui/file-input	Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser.
 resolveLabels	helper	@spy4x/preact-ui/file-input	Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it.
+default	helper	@spy4x/preact-ui/i18n/ar	The `ui` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 StripNavigationVariant	type	@spy4x/preact-ui/image-gallery	How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`.
 StripScroll	type	@spy4x/preact-ui/image-gallery	Where a strip's row has scrolled to, as `stripPosition` reads it.
 stripNavigationClasses	helper	@spy4x/preact-ui/image-gallery	The full class list of the strip's Previous/Next buttons for a `navigationVariant`.
@@ -886,6 +1128,8 @@ ImageSequence	type	@spy4x/preact-ui/zoomable-images	What `collectSequence` hands
 collectSequence	helper	@spy4x/preact-ui/zoomable-images	Build the sequence a lightbox pages through, and the position of the image that was opened.
 zoomableAlt	helper	@spy4x/preact-ui/zoomable-images	The `alt` an image will open the lightbox with: its own, trimmed, or `fallbackAlt` — also trimmed, so a caller who passes whitespace (`" "`) is refused exactly like one who passes `""`, not treated as a real name because a non-empty string happens to be truthy.
 nextStepIndex	helper	@spy4x/preact-ui/screen-tour	Index of the step a key press on the tab at `current` moves to: `Tabs`' `nextTabIndex`, with Up and Down stepping like Left and Right, because the list is a column from 1024 px and a row below it.
+ScrollRoomPage	type	@spy4x/preact-ui/order-bar	The parts of the page `bindScrollRoom` reads and changes: `window` passes as one.
+bindScrollRoom	helper	@spy4x/preact-ui/order-bar	Keeps the controls of an `OrderBar`'s form out from under the bar while it is stuck to the bottom of a phone's screen.
 CLASS_PACKAGE	constant	@spy4x/preact-ui-guide	The package the class sections document.
 CatalogueSection	type	@spy4x/preact-ui-guide	One rendered section: its identity, its copy, the package it documents and its cards.
 ClassDemo	type	@spy4x/preact-ui-guide	One card of a class section: the same shape as `Demo`, plus what only a class card has.
@@ -931,7 +1175,7 @@ demoHref	helper	@spy4x/preact-ui-guide	Canonical href of one demo card.
 demoRegistry	helper	@spy4x/preact-ui-guide	The flat registry the catalogue renders from: one entry per card, all sections merged.
 guidePageIds	helper	@spy4x/preact-ui-guide	The guide's pages, in navigation order: the overview, then one page per package.
 guidePages	helper	@spy4x/preact-ui-guide	Every page of the guide, resolved, in `guidePageIds` order.
-helperPackageIds	helper	@spy4x/preact-ui-guide	Packages that export no component: helpers only, so the guide shows none of their exports and no stylesheet needs to scan them.
+helperPackageIds	helper	@spy4x/preact-ui-guide	Packages that export helpers, so the guide shows none of their exports and no stylesheet needs to scan them.
 iconNames	helper	@spy4x/preact-ui-guide	Every glyph the icon package exports, in module order.
 missingDemos	helper	@spy4x/preact-ui-guide	Cards the sections mean to render that this registry does not carry.
 packageIds	helper	@spy4x/preact-ui-guide	Every package whose components the catalogue renders, in reading order.

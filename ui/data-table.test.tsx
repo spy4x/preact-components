@@ -530,7 +530,7 @@ describe("DataTable", () => {
       />,
     )
 
-    expect(html).toContain("No rows")
+    expect(html).toContain("Nothing to show")
     expect(html).toContain('role="status"')
     expect(html).not.toContain(rowKeyAttribute)
   })
@@ -549,7 +549,7 @@ describe("DataTable", () => {
     )
 
     expect(html).toContain("Nothing filed yet")
-    expect(html).not.toContain("No rows")
+    expect(html).not.toContain("Nothing to show")
   })
 
   it("renders no pager at all when paging is omitted", () => {
@@ -649,7 +649,7 @@ describe("DataTable", () => {
     )
 
     expect(order(html)).toEqual(["INV-G"])
-    expect(html).not.toContain("No rows")
+    expect(html).not.toContain("Nothing to show")
     expect(html).toContain('aria-current="page"')
     expect(html).toContain(">3</button>")
   })
@@ -819,7 +819,7 @@ describe("DataTable", () => {
         />,
       )
 
-      expect(html).toContain("No rows")
+      expect(html).toContain("Nothing to show")
     })
 
     it("rejects total in client mode, and server paging without one", () => {
@@ -852,6 +852,50 @@ describe("DataTable", () => {
 
       expect(typeof clientPaging).toBe("object")
       expect(typeof serverPaging).toBe("object")
+    })
+  })
+
+  describe("cursor", () => {
+    it("draws every row unhighlighted on the server, before any key", () => {
+      const html = render(
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          cursor={{ onOpen: noop }}
+        />,
+      )
+      expect(html).not.toContain("aria-current")
+      expect(html.match(/<tr /g)?.length).toBe(rows.length + 1)
+    })
+    it("renders the same markup with a cursor as without", () => {
+      const props = {
+        columns,
+        rows,
+        rowKey: (row: Invoice) => row.id,
+        sort: [],
+        onSortChange: noop,
+        caption: "Invoices",
+      }
+      expect(render(<DataTable {...props} cursor={{ onOpen: noop }} />))
+        .toBe(render(<DataTable {...props} />))
+    })
+    it("draws the empty state with a cursor, since there is no row to move over", () => {
+      const html = render(
+        <DataTable
+          columns={columns}
+          rows={[]}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          cursor={{ onOpen: noop }}
+        />,
+      )
+      expect(html).toContain("Nothing to show")
     })
   })
 })

@@ -86,7 +86,7 @@ export function RegionList() {
       match={(region, word) => search(region.name, word)}
       addHref="/regions/add"
       canAdd={() => canChange.value}
-      header={<th class="text-left" scope="col">Name</th>}
+      header={<th class="text-start" scope="col">Name</th>}
       row={(region) => (
         <td class="text-foreground">
           <a href={`/regions/${region.id}/edit`} class="hover:underline">{region.name}</a>

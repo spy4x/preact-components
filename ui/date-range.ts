@@ -63,6 +63,7 @@ import {
   ONE_HOUR_IN_MILLISECONDS,
   ONE_MINUTE_IN_MILLISECONDS,
 } from "@spy4x/platform/universal/time-constants"
+import { periodOf, PeriodUnit, shiftPeriod } from "@spy4x/time/period"
 import { addDays, hhmmInTz, isoDateInTz, resolveWallClock, WallClockKind } from "@spy4x/time/tz"
 
 /**
@@ -84,6 +85,8 @@ export type DateRangePreset =
   | "last-30-days"
   | "last-90-days"
   | "last-12-months"
+  | "this-week"
+  | "last-week"
   | "this-month"
   | "last-month"
   | "this-quarter"
@@ -94,7 +97,7 @@ export type DateRangePreset =
 
 /**
  * Canonical presentation order: single days and rolling day counts, then the last 12 months, then
- * calendar periods, then custom.
+ * calendar periods from the shortest (weeks) to the longest, then custom.
  *
  * Carries no labels on purpose. This module is the maths, and copy belongs to the component layer
  * above it: `DateRangePicker` is handed its option list, each option's label included, by the
@@ -111,6 +114,8 @@ export const dateRangePresets: readonly DateRangePreset[] = [
   "last-30-days",
   "last-90-days",
   "last-12-months",
+  "this-week",
+  "last-week",
   "this-month",
   "last-month",
   "this-quarter",
@@ -128,6 +133,11 @@ export interface RangeForPresetOptions {
   timeZone: string
   /** Read only by the `"custom"` preset; omitting it there, or reversing it, throws. */
   custom?: DateRange
+  /**
+   * The week's first day for `"this-week"` and `"last-week"`, `1` = Monday … `7` = Sunday, as
+   * `@spy4x/time/period` numbers it. Default: Monday. Every other preset ignores it.
+   */
+  firstWeekday?: number
 }
 
 /** Options for {@link presetForRange}. */
@@ -138,6 +148,8 @@ export interface PresetForRangeOptions {
   timeZone: string
   /** Candidates and their precedence. Defaults to {@link dateRangePresets}. */
   presets?: readonly DateRangePreset[]
+  /** The week's first day the week candidates are built with; see {@link RangeForPresetOptions}. */
+  firstWeekday?: number
 }
 
 function isSameRange(a: DateRange, b: DateRange): boolean {
@@ -151,7 +163,11 @@ function isSameRange(a: DateRange, b: DateRange): boolean {
  * {@link presetForRange} does, once per candidate — pays for the zone lookup once instead of per
  * candidate. Nothing here is zone-aware: `today` is already a calendar date.
  */
-function rangeFromToday(preset: Exclude<DateRangePreset, "custom">, today: string): DateRange {
+function rangeFromToday(
+  preset: Exclude<DateRangePreset, "custom">,
+  today: string,
+  firstWeekday?: number,
+): DateRange {
   switch (preset) {
     case "today":
       return { from: today, to: today }
@@ -171,6 +187,12 @@ function rangeFromToday(preset: Exclude<DateRangePreset, "custom">, today: strin
       return { from: addDays(today, -89), to: today }
     case "last-12-months":
       return { from: startOfMonth(shiftMonth(today, -11)), to: endOfMonth(today) }
+    case "this-week":
+    case "last-week": {
+      const week = periodOf(PeriodUnit.Week, today, { firstWeekday })
+      const { from, to } = preset === "this-week" ? week : shiftPeriod(week, -1)
+      return { from, to }
+    }
     case "this-month":
       return { from: startOfMonth(today), to: endOfMonth(today) }
     case "last-month": {
@@ -202,10 +224,11 @@ function rangeFromToday(preset: Exclude<DateRangePreset, "custom">, today: strin
  *
  * @param preset Preset to resolve.
  * @param options Injected instant, zone, and the range `"custom"` reads.
- * @throws When `now` or `timeZone` cannot name a day, or `"custom"` is missing a usable range.
+ * @throws When `now` or `timeZone` cannot name a day, `"custom"` is missing a usable range, or a
+ * week preset gets a `firstWeekday` that is not a whole number from 1 to 7.
  */
 export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetOptions): DateRange {
-  const { now, timeZone, custom } = options
+  const { now, timeZone, custom, firstWeekday } = options
 
   if (preset === "custom") {
     if (!custom) throw new Error(`the "custom" preset needs a range in options.custom`)
@@ -215,7 +238,7 @@ export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetO
     return { from: custom.from, to: custom.to }
   }
 
-  return rangeFromToday(preset, isoDateInTz(now, timeZone))
+  return rangeFromToday(preset, isoDateInTz(now, timeZone), firstWeekday)
 }
 
 /**
@@ -229,7 +252,8 @@ export function rangeForPreset(preset: DateRangePreset, options: RangeForPresetO
  * The canonical order collides by construction, on 143 days of 2024–2027 — `this-month` with
  * `last-30-days` (`2024-04-01 → 2024-04-30`), `this-year` with `last-12-months`
  * (`2024-01-01 → 2024-12-31`), `this-quarter` with `last-90-days` (`2025-01-01 → 2025-03-31`) —
- * and each resolves to the earlier one. A caller that has to highlight what the user actually
+ * and each resolves to the earlier one. A Monday-start `this-week` meets `last-7-days` every Sunday
+ * the same way. A caller that has to highlight what the user actually
  * picked should keep the preset in its own state rather than derive it from the range.
  */
 export function presetForRange(
@@ -237,13 +261,13 @@ export function presetForRange(
   options: PresetForRangeOptions,
 ): DateRangePreset | undefined {
   if (!isValidDateRange(range)) return undefined
-  const { now, timeZone, presets = dateRangePresets } = options
+  const { now, timeZone, presets = dateRangePresets, firstWeekday } = options
   // One zone lookup for the whole candidate list: every candidate is resolved against the same
   // instant, so rebuilding that date per candidate is the same answer at 14 times the cost.
   const today = isoDateInTz(now, timeZone)
 
   return presets.find((preset) =>
-    preset !== "custom" && isSameRange(rangeFromToday(preset, today), range)
+    preset !== "custom" && isSameRange(rangeFromToday(preset, today, firstWeekday), range)
   )
 }
 

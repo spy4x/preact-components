@@ -11,6 +11,7 @@ import {
   keyFaces,
   sequenceSteps,
 } from "./kbd-keys.tsx"
+import { useLabels } from "./i18n.tsx"
 
 export { KBD_LABELS, type KbdLabels, type KeyFace, keyFaces } from "./kbd-keys.tsx"
 
@@ -54,7 +55,7 @@ export function Kbd({ keys, children, apple, labels, class: className }: KbdProp
   const isApple = useApplePlatform(apple)
   if (keys === undefined) return <kbd class={cn(KEY_CLASS, className)}>{children}</kbd>
 
-  const words = { ...KBD_LABELS, ...labels }
+  const words = useLabels("Kbd", KBD_LABELS, labels)
   const steps = sequenceSteps(keys).map((step) => keyFaces(step, isApple, words))
   if (steps.length === 1) {
     return (

@@ -1,6 +1,6 @@
 /**
- * The device `WindowFrame` draws, without its figure and caption: a browser window, a terminal or a
- * phone around the content. Kept apart from `window-frame.tsx` because that module merges its
+ * The frame `WindowFrame` draws, without its figure and caption: a plain frame, a browser window, a
+ * terminal or a phone around the content. Kept apart from `window-frame.tsx` because that module merges its
  * `class` with `cn`, and `ScreenTour` draws the same device in an island that must not carry
  * `tailwind-merge`. Internal: not one of the package's entry points.
  *
@@ -8,15 +8,20 @@
  */
 
 import type { ComponentChildren, JSX } from "preact"
+import { translate, useT } from "./i18n.tsx"
 
-/** Which device a `WindowFrame` or a `ScreenTour` draws around its content. */
-export type WindowFrameVariant = "browser" | "terminal" | "phone"
+/**
+ * Which frame a `WindowFrame` or a `ScreenTour` draws around its content. `plain` is the rounded
+ * border and surface alone, the default for product media; `browser` adds a window bar with an
+ * address, for when the URL itself matters.
+ */
+export type WindowFrameVariant = "plain" | "browser" | "terminal" | "phone"
 
 /** Props of {@link FrameChrome}. */
 export interface FrameChromeProps {
-  /** A browser window, a terminal window or a phone. */
+  /** A plain frame, a browser window, a terminal window or a phone. */
   variant: WindowFrameVariant
-  /** The address in the browser's bar, or the terminal's title. */
+  /** The address in the browser's bar, or the terminal's title. The plain frame and the phone show none. */
   title?: string
   children?: ComponentChildren
 }
@@ -32,9 +37,14 @@ function Dots(): JSX.Element {
   )
 }
 
-/** Light: a large soft shadow. Dark: a 1 px border with a faint highlight along the top edge. */
-const browserFrame = "overflow-hidden rounded-xl border border-transparent bg-surface shadow-2xl " +
-  "dark:border-subtle dark:shadow-[inset_0_1px_0_var(--color-border-strong)]"
+/**
+ * The browser's and the plain frame's box. Light: a large soft shadow. Dark: a 1 px border with a
+ * faint highlight along the top edge. The border is the `--color-border-frame` token, not a `dark:`
+ * class, so an app that maps its palette through tokens without the `dark` variant still gets the
+ * edge.
+ */
+const browserFrame = "overflow-hidden rounded-xl border border-frame bg-surface shadow-2xl " +
+  "dark:shadow-[inset_0_1px_0_var(--color-border-strong)]"
 
 /*
  * The terminal is dark in both themes: its frame carries the `dark` class, which repaints the theme
@@ -44,11 +54,19 @@ const browserFrame = "overflow-hidden rounded-xl border border-transparent bg-su
 const terminalFrame =
   "dark overflow-hidden rounded-xl border border-subtle bg-canvas text-foreground shadow-2xl"
 
-const phoneFrame =
-  "mx-auto aspect-[9/19] w-full max-w-xs rounded-[2.5rem] bg-foreground p-2 shadow-2xl"
+/**
+ * The phone: a near-black body in both themes, as a real one is, so it never turns into a pale slab
+ * on a dark page. Its edge is the frame border, which shows on a dark page only. The bezel is thin;
+ * the top one is a little deeper and holds the speaker, so nothing covers the top of the screenshot,
+ * where an app keeps its own bar. The screen's corners are the card radius, small enough that a
+ * heading or a tab bar at the screenshot's edge stays whole even at 160 px wide; a phone-sized
+ * radius cut the first letter off.
+ */
+const phoneFrame = "relative mx-auto aspect-[9/19] w-full max-w-xs rounded-2xl border " +
+  "border-frame bg-scrim-strong p-1 pt-4 shadow-2xl"
 
 /**
- * Draws the device around `children`. The chrome (the window buttons, the address bar, the notch)
+ * Draws the device around `children`. The chrome (the window buttons, the address bar, the speaker)
  * is decorative and hidden from assistive tech; the terminal's output is a named, focusable group
  * because it may scroll sideways.
  *
@@ -56,6 +74,7 @@ const phoneFrame =
  * @returns The device's outer `<div>`.
  */
 export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX.Element {
+  const translator = useT()
   if (variant === "terminal") {
     return (
       <div class={terminalFrame}>
@@ -66,7 +85,7 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
         {/* It may overflow sideways, so it is focusable and named for keyboard scrolling. */}
         <div
           role="group"
-          aria-label={title ?? "Terminal"}
+          aria-label={title ?? translate(translator, "FrameChrome.terminal", "Terminal")}
           tabIndex={0}
           class="overflow-x-auto p-4 font-mono text-sm whitespace-pre focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
         >
@@ -78,16 +97,15 @@ export function FrameChrome({ variant, title, children }: FrameChromeProps): JSX
   if (variant === "phone") {
     return (
       <div class={phoneFrame}>
-        <div class="relative h-full overflow-hidden rounded-[2rem] bg-surface">
-          <span
-            aria-hidden="true"
-            class="absolute left-1/2 top-2 z-10 h-6 w-24 -translate-x-1/2 rounded-full bg-foreground"
-          />
-          {children}
-        </div>
+        <span
+          aria-hidden="true"
+          class="absolute start-1/2 top-2 h-1 w-10 -translate-x-1/2 [&:dir(rtl)]:translate-x-1/2 rounded-full bg-track"
+        />
+        <div class="relative h-full overflow-hidden rounded-xl bg-surface">{children}</div>
       </div>
     )
   }
+  if (variant === "plain") return <div class={browserFrame}>{children}</div>
   return (
     <div class={browserFrame}>
       <div

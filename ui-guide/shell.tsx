@@ -568,17 +568,19 @@ export function UIGuide(
               href={pageHref("overview")}
               onClick={(event) => follow(pageHref("overview"), event)}
               class="flex min-w-0 items-center gap-2 font-semibold text-foreground"
+              data-e2e="ui-guide-title"
             >
-              <span class="truncate">{labels.title}</span>
+              {/* Never cut short: a name too long for the bar wraps at its hyphen instead. */}
+              <span class="text-sm leading-tight sm:text-base">{labels.title}</span>
               {version
                 ? (
-                  <span class="hidden rounded-full bg-canvas px-2 text-xs font-medium text-muted sm:inline">
+                  <span class="hidden shrink-0 rounded-full bg-canvas px-2 text-xs font-medium text-muted lg:inline">
                     v{version}
                   </span>
                 )
                 : null}
             </a>
-            <div class="ml-auto flex items-center gap-2">
+            <div class="ml-auto flex items-center gap-1 sm:gap-2">
               <GuideSearch entries={entries} labels={labels} go={go} />
               {author
                 ? (
@@ -757,7 +759,7 @@ function ThemeSwitch({ scheme, labels }: { scheme: ColorSchemePort; labels: Labe
       data-e2e="theme-toggle"
     >
       {scheme.dark ? <IconSun class="size-5" /> : <IconMoon class="size-5" />}
-      <span class="hidden md:inline">{scheme.dark ? labels.lightMode : labels.darkMode}</span>
+      <span class="hidden xl:inline">{scheme.dark ? labels.lightMode : labels.darkMode}</span>
     </button>
   )
 }

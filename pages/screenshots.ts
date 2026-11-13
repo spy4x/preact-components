@@ -239,6 +239,9 @@ async function main(): Promise<void> {
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--no-first-run",
+        // Keep the checks silent: a demo such as `YouTubeVideo` autoplays once it is pressed, and
+        // headless Chromium plays its sound through the machine's speakers.
+        "--mute-audio",
         "--hide-scrollbars",
         "--remote-debugging-port=0",
         `--user-data-dir=${profile}`,

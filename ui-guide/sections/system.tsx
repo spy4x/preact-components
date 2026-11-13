@@ -74,6 +74,7 @@ import {
 import { Shell } from "@spy4x/preact-system/shell"
 import { SiteFooter } from "@spy4x/preact-system/site-footer"
 import { SiteHeader } from "@spy4x/preact-system/site-header"
+import { LanguagePicker } from "@spy4x/preact-ui/language-picker"
 import { readStateInit, StateInit } from "@spy4x/preact-system/state-init"
 import {
   type ContainerLike,
@@ -84,6 +85,7 @@ import {
 } from "@spy4x/preact-system/sw-updater"
 import { ConflictChooser, type ConflictItem } from "@spy4x/preact-system/conflict-chooser"
 import { InstallPrompt } from "@spy4x/preact-system/install-prompt"
+import { MailedCodeStep } from "@spy4x/preact-system/mailed-code-step"
 import { SyncStatus } from "@spy4x/preact-system/sync-status"
 import { SavedCopyNotice } from "@spy4x/preact-system/saved-copy-notice"
 import {
@@ -110,6 +112,8 @@ import { type } from "arktype"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import type { DemoFragment } from "../registry.ts"
+import { ArabicSwitch } from "./arabic-demo.tsx"
+import { DEMO_LANGUAGES, InDemoLanguage, useDemoLanguage } from "./language-demo.tsx"
 
 /** One captioned part of a card whose demo shows several things side by side. */
 function Part({ title, children }: { title: string; children: ComponentChildren }) {
@@ -1014,6 +1018,36 @@ function AuthFormModeLinkDemo() {
   )
 }
 
+/**
+ * One instance that opens with a login handed back through `defaultLogin` and reports the login
+ * as typed through `onLoginInput`, the way a page offers "Email me a sign-in link" once the field
+ * holds an address. The line below shows the last value reported, and that the password never is.
+ */
+function AuthFormLoginInputDemo() {
+  const login = useSignal("ana@example.com")
+  const reports = useSignal(0)
+
+  return (
+    <Stack gap="sm" class="max-w-sm" data-e2e="auth-form-login-input-demo">
+      <AuthForm
+        mode="sign-in"
+        step="credentials"
+        action="/auth/sign-in"
+        defaultLogin="ana@example.com"
+        onLoginInput={(typed) => {
+          login.value = typed
+          reports.value += 1
+        }}
+      />
+      <p class={NOTE}>
+        login as typed: <span data-e2e="auth-form-login-input-value">{login.value}</span>, reports:
+        {" "}
+        <span data-e2e="auth-form-login-input-reports">{reports.value}</span>
+      </p>
+    </Stack>
+  )
+}
+
 /** The two errors this card's buttons can set, kept next to each other for that reason. */
 const FORM_ERROR = "Wrong login or password"
 const FIELD_ERROR: AuthFormError = { message: "No account with that login", field: "login" }
@@ -1136,6 +1170,116 @@ function AuthFormInteractiveDemo() {
 }
 
 /**
+ * A sign-in with a pretend server: a submit turns `busy` on, and a moment later the answer turns it
+ * off with an error, as an app's own round trip would. The login `nobody` gets a field error on the
+ * login, anything else the form-level one, so a check can see where focus lands after each.
+ */
+function AuthFormRoundTripDemo() {
+  const busy = useSignal(false)
+  const error = useSignal<string | AuthFormError | null>(null)
+  return (
+    <div class="max-w-sm" data-e2e="auth-form-round-trip">
+      <AuthForm
+        mode="sign-in"
+        step="credentials"
+        busy={busy.value}
+        error={error.value}
+        onSignIn={({ login }) => {
+          error.value = null
+          busy.value = true
+          setTimeout(() => {
+            busy.value = false
+            error.value = login === "nobody" ? FIELD_ERROR : FORM_ERROR
+          }, 300)
+        }}
+      />
+    </div>
+  )
+}
+
+/**
+ * `MailedCodeStep` with a pretend server, mounted only after "Email me a code" is pressed, as an
+ * app shows it once the mail went out: mounted with the page, it would take the page's focus. The
+ * code `K7Q-2XM` is accepted and any other well-formed one (three letters, digits or `_`, a dash,
+ * three more) is refused 300 ms later; a new code goes out 300 ms after the press, with a 30-second
+ * cooldown. The codes `onSubmit` received are listed, so a check can see what reached it. "Use a
+ * different one" closes the step and puts focus back on the button that opened it.
+ */
+function MailedCodeStepDemo() {
+  const open = useSignal(false)
+  const busy = useSignal(false)
+  const error = useSignal<string | null>(null)
+  const resending = useSignal(false)
+  const readyAt = useSignal<number | undefined>(undefined)
+  const received = useSignal<string[]>([])
+  const accepted = useSignal(false)
+  // Back from the step, focus returns to the button that opened it, as an app's address step
+  // would take it in its address field.
+  const opener = useRef<HTMLButtonElement>(null)
+  const returning = useRef(false)
+  useEffect(() => {
+    if (open.value || !returning.current) return
+    returning.current = false
+    opener.current?.focus()
+  }, [open.value])
+  return (
+    <div class="flex max-w-md flex-col gap-4" data-e2e="mailed-code-step-demo">
+      {open.value
+        ? (
+          <MailedCodeStep
+            sentence={
+              <>
+                We sent a code to <strong class="wrap-anywhere">ana@example.com</strong>.
+              </>
+            }
+            minutes={15}
+            pattern={/^\w{3}-\w{3}$/}
+            busy={busy.value}
+            error={error.value}
+            resending={resending.value}
+            readyAt={readyAt.value}
+            onSubmit={(code) => {
+              received.value = [...received.value, code]
+              error.value = null
+              busy.value = true
+              setTimeout(() => {
+                busy.value = false
+                accepted.value = code === "K7Q-2XM"
+                error.value = accepted.value ? null : "That code is wrong or has expired."
+              }, 300)
+            }}
+            onResend={() => {
+              resending.value = true
+              setTimeout(() => {
+                resending.value = false
+                readyAt.value = Date.now() + 30_000
+              }, 300)
+            }}
+            onChangeEmail={() => {
+              returning.current = true
+              open.value = false
+            }}
+          />
+        )
+        : (
+          <Button
+            ref={opener}
+            type="button"
+            class="self-start"
+            onClick={() => (open.value = true)}
+          >
+            Email me a code
+          </Button>
+        )}
+      <p class="text-sm text-muted" data-e2e="mailed-code-step-demo-received">
+        {accepted.value ? "Accepted. " : ""}onSubmit received:{" "}
+        {received.value.join(", ") || "nothing yet"}
+      </p>
+    </div>
+  )
+}
+
+/**
  * `SiteHeader`, at the guide's own width.
  *
  * The links below `lg` (1024px) collapse into the `<details>` menu the component builds them
@@ -1168,6 +1312,37 @@ function SiteHeaderDemo() {
           <Button size="sm" data-e2e="site-header-cta">
             Get started
           </Button>
+        }
+      />
+    </div>
+  )
+}
+
+/**
+ * `SiteHeader` as a multilingual site draws it: a `LanguagePicker` menu beside the call to action.
+ * Below `sm` the language panel spans the bar 16 px in from each side, under the globe; opening it
+ * closes the links' menu and the other way round, with or without JavaScript.
+ */
+function SiteHeaderLanguageDemo() {
+  return (
+    <div data-e2e="site-header-language-demo">
+      <SiteHeader
+        brand={<span class="text-lg font-semibold text-foreground">Acme</span>}
+        links={[
+          { label: "Product", href: "/product" },
+          { label: "Pricing", href: "/pricing" },
+        ]}
+        labels={{ nav: "Navigation, with a language menu" }}
+        actions={
+          <>
+            <LanguagePicker
+              mode="menu"
+              languages={["en", "de", "fr", "ar"]}
+              current="de"
+              href={(tag) => `#language-${tag}`}
+            />
+            <Button size="sm">Try demo</Button>
+          </>
         }
       />
     </div>
@@ -1412,32 +1587,43 @@ const railShellItems: RailShellItem[] = [
  * `AccountMenu` at the foot of a sidebar-width column, opening upward, with the chosen theme and the
  * last address `navigate` took printed under it, so a choice and a routed "Profile" click show.
  * "Keyboard shortcuts" shows its `?` at the right and prints "shortcuts" as the route when chosen.
+ * "Language" opens `LanguageDialog`, and a choice there switches the menu's own words.
  */
 function AccountMenuDemo() {
   const theme = useSignal<AccountMenuTheme>("system")
   const route = useSignal("none")
+  const language = useDemoLanguage()
   return (
     <div
       class="flex min-h-96 w-60 max-w-full flex-col justify-end gap-4"
       data-e2e="account-menu-demo"
     >
-      <AccountMenu
-        user={railShellUser}
-        headerHref="#account-you"
-        items={[
-          { label: "Profile", href: "#account-profile" },
-          {
-            label: "Keyboard shortcuts",
-            onClick: () => route.value = "shortcuts",
-            keyshortcuts: ["?"],
-            dataE2E: "account-menu-demo-shortcuts",
-          },
-        ]}
-        navigate={(href) => route.value = href}
-        theme={theme.value}
-        onThemeChange={(value) => theme.value = value}
-        signOut={{ label: "Sign out", action: "#account-sign-out", onClick: () => undefined }}
-      />
+      <InDemoLanguage language={language}>
+        <AccountMenu
+          user={railShellUser}
+          headerHref="#account-you"
+          items={[
+            { label: "Profile", href: "#account-profile" },
+            {
+              label: "Keyboard shortcuts",
+              onClick: () => route.value = "shortcuts",
+              keyshortcuts: ["?"],
+              dataE2E: "account-menu-demo-shortcuts",
+            },
+          ]}
+          navigate={(href) => route.value = href}
+          language={{
+            languages: DEMO_LANGUAGES,
+            current: language.current,
+            automatic: language.automatic,
+            pending: language.pending,
+            onSelect: language.select,
+          }}
+          theme={theme.value}
+          onThemeChange={(value) => theme.value = value}
+          signOut={{ label: "Sign out", action: "#account-sign-out", onClick: () => undefined }}
+        />
+      </InDemoLanguage>
       <p class="text-sm text-muted">
         Theme: <strong data-e2e="account-menu-demo-theme">{theme.value}</strong>
       </p>
@@ -1485,7 +1671,7 @@ function RailShellDemoSwitcher(
       trigger={compact ? mark : (
         <>
           {mark}
-          <span class="flex min-w-0 flex-1 flex-col text-left">
+          <span class="flex min-w-0 flex-1 flex-col text-start">
             <span class="truncate text-sm font-medium text-foreground">{workspace.name}</span>
             <span class="truncate text-xs text-muted">{workspace.role}</span>
           </span>
@@ -1545,7 +1731,7 @@ function RailShellDemoAccount(
         <span class={compact ? "sr-only" : "min-w-0 flex-1 truncate"}>Notifications</span>
         <span
           class={compact
-            ? "absolute top-1 left-1/2 ml-2 h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"
+            ? "absolute top-1 start-1/2 ms-2 h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"
             : "h-5 min-w-5 rounded-full bg-primary px-1 text-center text-xs leading-5 font-semibold text-primary-foreground"}
           aria-hidden="true"
         >
@@ -1813,6 +1999,7 @@ const appShellConnections: readonly AppShellConnection[] = [
  * shows a warning cell and a phone shows a strip above the tab bar, and the live region speaks it
  * either way. Every link goes through `navigate`, which moves the current marker. The button opens
  * a page inside the second section, whose entry then reads as the current section, not the page.
+ * The account's Language row, in the menu and the phone sheet, switches the whole card's language.
  */
 function AppShellDemo() {
   const app = useSignal<"product" | "admin">("product")
@@ -1821,82 +2008,94 @@ function AppShellDemo() {
   const items = appShellApps[app.value]
   const current = useSignal(items[0].href)
   const admin = app.value === "admin"
+  const language = useDemoLanguage()
   return (
-    <div
-      class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
-      data-e2e="app-shell-demo"
-    >
-      <AppShell
-        class="min-h-full"
-        labels={{ nav: "AppShell demo navigation", sidebar: "AppShell demo sidebar" }}
-        items={items}
-        currentPath={current.value}
-        navigate={(href) => current.value = href}
-        notifications={{ href: "#app-notifications", unread: admin ? 0 : 3 }}
-        account={{
-          user: railShellUser,
-          tag: admin ? "Admin" : undefined,
-          items: [{ label: "Profile", href: "#app-profile" }],
-          theme: theme.value,
-          onThemeChange: (value) => theme.value = value,
-          signOut: { label: "Sign out", action: "#app-sign-out", onClick: () => undefined },
-        }}
-        connection={connection.value}
-        width={admin ? "wide" : "default"}
+    <InDemoLanguage language={language}>
+      <div
+        class="h-[600px] overflow-y-auto [--rail-height:600px] max-md:pc-scroll-pb-tab-bar max-md:[:root:has(&)]:scroll-pb-0!"
+        data-e2e="app-shell-demo"
       >
-        <div class="flex flex-col gap-4 text-sm">
-          <fieldset class="flex flex-wrap gap-4">
-            <legend class="mb-2 font-medium">App</legend>
-            {(["product", "admin"] as const).map((value) => (
-              <label key={value} class="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="app-shell-demo-app"
-                  checked={app.value === value}
-                  onChange={() => {
-                    app.value = value
-                    current.value = appShellApps[value][0].href
-                  }}
-                  data-e2e={`app-shell-demo-${value}`}
-                />
-                {value === "product" ? "Product" : "Admin panel"}
-              </label>
-            ))}
-          </fieldset>
-          <label class="flex flex-col gap-1">
-            Connection
-            <select
-              class="w-48 rounded-md border border-subtle bg-surface px-2 py-1"
-              value={connection.value}
-              onChange={(event) =>
-                connection.value = event.currentTarget.value as AppShellConnection}
-              data-e2e="app-shell-demo-connection"
-            >
-              {appShellConnections.map((value) => <option key={value} value={value}>{value}
-              </option>)}
-            </select>
-          </label>
-          <p>
-            Current: <strong data-e2e="app-shell-demo-current">{current.value}</strong>, theme:{" "}
-            <strong>{theme.value}</strong>
-          </p>
-          <p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => current.value = `${items[1].href}/42`}
-              data-e2e="app-shell-demo-inside"
-            >
-              Open a page inside {items[1].label}
-            </Button>
-          </p>
-          <p class="text-muted">
-            The page starts here, in a column centred in the space beside the rail:{" "}
-            {admin ? "64 rem wide, for tables" : "48 rem wide by default"}.
-          </p>
-        </div>
-      </AppShell>
-    </div>
+        <AppShell
+          class="min-h-full"
+          labels={{ nav: "AppShell demo navigation", sidebar: "AppShell demo sidebar" }}
+          items={items}
+          currentPath={current.value}
+          navigate={(href) => current.value = href}
+          notifications={{ href: "#app-notifications", unread: admin ? 0 : 3 }}
+          account={{
+            user: railShellUser,
+            tag: admin ? "Admin" : undefined,
+            items: [{ label: "Profile", href: "#app-profile" }],
+            theme: theme.value,
+            onThemeChange: (value) => theme.value = value,
+            language: {
+              languages: DEMO_LANGUAGES,
+              current: language.current,
+              automatic: language.automatic,
+              pending: language.pending,
+              onSelect: language.select,
+            },
+            signOut: { label: "Sign out", action: "#app-sign-out", onClick: () => undefined },
+          }}
+          connection={connection.value}
+          width={admin ? "wide" : "default"}
+        >
+          <div class="flex flex-col gap-4 text-sm">
+            <fieldset class="flex flex-wrap gap-4">
+              <legend class="mb-2 font-medium">App</legend>
+              {(["product", "admin"] as const).map((value) => (
+                <label key={value} class="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="app-shell-demo-app"
+                    checked={app.value === value}
+                    onChange={() => {
+                      app.value = value
+                      current.value = appShellApps[value][0].href
+                    }}
+                    data-e2e={`app-shell-demo-${value}`}
+                  />
+                  {value === "product" ? "Product" : "Admin panel"}
+                </label>
+              ))}
+            </fieldset>
+            <label class="flex flex-col gap-1">
+              Connection
+              <select
+                class="w-48 rounded-md border border-subtle bg-surface px-2 py-1"
+                value={connection.value}
+                onChange={(event) =>
+                  connection.value = event.currentTarget.value as AppShellConnection}
+                data-e2e="app-shell-demo-connection"
+              >
+                {appShellConnections.map((value) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </select>
+            </label>
+            <p>
+              Current: <strong data-e2e="app-shell-demo-current">{current.value}</strong>, theme:
+              {" "}
+              <strong>{theme.value}</strong>
+            </p>
+            <p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => current.value = `${items[1].href}/42`}
+                data-e2e="app-shell-demo-inside"
+              >
+                Open a page inside {items[1].label}
+              </Button>
+            </p>
+            <p class="text-muted">
+              The page starts here, in a column centred in the space beside the rail:{" "}
+              {admin ? "64 rem wide, for tables" : "48 rem wide by default"}.
+            </p>
+          </div>
+        </AppShell>
+      </div>
+    </InDemoLanguage>
   )
 }
 
@@ -1998,7 +2197,7 @@ function SavedCopyNoticeDemo() {
         formatTime={(time) =>
           renders.value === 0 ? clock(time) : `${clock(time)}, render ${renders.value}`}
       />
-      <ul class="list-disc pl-6 text-sm">
+      <ul class="list-disc ps-6 text-sm">
         <li>Laptop, signed in on 3 October</li>
         <li>Phone, signed in on 9 October</li>
       </ul>
@@ -2508,7 +2707,11 @@ useEffect(() => {
 >
   <PageContent />
 </Shell>`,
-    render: () => <ShellDemo />,
+    render: () => (
+      <ArabicSwitch name="shell">
+        <ShellDemo />
+      </ArabicSwitch>
+    ),
   },
   Rail: {
     summary:
@@ -2595,7 +2798,11 @@ useEffect(() => {
 >
   <Page />
 </Rail>`,
-    render: () => <RailDemo />,
+    render: () => (
+      <ArabicSwitch name="rail">
+        <RailDemo />
+      </ArabicSwitch>
+    ),
   },
   AppShell: {
     summary:
@@ -2612,7 +2819,7 @@ useEffect(() => {
         name: "account",
         type: "AppShellAccount",
         description:
-          'The signed-in person, the menu\'s items, the theme, **Sign out**, and an optional `tag` such as `"Admin"`, drawn as a neutral badge.',
+          'The signed-in person, the menu\'s items, the `language` (`AccountMenuLanguage`: a Language row in the menu and the phone sheet, opening `LanguageDialog`), the theme, **Sign out**, and an optional `tag` such as `"Admin"`, drawn as a neutral badge.',
       },
       {
         name: "notifications",
@@ -2659,6 +2866,7 @@ useEffect(() => {
     user: { name: session.name, email: session.email },
     tag: isAdminApp ? "Admin" : undefined,
     items: [{ label: "Profile", href: "/profile" }],
+    language: { languages: ["en", "de", "ar"], current: language, onSelect: switchLanguage },
     theme,
     onThemeChange: setTheme,
     signOut: { label: "Sign out", action: "/sign-out" },
@@ -2761,11 +2969,15 @@ useEffect(() => {
 >
   <Page />
 </RailShell>`,
-    render: () => <RailShellDemo />,
+    render: () => (
+      <ArabicSwitch name="rail-shell">
+        <RailShellDemo />
+      </ArabicSwitch>
+    ),
   },
   AccountMenu: {
     summary:
-      "The signed-in person's menu: who is signed in on the trigger, then the caller's items, a theme choice and **Sign out**.",
+      "The signed-in person's menu: who is signed in on the trigger, then the caller's items, a Language item, a theme choice and **Sign out**.",
     wide: true,
     props: [
       {
@@ -2778,6 +2990,12 @@ useEffect(() => {
         type: "AccountMenuItem[]",
         description:
           "The caller's entries first: a link, a form post (`action`) or a button. `keyshortcuts` announces the keys the app binds to the same action and shows the first at the item's right.",
+      },
+      {
+        name: "language",
+        type: "AccountMenuLanguage",
+        description:
+          "`LanguageDialog`'s props without `open` and `onClose`. Given, a Language item with the language in use, named in itself, opens that dialog.",
       },
       {
         name: "theme / onThemeChange",
@@ -2816,6 +3034,7 @@ useEffect(() => {
     { label: "Keyboard shortcuts", onClick: openShortcuts, keyshortcuts: ["?"] },
   ]}
   navigate={(href) => router.navigate(href)}
+  language={{ languages: ["en", "de", "ar"], current: language, onSelect: switchLanguage }}
   theme={theme}
   onThemeChange={setTheme}
   signOut={{ label: "Sign out", action: "/sign-out" }}
@@ -2855,7 +3074,12 @@ useEffect(() => {
   ]}
   actions={<Button size="sm" onClick={() => navigate("/get-started")}>Get started</Button>}
 />`,
-    render: () => <SiteHeaderDemo />,
+    render: () => (
+      <Stack gap="md">
+        <SiteHeaderDemo />
+        <SiteHeaderLanguageDemo />
+      </Stack>
+    ),
   },
   SiteFooter: {
     summary:
@@ -2947,6 +3171,18 @@ useEffect(() => {
           'On sign-in, the login field\'s autofill also offers saved passkeys (autocomplete "username webauthn"). Your page starts the conditional WebAuthn request.',
       },
       {
+        name: "defaultLogin",
+        type: "string",
+        description:
+          "The login field's starting value, so a page that sends a person back can hand their address back. Typing replaces it.",
+      },
+      {
+        name: "onLoginInput",
+        type: "(login: string) => void",
+        description:
+          'Called on every input of the login field with its value as typed, for an action that needs the address first, such as "Email me a sign-in link". Never the password.',
+      },
+      {
         name: "submitVariant",
         type: "ButtonVariant",
         default: `"primary"`,
@@ -2961,7 +3197,8 @@ useEffect(() => {
     ],
     snippet: `// End-to-end tests find each control by a fixed data-e2e, whatever the labels say:
 // auth-form (the form), auth-form-login, auth-form-password, auth-form-password-toggle,
-// auth-form-code, auth-form-submit and auth-form-mode-switch.
+// auth-form-code, auth-form-submit, auth-form-mode-switch and auth-form-error (a message).
+// When busy ends, the focus the disabled submit dropped goes to the error the answer brought.
 <AuthForm
   mode={mode}
   step={step}
@@ -2973,6 +3210,8 @@ useEffect(() => {
   busy={pending}
   error={error} // string, or { message, field: "login" | "password" | "code" }
   names={{ login: "username", code: "otp" }} // what a post without script sends
+  defaultLogin={address} // handed back by a page that sent the person here
+  onLoginInput={(login) => typedLogin = login} // the login as typed, never the password
   action="/auth/sign-in"
   footer={<a class="pc-link" href="/sign-in">Back to sign in</a>}
 />
@@ -2981,46 +3220,54 @@ useEffect(() => {
 <Button onClick={tryAsGuest}>Try it now</Button>
 <AuthForm mode="sign-up" step="credentials" onSignUp={signUp} submitVariant="secondary" />`,
     render: () => (
-      <Stack gap="xl">
-        <Part title="Sign in and sign up, side by side">
-          <AuthFormAutofillDemo />
-        </Part>
-        <Part title="Driven by buttons in place of a server">
-          <AuthFormInteractiveDemo />
-        </Part>
-        <Part title="With the field names your API expects">
-          <AuthFormNamesDemo />
-        </Part>
-        <Part title="With the mode switch as a link">
-          <AuthFormModeLinkDemo />
-        </Part>
-        <Part title="With passkeys offered in the login field's autofill">
-          <div class="max-w-sm" data-e2e="auth-form-passkey-demo">
-            <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" passkeyAutofill />
-          </div>
-        </Part>
-        <Part title="With a secondary submit, under the page's one primary action">
-          <div class="flex max-w-sm flex-col gap-4" data-e2e="auth-form-submit-variant-demo">
-            <Button type="button" class="w-full">Try it now</Button>
-            <AuthForm
-              mode="sign-up"
-              step="credentials"
-              action="/auth/sign-up"
-              submitVariant="secondary"
-            />
-          </div>
-        </Part>
-        <Part title="With a link below the form">
-          <div class="max-w-sm" data-e2e="auth-form-footer-demo">
-            <AuthForm
-              mode="sign-up"
-              step="credentials"
-              action="/auth/sign-up"
-              footer={<a class="pc-link" href="#system">Back to sign in</a>}
-            />
-          </div>
-        </Part>
-      </Stack>
+      <ArabicSwitch name="auth-form">
+        <Stack gap="xl">
+          <Part title="Sign in and sign up, side by side">
+            <AuthFormAutofillDemo />
+          </Part>
+          <Part title="Driven by buttons in place of a server">
+            <AuthFormInteractiveDemo />
+          </Part>
+          <Part title="After a refused submit, focus goes to the error">
+            <AuthFormRoundTripDemo />
+          </Part>
+          <Part title="With the field names your API expects">
+            <AuthFormNamesDemo />
+          </Part>
+          <Part title="With the mode switch as a link">
+            <AuthFormModeLinkDemo />
+          </Part>
+          <Part title="With a login handed back, and reported as typed">
+            <AuthFormLoginInputDemo />
+          </Part>
+          <Part title="With passkeys offered in the login field's autofill">
+            <div class="max-w-sm" data-e2e="auth-form-passkey-demo">
+              <AuthForm mode="sign-in" step="credentials" action="/auth/sign-in" passkeyAutofill />
+            </div>
+          </Part>
+          <Part title="With a secondary submit, under the page's one primary action">
+            <div class="flex max-w-sm flex-col gap-4" data-e2e="auth-form-submit-variant-demo">
+              <Button type="button" class="w-full">Try it now</Button>
+              <AuthForm
+                mode="sign-up"
+                step="credentials"
+                action="/auth/sign-up"
+                submitVariant="secondary"
+              />
+            </div>
+          </Part>
+          <Part title="With a link below the form">
+            <div class="max-w-sm" data-e2e="auth-form-footer-demo">
+              <AuthForm
+                mode="sign-up"
+                step="credentials"
+                action="/auth/sign-up"
+                footer={<a class="pc-link" href="#system">Back to sign in</a>}
+              />
+            </div>
+          </Part>
+        </Stack>
+      </ArabicSwitch>
     ),
   },
   Calendar: {
@@ -3077,20 +3324,22 @@ useEffect(() => {
   onSelectDate={(date) => picked.value = date}
 />`,
     render: () => (
-      <Grid minColumnWidth="md" gap="lg" class="sm:grid-cols-2">
-        <Part title="Links, in three locales">
-          <CalendarLocaleDemo />
-        </Part>
-        <Part title="Buttons and the keyboard">
-          <CalendarInteractiveDemo />
-        </Part>
-        <Part title="An owner that refuses every month">
-          <CalendarRefusingDemo />
-        </Part>
-        <Part title="An owner that answers late">
-          <CalendarLateDemo />
-        </Part>
-      </Grid>
+      <ArabicSwitch name="calendar">
+        <Grid minColumnWidth="md" gap="lg" class="sm:grid-cols-2">
+          <Part title="Links, in three locales">
+            <CalendarLocaleDemo />
+          </Part>
+          <Part title="Buttons and the keyboard">
+            <CalendarInteractiveDemo />
+          </Part>
+          <Part title="An owner that refuses every month">
+            <CalendarRefusingDemo />
+          </Part>
+          <Part title="An owner that answers late">
+            <CalendarLateDemo />
+          </Part>
+        </Grid>
+      </ArabicSwitch>
     ),
   },
   StateInit: {
@@ -3186,7 +3435,7 @@ const tags = seoHeadTags(head)`,
       {
         name: "message",
         type: "string",
-        default: '"New version available"',
+        default: '"A new version is ready"',
         description: "The bar's text.",
       },
       {
@@ -3211,17 +3460,19 @@ const tags = seoHeadTags(head)`,
 // Only when the worker speaks another dialect — the default is { action: "skipWaiting" }:
 <SWUpdater scriptUrl="/sw.js" updateMessage={{ type: "SKIP_WAITING" }} />`,
     render: () => (
-      <Stack gap="xl">
-        <Part title="Mounted with nothing waiting">
-          <SwUpdaterQuietDemo />
-        </Part>
-        <Part title="The function underneath, on a fake registration">
-          <SwUpdaterDemo />
-        </Part>
-        <Part title="Against a real service worker">
-          <SwUpdaterLiveDemo />
-        </Part>
-      </Stack>
+      <ArabicSwitch name="sw-updater">
+        <Stack gap="xl">
+          <Part title="Mounted with nothing waiting">
+            <SwUpdaterQuietDemo />
+          </Part>
+          <Part title="The function underneath, on a fake registration">
+            <SwUpdaterDemo />
+          </Part>
+          <Part title="Against a real service worker">
+            <SwUpdaterLiveDemo />
+          </Part>
+        </Stack>
+      </ArabicSwitch>
     ),
   },
   SyncStatus: {
@@ -3384,6 +3635,83 @@ const tags = seoHeadTags(head)`,
   />
 )}`,
     render: () => <UnsentChangesDialogDemo />,
+  },
+  MailedCodeStep: {
+    summary:
+      "The step after an app mailed a code: Check your inbox, type the code, Continue, with a resend and the way back to another address.",
+    wide: true,
+    props: [
+      {
+        name: "sentence",
+        type: "ComponentChildren",
+        description: "Where the code went, with the address in bold.",
+      },
+      { name: "minutes", type: "number", description: "How long the code works, said under it." },
+      {
+        name: "onSubmit",
+        type: "(code: string) => void",
+        description: "Gets the code without whitespace; dashes and underscores stay.",
+      },
+      { name: "onResend", type: "() => void", description: "Sends a new code." },
+      {
+        name: "onChangeEmail",
+        type: "() => void",
+        description: "Goes back to the step that asks for the address.",
+      },
+      {
+        name: "busy",
+        type: "boolean",
+        default: "false",
+        description: "The code is being checked; a second submit is ignored.",
+      },
+      {
+        name: "error",
+        type: "string | null",
+        description: "Why the code was refused; the field takes focus with its text selected.",
+      },
+      {
+        name: "pattern",
+        type: "RegExp",
+        description:
+          "A whole code's shape. A refused code never reaches onSubmit; a paste or autofill it accepts submits at once.",
+      },
+      {
+        name: "readyAt",
+        type: "number",
+        description: "When a new code may be sent, for ResendButton's countdown.",
+      },
+      {
+        name: "resending",
+        type: "boolean",
+        default: "false",
+        description: "A new code is being sent.",
+      },
+      {
+        name: "headingLevel",
+        type: "1 | 2 | 3",
+        default: "2",
+        description: "The heading's level; 1 when the step is the page's main content.",
+      },
+    ],
+    snippet: `// data-e2e: mailed-code-step, mailed-code-step-code, mailed-code-step-submit,
+// mailed-code-step-change-email, plus ResendButton's resend-button-*.
+<MailedCodeStep
+  sentence={<>We sent a code to <strong>{email}</strong>.</>}
+  minutes={15}
+  pattern={/^\w{3}-\w{3}$/} // a paste that matches submits at once
+  busy={checking}
+  error={error} // "That code is wrong or has expired."
+  readyAt={sentAt + 60_000}
+  resending={resending}
+  onSubmit={(code) => auth.verify(email, code)}
+  onResend={() => auth.sendCode(email)}
+  onChangeEmail={() => setStep("email")}
+/>`,
+    render: () => (
+      <ArabicSwitch name="mailed-code-step">
+        <MailedCodeStepDemo />
+      </ArabicSwitch>
+    ),
   },
   InstallPrompt: {
     summary:

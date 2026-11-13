@@ -30,6 +30,8 @@ import { useId } from "preact/hooks"
 import { isCurrentLink } from "./site-header.tsx"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
 import { AccountMenu, type AccountMenuItem, type AccountMenuUser } from "./account-menu.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** One entry of {@link ShellProps.navItems}, or of one entry's own `children`. */
 export interface ShellNavItem {
@@ -294,7 +296,7 @@ function ShellNavList(
         <li key={`${index}-${item.name}`}>
           <ShellNavLink item={item} currentPath={currentPath} ports={ports} />
           {item.children && item.children.length > 0 && (
-            <ul class="mt-1 space-y-1 pl-6">
+            <ul class="mt-1 space-y-1 ps-6">
               {item.children.map((child, childIndex) => (
                 <li key={`${childIndex}-${child.name}`}>
                   <ShellNavLink item={child} currentPath={currentPath} ports={ports} />
@@ -350,11 +352,14 @@ export function Shell(props: ShellProps): JSX.Element {
     labels,
     class: className,
   } = props
-  const menuLabel = labels?.menu ?? "Menu"
-  const navLabel = labels?.nav ?? "Main navigation"
-  const skipLabel = labels?.skipToContent ?? "Skip to content"
-  const userMenuLabel = labels?.userMenu ?? "Account menu"
-  const sidebarToggleLabel = labels?.sidebarToggle ?? "Toggle sidebar"
+  const translator = useT()
+  const menuLabel = labels?.menu ?? translate(translator, "Shell.menu", "Menu")
+  const navLabel = labels?.nav ?? translate(translator, "Shell.nav", "Main navigation")
+  const skipLabel = labels?.skipToContent ??
+    translate(translator, "Shell.skipToContent", "Skip to content")
+  const userMenuLabel = labels?.userMenu ?? translate(translator, "Shell.userMenu", "Account menu")
+  const sidebarToggleLabel = labels?.sidebarToggle ??
+    translate(translator, "Shell.sidebarToggle", "Toggle sidebar")
   const panelId = useId()
   const contentId = useId()
   const sidebarId = useId()
@@ -367,7 +372,7 @@ export function Shell(props: ShellProps): JSX.Element {
     <div class={cn("flex min-h-screen flex-col", className)}>
       <a
         href={`#${contentId}`}
-        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-popover dark:focus:bg-canvas"
+        class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-popover dark:focus:bg-canvas"
         data-e2e="shell-skip-link"
       >
         {skipLabel}
@@ -462,7 +467,7 @@ export function Shell(props: ShellProps): JSX.Element {
         <aside
           id={sidebarId}
           class={cn(
-            "hidden shrink-0 flex-col border-r border-subtle lg:w-64",
+            "hidden shrink-0 flex-col border-e border-subtle lg:w-64",
             !collapsed && "lg:flex",
           )}
           data-e2e="shell-sidebar"

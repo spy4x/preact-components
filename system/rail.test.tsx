@@ -322,6 +322,99 @@ describe("Rail", () => {
     expect(html).not.toContain("before:w-1")
   })
 
+  const barColour = "bg-[var(--color-nav-active,var(--color-selected-text))]"
+  const columnBar = ["absolute", "start-0", "w-[3px]", barColour]
+  const tabBar = ["absolute", "top-0", "h-[3px]", barColour]
+
+  /**
+   * The classes of the edge bar inside the first control in `html` whose opening tag `open`
+   * matches, or `[]` when it has none. The bar is an `aria-hidden` span of its own, never a
+   * pseudo-element, so axe can decide the label's contrast.
+   */
+  function barIn(html: string, open: RegExp): string[] {
+    const start = html.search(open)
+    if (start < 0) throw new Error(`no control matches ${open}`)
+    const control = html.slice(start, start + html.slice(start).search(/<\/(?:a|button)>/))
+    expect(controlClass(control)).not.toContain("before:")
+    const bar = control.match(/<span [^>]*data-current-bar[^>]*>/)?.[0]
+    if (bar === undefined) return []
+    expect(bar).toContain('aria-hidden="true"')
+    return bar.match(/class="([^"]*)"/)?.[1].split(" ") ?? []
+  }
+  const link = (href: string) => new RegExp(`<a [^>]*href="${href}"`)
+  const moreButton = /<button [^>]*data-e2e="rail-shell-more"/
+
+  it("adds a 3 px start-edge bar to the labels variant's current cell, a RailEntry's included", () => {
+    const html = render(
+      <Rail
+        variant="labels"
+        items={itemsOf(3)}
+        currentKey="i2"
+        top={(place) =>
+          place === "rail" && (
+            <RailEntry
+              item={{ key: "home", label: "Home", href: "/" }}
+              place="rail"
+              variant="labels"
+              current="page"
+            />
+          )}
+      >
+        page
+      </Rail>,
+    )
+    const column = region(html, "rail-shell-rail", "nav")
+    const top = region(html, "rail-shell-top", "div")
+    for (const [zone, href] of [[column, "/i2"], [top, "/"]]) {
+      const bar = barIn(zone, link(href))
+      for (const name of columnBar) expect(bar).toContain(name)
+      const classes = controlClass(linkTags(zone, href)[0]).split(" ")
+      expect(classes).toContain("bg-[var(--color-surface-active,var(--color-accent-100))]")
+      expect(classes).toContain("font-semibold")
+      expect(classes).toContain("forced-colors:outline-[CanvasText]")
+    }
+    expect(barIn(column, link("/i1"))).toEqual([])
+  })
+
+  it("adds a 3 px top-edge bar to the labels variant's current tab, More included", () => {
+    const items: RailItem[] = [
+      ...itemsOf(2),
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const tabbar = (path: string) =>
+      region(
+        render(<Rail variant="labels" items={items} currentPath={path}>page</Rail>),
+        "rail-shell-tabbar",
+        "nav",
+      )
+    for (const name of tabBar) expect(barIn(tabbar("/i2"), link("/i2"))).toContain(name)
+    expect(barIn(tabbar("/i2"), link("/i1"))).toEqual([])
+    for (const name of tabBar) expect(barIn(tabbar("/about"), moreButton)).toContain(name)
+    expect(barIn(tabbar("/i1"), moreButton)).toEqual([])
+  })
+
+  it("keeps the icons variant's current cell and tab to the fill alone, with no edge bar", () => {
+    const items: RailItem[] = [
+      ...itemsOf(2),
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const html = render(<Rail items={items} currentKey="i2">page</Rail>)
+    for (const [e2e, tag] of [["rail-shell-rail", "nav"], ["rail-shell-tabbar", "nav"]]) {
+      const zone = region(html, e2e, tag)
+      expect(linkTags(zone, "/i2")[0]).toContain("bg-[var(--color-surface-active")
+      expect(barIn(zone, link("/i2"))).toEqual([])
+    }
+    const more = region(
+      render(<Rail items={items} currentPath="/about">page</Rail>),
+      "rail-shell-tabbar",
+      "nav",
+    )
+    expect(more.match(/<button [^>]*data-e2e="rail-shell-more"[^>]*>/)?.[0]).toContain(
+      "bg-[var(--color-surface-active",
+    )
+    expect(barIn(more, moreButton)).toEqual([])
+  })
+
   it("names an icon cell by hidden text and keeps its aria-hidden tooltip outside the control", () => {
     const html = render(
       <Rail items={[{ key: "home", label: "Home", href: "/", Icon: IconHome }]}>page</Rail>,
@@ -385,10 +478,10 @@ describe("Rail", () => {
     expect(html).toContain('data-rail-variant="labels"')
   })
 
-  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the left safe-area inset", () => {
+  it("keeps the icons variant's column 72 px at every desktop width, its cells 48 px squares that take a 64 px labelled shape with no hover, and pads it by the inline-start safe-area inset", () => {
     const html = render(<Rail items={itemsOf(3)}>page</Rail>)
     const aside = html.match(/<aside[^>]*>/)?.[0] ?? ""
-    expect(aside).toContain("pl-safe")
+    expect(aside).toContain("ps-safe")
     const column = columnClasses(html)
     expect(column).toContain("w-18")
     expect(column).not.toContain("w-22")
@@ -524,7 +617,7 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(sheetTop).toMatch(/<button data-rail-close type="button"/)
     // A button centres its text by default; its label starts at the left like a link row's.
     const [buttonRow] = sheetTop.match(/<button data-rail-close[^>]*>/) ?? [``]
-    expect(controlClass(buttonRow).split(` `)).toContain(`text-left`)
+    expect(controlClass(buttonRow).split(` `)).toContain(`text-start`)
   })
 
   it("draws sheet-only items as sheet rows alone, never in the column or as tabs", () => {
@@ -591,6 +684,21 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(footer).toBeGreaterThan(mainEnd)
     expect(footer).toBeLessThan(html.indexOf('data-e2e="rail-shell-dock"'))
     expect(render(<Rail items={itemsOf(2)}>page</Rail>)).not.toContain("rail-shell-page")
+  })
+
+  it("opens the dock with a 24 px fade band above the notice and the tab bar", () => {
+    const html = render(
+      <Rail items={itemsOf(2)} tabBarNotice={<p data-e2e="notice">offline</p>}>page</Rail>,
+    )
+    const dock = html.slice(html.indexOf('data-e2e="rail-shell-dock"'))
+    const band = dock.match(/<div[^>]*data-e2e="rail-shell-dock-fade"[^>]*>/)?.[0] ?? ""
+    // The bar's own surface class, faded in by a mask.
+    expect(band).toContain('class="h-6 [mask-image:linear-gradient(transparent,#000)] bg-surface"')
+    expect(band).toContain('aria-hidden="true"')
+    expect(dock.indexOf(band)).toBeLessThan(dock.indexOf('data-e2e="notice"'))
+    expect(dock.indexOf('data-e2e="notice"')).toBeLessThan(
+      dock.indexOf('data-e2e="rail-shell-tabbar"'),
+    )
   })
 
   it("lets a backdrop tap close the sheet with no script", () => {

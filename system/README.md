@@ -25,30 +25,31 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component             | Subpath                 | Ports / key props                                                                                                                                                                           |
-| --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`         | `account-menu`          | `user`, `items?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
-| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                  |
-| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                          |
-| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                 |
-| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                            |
-| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                        |
-| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                     |
-| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                    |
-| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                           |
-| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?` |
-| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                   |
-| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`    |
-| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                       |
-| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                        |
-| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                              |
-| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                 |
-| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                     |
-| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                               |
-| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                               |
-| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                       |
-| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                              |
-| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                      |
+| Component             | Subpath                 | Ports / key props                                                                                                                                                                                        |
+| --------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccountMenu`         | `account-menu`          | `user`, `items?`, `language?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
+| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                               |
+| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                       |
+| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                              |
+| `MailedCodeStep`      | `mailed-code-step`      | `sentence`, `minutes?`, `onSubmit`, `onResend`, `onChangeEmail`, `busy?`, `error?`, `pattern?`, `readyAt?`, `resending?`, `headingLevel?`, `labels?`, `class?`                                           |
+| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `alternates?`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                          |
+| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                     |
+| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                  |
+| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                                 |
+| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                                        |
+| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?`              |
+| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                                |
+| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`                 |
+| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                                    |
+| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                                     |
+| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                                           |
+| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                              |
+| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                                  |
+| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                                            |
+| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                                            |
+| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                                    |
+| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                                           |
+| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -92,6 +93,16 @@ with an `ogImage`. `twitterCreator` publishes the author's handle as
 `twitter:creator`, right after `twitter:site`. Every tag in the set has its own `name`, `property`
 or `rel`, so Fresh's `<Head>`, which identifies an unkeyed tag by those attributes, prints each one
 once.
+
+`alternates` lists the page in every language it is published in, the page itself and
+`x-default` included, as `{ lang, url }` entries: the shape of ts-libs' `SitemapEntry.alternates`,
+so a site hands the same list to its head and its sitemap. Each entry becomes one
+`<link rel="alternate" hreflang="…" href="…">` right after the canonical link, its address cleaned
+like the canonical one below. When `locale` is set, every other language also becomes an
+`og:locale:alternate`, written with `_` (`pt-BR` → `pt_BR`); the entry pointing at this page,
+`x-default` and the page's own `locale` are left out. Those meta tags share their attributes and
+differ only in `content`, so each carries a `key` named after its value, which keeps Fresh's
+`<Head>` from merging them and cannot equal another block's index key.
 
 Every string the component prints came in as a prop — the title, the description, the site name,
 each crumb's name. It has no user-visible string of its own and therefore no label to default or
@@ -268,6 +279,11 @@ The whole grid is one Tab stop, and the focus moves inside it:
 | Home / End          | the first and last day of the week on screen, clipped to the month |
 | Page Up / Page Down | the neighbouring month, through `onSelectMonth`, same day number   |
 
+The grid's columns run the way the page reads, and the arrows follow them: on a right-to-left page
+(`dir="rtl"` on the page or any ancestor) the left arrow moves a day on and the right arrow a day
+back. Below the `sm` width, a locale whose one-letter weekday names all differ (Arabic, Persian,
+Hebrew) shows those in the header instead of its abbreviations, which are whole words there.
+
 Every key the grid answers is cancelled, so paging a month does not scroll the page. Without
 `onSelectMonth`, Page Up and Page Down do nothing: in link mode the month lives in the URL, and the
 arrows are links that Tab reaches.
@@ -395,7 +411,7 @@ by finding a region that arrived carrying text.
 
 ## The service-worker contract
 
-`SWUpdater` registers the worker and shows one bar: "New version available", with Reload and
+`SWUpdater` registers the worker and shows one bar: "A new version is ready", with Reload and
 Dismiss. Four things about it are the host's business rather than this package's.
 
 **The live region is always there; the bar is not.** The component renders one unstyled
@@ -486,6 +502,12 @@ without a key press behind it. The effect fires on `step` becoming `"one-time-co
 other render, whether that transition comes from a real round trip through an app's server or from
 a caller flipping the prop in a demo.
 
+**When `busy` ends, focus the submit button lost is handed on.** `busy` disables the submit button,
+and a disabled button drops the focus of the reader who pressed it to the page body. So when `busy`
+turns off while focus is on the body or still on that button, it moves to the error the answer
+brought: the named field for a field error, the message (`auth-form-error`) for a form-level one,
+and back to the submit button when there is no error. Focus the reader put anywhere else stays.
+
 **`error` accepts a plain string or `{ message, field? }`.** Most auth errors — a wrong password, a
 network the app could not reach — are not more about one field than the other, so a string is the
 ordinary case. Naming a `field` is for the error that really is about one, an unregistered login
@@ -553,12 +575,39 @@ an integer back into a string.
 
 **Tests find a control by its fixed `data-e2e`, not by a prop.** Every control carries one value
 that never changes: `auth-form` on the form, `auth-form-login`, `auth-form-password`,
-`auth-form-password-toggle`, `auth-form-code`, `auth-form-submit` (in both steps) and
-`auth-form-mode-switch`. This is how `Shell` marks its own parts (`shell-menu-button`,
+`auth-form-password-toggle`, `auth-form-code`, `auth-form-submit` (in both steps),
+`auth-form-mode-switch` and `auth-form-error` on a shown message. This is how `Shell` marks its own parts (`shell-menu-button`,
 `shell-sidebar`), and it holds whatever language the labels are in, which a lookup by label does
 not. A prop for test attributes was not added: nothing varies per caller, and a page with two
 forms tells them apart by the form's accessible name (`Sign in`, `Sign up`). Finding a field by
 its label still works, since every field has a real `<label for>`.
+
+## The `MailedCodeStep` contract
+
+The step after an app e-mailed a code, for sign-up, sign-in and a password reset alike: "Check your
+inbox", the sentence the app passes (the address in bold), how long the code works when `minutes`
+is given, a code field with Continue as the one primary action and a `ResendButton`, all in one card, with
+"Wrong email? Use a different one" centred under the card, so an app places the whole step as it
+is. A code, unlike a mailed link, works in whichever browser the person types it
+into. `DEFAULT_MAILED_CODE_STEP_LABELS` holds its English words.
+
+- **The code leaves without whitespace, and nothing else is removed.** A code copied from a mail
+  carries spaces or a line break; a `-` or `_` may be part of it, so the app's check decides.
+- **`pattern` is the code's shape**, tested after whitespace is removed. A code it refuses shows
+  `labels.invalid` under the field and never reaches `onSubmit`; a new code going out clears it.
+  A paste, a picked suggestion or an autofill (an input event whose `inputType` is
+  `insertFromPaste`, `insertReplacementText` or missing) submits by itself when `pattern` accepts
+  the result, also over a refused code's selected text; typing never does. Without `pattern`,
+  nothing submits by itself. While `busy`, nothing is submitted a second time.
+- **Focus** goes to the field when the step opens, to the field with its text selected after a
+  refused code (once `busy` is off, so the same message twice still moves it), and to the field
+  after a new code went out: `ResendButton` focuses its "on its way" line, a `role="status"`
+  region that is announced, and the step hands focus on to the field. Tab order: the code,
+  Continue, Send a new code, Use a different one.
+- **The form posts with `method="post"`**, so a submit before the script has loaded never puts the
+  code in the address bar.
+- **Fixed `data-e2e` hooks**, as on `AuthForm`: `mailed-code-step`, `mailed-code-step-code`,
+  `mailed-code-step-submit`, `mailed-code-step-change-email`, plus `ResendButton`'s own.
 
 ## The `SiteHeader` contract
 
@@ -568,6 +617,10 @@ view, beside whichever form `links` is currently taking. It is the public-site s
 shell's side navigation (#135) — that one is a signed-in app's frame, this one is a landing page's
 top bar — and the two share the mobile-panel open/close behaviour rather than each writing their
 own; see `mobile-panel.ts` below.
+
+**One menu open at a time.** The menu's `<details>` joins `Dropdown`'s exclusive `MENU_GROUP`
+group, so a `LanguagePicker` menu or any other `Dropdown` in `actions` closes as the links' menu
+opens, and the other way round, with or without JavaScript.
 
 **No links, no navigation.** With `links` empty or left out, the bar draws neither `<nav>` nor the
 menu button, because a button that opens an empty panel is a dead control. What remains is `brand`
@@ -840,8 +893,13 @@ Escape-scoping proof and the Shell-vs-Dropdown one testing the same code path.
 `AccountMenu` (#756) is the signed-in person's menu, taken out of `Shell` so `AppShell`'s rail
 carries the same one at its foot. It is `ui/`'s `Dropdown`, so the keyboard, the no-JavaScript
 fallback and the focus moves are that component's. The menu holds, in order: the caller's `items`
-(a link, a button, or a form post through `action`), the theme choice when `onThemeChange` is
-given, and `signOut` after a divider.
+(a link, a button, or a form post through `action`), the language item when `language` is given,
+the theme choice when `onThemeChange` is given, and `signOut` after a divider.
+
+**The language item opens `LanguageDialog`** (`ui/`), because a submenu does not fit a phone. It
+shows `IconGlobe`, "Language" and the language in use, named in itself ("Deutsch"), at the row's
+end. `language` takes the dialog's props without `open` and `onClose`: the menu owns those, and
+closes the dialog on Done, Escape or its close control, focus going back to the trigger.
 
 **`navigate` is the client-router port, as on `DropdownItem`.** Without it, a link item is an
 ordinary link and choosing it loads the page. With it, a plain left click on a link item (an `href`
@@ -896,7 +954,10 @@ page: 44 px rows in a card, each with a chevron and its optional muted `value` (
 With a section open, only that section shows, under a "Back to {title}" link to `href`
 (`labels.back` replaces the words). The title stays in the document as screen-reader text. From
 `md` up, `null` shows the nav and `children` with no section heading and no current item, so an
-app draws an overview there or sends that address to its first section.
+app draws an overview there, or names a section in `defaultSection`: from `md` up its heading tops
+`children` and its item wears the current look, by `md:` classes alone, while a phone still shows
+the list. That item gets no `aria-current`, since on a phone the address is the list. An id there
+that names no section throws.
 
 **Focus follows the change of section.** When `current` becomes a section, focus moves to its
 heading (`tabindex="-1"`); when it goes back to `null`, to the nav item of the section that was
@@ -1079,15 +1140,15 @@ Components for an offline-first app. None of them imports a queue or a store: th
 plain values and callbacks, so they work with any outbox and ship on their own.
 
 - **`SyncStatus`** is one compact line for a header or a status bar: offline, "3 changes waiting
-  to sync", syncing, "Sync failed" with a Retry button, or "All changes synced" (`labels.synced: ""`
+  to sync", syncing, "Couldn't sync" with a Retry button, or "All changes synced" (`labels.synced: ""`
   hides that one). The words sit in a `role="status"` region that is always in the page, so every
   change is announced politely, and the component never moves focus on its own. A shape beside the
   words tells the states apart without colour. `syncState(input)` is the precedence it uses, most
   urgent first: offline, failed, syncing, waiting, synced. `DEFAULT_SYNC_STATUS_LABELS` holds its
   English words.
 - **`SavedCopyNotice`** is the banner above a list that says the list is a copy saved on this
-  device, and when: "The server is out of reach. This copy was saved on this device: 12/10/2026
-  14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
+  device, and when: "Can't reach the server. You're seeing the copy saved on this device at
+  12/10/2026 14:05." `SyncStatus` says whether this person's changes went out; this says how old what they are
   reading is, and an app often shows both. Render it always and pass `savedAt` (a `Date` or epoch
   milliseconds) only while a saved copy is on screen: with `null` it is an empty `role="status"`
   region that takes no room, so the notice is announced when the copy arrives. It is announced
@@ -1120,7 +1181,8 @@ plain values and callbacks, so they work with any outbox and ship on their own.
 - **`UnsentChangesDialog`** asks before a person signs out while changes wait to reach the
   server: "Send, then sign out" (the one primary action, focused on open), "Sign out anyway", or
   "Cancel" (also Escape, the close control and the backdrop). Mount it to open it, as
-  `ConfirmDialog`. The caller owns the waiting: on `onSend` it starts sending and passes `state`
+  `ConfirmDialog`. Its `class` goes to `Modal`, which appends it after its own classes instead of
+  merging it, so a replacement must be marked important (`max-w-lg!`). The caller owns the waiting: on `onSend` it starts sending and passes `state`
   (`sending`, `offline` or `retrying`) and the counts as they drop, then signs out itself once
   nothing sendable is left. The same dialog shows the wait: the primary stays focused and busy, and
   one polite `role="status"` line with a progress bar ("1 of 3 sent") changes only when the state
@@ -1348,8 +1410,12 @@ draw `AppShell`, which builds on it; a site whose first-time visitors do not kno
 `Rail` with `variant="labels"` itself. `Shell` (a header, a sidebar and a `<details>` drawer) and
 `SiteHeader` (a public site's top bar) are different in kind: neither has a rail or a tab bar.
 
+**It follows the page's direction.** The column stands on the inline-start edge: the left, or the
+right under `dir="rtl"` on the page or an ancestor. Its tooltips open toward the page, the current
+entry's bar sits on the column cell's start edge, and the skip link shows at the start corner.
+
 **Two variants, two widths.** The column is 72 px (`w-18`) in the icons variant and 88 px
-(`w-22`) in the labels variant, plus the device's left safe-area inset (`pl-safe`), so a landscape
+(`w-22`) in the labels variant, plus the device's safe-area inset on its start side (`ps-safe`), so a landscape
 phone's notch never covers a cell. The page beside it is the rest of the row, so it follows either
 width. `"icons"`, the default, draws a 48 px square per destination with the label as visually
 hidden text. `"labels"` draws an 80 × 56 px cell with 4 px of side padding and a `text-xs` label
@@ -1448,9 +1514,13 @@ the badge shows "99+" and the name keeps the exact count. A counter of 0 draws n
 **Nothing covers the page.** The column is a column in the layout. The tab bar sticks to the bottom
 but keeps its place in the flow, pads itself by the bottom safe-area inset, and below `md` gives the
 root element the tab bar's scroll padding, so a control tabbed to near the bottom scrolls into view
-above it. `tabBarNotice` is drawn right above the bar, such as an offline strip. Inside a bounded,
-scrolling container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and that
-container becomes what both stick to.
+above it. A 24 px band above the bar, the bar's own surface faded in, takes taps for neither the
+page nor a tab, so a page link half under the dock's top edge is never a tap away from a tab, as
+axe's `target-size` rule asks. One case stays open: a link peeking out under the bar's last pixels,
+past the window's foot, still fails that rule where the device reports no bottom inset.
+`tabBarNotice` is drawn right above the bar, such as an offline strip. Inside a bounded, scrolling
+container, pass `class="min-h-full"` in place of the default `min-h-dvh`, and that container becomes
+what both stick to.
 
 **Links reach a client router through `navigateLink`.** An entry with an `href` is a real link.
 With `navigateLink`, a plain left click on a same-origin link calls `navigateLink(key, href)` and
@@ -1502,9 +1572,13 @@ draws no brand mark and no top bar: the page starts with its own `PageHeader`.
   once.
 - **The phone.** At most four destinations reach the tab bar; the last slot is the account, the
   avatar with the unread count, opening a sheet with the switcher, the destinations that did not
-  fit, Notifications, then the account: the header row, the menu's items, the theme as three
-  pressed buttons, and **Sign out** last. While the connection is news, a strip above the tab bar
-  shows it.
+  fit, Notifications, then the account: the header row, the menu's items, the language, the theme as
+  three pressed buttons, and **Sign out** last. While the connection is news, a strip above the tab
+  bar shows it.
+- **The language.** `account.language` (`AccountMenuLanguage`) draws the Language row, with the
+  language in use named in itself, in the rail's menu (`AccountMenu`'s own item) and in the phone
+  sheet. The sheet's row closes the sheet and opens `LanguageDialog`; closing it returns focus to
+  the account tab. Left out, neither draws the row.
 - **The page column** is centred in the space beside the rail, `px-4 md:px-8` and `py-6 sm:py-8`
   outside it: 48 rem by default, 64 rem with `width="wide"`, for tables. `banner` sits above the
   page in the same column. Nothing else sets a width.
@@ -1514,7 +1588,7 @@ draws no brand mark and no top bar: the page starts with its own `PageHeader`.
 `app-shell.test.tsx` proves the bell's name, the account's name with and without a tag, the badge's
 neutral colour in the column, the tab and the sheet, the one live region, the connection cell and
 strip, the bottom zone's order, the column widths and the banner, the phone split and the sheet's
-order, the theme buttons, the placeholder, the absence of a top bar, and every label's override.
+order, the language row in the menu and the sheet, the theme buttons, the placeholder, the absence of a top bar, and every label's override.
 
 ## `RailShell`, kept for the move
 
@@ -1525,3 +1599,30 @@ keep working; it has no `header` slot and no `rail-shell-header` hook, and its h
 `--rail-height`. `tabBarSlots` keeps the primary action in the tab bar's centre slot, and the items
 give way when they overflow. App code draws `AppShell`; the boundary rule fails a
 test that imports `RailShell` (see "The screen boundary rule").
+
+## Translations
+
+Every word a component here shows comes from this package's catalog,
+`@spy4x/preact-system/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`, read from the
+same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`). An app adds
+the catalog beside the `ui` one:
+
+```ts
+import systemDe from "@spy4x/preact-system/i18n/de"
+import systemEn from "@spy4x/preact-system/i18n/en"
+
+createTranslator({
+  language: "de",
+  catalogs: [{ source: uiEn, translation: uiDe }, { source: systemEn, translation: systemDe }],
+})
+```
+
+Each language subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog.
+Each key is `<Component>.<field>`. A label that is a function of a number is a plural message with
+`{count}`, and a label that picks between sentences is one key per sentence: `Calendar.day.past`,
+`Calendar.day.availableCount` and the rest for each day's name, `SyncStatus.offline` and
+`SyncStatus.offlineWaiting` for the offline line. Without a provider every component renders the
+English it always has, and a word passed in `labels` still wins. The calendar's month, weekday and
+day names follow its `locale`, not the translator. Error messages meant for a developer stay in
+English. `translate` and `SystemKey` from `@spy4x/preact-system/i18n` are what the components use to
+read a word that is not a field of their labels.

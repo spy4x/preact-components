@@ -20,55 +20,96 @@ import {
   Checkbox,
   Cluster,
   CopyBlock,
+  CopyButton,
   DataTable,
   describedImages,
+  Elapsed,
   Field,
   FormatContext,
   Grid,
   type HotkeyBinding,
+  I18nContext,
   ImageGallery,
   type ImageGalleryImage,
   Input,
+  Isolated,
   Kbd,
   Lightbox,
   type LightboxImage,
   MoneyDisplay,
+  type MoneyDisplayProps,
   OnDay,
   pageRange,
   PageTitle,
   Pagination,
   Progress,
   type ProgressTone,
+  RadioChips,
+  Rich,
+  type RunStep,
+  RunSteps,
   type Shortcut,
   ShortcutsDialog,
   Stack,
+  StatusMark,
+  type StatusMarkStatus,
   type TabItem,
   Table,
   Tabs,
   Timeline,
   type TimelineItem,
+  ToggleField,
   Tooltip,
   type TooltipPlacement,
+  UsageMeter,
   useFormat,
   useHotkeys,
+  useRowCursor,
+  useT,
   When,
 } from "@spy4x/preact-ui"
+import { cn } from "@spy4x/preact-cn"
+import { formatMoney } from "@spy4x/platform/universal/money"
+import uiAr from "@spy4x/preact-ui/i18n/ar"
+import uiDe from "@spy4x/preact-ui/i18n/de"
+import uiEn from "@spy4x/preact-ui/i18n/en"
+import { createTranslator, type Translator } from "@spy4x/platform/universal/i18n"
 import { createFormatters } from "@spy4x/time/format"
 import { serializeSort, type SortRule } from "@spy4x/platform/universal/sort"
 import { useSignal } from "@preact/signals"
 import { type ComponentChildren, Fragment } from "preact"
 import { useId, useRef } from "preact/hooks"
-import { IconTrashBin } from "@spy4x/preact-icons"
+import {
+  IconLogout,
+  IconMoon,
+  IconPencilSquare,
+  IconPlus,
+  IconRefresh,
+  IconSun,
+  IconTrashBin,
+  IconUser,
+} from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
+import { dashboardDemos } from "./dashboard.tsx"
 import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
+import { contentBlockDemos } from "./content-blocks.tsx"
+import { pageNavigationDemos } from "./page-navigation.tsx"
+import { storefrontDemos } from "./storefront.tsx"
+import { attachmentDemos } from "./attachments.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
 import type { DemoFragment } from "../registry.ts"
-import { CommandPalette, type CommandPaletteOption } from "@spy4x/preact-ui/command-palette"
+import {
+  clearCommandPaletteRecent,
+  CommandPalette,
+  type CommandPaletteOption,
+  type CommandPaletteSelectDetails,
+  type CommandPaletteTrigger,
+} from "@spy4x/preact-ui/command-palette"
 
 /**
  * A one-square image, inline so the catalogue needs no network and no asset directory.
@@ -182,10 +223,12 @@ function ImageGalleryDemo() {
           snap="center"
           slideWidth="orientation"
           counterLabel={slashCounter}
+          lazy
         />
         <DemoNote>
           With slideWidth="orientation" and portrait images: narrower slides. On a wide screen all
-          three fit, so Previous and Next are not shown.
+          three fit, so Previous and Next are not shown. With lazy, the first image loads lazily
+          too, for a strip below the page's own hero image.
         </DemoNote>
       </Stack>
     </Stack>
@@ -352,12 +395,15 @@ const progressTones: Record<ProgressTone, string> = {
   danger: "Danger",
 }
 
-/** Every placement — the record is the coverage guard for `TooltipPlacement`. */
-const tooltipPlacements: Record<TooltipPlacement, string> = {
+/**
+ * Every placement — the record is the coverage guard for `TooltipPlacement`, less `left` and
+ * `right`, the old names of `start` and `end`.
+ */
+const tooltipPlacements: Record<Exclude<TooltipPlacement, "left" | "right">, string> = {
   top: "top (default)",
-  right: "right",
+  end: "end",
   bottom: "bottom",
-  left: "left",
+  start: "start",
 }
 
 /**
@@ -433,31 +479,164 @@ function ProgressDemo() {
   )
 }
 
-/** Three currencies with a different decimal count each, plus one negative amount coloured. */
-const moneyRows: { amount: number; currency: string; note: string; negative?: boolean }[] = [
-  { amount: 12345, currency: "EUR", note: "two decimals" },
-  { amount: 12345, currency: "JPY", note: "no decimals" },
-  { amount: 12345, currency: "KWD", note: "three decimals" },
-  { amount: -4599, currency: "EUR", note: "colorNegative", negative: true },
+/** Euros from cents, the way a finance app stores them. */
+const euros = (cents: number) => formatMoney(cents, "EUR", "en-GB")
+
+/** One budget per state of `UsageMeter`, then a long label, then a limit of nothing. */
+const usageMeterBudgets: readonly { label: string; used: number; limit: number }[] = [
+  { label: "Groceries", used: 21_200, limit: 50_000 },
+  { label: "Restaurants", used: 48_200, limit: 50_000 },
+  { label: "Fuel", used: 50_000, limit: 50_000 },
+  { label: "Clothes", used: 51_200, limit: 50_000 },
+  { label: "Home improvement, garden supplies and workshop tools", used: 120_000, limit: 50_000 },
+  { label: "Gifts, with no budget", used: 4_000, limit: 0 },
 ]
 
-/** Each amount beside what it shows, in two aligned columns. */
+/**
+ * `UsageMeter` well under its limit, close to it, at it and past it: the state line and the fill's
+ * colour change at each step, and past the limit a tick marks where the limit falls. Then a label
+ * too long for the row, and a limit of 0, which has no percentage.
+ */
+function UsageMeterDemo() {
+  return (
+    <Grid minColumnWidth="lg" data-e2e="guide-usage-meter">
+      {usageMeterBudgets.map((budget) => (
+        <Card key={budget.label}>
+          <CardBody>
+            <UsageMeter
+              label={budget.label}
+              used={budget.used}
+              limit={budget.limit}
+              format={euros}
+            />
+          </CardBody>
+        </Card>
+      ))}
+    </Grid>
+  )
+}
+
+/** A benchmark half way through, failed on one step: five of the six states the list draws. */
+const runSteps: readonly RunStep[] = [
+  {
+    id: "download",
+    label: "Download the data",
+    state: "done",
+    hint: "Budget: under 10 s",
+    value: "2.4 s",
+    verdict: { label: "Within budget", tone: "success" },
+  },
+  {
+    id: "scroll",
+    label: "Scroll the list",
+    state: "done",
+    hint: "Budget: under 5% of frames dropped",
+    value: "12% of frames dropped",
+    verdict: { label: "Over budget", tone: "danger" },
+  },
+  {
+    id: "memory",
+    label: "Memory used",
+    state: "unavailable",
+    detail: "This browser doesn't report it.",
+  },
+  { id: "search", label: "Search on this device", state: "failed", hint: "Budget: under 100 ms" },
+  {
+    id: "save",
+    label: "Save to this device",
+    state: "running",
+    progress: { value: 3200, max: 10000, label: "3,200 of 10,000 records" },
+  },
+  { id: "storage", label: "Storage used", state: "pending", hint: "No budget" },
+]
+
+/** The same run with Stop pressed during the save: that step is stopped, the rest not measured. */
+const stoppedSteps: readonly RunStep[] = runSteps.map((step) =>
+  step.id === "save" ? { id: step.id, label: step.label, state: "stopped" } : step
+)
+
+/** The run above, then the same run stopped part way: together, every state the list draws. */
+function RunStepsDemo() {
+  const headingId = useId()
+  const stoppedId = useId()
+  return (
+    <Stack>
+      <h3 id={headingId} class="text-sm font-semibold">Measurements</h3>
+      <RunSteps steps={runSteps} aria-labelledby={headingId} labels={{ pending: "Not measured" }} />
+      <h3 id={stoppedId} class="text-sm font-semibold">Stopped part way</h3>
+      <RunSteps
+        steps={stoppedSteps}
+        aria-labelledby={stoppedId}
+        labels={{ pending: "Not measured" }}
+      />
+      <DemoNote>
+        The value column lines up from 640 px; on a phone each value sits on its label's line with
+        the badge under it.
+      </DemoNote>
+    </Stack>
+  )
+}
+
+/**
+ * One amount per row: plain, the signed tone on income, spending and zero, the negative tone, yen
+ * with no decimals, dinar with three, and BTC with the 8 decimals the caller gives.
+ */
+const moneyRows: { what: string; props: MoneyDisplayProps }[] = [
+  { what: "plain", props: { amount: 123456, currency: "EUR" } },
+  { what: "signed +", props: { amount: 320000, currency: "EUR", tone: "signed" } },
+  { what: "signed −", props: { amount: -8420, currency: "EUR", tone: "signed" } },
+  { what: "signed 0", props: { amount: 0, currency: "EUR", tone: "signed" } },
+  { what: "negative", props: { amount: -4599, currency: "EUR", tone: "negative" } },
+  { what: "JPY", props: { amount: 12345, currency: "JPY" } },
+  { what: "KWD", props: { amount: 12345, currency: "KWD" } },
+  { what: "BTC", props: { amount: 1, currency: "BTC", decimals: 8 } },
+]
+
+/** The two regions the card compares: the same English words, two number formats. */
+const moneyRegions = [
+  { locale: "de-DE", format: createFormatters({ locale: "de-DE", timeZone: "UTC" }) },
+  { locale: "en-US", format: createFormatters({ locale: "en-US", timeZone: "UTC" }) },
+]
+
+/**
+ * Each amount in a German and an American region, side by side: no `locale` prop, so the column's
+ * `FormatContext` decides the number format, as an app's region setting does.
+ */
 function MoneyDisplayDemo() {
   return (
-    <div class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
-      {moneyRows.map((row) => (
-        <Fragment key={`${row.currency}${row.amount}`}>
-          <span class="text-right tabular-nums">
-            <MoneyDisplay
-              amount={row.amount}
-              currency={row.currency}
-              colorNegative={row.negative}
-            />
-          </span>
-          <span class="text-xs text-muted">{row.note}</span>
-        </Fragment>
-      ))}
-    </div>
+    // `bg-transparent` on both: the dark palette's base rules band a table head, which here would
+    // sit between the amounts and the card for no reason.
+    <table class="w-full bg-transparent text-sm" data-e2e="money-display-table">
+      <thead class="bg-transparent">
+        <tr class="text-xs text-muted">
+          <th scope="col" class="pb-2 text-start font-normal">Tone or currency</th>
+          {moneyRegions.map((region) => (
+            <th key={region.locale} scope="col" class="pb-2 text-end font-normal">
+              {region.locale}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {moneyRows.map((row) => (
+          <tr key={row.what}>
+            <th
+              scope="row"
+              class="whitespace-nowrap py-1 pe-4 text-start text-xs font-normal text-muted"
+            >
+              {row.what}
+            </th>
+            {moneyRegions.map((region) => (
+              <td key={region.locale} class="py-1 ps-4 text-end">
+                <FormatContext.Provider value={region.format}>
+                  <MoneyDisplay {...row.props} />
+                </FormatContext.Provider>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -494,6 +673,109 @@ function WhenDemo() {
         ))}
       </div>
     </FormatContext.Provider>
+  )
+}
+
+/** A job in the `Elapsed` card's list. */
+interface DemoJob {
+  id: string
+  name: string
+  status: StatusMarkStatus
+  start: number | null
+  end: number | null
+}
+
+/** The list's finished jobs, with fixed times, so they read the same on the server and later. */
+const finishedJobs: DemoJob[] = [
+  {
+    id: "backup",
+    name: "Nightly backup",
+    status: "done",
+    start: demoNow - 3_723_000,
+    end: demoNow,
+  },
+  {
+    id: "resize",
+    name: "Resize photos",
+    status: "out-of-time",
+    start: demoNow - 1_800_000,
+    end: demoNow - 600_000,
+  },
+]
+
+/**
+ * A list of jobs as card rows, each with its `StatusMark` and its `Elapsed`. The first job waits in
+ * the queue until Start: it then runs and its time ticks, and Stop ends it, so the server draws
+ * only fixed times. With the checkbox on, `useRowCursor` moves a highlight over the rows with `j`
+ * and `k`, and Enter writes the highlighted job to the readout. The keys start off, because the
+ * `DataTable` card's cursor listens to the same keys. `pages/e2e/ui/row-cursor.spec.ts` and
+ * `pages/e2e/ui/elapsed.spec.ts` drive it.
+ */
+function ElapsedDemo() {
+  const started = useSignal<number | null>(null)
+  const ended = useSignal<number | null>(null)
+  const keys = useSignal(false)
+  const opened = useSignal("none")
+  const first: DemoJob = {
+    id: "import",
+    name: "Import invoices",
+    status: started.value === null ? "queued" : ended.value === null ? "running" : "stopped",
+    start: started.value,
+    end: ended.value,
+  }
+  const jobs = [first, ...finishedJobs]
+  const cursor = useRowCursor({
+    count: jobs.length,
+    onOpen: (index) => opened.value = jobs[index].name,
+    enabled: keys.value,
+  })
+  const step = () => {
+    if (started.value === null) started.value = Date.now()
+    else if (ended.value === null) ended.value = Date.now()
+    else started.value = ended.value = null
+  }
+  return (
+    <Stack gap="sm">
+      <Cluster>
+        <Button variant="outline" size="sm" data-e2e="elapsed-step" onClick={step}>
+          {started.value === null ? "Start" : ended.value === null ? "Stop" : "Reset"}
+        </Button>
+        <Checkbox
+          data-e2e="elapsed-keys"
+          checked={keys.value}
+          onChange={(event) => keys.value = event.currentTarget.checked}
+        >
+          Keys j, k and Enter
+        </Checkbox>
+      </Cluster>
+      <ul class="flex flex-col gap-2" data-e2e="elapsed-jobs">
+        {jobs.map((job, index) => {
+          const row = cursor.rowProps(index)
+          return (
+            <li
+              key={job.id}
+              {...row}
+              class={cn(
+                "flex items-center justify-between gap-3 rounded-lg bg-surface px-4 py-3 ring-1 ring-subtle",
+                row.class,
+              )}
+            >
+              <span class="flex flex-col gap-1">
+                <span class="text-sm font-medium">{job.name}</span>
+                <StatusMark status={job.status} />
+              </span>
+              <Elapsed
+                start={job.start}
+                end={job.end}
+                labels={{ missing: "Not started" }}
+                class="text-sm text-muted"
+              />
+            </li>
+          )
+        })}
+      </ul>
+      <DemoNote e2e="elapsed-opened">Opened: {opened.value}</DemoNote>
+    </Stack>
   )
 }
 
@@ -546,6 +828,68 @@ function FormatContextDemo() {
   )
 }
 
+/** The library's own catalog in two more languages; English is whatever the page around it speaks. */
+const demoLanguages: Record<string, Translator<string> | undefined> = {
+  en: undefined,
+  de: createTranslator({ language: "de", catalogs: [{ source: uiEn, translation: uiDe }] }),
+  ar: createTranslator({ language: "ar", catalogs: [{ source: uiEn, translation: uiAr }] }),
+}
+
+/** One provider switches every component inside it, its words and its text direction. */
+function I18nContextDemo() {
+  const language = useSignal("de")
+  const outer = useT()
+  const translator = demoLanguages[language.value] ?? outer
+  const page = useSignal(2)
+  return (
+    <Stack gap="md">
+      <RadioChips
+        legend="Language"
+        legendClass="pc-label mb-2 mx-auto"
+        optionsClass="flex flex-wrap justify-center gap-2"
+        name="i18n-demo-language"
+        value={language.value}
+        onChange={(value) => (language.value = value)}
+        options={[
+          { value: "en", label: <span lang="en">English</span> },
+          { value: "de", label: <span lang="de">Deutsch</span> },
+          { value: "ar", label: <span lang="ar">العربية</span> },
+        ]}
+      />
+      <I18nContext.Provider value={translator}>
+        <div lang={translator.language} dir={translator.dir}>
+          <Stack gap="sm">
+            <Pagination page={page.value} pageCount={5} onChange={(next) => (page.value = next)} />
+            <Cluster justify="center">
+              <CopyButton textToCopy="INV-0007" />
+            </Cluster>
+          </Stack>
+        </div>
+      </I18nContext.Provider>
+      <p class="text-center text-xs text-muted">
+        Dates follow FormatContext, not the language: an app provides both.
+      </p>
+    </Stack>
+  )
+}
+
+const termsTranslator = createTranslator({
+  language: "en",
+  catalogs: [{ source: { "signup.terms": "I agree to the <terms>terms of use</terms>, {name}." } }],
+})
+
+/** A sentence whose link the caller draws: the message never carries markup or an address. */
+function RichDemo() {
+  return (
+    <p class="text-sm">
+      <Rich
+        parts={termsTranslator.parts("signup.terms", { name: "Ada" })}
+        tags={{ terms: (text) => <a class="pc-link" href="#terms">{text}</a> }}
+      />
+    </p>
+  )
+}
+
 /** Three rows and a net row, so the shell's header, body and footer slots are all in use. */
 const tableRows = [
   { date: "2026-02-01", merchant: "Coffee & Co", status: false, amount: -450 },
@@ -567,10 +911,10 @@ function TableDemo() {
       captionClass="sr-only"
       headerSlot={
         <>
-          <th scope="col" class="text-left">Date</th>
-          <th scope="col" class="text-left">Merchant</th>
+          <th scope="col" class="text-start">Date</th>
+          <th scope="col" class="text-start">Merchant</th>
           <th scope="col" class="text-center">Status</th>
-          <th scope="col" class="text-right">Amount</th>
+          <th scope="col" class="text-end">Amount</th>
         </>
       }
       bodyKeys={tableRows.map((row) => row.date)}
@@ -589,13 +933,13 @@ function TableDemo() {
               color={row.status ? "green" : "gray"}
             />
           </td>
-          <td class="text-right tabular-nums">{row.amount}</td>
+          <td class="text-end tabular-nums">{row.amount}</td>
         </>
       ))}
       footerSlot={
         <tr class="text-sm font-medium">
-          <td colspan={3} class="px-6 py-3 text-right">Net</td>
-          <td class="px-6 py-3 text-right tabular-nums">
+          <td colspan={3} class="px-6 py-3 text-end">Net</td>
+          <td class="px-6 py-3 text-end tabular-nums">
             {tableRows.reduce((total, row) => total + row.amount, 0)}
           </td>
         </tr>
@@ -675,6 +1019,47 @@ function DataTableDemo() {
         />
       </Stack>
       <DataTableServerDemo />
+      <DataTableCursorDemo />
+    </Stack>
+  )
+}
+
+/**
+ * `DataTable` with `cursor`: with the checkbox on, `j` and `k` highlight a row and Enter writes its
+ * merchant to the readout. The keys start off, because the `Elapsed` card's job list listens to the
+ * same keys. `pages/e2e/ui/row-cursor.spec.ts` drives it.
+ */
+function DataTableCursorDemo() {
+  const keys = useSignal(false)
+  const opened = useSignal("none")
+  return (
+    <Stack gap="sm" data-e2e="data-table-cursor">
+      <Checkbox
+        data-e2e="data-table-cursor-keys"
+        checked={keys.value}
+        onChange={(event) => keys.value = event.currentTarget.checked}
+      >
+        Keys j, k and Enter
+      </Checkbox>
+      <DataTable
+        caption="Invoices to open"
+        columns={[
+          { key: "date", header: "Date" },
+          { key: "merchant", header: "Merchant" },
+          {
+            key: "amount",
+            header: "Amount",
+            align: "right",
+            render: (row) => row.amount === null ? "—" : String(row.amount),
+          },
+        ]}
+        rows={dataTableRows}
+        rowKey={(row) => row.id}
+        sort={[]}
+        onSortChange={() => {}}
+        cursor={{ onOpen: (row) => opened.value = row.merchant, enabled: keys.value }}
+      />
+      <DemoNote e2e="data-table-opened">Opened: {opened.value}</DemoNote>
     </Stack>
   )
 }
@@ -1198,6 +1583,20 @@ function ZoomableImagesDemo() {
 /** Combinations `Kbd` draws, each on both platforms; the last is a sequence of two presses. */
 const kbdCombos = ["mod+k", "mod+shift+p", "alt+up", "?", "esc", "g t"]
 
+/** One file name in an English sentence and in an Arabic one, right to left. */
+function IsolatedDemo() {
+  return (
+    <Stack>
+      <p>
+        <Isolated message={(name) => `Delete ${name}?`} value="report-v2.pdf" />
+      </p>
+      <p lang="ar" dir="rtl">
+        <Isolated message={(name) => `هل تريد حذف ${name}؟`} value="report-v2.pdf" />
+      </p>
+    </Stack>
+  )
+}
+
 /**
  * Each combination twice, with `apple={false}` and `apple`, so the card shows both faces whatever
  * the reader's platform; the last row leaves `apple` out and shows the reader's own.
@@ -1384,11 +1783,83 @@ export const displayDemos = {
   ...pageHeaderDemos,
   MoneyDisplay: {
     summary:
-      "Shows an amount kept in a currency's smallest unit, with that currency's own decimals.",
+      "Shows an amount kept in a currency's smallest unit, in the person's region format, with that currency's own decimals.",
     wide: false,
-    snippet: `<MoneyDisplay amount={12345} currency="EUR" />
-<MoneyDisplay amount={-4599} currency="EUR" colorNegative />`,
+    props: [
+      {
+        name: "amount",
+        type: "number",
+        description: "The amount in the currency's smallest unit.",
+      },
+      {
+        name: "currency",
+        type: "string",
+        description: "The ISO code, such as `EUR`, or a coin's.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        default: "useFormat().locale",
+        description: "The number format; by default the region of `FormatContext`.",
+      },
+      {
+        name: "decimals",
+        type: "number",
+        description: "A coin's own decimals, such as 8 for BTC.",
+      },
+      {
+        name: "tone",
+        type: `"plain" | "negative" | "signed"`,
+        default: `"plain"`,
+        description:
+          "`signed` adds a plus and the success colour to income, the danger colour to spending.",
+      },
+    ],
+    snippet: `<MoneyDisplay amount={123456} currency="EUR" />
+<MoneyDisplay amount={-8420} currency="EUR" tone="signed" />
+<MoneyDisplay amount={1} currency="BTC" decimals={8} />`,
     render: () => <MoneyDisplayDemo />,
+  },
+  I18nContext: {
+    summary:
+      "Hands one translator to every component below it: their words, in the reader's language, and its text direction.",
+    wide: false,
+    snippet: `import uiEn from "@spy4x/preact-ui/i18n/en"
+import uiDe from "@spy4x/preact-ui/i18n/de"
+
+const translator = createTranslator({
+  language: "de",
+  catalogs: [{ source: uiEn, translation: uiDe }, { source: appEn, translation: appDe }],
+})
+
+<I18nContext.Provider value={translator}>
+  <div dir={translator.dir}>{app}</div>
+</I18nContext.Provider>`,
+    render: () => <I18nContextDemo />,
+  },
+  Rich: {
+    summary:
+      "A translated sentence with a span the caller draws, such as a link, while the message itself stays plain text.",
+    wide: false,
+    props: [
+      {
+        name: "parts",
+        type: "readonly MessagePart[]",
+        description: "The message as spans, from `useT().parts(key, values)`.",
+      },
+      {
+        name: "tags",
+        type: "Readonly<Record<string, (text: string) => ComponentChildren>>",
+        default: "{}",
+        description: "How each tag renders, given its text; a tag with no renderer shows as text.",
+      },
+    ],
+    snippet: `// "signup.terms": "I agree to the <terms>terms of use</terms>, {name}."
+<Rich
+  parts={useT().parts("signup.terms", { name })}
+  tags={{ terms: (text) => <a href="/terms">{text}</a> }}
+/>`,
+    render: () => <RichDemo />,
   },
   FormatContext: {
     summary:
@@ -1431,6 +1902,42 @@ export const displayDemos = {
 </FormatContext.Provider>`,
     render: () => <WhenDemo />,
   },
+  Elapsed: {
+    summary:
+      "How long something has run, as a ticking clock face while it runs and a fixed one once it ends.",
+    wide: false,
+    props: [
+      {
+        name: "start",
+        type: "Date | number | string | null",
+        description: "When it started; a missing or unreadable one shows the missing label.",
+      },
+      {
+        name: "end",
+        type: "Date | number | string | null",
+        description: "When it ended. Left out or null, it is still running and ticks each second.",
+      },
+      {
+        name: "now",
+        type: "number",
+        default: "the clock",
+        description:
+          "The present in epoch milliseconds, for text that must not move; nothing ticks.",
+      },
+      {
+        name: "labels",
+        type: "Partial<ElapsedLabels>",
+        default: "ELAPSED_LABELS",
+        description: "The duration text and the missing label.",
+      },
+    ],
+    snippet: `<StatusMark status="running" /> <Elapsed start={job.startedAt} />
+<StatusMark status="done" /> <Elapsed start={job.startedAt} end={job.endedAt} />
+
+const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[index]) })
+<li {...cursor.rowProps(index)}>…</li>`,
+    render: () => <ElapsedDemo />,
+  },
   OnDay: {
     summary: "A calendar day in the person's own format and zone, with the exact instant on hover.",
     wide: false,
@@ -1471,8 +1978,93 @@ export const displayDemos = {
 <Progress value={null} ariaLabel="Sync" />`,
     render: () => <ProgressDemo />,
   },
+  UsageMeter: {
+    summary:
+      "How much of a limit is used, such as a budget's spending: the figures, a bar, and a line that says what is left or how far over it is.",
+    wide: true,
+    props: [
+      { name: "used", type: "number", description: "The amount used so far." },
+      { name: "limit", type: "number", description: "The amount allowed, in the same unit." },
+      {
+        name: "format",
+        type: "(amount: number) => string",
+        description: "Turns an amount into text: money, storage or seats.",
+      },
+      { name: "label", type: "string", description: "What is measured; it names the meter." },
+      {
+        name: "warnAt",
+        type: "number",
+        default: "80",
+        description: "The percent of the limit from which the meter warns.",
+      },
+      {
+        name: "labels",
+        type: "Partial<UsageMeterLabels>",
+        description: "Overrides for the words; each state is one whole sentence.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the percentage; defaults to the translator's language.",
+      },
+    ],
+    snippet: `<UsageMeter
+  label="Groceries"
+  used={41200}
+  limit={50000}
+  format={(cents) => formatMoney(cents, "EUR", locale)}
+/>`,
+    render: () => <UsageMeterDemo />,
+  },
+  RunSteps: {
+    summary:
+      "A fixed list of a run's steps, each filling in with its value and a verdict, so the layout never shifts while it runs.",
+    wide: true,
+    props: [
+      {
+        name: "steps",
+        type: "RunStep[]",
+        description:
+          "The steps in order, each `{ id, label, state, hint?, value?, verdict?, progress?, detail? }`. `state` is pending, running, done, failed, unavailable or stopped; `value` and `verdict` show once done.",
+      },
+      {
+        name: "labels",
+        type: "Partial<Record<RunStepState, string>>",
+        description: "The word each state shows in the value's place.",
+      },
+      {
+        name: "aria-labelledby",
+        type: "string",
+        description: "The id of the heading that names the list.",
+      },
+    ],
+    snippet: `<RunSteps
+  aria-labelledby="measurements"
+  labels={{ pending: "Not measured" }}
+  steps={[
+    {
+      id: "download",
+      label: "Download the data",
+      state: "done",
+      hint: "Budget: under 10 s",
+      value: "2.4 s",
+      verdict: { label: "Within budget", tone: "success" },
+    },
+    {
+      id: "save",
+      label: "Save to this device",
+      state: "running",
+      progress: { value: 3200, max: 10000, label: "3,200 of 10,000 records" },
+    },
+  ]}
+/>`,
+    render: () => <RunStepsDemo />,
+  },
   ...comparisonTableDemos,
   ...marketingBlockDemos,
+  ...contentBlockDemos,
+  ...pageNavigationDemos,
+  ...storefrontDemos,
   Table: {
     summary:
       "The frame of a data table: you write the cells, it draws the dividers, the hover and the scroll.",
@@ -1560,6 +2152,12 @@ export const displayDemos = {
         description:
           "Each row's own identity, so its checkbox, focus or state moves with it when the rows sort or page.",
       },
+      {
+        name: "cursor",
+        type: "{ onOpen, enabled? }",
+        description:
+          "Turns on `j` and `k` to highlight the next and the previous row, and Enter to open the highlighted one.",
+      },
     ],
     snippet: `<DataTable
   caption="Invoices"
@@ -1591,7 +2189,12 @@ export const displayDemos = {
     total: response.total,
     onChange: (next) => page.value = next,
   }}
-/>`,
+/>
+
+// j and k highlight a row, Enter opens it.
+<DataTable caption="Invoices" columns={columns} rows={invoices} rowKey={(row) => row.id}
+  sort={sort.value} onSortChange={(next) => sort.value = next}
+  cursor={{ onOpen: (row) => navigate(\`/invoices/\${row.id}\`) }} />`,
     render: () => <DataTableDemo />,
   },
   Card: {
@@ -1716,7 +2319,7 @@ export const displayDemos = {
       {
         name: "failedLabel",
         type: "string",
-        default: `"Copy failed"`,
+        default: `"Couldn't copy"`,
         description: "What a screen reader hears after a copy that failed.",
       },
     ],
@@ -1848,9 +2451,10 @@ export const displayDemos = {
       { name: "label", type: "string", description: "The trigger's accessible name." },
       {
         name: "placement",
-        type: `"top" | "right" | "bottom" | "left"`,
+        type: `"top" | "end" | "bottom" | "start" | "right" | "left"`,
         default: `"top"`,
-        description: "Which side of the trigger the hint appears on.",
+        description:
+          "Which side of the trigger the hint appears on. `end` opens toward the end of the line, so it mirrors in a right-to-left page; `right` and `left` are the old names of `end` and `start`.",
       },
       {
         name: "focusable",
@@ -1859,7 +2463,7 @@ export const displayDemos = {
         description: "Pass `false` when the trigger is already a button or a link.",
       },
     ],
-    snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="right">
+    snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="end">
   <span>Revenue</span>
 </Tooltip>
 
@@ -1891,6 +2495,13 @@ export const displayDemos = {
         default: "false",
         description:
           'Strip only: the first image loads eagerly with `fetchpriority="high"`, the rest lazily.',
+      },
+      {
+        name: "lazy",
+        type: "boolean",
+        default: "false",
+        description:
+          "Strip only: every image loads lazily, the first included, for a strip below the page's own hero image. Ignored with `hero`.",
       },
       {
         name: "captions",
@@ -2014,6 +2625,7 @@ export const displayDemos = {
 />`,
     render: () => <LightboxDemo />,
   },
+  ...attachmentDemos,
   ZoomableImages: {
     summary:
       "Lets a reader open any image inside a container at full size, by click or keyboard, and page through the others.",
@@ -2062,6 +2674,24 @@ export const displayDemos = {
   ]}
 />`,
     render: () => <Timeline label="Activity" items={TIMELINE_ITEMS} />,
+  },
+  Isolated: {
+    summary:
+      "Puts a value, such as a name someone typed, into a translated sentence in its own direction: a Latin file name in an Arabic sentence stays whole, and the question mark stays at the sentence's end.",
+    wide: false,
+    props: [
+      {
+        name: "message",
+        type: "(value: string) => string",
+        description: "The sentence, as a label function of the value.",
+      },
+      { name: "value", type: "string", description: "The value, such as a name the user gave." },
+    ],
+    snippet: `<Isolated message={(name) => \`Delete \${name}?\`} value="report-v2.pdf" />
+<p dir="rtl">
+  <Isolated message={(name) => \`هل تريد حذف \${name}؟\`} value="report-v2.pdf" />
+</p>`,
+    render: () => <IsolatedDemo />,
   },
   Kbd: {
     summary:
@@ -2226,8 +2856,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
     props: [
       {
         name: "options",
-        type: "{ id, label, detail?, hint?, group? }[]",
-        description: "Options it filters itself, folding case and accents. Or `search`, not both.",
+        type:
+          "{ id, label, detail?, hint?, group?, aliases?, icon?, kbd?, state?, disabledReason?, run?, keepOpen?, takesText?, children? }[]",
+        description:
+          "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. A query starting with “>” lists only commands. PageUp and PageDown jump between groups. Or `search`, not both.",
       },
       {
         name: "search",
@@ -2235,7 +2867,89 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         description:
           "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
       },
-      { name: "onSelect", type: "(option) => void", description: "The picked option." },
+      {
+        name: "onSelect",
+        type: "(option, { alternative, text? }) => void",
+        description:
+          "The picked option. `alternative` is true for Ctrl/⌘+Enter, a middle click or a Ctrl/⌘+click (a new tab, for a link); `text` is what was typed for a `takesText` row.",
+      },
+      {
+        name: "options.run",
+        type: "({ alternative, text? }) => void",
+        description:
+          "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`. A pick that moves focus, such as opening a dialog, keeps it there.",
+      },
+      {
+        name: "options.takesText",
+        type: "boolean",
+        description:
+          "A quick-create row such as “New note”: Tab or Enter shows its label as a chip before the field, and Enter then picks it with the typed `text`. Backspace in the empty field leaves.",
+      },
+      {
+        name: "options.children",
+        type: "options[]",
+        description:
+          "Sub-rows, such as Theme › Light and Dark: Tab or Enter lists them with the path before the field, Backspace in the empty field goes back. A top-level query does not search them.",
+      },
+      {
+        name: "options.keepOpen",
+        type: "boolean",
+        description:
+          "Keeps the palette open after `run`, the row still highlighted; re-render with the new `state` and the badge changes in place and is announced.",
+      },
+      {
+        name: "options.icon",
+        type: "ComponentType<IconProps>",
+        description:
+          "An icon before the label, `size-4`; every row of its group keeps the space so the labels line up.",
+      },
+      {
+        name: "options.state",
+        type: "string",
+        description: "A setting's value in one short word, shown in a grey badge: “Dark”, “On”.",
+      },
+      {
+        name: "options.kbd",
+        type: "string",
+        description:
+          "The command's shortcut, as `useHotkeys` takes it: drawn as keys from `sm` for a fine pointer and announced in `aria-keyshortcuts`. The caller binds it.",
+      },
+      {
+        name: "options.disabledReason",
+        type: "string",
+        description:
+          "Lists the row dimmed with this reason under its label; Enter or a click runs nothing and says the reason.",
+      },
+      {
+        name: "trigger",
+        type: `"button" | "field" | ((api: CommandPaletteTrigger) => ComponentChildren)`,
+        default: `"button"`,
+        description:
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. A function draws a trigger of its own from `{ open, ref, shortcuts, hotkey }`, or none with `null`: `open(query)` opens with that text typed, `ref` takes focus back on close. The hotkeys open the palette whatever trigger is drawn.",
+      },
+      {
+        name: "defaultQuery",
+        type: "string",
+        description: "The query the field holds, selected, each time the palette opens.",
+      },
+      {
+        name: "showMatch",
+        type: "boolean",
+        default: "false",
+        description:
+          "Says beside each result how it matched: a typo fixed, the other layout, another name. Every result carries the kind in `data-match` either way.",
+      },
+      {
+        name: "matchLabels",
+        type: "Partial<Record<CommandPaletteMatchKind, string>>",
+        description: "The words `showMatch` shows; see `defaultCommandPaletteMatchLabels`.",
+      },
+      {
+        name: "recent",
+        type: "{ storageKey, storage: () => KeyValueStore }",
+        description:
+          "Keeps the last 10 top-level picks under `storageKey` in `storage()`, such as `() => localStorage`, and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. Call `clearCommandPaletteRecent(storageKey, storage)` on sign-out.",
+      },
       {
         name: "hotkeys",
         type: "string[]",
@@ -2258,7 +2972,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "labels",
         type: "Partial<CommandPaletteLabels>",
         description:
-          "The field's name, placeholder, close button and the empty, loading and error words.",
+          "The field's name, placeholder, close button, the empty, loading and error words, `stateChanged(label, state)`, the “> for commands” hint, `withText(label, text)`, the back button's name, the “Recent” and “Best match” headings, `results(count)` and the key hints' words (`keysMove`, `keysOpen`, `keysAlternative`).",
       },
     ],
     snippet: `const options = [
@@ -2268,12 +2982,45 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
 <CommandPalette options={options} hotkeys={["mod+p"]} onSelect={(option) => run(option.id)} />
 
 <CommandPalette
+  options={[{ id: "toast", label: "Toast", aliases: ["notification"] }]}
+  trigger="field"
+  defaultQuery="ещфые"
+  showMatch
+  onSelect={(option) => run(option.id)}
+/>
+
+<CommandPalette
+  hotkeys={["mod+shift+p"]}
+  trigger={({ open, ref, shortcuts }) => (
+    <>
+      <Button ref={ref} aria-haspopup="dialog" aria-keyshortcuts={shortcuts} onClick={() => open()}>
+        Run a command…
+      </Button>
+      <Button variant="ghost" aria-haspopup="dialog" onClick={() => open(">")}>Commands only</Button>
+    </>
+  )}
+  options={[
+    { id: "theme", label: "Theme", icon: IconMoon, state: theme, kbd: "mod+shift+l", keepOpen: true, run: toggleTheme },
+    { id: "sync", label: "Sync now", icon: IconRefresh, disabledReason: "Needs a connection" },
+    { id: "note", label: "New note", takesText: true },
+    { id: "account", label: "Account", children: [{ id: "profile", label: "Profile" }] },
+  ]}
+  onSelect={(option, { alternative, text }) => open(option.id, { newTab: alternative, text })}
+/>
+
+const recent = { storageKey: "app-palette", storage: () => localStorage }
+<CommandPalette options={options} recent={recent} onSelect={(option) => run(option.id)} />
+// On sign-out:
+clearCommandPaletteRecent(recent.storageKey, recent.storage)
+
+<CommandPalette
   search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
   hotkeys={[]}
   onSelect={open}
 />`,
     render: () => <CommandPaletteDemo />,
   },
+  ...dashboardDemos,
 } satisfies DemoFragment
 
 /** One card of the `KanbanBoard` demo. */
@@ -2410,6 +3157,160 @@ const paletteOptions: readonly CommandPaletteOption[] = [
   { id: "settings", label: "Settings", detail: "Account", group: "Pages" },
 ]
 
+/**
+ * The forgiving `CommandPalette` demo's options: component names, one with aliases in both
+ * alphabets, so a typo, the other layout and the other alphabet each find something.
+ */
+const paletteComponents: readonly CommandPaletteOption[] = [
+  { id: "combobox", label: "Combobox", detail: "Forms", group: "Components" },
+  { id: "toast", label: "Toast", detail: "Feedback", group: "Components" },
+  {
+    id: "date-picker",
+    label: "Date picker",
+    detail: "Forms",
+    group: "Components",
+    aliases: ["calendar", "календарь"],
+  },
+  { id: "modal", label: "Modal", detail: "Overlays", group: "Components" },
+]
+
+/**
+ * What the commands demo says ran: the label, the text typed for a quick-create row, and whether
+ * the pick was the alternative one.
+ */
+function ranText(label: string, { alternative, text }: CommandPaletteSelectDetails): string {
+  return `${label}${text === undefined ? "" : `: “${text}”`}${alternative ? " (alternative)" : ""}`
+}
+
+/**
+ * The commands `CommandPalette` demo's options: a theme toggle that stays open and shows its state,
+ * a command with a shortcut, one that cannot run offline, one with a hint, a command that moves
+ * focus out of the palette, a quick-create row that takes text, and a submenu two levels deep.
+ * The last three are not commands, so a ">" query hides them.
+ *
+ * @param theme The theme the toggle shows.
+ * @param toggle Switches the theme.
+ * @param ran Records which command ran.
+ * @param jump Moves focus to the card's note.
+ */
+function paletteCommands(
+  theme: string,
+  toggle: () => void,
+  ran: (label: string, details: CommandPaletteSelectDetails) => void,
+  jump: () => void,
+): CommandPaletteOption[] {
+  return [
+    {
+      id: "theme",
+      label: "Theme",
+      icon: theme === "Dark" ? IconMoon : IconSun,
+      state: theme,
+      hint: "Setting",
+      kbd: "mod+shift+l",
+      group: "Settings",
+      aliases: ["dark mode", "light mode"],
+      keepOpen: true,
+      run: toggle,
+    },
+    {
+      id: "new-note",
+      label: "New note",
+      icon: IconPlus,
+      hint: "Command",
+      kbd: "mod+alt+n",
+      group: "Commands",
+      run: (details) => ran("New note", details),
+    },
+    {
+      id: "sync",
+      label: "Sync now",
+      icon: IconRefresh,
+      group: "Commands",
+      disabledReason: "Needs a connection",
+      run: (details) => ran("Sync now", details),
+    },
+    {
+      id: "sign-out",
+      label: "Sign out",
+      icon: IconLogout,
+      hint: "Account",
+      group: "Commands",
+      run: (details) => ran("Sign out", details),
+    },
+    { id: "jump", label: "Jump to the log", hint: "Command", group: "Commands", run: jump },
+    {
+      id: "add-task",
+      label: "Add a task",
+      icon: IconPencilSquare,
+      hint: "Type its name",
+      group: "Create and go",
+      takesText: true,
+    },
+    {
+      id: "account",
+      label: "Account",
+      icon: IconUser,
+      group: "Create and go",
+      children: [
+        { id: "profile", label: "Profile" },
+        { id: "billing", label: "Billing", detail: "Plan and invoices" },
+        {
+          id: "security",
+          label: "Security",
+          children: [
+            { id: "password", label: "Password" },
+            { id: "two-step", label: "Two-step sign-in" },
+          ],
+        },
+      ],
+    },
+  ]
+}
+
+/**
+ * The commands `CommandPalette` demo's own trigger: a button showing its hotkey, which focus comes
+ * back to, and one that opens the palette with ">" typed, listing only commands.
+ *
+ * @param api What the palette hands its trigger.
+ */
+function PaletteCommandsTrigger({ open, ref, shortcuts, hotkey }: CommandPaletteTrigger) {
+  return (
+    <Cluster>
+      <Button
+        ref={ref}
+        variant="outline"
+        size="sm"
+        aria-haspopup="dialog"
+        aria-keyshortcuts={shortcuts}
+        data-e2e="palette-commands-open"
+        onClick={() => open()}
+      >
+        Run a command…
+        {hotkey !== undefined && (
+          <span aria-hidden="true" class="max-sm:hidden">
+            <Kbd keys={hotkey} />
+          </span>
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-haspopup="dialog"
+        data-e2e="palette-commands-only"
+        onClick={() => open(">")}
+      >
+        Commands only
+      </Button>
+    </Cluster>
+  )
+}
+
+/** Where the remembering `CommandPalette` demo keeps its recent picks. */
+const PALETTE_RECENT = {
+  storageKey: "ui-guide:command-palette-recent",
+  storage: () => localStorage,
+}
+
 /** The names the remote `CommandPalette` demo's pretend server knows. */
 const paletteFruits = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape", "Papaya"]
 
@@ -2459,17 +3360,26 @@ function paletteFruitSearch(
 }
 
 /**
- * `CommandPalette` both ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * `CommandPalette` four ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
- * has no hotkey. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
+ * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
+ * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut, a
+ * command that cannot run, one that moves focus to the card's note, a quick-create row and a
+ * submenu. It draws a trigger of its own, which a switch can remove, and opens on Ctrl+Shift+P
+ * either way. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
  * searches started and answered.
  */
 function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
   const pickedRemote = useSignal("nothing yet")
+  const pickedForgiving = useSignal("nothing yet")
   const searches = useSignal(0)
   const answered = useSignal(0)
   const aborted = useSignal<string[]>([])
+  const theme = useSignal("Light")
+  const ran = useSignal("nothing yet")
+  const log = useRef<HTMLSpanElement>(null)
+  const commandsTrigger = useSignal(true)
   return (
     <Stack>
       <Cluster>
@@ -2497,6 +3407,60 @@ function CommandPaletteDemo() {
           onSelect={(option) => pickedRemote.value = option.label}
         />
       </Cluster>
+      <CommandPalette
+        options={paletteComponents}
+        trigger="field"
+        defaultQuery="combobx"
+        showMatch
+        hotkeys={[]}
+        dataE2E="palette-forgiving"
+        labels={{ placeholder: "Find a component…" }}
+        onSelect={(option) => pickedForgiving.value = option.label}
+      />
+      <CommandPalette
+        options={paletteCommands(
+          theme.value,
+          () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
+          (label, details) => ran.value = ranText(label, details),
+          () => log.current?.focus(),
+        )}
+        hotkeys={["mod+shift+p"]}
+        trigger={commandsTrigger.value ? PaletteCommandsTrigger : () => null}
+        dataE2E="palette-commands"
+        labels={{ placeholder: "Run a command…" }}
+        onSelect={(option, details) => ran.value = ranText(option.label, details)}
+      />
+      <ToggleField
+        id="palette-commands-trigger"
+        label="Show the commands trigger"
+        description="Without it, Ctrl+Shift+P still opens the palette."
+        value={commandsTrigger.value}
+        onToggle={(value) => commandsTrigger.value = value}
+      />
+      <Cluster>
+        <CommandPalette
+          options={paletteCommands(
+            theme.value,
+            () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
+            (label, details) => ran.value = ranText(label, details),
+            () => log.current?.focus(),
+          )}
+          recent={PALETTE_RECENT}
+          hotkeys={[]}
+          dataE2E="palette-recent"
+          labels={{ placeholder: "Run, remembering…" }}
+          onSelect={(option, details) => ran.value = ranText(option.label, details)}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="palette-recent-forget"
+          onClick={() =>
+            clearCommandPaletteRecent(PALETTE_RECENT.storageKey, PALETTE_RECENT.storage)}
+        >
+          Forget recent picks
+        </Button>
+      </Cluster>
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
@@ -2504,8 +3468,16 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-remote-answered">{answered.value}</span>; aborted{" "}
         <span data-e2e="palette-remote-aborted">
           {aborted.value.map((stale) => `“${stale}”`).join(", ") || "none"}
-        </span>. One letter answers slowly, longer queries quickly, “slow” takes twenty seconds,
-        “dragon” finds a long name, and “boom” fails.
+        </span>; component{" "}
+        <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
+        <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
+        <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
+        answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
+        name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
+        the commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
+        lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
+        group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
+        last palette remembers its picks across reloads and lists them on the empty query.
       </DemoNote>
     </Stack>
   )

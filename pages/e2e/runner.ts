@@ -43,17 +43,18 @@ export interface E2eTarget {
 }
 
 /** How long a locator waits for its element before the spec fails, at full speed. */
-const ACTION_TIMEOUT_MS = 10_000
+const ACTION_TIMEOUT_MS = 20_000
 /**
  * How long a navigation may take, at full speed. Longer than a locator's wait: on a loaded CI host
  * a guide page's `load` event has taken over 10 seconds, which failed specs before they began.
  */
 const NAVIGATION_TIMEOUT_MS = 30_000
 /**
- * How long one spec may take, at full speed. Below `verify`'s 90-second stall limit, so a spec that
- * hangs is reported under its own name rather than as a stalled phase.
+ * How long one spec may take, at full speed. Below `verify`'s 150-second stall limit, so a spec
+ * that hangs is reported under its own name rather than as a stalled phase. 60 seconds and a
+ * locator's 10 failed passing specs on CI agents with a load of 20 to 40 (#979).
  */
-const SPEC_TIMEOUT_MS = 60_000
+const SPEC_TIMEOUT_MS = 120_000
 
 /**
  * Read every spec out of every `*.spec.ts` file in this directory, in file-name order.
@@ -92,7 +93,7 @@ interface SpecResult {
  * How many specs run at once, each in its own context. Most of a spec's time is spent loading and
  * hydrating its page (#696): about 3.4 of 6.6 seconds at a load average of 20 to 31, one at a
  * time. Four at once cut the part from over 900s to under 400s there. Four is also the core count
- * of a GitHub runner, so CI gains as well, and a single spec still has its 60 seconds of room.
+ * of a GitHub runner, so CI gains as well, and a single spec still has its 120 seconds of room.
  */
 const CONTEXTS = 4
 

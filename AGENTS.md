@@ -1,151 +1,104 @@
 # AGENTS.md — preact-components
 
-Reusable Preact + Tailwind components, design tokens, icons and signals helpers for Deno apps. See
-`README.md` (what it is), `docs/maintaining.md` (scope and rules) and `LICENSE` (MIT). A Deno
-workspace: each package owns one top-level directory and is built in its own PR.
+Reusable Preact + Tailwind components, design tokens, icons and signals helpers, published on JSR
+as `@spy4x/preact-<directory>`. A Deno workspace: one package per top-level directory. What each
+package holds: the "Scope" table in [`docs/maintaining.md`](./docs/maintaining.md). `pages/` is the
+demo site and the browser checks, and is not published.
 
-## Package layout
+**UI work:** read [`docs/design-rules.md`](./docs/design-rules.md) and
+[`docs/choose-a-component.md`](./docs/choose-a-component.md) first. Open
+`docs/design-language.md` only at the section they point to.
 
-| Directory   | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme/`    | CSS text (`TOKENS_CSS`, `PRESET_CSS`, opt-in dark `INK_CSS`, the opt-in theme-preview palettes `THEME_PREVIEW_CSS`), every class the components render (`COMPONENT_CLASSES`), the spacing scale (`SPACING_STEPS`, `SPACING_GAPS`, `findOffScaleSpacing`), the spacing guard an app registers as a test (`registerSpacingTests`, `guardFiles`, `guardRoot`, `DEFAULT_SKIPPED_DIRECTORIES`, `DEFAULT_SPACING_EXTENSIONS`), and Vite plugins (`preactThemeCss`, `requireComponentCss`, `npmSpecifiers`, `NpmVersionMismatchError`, `denoModuleIds`, `serviceWorker`, `buildIdOf`, `webManifest`, `buildWebManifest`) |
-| `icons/`    | merged icon set: one component per glyph, all listed by the guide's icon gallery                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `ui/`       | `Stack`, `Cluster`, `Grid`, `Page`, `Section`, `Badge`, `Button`, `Table`, `DataTable`, `Dropdown`, `Combobox`, `Modal`, `Tooltip`, `Toastr` — and the rest                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `system/`   | `AccountMenu`, `AppShell`, `AuthForm`, `Calendar`, `ConflictChooser`, `InstallPrompt`, `PushSettings`, `Rail`, `RailShell`, `SavedCopyNotice`, `SEOHead` + `head` store, `Shell`, `SiteFooter`, `SiteHeader`, `StateInit`, `SWUpdater`, `SyncStatus`, `UnsentChangesDialog`                                                                                                                                                                                                                                                                                                                                       |
-| `charts/`   | server-rendered charts with browser tooltips (`LineChart`, `Bars`, `DonutChart`, `Kpi`), axis maths (`scales`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `cn/`       | `cn()` — class-name join + Tailwind conflict resolution; `join()` — the join alone                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `signals/`  | `buildModelStore`, `useUrlFilters`, `createThemeStore`, `createToastStore`, `patchSignal` — and the rest; no components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `crud/`     | `CrudList`, `CrudEditor`, `AssociationEditor`, `DeletionValidation`, field rows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `map/`      | `Map` on Leaflet — its own package, so only an app that imports it resolves Leaflet                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `ui-guide/` | live component catalogue: an overview and one page per package with components behind a side navigation (`UIGuide`, `uiGuideRoute`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `pages/`    | demo app (GitHub Pages site and the browser checks under `pages/checks/`), not published                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+## Commands
 
-A name in backticks in this table must be an export or a subpath of that package, and each
-catalogued package's README lists every component it exports in a "Components" table.
-`infra/scripts/export-lists.test.ts` (run by `deno task test`) holds both, plus the "Scope" table in
-`docs/maintaining.md`, the `deno add` lines in `docs/usage.md` and the README's "Packages" links: a
-new package needs all three.
+```bash
+deno task check   # fmt:check, lint, ts:check, test; all must pass
+deno task fix     # lint --fix, then fmt
+deno test --no-prompt --allow-read --allow-env ui/button.test.tsx   # one test file
+deno task llms    # rewrite llms.txt and llms-full.txt after an export, JSDoc or README change
+deno task --cwd pages build && deno task --cwd pages verify --only=ui   # one package's browser checks
+deno task --cwd pages verify --component=<name>   # one ui component's browser checks and specs
+```
 
-## What belongs in this library
+A few test files need more permissions; the `test` task in `deno.jsonc` lists them.
 
-A component belongs here when a future project can reuse it, even if only one app uses it today.
-Business wording, one app's data model, or a renamed copy of something generic disqualifies it.
-Worked examples: [`docs/maintaining.md`](./docs/maintaining.md), "What belongs".
+## What belongs here
 
-Code flows both ways: apps feed `spy4x/ts-libs` and this library with anything reusable and import
-from them instead of keeping copies (each app tracks that switch in its own issue); this library
-also feeds `spy4x/seed`. Removing an export breaks apps: move every app that imports it onto a
-replacement, or back onto its own copy, first. A project deleted before its components were
-extracted is not a source for anything here; do not name it. This is a public repository: no private
-application's code, file paths, file lists or business vocabulary in components, docs, PRs or
-issues. Existing mentions are tracked in #127; do not assume the repository is clean, and do not
-remove them in an unrelated change.
+A component belongs here when a future project can reuse it, even if one app uses it today.
+Business wording, one app's data model, or a renamed copy of something generic disqualifies it
+(worked examples: `docs/maintaining.md`, "What belongs").
+
+- Removing an export breaks apps: move every app that imports it onto a replacement first.
+- This is a public repository: no private application's code, paths, file lists or vocabulary,
+  and never a raw production URL.
+  Known mentions are tracked in [#859](https://github.com/spy4x/preact-components/issues/859); do
+  not remove one in an unrelated change. A project deleted before its components were extracted is
+  not a source; do not name it.
 
 ## Adding a package
 
-A member joins or leaves `"workspace"` in `deno.jsonc` **in the same change as its
-`<pkg>/deno.json`**, never ahead of it: Deno only warns about a listed member that does not exist.
+- A member joins or leaves `"workspace"` in `deno.jsonc` in the same change as its
+  `<pkg>/deno.json`, never ahead of it. `name` is `@spy4x/preact-<directory>`; `exports` lists
+  exactly the entry points that exist.
+- An `imports` block only for a specifier the root import map lacks. Today `theme`, `system`, `map`
+  and `pages` have one.
+- Add the directory to `packageIds` or `helperPackageIds` (`ui-guide/registry-ids.ts`), or to
+  `EXCLUDED_PACKAGES` (`ui-guide/coverage.ts`) with a reason, to `PUBLISHED_PACKAGES`
+  (`infra/scripts/private-names.ts`) and to `WORKSPACE_DIRECTORIES` (`pages/build-fingerprint.ts`).
+- Add a row to the "Scope" table in `docs/maintaining.md`, a `deno add` line in `docs/usage.md`, a
+  link in the README's "Packages" table and, for a package in `packageIds`, a complete list of its
+  components in its own README; `infra/scripts/export-lists.test.ts` checks all four.
+- Every component (a PascalCase function) needs a card under `ui-guide/sections/`, or an entry in
+  `COMPONENTS_WITHOUT_CARD` with a sentence saying why, which review challenges. Every helper is
+  named in code in the package README (`` `clampProgress(value, max)` ``) with a line on what it
+  does.
 
-- `name` is `@spy4x/preact-<directory>` (siblings import by it, `"@spy4x/preact-cn"`); `exports`
-  lists exactly the entry points that exist today.
-- No `imports` block unless you need a specifier the root does not provide. Only `map/deno.json`
-  has one (`leaflet`, `@types/leaflet`). Shared deps (preact, signals, arktype, tailwind, `@std/*`,
-  tailwind-merge, wouter-preact, `@spy4x/*` from ts-libs) live in the root import map.
+## Pull requests
 
-Checks walk the tree, so no root config changes, but `deno task test` fails until the directory is
-in `packageIds` (`ui-guide/registry.ts`, exports a component), `helperPackageIds` (helpers alone)
-or `EXCLUDED_PACKAGES` (`ui-guide/coverage.ts`, with a reason). Then every **component** (PascalCase
-function) needs a card in its package's section under `ui-guide/sections/`, or an entry in
-`COMPONENTS_WITHOUT_CARD` with a sentence saying why, which review challenges; every **helper**
-(anything else) is named in code in the package README (`` `clampProgress(value, max)` ``) with a
-line on what it does.
+One package per PR, plus the generated files and guide cards that package's change forces. Never
+reformat or edit a directory another agent owns. Update the PR body after every significant change
+with the decisions you made.
 
-## Branches, commits, PRs
+Branch types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`, `perf/`, `ci/`. A commit's
+scope is the package directory or `deps`, omitted when repo-wide; its summary is lowercase.
 
-Never commit a secret, token, credential, `.env` value or raw production URL. Branch types:
-`feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `style/`, `perf/`, `ci/`.
-
-Commits are Angular, `<type>(<scope>): <summary>`, e.g. `fix(charts): correct tick rounding`. Types
-as above; scope is the package directory or `deps`, omitted when repo-wide; summary imperative,
-lowercase, no trailing period, ≤ 50 chars (hard cap 72). Body only for a non-obvious why. One
-logical change per small commit. No AI attribution.
-
-One package per PR; never reformat or edit a directory another agent owns.
-Update the PR body after every significant change with the decisions you made.
-
-## Review
-
-A separate reviewer agent reviews every PR (never self-review), before it is opened or before
-`[WIP]` is dropped. It runs the checks itself, breaks the code each test protects (a test that
-passes either way is rejected), and never fixes what it finds: a rejection goes back with the exact
-changes required. The verdict is a PR comment, so GitHub's review record stays empty by design. A
-passing verdict is the merge authority: merge without asking; leave the PR open, and say so, when
-the gate fails or a revert could not undo the change.
-
-That authority covers only PRs authored by `spy4x`; the global "Outside authors" rule covers the
-rest (#85).
-
-## Filing issues
-
-The global "Filing issues" rule decides what may be filed; this section says how. File few, large
-issues: group related findings into one issue per area (a package, or one concern such as
-accessibility or test tooling), never one issue per finding. Group a report's "Proposed issues" list
-the same way. Before filing, look for an open issue by `spy4x` on the same area and add the findings
-to it in a comment, never by editing its body. Inside the issue, list the findings most severe
-first; the issue takes the priority of its most severe one. Findings that wait on the owner's answer
-go together in one `needs-decision` issue, so they do not hold back the rest of their area.
+Filing issues follows the global rule alone: one piece of work per issue, additions in a comment,
+no list of proposed issues. One addition: findings that wait on the owner's answer go together in
+one `needs-decision` issue, so they do not hold back the rest of their area.
 
 ## Checks
 
-`deno task check` runs `fmt:check`, `lint`, `ts:check` and `test`; all must pass. `deno task fix`
-runs `lint --fix` then `fmt`. The manifest defines the rest (`publish:dry`, `private-names`,
-`llms`).
-
 - `llms.txt` and `llms-full.txt` are generated from exports, first JSDoc sentences and package
-  READMEs; never hand-edit them. Run `deno task llms` after changing any of those (a test fails
-  when they are stale), and give every export a JSDoc summary sentence. `llms.txt` has one line per
-  export, four fields separated by tabs (name, kind, import specifier, summary), in the format of
-  `spy4x/ts-libs`' `llms.txt`; `infra/scripts/llms-txt.ts` describes it.
-- `publish:dry` refuses a dirty tree, so it is not in `check`; each CI runs it after `check`.
-  `private-names` runs before every release tag, not in CI
-  ([`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md)).
-- A specifier that cannot be resolved: run the task once with network access and commit the updated
-  `deno.lock`. Never delete or hand-edit the lockfile.
-
-## Behaviour needs a browser check
-
-String-render tests never run an effect, a ref, a key press, a focus change or a timer. Behaviour
-behind one is unproven until a browser check covers it. A new check, and an existing one you edit,
-is a Playwright spec in `pages/e2e/<package>.spec.ts`, with axe-core for accessibility (#667);
-untouched checks stay in `pages/checks/`. Read [`pages/README.md`](./pages/README.md), "Writing a
-browser check", first. Always run `deno task --cwd pages build` before
-`deno task --cwd pages verify`; `--static` and one `--only` run are not full runs. On a busy machine
-run it in its three parts (same file, "Running a full run in parts"), as CI does: Woodpecker runs
-`check`, `publish:dry`, the build and the three parts on every PR and every push to `main`; GitHub
-Actions only deploys `main` to Pages, after that push build is green.
+  READMEs; never hand-edit them. Every export needs a JSDoc summary sentence. A test fails when they
+  are stale.
+- `publish:dry` refuses a dirty tree, so it is not in `check`; CI runs it after `check`.
+- **Behaviour needs a browser check.** String-render tests never run an effect, a ref, a key press,
+  a focus change or a timer. A new browser check, or one you edit, is a Playwright spec in
+  `pages/e2e/<package>.spec.ts` with axe-core; untouched ones stay in `pages/checks/`. Read
+  [`pages/README.md`](./pages/README.md), "Writing a browser check", first. Always `build` before
+  `verify`; `--static` and `--only` are not full runs. On a busy machine run the full run in parts
+  (same file, "Running a full run in parts").
+- CI: Woodpecker runs `check`, `publish:dry`, the build and the browser checks (`e2e` in four
+  shards) on every PR and every push to `main`. GitHub Actions only deploys `main` to Pages.
 
 ## Releases
 
-Every package is published at the same version, together (#230), so a sibling's caret range
-resolves to the set published with it. Semver since 1.0.0: a change that can break an app bumps the
-major. Steps: [`docs/publishing.md`](./docs/publishing.md).
-
-Releases are cut in batches (#868), never after every merge, at the times the global rule for
-shared libraries allows ("Autonomy" in the global agent rules). Never hold a reviewed merge or deploy,
-here or in a consumer, for Deno's 24-hour minimum dependency age, and never add a flag or wording to
-hide a version not installable yet. A consumer's CI resolves a young version once its committed
-`deno.lock` records it: write that lockfile once with `deno install --minimum-dependency-age=0`.
+Every package is published at the same version, together, so a sibling's caret range resolves to
+the set published with it. A change that can break an app bumps the major. Steps:
+[`docs/publishing.md`](./docs/publishing.md). Before the tag, run `deno task private-names` with
+`private-names.txt` from the owner's private memory repository
+([`docs/pre-publish-checks.md`](./docs/pre-publish-checks.md)).
 
 ## Code style
 
-The global TS style applies, with two overrides: double quotes, backticks only for interpolated
-or multi-line strings; and an explicit `throw` on any missing required value, not only env.
-`deno fmt` decides layout. A new dependency needs a reason in the PR.
+The global TS style applies, with two overrides: double quotes, backticks only for interpolated or
+multi-line strings; and an explicit `throw` on any missing required value, not only env. A new
+dependency needs a reason in the PR.
 
 ## Component rules
 
 **Props and ports, not global state.** A component gets everything through props or a port (a
-callback or interface) from the caller, and never imports an app's state singleton, a module-level
+callback or interface) from the caller. It never imports an app's state singleton, a module-level
 `signal()` holding app data, or ambient context the host did not hand over.
 
 - Local, purely visual state (open/closed, hover, input draft) may live inside the component.
@@ -155,51 +108,49 @@ callback or interface) from the caller, and never imports an app's state singlet
 
 **Local state is `useSignal`, not `useState`.** Convert existing `useState` only in a change that
 already touches that component. `useRef` stays for DOM handles and timers, `useEffect` for DOM
-lifecycle work. Never write a signal during a render (reading `.value` subscribes, so the write
-re-renders forever, #300); write it in a handler, an effect, or a callback one of them set up.
+lifecycle work. Never write a signal during a render: reading `.value` subscribes, so the write
+re-renders forever. Write it in a handler, an effect, or a callback one of them set up.
+
+**An input that keeps its own state reads the field on mount.** Preact keeps the text a person typed
+before hydration and fires no `input` event for it, so state that starts empty misses that text.
 
 **Spacing.** Padding, margin and gap use only `0 px 1 2 3 4 6 8 12 16`, never an arbitrary value.
 `infra/scripts/spacing-scale.test.ts` catches classes, arbitrary spacing properties and
 `--spacing()` calls; review holds raw CSS, inline `style`, runtime class names and `theme()`. A
-component's root carries no margin: siblings are spaced by the parent's named gap (`Page`,
-`Section`, `Stack`, `Cluster`, `Grid`). See [`docs/spacing.md`](./docs/spacing.md).
+component's root carries no margin: the parent's gap spaces siblings (`Page`, `Section`, `Stack`,
+`Cluster`, `Grid`). See [`docs/spacing.md`](./docs/spacing.md).
 
-**The `crud/` data contract** (every app built from `spy4x/seed`; details in `crud/README.md`):
-rows are never deleted but carry `deletedAt`, set and cleared by an optional archive checkbox in the
-normal update, and the list filters active from archived; the store is shaped like
-`buildModelStore` (`CrudListStore` and `CrudEditorStore` in `crud/store.ts`, proven by
-`crud/store.test.ts` with no adapter); a `canChange` port (boolean, from the app) decides who
-may edit, and `CrudList` takes `canAdd` the same way.
+**The `crud/` data contract** (details in `crud/README.md`): rows are never deleted but carry
+`deletedAt`, set and cleared by an optional archive checkbox in the normal update, and the list
+filters active from archived. The store is shaped like `buildModelStore` (`CrudListStore` and
+`CrudEditorStore` in `crud/store.ts`). `canChange?: () => boolean`, a function from the app,
+decides who may edit; `CrudList` takes `canAdd?: () => boolean` the same way.
 
-**Labels.** Every user-visible string has an English default and a prop that overrides it; nothing
-throws for want of a label. The exception is a name only the caller knows, such as an icon-only
-trigger's accessible name: it is a required prop, a type error when missing.
+**Labels.** Every user-visible string has an English default and a prop that overrides it. The
+exception is a name only the caller knows, such as an icon-only trigger's accessible name: a
+required prop.
 
 **Every change updates the UI guide.** A new or changed component updates its `ui-guide/` card in
-the same PR (a new prop gets a demo, a changed default changes the snippet); a new or changed
-helper or hook updates its README line (#357). `deno task test` checks that cards and README lines
-exist; review checks that they are still accurate.
+the same PR (a new prop gets a demo, a changed default changes the snippet); a new or changed helper
+or hook updates its README line. `deno task test` checks that they exist; review checks that they
+are accurate.
 
-**Validation: arktype only.** No zod, valibot or hand-rolled validators; `type(...)` gives both the
-runtime check and the inferred type.
+**Validation: arktype only.** No zod, valibot or hand-rolled validators.
 
 ## Dependencies
 
-**Pin exactly: never `^`, `~` or a floating tag.** A version bump is its own `deps` commit. The one
-exception (#370): `preact`, `preact/`, `@preact/signals` and `@preact/signals-core` in the root
+**Pin exactly: never `^`, `~` or a floating tag.** A version bump is its own `deps` commit. The
+exception: `preact`, `preact/`, `@preact/signals` and `@preact/signals-core` in the root
 `deno.jsonc` are caret ranges, because `deno publish` copies import-map values into published
-imports and an exact pin made apps load a second copy. Read their resolved version in `deno.lock`.
-This must print nothing:
+imports and an exact pin made apps load a second copy. This must print nothing:
 
 ```bash
 grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' . |
   grep -vE '^(\./)?deno\.jsonc:[0-9]+:"npm:/?(preact|@preact/signals|@preact/signals-core)@\^$'
 ```
 
-The root import map is the only list of pins, except `leaflet` and `@types/leaflet` in
-`map/deno.json`. Matching pins with `spy4x/seed` and `spy4x/ts-libs` is checked by hand:
-`grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` in each repo.
-
-Pinning and the dependency allowlist are held by review, not CI: the lockfile is a record, not a
-gate. What is and is not caught:
+Pins live in the root import map and in the `imports` blocks of `theme`, `system`, `map` and
+`pages`. Matching pins with `spy4x/seed` and `spy4x/ts-libs` is checked by hand:
+`grep -oE '"(arktype|preact|@preact/signals)@[0-9][^"_]*' deno.lock` in each repo. Pinning and the
+allowed dependencies are held by review, not CI:
 [`docs/no-third-party-components.md`](./docs/no-third-party-components.md).

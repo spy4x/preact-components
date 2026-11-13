@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals"
 import { cn } from "@spy4x/preact-cn"
 import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext, useEffect, useId, useRef } from "preact/hooks"
+import type { RowCursorRowProps } from "./row-cursor.ts"
 
 export interface TableProps {
   /** Cells of the single header row, normally `<th>` elements. */
@@ -42,6 +43,8 @@ export interface TableProps {
   captionClass?: string
   /** Sets `data-e2e` on every body row, for end-to-end selectors. */
   rowDataE2E?: string
+  /** Props for body row `index`, such as `useRowCursor`'s `rowProps`. */
+  rowProps?: (index: number) => RowCursorRowProps
   class?: string
 }
 
@@ -147,6 +150,7 @@ export function Table(
     caption,
     captionClass,
     rowDataE2E,
+    rowProps,
     class: className,
   }: TableProps,
 ): JSX.Element {
@@ -169,15 +173,19 @@ export function Table(
           </tr>
         </thead>
         <tbody class="divide-y divide-subtle bg-surface pc-focus-offset-surface">
-          {bodySlots.map((bodySlot, index) => (
-            <tr
-              key={bodyKeys === undefined ? index : bodyKeys[index]}
-              class="text-sm *:px-6 *:py-4 hover:bg-hover"
-              data-e2e={rowDataE2E}
-            >
-              {bodySlot}
-            </tr>
-          ))}
+          {bodySlots.map((bodySlot, index) => {
+            const extra = rowProps?.(index)
+            return (
+              <tr
+                key={bodyKeys === undefined ? index : bodyKeys[index]}
+                {...extra}
+                class={cn("text-sm *:px-6 *:py-4 hover:bg-hover", extra?.class)}
+                data-e2e={rowDataE2E}
+              >
+                {bodySlot}
+              </tr>
+            )
+          })}
         </tbody>
         {footerSlot && <tfoot class="bg-canvas">{footerSlot}</tfoot>}
       </table>

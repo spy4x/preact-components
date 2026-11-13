@@ -2,6 +2,7 @@ import { type ComponentChildren, Fragment, isValidElement, type JSX } from "prea
 import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { type DialogTone, Modal } from "./modal.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 export interface ConfirmDialogProps {
   /** Heading, and the dialog's accessible name. */
@@ -136,9 +137,16 @@ export function ConfirmDialog(
   // a caller that reaches a blank label through a variable gets a usable button instead of a
   // rendered component that raises. The prop still overrides, and a product that wants its own verb
   // names it — see `labelOr`.
-  const confirmText = labelOr(confirmLabel, CONFIRM_LABEL)
-  const cancelText = labelOr(cancelLabel, CANCEL_LABEL)
-  const closeText = labelOr(closeLabel, CLOSE_LABEL)
+  const translator = useT()
+  const confirmText = labelOr(
+    confirmLabel,
+    translate(translator, "ConfirmDialog.confirmLabel", "Confirm"),
+  )
+  const cancelText = labelOr(
+    cancelLabel,
+    translate(translator, "ConfirmDialog.cancelLabel", "Cancel"),
+  )
+  const closeText = labelOr(closeLabel, translate(translator, "ConfirmDialog.closeLabel", "Close"))
   // No two buttons of the panel share a name: `Modal` draws no corner control without a label.
   const cornerLabel = closeText === cancelText || closeText === confirmText ? undefined : closeText
   // The question's own id, from the framework's hook for the same reason `Modal`'s title id is:
@@ -193,13 +201,10 @@ export function ConfirmDialog(
 }
 
 /** English default for the confirming action, used when the caller names no verb. */
-export const CONFIRM_LABEL = "Confirm"
+export const CONFIRM_LABEL: string = "Confirm"
 
 /** English default for the cancelling action. */
-export const CANCEL_LABEL = "Cancel"
-
-/** English default name of the header dismiss control, as in the library's other dialogs. */
-const CLOSE_LABEL = "Close"
+export const CANCEL_LABEL: string = "Cancel"
 
 /** `data-e2e` a {@link ConfirmDialog}'s confirm button carries when the caller names none. */
 const CONFIRM_DATA_E2E = "confirm-dialog-confirm"

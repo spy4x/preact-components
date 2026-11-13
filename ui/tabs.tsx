@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
-import { useRef } from "preact/hooks"
+import { useLayoutEffect, useRef } from "preact/hooks"
+import { inlineStep, isRightToLeft } from "./direction.ts"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import {
   ariaKeyShortcuts,
@@ -50,7 +51,10 @@ export interface TabsProps {
   label?: string
   /** Extra utilities for the root container. */
   class?: string
-  /** Extra utilities for the tablist. */
+  /**
+   * Extra utilities for the tablist. A row that scrolls sideways (`flex-nowrap overflow-x-auto`)
+   * scrolls the selected tab into view on the first render and whenever `active` changes.
+   */
   listClass?: string
   /** Extra utilities for every tab button. */
   tabClass?: string
@@ -121,17 +125,32 @@ function rovingIndex(flags: readonly boolean[], activeIndex: number): number {
 }
 
 /**
+ * Scroll `list` sideways by the least that shows the whole of `tab`, and never the page, as
+ * `scrollIntoView` would. Measured in viewport pixels, so the same sum holds in a right-to-left
+ * row, whose `scrollLeft` runs from `0` down. A row that does not scroll ignores the assignment.
+ */
+function revealInRow(list: HTMLElement, tab: HTMLElement): void {
+  const start = list.getBoundingClientRect().left + list.clientLeft
+  const end = start + list.clientWidth
+  const { left, right } = tab.getBoundingClientRect()
+  if (left < start) list.scrollLeft -= start - left
+  else if (right > end) list.scrollLeft += right - end
+}
+
+/**
  * Index the tablist should move focus to for `key`, given the tab currently focused.
  *
  * Pure and exported so the keyboard map is unit-testable: the DOM wiring that calls it can only
  * be checked in a real browser, this decision table cannot. Focus wraps around both ends, and a
  * disabled tab is skipped rather than landed on. `Home`/`End` answer the first/last *enabled* tab;
- * only Left/Right step, so Up/Down stay with the page and its panels.
+ * only Left/Right step, so Up/Down stay with the page and its panels. In a right-to-left tablist,
+ * where the first tab is on the right, Left steps to the next tab and Right to the previous one.
  *
  * @param key Value of `KeyboardEvent.key`.
  * @param current Index of the tab that has focus; out-of-range values wrap.
  * @param count Number of tabs in the tablist.
  * @param disabled One entry per tab: `true` when that tab is disabled.
+ * @param rtl Whether the tablist lays out right to left. Defaults to `false`.
  * @returns Index to focus, or `undefined` when the key is not one this tablist owns — which
  * includes "the tablist has no tabs" and "every tab is disabled".
  */
@@ -140,6 +159,7 @@ export function nextTabIndex(
   current: number,
   count: number,
   disabled: readonly boolean[] = [],
+  rtl = false,
 ): number | undefined {
   if (count <= 0) return undefined
 
@@ -154,7 +174,7 @@ export function nextTabIndex(
     return lastEnabled === -1 ? undefined : lastEnabled
   }
 
-  const step = key === "ArrowRight" ? 1 : key === "ArrowLeft" ? -1 : 0
+  const step = inlineStep(key, rtl)
   if (step === 0) return undefined
 
   // Walk one tab at a time, wrapping past both ends, until an enabled tab comes back around.
@@ -219,6 +239,14 @@ export function Tabs(
   const flags = tabs.map((tab) => tab.disabled === true)
   const focusIndex = rovingIndex(flags, activeIndex)
 
+  // A link or a reload can open the page on a tab far along a row that scrolls sideways; without
+  // this the row starts at its first tab and the selected one sits out of sight.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const tab = list?.querySelector<HTMLElement>(`[role="tab"][aria-selected="true"]`)
+    if (list && tab) revealInRow(list, tab)
+  }, [active])
+
   /**
    * Focus the tab at `index` and report it as selected.
    *
@@ -238,7 +266,8 @@ export function Tabs(
    * traversal keep working.
    */
   const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextTabIndex(event.key, index, tabs.length, flags)
+    const rtl = isRightToLeft(event.currentTarget as Element)
+    const next = nextTabIndex(event.key, index, tabs.length, flags, rtl)
     if (next === undefined) return
     event.preventDefault()
     moveTo(next)

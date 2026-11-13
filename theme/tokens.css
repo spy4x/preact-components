@@ -94,6 +94,9 @@
     /* A secondary button's edge: gray-500, 4.84:1 on white and 4.39:1 on the canvas. gray-400 reads
        only 2.36:1 on the canvas, below the 3:1 a control's boundary needs (spy4x/seed#172). */
     --color-border-button: oklch(0.551 0.027 264.364); /* gray-500 */
+    /* The edge of `WindowFrame`'s plain and browser frames: none in light, where a large shadow
+       sets the frame off the page; the subtle border in dark, where that shadow does not show. */
+    --color-border-frame: transparent;
 
     /* Text — base, secondary, placeholder. */
     --color-foreground: oklch(0.13 0.028 261.692); /* gray-950 */
@@ -168,6 +171,7 @@
     /* The strong border, so ink's own strong step follows: 3.67:1 on the canvas, 3.04:1 on the
        surface; ink's reads 4.06:1 and 3.20:1. */
     --color-border-button: var(--color-border-strong);
+    --color-border-frame: var(--color-border-subtle);
 
     --color-foreground: oklch(0.985 0.002 247.839); /* gray-50 */
     /* A step lighter than gray-400, which read 3.96:1 on the gray-700 of a hovered row and of a
@@ -223,6 +227,7 @@
       --color-border-control: oklch(0.446 0.03 256.802);
       --color-border-strong: oklch(0.551 0.027 264.364);
       --color-border-button: var(--color-border-strong);
+      --color-border-frame: var(--color-border-subtle);
       --color-foreground: oklch(0.985 0.002 247.839);
       --color-muted-foreground: oklch(0.75 0.022 261.325);
       --color-placeholder: oklch(0.707 0.022 261.325);

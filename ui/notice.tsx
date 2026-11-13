@@ -4,8 +4,11 @@ import {
   IconCheckCircle,
   IconExclamationCircle,
   IconInformationCircle,
+  IconXMark,
 } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
+import { TOUCH_TARGET } from "./touch-target.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * What a {@link Notice} is about: news (`info`), something to act on soon (`warning`), a success,
@@ -36,6 +39,15 @@ export interface NoticeProps
    * reading, not hear read out uninvited. Defaults to `true`. `urgent` wins over it.
    */
   live?: boolean
+  /**
+   * Draws a close button in the top-right corner and calls this when it is pressed. The caller hides
+   * the notice (and remembers that it did, when it should stay hidden) and moves focus on, for
+   * example with `useFocusAfterRemoval`; the component keeps no state of its own. Omitted, no close
+   * button is drawn.
+   */
+  onDismiss?: () => void
+  /** The close button's accessible name. Defaults to `"Dismiss"`. */
+  dismissLabel?: string
   class?: string
 }
 
@@ -82,6 +94,11 @@ function isEmpty(children: ComponentChildren): boolean {
     children === ""
 }
 
+/** The English words of `Notice`, each one a prop of its own. */
+const NOTICE_LABELS: Required<Pick<NoticeProps, "dismissLabel">> = {
+  dismissLabel: "Dismiss",
+}
+
 /**
  * A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with
  * `tone="danger"`, a failure the reader must act on, such as a payment that failed.
@@ -105,10 +122,17 @@ export function Notice(
     action,
     urgent = false,
     live = true,
+    onDismiss,
+    dismissLabel: dismissLabelProp,
     class: className,
     ...rest
   }: NoticeProps,
 ): JSX.Element | null {
+  const { dismissLabel } = useLabels(
+    "Notice",
+    NOTICE_LABELS,
+    { dismissLabel: dismissLabelProp },
+  )
   const hasBody = !isEmpty(children)
   const hasAction = !isEmpty(action)
   if (!title && !hasBody && !hasAction) return null
@@ -120,6 +144,7 @@ export function Notice(
       class={cn(
         "flex flex-wrap items-start gap-3 rounded-lg border p-4 text-sm text-foreground",
         toneClasses[tone],
+        onDismiss && "relative pe-12",
         className,
       )}
     >
@@ -129,6 +154,23 @@ export function Notice(
         {hasBody && <div class={title ? "mt-1" : undefined}>{children}</div>}
       </div>
       {hasAction && <div class="shrink-0">{action}</div>}
+      {
+        // Pinned to the top-right corner rather than placed in the row, so it stays on the first
+        // line when a narrow row wraps the action under the text. `TOUCH_TARGET` makes it 44 px on
+        // a phone and 36 px from `sm` up; either way the 16 px cross is centred on the first line
+        // of text, and the root's `pe-12` keeps the text clear of it.
+      }
+      {onDismiss && (
+        <button
+          type="button"
+          class={`absolute end-1 top-1 inline-flex items-center rounded-md cursor-pointer transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden sm:end-2 sm:top-2 ${TOUCH_TARGET}`}
+          aria-label={dismissLabel}
+          data-e2e="notice-dismiss"
+          onClick={onDismiss}
+        >
+          <IconXMark class="size-4" />
+        </button>
+      )}
     </div>
   )
 }

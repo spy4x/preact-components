@@ -12,10 +12,9 @@
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Page } from "playwright-core"
 import { type GuidePageId, guidePageIds } from "@spy4x/preact-ui-guide/registry"
+import { type KnownCount, partSelectors, restExcludes, restKnown } from "./page-parts.ts"
+import { CONTRAST, CONTRAST_PARTS, GLYPH, OBSCURED, OVERLAPPED, SHORT } from "./ui-guide-parts.ts"
 import type { Spec } from "./runner.ts"
-
-/** How many elements fail one rule on one page: `[light, dark]`. */
-type KnownCount = readonly [light: number, dark: number]
 
 /**
  * How many elements break each axe rule on each page today, per palette. They were found when axe
@@ -27,11 +26,10 @@ type KnownCount = readonly [light: number, dark: number]
  */
 const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>> = {
   overview: {},
-  // Found once the stage's dots stopped hiding the text on it (#695). Light: `MoneyDisplay`'s
-  // negative amount, red-600 on the canvas at 4.33:1, and the disabled `FileInput` zone's two lines;
-  // dark: the zone's hint alone. A disabled control is exempt from the contrast rule, which axe
-  // cannot tell from the zone's markup; the amount is a `ui/` fix of its own.
-  ui: { "color-contrast": [3, 1] },
+  // Found once the stage's dots stopped hiding the text on it (#695). Light: the disabled
+  // `FileInput` zone's two lines; dark: the zone's hint alone. A disabled control is exempt from the
+  // contrast rule, which axe cannot tell from the zone's markup.
+  ui: { "color-contrast": [2, 1] },
   icons: {},
   // The `bg-scrim` swatch draws its label on the scrim over the light canvas, at 4.28:1. No
   // component puts text on that scrim: the Lightbox's labels sit on `bg-scrim-strong`.
@@ -54,15 +52,6 @@ const KNOWN_VIOLATIONS: Record<GuidePageId, Readonly<Record<string, KnownCount>>
   crud: {},
 }
 
-/** Text partly covered by another element: axe cannot see the colour under the covered part. */
-const OBSCURED = "color-contrast: elmPartiallyObscured"
-/** Text with another element over it. */
-const OVERLAPPED = "color-contrast: bgOverlap"
-/** Text too short for axe to be sure it is text, which it leaves undecided when it reads low. */
-const SHORT = "color-contrast: shortTextContent"
-/** A glyph drawn as a character outside the basic plane, which axe does not read as text. */
-const GLYPH = "color-contrast: nonBmp"
-
 /**
  * How many elements axe could not decide on, per page, rule and reason, and per palette. The reason
  * is axe's own `messageKey` (or the check's id when it gives none). The count is a ceiling: one
@@ -81,13 +70,16 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     // `CommandPalette`'s two option groups, an `li` in the `group` role, which axe allows on an
     // `li` only while it is hidden.
     "aria-allowed-role: aria-allowed-role": [2, 2],
-    // The header's version pill, the install command in its scroll region and three captions of
-    // a scroll-snap row.
-    [OBSCURED]: [5, 5],
-    // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and three disclosure chevrons.
-    [GLYPH]: [9, 9],
+    // The header's version pill, the install command in its scroll region, three captions of a
+    // scroll-snap row, and the last column of the `Prose` demo's wide table in its scroll region.
+    [OBSCURED]: [9, 9],
+    // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and four disclosure chevrons.
+    [GLYPH]: [10, 10],
     // A one-character `Kbd` key that axe measured below the ratio and left undecided.
     [SHORT]: [1, 1],
+    // The `LoopVideo` card's silent loop, which has no `<track kind="captions">`: a clip with no
+    // sound has nothing to caption, and its `aria-label` is its text alternative.
+    "video-caption: caption": [1, 1],
   },
   icons: { [OBSCURED]: [1, 1] },
   // The header's version pill and eight months of the `.pc-scrollbar` card's scrolling row.
@@ -147,27 +139,115 @@ const CONTRAST_ELSEWHERE: Partial<Record<GuidePageId, string>> = {
   map: '#demo-Map [data-e2e="map-attribution"]',
 }
 
-/** The rule a page's scan is split on: it takes about half the time of the whole scan. */
-const CONTRAST = "color-contrast"
-
 /**
- * Which half of a page's rules one spec runs. The ui page's scan took 46 to 53 seconds at a load
- * average near 40, too close to a spec's 60-second limit once specs run side by side, and the
- * contrast rule was about half of it (#696). Two halves run in parallel and each has room.
+ * A share of axe's rules that one spec runs on one page: `rules` alone, or, without `rules`, every
+ * rule no other share of that page runs. A page's scan is split into shares that run in parallel,
+ * each in a spec of its own, so none comes near a spec's 120-second limit (#696).
  */
-type Half = "contrast" | "rest"
+interface RuleShare {
+  /** What the spec's name says it finds none of, such as "region violation". */
+  what: string
+  rules?: readonly string[]
+  /** Scan only these elements, and what is inside them. */
+  include?: readonly string[]
+  /** Leave these elements, and what is inside them, out of the scan. */
+  exclude?: readonly string[]
+  /** The share's own known counts, in place of the page's, when it scans only part of the page. */
+  known?: Readonly<Record<string, KnownCount>>
+}
+
+const CONTRAST_SHARE: RuleShare = { what: "colour-contrast violation", rules: [CONTRAST] }
+const REST_SHARE: RuleShare = { what: "violation of another rule" }
 
 /**
- * One page in one palette, for one half of axe's rules: each rule fails on exactly as many
+ * The `aria-*` rules by id: most of axe's `cat.aria` category, plus `aria-hidden-focus`.
+ * `presentation-role-conflict` stays in the other share. `aria-roledescription` is off by default
+ * in axe, so naming it here makes the ui page run it as well. A rule axe adds later runs in the
+ * page's other share until it is listed here, so it is never left out.
+ */
+const ARIA_RULES = [
+  "aria-allowed-attr",
+  "aria-allowed-role",
+  "aria-braille-equivalent",
+  "aria-command-name",
+  "aria-conditional-attr",
+  "aria-deprecated-role",
+  "aria-dialog-name",
+  "aria-hidden-body",
+  "aria-hidden-focus",
+  "aria-input-field-name",
+  "aria-meter-name",
+  "aria-progressbar-name",
+  "aria-prohibited-attr",
+  "aria-required-attr",
+  "aria-required-children",
+  "aria-required-parent",
+  "aria-roledescription",
+  "aria-roles",
+  "aria-tab-name",
+  "aria-text",
+  "aria-toggle-field-name",
+  "aria-tooltip-name",
+  "aria-treeitem-name",
+  "aria-valid-attr-value",
+  "aria-valid-attr",
+]
+
+/**
+ * Pages whose rules besides contrast are split further. The ui page holds about 12,000 elements,
+ * and its scan without contrast took 15 seconds alone on a 16-core workstation, 22 beside three
+ * other specs, and ran past 60 in CI's shard 2/4. `region`, which checks every element for a
+ * landmark around it, was 6 of those 15 seconds and looks at the whole page, so it cannot be split
+ * by part of the page: it gets a spec of its own, and so do the ARIA rules.
+ */
+const SPLIT_FURTHER: Partial<Record<GuidePageId, readonly RuleShare[]>> = {
+  ui: [{ what: "region violation", rules: ["region"] }, {
+    what: "violation of an ARIA rule",
+    rules: ARIA_RULES,
+  }],
+}
+
+/** The contrast shares of a page: the whole page, or one per part and one for the rest of it. */
+function contrastShares(pageId: GuidePageId): readonly RuleShare[] {
+  const parts = CONTRAST_PARTS[pageId]
+  if (!parts) return [CONTRAST_SHARE]
+  const page = Object.fromEntries(
+    [...Object.entries(KNOWN_VIOLATIONS[pageId]), ...Object.entries(KNOWN_INCOMPLETE[pageId])]
+      .filter(([key]) => key === CONTRAST || key.startsWith(`${CONTRAST}: `)),
+  )
+  return [
+    ...parts.map((part) => ({
+      what: `${CONTRAST_SHARE.what} in ${part.what}`,
+      rules: CONTRAST_SHARE.rules,
+      include: partSelectors(part),
+      known: part.known ?? {},
+    })),
+    {
+      what: `${CONTRAST_SHARE.what} in the rest of the page`,
+      rules: CONTRAST_SHARE.rules,
+      exclude: restExcludes(parts),
+      known: restKnown(page, parts),
+    },
+  ]
+}
+
+/** Every share of a page's rules, one spec each; together they run each rule exactly once. */
+function ruleShares(pageId: GuidePageId): readonly RuleShare[] {
+  return [...SPLIT_FURTHER[pageId] ?? [], REST_SHARE, ...contrastShares(pageId)]
+}
+
+/**
+ * One page in one palette, for one share of axe's rules: each rule fails on exactly as many
  * elements as is known, and on none when the rule is not listed; and axe leaves no more elements
- * undecided, per rule and reason, than `KNOWN_INCOMPLETE` lists for that half.
+ * undecided, per rule and reason, than `KNOWN_INCOMPLETE` lists for that share.
  */
-function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half): Spec {
-  const which = half === "contrast"
-    ? "colour-contrast violation and no new undecided result"
-    : "violation of another rule and no new undecided result"
+function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: RuleShare): Spec {
+  const named = ruleShares(pageId).flatMap((other) => other.rules ?? [])
+  const inShare = (rule: string) => share.rules ? share.rules.includes(rule) : !named.includes(rule)
+  const contrast = share.rules?.includes(CONTRAST) ?? false
   return {
-    name: `axe: the ${pageId} page has no new and no fixed ${which} in the ${colorScheme} palette`,
+    name: `axe: the ${pageId} page has no new and no fixed ${share.what} and no new undecided ` +
+      `result in the ${colorScheme} palette`,
     pageId,
     colorScheme,
     run: async (page) => {
@@ -181,13 +261,16 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
 
       const apart = CONTRAST_ELSEWHERE[pageId]
       const builder = new AxeBuilder({ page })
+      for (const selector of share.include ?? []) builder.include(selector)
+      for (const selector of share.exclude ?? []) builder.exclude(selector)
       const { passes, incomplete, violations } =
-        await (half === "contrast"
-          ? (apart ? builder.exclude(apart) : builder).withRules([CONTRAST])
-          : builder.disableRules([CONTRAST])).analyze()
+        await (share.rules
+          ? (contrast && apart ? builder.exclude(apart) : builder).withRules([...share.rules])
+          : builder.disableRules(named)).analyze()
       const known = Object.fromEntries(
-        Object.entries(KNOWN_VIOLATIONS[pageId])
-          .filter(([rule]) => (rule === CONTRAST) === (half === "contrast")),
+        Object.entries(share.known ?? KNOWN_VIOLATIONS[pageId]).filter(([rule]) =>
+          inShare(rule) && !rule.includes(": ")
+        ),
       )
       const expected = (rule: string) => known[rule]?.[colorScheme === "light" ? 0 : 1] ?? 0
       const found = new Map(violations.map(({ id, nodes }) => [id, nodes]))
@@ -212,8 +295,8 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
       // A rule axe could not run comes back as "incomplete" too, with this check on the element
       // it stopped at. It measured nothing, so it must not pass as "nothing found".
       const knownUndecided = Object.fromEntries(
-        Object.entries(KNOWN_INCOMPLETE[pageId])
-          .filter(([key]) => key.startsWith(`${CONTRAST}: `) === (half === "contrast")),
+        Object.entries(share.known ?? KNOWN_INCOMPLETE[pageId])
+          .filter(([key]) => key.includes(": ") && inShare(key.slice(0, key.indexOf(": ")))),
       )
       const expectedUndecided = (key: string) =>
         knownUndecided[key]?.[colorScheme === "light" ? 0 : 1] ?? 0
@@ -245,15 +328,22 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
         .map((key) => `${key} ${undecided.get(key)?.length ?? 0} of ${expectedUndecided(key)}`)
       // Every page has text on it, so a contrast scan that measured none had the rule switched off.
       const measured = passes.find(({ id }) => id === CONTRAST)?.nodes.length ?? 0
-      if (half === "contrast" && measured === 0) {
+      if (contrast && measured === 0) {
         problems.push("axe measured the contrast of no element")
+      }
+      // Every page has a landmark and ARIA attributes, so a share that tested no element ran no
+      // rule of its own.
+      const tested = [...passes, ...violations, ...incomplete]
+        .filter(({ id }) => inShare(id)).reduce((sum, { nodes }) => sum + nodes.length, 0)
+      if (share.rules && !contrast && tested === 0) {
+        problems.push(`axe tested no element for ${share.what}`)
       }
       if (problems.length > 0) throw new Error(problems.join(" | "))
 
       const unsettled = [...undecided.values()].reduce((sum, targets) => sum + targets.length, 0)
       const listed = Object.keys(known).filter((rule) => expected(rule) > 0)
         .map((rule) => `${rule} ×${expected(rule)}`)
-      return (half === "contrast"
+      return (contrast
         ? `contrast passes on ${measured} elements`
         : `${passes.length} rules pass`) +
         `, ${unsettled} known undecided` +
@@ -271,8 +361,8 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", half: Half)
 const KNOWN_HOVER_INCOMPLETE: Partial<
   Record<GuidePageId, Readonly<Record<string, readonly [light: number, dark: number, ink: number]>>>
 > = {
-  // The three disclosure chevrons, as on the page scan.
-  ui: { nonBmp: [3, 3, 3] },
+  // The four disclosure chevrons, as on the page scan.
+  ui: { nonBmp: [4, 4, 4] },
 }
 
 /** What a pointer can rest on: an element with a hover background, and every table body row. */
@@ -386,7 +476,7 @@ function hoverSpec(pageId: GuidePageId, palette: "light" | "dark" | "ink"): Spec
 export const specs: readonly Spec[] = [
   ...(["light", "dark"] as const).flatMap((colorScheme) =>
     guidePageIds.flatMap((pageId) =>
-      (["rest", "contrast"] as const).map((half) => axeSpec(pageId, colorScheme, half))
+      ruleShares(pageId).map((share) => axeSpec(pageId, colorScheme, share))
     )
   ),
   ...(["light", "dark", "ink"] as const).flatMap((palette) =>
@@ -394,7 +484,52 @@ export const specs: readonly Spec[] = [
   ),
   drawerNavigationFocusSpec(),
   cardRowHeightsSpec(),
+  headerNameSpec(),
 ]
+
+/**
+ * The header shows the package's whole name at every width the issue measured (#990): no ellipsis,
+ * no letter under the controls beside it, and every line inside the bar. A name that does not fit
+ * on one line wraps at its hyphen instead of being cut short. The author link, where it shows, stays
+ * on one line.
+ */
+function headerNameSpec(): Spec {
+  return {
+    name: "Guide shell: the header shows the full package name at 390, 640, 900, 1000 and 1280 px",
+    pageId: "overview",
+    run: async (page) => {
+      for (const width of [390, 640, 900, 1000, 1280]) {
+        await page.setViewportSize({ width, height: 800 })
+        const problem = await page.locator(`[data-e2e="ui-guide-title"]`).evaluate((title) => {
+          const name = title.firstElementChild as HTMLElement
+          const header = title.closest("header")!.getBoundingClientRect()
+          const controls = title.nextElementSibling!.getBoundingClientRect()
+          const range = document.createRange()
+          range.selectNodeContents(name)
+          const lines = [...range.getClientRects()]
+          if (name.scrollWidth > name.clientWidth + 0.5) return "the name is cut short"
+          if (getComputedStyle(name).textOverflow === "ellipsis") {
+            return "the name ends in an ellipsis"
+          }
+          const right = Math.max(...lines.map((line) => line.right))
+          if (right > controls.left) {
+            return `the name runs ${right - controls.left}px under the controls`
+          }
+          const outside = lines.find((line) => line.top < header.top || line.bottom > header.bottom)
+          if (outside) return `a line of the name leaves the bar: ${JSON.stringify(outside)}`
+          const author = document.querySelector(`[data-e2e="ui-guide-author"]`) as
+            | HTMLElement
+            | null
+          if (author && author.offsetParent !== null && author.getClientRects().length > 1) {
+            return "the author link wraps"
+          }
+          return null
+        })
+        if (problem) throw new Error(`at ${width}px ${problem}`)
+      }
+    },
+  }
+}
 
 /**
  * A page picked in the phone navigation drawer takes focus to the content column, as the skip link

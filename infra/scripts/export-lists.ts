@@ -6,18 +6,18 @@
  * whole modules. This script reads the exports from the packages themselves and reports every name
  * a document lists that the package does not export, in four places:
  *
- * 1. the "Package layout" table in `AGENTS.md` and the "Scope" table in `docs/maintaining.md` — a
- *    summary,
- *    one row per package. Every name written in backticks in a row must be a value export or a
- *    subpath of that package, and every published package needs a row. A summary may stop at
+ * 1. the "Scope" table in `docs/maintaining.md` — a summary, one row per package. Every name
+ *    written in backticks in a row must be a value export or a subpath of that package, and every
+ *    published package needs a row. A summary may stop at
  *    "and the rest", so it is not required to name everything — except for the few small packages
  *    in {@linkcode COMPLETE_SUMMARIES}, whose row must name every value export;
  * 2. the `deno add` lines in `docs/usage.md`'s Install section — one line per published package,
  *    and no line for a package that does not exist;
- * 3. the "Components" table of each catalogued package's own README — the complete list. Its
- *    first column must name exactly the package's components, no more and no fewer —
+ * 3. the "Components" table or list of each catalogued package's own README — the complete list.
+ *    Its first column must name exactly the package's components, no more and no fewer —
  *    every backticked name in that column counts, so a row may name several — and where the second
- *    column names a subpath, that subpath must export every component the row names;
+ *    column names a subpath, that subpath must export every component the row names. A list item
+ *    `` - `Name` (`subpath`): props `` counts as a row with those two columns;
  * 4. the "Packages" table in `README.md` — it must link every published package's own README.
  *
  * "Component" is the catalogue's own rule, `isComponent` in `ui-guide/component-kind.ts`: a
@@ -39,8 +39,8 @@ import { packageIds } from "../../ui-guide/registry-ids.ts"
 import { memberConfig, readConfig, readEntryPoints, ROOT, workspaceMembers } from "./workspace.ts"
 
 /**
- * Packages whose README must carry a complete "Components" table: the ones the guide gives cards
- * to, `packageIds` in `ui-guide/registry-ids.ts`.
+ * Packages whose README must carry a complete "Components" table or list: the ones the guide gives
+ * cards to, `packageIds` in `ui-guide/registry-ids.ts`.
  */
 export const CATALOGUED = packageIds
 
@@ -69,7 +69,6 @@ export interface PackageSurface {
 
 /** The documents this script reads, as text. */
 export interface Docs {
-  agents: string
   /** The root `README.md`, whose "Packages" table links each package's README. */
   readme: string
   /** `docs/usage.md`, whose Install section holds the `deno add` lines. */
@@ -113,6 +112,31 @@ export function tableRows(markdown: string, heading: string): string[][] {
 }
 
 /**
+ * The list items under one heading, up to the next heading of the same level, read as table rows:
+ * `` - `Name` (`subpath`): props `` becomes `` ["`Name`", "`subpath`"] ``. An item with no
+ * parenthesised subpath becomes its text before the first colon, alone.
+ *
+ * @param markdown Document text.
+ * @param heading Heading line exactly as written, such as `## Components`.
+ * @returns One row per top-level list item. Empty when the heading is missing.
+ */
+export function listRows(markdown: string, heading: string): string[][] {
+  const lines = markdown.split("\n")
+  const start = lines.findIndex((line) => line.trim() === heading)
+  if (start === -1) return []
+
+  const level = heading.match(/^#+/)?.[0] ?? "##"
+  const rows: string[][] = []
+  for (const line of lines.slice(start + 1)) {
+    if (new RegExp(`^#{1,${level.length}} `).test(line)) break
+    if (!line.startsWith("- ")) continue
+    const match = line.match(/^- (.*?) \((`[^`]+`)\)(?::|$)/)
+    rows.push(match ? [match[1], match[2]] : [line.slice(2).split(":")[0]])
+  }
+  return rows
+}
+
+/**
  * Every name written in backticks in a cell, with a trailing `()` removed.
  *
  * @param cell Table cell text.
@@ -142,7 +166,6 @@ export function exportListProblems(
     packages[id].names.includes(name) || name in packages[id].subpaths
 
   const summaries = [
-    { file: "AGENTS.md", rows: tableRows(docs.agents, "## Package layout") },
     { file: "docs/maintaining.md", rows: tableRows(docs.maintaining, "## Scope") },
   ]
   for (const { file, rows } of summaries) {
@@ -193,9 +216,10 @@ export function exportListProblems(
   }
 
   for (const id of CATALOGUED) {
-    const rows = tableRows(docs.packageReadmes[id] ?? "", "## Components")
+    const readme = docs.packageReadmes[id] ?? ""
+    const rows = [...tableRows(readme, "## Components"), ...listRows(readme, "## Components")]
     if (rows.length === 0) {
-      problems.push(`${id}/README.md has no "## Components" table`)
+      problems.push(`${id}/README.md has no "## Components" table or list`)
       continue
     }
     const listed = new Set<string>()
@@ -265,7 +289,7 @@ export async function readPackages(): Promise<Record<string, PackageSurface>> {
 }
 
 /**
- * Reads `AGENTS.md`, `README.md`, `docs/usage.md`, `docs/maintaining.md` and every published
+ * Reads `README.md`, `docs/usage.md`, `docs/maintaining.md` and every published
  * package's `README.md`.
  *
  * @param ids Package directories whose README to read.
@@ -276,7 +300,6 @@ export async function readDocs(ids: string[]): Promise<Docs> {
   const packageReadmes: Record<string, string> = {}
   for (const id of ids) packageReadmes[id] = await read(`${id}/README.md`)
   return {
-    agents: await read("AGENTS.md"),
     readme: await read("README.md"),
     usage: await read("docs/usage.md"),
     maintaining: await read("docs/maintaining.md"),

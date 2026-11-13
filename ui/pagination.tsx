@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { Button } from "./button.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** One item of the range a pagination control renders: a real page, or a collapsed run of pages. */
 export type PageRangeItem = { page: number } | { gap: "gap" }
@@ -152,6 +153,16 @@ const ariaDisabledClasses = "aria-disabled:pointer-events-none aria-disabled:opa
  */
 const pageListClasses = "flex flex-wrap items-center justify-center gap-1"
 
+/** The English words of `Pagination`, each one a prop of its own. */
+const PAGINATION_LABELS: Required<
+  Pick<PaginationProps, "label" | "previousLabel" | "nextLabel" | "pageLabel">
+> = {
+  label: "Pagination",
+  previousLabel: "Previous",
+  nextLabel: "Next",
+  pageLabel: (page) => `Page ${page}`,
+}
+
 /**
  * Page numbers with the long runs collapsed, plus previous/next.
  *
@@ -183,13 +194,24 @@ export function Pagination(
     page,
     pageCount,
     onChange,
-    label = "Pagination",
-    previousLabel = "Previous",
-    nextLabel = "Next",
-    pageLabel = (pageNumber) => `Page ${pageNumber}`,
+    label: labelProp,
+    previousLabel: previousLabelProp,
+    nextLabel: nextLabelProp,
+    pageLabel: pageLabelProp,
     class: className,
   }: PaginationProps,
 ): JSX.Element | null {
+  const { label, previousLabel, nextLabel, pageLabel } = useLabels(
+    "Pagination",
+    PAGINATION_LABELS,
+    {
+      label: labelProp,
+      previousLabel: previousLabelProp,
+      nextLabel: nextLabelProp,
+      pageLabel: pageLabelProp,
+    },
+    { pageLabel: ["page"] },
+  )
   if (pageCount < 1) return null
 
   const current = Math.max(1, Math.min(pageCount, Math.round(page)))

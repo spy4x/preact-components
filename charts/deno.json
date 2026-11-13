@@ -1,17 +1,29 @@
 {
   "name": "@spy4x/preact-charts",
-  "version": "9.0.0",
+  "version": "14.6.0",
   "exports": {
     ".": "./+index.ts",
     "./bars": "./bars.tsx",
+    "./change": "./change.ts",
     "./colors": "./colors.ts",
     "./donut-chart": "./donut-chart.tsx",
+    "./dot-plot": "./dot-plot.tsx",
     "./kpi": "./kpi.tsx",
     "./line-chart": "./line-chart.tsx",
     "./payload": "./payload.ts",
+    "./ranked-bars": "./ranked-bars.tsx",
     "./scales": "./scales.ts",
     "./time-series": "./time-series.ts",
-    "./use-in-view": "./use-in-view.ts"
+    "./use-in-view": "./use-in-view.ts",
+    "./i18n/ar": "./i18n/ar.ts",
+    "./i18n/de": "./i18n/de.ts",
+    "./i18n/en": "./i18n/en.ts",
+    "./i18n/es": "./i18n/es.ts",
+    "./i18n/fr": "./i18n/fr.ts",
+    "./i18n/ja": "./i18n/ja.ts",
+    "./i18n/pt-BR": "./i18n/pt-BR.ts",
+    "./i18n/ru": "./i18n/ru.ts",
+    "./i18n/zh-CN": "./i18n/zh-CN.ts"
   },
   "publish": {
     // `ticks.worker.ts` and `nice-scale.worker.ts` exist only so `scales.test.ts` can call `ticks`
@@ -22,7 +34,8 @@
       "**/*.test.ts",
       "**/*.test.tsx",
       "ticks.worker.ts",
-      "nice-scale.worker.ts"
+      "nice-scale.worker.ts",
+      "i18n/*.lock"
     ]
   }
 }

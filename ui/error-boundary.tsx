@@ -1,6 +1,7 @@
 import type { ComponentChildren, ErrorInfo, JSX } from "preact"
 import { useErrorBoundary } from "preact/hooks"
 import { ErrorBoundaryScreen } from "./error-boundary-screen.tsx"
+import { useLabels } from "./i18n.tsx"
 
 export interface ErrorBoundaryProps {
   /** The view to guard. Rendered untouched until something inside it throws. */
@@ -35,6 +36,15 @@ export interface ErrorBoundaryProps {
   dataE2E?: string
 }
 
+/** The English words of `ErrorBoundary`, each one a prop of its own. */
+const ERROR_BOUNDARY_LABELS: Required<
+  Pick<ErrorBoundaryProps, "title" | "description" | "reloadLabel">
+> = {
+  title: "Something went wrong.",
+  description: "Reloading the page usually fixes it.",
+  reloadLabel: "Reload the page",
+}
+
 /**
  * Catches an error thrown while its children render and shows a reload screen in their place, so
  * the person sees a way out instead of a blank page.
@@ -59,12 +69,17 @@ export function ErrorBoundary({
   children,
   onError,
   onReload,
-  title = "Something went wrong.",
-  description = "Reloading the page usually fixes it.",
-  reloadLabel = "Reload the page",
+  title: titleProp,
+  description: descriptionProp,
+  reloadLabel: reloadLabelProp,
   headingLevel,
   dataE2E,
 }: ErrorBoundaryProps): JSX.Element {
+  const { title, description, reloadLabel } = useLabels(
+    "ErrorBoundary",
+    ERROR_BOUNDARY_LABELS,
+    { title: titleProp, description: descriptionProp, reloadLabel: reloadLabelProp },
+  )
   const [error, reset] = useErrorBoundary((caught: unknown, errorInfo: ErrorInfo) =>
     onError?.(caught, errorInfo)
   )

@@ -3,9 +3,11 @@
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
  * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea`, `EnhancedForm`
- * (#511), `PricingTable` (#523), `DemoVideo`, `RadioChips` and `ScreenTour` compose their classes with `join`
- * instead, so an island that renders one of them must not carry it. Each fixture under `testdata/` is such an island, and is
- * bundled here the way an app's build bundles one: `deno bundle --platform browser --minify`.
+ * (#511), `PricingTable` (#523), `DemoVideo`, `LoopVideo`, `YouTubeVideo`, `RadioChips`,
+ * `ScreenTour`, `CommandPalette`, `Combobox`, `Modal` and `Toastr` (#943) compose their classes
+ * with `join` instead, so an island that renders one of them must not carry it. Each fixture under
+ * `testdata/` is such an island, and is bundled here the way an app's build bundles one:
+ * `deno bundle --platform browser --minify`.
  *
  * `tailwind-merge`'s minified code keeps its class-group names as strings, so its presence is read
  * from one of them. The control fixture calls `cn` and must contain that string: if a
@@ -41,12 +43,33 @@ const ISLAND_CEILING_BYTES = 31_000
  * form's busy guard, live region and focus recovery into its island: 29.6 KB became 31.6 KB.
  * `ScreenTour` renders `Lightbox` (29.5 KB on its own) and keeps its state in signals, as the
  * library's rule for local state asks: `@preact/signals` is about 7.3 KB minified, which a Fresh
- * app already ships for its islands. It measured 43.4 KB.
+ * app already ships for its islands. It measured 43.4 KB. The sizes in this paragraph are from
+ * those changes; each entry's comment below has its size today.
  */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
-  "island-image-gallery.tsx": 35_000,
-  "island-pricing-table.tsx": 33_000,
-  "island-screen-tour.tsx": 45_000,
+  // A palette and a toaster, the forgiving matcher and the hotkeys included: 50.8 KB (#943, #524).
+  // Command rows (icon, state badge, keys, disabled and kept-open commands): 52.6 KB (#878).
+  // The alternative pick, PageUp/PageDown, submenus, the text mode and ">": 55.8 KB (#1234).
+  // Recent picks, the best match, the result count and the key hints: 58.1 KB (#1235).
+  "island-command-palette.tsx": 59_000,
+  // A modal over a combobox, with the modal's `Button` and its hotkey code: 46.6 KB (#943, #524).
+  // The forgiving matcher the palette already carries, groups and Create: 53.0 KB (#1164).
+  "island-modal-combobox.tsx": 54_000,
+  // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 36.0 KB (#958, #524).
+  "island-explorable-bars.tsx": 36_000,
+  // #524 put `useLabels` and the translated defaults into every island, about 1.4 KB each; the
+  // catalogs themselves stay out of every bundle. These four then passed their old ceilings.
+  // 35.5 KB.
+  "island-image-gallery.tsx": 37_000,
+  // 31.1 KB.
+  "island-lightbox.tsx": 33_000,
+  // 34.9 KB. Prices in the person's region format, from `money-core`, which leaves arktype out
+  // (#1161, ts-libs#863): 36.4 KB.
+  "island-pricing-table.tsx": 38_000,
+  // 45.8 KB.
+  "island-screen-tour.tsx": 47_000,
+  // Below the default: a docs page's only island, Preact and the clipboard helper alone. 14.1 KB.
+  "island-prose-code-copy.tsx": 16_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
@@ -85,8 +108,15 @@ describe("a browser bundle of a library component", () => {
       "island-enhanced-form.tsx",
       "island-pricing-table.tsx",
       "island-demo-video.tsx",
+      "island-loop-video.tsx",
+      "island-youtube-video.tsx",
       "island-radio-chips.tsx",
       "island-screen-tour.tsx",
+      "island-command-palette.tsx",
+      "island-modal-combobox.tsx",
+      "island-toastr.tsx",
+      "island-explorable-bars.tsx",
+      "island-prose-code-copy.tsx",
     ]
   ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
@@ -99,9 +129,15 @@ describe("a browser bundle of a library component", () => {
   }
 
   it("carries none of Button's hotkey code for an island that renders only Toastr", async () => {
-    // `Toastr` calls `cn`, so it cannot join the cases above. `Button` is what writes
-    // `aria-keyshortcuts`; the string in this bundle means `Toastr` imported something that
-    // imports `Button`, which once cost 19 KB minified for one class-name constant (#671).
+    // `Button` is what writes `aria-keyshortcuts`; the string in this bundle means `Toastr`
+    // imported something that imports `Button`, which once cost 19 KB minified for one class-name
+    // constant (#671).
     expect(await bundle("island-toastr.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
+  })
+
+  it("carries none of Button's code for the island that wires Prose's copy buttons", async () => {
+    // The island copies through the shared clipboard helper, not through `CopyButton`, whose
+    // module renders a `Button`: a docs page that ships only this island stays small.
+    expect(await bundle("island-prose-code-copy.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
   })
 })

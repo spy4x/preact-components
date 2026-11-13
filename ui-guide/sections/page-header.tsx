@@ -1,6 +1,7 @@
 /**
  * The page-level frame of `ui/`: the header a page starts with and the rows a settings page is made
- * of. Spread into the Display section, right after `PageTitle`.
+ * of, with the `FilterBar` that sits under a list page's header. Spread into the Display section,
+ * right after `PageTitle`.
  *
  * What only a browser shows — the title truncating on one line with the actions beside it at
  * 375 px, the 44 px touch targets, the accessible name of every icon button — is driven by
@@ -23,6 +24,7 @@ import {
 import { useSignal } from "@preact/signals"
 import { IconDownload, IconPlus } from "@spy4x/preact-icons"
 import { DemoNote } from "./demo-note.tsx"
+import { filterBarDemos } from "./filter-bar.tsx"
 import type { DemoFragment } from "../registry.ts"
 
 /** The long title the 375 px check truncates: longer than any phone is wide. */
@@ -201,6 +203,7 @@ export const pageHeaderDemos = {
 />`,
     render: () => <PageHeaderDemo />,
   },
+  ...filterBarDemos,
   PageAction: {
     summary:
       "A page header's primary action: icon and label from `sm` up, the icon alone on a phone, named at every width.",

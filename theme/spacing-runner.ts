@@ -16,7 +16,7 @@
 import { fromFileUrl } from "@std/path"
 import { denoFileSystem } from "@spy4x/platform/server/deno-fs"
 import type { FileSystemPort } from "@spy4x/platform/server/ports"
-import { findOffScaleSpacing } from "./spacing.ts"
+import { findOffScaleSpacing, findPhysicalDirection } from "./spacing.ts"
 
 /**
  * Directory names a guard does not descend into by default: installed packages, build output and
@@ -77,6 +77,11 @@ export interface SpacingRunnerOptions extends Omit<GuardWalkOptions, "extensions
   test: GuardTest
   /** File extensions to read. Defaults to {@link DEFAULT_SPACING_EXTENSIONS}. */
   extensions?: readonly string[]
+  /**
+   * Also register a test that fails on a class naming a physical side (`findPhysicalDirection`),
+   * for an app whose pages can be right to left. Off by default.
+   */
+  logicalDirection?: boolean
 }
 
 /** Test files spell out classes and forbidden imports to assert on, so no guard reads them. */
@@ -155,7 +160,8 @@ export async function guardFiles(options: GuardWalkOptions): Promise<string[]> {
  * Register one test that holds every spacing class in the app's sources to the scale: padding,
  * margin, gap, `space-x/y` and scroll spacing use only the steps in `SPACING_STEPS`, never an
  * arbitrary value. The test rejects with every finding, one `file:line:column class — reason` per
- * line, and rejects too when a directory is missing or holds no file to check.
+ * line, and rejects too when a directory is missing or holds no file to check. With
+ * `logicalDirection`, a second test rejects the same way on every class that names a physical side.
  *
  * @example
  * ```ts
@@ -174,17 +180,33 @@ export function registerSpacingTests(options: SpacingRunnerOptions): void {
   const root = guardRoot(options.root)
   const extensions = options.extensions ?? DEFAULT_SPACING_EXTENSIONS
   const where = options.directories.join(", ")
-  options.test(`every spacing class in ${where} is on the scale`, async () => {
+
+  /** Every finding of `find` in the walked files, one `file:line:column class — reason` each. */
+  async function findings(
+    find: (source: string) => { line: number; column: number; className: string; reason: string }[],
+  ): Promise<string[]> {
     const found: string[] = []
     for (const file of await guardFiles({ ...options, extensions, fs })) {
       const source = await fs.readText(`${root}/${file}`)
       if (source === null) throw new Error(`The guard could not read ${file} in ${root}.`)
-      for (const v of findOffScaleSpacing(source)) {
+      for (const v of find(source)) {
         found.push(`${file}:${v.line}:${v.column} ${v.className} — ${v.reason}`)
       }
     }
+    return found
+  }
+
+  options.test(`every spacing class in ${where} is on the scale`, async () => {
+    const found = await findings(findOffScaleSpacing)
     if (found.length > 0) {
       throw new Error(`Spacing off the scale in ${found.length} place(s):\n${found.join("\n")}`)
+    }
+  })
+  if (!options.logicalDirection) return
+  options.test(`every class in ${where} follows the reading direction`, async () => {
+    const found = await findings(findPhysicalDirection)
+    if (found.length > 0) {
+      throw new Error(`Physical sides in ${found.length} place(s):\n${found.join("\n")}`)
     }
   })
 }

@@ -137,6 +137,40 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "SettingsLayout with defaultSection on the list's address: 1440 px shows Account's " +
+      "heading and current look with no aria-current, 390 px shows only the list",
+    pageId: "system",
+    run: async (page) => {
+      // Reduced motion turns the items' colour transition off, so a resize repaints at once.
+      await page.emulateMedia({ reducedMotion: "reduce" })
+      // The demo opens on Account; the phone's back link is the way to the list's address.
+      await page.setViewportSize({ width: 390, height: 844 })
+      const view = settings(page)
+      await view.root.scrollIntoViewIfNeeded()
+      await view.back.click()
+      await view.route.filter({ hasText: "#settings" }).waitFor()
+      // Off every item, so no hover tint skews the colours read below.
+      await page.mouse.move(0, 0)
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await view.root.scrollIntoViewIfNeeded()
+      await view.heading.filter({ hasText: "Account" }).waitFor({ state: "visible" })
+      const account = view.item("Account")
+      const tint = (locator: Locator) =>
+        locator.evaluate((element) => getComputedStyle(element).backgroundColor)
+      const [current, plain] = await Promise.all([tint(account), tint(view.item("Appearance"))])
+      if (current === plain) throw new Error(`Account is not drawn current: ${current}`)
+      if (await view.root.locator("[aria-current]").count() !== 0) {
+        throw new Error("an item carries aria-current on the list's address")
+      }
+      await page.setViewportSize({ width: 390, height: 844 })
+      await account.waitFor({ state: "visible" })
+      if (await view.section.isVisible()) throw new Error("at 390 px the section shows")
+      const phone = await tint(account)
+      if (phone !== plain) throw new Error(`at 390 px Account is tinted: ${phone}`)
+      return `1440 px: heading shown, Account ${current}; 390 px: list only, Account ${phone}`
+    },
+  },
+  {
     name: "SettingsLayout passes axe at 1440 and 390 px in light, colour contrast included",
     pageId: "system",
     run: settingsAxeClean,

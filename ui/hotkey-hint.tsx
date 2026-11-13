@@ -7,6 +7,7 @@ import {
   KEY_CLASS,
   keyFaces,
 } from "./kbd-keys.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** Props of {@link HotkeyHint}. */
 export interface HotkeyHintProps {
@@ -16,7 +17,7 @@ export interface HotkeyHintProps {
   apple: boolean
   /** The words the keys show. */
   labels?: Partial<KbdLabels>
-  /** Utilities added to the hint's own, such as `ml-auto` to push it to the end of a row. */
+  /** Utilities added to the hint's own, such as `ms-auto` to push it to the end of a row. */
   class?: string
 }
 
@@ -31,6 +32,7 @@ export interface HotkeyHintProps {
 export function HotkeyHint(
   { keys, apple, labels, class: className }: HotkeyHintProps,
 ): JSX.Element {
+  const words = useLabels("Kbd", KBD_LABELS, labels)
   // Joined by hand rather than with `cn`, which would pull tailwind-merge into island bundles.
   const classes = className === undefined
     ? "hidden pointer-fine:inline-flex"
@@ -38,7 +40,7 @@ export function HotkeyHint(
   return (
     <span aria-hidden="true" data-hotkey-hint="" class={classes}>
       <KbdKeys
-        faces={keyFaces(keys, apple, { ...KBD_LABELS, ...labels })}
+        faces={keyFaces(keys, apple, words)}
         apple={apple}
         singleClass={KEY_CLASS}
         groupClass={GROUP_CLASS}

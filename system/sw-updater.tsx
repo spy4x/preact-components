@@ -22,6 +22,8 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** The slice of `ServiceWorker` this package uses. */
 export interface WorkerLike {
@@ -258,7 +260,7 @@ export interface SWUpdaterProps {
    * its own registration hands over the container it already has.
    */
   container?: ContainerLike
-  /** Bar copy. Defaults to `"New version available"`. */
+  /** Bar copy. Defaults to `"A new version is ready"`. */
   message?: string
   /** Reload button copy. Defaults to `"Reload"`. */
   reloadLabel?: string
@@ -285,9 +287,9 @@ export interface SWUpdaterProps {
 }
 
 const barClass =
-  "fixed top-0 right-0 left-0 z-50 flex items-center gap-3 bg-warning px-4 py-3 text-(--color-warning-foreground) shadow-popover sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:rounded-lg"
+  "fixed top-0 end-0 start-0 z-50 flex items-center gap-3 bg-warning px-4 py-3 text-(--color-warning-foreground) shadow-popover sm:top-4 sm:end-4 sm:start-auto sm:w-auto sm:rounded-lg"
 const reloadButtonClass =
-  "ml-auto cursor-pointer rounded bg-(--color-scrim-foreground) px-3 py-1 text-sm font-semibold text-foreground transition-colors hover:bg-orange-100 focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground) dark:text-canvas focus-visible:outline-hidden sm:ml-0"
+  "ms-auto cursor-pointer rounded bg-(--color-scrim-foreground) px-3 py-1 text-sm font-semibold text-foreground transition-colors hover:bg-orange-100 focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground) dark:text-canvas focus-visible:outline-hidden sm:ms-0"
 const dismissButtonClass =
   "cursor-pointer rounded px-2 py-1 text-sm font-medium text-(--color-warning-foreground) transition-colors hover:bg-on-scrim-strong hover:text-(--color-warning-foreground) focus-visible:ring-2 focus-visible:ring-(--color-scrim-foreground) focus-visible:outline-hidden"
 
@@ -326,9 +328,9 @@ export function SWUpdater(
     scriptUrl,
     scope,
     container,
-    message = "New version available",
-    reloadLabel = "Reload",
-    dismissLabel = "Dismiss",
+    message: messageProp,
+    reloadLabel: reloadLabelProp,
+    dismissLabel: dismissLabelProp,
     updateMessage,
     reload,
     onUpdate,
@@ -337,6 +339,12 @@ export function SWUpdater(
     class: className,
   }: SWUpdaterProps,
 ): JSX.Element {
+  const translator = useT()
+  const message = messageProp ??
+    translate(translator, "SWUpdater.message", "A new version is ready")
+  const reloadLabel = reloadLabelProp ?? translate(translator, "SWUpdater.reloadLabel", "Reload")
+  const dismissLabel = dismissLabelProp ??
+    translate(translator, "SWUpdater.dismissLabel", "Dismiss")
   const [available, setAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [registration, setRegistration] = useState<RegistrationLike | null>(null)

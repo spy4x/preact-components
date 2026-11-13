@@ -9,6 +9,7 @@ import { Avatar, Button, SettingList, SettingRow, Stack } from "@spy4x/preact-ui
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren } from "preact"
 import type { DemoFragment } from "../registry.ts"
+import { ArabicSwitch } from "./arabic-demo.tsx"
 
 /** The demo's sub-pages. Their addresses are fragments, so a new tab opens this guide. */
 const SECTIONS: readonly SettingsSection[] = [
@@ -78,7 +79,8 @@ function Edit({ name }: { name: string }) {
 
 /**
  * A profile with its own router: `navigate` maps a section's address to its id, and the list's
- * address to `null`, so on a phone the list is the page until a section is chosen.
+ * address to `null`, so on a phone the list is the page until a section is chosen. It opens on
+ * Account; back on the list's address, `defaultSection` keeps Account showing from `md` up.
  */
 function SettingsLayoutDemo() {
   const current = useSignal<string | null>("account")
@@ -97,6 +99,7 @@ function SettingsLayoutDemo() {
           href="#settings"
           sections={SECTIONS}
           current={open}
+          defaultSection="account"
           navigate={navigate}
           intro={
             <div class="flex items-center gap-3">
@@ -108,7 +111,7 @@ function SettingsLayoutDemo() {
             </div>
           }
         >
-          {open && CONTENT[open]()}
+          {CONTENT[open ?? "account"]()}
         </SettingsLayout>
       </div>
       <p class="text-sm text-muted">
@@ -138,6 +141,12 @@ export const settingsLayoutDemos = {
         description: "The open section's id; `null` makes the list the page on a phone.",
       },
       {
+        name: "defaultSection",
+        type: "string",
+        description:
+          "The section shown from `md` up while `current` is `null`: its heading and a current-looking item, by CSS only.",
+      },
+      {
         name: "navigate",
         type: "(href: string) => void",
         description: "The app's router; a plain click on a nav item or the back link calls it.",
@@ -157,10 +166,15 @@ export const settingsLayoutDemos = {
     { id: "danger", label: "Delete account", href: "/profile/danger", tone: "danger" },
   ]}
   current={sectionId ?? null}
+  defaultSection="account"
   navigate={(href) => router.navigate(href)}
 >
-  <AccountSettings />
+  {sectionId === "security" ? <SecuritySettings /> : <AccountSettings />}
 </SettingsLayout>`,
-    render: () => <SettingsLayoutDemo />,
+    render: () => (
+      <ArabicSwitch name="settings-layout">
+        <SettingsLayoutDemo />
+      </ArabicSwitch>
+    ),
   },
 } satisfies DemoFragment

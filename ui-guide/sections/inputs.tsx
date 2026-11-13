@@ -12,8 +12,10 @@
 
 import {
   Button,
+  Checkbox,
   Cluster,
   Combobox,
+  type ComboboxGroup,
   type ComboboxOptionState,
   DateRangePicker,
   type DateRangePickerLabels,
@@ -27,14 +29,21 @@ import {
   FileInput,
   Grid,
   isValidDateTimeRange,
+  LanguageButton,
+  LanguageDialog,
+  LanguagePicker,
   OnOffButtons,
+  PeriodStepper,
   rangeForPreset,
+  SegmentedControl,
+  Slider,
   Stack,
   TagInput,
   ToggleField,
   ToggleSwitch,
 } from "@spy4x/preact-ui"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
+import { type Period, periodOf, PeriodUnit } from "@spy4x/time/period"
 import type { ComponentChildren } from "preact"
 import { useEffect, useRef } from "preact/hooks"
 import { useSignal } from "@preact/signals"
@@ -42,10 +51,17 @@ import {
   IconChevronDown,
   IconCog6Tooth,
   IconEllipsisVertical,
+  IconGlobe,
   IconTrashBin,
   IconUser,
 } from "@spy4x/preact-icons"
 import type { DemoFragment } from "../registry.ts"
+import {
+  DEMO_LANGUAGES,
+  InDemoLanguage,
+  SimulateLanguageStates,
+  useDemoLanguage,
+} from "./language-demo.tsx"
 
 /** The small caption over one variant inside a card that shows several. */
 function Variant({ title, children }: { title: ComponentChildren; children: ComponentChildren }) {
@@ -53,6 +69,107 @@ function Variant({ title, children }: { title: ComponentChildren; children: Comp
     <Stack gap="sm">
       <h4 class="text-sm font-medium text-foreground">{title}</h4>
       {children}
+    </Stack>
+  )
+}
+
+/**
+ * The picker every way, in one language state: a list that switches everything in the card, with
+ * chips for the offline and failed states, the links a website's footer draws, and the globe menu
+ * a website's header draws, lined up at the row's end as in a header.
+ */
+function LanguagePickerDemo() {
+  const language = useDemoLanguage()
+  return (
+    <Stack gap="md">
+      <SimulateLanguageStates language={language} />
+      <InDemoLanguage language={language}>
+        <Stack gap="lg">
+          <Variant title="List, for an app">
+            <LanguagePicker
+              languages={DEMO_LANGUAGES}
+              current={language.current}
+              automatic={language.automatic}
+              pending={language.pending}
+              unavailable={language.unavailable}
+              failed={language.failed}
+              onSelect={language.select}
+            />
+          </Variant>
+          <Variant title="Links, for a website's footer">
+            <LanguagePicker
+              mode="links"
+              languages={DEMO_LANGUAGES}
+              current={language.current ?? language.automatic}
+              href={(tag) => `#language-${tag}`}
+            />
+          </Variant>
+          <Variant title="Menu, for a website's header">
+            <div class="flex justify-end">
+              <LanguagePicker
+                mode="menu"
+                languages={DEMO_LANGUAGES}
+                current={language.current ?? language.automatic}
+                href={(tag) => `#language-${tag}`}
+              />
+            </div>
+          </Variant>
+        </Stack>
+      </InDemoLanguage>
+    </Stack>
+  )
+}
+
+/** The dialog behind a button, switching the card's language while it stays open. */
+function LanguageDialogDemo() {
+  const language = useDemoLanguage()
+  const open = useSignal(false)
+  return (
+    <Stack gap="md">
+      <SimulateLanguageStates language={language} />
+      <InDemoLanguage language={language}>
+        <Button variant="outline" onClick={() => open.value = true} data-e2e="language-dialog-open">
+          <IconGlobe class="size-4" aria-hidden="true" />
+          Choose a language
+        </Button>
+        <LanguageDialog
+          open={open.value}
+          onClose={() => open.value = false}
+          languages={DEMO_LANGUAGES}
+          current={language.current}
+          automatic={language.automatic}
+          pending={language.pending}
+          unavailable={language.unavailable}
+          failed={language.failed}
+          onSelect={language.select}
+        />
+      </InDemoLanguage>
+    </Stack>
+  )
+}
+
+/**
+ * The button a signed-out header carries, switching the card's language from the dialog it opens.
+ * It sits at the card's end, as it would in a header.
+ */
+function LanguageButtonDemo() {
+  const language = useDemoLanguage()
+  return (
+    <Stack gap="md">
+      <SimulateLanguageStates language={language} />
+      <InDemoLanguage language={language}>
+        <div class="flex justify-end rounded-md border border-subtle px-3 py-2">
+          <LanguageButton
+            languages={DEMO_LANGUAGES}
+            current={language.current}
+            automatic={language.automatic}
+            pending={language.pending}
+            unavailable={language.unavailable}
+            failed={language.failed}
+            onSelect={language.select}
+          />
+        </div>
+      </InDemoLanguage>
     </Stack>
   )
 }
@@ -99,6 +216,47 @@ function ToggleSwitchDemo() {
   )
 }
 
+/**
+ * Controlled: each slider renders `value` and reports every move through `onInput`. The first
+ * shows a format and a spoken value text, two marks and a hint; the second a plain range; the
+ * third is disabled.
+ */
+function SliderDemo() {
+  const rate = useSignal(4)
+  const years = useSignal(10)
+  const percent = (value: number) => `${value.toFixed(1)}%`
+
+  return (
+    <Stack gap="lg">
+      <Slider
+        id="slider-rate"
+        label="Yearly rate"
+        value={rate.value}
+        min={0}
+        max={10}
+        step={0.5}
+        onInput={(next) => rate.value = next}
+        format={percent}
+        valueText={(value) => `${value.toFixed(1)} percent a year`}
+        marks={[{ value: 2, label: "Inflation target" }, {
+          value: 7,
+          label: "Long-run stock average",
+        }]}
+        hint="Arrow keys move half a point; Page Up and Page Down move further."
+      />
+      <Slider
+        id="slider-years"
+        label="Years"
+        value={years.value}
+        min={1}
+        max={40}
+        onInput={(next) => years.value = next}
+      />
+      <Slider id="slider-disabled" label="Disabled" value={30} disabled />
+    </Stack>
+  )
+}
+
 /** `value === undefined` leaves both halves unselected, which is how an unfiltered list starts. */
 function OnOffButtonsDemo() {
   const value = useSignal<boolean | undefined>(undefined)
@@ -121,6 +279,44 @@ function OnOffButtonsDemo() {
           label="Rows to show"
         />
         <span class="text-sm text-muted">with counts and custom labels</span>
+      </Cluster>
+    </Stack>
+  )
+}
+
+/** The period picker a stats page puts in its header, then a three-way view switch. */
+function SegmentedControlDemo() {
+  const days = useSignal("30")
+  const view = useSignal("list")
+
+  return (
+    <Stack gap="md">
+      <Cluster gap="sm" data-e2e="segmented-period">
+        <SegmentedControl
+          ariaLabel="Period"
+          options={[
+            { value: "7", label: "7 days" },
+            { value: "30", label: "30 days" },
+            { value: "90", label: "90 days" },
+          ]}
+          value={days.value}
+          onChange={(value) => days.value = value}
+        />
+        <span class="text-sm text-muted" data-e2e="segmented-period-value">
+          days: {days.value}
+        </span>
+      </Cluster>
+      <Cluster gap="sm" data-e2e="segmented-view">
+        <SegmentedControl
+          ariaLabel="View"
+          options={[
+            { value: "list", label: "List" },
+            { value: "board", label: "Board" },
+            { value: "calendar", label: "Calendar" },
+          ]}
+          value={view.value}
+          onChange={(value) => view.value = value}
+        />
       </Cluster>
     </Stack>
   )
@@ -358,15 +554,15 @@ function DropdownDemo() {
         </Dropdown>
       </DropdownRow>
 
-      <DropdownRow title="Lines up on the left">
+      <DropdownRow title="Lines up at the start">
         <Dropdown
           trigger={<IconEllipsisVertical class="size-5" />}
-          triggerLabel="Left-anchored actions"
-          menuLabel="Left-anchored actions"
-          horizontal="left"
+          triggerLabel="Start-anchored actions"
+          menuLabel="Start-anchored actions"
+          horizontal="start"
         >
           <div class="py-1" role="none">
-            <DropdownItem onClick={() => {}}>Left action</DropdownItem>
+            <DropdownItem onClick={() => {}}>Start action</DropdownItem>
           </div>
         </Dropdown>
       </DropdownRow>
@@ -462,6 +658,12 @@ const dateLabels: DateRangePickerLabels = {
   apply: "Apply",
   cancel: "Cancel",
 }
+
+/** The week card's presets: the two week presets and nothing else. */
+const weekPresetOptions: readonly DateRangePresetOption[] = [
+  { preset: "this-week", label: "This week" },
+  { preset: "last-week", label: "Last week" },
+]
 
 /** The preset list in render order, with `custom` last — which is what shows the from/to fields. */
 const datePresetOptions: readonly DateRangePresetOption[] = [
@@ -590,7 +792,7 @@ function CityCombobox() {
         ariaLabel="City"
         placeholder="Search a city…"
         clearLabel="Clear the city"
-        listboxClass="max-h-48"
+        listboxClass="max-h-48!"
       />
       <Note e2e="controlled-value">
         {comboboxStatusLabel(city.value?.code ?? null, query.value)}
@@ -802,8 +1004,97 @@ function AnnouncingCombobox() {
   )
 }
 
+/** A spending category: a parent leads its group, a child names its parent. */
+interface DemoCategory {
+  name: string
+  parent?: string
+  aliases?: readonly string[]
+}
+
+/** Parents with their children, then two categories with no parent, under "Other". */
+const demoCategories: readonly DemoCategory[] = [
+  { name: "Home", aliases: ["housing"] },
+  { name: "Rent", parent: "Home", aliases: ["mortgage"] },
+  { name: "Utilities", parent: "Home", aliases: ["electricity", "water", "gas bill"] },
+  { name: "Food" },
+  { name: "Groceries", parent: "Food", aliases: ["supermarket"] },
+  { name: "Eating out", parent: "Food", aliases: ["restaurant", "cafe", "dining"] },
+  { name: "Health" },
+  { name: "Doctor", parent: "Health", aliases: ["clinic", "medical"] },
+  { name: "Pharmacy", parent: "Health", aliases: ["medicine"] },
+  { name: "Gifts", aliases: ["presents", "birthday"] },
+  { name: "Charity", aliases: ["donation"] },
+]
+
+/** The group of a category without a parent or children: no lead, so a muted heading names it. */
+const otherGroup: ComboboxGroup = { id: "other", label: "Other" }
+
+/** How long the demo's "server" takes to create a category, so the spinner shows. */
+const CREATE_MS = 800
+
 /**
- * Every combobox on the card: strings, objects, a controlled query, a long list, an empty one, one
+ * Categories in parent groups, found by alias, with a "Create" row. A parent is its group's first
+ * row and stays choosable; "Other" has no parent, so a heading that is not an option names it. A
+ * new category takes {@link CREATE_MS} to "save"; ticking the box makes the next save fail.
+ */
+function CategoryCombobox() {
+  const items = useSignal<readonly DemoCategory[]>(demoCategories)
+  const category = useSignal<DemoCategory | null>(demoCategories[5])
+  const failNext = useSignal(false)
+  const created = useSignal("")
+
+  const groupOf = (item: DemoCategory): ComboboxGroup => {
+    const parent = item.parent ??
+      (items.value.some((other) => other.parent === item.name) ? item.name : undefined)
+    return parent === undefined ? otherGroup : { id: parent, label: parent }
+  }
+
+  const create = async (name: string): Promise<DemoCategory> => {
+    await new Promise((done) => setTimeout(done, CREATE_MS))
+    if (failNext.value) {
+      failNext.value = false
+      throw new Error("The demo refused it")
+    }
+    const made: DemoCategory = { name }
+    items.value = [...items.value, made]
+    created.value = name
+    return made
+  }
+
+  return (
+    <Stack gap="sm">
+      <Field id="guide-combobox-category" label="Category">
+        <Combobox
+          items={items.value}
+          value={category.value}
+          onChange={(next) => category.value = next}
+          getLabel={(item) => item.name}
+          aliasesOf={(item) => item.aliases ?? []}
+          groupOf={groupOf}
+          isGroupLead={(item) => item.parent === undefined && groupOf(item) !== otherGroup}
+          onCreate={create}
+          placeholder="Search or create a category…"
+        />
+      </Field>
+      <Checkbox
+        checked={failNext.value}
+        onChange={(event) => failNext.value = event.currentTarget.checked}
+      >
+        Make the next create fail
+      </Checkbox>
+      <Note e2e="controlled-value">
+        category: {category.value?.name ?? "(none)"}
+        {created.value === "" ? "" : `, created: ${created.value}`}
+      </Note>
+      <Note>
+        Try “out eat”, “eatng out”, “restaurant” or “щге уфештп”, then “Gym” and Enter.
+      </Note>
+    </Stack>
+  )
+}
+
+/**
+ * Every combobox on the card: strings, grouped categories with Create, objects, a controlled query, a long list, an empty one, one
  * whose screen-reader count uses the caller's own words, and one that fetches per keystroke.
  */
 function ComboboxDemo() {
@@ -811,6 +1102,9 @@ function ComboboxDemo() {
     <Grid minColumnWidth="md" gap="lg">
       <Variant title="Strings">
         <CoinCombobox />
+      </Variant>
+      <Variant title="Groups, aliases and Create">
+        <CategoryCombobox />
       </Variant>
       <Variant title="Objects, one disabled">
         <CityCombobox />
@@ -835,7 +1129,7 @@ function ComboboxDemo() {
 }
 
 /** Tags a task already uses elsewhere: what the tag field suggests. */
-const usedTags = ["work", "home", "errand", "waiting", "someday", "phone"]
+const usedTags = ["work", "home", "errand", "waiting", "someday", "wishlist"]
 
 /**
  * The tag field inside `Field`, with suggestions and the tags it holds reported back, and a disabled
@@ -943,8 +1237,8 @@ function ToggleFieldDemo() {
 }
 
 /**
- * `FileInput` in five shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
- * at one file, and posting through a plain `<form>`.
+ * `FileInput` in six shapes: image-only and size-limited, disabled, nested inside a `Field`, capped
+ * at one file, as a button that keeps no list, and posting through a plain `<form>`.
  *
  * What a caller reads — `onFiles` and `onReject` — is echoed under the first and fourth pickers.
  * Inside a `Field`, the label and hint go to `Field`, and `FileInput` renders none of its own.
@@ -963,6 +1257,8 @@ function FileInputDemo() {
   const refused = useSignal<string[]>([])
   const mounted = useSignal(true)
   const singleRefused = useSignal<string[]>([])
+  const buttonChosen = useSignal<string[]>([])
+  const buttonRefused = useSignal<string[]>([])
 
   return (
     <Stack gap="lg">
@@ -1029,6 +1325,27 @@ function FileInputDemo() {
         <Variant title="Disabled">
           <FileInput id="guide-file-input-disabled" label="Attachments" disabled />
         </Variant>
+        <Variant title="As a button, keeping no list">
+          <Cluster>
+            <FileInput
+              id="guide-file-input-button"
+              appearance="button"
+              label="Attach files"
+              accept="image/png,image/jpeg,application/pdf"
+              maxSize={2 * 1024 * 1024}
+              multiple
+              onFiles={(files) => buttonChosen.value = files.map((f) => f.name)}
+              onReject={(reasons) =>
+                buttonRefused.value = reasons.map((r) => `${r.file.name} (${r.reason})`)}
+            />
+          </Cluster>
+          <Note e2e="file-input-button-chosen">
+            last choice: {buttonChosen.value.length === 0 ? "none" : buttonChosen.value.join(", ")}
+          </Note>
+          <Note e2e="file-input-button-refused">
+            refused: {buttonRefused.value.length === 0 ? "none" : buttonRefused.value.join(", ")}
+          </Note>
+        </Variant>
       </Grid>
       <Variant title="A plain form post">
         <form action="form-demo/" method="post" encType="multipart/form-data">
@@ -1053,19 +1370,24 @@ function FileInputDemo() {
  */
 function DateRangePickerDemo() {
   const range = useSignal<DateRange | null>(fixedToday)
+  const preset = useSignal<DateRangePreset>("last-7-days")
 
   return (
     <div class="space-y-3">
       <DateRangePicker
         range={range.value}
-        onChange={(next) => range.value = next}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
         timeZone={fixedZone}
         now={fixedNow}
         presets={datePresetOptions}
         labels={dateLabels}
-        selectedPreset="last-7-days"
+        selectedPreset={preset.value}
         dataE2E="guide-date-range"
       />
+      <Note e2e="controlled-preset">preset: {preset.value}</Note>
       <Note e2e="controlled-value">
         range:{" "}
         <span class="whitespace-nowrap">
@@ -1102,6 +1424,106 @@ function DateRangePickerEmptyDemo() {
         range:{" "}
         <span class="whitespace-nowrap">
           {range.value === null ? "none" : dateRangeTouched(range.value)}
+        </span>
+      </Note>
+    </div>
+  )
+}
+
+/** The stepper demos' clock: Wednesday 4 November 2026, in Paris. */
+const stepperNow = new Date("2026-11-04T10:00:00Z")
+
+/**
+ * One `PeriodStepper` showing a period and the range it hands back, for the browser checks.
+ *
+ * It names the period in the guide's own language, the stepper's default. Not `en-GB`: Deno 2.9
+ * names a week inside one month "1–7 Nov 2026" there and Chromium 155 "1 – 7 Nov 2026", so the
+ * served card and the hydrated one would read differently.
+ */
+function PeriodStepperExample(
+  { start, firstWeekday, currentHotkey, singleKeys, e2e }: {
+    start: Period
+    firstWeekday?: number
+    currentHotkey?: string
+    singleKeys?: boolean
+    e2e: string
+  },
+) {
+  const period = useSignal(start)
+  return (
+    <div class="space-y-2" data-e2e={e2e}>
+      <PeriodStepper
+        period={period.value}
+        onChange={(next) => period.value = next}
+        now={stepperNow}
+        timeZone={fixedZone}
+        options={{ firstWeekday }}
+        currentHotkey={currentHotkey}
+        singleKeys={singleKeys}
+      />
+      <Note e2e={`${e2e}-value`}>
+        period: <span class="whitespace-nowrap">{period.value.from} … {period.value.to}</span>
+      </Note>
+    </div>
+  )
+}
+
+/**
+ * Months, opened on October while today is in November, so "This month" shows; `]` or › brings
+ * November back and the button goes. Its return key is `m` here, because this page already gives
+ * `t` to the theme toggle. Then weeks that start on Sunday, opened on the current week, with
+ * `singleKeys` off: two steppers on one screen cannot both own `[` and `]`.
+ */
+function PeriodStepperDemo() {
+  return (
+    <Stack>
+      <Variant title="Months, one month back">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Month, "2026-10-01", {})}
+          currentHotkey="m"
+          e2e="guide-period-month"
+        />
+      </Variant>
+      <Variant title="Weeks from Sunday, keys off">
+        <PeriodStepperExample
+          start={periodOf(PeriodUnit.Week, "2026-11-04", { firstWeekday: 7 })}
+          firstWeekday={7}
+          singleKeys={false}
+          e2e="guide-period-week"
+        />
+      </Variant>
+    </Stack>
+  )
+}
+
+/**
+ * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
+ * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
+ */
+function DateRangePickerWeekDemo() {
+  const range = useSignal<DateRange | null>(null)
+  const preset = useSignal<DateRangePreset | undefined>(undefined)
+
+  return (
+    <div class="space-y-3">
+      <DateRangePicker
+        range={range.value}
+        onChange={(next, chosen) => {
+          range.value = next
+          preset.value = chosen
+        }}
+        timeZone={fixedZone}
+        now={fixedNow}
+        firstWeekday={7}
+        presets={weekPresetOptions}
+        selectedPreset={preset.value}
+        labels={{ placeholder: "Any week" }}
+        dataE2E="guide-date-range-week"
+      />
+      <Note e2e="week-value">
+        range:{" "}
+        <span class="whitespace-nowrap">
+          {range.value === null ? "none" : `${range.value.from} … ${range.value.to}`}
         </span>
       </Note>
     </div>
@@ -1170,6 +1592,9 @@ function DateRangePickersDemo() {
         >
           <DateRangePickerWithTimeDemo />
         </Variant>
+        <Variant title="Weeks from Sunday">
+          <DateRangePickerWeekDemo />
+        </Variant>
       </Grid>
       <Stack gap="xs">
         <Note>
@@ -1215,6 +1640,197 @@ export const inputDemos = {
 />`,
     render: () => <ToggleSwitchDemo />,
   },
+  Slider: {
+    summary:
+      "A labelled range slider on the native range input: the value printed beside the label, a graphite fill up to the thumb, and up to two marks.",
+    wide: false,
+    props: [
+      { name: "label", type: "string", description: "The visible label, which names the input." },
+      { name: "value", type: "number", description: "The current value; the caller stores it." },
+      {
+        name: "min / max / step",
+        type: "number",
+        default: "0 / 100 / 1",
+        description: "The range and the step between values.",
+      },
+      {
+        name: "onInput",
+        type: "(value: number) => void",
+        description: "Called with the new value on every move, by pointer or keyboard.",
+      },
+      {
+        name: "format",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How the value prints beside the label.",
+      },
+      {
+        name: "valueText",
+        type: "(value: number) => string",
+        default: "format",
+        description: "What a screen reader announces, as `aria-valuetext`.",
+      },
+      {
+        name: "marks",
+        type: "{ value, label }[]",
+        description: "Up to two labelled ticks under the track.",
+      },
+      { name: "hint", type: "string", description: "One line under the slider, read with it." },
+    ],
+    snippet: `<Slider
+  label="Yearly rate"
+  value={rate.value}
+  min={0}
+  max={10}
+  step={0.5}
+  onInput={(next) => rate.value = next}
+  format={(value) => \`\${value.toFixed(1)}%\`}
+  valueText={(value) => \`\${value.toFixed(1)} percent a year\`}
+  marks={[{ value: 2, label: "Inflation target" }]}
+/>`,
+    render: () => <SliderDemo />,
+  },
+  LanguagePicker: {
+    summary:
+      "Every language by its own name: a radio group for an app's settings, or plain links that work without JavaScript, in a row for a website's footer or behind a globe menu for its header.",
+    wide: false,
+    props: [
+      {
+        name: "languages / current",
+        type: "string[] / string | null",
+        description:
+          "The tags offered, in order, and the one in use; `null` follows the device (`automatic`).",
+      },
+      {
+        name: "mode",
+        type: `"list" | "links" | "menu"`,
+        default: `"list"`,
+        description:
+          '`list` is a radio group: one tab stop, arrow keys move and choose. `links` is a `<nav>` of `<a href hreflang lang>`. `menu` puts those links behind a globe `Dropdown` named "Language: <name>", showing the name from `xl`.',
+      },
+      {
+        name: "onSelect / href",
+        type: "(tag | null) => void / (tag) => string",
+        description:
+          "What a choice does: the list calls `onSelect`; each link, in `links` and `menu`, goes to `href(tag)`.",
+      },
+      {
+        name: "automatic",
+        type: "string",
+        description:
+          'The device\'s language. Given, the list starts with "Automatic: <language>, like this device", chosen when `current` is `null`.',
+      },
+      {
+        name: "pending / unavailable / failed",
+        type: "string | null / string[] / string",
+        description:
+          "The language loading (a spinner, read aloud), the ones that cannot load offline (disabled), and one that failed (an error under the list).",
+      },
+      {
+        name: "labels",
+        type: "{ label?, automatic?, loading?, error?, offline? }",
+        description: "The words; each language's own name always comes from `Intl.DisplayNames`.",
+      },
+    ],
+    snippet: `<LanguagePicker
+  languages={["en", "de", "es", "pt-BR", "ru", "ar"]}
+  current={language}
+  automatic={navigator.language}
+  pending={loading}
+  onSelect={(tag) => switchLanguage(tag)}
+/>
+
+<LanguagePicker
+  mode="links"
+  languages={["en", "de", "ar"]}
+  current="en"
+  href={(tag) => \`/\${tag}/\`}
+/>
+
+<LanguagePicker
+  mode="menu"
+  languages={["en", "de", "zh-CN", "ar"]}
+  current="en"
+  href={(tag) => \`/\${tag}/\`}
+/>`,
+    render: () => <LanguagePickerDemo />,
+  },
+  LanguageDialog: {
+    summary:
+      "The language list in a dialog: a choice applies at once and the dialog stays open in the new language, with focus on the chosen row.",
+    wide: false,
+    props: [
+      {
+        name: "open / onClose",
+        type: "boolean / () => void",
+        description: "On screen, and closed by Done, Escape, the close control or the backdrop.",
+      },
+      {
+        name: "languages / current / onSelect",
+        type: "string[] / string | null / (tag | null) => void",
+        description: "As on `LanguagePicker`'s list.",
+      },
+      {
+        name: "automatic / pending / unavailable / failed",
+        type: "string / string | null / string[] / string",
+        description:
+          "As on `LanguagePicker`: the device's language, and the loading, offline and error states.",
+      },
+      {
+        name: "labels / pickerLabels",
+        type: "{ title?, description?, done?, closeLabel? } / LanguagePickerLabels",
+        description: "The dialog's words, and the list's.",
+      },
+    ],
+    snippet: `<LanguageDialog
+  open={open}
+  onClose={() => setOpen(false)}
+  languages={["en", "de", "es", "pt-BR", "ru", "ar"]}
+  current={language}
+  automatic={navigator.language}
+  pending={loading}
+  onSelect={(tag) => switchLanguage(tag)}
+/>`,
+    render: () => <LanguageDialogDemo />,
+  },
+  LanguageButton: {
+    summary:
+      "A globe and the language in use, named in itself, that opens `LanguageDialog`: the language switch of a signed-out header.",
+    wide: false,
+    props: [
+      {
+        name: "languages / current / onSelect",
+        type: "string[] / string | null / (tag | null) => void",
+        description:
+          "As on `LanguageDialog`. The button shows `current`, or `automatic` while it follows the device.",
+      },
+      {
+        name: "automatic / pending / unavailable / failed",
+        type: "string / string | null / string[] / string",
+        description: "Passed to the dialog, as on `LanguagePicker`.",
+      },
+      {
+        name: "labels / pickerLabels",
+        type: "{ title?, description?, done?, closeLabel? } / LanguagePickerLabels",
+        description:
+          "The dialog's words and the list's. `title` is also read aloud before the language's name.",
+      },
+      {
+        name: "buttonDataE2E",
+        type: "string",
+        default: `"language-button"`,
+        description: "`data-e2e` on the button; `dataE2E` stays the dialog's.",
+      },
+    ],
+    snippet: `<LanguageButton
+  languages={["en", "de", "es", "pt-BR", "ru", "ar"]}
+  current={language}
+  automatic={navigator.language}
+  pending={loading}
+  onSelect={(tag) => switchLanguage(tag)}
+/>`,
+    render: () => <LanguageButtonDemo />,
+  },
   OnOffButtons: {
     summary:
       "A two-button ON/OFF filter that can also start with neither half chosen, with optional counts.",
@@ -1257,6 +1873,40 @@ export const inputDemos = {
   onSwitch={(on) => showActive.value = on}
 />`,
     render: () => <OnOffButtonsDemo />,
+  },
+  SegmentedControl: {
+    summary:
+      "One choice among a few short options, drawn as joined segments that the arrow keys move through, such as a period picker in a page header.",
+    wide: false,
+    props: [
+      {
+        name: "options",
+        type: "{ value, label }[]",
+        description: "The segments, in order.",
+      },
+      { name: "value", type: "string", description: "The chosen segment's value." },
+      {
+        name: "onChange",
+        type: "(value: string) => void",
+        description: "Called with the segment a click or an arrow key chose.",
+      },
+      {
+        name: "ariaLabel",
+        type: "string",
+        description: "The group's name for a screen reader; required.",
+      },
+    ],
+    snippet: `<SegmentedControl
+  ariaLabel="Period"
+  options={[
+    { value: "7", label: "7 days" },
+    { value: "30", label: "30 days" },
+    { value: "90", label: "90 days" },
+  ]}
+  value={days.value}
+  onChange={(value) => days.value = value}
+/>`,
+    render: () => <SegmentedControlDemo />,
   },
   ToggleField: {
     summary:
@@ -1302,10 +1952,10 @@ export const inputDemos = {
       { name: "menuLabel", type: "string", description: "The menu's accessible name." },
       {
         name: "vertical / horizontal",
-        type: `"auto" | "up" | "down" / "left" | "right"`,
-        default: `"auto" / "right"`,
+        type: `"auto" | "up" | "down" / "start" | "end" | "left" | "right"`,
+        default: `"auto" / "end"`,
         description:
-          "Which way the menu opens and which edge it lines up with. `auto` opens up when there is no room below.",
+          "Which way the menu opens and which edge it lines up with. `auto` prefers down: it flips up only when the menu fits above but not below, and otherwise scrolls the page to show it. `start` and `end` follow the reading direction; `left` and `right` are their old names.",
       },
     ],
     snippet: `<Dropdown
@@ -1324,6 +1974,12 @@ export const inputDemos = {
     wide: true,
     props: [
       { name: "href", type: "string", description: "Makes the item a link to this address." },
+      {
+        name: "hreflang / lang",
+        type: "string / string",
+        description:
+          "The language of the page the link leads to, and of the item's own text, as in a language switcher.",
+      },
       {
         name: "navigate",
         type: "(href: string) => void",
@@ -1377,7 +2033,7 @@ export const inputDemos = {
         name: "checked",
         type: "boolean",
         description:
-          "Makes it one choice of a set: a `menuitemradio` with `aria-checked`, a check before its text when `true` and an empty space as wide when `false`.",
+          'Makes it one choice of a set: a `menuitemradio` with `aria-checked`, a check before its text when `true` and an empty space as wide when `false`. Without JavaScript a checked link says `aria-current="page"`.',
       },
       { name: "class", type: "string", description: "Extra classes, merged over its own." },
     ],
@@ -1395,7 +2051,8 @@ export const inputDemos = {
   <DropdownItem checked={group.id === currentId} onClick={() => switchTo(group.id)}>
     {group.name}
   </DropdownItem>
-))}`,
+))}
+<DropdownItem href="/de/" hreflang="de" lang="de" checked={false}>Deutsch</DropdownItem>`,
     render: () => <DropdownItemDemo />,
   },
   Combobox: {
@@ -1419,8 +2076,39 @@ export const inputDemos = {
       {
         name: "filter",
         type: "(items, query) => T[]",
-        default: "folded substring match",
-        description: "Replaces the built-in search.",
+        default: "searchEntries",
+        description:
+          "Replaces the built-in search, which takes words in any order, one typo and the other keyboard layout, best match first. Groups still apply.",
+      },
+      {
+        name: "aliasesOf",
+        type: "(item: T) => readonly string[]",
+        description: "Other names the built-in search finds an item by; never shown.",
+      },
+      {
+        name: "groupOf / isGroupLead",
+        type: "(item: T) => { id, label } | null / (item: T) => boolean",
+        description:
+          "Puts items in named groups. A lead (a parent category) is its group's first row and name, and stays choosable; a group without one gets a heading the arrow keys skip.",
+      },
+      {
+        name: "groupedLabel",
+        type: "(label, group) => string",
+        default: `"Eating out (Food)"`,
+        description: "How the closed field reads a chosen group member.",
+      },
+      {
+        name: "onCreate",
+        type: "(query: string) => T | void | Promise<T | void>",
+        description:
+          "Adds a last row, Create “Gym”, highlighted when nothing else matches. A returned item is chosen; a pending promise shows a spinner, a rejected one a field error.",
+      },
+      {
+        name: "createLabel / createOnlyMessage / createErrorMessage",
+        type: "(query: string) => string",
+        default:
+          `"Create “Gym”" / "No matches. You can create “Gym”." / "Couldn't create “Gym”. Try again."`,
+        description: "The Create row, what the live region says when it is alone, and the error.",
       },
       {
         name: "query / onQueryChange",
@@ -1464,6 +2152,12 @@ export const inputDemos = {
         name: "aria-describedby / aria-invalid",
         type: "string / boolean",
         description: "Set by `Field`: its messages describe the input, and an error marks it.",
+      },
+      {
+        name: "autoFocus",
+        type: "boolean",
+        default: "false",
+        description: "Focuses the input when a `Modal` around it opens; the list opens with it.",
       },
     ],
     snippet: `<Combobox
@@ -1565,6 +2259,13 @@ export const inputDemos = {
         description: "The instant presets resolve against.",
       },
       {
+        name: "firstWeekday",
+        type: "number",
+        default: "1",
+        description:
+          "The day a week starts on for the `this-week` and `last-week` presets, 1 for Monday to 7 for Sunday.",
+      },
+      {
         name: "withTime",
         type: "boolean",
         default: "false",
@@ -1592,6 +2293,16 @@ export const inputDemos = {
 // Every label is English by default; override only the ones you need to.
 <DateRangePicker {...props} labels={{ placeholder: "All time" }} />
 
+// Week presets: weeks start on Monday unless firstWeekday says otherwise (7 is Sunday).
+<DateRangePicker
+  {...props}
+  firstWeekday={7}
+  presets={[
+    { preset: "this-week", label: "This week" },
+    { preset: "last-week", label: "Last week" },
+  ]}
+/>
+
 // withTime: datetime-local fields, two sub-day presets — no presets prop — and a range whose
 // fromInstant / toInstant say exactly which moment each end means, even in a repeated hour.
 <DateRangePicker
@@ -1606,9 +2317,66 @@ export const inputDemos = {
 />`,
     render: () => <DateRangePickersDemo />,
   },
+  PeriodStepper: {
+    summary:
+      "Steps a screen through weeks or months, with a button back to the current one and the keys [, ] and T.",
+    wide: true,
+    props: [
+      { name: "period", type: "Period", description: "The week or month on screen." },
+      {
+        name: "onChange",
+        type: "(period: Period) => void",
+        description: "Called with the period to show next.",
+      },
+      {
+        name: "now",
+        type: "Date",
+        description: "The current instant; the stepper never reads the clock.",
+      },
+      { name: "timeZone", type: "string", description: "The zone whose calendar holds today." },
+      {
+        name: "options",
+        type: "PeriodOptions",
+        description: "The week's first day, as the period was made with.",
+      },
+      {
+        name: "labels",
+        type: "Partial<PeriodStepperLabels>",
+        description: "Overrides for the words, one set per unit.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the period's name; defaults to the translator's language.",
+      },
+      {
+        name: "currentHotkey",
+        type: "string",
+        default: `"t"`,
+        description: "The key back to the current period.",
+      },
+      {
+        name: "singleKeys",
+        type: "boolean",
+        default: "true",
+        description: "Whether [, ] and the current key work; off, the tooltips show no key.",
+      },
+    ],
+    snippet: `import { currentPeriod, PeriodUnit } from "@spy4x/time/period"
+
+const period = useSignal(currentPeriod(PeriodUnit.Month, { now, timeZone }))
+
+<PeriodStepper
+  period={period.value}
+  onChange={(next) => period.value = next}
+  now={now}
+  timeZone={timeZone}
+/>`,
+    render: () => <PeriodStepperDemo />,
+  },
   FileInput: {
     summary:
-      "A file picker with a drop zone that previews images and refuses the wrong type or size, without uploading anything.",
+      "A file picker with a drop zone, or a plain button, that previews images and refuses the wrong type or size, without uploading anything.",
     wide: true,
     props: [
       { name: "id", type: "string", description: "The native input's id." },
@@ -1630,6 +2398,19 @@ export const inputDemos = {
         default: "true",
         description: "Shows a thumbnail beside each image.",
       },
+      {
+        name: "appearance",
+        type: `"zone" | "button"`,
+        default: `"zone"`,
+        description:
+          "`button` draws one button that opens the chooser and hands each choice to `onFiles`, keeping no list.",
+      },
+      {
+        name: "buttonVariant / busy / busyLabel",
+        type: "ButtonVariant / boolean / ComponentChildren",
+        default: `"secondary"`,
+        description: "The button's variant, and its busy state while the caller uploads.",
+      },
     ],
     snippet: `<FileInput
   id="attachments"
@@ -1639,6 +2420,15 @@ export const inputDemos = {
   maxSize={2 * 1024 * 1024}
   multiple
   onFiles={(files) => chosen.value = files}
+  onReject={(reasons) => refused.value = reasons}
+/>
+<FileInput
+  id="attach"
+  appearance="button"
+  label="Attach files"
+  accept="image/*,application/pdf"
+  multiple
+  onFiles={(files) => upload(files)}
   onReject={(reasons) => refused.value = reasons}
 />`,
     render: () => <FileInputDemo />,

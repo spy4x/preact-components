@@ -1,6 +1,7 @@
 /**
  * `AccountMenu` — the signed-in person's menu: a trigger showing who is signed in, and a menu of
- * the caller's items, an optional theme choice and an optional "Sign out".
+ * the caller's items, an optional language item, an optional theme choice and an optional
+ * "Sign out".
  *
  * Extracted from `Shell`'s built-in user menu (#756) so `RailShell`'s sidebar can carry the same
  * menu at its bottom: `Shell` draws it as an avatar in its header, a sidebar draws it as the avatar,
@@ -15,8 +16,12 @@ import { cn } from "@spy4x/preact-cn"
 import { IconChevronDown } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { Dropdown, DropdownItem } from "@spy4x/preact-ui/dropdown"
+import { LanguageDialog, type LanguageDialogProps } from "@spy4x/preact-ui/language-picker"
+import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
-import { AccountEntry, AccountIdentity, AccountTag } from "./account-parts.tsx"
+import { AccountEntry, AccountIdentity, AccountLanguage, AccountTag } from "./account-parts.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 export { AccountTag }
 
@@ -61,6 +66,12 @@ export interface AccountMenuItem {
   dataE2E?: string
 }
 
+/**
+ * The language choice {@link AccountMenu} offers: `LanguageDialog`'s props without its open state,
+ * which the menu owns.
+ */
+export type AccountMenuLanguage = Omit<LanguageDialogProps, "open" | "onClose">
+
 /** The theme preferences {@link AccountMenu} offers; `"system"` follows the device. */
 export type AccountMenuTheme = "system" | "light" | "dark"
 
@@ -73,6 +84,8 @@ export interface AccountMenuLabels {
    * name (and, on the wide trigger, the e-mail after it).
    */
   trigger?: string
+  /** The language item's text, before the current language's name. Defaults to `"Language"`. */
+  language?: string
   /** The theme choice's group name, shown above its three items. Defaults to `"Theme"`. */
   theme?: string
   /** Defaults to `"System"`. */
@@ -88,6 +101,11 @@ export interface AccountMenuProps {
   user: AccountMenuUser
   /** The caller's own items, first in the menu, such as "Profile". */
   items?: readonly AccountMenuItem[]
+  /**
+   * Given, a "Language" item after {@link items}, with the current language's own name at its end,
+   * opens `LanguageDialog` with these props. A submenu would not fit a phone, so it is a dialog.
+   */
+  language?: AccountMenuLanguage
   /** The current theme preference, marked as checked in the theme choice. Defaults to `"system"`. */
   theme?: AccountMenuTheme
   /**
@@ -144,11 +162,15 @@ export interface AccountMenuProps {
 }
 
 const fullTriggerClasses =
-  "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
+  "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-start text-sm hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]"
 
 /**
  * The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's
  * items, then the theme choice, then "Sign out" after a divider.
+ *
+ * **The language item opens a dialog.** It shows `IconGlobe`, "Language" and the language in use,
+ * named in itself; choosing it closes the menu and opens `LanguageDialog`, which the menu renders
+ * and keeps open until Done or Escape, focus then going back to the trigger.
  *
  * **The theme choice is a set of radio items.** System, Light and Dark are `DropdownItem`s with
  * `checked`, so each is a `menuitemradio` with `aria-checked`, inside a `role="group"` named by the
@@ -168,6 +190,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
   const {
     user,
     items = [],
+    language,
     theme = "system",
     onThemeChange,
     signOut,
@@ -184,12 +207,14 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     labels,
   } = props
   const full = display === "full"
+  const translator = useT()
   const themes: readonly [AccountMenuTheme, string][] = [
-    ["system", labels?.system ?? "System"],
-    ["light", labels?.light ?? "Light"],
-    ["dark", labels?.dark ?? "Dark"],
+    ["system", labels?.system ?? translate(translator, "AccountMenu.system", "System")],
+    ["light", labels?.light ?? translate(translator, "AccountMenu.light", "Light")],
+    ["dark", labels?.dark ?? translate(translator, "AccountMenu.dark", "Dark")],
   ]
-  const themeHeading = labels?.theme ?? "Theme"
+  const themeHeading = labels?.theme ?? translate(translator, "AccountMenu.theme", "Theme")
+  const languageOpen = useSignal(false)
 
   const trigger = full
     ? (
@@ -215,67 +240,88 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     : { triggerLabel: labels.trigger }
 
   return (
-    <Dropdown
-      trigger={trigger}
-      {...naming}
-      triggerClasses={full ? cn(fullTriggerClasses, triggerClasses) : triggerClasses}
-      containerClasses={full ? "flex w-full" : undefined}
-      triggerDataE2E={dataE2E}
-      menuLabel={labels?.menu ?? "Account menu"}
-      vertical={vertical}
-      horizontal={horizontal}
-      panelClasses={cn("z-30", full && "min-w-full", panelClasses)}
-    >
-      {headerHref !== undefined && (
-        <DropdownItem
-          href={headerHref}
-          navigate={navigate}
-          class="mb-1 gap-3 border-b border-subtle"
-          dataE2E="account-menu-header"
-        >
-          <AccountIdentity user={user} tag={tag} />
-        </DropdownItem>
-      )}
-      {header && headerHref === undefined && (
-        <div
-          aria-hidden="true"
-          class="mb-1 flex items-center gap-3 border-b border-subtle px-4 py-2"
-          data-e2e="account-menu-header"
-        >
-          <AccountIdentity user={user} tag={tag} />
-        </div>
-      )}
-      {items.map((item, index) => (
-        <AccountEntry
-          key={`${index}-${item.label}`}
-          item={item}
-          navigate={navigate}
-          Control={DropdownItem}
-        />
-      ))}
-      {onThemeChange && (
-        <div role="group" aria-label={themeHeading} data-e2e="account-menu-theme">
-          <div aria-hidden="true" class="px-4 pt-2 pb-1 text-xs font-medium text-muted">
-            {themeHeading}
+    <>
+      <Dropdown
+        trigger={trigger}
+        {...naming}
+        triggerClasses={full ? cn(fullTriggerClasses, triggerClasses) : triggerClasses}
+        containerClasses={full ? "flex w-full" : undefined}
+        triggerDataE2E={dataE2E}
+        menuLabel={labels?.menu ?? translate(translator, "AccountMenu.menu", "Account menu")}
+        vertical={vertical}
+        horizontal={horizontal}
+        panelClasses={cn("z-30", full && "min-w-full", panelClasses)}
+      >
+        {headerHref !== undefined && (
+          <DropdownItem
+            href={headerHref}
+            navigate={navigate}
+            class="mb-1 gap-3 border-b border-subtle"
+            dataE2E="account-menu-header"
+          >
+            <AccountIdentity user={user} tag={tag} />
+          </DropdownItem>
+        )}
+        {header && headerHref === undefined && (
+          <div
+            aria-hidden="true"
+            class="mb-1 flex items-center gap-3 border-b border-subtle px-4 py-2"
+            data-e2e="account-menu-header"
+          >
+            <AccountIdentity user={user} tag={tag} />
           </div>
-          {themes.map(([value, label]) => (
-            <DropdownItem
-              key={value}
-              checked={theme === value}
-              onClick={() => onThemeChange(value)}
-              dataE2E={`account-menu-theme-${value}`}
-            >
-              {label}
-            </DropdownItem>
-          ))}
-        </div>
+        )}
+        {items.map((item, index) => (
+          <AccountEntry
+            key={`${index}-${item.label}`}
+            item={item}
+            navigate={navigate}
+            Control={DropdownItem}
+          />
+        ))}
+        {language && (
+          <DropdownItem
+            onClick={() => languageOpen.value = true}
+            dataE2E="account-menu-language"
+          >
+            <AccountLanguage
+              label={labels?.language ??
+                translate(translator, "AccountMenu.language", "Language")}
+              language={language}
+            />
+          </DropdownItem>
+        )}
+        {onThemeChange && (
+          <div role="group" aria-label={themeHeading} data-e2e="account-menu-theme">
+            <div aria-hidden="true" class="px-4 pt-2 pb-1 text-xs font-medium text-muted">
+              {themeHeading}
+            </div>
+            {themes.map(([value, label]) => (
+              <DropdownItem
+                key={value}
+                checked={theme === value}
+                onClick={() => onThemeChange(value)}
+                dataE2E={`account-menu-theme-${value}`}
+              >
+                {label}
+              </DropdownItem>
+            ))}
+          </div>
+        )}
+        {signOut && (
+          <>
+            <div role="separator" class="my-1 border-t border-subtle" />
+            <AccountEntry item={signOut} navigate={navigate} Control={DropdownItem} />
+          </>
+        )}
+      </Dropdown>
+      {language && (
+        <LanguageDialog
+          {...language}
+          open={languageOpen.value}
+          onClose={() => languageOpen.value = false}
+        />
       )}
-      {signOut && (
-        <>
-          <div role="separator" class="my-1 border-t border-subtle" />
-          <AccountEntry item={signOut} navigate={navigate} Control={DropdownItem} />
-        </>
-      )}
-    </Dropdown>
+    </>
   )
 }

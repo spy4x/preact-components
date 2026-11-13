@@ -213,7 +213,7 @@ function DataDisplayDemo() {
       <table class="w-full bg-transparent text-sm">
         <thead>
           <tr>
-            <th scope="col" class="text-left font-normal text-muted">Month</th>
+            <th scope="col" class="text-start font-normal text-muted">Month</th>
             <th scope="col" class="pc-num font-normal text-muted">Readings</th>
           </tr>
         </thead>

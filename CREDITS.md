@@ -31,6 +31,14 @@ text of each pack, are in [`icons/THIRD_PARTY_NOTICES.md`](./icons/THIRD_PARTY_N
 here: that file ships inside the published `@spy4x/preact-icons` package, and this one does not. See
 [`icons/README.md`](./icons/README.md) → "Provenance" for how each glyph's source is checked.
 
+## Fonts
+
+The guide draws Arabic text in Noto Sans Arabic by the Noto Project Authors, copied from the
+`@fontsource-variable/noto-sans-arabic` npm package (5.3.0) into `pages/fonts/`. It is licensed
+under the SIL Open Font License 1.1, whose text is beside the font in
+[`pages/fonts/OFL.txt`](./pages/fonts/OFL.txt). No package publishes the font; it ships only with
+the guide.
+
 ## What this file is not
 
 This is attribution, not a licence statement. It grants and transfers no rights, and says nothing

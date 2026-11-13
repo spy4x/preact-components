@@ -34,6 +34,9 @@ import { monthFirstWeekday, shiftMonth, startOfMonth } from "@spy4x/time/date"
 import { dayLabel, localeFirstWeekday, monthLabel, weekdayLabels } from "@spy4x/time/locale"
 import { addDays, todayInTz, validTimeZoneOr } from "@spy4x/time/tz"
 import { monthShown, useCalendarFocus, WEEK, WEEKS } from "./calendar-focus.ts"
+import { useLabels, useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 
 /** Why a day cannot be picked. */
 export type CalendarDayReason = "past" | "after" | "none-left" | "unavailable"
@@ -69,7 +72,7 @@ export function describeCalendarDay(day: CalendarDay): string {
     case "past":
       return `${day.label} — past`
     case "after":
-      return `${day.label} — outside the allowed range`
+      return `${day.label} — too far ahead`
     case "none-left":
       return `${day.label} — none left`
     case "unavailable":
@@ -78,6 +81,29 @@ export function describeCalendarDay(day: CalendarDay): string {
       return typeof day.availableCount === "number"
         ? `${day.label} — ${day.availableCount} available`
         : `${day.label} — available`
+  }
+}
+
+/** {@link describeCalendarDay} in the reader's language: one catalog key per reason. */
+function calendarDayWords(translator: Translator<string>, day: CalendarDay): string {
+  const english = describeCalendarDay(day)
+  const values = { label: day.label }
+  switch (day.reason) {
+    case "past":
+      return translate(translator, "Calendar.day.past", english, values)
+    case "after":
+      return translate(translator, "Calendar.day.after", english, values)
+    case "none-left":
+      return translate(translator, "Calendar.day.noneLeft", english, values)
+    case "unavailable":
+      return translate(translator, "Calendar.day.unavailable", english, values)
+    default:
+      return typeof day.availableCount === "number"
+        ? translate(translator, "Calendar.day.availableCount", english, {
+          ...values,
+          count: day.availableCount,
+        })
+        : translate(translator, "Calendar.day.available", english, values)
   }
 }
 
@@ -202,7 +228,11 @@ export function Calendar(
     class: className,
   }: CalendarProps,
 ): JSX.Element {
-  const copy = { ...defaultLabels, ...labels }
+  const translator = useT()
+  const copy = {
+    ...useLabels("Calendar", defaultLabels, labels),
+    day: labels?.day ?? ((day: CalendarDay) => calendarDayWords(translator, day)),
+  }
   const firstOfMonth = startOfMonth(monthAnchor)
   const firstWeekday = localeFirstWeekday(locale)
   const headingId = `${useId()}-month`
@@ -259,6 +289,7 @@ export function Calendar(
   // name that reads `9 February 2026`, nor a `9` in `٩ فبراير ٢٠٢٦`, and a speech-input user saying
   // the number they see would miss the cell.
   const dayDigits = new Intl.NumberFormat(locale, { useGrouping: false })
+  const narrow = narrowWeekdays(days.slice(0, WEEK).map((day) => day.date), locale)
   const cell = (day: CalendarDay) =>
     day.inMonth && dayCell(day, {
       number: dayDigits.format(Number(day.date.slice(8, 10))),
@@ -300,16 +331,21 @@ export function Calendar(
         onFocusOut={focus.onFocusOut}
         class="space-y-px px-2 pb-2"
       >
-        <div role="row" class="grid grid-cols-7 gap-px">
+        {/* In the locale's language, so a page in another one still sets it as that language. */}
+        <div role="row" lang={locale} class="grid grid-cols-7 gap-px">
           {weekdayLabels(locale).map((weekday, column) => (
             <div
               key={weekday.long}
               role="columnheader"
               aria-colindex={column + 1}
               aria-label={weekday.long}
-              class="py-1 text-center text-xs font-medium tracking-wider text-placeholder uppercase"
+              data-narrow={narrow?.[column]}
+              class={cn(
+                "py-1 text-center text-xs font-medium tracking-wider text-placeholder uppercase",
+                narrow && "max-sm:before:content-[attr(data-narrow)]",
+              )}
             >
-              {weekday.short}
+              <span class={narrow && "max-sm:hidden"}>{weekday.short}</span>
             </div>
           ))}
         </div>
@@ -367,6 +403,18 @@ const noneLeftClass = "line-through decoration-control"
 const selectedClass = "bg-selected font-semibold text-selected-foreground hover:bg-selected-hover"
 const todayClass = "bg-selected-soft font-semibold text-selected hover:bg-selected-soft-hover"
 const selectableClass = "text-foreground hover:bg-hover"
+
+/**
+ * The locale's one-letter weekday names for the dates of one week, or `undefined` when two of them
+ * read alike. Below the `sm` width a header shows these instead of the abbreviation: Arabic and
+ * Persian abbreviate a weekday to its whole name, and seven whole names touch at 390 px (#840).
+ * English, whose one-letter forms repeat (T, S), keeps its abbreviations.
+ */
+function narrowWeekdays(dates: string[], locale: string): string[] | undefined {
+  const format = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" })
+  const names = dates.map((date) => format.format(new Date(`${date}T00:00:00Z`)))
+  return new Set(names).size === names.length ? names : undefined
+}
 
 /**
  * The grid's 42 cells: six weeks, weekday-aligned. The leading cells step back into the previous
@@ -500,7 +548,7 @@ function dayCell(day: CalendarDay, cell: DayCell): JSX.Element {
       {scarce && (
         <span
           aria-hidden="true"
-          class="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-accent-600 dark:bg-accent-400"
+          class="absolute inset-x-0 bottom-1 mx-auto size-1 rounded-full bg-accent-600 dark:bg-accent-400"
         />
       )}
     </>

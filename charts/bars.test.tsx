@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { type BarDatum, barPercent, Bars } from "./bars.tsx"
+import { type BarDatum, barPercent, Bars, barTotal, type StackedBarDatum } from "./bars.tsx"
 
 const data: BarDatum[] = [
   { label: "alpha", value: 4 },
@@ -57,11 +57,10 @@ describe("Bars", () => {
     expect(html).toMatch(/<table[^>]*class="[^"]*\bbg-transparent\b/)
   })
 
-  it("lets a caller's class replace a default utility instead of adding to it", () => {
+  it("adds a caller's class after its own instead of merging it", () => {
     const html = render(<Bars data={data} class="gap-4" />)
 
-    expect(html).toMatch(/^<div class="[^"]*\bgap-4\b/)
-    expect(html).not.toMatch(/^<div class="[^"]*\bgap-2\b/)
+    expect(html).toMatch(/^<div class="flex flex-col gap-2 [^"]*\bgap-4"/)
   })
 
   it("honours a fixed maximum for cross-list comparison", () => {
@@ -170,5 +169,89 @@ describe("Bars", () => {
 
     const level = render(<Bars data={data} title="Top products" headingLevel={2} />)
     expect(level).toContain('<h2 class="text-sm font-medium">Top products</h2>')
+  })
+})
+
+const stacked: StackedBarDatum[] = [
+  { label: "March", segments: [{ series: "Rent", value: 6 }, { series: "Food", value: 2 }] },
+  { label: "April", segments: [{ series: "Food", value: 3 }, { series: "Fun", value: 1 }] },
+]
+
+describe("barTotal", () => {
+  it("sums a stacked row's segments, skipping negative and non-finite ones", () => {
+    expect(barTotal(stacked[0])).toBe(8)
+    expect(
+      barTotal({ label: "x", segments: [{ series: "a", value: -2 }, { series: "b", value: NaN }] }),
+    )
+      .toBe(0)
+    expect(barTotal({ label: "x", value: 5 })).toBe(5)
+  })
+})
+
+describe("Bars, stacked", () => {
+  it("scales each stacked row by its total against the largest total", () => {
+    const html = render(<Bars data={stacked} />)
+    expect(html).toContain('<span class="flex h-full" style="width:100%;">')
+    expect(html).toContain('<span class="flex h-full" style="width:50%;">')
+    expect(html).toMatch(/data-series="Rent"[^>]*style="width:75%/)
+    expect(html).toMatch(/data-series="Food"[^>]*style="width:25%/)
+    // April's total is 4: its segments split its own half-length bar, 3 to 1.
+    const april = html.slice(html.indexOf("April"))
+    expect(april).toMatch(/data-series="Food"[^>]*style="width:75%/)
+    expect(april).toMatch(/data-series="Fun"[^>]*style="width:25%/)
+  })
+
+  it("keeps one colour per series across rows, in order of first appearance", () => {
+    const html = render(<Bars data={stacked} colors={["red", "green", "blue"]} />)
+    expect(count(html, 'data-series="Food" class="block h-full" style="width:25%;background:green'))
+      .toBe(1)
+    expect(count(html, 'data-series="Food" class="block h-full" style="width:75%;background:green'))
+      .toBe(1)
+    expect(html).toContain(
+      'data-series="Fun" class="block h-full" style="width:25%;background:blue',
+    )
+  })
+
+  it("names every series in words in a legend, beside its colour", () => {
+    const html = render(<Bars data={stacked} colors={["red", "green", "blue"]} />)
+    const legend = html.slice(html.indexOf("data-bars-legend"))
+    expect(legend).toMatch(/background:red[^>]*><\/span>Rent<\/li>/)
+    expect(legend).toMatch(/background:green[^>]*><\/span>Food<\/li>/)
+    expect(legend).toMatch(/background:blue[^>]*><\/span>Fun<\/li>/)
+  })
+
+  it("prints the total and reads each segment out after it", () => {
+    const html = render(<Bars data={stacked} format={(value) => `${value} k`} />)
+    expect(html).toContain('8 k<span class="sr-only"> (Rent: 6 k, Food: 2 k)</span>')
+  })
+
+  it("draws stacked and single rows in one list", () => {
+    const html = render(<Bars data={[...stacked, { label: "May", value: 4 }]} />)
+    expect(count(html, "<tr")).toBe(3)
+    expect(html).toContain("width:50%;background:var(--color-chart-3")
+  })
+})
+
+describe("Bars, reference", () => {
+  it("draws a dashed line at the reference value on every row and names it in the legend", () => {
+    const html = render(<Bars data={data} reference={{ value: 2, label: "Target" }} />)
+    expect(count(html, "data-bars-reference")).toBe(2)
+    expect(html).toMatch(
+      /data-bars-reference="true" class="[^"]*border-dashed[^"]*" style="left:50%/,
+    )
+    expect(html).toMatch(
+      /<li class="flex items-center gap-2"><span[^>]*border-dashed[^>]*><\/span>Target: 2<\/li>/,
+    )
+  })
+
+  it("stretches the scale so a reference above every bar stays inside the track", () => {
+    const html = render(<Bars data={data} reference={{ value: 8, label: "Target" }} />)
+    expect(html).toContain("width:50%")
+    expect(html).toContain("width:25%")
+    expect(html).toMatch(/data-bars-reference="true"[^>]*style="left:100%/)
+  })
+
+  it("draws no legend for a plain list", () => {
+    expect(render(<Bars data={data} />)).not.toContain("data-bars-legend")
   })
 })

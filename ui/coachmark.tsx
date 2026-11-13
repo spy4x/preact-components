@@ -5,6 +5,7 @@ import type { ComponentChildren, JSX, RefObject } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { type CoachmarkSide, placeCoachmark } from "./coachmark-place.ts"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** Side of the target a coachmark sits on. */
 export type CoachmarkPlacement = CoachmarkSide
@@ -69,8 +70,6 @@ const surfaceClasses =
 const TARGET_RING =
   "var(--color-focus-ring, var(--color-primary-muted, oklch(0.558 0.288 302.321)))"
 
-const defaultGoToLabel = (name: string) => name ? `Go to ${name}` : "Go to the highlighted control"
-
 /** Whether an element can be pointed at: it has a box, and `visibility` does not hide it. */
 function isVisible(element: HTMLElement): boolean {
   const box = element.getBoundingClientRect()
@@ -117,6 +116,11 @@ interface Saved {
   addedTabIndex: boolean
 }
 
+/** The English words of `Coachmark`, each one a prop of its own. */
+const COACHMARK_LABELS: Required<Pick<CoachmarkProps, "closeLabel">> = {
+  closeLabel: "Close",
+}
+
 /**
  * One hint anchored to one element of the page, shown while the app says `open`. `Tour` walks a
  * list of them; an app that wants a single hint uses this alone.
@@ -155,13 +159,24 @@ export function Coachmark(
     children,
     placement = "bottom",
     onClose,
-    closeLabel = "Close",
-    goToLabel = defaultGoToLabel,
+    closeLabel: closeLabelProp,
+    goToLabel: goToLabelProp,
     footer,
     describedBy,
     class: className,
   }: CoachmarkProps,
 ): JSX.Element {
+  const translator = useT()
+  const goToLabel = goToLabelProp ??
+    ((name: string) =>
+      name
+        ? translate(translator, "Coachmark.goTo", `Go to ${name}`, { name })
+        : translate(translator, "Coachmark.goToHighlighted", "Go to the highlighted control"))
+  const { closeLabel } = useLabels(
+    "Coachmark",
+    COACHMARK_LABELS,
+    { closeLabel: closeLabelProp },
+  )
   const id = useId()
   const headingId = `${id}-title`
   const bodyId = `${id}-body`

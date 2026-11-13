@@ -40,6 +40,11 @@ describe("isCurrentLink", () => {
 })
 
 describe("SiteHeader", () => {
+  it("is left out when the page is printed", () => {
+    const tag = render(<SiteHeader links={links} brand="Acme" />).match(/<header[^>]*>/)?.[0] ?? ""
+    expect(attr(tag, "class")?.split(" ")).toContain("print:hidden")
+  })
+
   it("renders every link's href, once inline and once in the mobile panel", () => {
     const html = render(<SiteHeader links={links} brand="Acme" />)
     expect(linksTo(html, "/pricing")).toHaveLength(2)

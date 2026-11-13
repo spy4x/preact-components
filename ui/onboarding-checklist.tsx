@@ -5,6 +5,7 @@ import { useId, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { Card, CardBody, CardFooter, CardHeader } from "./card.tsx"
 import { Progress } from "./progress.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** A step's action that runs in place, such as opening a dialog. */
 export interface OnboardingStepButton {
@@ -67,7 +68,7 @@ export interface OnboardingChecklistProps {
   onDismiss?: () => void
   /** The Dismiss button's text. Defaults to `"Dismiss"`. */
   dismissLabel?: string
-  /** The primary button once every step is done; it calls `onDismiss`. Defaults to `"Finish"`. */
+  /** The footer's button once every step is done; it calls `onDismiss`. Defaults to `"Finish"`. */
   finishLabel?: string
   /** The progress caption. Defaults to `"2 of 4 done"`. */
   progressLabel?: (done: number, total: number) => string
@@ -77,25 +78,41 @@ export interface OnboardingChecklistProps {
   todoLabel?: string
   /** Shown and announced once every step is done. Defaults to `"All done. You're set up."` */
   completeMessage?: ComponentChildren
+  /**
+   * How the footer's button looks. Defaults to `"primary"`; pass `"secondary"` when the page
+   * already shows its own primary action, so the screen keeps one.
+   */
+  actionVariant?: "primary" | "secondary"
   /** Extra utilities for the card. */
   class?: string
 }
 
-/** The default progress caption: `"2 of 4 done"`. */
-function defaultProgressLabel(done: number, total: number): string {
-  return `${done} of ${total} done`
+/** The English words of `OnboardingChecklist`, each one a prop of its own. */
+const ONBOARDING_CHECKLIST_LABELS: Required<
+  Pick<
+    OnboardingChecklistProps,
+    "title" | "dismissLabel" | "finishLabel" | "doneLabel" | "todoLabel" | "completeMessage"
+  >
+> = {
+  title: "Get started",
+  dismissLabel: "Dismiss",
+  finishLabel: "Finish",
+  doneLabel: "Done",
+  todoLabel: "To do",
+  completeMessage: "All done. You're set up.",
 }
 
 /**
  * A card of first steps for a new user: each step with its state, a progress bar, the next open
- * step's action as the card's one primary button, and Dismiss.
+ * step's action as the card's one footer button (primary unless `actionVariant` says otherwise),
+ * and Dismiss.
  *
  * Completion comes from the app. The checklist stores nothing: it reads `done` off each step, so a
  * step ticks itself off when the app's own data says it happened, and Dismiss is a port the app
  * persists. The next open step is the first one, in order, that is not done; it carries
  * `aria-current="step"`.
  *
- * Focus survives progress. The primary action is one control in the footer that changes its text
+ * Focus survives progress. The footer's action is one control in the footer that changes its text
  * and its target from step to step, rather than a button inside each step's row. While consecutive
  * actions are buttons it is the same element, so focus simply stays on it. When the control has to
  * change element — a button followed by a link — an effect moves focus to the new control, and
@@ -110,20 +127,40 @@ function defaultProgressLabel(done: number, total: number): string {
 export function OnboardingChecklist(
   {
     steps,
-    title = "Get started",
+    title: titleProp,
     headingLevel = 2,
     headingRef: headingRefProp,
     description,
     onDismiss,
-    dismissLabel = "Dismiss",
-    finishLabel = "Finish",
-    progressLabel = defaultProgressLabel,
-    doneLabel = "Done",
-    todoLabel = "To do",
-    completeMessage = "All done. You're set up.",
+    dismissLabel: dismissLabelProp,
+    finishLabel: finishLabelProp,
+    progressLabel: progressLabelProp,
+    doneLabel: doneLabelProp,
+    todoLabel: todoLabelProp,
+    completeMessage: completeMessageProp,
+    actionVariant = "primary",
     class: className,
   }: OnboardingChecklistProps,
 ): JSX.Element {
+  const translator = useT()
+  const progressLabel = progressLabelProp ??
+    ((done: number, total: number) =>
+      translate(translator, "OnboardingChecklist.progressLabel", `${done} of ${total} done`, {
+        done,
+        total,
+      }))
+  const { title, dismissLabel, finishLabel, doneLabel, todoLabel, completeMessage } = useLabels(
+    "OnboardingChecklist",
+    ONBOARDING_CHECKLIST_LABELS,
+    {
+      title: titleProp,
+      dismissLabel: dismissLabelProp,
+      finishLabel: finishLabelProp,
+      doneLabel: doneLabelProp,
+      todoLabel: todoLabelProp,
+      completeMessage: completeMessageProp,
+    },
+  )
   const headingId = useId()
   const progressId = useId()
   const doneCount = steps.filter((step) => step.done).length
@@ -244,10 +281,14 @@ export function OnboardingChecklist(
           }}
         >
           {action?.href !== undefined
-            ? <Button href={action.href} navigate={action.navigate}>{action.label}</Button>
+            ? (
+              <Button variant={actionVariant} href={action.href} navigate={action.navigate}>
+                {action.label}
+              </Button>
+            )
             : action
-            ? <Button onClick={action.onClick}>{action.label}</Button>
-            : <Button onClick={onDismiss}>{finishLabel}</Button>}
+            ? <Button variant={actionVariant} onClick={action.onClick}>{action.label}</Button>
+            : <Button variant={actionVariant} onClick={onDismiss}>{finishLabel}</Button>}
         </CardFooter>
       )}
     </Card>

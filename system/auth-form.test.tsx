@@ -52,6 +52,16 @@ function hasDisabledAttr(tag: string): boolean {
 }
 
 describe("AuthForm", () => {
+  it("starts the login field with defaultLogin and leaves the password empty", () => {
+    const html = render(<AuthForm {...base} defaultLogin="ana@example.com" />)
+    expect(attr(inputTag(html, "login"), "value")).toBe("ana@example.com")
+    expect(attr(inputTag(html, "password"), "value")).toBeUndefined()
+  })
+
+  it("starts the login field empty without defaultLogin", () => {
+    expect(attr(inputTag(render(<AuthForm {...base} />), "login"), "value")).toBeUndefined()
+  })
+
   it("renders a real form with a login and a password field in the credentials step", () => {
     const html = render(<AuthForm {...base} />)
     expect(html).toContain("<form")
@@ -75,7 +85,7 @@ describe("AuthForm", () => {
     expect(html).toMatch(/<input[^>]*name="login"[^>]*required/)
     expect(html).toMatch(/<input[^>]*name="password"[^>]*required/)
     // Field's own visible marker for `required`.
-    expect(html.match(/ml-1 text-danger">\*/g)?.length).toBeGreaterThanOrEqual(2)
+    expect(html.match(/ms-1 text-danger">\*/g)?.length).toBeGreaterThanOrEqual(2)
   })
 
   it("uses current-password in sign-in mode and new-password in sign-up mode", () => {
@@ -107,9 +117,9 @@ describe("AuthForm", () => {
     const withoutPort = render(<AuthForm {...base} />)
     expect(modeSwitchTag(withPort)).toMatch(/^<button /)
     expect(attr(modeSwitchTag(withPort), "type")).toBe("button")
-    expect(withPort).toContain("Need an account? Sign up")
+    expect(withPort).toContain("New here? Sign up")
     expect(withPort).not.toContain("<a")
-    expect(withoutPort).not.toContain("Need an account? Sign up")
+    expect(withoutPort).not.toContain("New here? Sign up")
   })
 
   it("with modeHrefs, renders the mode switch as a link to the other mode's page", () => {
@@ -118,13 +128,13 @@ describe("AuthForm", () => {
     expect(modeSwitchTag(signIn)).toMatch(/^<a /)
     expect(attr(modeSwitchTag(signIn), "href")).toBe("/sign-up")
     expect(attr(modeSwitchTag(signUp), "href")).toBe("/sign-in")
-    expect(signUp).toContain("Have an account? Sign in")
+    expect(signUp).toContain("Already have an account? Sign in")
   })
 
   it("with modeHrefs, renders the mode-switch link even without onModeChange", () => {
     const html = render(<AuthForm {...base} modeHrefs={hrefs} />)
     expect(attr(modeSwitchTag(html), "href")).toBe("/sign-up")
-    expect(html).toContain("Need an account? Sign up")
+    expect(html).toContain("New here? Sign up")
   })
 
   it("draws the mode-switch link with the same classes as the mode-switch button", () => {
@@ -139,7 +149,7 @@ describe("AuthForm", () => {
     expect(html).toMatch(/<input[^>]*name="code"[^>]*inputmode="numeric"/)
     expect(html).not.toContain('name="login"')
     expect(html).not.toContain('name="password"')
-    expect(html).toContain("Enter the code you were sent.")
+    expect(html).toContain("Enter the code we sent you.")
   })
 
   it("renders an empty, always-present alert region when there is no error", () => {
@@ -157,7 +167,9 @@ describe("AuthForm", () => {
 
   it("draws the error message with the danger token, not a fixed red (#526)", () => {
     const html = render(<AuthForm {...base} error="Wrong login or password" />)
-    expect(html).toContain('<p class="text-sm text-danger">Wrong login or password</p>')
+    expect(html).toMatch(
+      /<p[^>]*class="[^"]*\btext-danger\b[^"]*"[^>]*>Wrong login or password<\/p>/,
+    )
     expect(html).not.toMatch(/text-red-\d/)
   })
 
@@ -202,7 +214,7 @@ describe("AuthForm", () => {
     expect(hasDisabledAttr(submitButtonTag(idle))).toBe(false)
     expect(hasDisabledAttr(submitButtonTag(busy))).toBe(true)
     expect(idle).toMatch(/class="sr-only">\s*<\/p>/)
-    expect(busy).toContain("Working…")
+    expect(busy).toContain("One moment…")
   })
 
   it("draws the credentials submit as the primary button unless the caller picks a variant", () => {
@@ -288,7 +300,7 @@ describe("AuthForm", () => {
     expect(toggle?.[1]).toMatch(/^<svg/)
     expect(toggle?.[1]).not.toContain("Show password")
     expect(toggle?.[0]).toContain("size-8")
-    expect(inputTag(html, "password")).toContain("pr-12")
+    expect(inputTag(html, "password")).toContain("pe-12")
   })
 
   it("takes the toggle's accessible name from a labels override", () => {

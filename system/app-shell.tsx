@@ -16,21 +16,29 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconAlertTriangle, IconBell, type IconProps } from "@spy4x/preact-icons"
+import { IconAlertTriangle, IconBell, IconChevronRight, type IconProps } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { useApplePlatform } from "@spy4x/preact-ui/hotkeys"
 import { Kbd, type KbdLabels } from "@spy4x/preact-ui/kbd"
+import { LanguageDialog } from "@spy4x/preact-ui/language-picker"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { useSignal } from "@preact/signals"
 import {
   AccountMenu,
   type AccountMenuItem,
   type AccountMenuLabels,
+  type AccountMenuLanguage,
   type AccountMenuTheme,
   type AccountMenuUser,
 } from "./account-menu.tsx"
-import { type AccountControlProps, AccountEntry, AccountIdentity } from "./account-parts.tsx"
+import {
+  type AccountControlProps,
+  AccountEntry,
+  AccountIdentity,
+  AccountLanguage,
+} from "./account-parts.tsx"
 import { Rail, type RailItem, type RailPlace } from "./rail.tsx"
 import {
   currentStates,
@@ -43,6 +51,9 @@ import {
   RailCell,
   sectionRule,
 } from "./rail-parts.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 
 /** One destination of {@link AppShellProps.items}: always a link with an icon. */
 export interface AppShellItem extends RailItem {
@@ -71,11 +82,18 @@ export interface AppShellAccount {
   user?: AccountMenuUser
   /**
    * Where the menu's header row (avatar, name, e-mail) leads, such as `/profile`: given, the row is
-   * a link in the rail's menu and in the phone sheet. Left out, it is plain text.
+   * a link in the rail's menu and in the phone sheet, where a trailing chevron shows it opens a
+   * page. Left out, it is plain text.
    */
   headerHref?: string
   /** The menu's own items, first, such as "Profile". */
   items?: readonly AccountMenuItem[]
+  /**
+   * Given, a "Language" row after {@link items}, in the rail's menu and in the phone sheet, with the
+   * language in use named in itself; it opens `LanguageDialog` with these props, as
+   * `AccountMenuProps.language` does.
+   */
+  language?: AccountMenuLanguage
   /** The current theme preference. Defaults to `"system"`. */
   theme?: AccountMenuTheme
   /** Called with the chosen preference; the theme choice is drawn only when this is given. */
@@ -172,8 +190,13 @@ function connectionIsNews(connection: AppShellConnection | undefined): boolean {
 }
 
 /** The account button's name: "Account: Ada Lovelace", with ", Admin" for a tag. */
-function defaultTrigger(name: string, tag?: string): string {
-  return tag ? `Account: ${name}, ${tag}` : `Account: ${name}`
+function defaultTrigger(translator: Translator<string>, name: string, tag?: string): string {
+  return tag
+    ? translate(translator, "AppShell.accountTriggerTagged", `Account: ${name}, ${tag}`, {
+      name,
+      tag,
+    })
+    : translate(translator, "AppShell.accountTrigger", `Account: ${name}`, { name })
 }
 
 /** The account cell's trigger: a 48 px cell, taller with a tag under the avatar. */
@@ -184,15 +207,15 @@ const accountTrigger = cn(
 )
 
 /**
- * The account menu beside the rail: its bottom on the avatar's, its left edge 8 px past the rail's
+ * The account menu beside the rail: its bottom on the avatar's, its start edge 8 px past the rail's
  * border (the cell ends 12 px before it), 240 px wide.
  */
 const accountPanel =
-  "bottom-0 left-[calc(100%+1.25rem)] mb-0 w-60 rounded-[var(--radius-card,0.75rem)]"
+  "bottom-0 start-[calc(100%+1.25rem)] mb-0 w-60 rounded-[var(--radius-card,0.75rem)]"
 
 /** A row of the sheet's account section. */
 const sheetRow = cn(
-  "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[var(--radius-primary,0.5rem)] px-3 py-2 text-left text-sm font-medium",
+  "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[var(--radius-primary,0.5rem)] px-3 py-2 text-start text-sm font-medium",
   focusRing,
   entryIdle,
 )
@@ -228,7 +251,7 @@ function SheetControl(
     <span
       aria-hidden="true"
       data-account-key-hint=""
-      class="ml-auto hidden pointer-fine:inline-flex"
+      class="ms-auto hidden pointer-fine:inline-flex"
     >
       <Kbd keys={first} apple={apple} />
     </span>
@@ -285,7 +308,9 @@ function SheetControl(
  * **On a phone** the last tab is the account: the 24 px avatar, the unread count, and "Account"
  * (the `tag`, such as "Admin", in its place). Its sheet, headed the same, holds the switcher, the
  * destinations that did not fit, Notifications, then the account: a header row, the menu's items,
- * the theme as a radio group of three segments, and the sign-out last. Every row is at least 44 px.
+ * the language, the theme as a radio group of three segments, and the sign-out last. Every row is at
+ * least 44 px. The language row closes the sheet and opens `LanguageDialog`, whose closing returns
+ * focus to the tab.
  * Choosing a row closes the sheet, unless the click opens it elsewhere (a modifier held) or picks a
  * theme, and closing returns focus to the tab.
  */
@@ -306,15 +331,23 @@ export function AppShell(props: AppShellProps): JSX.Element {
     class: className,
   } = props
   const { user, tag } = account
-  const counterWords = labels?.counter ?? ((count: number) => `${count} unread`)
-  const tabLabel = tag ?? labels?.account ?? "Account"
-  const bellLabel = labels?.notifications ?? "Notifications"
-  const connectionWord = connection === undefined
-    ? ""
-    : labels?.connection?.[connection] ?? CONNECTION_WORDS[connection]
+  const translator = useT()
+  const counterWords = labels?.counter ??
+    ((count: number) => translate(translator, "AppShell.counter", `${count} unread`, { count }))
+  const tabLabel = tag ?? labels?.account ?? translate(translator, "AppShell.account", "Account")
+  const bellLabel = labels?.notifications ??
+    translate(translator, "AppShell.notifications", "Notifications")
+  const connectionWord = connection === undefined ? "" : labels?.connection?.[connection] ??
+    translate(translator, `AppShell.connection.${connection}`, CONNECTION_WORDS[connection])
   const news = connectionIsNews(connection)
-  const triggerName = user && (labels?.accountTrigger ?? defaultTrigger)(user.name, tag)
+  const triggerName = user &&
+    (labels?.accountTrigger ??
+      ((name: string, tag?: string) => defaultTrigger(translator, name, tag)))(
+        user.name,
+        tag,
+      )
   const themeId = useId()
+  const languageOpen = useSignal(false)
 
   const bell: AppShellItem | undefined = notifications && {
     key: "notifications",
@@ -327,9 +360,12 @@ export function AppShell(props: AppShellProps): JSX.Element {
   const navigateLink = navigate && ((_key: string, href: string) => navigate(href))
   const entryPorts = { navigateLink, counterWords, variant: "icons" as const, primary: false }
   const themes: readonly [AccountMenuTheme, string][] = [
-    ["system", labels?.accountMenu?.system ?? "System"],
-    ["light", labels?.accountMenu?.light ?? "Light"],
-    ["dark", labels?.accountMenu?.dark ?? "Dark"],
+    [
+      "system",
+      labels?.accountMenu?.system ?? translate(translator, "AccountMenu.system", "System"),
+    ],
+    ["light", labels?.accountMenu?.light ?? translate(translator, "AccountMenu.light", "Light")],
+    ["dark", labels?.accountMenu?.dark ?? translate(translator, "AccountMenu.dark", "Dark")],
   ]
 
   const railBottom = (
@@ -356,6 +392,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               user={user}
               headerHref={account.headerHref}
               items={account.items}
+              language={account.language}
               theme={account.theme}
               onThemeChange={account.onThemeChange}
               signOut={account.signOut}
@@ -402,6 +439,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
                 dataE2E="app-shell-sheet-account-header"
               >
                 <AccountIdentity user={user} tag={tag} />
+                <IconChevronRight class="size-4 shrink-0 text-muted" />
               </SheetControl>
             )}
           {(account.items ?? []).map((item, index) => (
@@ -412,10 +450,22 @@ export function AppShell(props: AppShellProps): JSX.Element {
               Control={SheetControl}
             />
           ))}
+          {account.language && (
+            <SheetControl
+              onClick={() => languageOpen.value = true}
+              dataE2E="app-shell-sheet-language"
+            >
+              <AccountLanguage
+                label={labels?.accountMenu?.language ??
+                  translate(translator, "AccountMenu.language", "Language")}
+                language={account.language}
+              />
+            </SheetControl>
+          )}
           {account.onThemeChange && (
             <div role="radiogroup" aria-labelledby={themeId} data-e2e="app-shell-sheet-theme">
               <div id={themeId} class="px-3 pt-2 pb-1 text-xs font-medium text-muted">
-                {labels?.accountMenu?.theme ?? "Theme"}
+                {labels?.accountMenu?.theme ?? translate(translator, "AccountMenu.theme", "Theme")}
               </div>
               <div class="flex gap-1 px-3">
                 {themes.map(([value, label]) => {
@@ -505,6 +555,13 @@ export function AppShell(props: AppShellProps): JSX.Element {
           </div>
         </div>
       </Rail>
+      {account.language && (
+        <LanguageDialog
+          {...account.language}
+          open={languageOpen.value}
+          onClose={() => languageOpen.value = false}
+        />
+      )}
     </>
   )
 }

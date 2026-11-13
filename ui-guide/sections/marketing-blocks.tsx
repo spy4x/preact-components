@@ -1,13 +1,15 @@
 /**
  * The cards of the blocks a public, server-rendered site is built from. None needs JavaScript;
- * `DemoVideo` uses it to play its clip in place, and without it the play link opens the clip.
- * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `ScreenTour`, `Steps` and `WindowFrame` are
- * spread into the
+ * `DemoVideo` and `YouTubeVideo` use it to play in place, and without it the play link opens the
+ * clip or the video's YouTube page; `LoopVideo` uses it to play, and without it shows its still.
+ * `BrandMark`, `DemoVideo`, `FaqList`, `FeatureCard`, `LoopVideo`, `ScreenTour`, `Steps`,
+ * `WindowFrame` and `YouTubeVideo` are spread into the
  * Display section. `PageHero` draws the page's `<h1>`, so its card closes the UI page's last section (see
  * {@link pageHeroDemo}).
  */
 
 import { useSignal } from "@preact/signals"
+import { Bars } from "@spy4x/preact-charts/bars"
 import { IconSprout } from "@spy4x/preact-icons"
 import {
   Badge,
@@ -15,16 +17,20 @@ import {
   Button,
   Checkbox,
   DemoVideo,
+  Explorable,
   FaqList,
   FeatureCard,
   Field,
   Input,
+  LoopVideo,
   PageHero,
   ScreenTour,
   type ScreenTourStep,
+  Slider,
   Steps,
   ThemePreview,
   WindowFrame,
+  YouTubeVideo,
 } from "@spy4x/preact-ui"
 import type { DemoFragment } from "../registry.ts"
 
@@ -44,16 +50,45 @@ const FAQ = [
   },
 ]
 
+/** When the guide's posters and loops show their dark files: on a device that asks for dark. */
+const DARK_MEDIA = "(prefers-color-scheme: dark)"
+
 /**
  * The `DemoVideo` card's clip: a four-second silent test pattern `pages/build.ts` copies into
  * `video-demo/`, beside its poster. Relative, as `form-demo/` is, so it resolves under the guide's
  * base path.
  */
 const DEMO_CLIP = {
-  poster: { src: "video-demo/poster.webp", width: 640, height: 360 },
+  poster: {
+    src: "video-demo/poster.webp",
+    width: 640,
+    height: 360,
+    dark: { srcset: "video-demo/poster-dark.webp", media: DARK_MEDIA },
+  },
   sources: [
     { src: "video-demo/clip.webm", type: "video/webm" },
     { src: "video-demo/clip.mp4", type: "video/mp4" },
+  ],
+} as const
+
+/**
+ * The `LoopVideo` card's six-second test loop, light and dark, beside the `DemoVideo` clip in
+ * `video-demo/`; `pages/make-video-demo.sh` remakes it.
+ */
+const DEMO_LOOP = {
+  poster: {
+    src: "video-demo/loop-light.webp",
+    width: 640,
+    height: 400,
+    dark: { srcset: "video-demo/loop-dark.webp", media: DARK_MEDIA },
+  },
+  sources: [
+    { src: "video-demo/loop-light.webm", type: "video/webm" },
+    { src: "video-demo/loop-light.mp4", type: "video/mp4" },
+  ],
+  darkSources: [
+    { src: "video-demo/loop-dark.webm", type: "video/webm" },
+    { src: "video-demo/loop-dark.mp4", type: "video/mp4" },
   ],
 } as const
 
@@ -153,8 +188,7 @@ function ScreenTourDemo() {
     <div class="flex flex-col gap-12">
       <ScreenTour
         steps={TOUR_PAGES}
-        frame="browser"
-        browserUrl="app.example.com"
+        frame="plain"
         label="Pages of the app"
         onSelect={(id) => {
           picked.value = { id, calls: (picked.value?.calls ?? 0) + 1 }
@@ -169,6 +203,81 @@ function ScreenTourDemo() {
           }`}
       </p>
     </div>
+  )
+}
+
+/** Whole numbers with thousands separators, the same on every machine. */
+const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 })
+
+/**
+ * What 100 a month grows to over `years` at 6% a year, less a yearly `fee` in percent. Monthly
+ * compounding; plain arithmetic, so the server and the browser print the same numbers.
+ */
+function savingsAfter(years: number, fee: number): number {
+  const monthly = (0.06 - fee / 100) / 12
+  let total = 0
+  for (let month = 0; month < years * 12; month++) total = (total + 100) * (1 + monthly)
+  return Math.round(total)
+}
+
+/**
+ * An article's interactive figure: two sliders change a fee and a horizon, and a `Bars` chart and
+ * a sentence show what the fee takes. `live` is left out, so the frame turns live on hydration.
+ */
+function ExplorableDemo() {
+  const fee = useSignal(1)
+  const years = useSignal(25)
+  const without = savingsAfter(years.value, 0)
+  const withFee = savingsAfter(years.value, fee.value)
+  const paidIn = years.value * 1200
+  return (
+    <Explorable
+      id="explorable-fee"
+      title="What a yearly fee takes from your savings"
+      lead="Change the fee and the horizon; the bars show where 100 a month ends up."
+      caption="Assumes 6% a year before fees, compounded monthly. An illustration, not advice."
+      noScriptNote="The controls need JavaScript; without it, the figure shows a 1% fee over 25 years."
+      controls={
+        <>
+          <Slider
+            label="Yearly fee"
+            value={fee.value}
+            min={0}
+            max={3}
+            step={0.1}
+            onInput={(next) => fee.value = next}
+            format={(value) => `${value.toFixed(1)}%`}
+            valueText={(value) => `${value.toFixed(1)} percent`}
+            marks={[{ value: 0.2, label: "Index fund" }, { value: 2, label: "Managed fund" }]}
+          />
+          <Slider
+            label="Years"
+            value={years.value}
+            min={5}
+            max={40}
+            onInput={(next) => years.value = next}
+          />
+        </>
+      }
+    >
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-foreground">
+          The fee costs <strong class="tabular-nums">{whole.format(without - withFee)}</strong> over
+          {" "}
+          {years.value} years.
+        </p>
+        <Bars
+          data={[
+            // A no-break space keeps each two-word label on one line beside its bar.
+            { label: "No\u00a0fee", value: without },
+            { label: `${fee.value.toFixed(1)}%\u00a0fee`, value: withFee },
+          ]}
+          format={(value) => whole.format(value)}
+          reference={{ value: paidIn, label: "Paid in" }}
+          ariaLabel="Savings at the end"
+        />
+      </div>
+    </Explorable>
   )
 }
 
@@ -196,13 +305,14 @@ export const marketingBlockDemos: DemoFragment = {
   },
   DemoVideo: {
     summary:
-      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for a muted, inline video with controls.",
+      "A demo clip that costs nothing until it is pressed: a poster with a play button, swapped for an inline video with sound and controls, one clip at a time.",
     wide: false,
     props: [
       {
         name: "poster",
-        type: "{ src, srcset?, sizes?, width, height }",
-        description: "The still frame shown before the press; its size keeps the box still.",
+        type: "{ src, srcset?, sizes?, width, height, dark? }",
+        description:
+          "The still frame shown before the press; its size keeps the box still. `dark: { srcset, media }` draws a `<picture>` whose dark file shows while `media` matches.",
       },
       {
         name: "sources",
@@ -240,7 +350,7 @@ export const marketingBlockDemos: DemoFragment = {
           "Any other attribute, such as `id` or `data-*` for analytics, on the play link.",
       },
     ],
-    snippet: `<WindowFrame variant="browser" title="app.example.com">
+    snippet: `<WindowFrame variant="plain">
   <DemoVideo
     title="Creating an invoice"
     poster={{ src: "/demo.webp", width: 1280, height: 720 }}
@@ -253,7 +363,7 @@ export const marketingBlockDemos: DemoFragment = {
 </WindowFrame>`,
     render: () => (
       <div class="grid gap-6">
-        <WindowFrame variant="browser" title="app.example.com" caption="A four-second test clip">
+        <WindowFrame variant="plain" caption="A four-second test clip">
           <DemoVideo
             title="A test pattern"
             poster={DEMO_CLIP.poster}
@@ -262,8 +372,17 @@ export const marketingBlockDemos: DemoFragment = {
           />
         </WindowFrame>
         <WindowFrame
-          variant="browser"
-          title="app.example.com"
+          variant="plain"
+          caption="A second clip: starting one pauses the other"
+        >
+          <DemoVideo
+            title="A second test pattern"
+            poster={DEMO_CLIP.poster}
+            sources={DEMO_CLIP.sources}
+          />
+        </WindowFrame>
+        <WindowFrame
+          variant="plain"
           caption="A clip whose file is missing: press it to see the error state"
         >
           <DemoVideo
@@ -273,6 +392,147 @@ export const marketingBlockDemos: DemoFragment = {
           />
         </WindowFrame>
       </div>
+    ),
+  },
+  LoopVideo: {
+    summary:
+      "A silent loop that proves a claim: a themed still on the server, a muted clip that plays while half of it is in view, and a pause button whose pause lasts the visit.",
+    wide: false,
+    props: [
+      {
+        name: "poster",
+        type: "{ src, srcset?, sizes?, width, height, dark? }",
+        description:
+          "The still: rendered on the server, shown until the clip has a frame, and kept when it cannot play. `dark: { srcset, media }` is its dark file and the query that picks it.",
+      },
+      {
+        name: "sources",
+        type: "{ src, type }[]",
+        description: "The clip's files in the light theme, WebM before MP4.",
+      },
+      {
+        name: "darkSources",
+        type: "{ src, type }[]",
+        description:
+          "The clip's files in the dark theme, played while `poster.dark.media` matches; a theme change keeps the position.",
+      },
+      { name: "title", type: "string", description: "What the clip shows: the video's name." },
+      {
+        name: "name",
+        type: "string",
+        description:
+          "A short name; the button says `Pause animation: {name}` or `Play animation: {name}`.",
+      },
+      {
+        name: "pauseLabel",
+        type: "string",
+        default: `"Pause animation"`,
+        description: "The button's first words while the clip plays.",
+      },
+      {
+        name: "playLabel",
+        type: "string",
+        default: `"Play animation"`,
+        description: "The button's first words while it is stopped.",
+      },
+      {
+        name: "class",
+        type: "string",
+        description: "Utilities for the root, joined after its own.",
+      },
+    ],
+    snippet: `<WindowFrame variant="plain">
+  <LoopVideo
+    name="Realtime sync"
+    title="A note saved in one window appears in the other within a second."
+    poster={{
+      src: "/realtime-light.webp",
+      width: 1440,
+      height: 900,
+      dark: { srcset: "/realtime-dark.webp", media: "(prefers-color-scheme: dark)" },
+    }}
+    sources={[
+      { src: "/realtime-light.webm", type: "video/webm" },
+      { src: "/realtime-light.mp4", type: "video/mp4" },
+    ]}
+    darkSources={[
+      { src: "/realtime-dark.webm", type: "video/webm" },
+      { src: "/realtime-dark.mp4", type: "video/mp4" },
+    ]}
+  />
+</WindowFrame>`,
+    render: () => (
+      <div class="grid gap-6">
+        <WindowFrame variant="plain" caption="A six-second test loop, light and dark">
+          <LoopVideo
+            name="Test loop"
+            title="A square crosses a card while a bar fills under it."
+            poster={DEMO_LOOP.poster}
+            sources={DEMO_LOOP.sources}
+            darkSources={DEMO_LOOP.darkSources}
+          />
+        </WindowFrame>
+        <WindowFrame
+          variant="plain"
+          caption="A loop no browser can play: the still stays and the button goes away"
+        >
+          {/* A type no browser plays: it fails at once, and asks the server for nothing. */}
+          <LoopVideo
+            name="Unplayable loop"
+            title="A loop that cannot play."
+            poster={DEMO_LOOP.poster}
+            sources={[{ src: "video-demo/unplayable-loop.webm", type: "video/x-unplayable" }]}
+          />
+        </WindowFrame>
+      </div>
+    ),
+  },
+  YouTubeVideo: {
+    summary:
+      "A YouTube video that asks YouTube for nothing until it is pressed: the caller's own poster with a play button, swapped for the youtube-nocookie.com player.",
+    wide: false,
+    props: [
+      { name: "videoId", type: "string", description: "The video's YouTube id." },
+      {
+        name: "poster",
+        type: "{ src, srcset?, sizes?, width, height }",
+        description:
+          "The caller's own still, shown before the press; its size keeps the box still.",
+      },
+      {
+        name: "title",
+        type: "string",
+        description: "What the video shows; the link is named `Play video: {title}`.",
+      },
+      {
+        name: "eager",
+        type: "boolean",
+        default: "false",
+        description: "Load the poster at once, at high priority, for a video on the first screen.",
+      },
+      {
+        name: "...rest",
+        type: "anchor attributes",
+        description:
+          "Any other attribute, such as `id` or `data-*` for analytics, on the play link.",
+      },
+    ],
+    snippet: `<WindowFrame variant="plain">
+  <YouTubeVideo
+    videoId="aqz-KE-bpKQ"
+    title="Big Buck Bunny"
+    poster={{ src: "/big-buck-bunny.webp", width: 1280, height: 720 }}
+    data-umami-event="play-video"
+  />
+</WindowFrame>`,
+    render: () => (
+      <WindowFrame variant="plain" caption="The player loads from YouTube only on press">
+        <YouTubeVideo
+          videoId="aqz-KE-bpKQ"
+          title="Big Buck Bunny"
+          poster={DEMO_CLIP.poster}
+        />
+      </WindowFrame>
     ),
   },
   FaqList: {
@@ -404,6 +664,50 @@ export const marketingBlockDemos: DemoFragment = {
 />`,
     render: () => <Steps items={STEPS} orientation="horizontal" />,
   },
+  Explorable: {
+    summary:
+      "A frame for an interactive figure in an article: a title kept out of the table of contents, the result, its controls and a caption; the controls stay disabled until the page's code runs.",
+    wide: true,
+    props: [
+      { name: "title", type: "string", description: "The figure's name, set as a paragraph." },
+      { name: "lead", type: "ComponentChildren", description: "One line on what to try." },
+      {
+        name: "children",
+        type: "ComponentChildren",
+        description: "The result the controls change.",
+      },
+      {
+        name: "controls",
+        type: "ComponentChildren",
+        description: "The controls, in a `<fieldset>` that is disabled until the figure is live.",
+      },
+      {
+        name: "caption",
+        type: "ComponentChildren",
+        description: "The `<figcaption>`, left-aligned under everything.",
+      },
+      {
+        name: "live",
+        type: "boolean",
+        default: "true once hydrated",
+        description: "Whether the controls work; the Interactive line shows only while they do.",
+      },
+      {
+        name: "noScriptNote",
+        type: "ComponentChildren",
+        description: "Shown inside `<noscript>`: what the figure shows without scripts.",
+      },
+    ],
+    snippet: `<Explorable
+  title="What a yearly fee takes from your savings"
+  lead="Change the fee; the bars show where 100 a month ends up."
+  caption="Assumes 6% a year before fees."
+  controls={<Slider label="Yearly fee" value={fee.value} onInput={(next) => fee.value = next} />}
+>
+  <Bars data={rows} reference={{ value: paidIn, label: "Paid in" }} />
+</Explorable>`,
+    render: () => <ExplorableDemo />,
+  },
   ThemePreview: {
     summary:
       "A frame that shows real components in the library's dark or light palette, switched by a Dark / Light pair that works without JavaScript.",
@@ -468,8 +772,9 @@ export const marketingBlockDemos: DemoFragment = {
       },
       {
         name: "frame",
-        type: `"browser" | "phone"`,
-        description: "The device drawn around the screenshot.",
+        type: `"plain" | "browser" | "phone"`,
+        description:
+          "The frame drawn around the screenshot: `plain` for product screens, `browser` when the address matters.",
       },
       { name: "browserUrl", type: "string", description: "The address in the browser's bar." },
       {
@@ -501,6 +806,12 @@ export const marketingBlockDemos: DemoFragment = {
         description: "The words of the link that opens the screenshot in the lightbox.",
       },
       {
+        name: "viewFullSizeClass",
+        type: "string",
+        description:
+          "Extra utilities for View full size, appended after its secondary-button classes, for an app's own button look.",
+      },
+      {
         name: "closeLabel",
         type: "string",
         default: `"Close"`,
@@ -509,8 +820,7 @@ export const marketingBlockDemos: DemoFragment = {
       },
     ],
     snippet: `<ScreenTour
-  frame="browser"
-  browserUrl="app.example.com"
+  frame="plain"
   onSelect={(id) => track("tour", { step: id })}
   steps={[
     {
@@ -528,18 +838,19 @@ export const marketingBlockDemos: DemoFragment = {
     },
   ]}
 />
-<ScreenTour frame="phone" numbered steps={steps} />`,
+<ScreenTour frame="phone" numbered steps={steps} viewFullSizeClass="rounded-full" />`,
     render: () => <ScreenTourDemo />,
   },
   WindowFrame: {
     summary:
-      "A browser window, a terminal or a phone drawn around a screenshot or a snippet, with an optional caption.",
+      "A plain frame, a browser window, a terminal or a phone drawn around a screenshot or a snippet, with an optional caption.",
     wide: true,
     props: [
       {
         name: "variant",
-        type: `"browser" | "terminal" | "phone"`,
-        description: "The device drawn around the content; the terminal is dark in both themes.",
+        type: `"plain" | "browser" | "terminal" | "phone"`,
+        description:
+          "The frame drawn around the content: `plain` for product media, `browser` when the address matters; the terminal is dark in both themes.",
       },
       {
         name: "title",
@@ -549,8 +860,11 @@ export const marketingBlockDemos: DemoFragment = {
       },
       { name: "caption", type: "ComponentChildren", description: "The figure's caption." },
     ],
-    snippet: `<WindowFrame variant="browser" title="app.example.com" caption="The dashboard">
+    snippet: `<WindowFrame variant="plain" caption="The dashboard">
   <img src="/dashboard.png" alt="The dashboard with this month's totals" />
+</WindowFrame>
+<WindowFrame variant="browser" title="app.example.com/pricing">
+  <img src="/pricing.png" alt="The pricing page" />
 </WindowFrame>
 <WindowFrame variant="terminal" title="Install">
   {"$ docker compose up -d"}
@@ -559,7 +873,12 @@ export const marketingBlockDemos: DemoFragment = {
   <img src="/phone.png" alt="The app on a phone" />
 </WindowFrame>`,
     render: () => (
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <WindowFrame variant="plain" caption="A plain frame, for product media">
+          <div class="flex h-32 items-center justify-center text-sm text-muted">
+            Your screenshot
+          </div>
+        </WindowFrame>
         <WindowFrame variant="browser" title="app.example.com" caption="A browser window">
           <div class="flex h-32 items-center justify-center text-sm text-muted">
             Your screenshot

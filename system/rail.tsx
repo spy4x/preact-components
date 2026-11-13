@@ -2,12 +2,12 @@
  * `Rail` — the house page frame's navigation: a column from `md` at every desktop width, 72 px in
  * the icons variant and 88 px in the labels variant, and below `md` a bottom tab bar of at most five slots whose last slot opens a sheet with the rest.
  *
- * Two variants share the column, the cells and the current style. `"icons"`, for apps, draws a
+ * Two variants share the column, the cells and the current fill. `"icons"`, for apps, draws a
  * 48 px square per destination, names it with visually hidden text and shows the label as a tooltip
  * on hover and keyboard focus. `"labels"`, for a site whose first-time visitors do not know the
- * icons, draws a short label under each icon and has no tooltip, so it needs no script at all. On a
- * screen with no hover, such as a tablet, the icons variant draws the labels too, because a tooltip
- * cannot appear there.
+ * icons, draws a short label under each icon, marks the current entry with an edge bar as well and
+ * has no tooltip, so it needs no script at all. On a screen with no hover, such as a tablet, the
+ * icons variant draws the labels too, because a tooltip cannot appear there.
  *
  * Props and ports only: items, the current key or path, the primary action and every label arrive
  * from the caller; a button item reaches the app's router through `navigate`, and a link item
@@ -29,6 +29,7 @@ import { useEffect, useId, useRef } from "preact/hooks"
 import {
   countedName,
   CounterBadge,
+  CurrentBar,
   currentStates,
   Entry,
   entryCurrent,
@@ -42,6 +43,8 @@ import {
   sectionRule,
   surface,
 } from "./rail-parts.tsx"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 export { RailCell, type RailCellProps } from "./rail-parts.tsx"
 
@@ -320,11 +323,16 @@ const TIPS_HIDDEN = "data-tips-hidden"
  * and it follows its cell when the list scrolls.
  *
  * **The current entry is a filled cell,** with `aria-current="page"` or `"true"` (see
- * {@link RailProps.currentPath}); under forced colours a 2 px outline marks it instead.
+ * {@link RailProps.currentPath}); under forced colours a 2 px outline marks it instead. In the
+ * labels variant it also carries a 3 px bar in the current colour on its inner edge: the start
+ * edge of a column cell (its right edge on a right-to-left page), the top edge of a tab, "More"
+ * included when its sheet holds the page.
  *
  * **The tab bar** sticks to the bottom but keeps its place in the flow, pads itself by the device's
  * bottom inset, and below `md` gives the root element the preset's `pc-scroll-pb-tab-bar`, so a
- * control a person tabs to near the bottom scrolls into view above it.
+ * control a person tabs to near the bottom scrolls into view above it. A 24 px band above it, where
+ * the page fades into the bar, takes taps for neither, so a link the dock half covers is never a
+ * tap away from a tab.
  *
  * **The sheet is a modal `<dialog>`** holding `top`, the items that did not fit and the
  * `sheetOnly` ones, and `bottom`, with a hairline between them. The last slot opens it with
@@ -358,12 +366,14 @@ export function Rail(props: RailProps): JSX.Element {
     labels,
     class: className,
   } = props
-  const navLabel = labels?.nav ?? "Main navigation"
-  const sidebarLabel = labels?.sidebar ?? "Sidebar"
-  const moreLabel = labels?.more ?? "More"
+  const translator = useT()
+  const navLabel = labels?.nav ?? translate(translator, "Rail.nav", "Main navigation")
+  const sidebarLabel = labels?.sidebar ?? translate(translator, "Rail.sidebar", "Sidebar")
+  const moreLabel = labels?.more ?? translate(translator, "Rail.more", "More")
   const dialogLabel = labels?.moreDialog ?? moreLabel
-  const closeLabel = labels?.close ?? "Close"
-  const skipLabel = labels?.skipToContent ?? "Skip to content"
+  const closeLabel = labels?.close ?? translate(translator, "Rail.close", "Close")
+  const skipLabel = labels?.skipToContent ??
+    translate(translator, "Rail.skipToContent", "Skip to content")
   const counterWords = labels?.counter ?? String
 
   const contentId = useId()
@@ -441,7 +451,7 @@ export function Rail(props: RailProps): JSX.Element {
     >
       <a
         href={`#${contentId}`}
-        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-surface,oklch(1_0_0))] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
+        class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-surface,oklch(1_0_0))] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
         data-e2e="rail-shell-skip-link"
       >
         {skipLabel}
@@ -450,7 +460,7 @@ export function Rail(props: RailProps): JSX.Element {
       <aside
         ref={columnRef}
         aria-label={sidebarLabel}
-        class={cn("group/rail hidden shrink-0 border-r pl-safe md:block", rule, surface)}
+        class={cn("group/rail hidden shrink-0 border-e ps-safe md:block", rule, surface)}
         onFocusIn={(event) => {
           placeTip(event.target, columnRef.current)
           showTips()
@@ -535,6 +545,17 @@ export function Rail(props: RailProps): JSX.Element {
       )}
 
       <div class="sticky bottom-0 z-10 shrink-0 md:hidden" data-e2e="rail-shell-dock">
+        {
+          // A 24 px band where a tap reaches neither the page nor a tab, so a page link partly
+          // under the dock is never a tap away from a tab, which axe's `target-size` asks for. The
+          // page fades into the bar through it, showing that the dock covers what lies behind.
+        }
+        <div
+          // The bar's own surface class, faded in by a mask, so the band and the bar share a source.
+          class={cn("h-6 [mask-image:linear-gradient(transparent,#000)]", surface)}
+          aria-hidden="true"
+          data-e2e="rail-shell-dock-fade"
+        />
         {tabBarNotice}
         <nav
           aria-label={navLabel}
@@ -545,7 +566,7 @@ export function Rail(props: RailProps): JSX.Element {
             {tabs.map((item, index) => (
               <li
                 key={`${index}-${item.key}`}
-                class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1"
+                class="min-w-0 flex-1 px-px py-1 first:ps-1 last:pe-1"
               >
                 <Entry
                   item={item}
@@ -557,7 +578,7 @@ export function Rail(props: RailProps): JSX.Element {
               </li>
             ))}
             {hasSheet && (
-              <li class="min-w-0 flex-1 px-px py-1 first:pl-1 last:pr-1">
+              <li class="min-w-0 flex-1 px-px py-1 first:ps-1 last:pe-1">
                 <button
                   ref={moreRef}
                   type="button"
@@ -578,6 +599,7 @@ export function Rail(props: RailProps): JSX.Element {
                   }}
                   data-e2e="rail-shell-more"
                 >
+                  {moreHoldsCurrent && variant === "labels" && <CurrentBar place="tab" />}
                   {moreTab?.icon === undefined ? <MoreDots /> : (
                     <span
                       class="flex size-6 shrink-0 items-center justify-center"

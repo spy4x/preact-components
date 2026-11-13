@@ -13,10 +13,12 @@ import { useSignal } from "@preact/signals"
 import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import { isRightToLeft } from "./direction.ts"
 import { buttonClasses } from "./button.tsx"
 import { FrameChrome } from "./frame-chrome.tsx"
 import { Lightbox } from "./lightbox.tsx"
 import { nextTabIndex } from "./tabs.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The screenshot of one {@link ScreenTourStep}. */
 export interface ScreenTourImage {
@@ -47,7 +49,8 @@ export interface ScreenTourStep {
   text?: ComponentChildren
   /**
    * A small label shown above the first step of a run of steps with the same group, in the vertical
-   * list from 1024 px. Decorative: the tabs keep their own names.
+   * list from 1024 px; below 1024 px the selected step's group shows above the frame instead.
+   * Decorative: the tabs keep their own names.
    */
   group?: string
   /** The screenshot. */
@@ -58,9 +61,12 @@ export interface ScreenTourStep {
 export interface ScreenTourProps {
   /** The steps, in order; at least one. */
   steps: readonly ScreenTourStep[]
-  /** The device drawn around the screenshot. */
-  frame: "browser" | "phone"
-  /** The address in the browser frame's bar. Decorative. */
+  /**
+   * The frame drawn around the screenshot: `plain` (the border and surface alone) for most product
+   * screens, `browser` when the address matters, or `phone`.
+   */
+  frame: "plain" | "browser" | "phone"
+  /** The address in the browser frame's bar. Decorative; the plain and phone frames show none. */
   browserUrl?: string
   /** Number the tabs 1, 2, 3, for a sequence a person follows in order. */
   numbered?: boolean
@@ -75,6 +81,11 @@ export interface ScreenTourProps {
   label?: string
   /** The words of the button that opens the screenshot in the lightbox. Defaults to `"View full size"`. */
   viewFullSizeLabel?: string
+  /**
+   * Extra utilities for "View full size", appended after its secondary-button classes and not merged
+   * into them, so an app can give it its own button look.
+   */
+  viewFullSizeClass?: string
   /** The lightbox's close control. Defaults to `"Close"`. */
   closeLabel?: string
   /** The lightbox's previous control. Defaults to `"Previous image"`. */
@@ -92,7 +103,7 @@ const listClass =
   "flex min-w-0 gap-2 overflow-x-auto p-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:p-0"
 
 const tabBase =
-  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-3 whitespace-nowrap rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors lg:w-full lg:whitespace-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-3 whitespace-nowrap rounded-md border px-3 py-2 text-start text-sm font-medium transition-colors lg:w-full lg:whitespace-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 const tabSelected = "border-selected bg-selected-soft text-selected lg:border-transparent"
 const tabIdle =
   "border-subtle text-muted hover:bg-hover hover:text-foreground lg:border-transparent"
@@ -117,8 +128,13 @@ const gone = `invisible opacity-0 ${leaving}`
  * enabled`): there the server markup already stacks the texts in one cell, so hydration moves
  * nothing, while a reader without scripts gets every step's text in a column.
  */
-const panelStack = "flex flex-col gap-6 [@media(scripting:enabled)]:grid"
-const panelGone = "[@media(scripting:enabled)]:invisible [@media(scripting:enabled)]:opacity-0"
+const panelStack = "relative flex flex-col gap-6 [@media(scripting:enabled)]:grid"
+/**
+ * A panel that is not selected also leaves the flow where scripts run, so the stack is as tall as
+ * the selected step's text alone: a step without text leaves no gap above "View full size".
+ */
+const panelGone =
+  "[@media(scripting:enabled)]:invisible [@media(scripting:enabled)]:opacity-0 [@media(scripting:enabled)]:absolute [@media(scripting:enabled)]:inset-x-0 [@media(scripting:enabled)]:top-0"
 
 const panelClass =
   "flex flex-col gap-1 rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
@@ -136,21 +152,35 @@ function panelId(id: string): string {
 /**
  * Index of the step a key press on the tab at `current` moves to: `Tabs`' {@link nextTabIndex},
  * with Up and Down stepping like Left and Right, because the list is a column from 1024 px and a
- * row below it. Wraps at both ends; Home and End jump.
+ * row below it. Wraps at both ends; Home and End jump. In a right-to-left page Left and Right swap,
+ * and Up and Down still go to the previous and the next step.
  *
  * @param key Value of `KeyboardEvent.key`.
  * @param current Index of the focused tab.
  * @param count Number of steps.
+ * @param rtl Whether the list lays out right to left. Defaults to `false`.
  * @returns The index to move to, or `undefined` for a key the tour does not own.
  */
-export function nextStepIndex(key: string, current: number, count: number): number | undefined {
-  const rowKey = key === "ArrowUp" ? "ArrowLeft" : key === "ArrowDown" ? "ArrowRight" : key
-  return nextTabIndex(rowKey, current, count)
+export function nextStepIndex(
+  key: string,
+  current: number,
+  count: number,
+  rtl = false,
+): number | undefined {
+  const [back, forward] = rtl ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"]
+  const rowKey = key === "ArrowUp" ? back : key === "ArrowDown" ? forward : key
+  return nextTabIndex(rowKey, current, count, [], rtl)
+}
+
+/** The English words of `ScreenTour`, each one a prop of its own. */
+const SCREEN_TOUR_LABELS: Required<Pick<ScreenTourProps, "label" | "viewFullSizeLabel">> = {
+  label: "Screens",
+  viewFullSizeLabel: "View full size",
 }
 
 /**
- * A product walkthrough: named steps as tabs, beside one browser or phone frame whose screenshot
- * swaps when a step is picked, with the step's caption and line of text under it.
+ * A product walkthrough: named steps as tabs, beside one plain, browser or phone frame whose
+ * screenshot swaps when a step is picked, with the step's caption and line of text under it.
  *
  * The tabs are a column from 1024 px and a row that scrolls inside itself below. The tab list is one
  * Tab stop; the arrow keys move and select, Home and End jump. The server renders the first step
@@ -172,8 +202,9 @@ export function ScreenTour(
     numbered = false,
     fetchPriority,
     onSelect,
-    label = "Screens",
-    viewFullSizeLabel = "View full size",
+    label: labelProp,
+    viewFullSizeLabel: viewFullSizeLabelProp,
+    viewFullSizeClass,
     closeLabel,
     previousLabel,
     nextLabel,
@@ -181,6 +212,11 @@ export function ScreenTour(
     class: className,
   }: ScreenTourProps,
 ): JSX.Element {
+  const { label, viewFullSizeLabel } = useLabels(
+    "ScreenTour",
+    SCREEN_TOUR_LABELS,
+    { label: labelProp, viewFullSizeLabel: viewFullSizeLabelProp },
+  )
   if (steps.length === 0) throw new Error("ScreenTour needs at least one step")
   for (const step of steps) {
     if (step.image.alt.trim() === "") {
@@ -200,6 +236,7 @@ export function ScreenTour(
 
   const selectedIndex = Math.max(0, steps.findIndex((step) => step.id === selected.value))
   const current = steps[selectedIndex]
+  const grouped = steps.some((step) => step.group !== undefined)
   const isHydrated = hydrated.value
   // The `id` of the group label in force for each tab, so the tab names its group as its description.
   let groupLabelId: string | undefined
@@ -222,7 +259,8 @@ export function ScreenTour(
   }
 
   const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextStepIndex(event.key, index, steps.length)
+    const rtl = isRightToLeft(event.currentTarget as Element)
+    const next = nextStepIndex(event.key, index, steps.length, rtl)
     if (next === undefined) return
     event.preventDefault()
     moveTo(next)
@@ -279,9 +317,33 @@ export function ScreenTour(
           ]
         })}
       </div>
-      <div class="flex min-w-0 flex-col gap-4">
-        {/* From 1024 px a phone stays 16 rem wide, so it never towers over the column of tabs. */}
-        <div class={frame === "phone" ? "w-full lg:mx-auto lg:max-w-64" : undefined}>
+      {
+        /*
+         * From 1024 px a phone stays 16 rem wide, so it never towers over the column of tabs, and its
+         * caption, text and button keep to the same centred column, aligned with the phone.
+         */
+      }
+      <div
+        class={join(
+          "flex min-w-0 flex-col gap-4",
+          frame === "phone" && "lg:mx-auto lg:w-full lg:max-w-64",
+        )}
+      >
+        <div class="flex flex-col gap-2">
+          {
+            // Below 1024 px the row of tabs has no group labels, so the selected step's group shows
+            // here. The tab already names it as its description, so this copy is hidden from
+            // assistive tech; a step with no group keeps the line, empty, so the frame never moves.
+            grouped && (
+              <p
+                aria-hidden="true"
+                class="text-xs font-medium text-muted lg:hidden"
+                data-screen-tour-group=""
+              >
+                {current.group ?? "\u00a0"}
+              </p>
+            )
+          }
           <FrameChrome variant={frame} title={browserUrl}>
             <div class={join("grid", frame === "phone" && "h-full")}>
               {steps.map((step, index) => {
@@ -328,7 +390,12 @@ export function ScreenTour(
         </div>
         <a
           href={current.image.src}
-          class={buttonClasses("secondary", "md", "min-h-11 self-start sm:min-h-9")}
+          class={buttonClasses(
+            "secondary",
+            "md",
+            join("min-h-11 self-start sm:min-h-9", viewFullSizeClass),
+          )}
+          data-screen-tour-full-size=""
           onClick={(event) => {
             event.preventDefault()
             lightboxOpen.value = true

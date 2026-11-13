@@ -1,13 +1,28 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { IconMoon, IconPlus } from "@spy4x/preact-icons"
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import {
   CommandPalette,
   type CommandPaletteOption,
   defaultCommandPaletteLabels,
+  defaultCommandPaletteMatchLabels,
   groupOptions,
+  matchOption,
+  matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
+import {
+  addRecent,
+  bestMatch,
+  clearCommandPaletteRecent,
+  parseRecent,
+  readRecent,
+  RECENT_MAX_LENGTH,
+  recentOptions,
+  writeRecent,
+} from "./palette-pins.ts"
 
 const option = (
   label: string,
@@ -50,6 +65,56 @@ describe("rankOptions", () => {
   })
 })
 
+describe("matchOptions", () => {
+  const options = [
+    option("Combobox", { detail: "Forms" }),
+    option("Toast", { detail: "Feedback" }),
+    option("Date picker", { aliases: ["calendar", "календарь"] }),
+    option("Badge", { detail: "Tables and lists" }),
+  ]
+  const labels = (query: string) => matchOptions(options, query).map((found) => found.label)
+
+  it("forgives one typo: combobx finds Combobox", () => {
+    expect(labels("combobx")).toEqual(["Combobox"])
+    expect(matchOption("combobx", options[0])).toBe("typo")
+  })
+
+  it("reads a query typed in the other keyboard layout: ещфые finds Toast", () => {
+    expect(labels("ещфые")).toEqual(["Toast"])
+    expect(matchOption("ещфые", options[1])).toBe("layout")
+  })
+
+  it("finds words in any order, and an option by an alias in either alphabet", () => {
+    expect(labels("picker date")).toEqual(["Date picker"])
+    expect(matchOption("picker date", options[2])).toBe("words")
+    expect(labels("календ")).toEqual(["Date picker"])
+    expect(matchOption("calendar", options[2])).toBe("alias")
+  })
+
+  it("lists a name match before an option whose detail alone holds the query", () => {
+    const withDetail = [option("Lists", { detail: "Display" }), ...options]
+    expect(matchOptions(withDetail, "list").map((found) => found.label)).toEqual([
+      "Lists",
+      "Badge",
+    ])
+    expect(matchOption("list", options[3])).toBe("detail")
+  })
+
+  it("matches every option for an empty query, up to the limit, and says no kind for it", () => {
+    expect(labels("  ")).toHaveLength(4)
+    expect(matchOptions(options, "", 2).map((found) => found.label)).toEqual([
+      "Combobox",
+      "Toast",
+    ])
+    expect(matchOption("", options[0])).toBeUndefined()
+  })
+
+  it("returns nothing for an option the query does not match", () => {
+    expect(labels("zzzz")).toEqual([])
+    expect(matchOption("zzzz", options[0])).toBeUndefined()
+  })
+})
+
 describe("groupOptions", () => {
   it("lists unheaded options first, then groups in the order they first appear", () => {
     const groups = groupOptions([
@@ -79,7 +144,9 @@ describe("CommandPalette", () => {
 
   it("draws no hotkey hint and announces no hotkey when the hotkeys are turned off", () => {
     const html = render(<CommandPalette options={options} onSelect={() => {}} hotkeys={[]} />)
-    expect(html).not.toContain("<kbd")
+    // The dialog's key hints under the list are the palette's own keys, not its hotkeys.
+    const trigger = html.slice(0, html.indexOf("<dialog"))
+    expect(trigger).not.toContain("<kbd")
     expect(html).not.toContain("aria-keyshortcuts")
   })
 
@@ -89,6 +156,40 @@ describe("CommandPalette", () => {
     expect(html).toMatch(
       /<span class="hidden sm:contents"><span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex"><kbd[^>]*>\/<\/kbd><\/span><\/span><\/button>/,
     )
+  })
+
+  it("draws a custom trigger from the trigger function, handed the hotkeys, in place of its own", () => {
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        dataE2E="palette"
+        trigger={({ shortcuts, hotkey }) => (
+          <a href="#search" aria-keyshortcuts={shortcuts} data-hotkey={hotkey}>Search</a>
+        )}
+      />,
+    )
+    const trigger = html.slice(0, html.indexOf("<dialog"))
+    expect(trigger).toBe(
+      `<a href="#search" aria-keyshortcuts="/ Control+K" data-hotkey="/">Search</a>`,
+    )
+  })
+
+  it("draws no trigger when the trigger function returns null, and no hotkeys with none", () => {
+    let handed: unknown = "not called"
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        hotkeys={[]}
+        trigger={({ shortcuts, hotkey }) => {
+          handed = [shortcuts, hotkey]
+          return null
+        }}
+      />,
+    )
+    expect(html.startsWith("<dialog")).toBe(true)
+    expect(handed).toEqual([undefined, undefined])
   })
 
   it("takes the hint's words from kbdLabels", () => {
@@ -161,6 +262,74 @@ describe("CommandPalette", () => {
     expect(html).not.toContain(defaultCommandPaletteLabels.empty)
   })
 
+  it("filters with the forgiving matcher by default and marks how each result matched", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Combobox"), option("Toast")]}
+        defaultQuery="combobx"
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toMatch(/<li id="[^"]+-result-Combobox" role="option"[^>]* data-match="typo"/)
+    expect(html).not.toContain(">Toast<")
+    // Without `showMatch` the kind stays an attribute; no word is drawn.
+    expect(html).not.toContain(defaultCommandPaletteMatchLabels.typo)
+  })
+
+  it("shows how a result matched in words with showMatch, taking them from matchLabels", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Toast")]}
+        defaultQuery="ещфые"
+        showMatch
+        matchLabels={{ layout: "Wrong layout" }}
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toMatch(/data-match="layout"[^>]*>.*>Toast<.*>Wrong layout</)
+  })
+
+  it("draws the field trigger with its placeholder and hint at every width", () => {
+    const html = render(
+      <CommandPalette options={options} trigger="field" onSelect={() => {}} dataE2E="palette" />,
+    )
+    const trigger = html.match(
+      /<button[^>]*data-e2e="palette-open" class="([^"]*)"[^>]*>(.*?)<\/button>/,
+    )
+    expect(trigger?.[1].split(" ")).toEqual(expect.arrayContaining(["w-full", "border-subtle"]))
+    // No class switches at `sm`: the field is the same at every width.
+    expect(trigger?.[1].split(" ").filter((name) => name.startsWith("sm:"))).toEqual([])
+    expect(trigger?.[2]).toContain(
+      `<span class="min-w-0 flex-1 truncate text-start">${defaultCommandPaletteLabels.placeholder}</span>`,
+    )
+    expect(trigger?.[2]).not.toContain("hidden sm:")
+  })
+
+  it("gives both triggers a 44 px touch target on a phone and the library's focus ring", () => {
+    for (const shape of ["field", "button"] as const) {
+      const html = render(
+        <CommandPalette options={options} trigger={shape} onSelect={() => {}} dataE2E="palette" />,
+      )
+      const classes = html.match(/data-e2e="palette-open" class="([^"]*)"/)?.[1].split(" ")
+      expect(classes, shape).toEqual(expect.arrayContaining([
+        "max-sm:min-h-11",
+        "focus-visible:ring-2",
+        "focus-visible:ring-offset-2",
+        "focus-visible:outline-hidden",
+      ]))
+      if (shape === "button") expect(classes).toContain("max-sm:min-w-11")
+    }
+  })
+
+  it("appends the caller's class to the trigger's own, unmerged", () => {
+    const html = render(
+      <CommandPalette options={options} class="w-80!" onSelect={() => {}} dataE2E="palette" />,
+    )
+    const trigger = html.match(/data-e2e="palette-open" class="([^"]*)"/)?.[1].split(" ")
+    expect(trigger?.slice(-1)).toEqual(["w-80!"])
+    expect(trigger).toContain("sm:w-56")
+  })
+
   it("refuses both data modes at once, and neither, as a type error", () => {
     const search = () => Promise.resolve(options)
     // @ts-expect-error: `options` and `search` together.
@@ -168,5 +337,243 @@ describe("CommandPalette", () => {
     // @ts-expect-error: neither `options` nor `search`.
     void <CommandPalette onSelect={() => {}} />
     void <CommandPalette search={search} debounce={50} onSelect={() => {}} />
+  })
+})
+
+describe("CommandPalette command rows", () => {
+  /** The `<li>` of the result `id` and everything inside it, from the rendered HTML. */
+  const rowOf = (html: string, id: string) =>
+    html.match(new RegExp(`<li id="[^"]+-result-${id}" role="option".*?</li>`))?.[0] ?? ""
+
+  it("names a row by its label alone and describes it by its detail, state and hint", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Theme", { detail: "Look", state: "Dark", hint: "Setting" })]}
+        onSelect={() => {}}
+      />,
+    )
+    const row = rowOf(html, "Theme")
+    const id = row.match(/<li id="([^"]+)"/)?.[1]
+    expect(row).toContain(`aria-labelledby="${id}-label"`)
+    expect(row).toContain(`aria-describedby="${id}-detail ${id}-state ${id}-hint"`)
+    expect(row).toMatch(new RegExp(`id="${id}-state"[^>]*><span class="truncate">Dark</span>`))
+  })
+
+  it("keeps an icon slot on every row of a group where one row has an icon", () => {
+    const html = render(
+      <CommandPalette
+        options={[
+          option("Theme", { group: "Settings", icon: IconMoon }),
+          option("Language", { group: "Settings" }),
+          option("Home", { group: "Pages" }),
+        ]}
+        onSelect={() => {}}
+      />,
+    )
+    const slot = /<span aria-hidden="true" class="flex size-4 shrink-0[^"]*">/
+    expect(rowOf(html, "Theme")).toMatch(slot)
+    expect(rowOf(html, "Theme")).toContain("<svg")
+    expect(rowOf(html, "Language")).toMatch(slot)
+    expect(rowOf(html, "Language")).not.toContain("<svg")
+    expect(rowOf(html, "Home")).not.toMatch(slot)
+  })
+
+  it("announces a row's kbd in aria-keyshortcuts and draws its keys only from sm", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("New note", { kbd: "ctrl+n", icon: IconPlus })]}
+        onSelect={() => {}}
+      />,
+    )
+    const row = rowOf(html, "New%20note")
+    expect(row).toContain(`aria-keyshortcuts="Control+N"`)
+    expect(row).toMatch(
+      /<span class="hidden sm:contents"><span aria-hidden="true" data-hotkey-hint /,
+    )
+  })
+
+  it("lists a disabled row with its reason in place of its detail, and no badge or keys", () => {
+    const html = render(
+      <CommandPalette
+        options={[
+          option("Sync now", {
+            detail: "Every device",
+            disabledReason: "Needs a connection",
+            state: "Off",
+            kbd: "ctrl+s",
+          }),
+        ]}
+        onSelect={() => {}}
+      />,
+    )
+    const row = rowOf(html, "Sync%20now")
+    const id = row.match(/<li id="([^"]+)"/)?.[1]
+    expect(row).toContain(`aria-disabled="true"`)
+    expect(row).toContain(`aria-describedby="${id}-detail"`)
+    expect(row).toContain(">Needs a connection<")
+    for (const absent of ["Every device", ">Off<", "aria-keyshortcuts", "data-hotkey-hint"]) {
+      expect(row).not.toContain(absent)
+    }
+    expect(row).not.toContain("hover:bg-hover")
+    expect(row).toMatch(/class="line-clamp-2 [^"]*text-muted"/)
+  })
+
+  it("says a changed state as the label and the state by default", () => {
+    expect(defaultCommandPaletteLabels.stateChanged("Theme", "Dark")).toBe("Theme: Dark")
+  })
+})
+
+/** A `Map`-backed store, or one whose every call throws, as a full or locked store does. */
+function fakeStorage(throws = false): KeyValueStore & { map: Map<string, string> } {
+  const map = new Map<string, string>()
+  const guard = () => {
+    if (throws) throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+  }
+  return {
+    map,
+    getItem: (key) => (guard(), map.get(key) ?? null),
+    setItem: (key, value) => (guard(), void map.set(key, value)),
+    removeItem: (key) => (guard(), void map.delete(key)),
+  }
+}
+
+describe("CommandPalette recent picks", () => {
+  const ids = (count: number) => Array.from({ length: count }, (_, index) => `id-${index}`)
+
+  it("reads nothing from a missing, too long, broken or non-array value", () => {
+    expect(parseRecent(null)).toEqual([])
+    expect(parseRecent(`["a",${'"b",'.repeat(RECENT_MAX_LENGTH)}"c"]`)).toEqual([])
+    expect(parseRecent('["a"')).toEqual([])
+    expect(parseRecent(`{"0":"a"}`)).toEqual([])
+    expect(parseRecent(`"a"`)).toEqual([])
+  })
+
+  it("keeps the strings of a stored array, at most ten, and skips the rest", () => {
+    expect(parseRecent(`["a",1,null,{"id":"b"},"c"]`)).toEqual(["a", "c"])
+    expect(parseRecent(JSON.stringify(ids(12)))).toEqual(ids(10))
+  })
+
+  it("puts a pick first, drops its earlier place and keeps the last ten", () => {
+    expect(addRecent(["a", "b", "c"], "b")).toEqual(["b", "a", "c"])
+    expect(addRecent(ids(10), "new")).toEqual(["new", ...ids(9)])
+  })
+
+  it("lists at most five recent options, newest first, skipping ids no option has now", () => {
+    const options = ids(8).map((id) => option(id))
+    expect(recentOptions(["gone", "id-3", "id-1"], options).map((found) => found.id)).toEqual([
+      "id-3",
+      "id-1",
+    ])
+    expect(recentOptions(ids(8).reverse(), options).map((found) => found.id)).toEqual([
+      "id-7",
+      "id-6",
+      "id-5",
+      "id-4",
+      "id-3",
+    ])
+  })
+
+  it("writes, reads back and clears the picks under the palette's key", () => {
+    const storage = fakeStorage()
+    const open = () => storage
+    writeRecent("palette", ["b", "a"], open)
+    expect(storage.map.get("palette")).toBe(`["b","a"]`)
+    expect(readRecent("palette", open)).toEqual(["b", "a"])
+    clearCommandPaletteRecent("palette", open)
+    expect(storage.map.has("palette")).toBe(false)
+    expect(readRecent("palette", open)).toEqual([])
+  })
+
+  it("reads nothing and throws nowhere where storage is blocked or refuses every call", () => {
+    const blocked = (): KeyValueStore => {
+      throw new DOMException("The operation is insecure.", "SecurityError")
+    }
+    const refusing = fakeStorage(true)
+    for (const open of [blocked, () => refusing]) {
+      expect(() => writeRecent("palette", ["a"], open)).not.toThrow()
+      expect(readRecent("palette", open)).toEqual([])
+      expect(() => clearCommandPaletteRecent("palette", open)).not.toThrow()
+    }
+  })
+
+  it("renders on a server without touching storage", () => {
+    let opened = 0
+    const html = render(
+      <CommandPalette
+        options={[option("Home")]}
+        recent={{ storageKey: "palette", storage: () => (opened++, fakeStorage()) }}
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toContain(">Home<")
+    expect(html).not.toContain(">Recent<")
+    expect(opened).toBe(0)
+  })
+})
+
+describe("CommandPalette best match", () => {
+  const theme = option("Theme", { group: "Settings", aliases: ["dark mode"], run: () => {} })
+  const options = [
+    option("Dark patterns", { group: "Articles" }),
+    option("Darken", { group: "Commands", run: () => {} }),
+    theme,
+  ]
+
+  it("picks the first command whose label or alias starts with the query, ignoring case", () => {
+    expect(bestMatch(options, "DARK")?.label).toBe("Darken")
+    expect(bestMatch([options[0], theme], "dark")?.label).toBe("Theme")
+    expect(bestMatch([options[0], theme], "Thè")?.label).toBe("Theme")
+  })
+
+  it("picks none for an empty query, a plain option or a name that only contains the query", () => {
+    expect(bestMatch(options, " ")).toBeUndefined()
+    expect(bestMatch([options[0]], "dark")).toBeUndefined()
+    expect(bestMatch([theme], "mode")).toBeUndefined()
+  })
+
+  it("pins the best match on top under its heading and lists it there only", () => {
+    const html = render(
+      <CommandPalette options={[options[0], theme]} defaultQuery="dark" onSelect={() => {}} />,
+    )
+    const headings = [...html.matchAll(/role="presentation"[^>]*>([^<]+)</g)].map((m) => m[1])
+    expect(headings).toEqual(["Best match", "Articles"])
+    expect(html.match(/<li id="[^"]+-result-Theme"/g)?.length).toBe(1)
+  })
+
+  it("pins nothing when no command starts with the query", () => {
+    const html = render(
+      <CommandPalette options={[options[0], theme]} defaultQuery="patt" onSelect={() => {}} />,
+    )
+    expect(html).not.toContain(">Best match<")
+  })
+})
+
+describe("CommandPalette count and key hints", () => {
+  it("counts one result and many by default", () => {
+    expect(defaultCommandPaletteLabels.results(1)).toBe("1 result")
+    expect(defaultCommandPaletteLabels.results(5)).toBe("5 results")
+  })
+
+  it("keeps the count region empty until typing pauses", () => {
+    const html = render(
+      <CommandPalette options={[option("Home")]} dataE2E="palette" onSelect={() => {}} />,
+    )
+    expect(html).toMatch(/<p role="status" data-e2e="palette-count" class="sr-only"><\/p>/)
+  })
+
+  it("draws the key hints hidden from screen readers, from sm for a fine pointer only", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Home")]}
+        dataE2E="palette"
+        labels={{ keysMove: "bouger", keysOpen: "ouvrir", keysAlternative: "autre" }}
+        onSelect={() => {}}
+      />,
+    )
+    const keys = html.match(/<div aria-hidden="true" data-e2e="palette-keys".*?<\/div>/)?.[0] ?? ""
+    expect(keys).toMatch(/class="hidden [^"]* sm:pointer-fine:flex"/)
+    for (const word of [">bouger<", ">ouvrir<", ">autre<", "Down arrow", "Ctrl"]) {
+      expect(keys).toContain(word)
+    }
   })
 })

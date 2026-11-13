@@ -166,12 +166,41 @@ describe("Modal", () => {
     expect(render(<Modal open title="Delete" />)).not.toContain("<svg")
   })
 
+  it("draws its title row and button row as no landmarks, so a header around it stays one banner", () => {
+    const html = render(<Modal open title="Delete" footer={<span>actions</span>} />)
+
+    expect(html).toMatch(/<header role="none"/)
+    expect(html).toMatch(/<footer role="none"/)
+  })
+
   it("renders footer content only when given", () => {
     const html = render(<Modal open title="Delete" footer={<span>actions</span>} />)
 
     expect(html).toContain("<footer")
     expect(html).toContain("actions")
     expect(render(<Modal open title="Delete" />)).not.toContain("<footer")
+  })
+
+  it("gives the footer DialogActions' row classes, its border and its buttons in order", () => {
+    const html = render(
+      <Modal
+        open
+        title="Delete"
+        footer={
+          <>
+            <button type="button">Cancel</button>
+            <button type="button">Delete</button>
+          </>
+        }
+      />,
+    )
+    const footer = /<footer role="none" class="([^"]*)">/.exec(html)?.[1].split(" ") ?? []
+    for (const cls of ["flex-col", "sm:flex-row", "sm:justify-end"]) {
+      expect(footer).toContain(cls)
+    }
+    expect(footer).toEqual(expect.arrayContaining(["border-t", "border-subtle", "px-6", "py-4"]))
+    const body = html.slice(html.indexOf("<footer"))
+    expect(body.indexOf("Cancel")).toBeLessThan(body.indexOf("Delete"))
   })
 
   it("keeps the headless body padding off the dialog element itself", () => {
@@ -214,6 +243,14 @@ describe("Modal", () => {
 
     expect(html).toContain('closedby="none"')
     expect(html.match(/closedby=/g)?.length).toBe(1)
+  })
+
+  it("draws one border colour: red in the danger register, the subtle one otherwise", () => {
+    const borders = (html: string) =>
+      (html.match(/<dialog[^>]*class="([^"]*)"/)?.[1].split(" ") ?? [])
+        .filter((name) => /^border-(?!0$)[a-z]/.test(name))
+    expect(borders(render(<Modal open title="Delete" tone="danger" />))).toEqual(["border-red-300"])
+    expect(borders(render(<Modal open title="Edit" />))).toEqual(["border-subtle"])
   })
 
   it("tints the surface in the danger register", () => {

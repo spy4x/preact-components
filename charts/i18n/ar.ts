@@ -1,0 +1,30 @@
+/** The `charts` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
+export default {
+  "Bars.emptyLabel": "لا توجد بيانات",
+  "DonutChart.chartLabel": {
+    "zero": "مخطط حلقي بلا شرائح",
+    "one": "مخطط حلقي من شريحة واحدة",
+    "two": "مخطط حلقي من شريحتين",
+    "few": "مخطط حلقي من {count} شرائح",
+    "many": "مخطط حلقي من {count} شريحة",
+    "other": "مخطط حلقي من {count} شريحة",
+  },
+  "DonutChart.emptyLabel": "لا توجد بيانات",
+  "DonutChart.keyboardHint": "تنقّل بين الشرائح بمفاتيح الأسهم.",
+  "DotPlot.missingLabel": "لا توجد بيانات",
+  "LineChart.chartLabel": {
+    "zero": "مخطط خطي بلا سلاسل",
+    "one": "مخطط خطي من سلسلة واحدة",
+    "two": "مخطط خطي من سلسلتين",
+    "few": "مخطط خطي من {count} سلاسل",
+    "many": "مخطط خطي من {count} سلسلة",
+    "other": "مخطط خطي من {count} سلسلة",
+  },
+  "LineChart.emptyLabel": "لا توجد بيانات",
+  "LineChart.keyboardHint": "تنقّل بين النقاط بمفاتيح الأسهم.",
+  "LineChart.loadingLabel": "جارٍ التحميل…",
+  "LineChart.missingValuesLabel": "الخطوط الرمادية المتقطعة تُظهر مواضع البيانات الناقصة.",
+  "LineChart.xLabel": "النقطة",
+  "changeText.delta": "{change} مقارنةً بـ{period}",
+  "changeText.none": "دون تغيير مقارنةً بـ{period}",
+}

@@ -10,7 +10,7 @@ function attrOf(html: string, tag: RegExp, name: string): string | undefined {
 }
 
 describe("Dropdown", () => {
-  it("server-renders a closed details whose summary is the trigger, so it opens without JavaScript", () => {
+  it("server-renders a closed details in the pc-menu group whose summary is the trigger, so it opens without JavaScript", () => {
     const html = render(
       <Dropdown trigger="Menu" triggerNamedByContent>
         <DropdownItem href="/a">First</DropdownItem>
@@ -18,7 +18,7 @@ describe("Dropdown", () => {
     )
 
     expect(html).toMatch(
-      /^<details class="[^"]*"><summary[^>]*>Menu<\/summary><div class="/,
+      /^<details class="[^"]*" name="pc-menu"><summary[^>]*>Menu<\/summary><div class="/,
     )
     expect(html).toContain("First")
     expect(html.endsWith("</div></details>")).toBe(true)
@@ -93,13 +93,26 @@ describe("Dropdown", () => {
     expect(html).toContain("origin-bottom-right")
   })
 
-  it("anchors the panel to the left when asked", () => {
+  it("anchors the panel to the start of the line when asked, growing from the start corner", () => {
     const html = render(
-      <Dropdown trigger="Menu" triggerNamedByContent horizontal="left">item</Dropdown>,
+      <Dropdown trigger="Menu" triggerNamedByContent horizontal="start">item</Dropdown>,
     )
 
-    expect(html).toContain("left-0")
-    expect(html).toContain("origin-top-left")
+    expect(html).toContain("start-0")
+    expect(html).not.toContain("end-0")
+    expect(html).toContain("origin-top-left [&amp;:dir(rtl)]:origin-top-right")
+  })
+
+  it("treats left and right as the old names of start and end", () => {
+    const start = render(
+      <Dropdown trigger="M" triggerNamedByContent horizontal="start">i</Dropdown>,
+    )
+    const end = render(<Dropdown trigger="M" triggerNamedByContent horizontal="end">i</Dropdown>)
+
+    expect(render(<Dropdown trigger="M" triggerNamedByContent horizontal="left">i</Dropdown>))
+      .toBe(start)
+    expect(render(<Dropdown trigger="M" triggerNamedByContent horizontal="right">i</Dropdown>))
+      .toBe(end)
   })
 
   it("renders an auto menu below the trigger until the browser has measured it", () => {
@@ -111,11 +124,13 @@ describe("Dropdown", () => {
     expect(html).not.toContain("bottom-full")
   })
 
-  it("defaults the panel below and to the right of the trigger", () => {
+  it("defaults the panel below the trigger and lined up with its end", () => {
     const html = render(<Dropdown trigger="Menu" triggerNamedByContent>item</Dropdown>)
 
     expect(html).toContain("top-full")
-    expect(html).toContain("right-0")
+    expect(html).toContain("end-0")
+    expect(html).not.toContain("start-0")
+    expect(html).toContain("origin-top-right [&amp;:dir(rtl)]:origin-top-left")
   })
 
   it("gives the fallback summary a button's arrow cursor instead of a text cursor", () => {
@@ -269,7 +284,7 @@ describe("DropdownItem", () => {
     ) {
       expect(attrOf(html, /<(a|button)\b[^>]*>/, "aria-keyshortcuts")).toBe("Control+E")
       expect(html).toMatch(
-        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ml-auto pl-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
+        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ms-auto ps-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
       )
     }
   })
@@ -326,6 +341,72 @@ describe("DropdownItem", () => {
     expect(html).not.toContain("aria-checked")
     expect(attrOf(html, /<button[^>]*>(?=<svg)/, "aria-current")).toBe("true")
     expect(html.match(/aria-current/g)?.length).toBe(1)
+  })
+
+  it("marks the checked link of a server-rendered dropdown as the current page, with hreflang and lang", () => {
+    const html = render(
+      <Dropdown trigger="Language" triggerNamedByContent>
+        <DropdownItem checked href="/en/" hreflang="en" lang="en">English</DropdownItem>
+        <DropdownItem checked={false} href="/de/" hreflang="de" lang="de">Deutsch</DropdownItem>
+      </Dropdown>,
+    )
+
+    expect(attrOf(html, /<a[^>]*href="\/en\/"[^>]*>/, "aria-current")).toBe("page")
+    expect(attrOf(html, /<a[^>]*href="\/de\/"[^>]*>/, "hreflang")).toBe("de")
+    expect(attrOf(html, /<a[^>]*href="\/de\/"[^>]*>/, "lang")).toBe("de")
+    expect(html.match(/aria-current/g)?.length).toBe(1)
+  })
+
+  it("renders a multiple item as a menuitemcheckbox with a box, filled only when checked", () => {
+    const on = render(<DropdownItem checked multiple onClick={() => {}}>Design</DropdownItem>)
+    const off = render(
+      <DropdownItem checked={false} multiple onClick={() => {}}>Plans</DropdownItem>,
+    )
+
+    expect(attrOf(on, /<button[^>]*>/, "role")).toBe("menuitemcheckbox")
+    expect(attrOf(on, /<button[^>]*>/, "aria-checked")).toBe("true")
+    expect(on).toMatch(/<span aria-hidden="true" class="[^"]*\bbg-selected\b[^"]*"><svg/)
+    expect(attrOf(off, /<button[^>]*>/, "role")).toBe("menuitemcheckbox")
+    expect(attrOf(off, /<button[^>]*>/, "aria-checked")).toBe("false")
+    expect(off).toMatch(
+      /<span aria-hidden="true" class="[^"]*\bborder-control\b[^"]*"><\/span>Plans/,
+    )
+  })
+
+  it("marks multiple and keepOpen items to keep the menu open, and leaves other items unmarked", () => {
+    const box = render(<DropdownItem checked multiple>Design</DropdownItem>)
+    const mode = render(<DropdownItem checked={false} keepOpen>All of these tags</DropdownItem>)
+    const radio = render(<DropdownItem checked>Family</DropdownItem>)
+    const plain = render(<DropdownItem multiple>Open</DropdownItem>)
+
+    expect(box).toContain("data-keep-open")
+    expect(mode).toContain("data-keep-open")
+    expect(attrOf(mode, /<button[^>]*>/, "role")).toBe("menuitemradio")
+    expect(radio).not.toContain("data-keep-open")
+    // `multiple` without `checked` is no choice at all: a plain item that closes the menu.
+    expect(attrOf(plain, /<button[^>]*>/, "role")).toBe("menuitem")
+    expect(plain).not.toContain("data-keep-open")
+  })
+
+  it("marks a server-rendered multiple item as pressed rather than current", () => {
+    const html = render(
+      <Dropdown trigger="Tags" triggerNamedByContent>
+        <DropdownItem checked multiple onClick={() => {}}>Design</DropdownItem>
+        <DropdownItem checked={false} multiple onClick={() => {}}>Plans</DropdownItem>
+      </Dropdown>,
+    )
+
+    expect(html).not.toContain("role=")
+    expect(html).not.toContain("aria-current")
+    expect(
+      attrOf(
+        html,
+        /<button[^>]*>(?=<span aria-hidden="true" class="[^"]*bg-selected)/,
+        "aria-pressed",
+      ),
+    )
+      .toBe("true")
+    expect(html.match(/aria-pressed="false"/g)?.length).toBe(1)
   })
 
   it("announces keyshortcuts and shows the first as the hint, after its own hotkey", () => {
@@ -385,7 +466,7 @@ describe("dropdownOpensUp", () => {
     expect(dropdownOpensUp({ top: 100, bottom: 140 }, 200, 800)).toBe(false)
   })
 
-  it("opens up when the panel does not fit below and there is more room above", () => {
+  it("opens up when the panel does not fit below but fits above", () => {
     expect(dropdownOpensUp({ top: 700, bottom: 740 }, 200, 800)).toBe(true)
   })
 
@@ -398,7 +479,13 @@ describe("dropdownOpensUp", () => {
     expect(dropdownOpensUp({ top: 100, bottom: 140 }, 900, 800)).toBe(false)
   })
 
-  it("opens up when the panel fits neither way but above is roomier", () => {
-    expect(dropdownOpensUp({ top: 500, bottom: 540 }, 900, 800)).toBe(true)
+  it("stays down when the panel fits neither way, though above is roomier, rather than running off the top", () => {
+    expect(dropdownOpensUp({ top: 200, bottom: 232 }, 330, 400)).toBe(false)
+    expect(dropdownOpensUp({ top: 500, bottom: 540 }, 900, 800)).toBe(false)
+  })
+
+  it("flips up only once the panel and its gap fit above", () => {
+    expect(dropdownOpensUp({ top: 337, bottom: 369 }, 330, 400)).toBe(false)
+    expect(dropdownOpensUp({ top: 338, bottom: 370 }, 330, 400)).toBe(true)
   })
 })
