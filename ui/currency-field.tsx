@@ -91,6 +91,8 @@ export interface CurrencyFieldProps {
   "aria-invalid"?: boolean | string
   /** Shown while nothing is chosen. Default `"Code, name or symbol"`, translated. */
   placeholder?: string
+  /** Renders `autofocus` on the input, so a `Modal` focuses it on open. */
+  autoFocus?: boolean
   /** How a chosen currency reads in the closed field. Default `"Euro (EUR)"`, translated. */
   optionLabel?: (name: string, code: string) => string
   /** Shown when the query matches nothing. Default names the query and suggests the code. */
@@ -126,6 +128,7 @@ export function CurrencyField(
     "aria-describedby": describedBy,
     "aria-invalid": invalid,
     placeholder,
+    autoFocus,
     optionLabel,
     emptyMessage,
     countMessage,
@@ -168,6 +171,7 @@ export function CurrencyField(
       aria-describedby={describedBy}
       aria-invalid={invalid}
       placeholder={text.placeholder}
+      autoFocus={autoFocus}
       emptyMessage={text.empty}
       countMessage={text.count}
       clearLabel={text.clear}

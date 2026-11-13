@@ -58,6 +58,11 @@ export interface MoneyInputProps {
    */
   required?: boolean
   placeholder?: string
+  /**
+   * Renders `autofocus` on the visible input, so a `Modal` (a native `<dialog>` opened with
+   * `showModal()`) focuses it on open rather than its close button.
+   */
+  autoFocus?: boolean
   /** Shown, and announced, when the typed text cannot be parsed as an amount. */
   invalidMessage?: string
   /** Shown, and announced, when a parsed amount falls outside `min`/`max`. */
@@ -323,6 +328,7 @@ export function MoneyInput(
     disabled,
     required,
     placeholder,
+    autoFocus,
     invalidMessage: invalidMessageProp,
     rangeMessage: rangeMessageProp,
     decimalsMessage: decimalsMessageProp,
@@ -475,6 +481,7 @@ export function MoneyInput(
           disabled={disabled}
           required={required}
           placeholder={placeholder}
+          autofocus={autoFocus}
           class="h-full min-w-0 flex-1 rounded-primary bg-transparent ps-3 text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
