@@ -6,13 +6,13 @@
     "jsr:@fresh/build-id@1": "1.0.1",
     "jsr:@fresh/core@2.3.3": "2.3.3",
     "jsr:@hono/hono@4.13.8": "4.13.8",
-    "jsr:@spy4x/email@^1.116.0": "1.116.0",
-    "jsr:@spy4x/net@^1.116.0": "1.116.0",
-    "jsr:@spy4x/platform@1.116.0": "1.116.0",
-    "jsr:@spy4x/time@1.116.0": "1.116.0",
-    "jsr:@spy4x/time@^1.116.0": "1.116.0",
-    "jsr:@spy4x/validation@1.116.0": "1.116.0",
-    "jsr:@spy4x/validation@^1.116.0": "1.116.0",
+    "jsr:@spy4x/email@^1.126.0": "1.126.0",
+    "jsr:@spy4x/net@^1.126.0": "1.126.0",
+    "jsr:@spy4x/platform@1.126.0": "1.126.0",
+    "jsr:@spy4x/time@1.126.0": "1.126.0",
+    "jsr:@spy4x/time@^1.126.0": "1.126.0",
+    "jsr:@spy4x/validation@1.126.0": "1.126.0",
+    "jsr:@spy4x/validation@^1.126.0": "1.126.0",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/async@^1.5.0": "1.5.1",
@@ -118,20 +118,20 @@
     "@hono/hono@4.13.8": {
       "integrity": "bbb566d9ebb81e74c0d7eeff1f9221ba9f3fda6f1832e5ca66cbddcecb2f7fec"
     },
-    "@spy4x/email@1.116.0": {
-      "integrity": "a359be01951e7baa287c7030d2f26ddec85a3088a6092206acb5e3a00a792cba"
+    "@spy4x/email@1.126.0": {
+      "integrity": "3b45c04316a5d807c7131a7682ba3ac0f11a05bac5ac7870d3cf40e45e2dbff3"
     },
-    "@spy4x/net@1.116.0": {
-      "integrity": "ee476606e8a3bb2588fd94a4759602e3b9e00f12c7274e960311a968dfcf6efd"
+    "@spy4x/net@1.126.0": {
+      "integrity": "b85a9ef88fbd2ca4d4bb6b4a3a431996b039f0de29d58c4fc4a3d74abadb50f5"
     },
-    "@spy4x/platform@1.116.0": {
-      "integrity": "09655a14aafb3e7189329d5c45c16cab658f809949095198419c49740ef67ec5",
+    "@spy4x/platform@1.126.0": {
+      "integrity": "cb0f6e583f06e1259a8014cac85d972d1dcb018854fda5c2ff59ae1b3a8f87c8",
       "dependencies": [
         "jsr:@hono/hono",
         "jsr:@spy4x/email",
         "jsr:@spy4x/net",
-        "jsr:@spy4x/time@^1.116.0",
-        "jsr:@spy4x/validation@^1.116.0",
+        "jsr:@spy4x/time@^1.126.0",
+        "jsr:@spy4x/validation@^1.126.0",
         "jsr:@std/crypto",
         "jsr:@std/csv",
         "jsr:@std/encoding@1.0.11",
@@ -143,11 +143,11 @@
         "npm:ws"
       ]
     },
-    "@spy4x/time@1.116.0": {
-      "integrity": "baa4f389daf75e75064fccb79192d64715e72a43ca17b8aef4107286885ddfc0"
+    "@spy4x/time@1.126.0": {
+      "integrity": "7b7067f73a4bce6760a0656550ba3cb479489129fa06edb11583308515bd7bbe"
     },
-    "@spy4x/validation@1.116.0": {
-      "integrity": "3fc7901c9cec7c94ba274afd2fc7c9c3cd679660278f0bf709f6422f02a376e3",
+    "@spy4x/validation@1.126.0": {
+      "integrity": "7ef2e70da660618510d9f16e994b9d123b725e2ed4748f016ab602d948017312",
       "dependencies": [
         "npm:arktype"
       ]
@@ -650,9 +650,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@spy4x/platform@1.116.0",
-      "jsr:@spy4x/time@1.116.0",
-      "jsr:@spy4x/validation@1.116.0",
+      "jsr:@spy4x/platform@1.126.0",
+      "jsr:@spy4x/time@1.126.0",
+      "jsr:@spy4x/validation@1.126.0",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/encoding@1.0.11",
       "jsr:@std/expect@1.0.20",

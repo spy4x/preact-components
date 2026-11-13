@@ -26,6 +26,7 @@ const variants: Record<ButtonVariant, string> = {
   ghost: "Ghost",
   icon: "Icon",
   danger: "Danger",
+  "danger-ghost": "Danger ghost",
 }
 
 const sizes: Record<ButtonSize, string> = {
@@ -428,7 +429,8 @@ export const buttonDemos = {
         name: "variant",
         type: "ButtonVariant",
         default: `"primary"`,
-        description: "One of the six looks in the rows above.",
+        description:
+          'One of the seven looks in the rows above. `"danger-ghost"` is the quiet destructive action in a dialog footer or a menu, guarded by a confirmation.',
       },
       {
         name: "size",

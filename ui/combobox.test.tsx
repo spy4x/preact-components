@@ -684,6 +684,14 @@ describe("Combobox markup", () => {
     expect(html).toContain(" value ")
   })
 
+  it("renders autofocus on the input only when autoFocus is set", () => {
+    const focused = render(<Combobox items={items} onChange={() => {}} autoFocus />)
+    const plain = render(<Combobox items={items} onChange={() => {}} />)
+
+    expect(focused).toMatch(/<input[^>]*\sautofocus[\s>]/)
+    expect(plain).not.toContain("autofocus")
+  })
+
   it("renders labels through getLabel", () => {
     const rows = [{ code: "BTC", name: "Bitcoin" }]
     const html = render(

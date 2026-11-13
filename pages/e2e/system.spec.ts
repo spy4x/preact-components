@@ -45,7 +45,8 @@ const tipOf = (entry: Locator) => entry.locator(`xpath=../*[@data-e2e="rail-shel
  * the browser on a loaded host cannot make the delay look shorter than it was.
  *
  * @returns Milliseconds from the pointer entering to the tooltip first showing, or `null` when it
- *   had not shown 3 seconds after the hover.
+ *   had not shown 10 seconds after the hover. The delay is timed in the page, so a long wait on a
+ *   loaded host cannot make it look shorter.
  */
 async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Promise<number | null> {
   await tip.evaluate((element, target) => {
@@ -66,7 +67,7 @@ async function firstHoverDelay(page: Page, trigger: Locator, tip: Locator): Prom
   await page.waitForFunction(
     () => ((globalThis as Record<string, unknown>).__e2eHover as { shownAt: number }).shownAt >= 0,
     undefined,
-    { timeout: 3_000 },
+    { timeout: 10_000 },
   ).catch(() => undefined)
   return await page.evaluate(() => {
     const state = (globalThis as Record<string, unknown>).__e2eHover as {
@@ -583,12 +584,22 @@ export const specs: readonly Spec[] = [
       "a second time",
     pageId: "system",
     run: async (page) => {
+      // The page's clock, paused from Enter on, holds the demo's 300 ms answer back: on a busy
+      // machine the select and paste below outlast 300 ms, busy has ended by then, and the
+      // pasted code is rightly submitted. Installed in the open page, no reload: the demo looks
+      // its timers up when it sets them.
       const { demo, field, received } = await openMailedCodeStep(page)
+      await page.clock.install()
       await field.pressSequentially("AAA-BBB")
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
       await page.keyboard.press("Enter")
       await demo.locator(`[data-e2e="mailed-code-step-submit"][aria-busy="true"]`).waitFor()
       await field.selectText()
       await paste(field, "K7Q-2XM")
+      if (await received.textContent() !== "onSubmit received: AAA-BBB") {
+        throw new Error(`a second code went out while busy: ${await received.textContent()}`)
+      }
+      await page.clock.runFor(1_000)
       await demo.getByText("That code is wrong or has expired.").waitFor()
       if (await received.textContent() !== "onSubmit received: AAA-BBB") {
         throw new Error(`a second code went out while busy: ${await received.textContent()}`)

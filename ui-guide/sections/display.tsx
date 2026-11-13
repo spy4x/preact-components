@@ -23,6 +23,7 @@ import {
   CopyButton,
   DataTable,
   describedImages,
+  Elapsed,
   Field,
   FormatContext,
   Grid,
@@ -50,6 +51,8 @@ import {
   type Shortcut,
   ShortcutsDialog,
   Stack,
+  StatusMark,
+  type StatusMarkStatus,
   type TabItem,
   Table,
   Tabs,
@@ -61,9 +64,11 @@ import {
   UsageMeter,
   useFormat,
   useHotkeys,
+  useRowCursor,
   useT,
   When,
 } from "@spy4x/preact-ui"
+import { cn } from "@spy4x/preact-cn"
 import { formatMoney } from "@spy4x/platform/universal/money"
 import uiAr from "@spy4x/preact-ui/i18n/ar"
 import uiDe from "@spy4x/preact-ui/i18n/de"
@@ -483,7 +488,7 @@ const usageMeterBudgets: readonly { label: string; used: number; limit: number }
   { label: "Restaurants", used: 48_200, limit: 50_000 },
   { label: "Fuel", used: 50_000, limit: 50_000 },
   { label: "Clothes", used: 51_200, limit: 50_000 },
-  { label: "Home improvement and garden supplies", used: 120_000, limit: 50_000 },
+  { label: "Home improvement, garden supplies and workshop tools", used: 120_000, limit: 50_000 },
   { label: "Gifts, with no budget", used: 4_000, limit: 0 },
 ]
 
@@ -668,6 +673,109 @@ function WhenDemo() {
         ))}
       </div>
     </FormatContext.Provider>
+  )
+}
+
+/** A job in the `Elapsed` card's list. */
+interface DemoJob {
+  id: string
+  name: string
+  status: StatusMarkStatus
+  start: number | null
+  end: number | null
+}
+
+/** The list's finished jobs, with fixed times, so they read the same on the server and later. */
+const finishedJobs: DemoJob[] = [
+  {
+    id: "backup",
+    name: "Nightly backup",
+    status: "done",
+    start: demoNow - 3_723_000,
+    end: demoNow,
+  },
+  {
+    id: "resize",
+    name: "Resize photos",
+    status: "out-of-time",
+    start: demoNow - 1_800_000,
+    end: demoNow - 600_000,
+  },
+]
+
+/**
+ * A list of jobs as card rows, each with its `StatusMark` and its `Elapsed`. The first job waits in
+ * the queue until Start: it then runs and its time ticks, and Stop ends it, so the server draws
+ * only fixed times. With the checkbox on, `useRowCursor` moves a highlight over the rows with `j`
+ * and `k`, and Enter writes the highlighted job to the readout. The keys start off, because the
+ * `DataTable` card's cursor listens to the same keys. `pages/e2e/ui/row-cursor.spec.ts` and
+ * `pages/e2e/ui/elapsed.spec.ts` drive it.
+ */
+function ElapsedDemo() {
+  const started = useSignal<number | null>(null)
+  const ended = useSignal<number | null>(null)
+  const keys = useSignal(false)
+  const opened = useSignal("none")
+  const first: DemoJob = {
+    id: "import",
+    name: "Import invoices",
+    status: started.value === null ? "queued" : ended.value === null ? "running" : "stopped",
+    start: started.value,
+    end: ended.value,
+  }
+  const jobs = [first, ...finishedJobs]
+  const cursor = useRowCursor({
+    count: jobs.length,
+    onOpen: (index) => opened.value = jobs[index].name,
+    enabled: keys.value,
+  })
+  const step = () => {
+    if (started.value === null) started.value = Date.now()
+    else if (ended.value === null) ended.value = Date.now()
+    else started.value = ended.value = null
+  }
+  return (
+    <Stack gap="sm">
+      <Cluster>
+        <Button variant="outline" size="sm" data-e2e="elapsed-step" onClick={step}>
+          {started.value === null ? "Start" : ended.value === null ? "Stop" : "Reset"}
+        </Button>
+        <Checkbox
+          data-e2e="elapsed-keys"
+          checked={keys.value}
+          onChange={(event) => keys.value = event.currentTarget.checked}
+        >
+          Keys j, k and Enter
+        </Checkbox>
+      </Cluster>
+      <ul class="flex flex-col gap-2" data-e2e="elapsed-jobs">
+        {jobs.map((job, index) => {
+          const row = cursor.rowProps(index)
+          return (
+            <li
+              key={job.id}
+              {...row}
+              class={cn(
+                "flex items-center justify-between gap-3 rounded-lg bg-surface px-4 py-3 ring-1 ring-subtle",
+                row.class,
+              )}
+            >
+              <span class="flex flex-col gap-1">
+                <span class="text-sm font-medium">{job.name}</span>
+                <StatusMark status={job.status} />
+              </span>
+              <Elapsed
+                start={job.start}
+                end={job.end}
+                labels={{ missing: "Not started" }}
+                class="text-sm text-muted"
+              />
+            </li>
+          )
+        })}
+      </ul>
+      <DemoNote e2e="elapsed-opened">Opened: {opened.value}</DemoNote>
+    </Stack>
   )
 }
 
@@ -911,6 +1019,47 @@ function DataTableDemo() {
         />
       </Stack>
       <DataTableServerDemo />
+      <DataTableCursorDemo />
+    </Stack>
+  )
+}
+
+/**
+ * `DataTable` with `cursor`: with the checkbox on, `j` and `k` highlight a row and Enter writes its
+ * merchant to the readout. The keys start off, because the `Elapsed` card's job list listens to the
+ * same keys. `pages/e2e/ui/row-cursor.spec.ts` drives it.
+ */
+function DataTableCursorDemo() {
+  const keys = useSignal(false)
+  const opened = useSignal("none")
+  return (
+    <Stack gap="sm" data-e2e="data-table-cursor">
+      <Checkbox
+        data-e2e="data-table-cursor-keys"
+        checked={keys.value}
+        onChange={(event) => keys.value = event.currentTarget.checked}
+      >
+        Keys j, k and Enter
+      </Checkbox>
+      <DataTable
+        caption="Invoices to open"
+        columns={[
+          { key: "date", header: "Date" },
+          { key: "merchant", header: "Merchant" },
+          {
+            key: "amount",
+            header: "Amount",
+            align: "right",
+            render: (row) => row.amount === null ? "—" : String(row.amount),
+          },
+        ]}
+        rows={dataTableRows}
+        rowKey={(row) => row.id}
+        sort={[]}
+        onSortChange={() => {}}
+        cursor={{ onOpen: (row) => opened.value = row.merchant, enabled: keys.value }}
+      />
+      <DemoNote e2e="data-table-opened">Opened: {opened.value}</DemoNote>
     </Stack>
   )
 }
@@ -1753,6 +1902,42 @@ const translator = createTranslator({
 </FormatContext.Provider>`,
     render: () => <WhenDemo />,
   },
+  Elapsed: {
+    summary:
+      "How long something has run, as a ticking clock face while it runs and a fixed one once it ends.",
+    wide: false,
+    props: [
+      {
+        name: "start",
+        type: "Date | number | string | null",
+        description: "When it started; a missing or unreadable one shows the missing label.",
+      },
+      {
+        name: "end",
+        type: "Date | number | string | null",
+        description: "When it ended. Left out or null, it is still running and ticks each second.",
+      },
+      {
+        name: "now",
+        type: "number",
+        default: "the clock",
+        description:
+          "The present in epoch milliseconds, for text that must not move; nothing ticks.",
+      },
+      {
+        name: "labels",
+        type: "Partial<ElapsedLabels>",
+        default: "ELAPSED_LABELS",
+        description: "The duration text and the missing label.",
+      },
+    ],
+    snippet: `<StatusMark status="running" /> <Elapsed start={job.startedAt} />
+<StatusMark status="done" /> <Elapsed start={job.startedAt} end={job.endedAt} />
+
+const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[index]) })
+<li {...cursor.rowProps(index)}>…</li>`,
+    render: () => <ElapsedDemo />,
+  },
   OnDay: {
     summary: "A calendar day in the person's own format and zone, with the exact instant on hover.",
     wide: false,
@@ -1967,6 +2152,12 @@ const translator = createTranslator({
         description:
           "Each row's own identity, so its checkbox, focus or state moves with it when the rows sort or page.",
       },
+      {
+        name: "cursor",
+        type: "{ onOpen, enabled? }",
+        description:
+          "Turns on `j` and `k` to highlight the next and the previous row, and Enter to open the highlighted one.",
+      },
     ],
     snippet: `<DataTable
   caption="Invoices"
@@ -1998,7 +2189,12 @@ const translator = createTranslator({
     total: response.total,
     onChange: (next) => page.value = next,
   }}
-/>`,
+/>
+
+// j and k highlight a row, Enter opens it.
+<DataTable caption="Invoices" columns={columns} rows={invoices} rowKey={(row) => row.id}
+  sort={sort.value} onSortChange={(next) => sort.value = next}
+  cursor={{ onOpen: (row) => navigate(\`/invoices/\${row.id}\`) }} />`,
     render: () => <DataTableDemo />,
   },
   Card: {

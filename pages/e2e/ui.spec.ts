@@ -13,6 +13,7 @@ import { specs as button } from "./ui/button.spec.ts"
 import { specs as modal } from "./ui/modal.spec.ts"
 import { specs as lostInput } from "./ui/lost-input.spec.ts"
 import { specs as currencyField } from "./ui/currency-field.spec.ts"
+import { specs as moneyInput } from "./ui/money-input.spec.ts"
 import { specs as zoomableImages } from "./ui/zoomable-images.spec.ts"
 import { specs as comparisonTable } from "./ui/comparison-table.spec.ts"
 import { specs as resendButton } from "./ui/resend-button.spec.ts"
@@ -48,6 +49,9 @@ import { specs as blogBlocks } from "./ui/blog-blocks.spec.ts"
 import { specs as docsBlocks } from "./ui/docs-blocks.spec.ts"
 import { specs as storefront } from "./ui/storefront.spec.ts"
 import { specs as file } from "./ui/file.spec.ts"
+import { specs as statusMark } from "./ui/status-mark.spec.ts"
+import { specs as elapsed } from "./ui/elapsed.spec.ts"
+import { specs as rowCursor } from "./ui/row-cursor.spec.ts"
 import { specs as screenTour } from "./ui/screen-tour.spec.ts"
 import { specs as avatar } from "./ui/avatar.spec.ts"
 import { specs as commandPalette } from "./ui/command-palette.spec.ts"
@@ -61,6 +65,7 @@ import { specs as smallFixes } from "./ui/small-fixes.spec.ts"
 import { specs as segmentedControl } from "./ui/segmented-control.spec.ts"
 import { specs as rightToLeft } from "./ui/right-to-left.spec.ts"
 import { specs as periodStepper } from "./ui/period-stepper.spec.ts"
+import { specs as usageMeter } from "./ui/usage-meter.spec.ts"
 import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 import { specs as copyButton } from "./ui/copy-button.spec.ts"
@@ -78,6 +83,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   modal,
   "lost-input": lostInput,
   "currency-field": currencyField,
+  "money-input": moneyInput,
   "zoomable-images": zoomableImages,
   "comparison-table": comparisonTable,
   "resend-button": resendButton,
@@ -126,9 +132,13 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "segmented-control": segmentedControl,
   "right-to-left": rightToLeft,
   "period-stepper": periodStepper,
+  "usage-meter": usageMeter,
   "date-range-picker": dateRangePicker,
   "inline-edit": inlineEdit,
   "copy-button": copyButton,
+  "status-mark": statusMark,
+  elapsed,
+  "row-cursor": rowCursor,
   "enhanced-form": enhancedForm,
 }
 
