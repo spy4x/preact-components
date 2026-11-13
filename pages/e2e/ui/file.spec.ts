@@ -28,6 +28,15 @@ function fileSpecs(): Spec[] {
     list(page).locator(`[data-e2e="attachments-last"]`).filter({ hasText: `Last action: ${text}` })
       .waitFor()
   const focused = (page: Page, target: Locator) => target.and(page.locator(":focus")).waitFor()
+  /**
+   * Pauses the page's clock, so the demo's 600 ms Retry check ends only when the spec moves the
+   * clock: on a loaded host the spec could otherwise miss the checking state. Installed in the
+   * open page, no reload: the demo and Preact look their timers up when they set them.
+   */
+  const pauseClock = async (page: Page) => {
+    await page.clock.install()
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
+  }
   return [
     {
       name:
@@ -153,11 +162,13 @@ function fileSpecs(): Spec[] {
       name: "AttachmentList: Retry on a failed file shows it checking, then ready with its size",
       pageId: "ui",
       run: async (page) => {
+        await pauseClock(page)
         const row = list(page).locator(`[data-e2e="attachment-row"]`, { hasText: "scan.pdf" })
         await row.getByText("Upload failed.").waitFor()
         await row.getByRole("button", { name: "Retry scan.pdf", exact: true }).click()
         await row.getByText("Checking…").waitFor()
         await row.getByRole("progressbar", { name: "Checking scan.pdf" }).waitFor()
+        await page.clock.runFor(600)
         await row.getByText("PDF · 640 KB").waitFor()
         await row.getByRole("button", { name: "Actions for scan.pdf" }).waitFor()
       },
@@ -167,6 +178,7 @@ function fileSpecs(): Spec[] {
         "AttachmentList: Retry from the keyboard keeps focus in its row while checking and after it is ready",
       pageId: "ui",
       run: async (page) => {
+        await pauseClock(page)
         const row = list(page).locator(`[data-e2e="attachment-row"]`, { hasText: "scan.pdf" })
         const focusInRow = () =>
           row.evaluate((element) =>
@@ -178,7 +190,10 @@ function fileSpecs(): Spec[] {
         await page.keyboard.press("Enter")
         await row.getByText("Checking…").waitFor()
         if (!await focusInRow()) throw new Error("focus left the row while it was checking")
+        await page.clock.runFor(600)
         await row.getByText("PDF · 640 KB").waitFor()
+        // Preact runs effects after a frame or a 35 ms timer, and the paused clock holds both.
+        await page.clock.runFor(100)
         await focused(page, row.getByRole("button", { name: "Download scan.pdf" }))
       },
     },

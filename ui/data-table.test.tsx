@@ -854,6 +854,50 @@ describe("DataTable", () => {
       expect(typeof serverPaging).toBe("object")
     })
   })
+
+  describe("cursor", () => {
+    it("draws every row unhighlighted on the server, before any key", () => {
+      const html = render(
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          cursor={{ onOpen: noop }}
+        />,
+      )
+      expect(html).not.toContain("aria-current")
+      expect(html.match(/<tr /g)?.length).toBe(rows.length + 1)
+    })
+    it("renders the same markup with a cursor as without", () => {
+      const props = {
+        columns,
+        rows,
+        rowKey: (row: Invoice) => row.id,
+        sort: [],
+        onSortChange: noop,
+        caption: "Invoices",
+      }
+      expect(render(<DataTable {...props} cursor={{ onOpen: noop }} />))
+        .toBe(render(<DataTable {...props} />))
+    })
+    it("draws the empty state with a cursor, since there is no row to move over", () => {
+      const html = render(
+        <DataTable
+          columns={columns}
+          rows={[]}
+          rowKey={(row) => row.id}
+          sort={[]}
+          onSortChange={noop}
+          caption="Invoices"
+          cursor={{ onOpen: noop }}
+        />,
+      )
+      expect(html).toContain("Nothing to show")
+    })
+  })
 })
 
 /** One prop of the `Table` vnode `DataTable` returns, read before `Table` itself runs. */

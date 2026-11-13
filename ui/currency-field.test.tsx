@@ -65,6 +65,16 @@ describe("CurrencyField", () => {
     expect(html).toContain('placeholder="Code, name or symbol"')
   })
 
+  it("hands autoFocus to its combobox input", () => {
+    const focused = render(
+      <CurrencyField value={null} onChange={() => {}} options={OPTIONS} autoFocus />,
+    )
+    const plain = render(<CurrencyField value={null} onChange={() => {}} options={OPTIONS} />)
+
+    expect(focused).toMatch(/<input[^>]*\sautofocus[\s>]/)
+    expect(plain).not.toContain("autofocus")
+  })
+
   it("leaves the name to a visible label that names it", () => {
     const html = render(
       <CurrencyField value={null} onChange={() => {}} options={OPTIONS} aria-labelledby="lbl" />,

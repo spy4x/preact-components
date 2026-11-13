@@ -575,12 +575,13 @@ function remotePaletteSpecs(): Spec[] {
         await other.evaluate((button) => (button as HTMLElement).blur())
         await page.keyboard.press("Control+F8")
         await closeWithEscape()
-        const focused = await page.evaluate(() => {
-          const active = document.activeElement
-          return active === document.body ? "body" : active?.outerHTML.slice(0, 80) ?? "none"
-        })
-        if (focused !== "body") {
-          throw new Error(`focus after Escape with nothing before: ${focused}`)
+        // The dialog hides before its `close` event runs the handler that blurs the field, so wait
+        // for focus to leave rather than read it once.
+        const left = await page.waitForFunction(() => document.activeElement === document.body)
+          .then(() => true, () => false)
+        if (!left) {
+          const focused = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 80))
+          throw new Error(`focus after Escape with nothing before: ${focused ?? "none"}`)
         }
       },
     },
@@ -780,9 +781,702 @@ function commandPaletteSpecs(): Spec[] {
   ]
 }
 
+/**
+ * Throws when axe finds a violation in the commands palette's dialog, as it stands now.
+ *
+ * @param page The guide's UI page.
+ */
+async function noViolations(page: Page): Promise<void> {
+  const { violations } = await new AxeBuilder({ page })
+    .include(`dialog[data-e2e="palette-commands"]`)
+    .analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+      ).join(" | "),
+    )
+  }
+}
+
+/** Specs for the palette's keys: the alternative pick, groups, submenus, text rows and ">". */
+function paletteKeySpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette keys: Ctrl+Enter, a middle click and a Ctrl+click each pick a row " +
+        "the alternative way and close the palette",
+      pageId: "ui",
+      run: async (page) => {
+        let palette = await openCommandsPalette(page, 1440)
+        await page.keyboard.type("sign out")
+        await palette.activeIs("Sign out")
+        await page.keyboard.press("Control+Enter")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.ran.filter({ hasText: /^Sign out \(alternative\)$/ }).waitFor()
+        palette = await openCommandsPalette(page, 1440)
+        await palette.row("New note").click({ button: "middle" })
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.ran.filter({ hasText: /^New note \(alternative\)$/ }).waitFor()
+        palette = await openCommandsPalette(page, 1440)
+        await palette.row("Sign out").click({ modifiers: ["ControlOrMeta"] })
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.ran.filter({ hasText: /^Sign out \(alternative\)$/ }).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette keys: PageDown and PageUp move the highlight to the first row of " +
+        "the next and the previous group, and stop at the first and the last group",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        await palette.activeIs("Theme")
+        await page.keyboard.press("PageUp")
+        // Had PageUp wrapped round to the last group, PageDown would stay there.
+        await page.keyboard.press("PageDown")
+        await palette.activeIs("New note")
+        await page.keyboard.press("ArrowDown")
+        await palette.activeIs("Sync now")
+        await page.keyboard.press("PageDown")
+        await palette.activeIs("Add a task")
+        await page.keyboard.press("PageDown")
+        // Had PageDown wrapped round to the first group, PageUp would stay there.
+        await page.keyboard.press("PageUp")
+        await palette.activeIs("New note")
+        await page.keyboard.press("PageUp")
+        await palette.activeIs("Theme")
+        await palette.field.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette keys: Tab on a text row puts its label before the empty field and " +
+        "lists that row alone with the typed text; Enter with nothing typed does nothing, " +
+        "Backspace in the empty field goes back, and Enter passes the text; axe finds no " +
+        "violation in the text mode",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        const path = palette.dialog.locator(`[data-e2e="palette-commands-path"]`)
+        await page.keyboard.type("add a")
+        await palette.activeIs("Add a task")
+        await page.keyboard.press("Tab")
+        await path.filter({ hasText: /^Add a task$/ }).waitFor()
+        await palette.dialog.getByRole("combobox", { name: "Add a task" }).waitFor()
+        await palette.field.and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("Enter")
+        await page.keyboard.type("buy milk")
+        await palette.row("Add a task: “buy milk”").waitFor()
+        const rows = await palette.dialog.getByRole("option").count()
+        if (rows !== 1) throw new Error(`the text mode lists ${rows} rows`)
+        if (!await palette.dialog.isVisible()) throw new Error("Enter with no text closed it")
+        const ran = await palette.ran.textContent()
+        if (ran !== "nothing yet") throw new Error(`Enter with no text picked: ${ran}`)
+        await noViolations(page)
+        for (let typed = 0; typed < "buy milk".length; typed++) {
+          await page.keyboard.press("Backspace")
+        }
+        await page.keyboard.press("Backspace")
+        await path.waitFor({ state: "detached" })
+        const query = await palette.field.inputValue()
+        if (query !== "add a") throw new Error(`back at the top the field holds "${query}"`)
+        await palette.activeIs("Add a task")
+        await page.keyboard.press("Enter")
+        await path.waitFor()
+        await page.keyboard.type("  buy milk ")
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.ran.filter({ hasText: /^Add a task: “buy milk”$/ }).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette keys: Tab or Enter on a row with children lists them under a path, " +
+        "filtered by the query, two levels deep; Backspace in the empty field goes back a " +
+        "level with the parent row highlighted; the back button and a click work too; a child " +
+        "is picked; axe finds no violation in a submenu",
+      pageId: "ui",
+      run: async (page) => {
+        let palette = await openCommandsPalette(page, 1440)
+        const path = palette.dialog.locator(`[data-e2e="palette-commands-path"]`)
+        const labels = () =>
+          palette.dialog.getByRole("option").evaluateAll((rows) =>
+            rows.map((row) => row.querySelector("span span")?.textContent).join("|")
+          )
+        const account = palette.dialog.getByRole("option", { name: "Account", exact: true })
+        // Account is the seventh row, so going back can only highlight it on purpose.
+        await page.keyboard.press("PageDown")
+        await page.keyboard.press("PageDown")
+        await page.keyboard.press("ArrowDown")
+        await palette.activeIs("Account")
+        await page.keyboard.press("Tab")
+        await path.filter({ hasText: /^Account$/ }).waitFor()
+        await palette.row("Billing").waitFor()
+        const children = await labels()
+        if (children !== "Profile|Billing|Security") throw new Error(`children: ${children}`)
+        await noViolations(page)
+        await page.keyboard.type("sec")
+        await palette.activeIs("Security")
+        await page.keyboard.press("Enter")
+        await path.filter({ hasText: /^Account › Security$/ }).waitFor()
+        await palette.row("Two-step sign-in").waitFor()
+        await page.keyboard.press("Backspace")
+        await path.filter({ hasText: /^Account$/ }).waitFor()
+        const query = await palette.field.inputValue()
+        if (query !== "sec") throw new Error(`back in Account the field holds "${query}"`)
+        for (let typed = 0; typed < "sec".length; typed++) await page.keyboard.press("Backspace")
+        await palette.row("Profile").waitFor()
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("ArrowDown")
+        await palette.activeIs("Security")
+        await page.keyboard.press("Enter")
+        await path.filter({ hasText: /^Account › Security$/ }).waitFor()
+        await page.keyboard.press("Backspace")
+        await path.filter({ hasText: /^Account$/ }).waitFor()
+        await palette.activeIs("Security")
+        await page.keyboard.press("Backspace")
+        await path.waitFor({ state: "detached" })
+        await palette.activeIs("Account")
+        await account.click()
+        await path.filter({ hasText: /^Account$/ }).waitFor()
+        await palette.dialog.locator(`[data-e2e="palette-commands-back"]`).click()
+        await path.waitFor({ state: "detached" })
+        await palette.field.and(page.locator(":focus")).waitFor()
+        await palette.activeIs("Account")
+        await page.keyboard.press("Tab")
+        await palette.row("Profile").waitFor()
+        await page.keyboard.press("Escape")
+        await palette.dialog.waitFor({ state: "hidden" })
+        palette = await openCommandsPalette(page, 1440)
+        await path.waitFor({ state: "detached" })
+        await page.keyboard.type("acc")
+        await page.keyboard.press("Enter")
+        await page.keyboard.press("Enter")
+        await palette.dialog.waitFor({ state: "hidden" })
+        await palette.ran.filter({ hasText: /^Profile$/ }).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette keys: Tab on a row with neither children nor text leaves the field " +
+        "for the next control",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        await palette.activeIs("Theme")
+        await page.keyboard.press("Tab")
+        await palette.dialog.locator(`[data-e2e="palette-commands-close"]:focus`).waitFor()
+      },
+    },
+    {
+      name: 'CommandPalette keys: the empty field hints at ">", which lists only the ' +
+        "commands, filtered by the rest of the query",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        const hint = palette.dialog.getByText("> for commands", { exact: true })
+        await hint.waitFor()
+        const described = await palette.field.getAttribute("aria-describedby")
+        if (described !== await hint.getAttribute("id")) {
+          throw new Error(`the field is described by ${described}`)
+        }
+        const account = palette.dialog.getByRole("option", { name: "Account", exact: true })
+        await account.waitFor()
+        await page.keyboard.type(">")
+        await hint.waitFor({ state: "detached" })
+        await account.waitFor({ state: "detached" })
+        const rows = await palette.dialog.getByRole("option").evaluateAll((rows) =>
+          rows.map((row) => row.querySelector("span span")?.textContent).join("|")
+        )
+        if (rows !== "Theme|New note|Sync now|Sign out|Jump to the log") {
+          throw new Error(`">" lists ${rows}`)
+        }
+        await page.keyboard.type(" sign")
+        await palette.row("New note").waitFor({ state: "detached" })
+        await palette.activeIs("Sign out")
+        const count = await palette.dialog.getByRole("option").count()
+        if (count !== 1) throw new Error(`"> sign" lists ${count} rows`)
+      },
+    },
+    {
+      name: "CommandPalette keys: a command that moves focus elsewhere keeps it there once the " +
+        "palette has closed, rather than focus going back to the trigger",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openCommandsPalette(page, 1440)
+        await page.keyboard.type("jump")
+        await palette.activeIs("Jump to the log")
+        // Marks the dialog once its `close` event, where the palette restores focus, has run.
+        await palette.dialog.evaluate((dialog) =>
+          dialog.addEventListener(
+            "close",
+            () => setTimeout(() => dialog.setAttribute("data-close-ran", "")),
+            { once: true },
+          )
+        )
+        await page.keyboard.press("Enter")
+        await palette.dialog.and(page.locator("[data-close-ran]")).waitFor({ state: "attached" })
+        await page.locator(`[data-e2e="palette-commands-ran"]:focus`).waitFor()
+      },
+    },
+  ]
+}
+
+/**
+ * A `CommandPalette` on its card, opened at `width`: its dialog, its field, its group headings with
+ * their rows, and its count region. `which` is the demo's `dataE2E`: `"palette-recent"` keeps its
+ * picks under a `storageKey`, `"palette-commands"` keeps none.
+ *
+ * @param page The guide's UI page.
+ * @param which The demo's `dataE2E`.
+ * @param width The window's width.
+ */
+async function openPinnedPalette(page: Page, which: string, width = 1440) {
+  await page.setViewportSize({ width, height: 800 })
+  const dialog = page.locator(`dialog[data-e2e="${which}"]`)
+  const field = dialog.getByRole("combobox")
+  await page.locator(`#demo-CommandPalette [data-e2e="${which}-open"]`).click()
+  await field.and(page.locator(":focus")).waitFor()
+  return {
+    dialog,
+    field,
+    count: dialog.locator(`[data-e2e="${which}-count"]`),
+    status: dialog.locator(`[data-e2e="${which}-status"]`),
+    keys: dialog.locator(`[data-e2e="${which}-keys"]`),
+    /** Waits until the group headings and their rows are exactly `wanted`, "Heading: A, B". */
+    groupsAre: (wanted: readonly string[]) =>
+      page.waitForFunction(
+        ([selector, expected]) =>
+          [...document.querySelectorAll(`${selector} [role="group"]`)].map((group) =>
+            `${
+              document.getElementById(group.getAttribute("aria-labelledby") ?? "")?.textContent
+            }: ${
+              [...group.querySelectorAll(`[role="option"]`)]
+                .map((row) => row.querySelector("span span")?.textContent).join(", ")
+            }`
+          ).join(" | ") === expected,
+        [`dialog[data-e2e="${which}"]`, wanted.join(" | ")] as const,
+      ),
+    /** Waits until the first group's heading is `heading` with `rows` under it. */
+    firstGroupIs: (heading: string, rows: readonly string[]) =>
+      page.waitForFunction(
+        ([selector, expected]) => {
+          const group = document.querySelector(`${selector} [role="group"]`)
+          const label = document.getElementById(group?.getAttribute("aria-labelledby") ?? "")
+          const names = [...group?.querySelectorAll(`[role="option"]`) ?? []]
+            .map((row) => row.querySelector("span span")?.textContent).join(", ")
+          return `${label?.textContent}: ${names}` === expected
+        },
+        [`dialog[data-e2e="${which}"]`, `${heading}: ${rows.join(", ")}`] as const,
+      ),
+    /** The group headings listed now. */
+    headings: () => dialog.locator(`[role="group"] > [role="presentation"]`).allTextContents(),
+  }
+}
+
+/** Picks the row `query` finds first in the remembering palette, which closes it. */
+async function pickRecent(page: Page, query: string) {
+  const palette = await openPinnedPalette(page, "palette-recent")
+  await page.keyboard.type(query)
+  await palette.dialog.getByRole("option").first().waitFor()
+  await page.keyboard.press("Enter")
+  await palette.dialog.waitFor({ state: "hidden" })
+}
+
+/** Reloads the guide and waits for it to hydrate again. */
+async function reload(page: Page) {
+  await page.reload()
+  await page.locator(`html[data-hydrated="true"]`).waitFor()
+}
+
+/** Throws when axe finds a violation in the open palette `which`, contrast included. */
+async function noViolationsIn(page: Page, which: string): Promise<number> {
+  const { violations, passes } = await new AxeBuilder({ page })
+    .include(`dialog[data-e2e="${which}"]`)
+    .analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+      ).join(" | "),
+    )
+  }
+  return passes.length
+}
+
+/** Specs for the Recent picks, the Best match row, the result count and the key hints (#1235). */
+function pinnedRowSpecs(): Spec[] {
+  const key = "ui-guide:command-palette-recent"
+  return [
+    {
+      name: "CommandPalette recent: the empty query lists the last picks under Recent, newest " +
+        "first and each once, after a reload too, and Forget recent picks clears them",
+      pageId: "ui",
+      run: async (page) => {
+        let palette = await openPinnedPalette(page, "palette-recent")
+        const before = await palette.headings()
+        if (before.includes("Recent")) throw new Error(`Recent before any pick: ${before}`)
+        await page.keyboard.press("Escape")
+        await pickRecent(page, "sign")
+        await pickRecent(page, "new note")
+        await pickRecent(page, "sign")
+        await reload(page)
+        palette = await openPinnedPalette(page, "palette-recent")
+        await palette.firstGroupIs("Recent", ["Sign out", "New note"])
+        const signOut = await palette.dialog.getByRole("option", { name: "Sign out" }).count()
+        if (signOut !== 1) throw new Error(`Sign out is listed ${signOut} times`)
+        // A query lists by relevance, without the Recent group.
+        await page.keyboard.type("acc")
+        await palette.dialog.getByRole("option", { name: "Account" }).waitFor()
+        if ((await palette.headings()).includes("Recent")) throw new Error("Recent on a query")
+        await page.keyboard.press("Escape")
+        await page.locator(`[data-e2e="palette-recent-forget"]`).click()
+        palette = await openPinnedPalette(page, "palette-recent")
+        await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
+        const after = await palette.headings()
+        if (after.includes("Recent")) throw new Error(`Recent after forgetting: ${after}`)
+      },
+    },
+    {
+      name: "CommandPalette recent: a stored id no option has is skipped, and broken JSON, a " +
+        "non-array or an oversized value lists no Recent group and is replaced by the next pick",
+      pageId: "ui",
+      run: async (page) => {
+        const store = (value: string) =>
+          page.evaluate(([name, raw]) => localStorage.setItem(name, raw), [key, value] as const)
+        await store(JSON.stringify(["gone", "sign-out", 7, "gone-too", "theme"]))
+        let palette = await openPinnedPalette(page, "palette-recent")
+        await palette.firstGroupIs("Recent", ["Sign out", "Theme"])
+        await page.keyboard.press("Escape")
+        // An oversized value names a real option, so only the length cap keeps it out.
+        const oversized = JSON.stringify(["sign-out", "x".repeat(8200)])
+        for (const raw of [`["sign-out"`, `{"0":"sign-out"}`, oversized]) {
+          await store(raw)
+          palette = await openPinnedPalette(page, "palette-recent")
+          await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
+          const headings = await palette.headings()
+          if (headings.includes("Recent")) {
+            throw new Error(`${raw.slice(0, 20)} listed Recent: ${headings}`)
+          }
+          await page.keyboard.press("Escape")
+        }
+        await pickRecent(page, "sign")
+        const stored = await page.evaluate((name) => localStorage.getItem(name), key)
+        if (stored !== `["sign-out"]`) throw new Error(`stored after a pick: ${stored}`)
+      },
+    },
+    {
+      name: "CommandPalette recent: with storage blocked the palette opens, picks and lists no " +
+        "Recent group, and nothing throws",
+      pageId: "ui",
+      run: async (page) => {
+        const errors: string[] = []
+        page.on("pageerror", (error) => errors.push(error.message))
+        await page.addInitScript(() => {
+          Object.defineProperty(globalThis, "localStorage", {
+            configurable: true,
+            get: () => {
+              throw new DOMException("The operation is insecure.", "SecurityError")
+            },
+          })
+        })
+        await reload(page)
+        const blocked = await page.evaluate(() => {
+          try {
+            return globalThis.localStorage === undefined
+          } catch (_error) {
+            return true
+          }
+        })
+        if (!blocked) throw new Error("storage is not blocked")
+        await pickRecent(page, "sign")
+        const ran = page.locator(`[data-e2e="palette-commands-ran"]`)
+        await ran.filter({ hasText: /^Sign out$/ }).waitFor()
+        const palette = await openPinnedPalette(page, "palette-recent")
+        await palette.dialog.getByRole("option", { name: "Theme" }).waitFor()
+        const headings = await palette.headings()
+        if (headings.includes("Recent")) throw new Error(`Recent with storage blocked: ${headings}`)
+        await page.keyboard.press("Escape")
+        await page.locator(`[data-e2e="palette-recent-forget"]`).click()
+        if (errors.length > 0) throw new Error(`errors: ${errors.join(" | ")}`)
+      },
+    },
+    {
+      name: 'CommandPalette best match: "dark" pins Theme, by its alias, under Best match on ' +
+        "top, highlighted and listed once; a query no command starts pins nothing",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openPinnedPalette(page, "palette-commands")
+        await page.keyboard.type("dark")
+        await palette.firstGroupIs("Best match", ["Theme"])
+        const themes = await palette.dialog.getByRole("option", { name: "Theme" }).count()
+        if (themes !== 1) throw new Error(`Theme is listed ${themes} times`)
+        const active = await palette.field.getAttribute("aria-activedescendant")
+        const theme = await palette.dialog.getByRole("option", { name: "Theme" }).getAttribute("id")
+        if (active !== theme) throw new Error(`the highlight is on ${active}, not Theme`)
+        await page.keyboard.press("Enter")
+        await palette.dialog.getByRole("option", { name: "Theme" }).locator(`[id$="-state"]`)
+          .filter({ hasText: /^Dark$/ }).waitFor()
+        await palette.field.fill("")
+        await page.keyboard.type("billing")
+        await palette.status.filter({ hasText: "Nothing matches." }).waitFor()
+        await palette.field.fill("")
+        await page.keyboard.type("note")
+        await palette.dialog.getByRole("option", { name: "New note" }).waitFor()
+        await palette.groupsAre(["Commands: New note"])
+      },
+    },
+    {
+      name: "CommandPalette count: the live region says the result count only after a 250 ms " +
+        "pause in typing, “1 result” for one, and nothing beside “Nothing matches.”",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openPinnedPalette(page, "palette-commands")
+        // Each change of the region's text and each keystroke, timed in the page.
+        await palette.dialog.evaluate((dialog) => {
+          const log: { at: number; text: string }[] = []
+          const region = dialog.querySelector(`[data-e2e="palette-commands-count"]`)!
+          new MutationObserver(() => log.push({ at: performance.now(), text: region.textContent! }))
+            .observe(region, { childList: true, characterData: true, subtree: true })
+          dialog.querySelector("input")!.addEventListener("input", () => {
+            log.push({ at: performance.now(), text: "<input>" })
+          })
+          Object.assign(globalThis, { paletteCountLog: log })
+        })
+        const live = await palette.count.getAttribute("role")
+        if (live !== "status") throw new Error(`the count region's role is ${live}`)
+        await page.keyboard.type("s", { delay: 60 })
+        await page.keyboard.type("ign", { delay: 60 })
+        await palette.count.filter({ hasText: /^\d+ results?$/ }).waitFor({ state: "attached" })
+        const rows = await palette.dialog.getByRole("option").count()
+        const said = await palette.count.textContent()
+        if (said !== (rows === 1 ? "1 result" : `${rows} results`)) {
+          throw new Error(`the region says ${said} for ${rows} rows`)
+        }
+        const early = await page.evaluate(() => {
+          const log = (globalThis as unknown as { paletteCountLog: { at: number; text: string }[] })
+            .paletteCountLog
+          let typed = 0
+          const found: string[] = []
+          for (const entry of log) {
+            if (entry.text === "<input>") typed = entry.at
+            else if (entry.text !== "" && entry.at - typed < 249) {
+              found.push(`${entry.text} ${Math.round(entry.at - typed)} ms after a key`)
+            }
+          }
+          return found
+        })
+        if (early.length > 0) throw new Error(`said before the pause: ${early.join(", ")}`)
+        await palette.field.fill("> sign")
+        await palette.count.filter({ hasText: /^1 result$/ }).waitFor({ state: "attached" })
+        await palette.field.fill("zzzz")
+        await palette.status.filter({ hasText: "Nothing matches." }).waitFor()
+        await palette.count.filter({ hasText: /^$/ }).waitFor({ state: "attached" })
+      },
+    },
+    {
+      name: "CommandPalette key hints: the line under the list shows at 1440 px for a fine " +
+        "pointer, hides at 390 px and for a touch screen, and is hidden from screen readers",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openPinnedPalette(page, "palette-commands", 1440)
+        await palette.keys.waitFor()
+        const text = await palette.keys.textContent() ?? ""
+        for (const word of ["move", "open", "alternative", "Enter"]) {
+          if (!text.includes(word)) throw new Error(`the key hints lack ${word}: ${text}`)
+        }
+        if (await palette.keys.getAttribute("aria-hidden") !== "true") {
+          throw new Error("the key hints reach screen readers")
+        }
+        await page.setViewportSize({ width: 390, height: 800 })
+        await palette.keys.waitFor({ state: "hidden" })
+        await page.setViewportSize({ width: 1440, height: 800 })
+        await palette.keys.waitFor()
+        const session = await page.context().newCDPSession(page)
+        await session.send("Emulation.setTouchEmulationEnabled", {
+          enabled: true,
+          maxTouchPoints: 5,
+        })
+        const coarse = await page.evaluate(() => matchMedia("(pointer: coarse)").matches)
+        if (!coarse) throw new Error("touch emulation left the pointer fine")
+        await palette.keys.waitFor({ state: "hidden" })
+        await session.send("Emulation.setTouchEmulationEnabled", { enabled: false })
+        await session.detach()
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1440].map((width): Spec => ({
+        name: `CommandPalette pinned rows at ${width} px in the ${colorScheme} palette: axe ` +
+          "finds no violation with the Recent group, the Best match row and the key hints, " +
+          "colour contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          await pickRecent(page, "sign")
+          let palette = await openPinnedPalette(page, "palette-recent", width)
+          await palette.firstGroupIs("Recent", ["Sign out"])
+          if (width === 1440) await palette.keys.waitFor()
+          const recent = await noViolationsIn(page, "palette-recent")
+          await page.keyboard.press("Escape")
+          palette = await openPinnedPalette(page, "palette-commands", width)
+          await page.keyboard.type("dark")
+          await palette.firstGroupIs("Best match", ["Theme"])
+          await palette.count.filter({ hasText: /results?$/ }).waitFor({ state: "attached" })
+          const best = await noViolationsIn(page, "palette-commands")
+          return `${recent} and ${best} rules pass`
+        },
+      }))
+    ),
+  ]
+}
+
+/** Throws when axe finds a violation in any of `selectors`, contrast included. */
+async function noViolationsAt(page: Page, ...selectors: string[]): Promise<void> {
+  const builder = new AxeBuilder({ page })
+  for (const selector of selectors) builder.include(selector)
+  const { violations } = await builder.analyze()
+  if (violations.length > 0) {
+    throw new Error(
+      violations.map(({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+      ).join(" | "),
+    )
+  }
+}
+
+/**
+ * The commands `CommandPalette`'s custom trigger on its card, the switch that removes it, and the
+ * dialog, at `width`.
+ */
+async function customTrigger(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 800 })
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`dialog[data-e2e="palette-commands"]`)
+  const field = dialog.getByRole("combobox")
+  const open = card.locator(`[data-e2e="palette-commands-open"]`)
+  await open.scrollIntoViewIfNeeded()
+  return {
+    card,
+    dialog,
+    field,
+    open,
+    only: card.locator(`[data-e2e="palette-commands-only"]`),
+    toggle: card.locator("#palette-commands-trigger"),
+    /** Waits until focus is in the open palette's field. */
+    opened: () => field.and(page.locator(":focus")).waitFor(),
+    /** Presses Escape and waits for the palette to close. */
+    escape: async () => {
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "hidden" })
+    },
+  }
+}
+
+/** Specs for a trigger drawn by the `trigger` function, for none, and for `open(query)` (#1236). */
+function customTriggerSpecs(): Spec[] {
+  return [
+    {
+      name: "CommandPalette custom trigger: its hotkey opens the palette from the page, and " +
+        "Escape gives focus back to the custom trigger through its ref",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await customTrigger(page, 1280)
+        if (await palette.open.getAttribute("aria-keyshortcuts") !== "Control+Shift+P") {
+          throw new Error(
+            `aria-keyshortcuts ${await palette.open.getAttribute("aria-keyshortcuts")}`,
+          )
+        }
+        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+        await page.keyboard.press("Control+Shift+P")
+        await palette.opened()
+        await palette.escape()
+        await palette.open.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette with no trigger: with the commands trigger switched off, its hotkey " +
+        "still opens the palette, and Escape gives focus back to the element focused before",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await customTrigger(page, 1280)
+        await palette.toggle.click()
+        await palette.open.waitFor({ state: "detached" })
+        await palette.only.waitFor({ state: "detached" })
+        await palette.toggle.and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("Control+Shift+P")
+        await palette.opened()
+        await palette.escape()
+        await palette.toggle.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette open(query): Commands only opens the palette with “>” typed and the " +
+        "caret after it, listing only commands, and focus goes back to the trigger's ref",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await customTrigger(page, 1280)
+        await palette.only.click()
+        await palette.opened()
+        const typed = await palette.field.evaluate((
+          input: HTMLInputElement,
+        ) => [input.value, input.selectionStart, input.selectionEnd])
+        if (JSON.stringify(typed) !== JSON.stringify([">", 1, 1])) {
+          throw new Error(`field value and selection ${JSON.stringify(typed)}`)
+        }
+        await palette.dialog.getByRole("option").filter({ hasText: "Theme" }).waitFor()
+        const rows = await palette.dialog.getByRole("option").evaluateAll((options) =>
+          options.map((option) => option.querySelector("span span")?.textContent ?? "")
+        )
+        if (rows.includes("Add a task") || rows.includes("Account")) {
+          throw new Error(`rows that are not commands are listed: ${rows.join(" | ")}`)
+        }
+        await palette.escape()
+        await palette.open.and(page.locator(":focus")).waitFor()
+      },
+    },
+    {
+      name: "CommandPalette hotkeys open the palette while its own trigger is hidden: Ctrl+K " +
+        "opens the guide's search with its header button hidden",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 })
+        const button = page.locator(`[data-e2e="ui-guide-search-open"]`)
+        const dialog = page.locator(`dialog[data-e2e="ui-guide-search"]`)
+        await button.evaluate((element) => (element as HTMLElement).style.display = "none")
+        await button.waitFor({ state: "hidden" })
+        await page.keyboard.press("Control+K")
+        await dialog.getByRole("combobox").and(page.locator(":focus")).waitFor()
+        await page.keyboard.press("Escape")
+        await dialog.waitFor({ state: "hidden" })
+      },
+    },
+    ...(["light", "dark"] as const).flatMap((colorScheme) =>
+      [390, 1440].map((width): Spec => ({
+        name: `CommandPalette commands demo at ${width} px in the ${colorScheme} palette: axe ` +
+          "finds no violation on its custom trigger, its switch or its dialog opened on “>”, " +
+          "colour contrast included",
+        pageId: "ui",
+        colorScheme,
+        run: async (page) => {
+          const palette = await customTrigger(page, width)
+          await noViolationsAt(
+            page,
+            `[data-e2e="palette-commands-open"]`,
+            `[data-e2e="palette-commands-only"]`,
+            `#demo-CommandPalette div:has(> div > #palette-commands-trigger)`,
+          )
+          await palette.only.click()
+          await palette.opened()
+          await palette.dialog.getByRole("option").first().waitFor()
+          await noViolationsAt(page, `dialog[data-e2e="palette-commands"]`)
+        },
+      }))
+    ),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...remotePaletteSpecs(),
   ...forgivingPaletteSpecs(),
   ...commandPaletteSpecs(),
+  ...paletteKeySpecs(),
+  ...pinnedRowSpecs(),
+  ...customTriggerSpecs(),
   ...iconTriggerSpecs(),
 ]

@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { IconMoon, IconPlus } from "@spy4x/preact-icons"
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import {
   CommandPalette,
   type CommandPaletteOption,
@@ -12,6 +13,16 @@ import {
   matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
+import {
+  addRecent,
+  bestMatch,
+  clearCommandPaletteRecent,
+  parseRecent,
+  readRecent,
+  RECENT_MAX_LENGTH,
+  recentOptions,
+  writeRecent,
+} from "./palette-pins.ts"
 
 const option = (
   label: string,
@@ -133,7 +144,9 @@ describe("CommandPalette", () => {
 
   it("draws no hotkey hint and announces no hotkey when the hotkeys are turned off", () => {
     const html = render(<CommandPalette options={options} onSelect={() => {}} hotkeys={[]} />)
-    expect(html).not.toContain("<kbd")
+    // The dialog's key hints under the list are the palette's own keys, not its hotkeys.
+    const trigger = html.slice(0, html.indexOf("<dialog"))
+    expect(trigger).not.toContain("<kbd")
     expect(html).not.toContain("aria-keyshortcuts")
   })
 
@@ -143,6 +156,40 @@ describe("CommandPalette", () => {
     expect(html).toMatch(
       /<span class="hidden sm:contents"><span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex"><kbd[^>]*>\/<\/kbd><\/span><\/span><\/button>/,
     )
+  })
+
+  it("draws a custom trigger from the trigger function, handed the hotkeys, in place of its own", () => {
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        dataE2E="palette"
+        trigger={({ shortcuts, hotkey }) => (
+          <a href="#search" aria-keyshortcuts={shortcuts} data-hotkey={hotkey}>Search</a>
+        )}
+      />,
+    )
+    const trigger = html.slice(0, html.indexOf("<dialog"))
+    expect(trigger).toBe(
+      `<a href="#search" aria-keyshortcuts="/ Control+K" data-hotkey="/">Search</a>`,
+    )
+  })
+
+  it("draws no trigger when the trigger function returns null, and no hotkeys with none", () => {
+    let handed: unknown = "not called"
+    const html = render(
+      <CommandPalette
+        options={options}
+        onSelect={() => {}}
+        hotkeys={[]}
+        trigger={({ shortcuts, hotkey }) => {
+          handed = [shortcuts, hotkey]
+          return null
+        }}
+      />,
+    )
+    expect(html.startsWith("<dialog")).toBe(true)
+    expect(handed).toEqual([undefined, undefined])
   })
 
   it("takes the hint's words from kbdLabels", () => {
@@ -373,5 +420,160 @@ describe("CommandPalette command rows", () => {
 
   it("says a changed state as the label and the state by default", () => {
     expect(defaultCommandPaletteLabels.stateChanged("Theme", "Dark")).toBe("Theme: Dark")
+  })
+})
+
+/** A `Map`-backed store, or one whose every call throws, as a full or locked store does. */
+function fakeStorage(throws = false): KeyValueStore & { map: Map<string, string> } {
+  const map = new Map<string, string>()
+  const guard = () => {
+    if (throws) throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+  }
+  return {
+    map,
+    getItem: (key) => (guard(), map.get(key) ?? null),
+    setItem: (key, value) => (guard(), void map.set(key, value)),
+    removeItem: (key) => (guard(), void map.delete(key)),
+  }
+}
+
+describe("CommandPalette recent picks", () => {
+  const ids = (count: number) => Array.from({ length: count }, (_, index) => `id-${index}`)
+
+  it("reads nothing from a missing, too long, broken or non-array value", () => {
+    expect(parseRecent(null)).toEqual([])
+    expect(parseRecent(`["a",${'"b",'.repeat(RECENT_MAX_LENGTH)}"c"]`)).toEqual([])
+    expect(parseRecent('["a"')).toEqual([])
+    expect(parseRecent(`{"0":"a"}`)).toEqual([])
+    expect(parseRecent(`"a"`)).toEqual([])
+  })
+
+  it("keeps the strings of a stored array, at most ten, and skips the rest", () => {
+    expect(parseRecent(`["a",1,null,{"id":"b"},"c"]`)).toEqual(["a", "c"])
+    expect(parseRecent(JSON.stringify(ids(12)))).toEqual(ids(10))
+  })
+
+  it("puts a pick first, drops its earlier place and keeps the last ten", () => {
+    expect(addRecent(["a", "b", "c"], "b")).toEqual(["b", "a", "c"])
+    expect(addRecent(ids(10), "new")).toEqual(["new", ...ids(9)])
+  })
+
+  it("lists at most five recent options, newest first, skipping ids no option has now", () => {
+    const options = ids(8).map((id) => option(id))
+    expect(recentOptions(["gone", "id-3", "id-1"], options).map((found) => found.id)).toEqual([
+      "id-3",
+      "id-1",
+    ])
+    expect(recentOptions(ids(8).reverse(), options).map((found) => found.id)).toEqual([
+      "id-7",
+      "id-6",
+      "id-5",
+      "id-4",
+      "id-3",
+    ])
+  })
+
+  it("writes, reads back and clears the picks under the palette's key", () => {
+    const storage = fakeStorage()
+    const open = () => storage
+    writeRecent("palette", ["b", "a"], open)
+    expect(storage.map.get("palette")).toBe(`["b","a"]`)
+    expect(readRecent("palette", open)).toEqual(["b", "a"])
+    clearCommandPaletteRecent("palette", open)
+    expect(storage.map.has("palette")).toBe(false)
+    expect(readRecent("palette", open)).toEqual([])
+  })
+
+  it("reads nothing and throws nowhere where storage is blocked or refuses every call", () => {
+    const blocked = (): KeyValueStore => {
+      throw new DOMException("The operation is insecure.", "SecurityError")
+    }
+    const refusing = fakeStorage(true)
+    for (const open of [blocked, () => refusing]) {
+      expect(() => writeRecent("palette", ["a"], open)).not.toThrow()
+      expect(readRecent("palette", open)).toEqual([])
+      expect(() => clearCommandPaletteRecent("palette", open)).not.toThrow()
+    }
+  })
+
+  it("renders on a server without touching storage", () => {
+    let opened = 0
+    const html = render(
+      <CommandPalette
+        options={[option("Home")]}
+        recent={{ storageKey: "palette", storage: () => (opened++, fakeStorage()) }}
+        onSelect={() => {}}
+      />,
+    )
+    expect(html).toContain(">Home<")
+    expect(html).not.toContain(">Recent<")
+    expect(opened).toBe(0)
+  })
+})
+
+describe("CommandPalette best match", () => {
+  const theme = option("Theme", { group: "Settings", aliases: ["dark mode"], run: () => {} })
+  const options = [
+    option("Dark patterns", { group: "Articles" }),
+    option("Darken", { group: "Commands", run: () => {} }),
+    theme,
+  ]
+
+  it("picks the first command whose label or alias starts with the query, ignoring case", () => {
+    expect(bestMatch(options, "DARK")?.label).toBe("Darken")
+    expect(bestMatch([options[0], theme], "dark")?.label).toBe("Theme")
+    expect(bestMatch([options[0], theme], "Thè")?.label).toBe("Theme")
+  })
+
+  it("picks none for an empty query, a plain option or a name that only contains the query", () => {
+    expect(bestMatch(options, " ")).toBeUndefined()
+    expect(bestMatch([options[0]], "dark")).toBeUndefined()
+    expect(bestMatch([theme], "mode")).toBeUndefined()
+  })
+
+  it("pins the best match on top under its heading and lists it there only", () => {
+    const html = render(
+      <CommandPalette options={[options[0], theme]} defaultQuery="dark" onSelect={() => {}} />,
+    )
+    const headings = [...html.matchAll(/role="presentation"[^>]*>([^<]+)</g)].map((m) => m[1])
+    expect(headings).toEqual(["Best match", "Articles"])
+    expect(html.match(/<li id="[^"]+-result-Theme"/g)?.length).toBe(1)
+  })
+
+  it("pins nothing when no command starts with the query", () => {
+    const html = render(
+      <CommandPalette options={[options[0], theme]} defaultQuery="patt" onSelect={() => {}} />,
+    )
+    expect(html).not.toContain(">Best match<")
+  })
+})
+
+describe("CommandPalette count and key hints", () => {
+  it("counts one result and many by default", () => {
+    expect(defaultCommandPaletteLabels.results(1)).toBe("1 result")
+    expect(defaultCommandPaletteLabels.results(5)).toBe("5 results")
+  })
+
+  it("keeps the count region empty until typing pauses", () => {
+    const html = render(
+      <CommandPalette options={[option("Home")]} dataE2E="palette" onSelect={() => {}} />,
+    )
+    expect(html).toMatch(/<p role="status" data-e2e="palette-count" class="sr-only"><\/p>/)
+  })
+
+  it("draws the key hints hidden from screen readers, from sm for a fine pointer only", () => {
+    const html = render(
+      <CommandPalette
+        options={[option("Home")]}
+        dataE2E="palette"
+        labels={{ keysMove: "bouger", keysOpen: "ouvrir", keysAlternative: "autre" }}
+        onSelect={() => {}}
+      />,
+    )
+    const keys = html.match(/<div aria-hidden="true" data-e2e="palette-keys".*?<\/div>/)?.[0] ?? ""
+    expect(keys).toMatch(/class="hidden [^"]* sm:pointer-fine:flex"/)
+    for (const word of [">bouger<", ">ouvrir<", ">autre<", "Down arrow", "Ctrl"]) {
+      expect(keys).toContain(word)
+    }
   })
 })

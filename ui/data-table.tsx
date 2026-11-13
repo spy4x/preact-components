@@ -9,7 +9,8 @@ import type { ComponentChildren, JSX } from "preact"
 import { EmptyState } from "./empty-state.tsx"
 import { Stack } from "./layout.tsx"
 import { Pagination } from "./pagination.tsx"
-import { Table } from "./table.tsx"
+import { useRowCursor } from "./row-cursor.ts"
+import { Table, type TableProps } from "./table.tsx"
 import { translate, useT } from "./i18n.tsx"
 
 /** Horizontal alignment of one column's header and cells. Defaults to `"left"`. */
@@ -180,7 +181,21 @@ export interface DataTableBaseProps<T, K extends Extract<keyof T, string>> {
   rowKey: (row: T) => string | number
   /** Sets `data-e2e` on every body row, forwarded to `Table`. */
   rowDataE2E?: string
+  /**
+   * A `j`/`k`/Enter cursor over the rows on screen, through `useRowCursor`: `j` and `k` highlight
+   * the next and the previous row, and Enter calls `onOpen` with the highlighted row. Left out, no
+   * key listens. `enabled: false` turns the keys off, for a page with another list that listens.
+   */
+  cursor?: DataTableCursor<T>
   class?: string
+}
+
+/** {@link DataTableBaseProps.cursor}: what Enter does, and whether the keys listen. */
+export interface DataTableCursor<T> {
+  /** Runs when Enter is pressed while a row is highlighted, with that row. */
+  onOpen: (row: T) => void
+  /** Whether the keys listen. Defaults to `true`. */
+  enabled?: boolean
 }
 
 /** Client mode: `DataTable` sorts and pages the whole row set — see {@link DataTableMode}. */
@@ -405,6 +420,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     paging,
     rowKey,
     rowDataE2E,
+    cursor,
     class: className,
   } = props
   const server = props.mode === "server"
@@ -447,16 +463,18 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
       </td>,
     ]
 
+  const table: TableProps = {
+    caption,
+    captionClass: captionHidden ? "sr-only" : undefined,
+    headerSlot,
+    bodySlots,
+    bodyKeys,
+    rowDataE2E,
+  }
+
   return (
     <Stack class={className}>
-      <Table
-        caption={caption}
-        captionClass={captionHidden ? "sr-only" : undefined}
-        headerSlot={headerSlot}
-        bodySlots={bodySlots}
-        bodyKeys={bodyKeys}
-        rowDataE2E={rowDataE2E}
-      />
+      {cursor ? <CursorTable {...table} rows={visible} cursor={cursor} /> : <Table {...table} />}
       {paging && (
         <Pagination
           page={currentPage ?? 1}
@@ -470,4 +488,19 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
       )}
     </Stack>
   )
+}
+
+/**
+ * `Table` with a `useRowCursor` over its body rows, for {@link DataTable}'s `cursor`. A component of
+ * its own, so a `DataTable` without `cursor` calls no hook and listens to no key.
+ */
+function CursorTable<T>(
+  { rows, cursor, ...table }: TableProps & { rows: readonly T[]; cursor: DataTableCursor<T> },
+): JSX.Element {
+  const { rowProps } = useRowCursor({
+    count: rows.length,
+    onOpen: (index) => cursor.onOpen(rows[index]),
+    enabled: cursor.enabled ?? true,
+  })
+  return <Table {...table} rowProps={rowProps} />
 }

@@ -72,15 +72,15 @@ Each line: the component, its subpath, then its ports and key props.
 - `Coachmark` (`coachmark`): `open`, `target` (a ref, or a CSS selector, which names its first visible match), `title`, `children?`, `placement?` (default `"bottom"`), `onClose` (`"escape"` or `"close"`), `closeLabel?`, `goToLabel?`, `footer?`, `describedBy?`, `class?`
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
-- `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`
-- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect(option, { alternative })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"` or `"icon"`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`, `autoFocus?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect(option, { alternative, text? })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, `"icon"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
 - `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `title?` (visible label; without it, the icon alone), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with a `title`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
-- `CurrencyField` (`currency-field`): `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`
+- `CurrencyField` (`currency-field`): `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `autoFocus?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`
 - `DashboardGrid` (`widget-card`): `items` (`{ id, size: "stat" | "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row
-- `DataTable` (`data-table`): `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `class?`
+- `DataTable` (`data-table`): `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `cursor?` (`{ onOpen(row), enabled? }`: `j`/`k` highlight a row, Enter opens it, through `useRowCursor`), `class?`
 - `DateRangePicker` (`date-range-picker`): `range`, `onChange`, `timeZone`, `presets` or `withTime`, `labels?` (every key optional)
 - `DateTimeField` (`date-time-field`): `id`, `label`, `value` (ISO instant or `null`), `onChange`, `timeZone` (IANA; the zone and its offset show beside the input), `min?`, `max?`, `hint?`, `error?`, `required?`, `disabled?`, `labels?` — a `datetime-local` read and written as an instant
 - `DemoVideo` (`demo-video`): `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` (`{ src, type }[]`, WebM first; at least one), `title` (names the link "Play video: {title}" and the video), `playLabel?`, `errorLabel?`, `openFileLabel?`, `eager?`, `loop?` (ignored under reduced motion), `class?`, any other attribute (`id`, `data-*`) on the play link
@@ -88,6 +88,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `DocsNav` (`docs-nav`): `groups` (`{ title, items: { href, title }[] }[]`), `current?` (the `href` on screen, `aria-current="page"`), `labels?` — a side list from `lg`, a `<details>` below it; no JavaScript
 - `Dropdown` (`dropdown`): `trigger`, `triggerLabel` or `triggerNamedByContent` (one is required), `menuLabel`, `vertical` (`"auto"` by default), `horizontal` (`"end"` by default; `"start"`, or the aliases `"left"` and `"right"`, all mirroring under `dir="rtl"`)
 - `DropdownItem` (`dropdown`): `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?`, `checked?`, `multiple?`, `keepOpen?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before
+- `Elapsed` (`format`): `start`, `end?` (left out or `null`: still running, ticks each second), `now?` (epoch milliseconds; given, nothing ticks), `labels?` (`duration`, `missing`), `class?` — `02:05` in a `<time datetime="PT2M5S">`
 - `EmptyState` (`empty-state`): `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)
 - `EnhancedForm` (`enhanced-form`): `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration
 - `ErrorBoundary` (`error-boundary`): `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`
@@ -126,7 +127,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `LoopVideo` (`loop-video`): `poster` (`{ src, srcset?, sizes?, width, height, dark? }`), `sources` and `darkSources?` (`{ src, type }[]`, WebM first), `title` (the video's name), `name` (the button says "Pause animation: {name}"), `pauseLabel?`, `playLabel?`, `class?` — a silent loop that plays while half of it is in view
 - `Modal` (`modal`): `open?` or `defaultOpen?`, `onClose?`, `title?` or `ariaLabel?`, `children`, `footer?` (laid out as `DialogActions`), `cancelLabel?`
 - `MoneyDisplay` (`money-display`): `amount` (smallest unit), `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `tone?` (`"plain"`, `"negative"`, `"signed"`), `colorNegative?` (deprecated), `class?`
-- `MoneyInput` (`money-input`): `value` (smallest unit or `null`), `onChange`, `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `decimalsMessage?`, `required?`, `class?` (the bordered box)
+- `MoneyInput` (`money-input`): `value` (smallest unit or `null`), `onChange`, `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `decimalsMessage?`, `required?`, `autoFocus?`, `class?` (the bordered box)
 - `MoreMenu` (`page-header`): `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`
 - `Notice` (`notice`): `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty
 - `OnboardingChecklist` (`onboarding-checklist`): `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`, `actionVariant?` (`primary` default, `secondary`)
@@ -168,11 +169,11 @@ Each line: the component, its subpath, then its ports and key props.
 - `Slider` (`slider`): `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`
 - `SortableList` (`sortable-list`): `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard
 - `Stack` (`layout`): `gap?` (default `md`), `as?`, `class?` — a column
-- `StatusMark` (`status-mark`): `status` (`ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`), `label?` — a sibling of `Badge`, which has no shape
+- `StatusMark` (`status-mark`): `status` (a project's `ready`/`in-use`/`beta`/`wip`/`paused`/`archived`/`known-issue`/`outcome`/`live`/`offline`, or a job's `running`/`done`/`parked`/`blocked`/`waiting`/`failed`/`out-of-time`/`out-of-budget`/`out-of-turns`/`stopped`/`queued`/`claimed`; `running` pulses, and holds still under reduced motion), `label?` — a sibling of `Badge`, which has no shape
 - `Steps` (`steps`): `items` of `{ title, text? }`, `headingLevel?` (`3` or `4`, `3` default), `orientation?` (`"horizontal"` from `lg` up), `class?` — an `<ol>` numbered by a CSS counter
 - `StoryTile` (`story-tile`): `href`, `title`, `publishedAt`, `topic?`, `readMinutes?`, `cover?` (`{ variants, alt, sizes? }`), `lead?`, `priority?`, `viewTransitionName?`, `headingLevel?`, `navigate?`, `labels?` — a 3:4 cover (or the title on a panel) as the card, one link; dates in UTC; no JavaScript
 - `SwatchChips` (`swatch-chips`): `legend`, `name`, `options` (`{ value, name, color, disabled?, id? }[]`), `defaultValue?` or `value?`, `onChange?` — `RadioChips` with a colour swatch before each name; works without JavaScript
-- `Table` (`table`): `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`
+- `Table` (`table`): `headerSlot`, `bodySlots`, `bodyKeys?` (one identity per row; position when omitted), `footerSlot`, `caption?`, `captionClass?`, `rowDataE2E`, `rowProps?` (props per body row, such as `useRowCursor`'s)
 - `Tabs` (`tabs`): `tabs`, `active`, `onChange`, `lazy`, `hotkey` per tab, `hotkeyHint?`, `kbdLabels?`
 - `TagInput` (`tag-input`): `value`, `onChange`, `suggestions?`, `label?` or `ariaLabel?`, `error?`, `required?`, `requiredMessage?`, `disabled?`, `removeLabel?` — several tags typed or picked, each a removable chip
 - `Textarea` (`input`): native textarea attrs, `class`; forwards `ref`
@@ -1903,6 +1904,16 @@ The distance is English (`a moment ago`, `3 days ago`, from `WHEN_LABELS.relativ
 never changes the language. `labels.relative(at, now)` replaces the distance text.
 `now` fixes the present for a render whose text must not depend on the clock (a test, a demo).
 
+`Elapsed` shows how long something has run, `02:05` or `1:02:03`, in a `<time>` whose `datetime`
+is the ISO duration (`PT2M5S`). Without an `end` (or with `end={null}`) it ticks once a second, from
+an effect, so the server draws the time of the render and the browser carries on; give `now` for
+text that must not move. A start after the end counts as no time.
+
+```tsx
+<StatusMark status="running" /> <Elapsed start={job.startedAt} />
+<StatusMark status="done" /> <Elapsed start={job.startedAt} end={job.endedAt} />
+```
+
 ## FileInput
 
 A real `<input type="file">`, hidden with `sr-only` rather than `display: none`, so it keeps the
@@ -2132,7 +2143,10 @@ and inside the dialog the press landed in (or inside the open modal dialog, when
 hidden until it is wanted, such as a closed menu's item, whose trigger is `shown`;
 `hotkeyClickBinding(keys, element, shown)` takes it as a function too.
 `hotkeyClickBinding(keys, element)` is the `useHotkeys` binding behind both, for a component that
-binds several elements in one `useHotkeys` call, as `Tabs` does. `firesInFields(keys)` is its rule
+binds several elements in one `useHotkeys` call, as `Tabs` does.
+`hotkeyActionBinding(keys, action, home)` is its sibling with nothing to click: it runs `action` by
+the same field rules, wherever the press lands outside a dialog or inside the one holding `home`,
+whether or not anything is rendered. `firesInFields(keys)` is its rule
 for text fields, which `CommandPalette` shares: a combination with Control, Command or `mod` fires
 while the reader types, one with only Alt does not (Option types a character on a Mac), and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). `useApplePlatform(apple)` answers
@@ -2149,13 +2163,14 @@ The arrow keys move through the results, Home and End jump to either end, Enter 
 highlighted one, and Escape, the close button or a click on the backdrop closes the dialog with
 focus back on the button. When the button is hidden, as when an app opens the palette from controls
 of its own by clicking it, focus goes back to the element that had it before the palette opened,
-or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it,
-bound by the machinery of a button's `hotkey`: each clicks the button, which announces them all in
-`aria-keyshortcuts` and shows the first as a button's hotkey hint, from `sm` up and only where the
-main pointer is fine; `kbdLabels` changes its words. `hotkeys` names other keys, and `[]` turns them
-off. The keys work only while the button is shown: a palette whose button is hidden, by `hidden`
-or a `display: none` breakpoint, ignores them and passes them on, so a second palette shown in its
-place opens instead. While the reader types in a text field, the rule is `firesInFields`, the
+or, with none, leaves the field. `/` and `mod+k` (⌘K on Apple platforms, Ctrl+K elsewhere) open it
+directly (`hotkeyActionBinding`), whatever trigger is drawn: a custom one, none, or the button
+while it is hidden. The button announces them all in `aria-keyshortcuts` and shows the first as a
+button's hotkey hint, from `sm` up and only where the main pointer is fine; `kbdLabels` changes its
+words. `hotkeys` names other keys, and `[]` turns them off. Inside a dialog they open the palette
+only when that dialog holds its trigger, and while a modal dialog is open they wait. Two palettes
+bound to the same keys on one page: the first mounted opens, so give the other `hotkeys={[]}`.
+While the reader types in a text field, the rule is `firesInFields`, the
 same one a button's `hotkey` follows: a combination with Control, Command or `mod` still opens the
 palette; a plain key such as `/` or an Alt combination does not, since both type text; and the
 field keeps its editing chords (`mod` with A, C, V, X, Z or Y). The default leaves Ctrl+K alone on a
@@ -2172,6 +2187,31 @@ Enter or Space opens the palette. A printable key typed on it opens the palette 
 the field and the caret after it, as a real field would take it; a key that is one of `hotkeys`
 opens it the hotkey's way. `defaultQuery` is the query the field holds each time the palette opens,
 selected, so the first key typed replaces it.
+
+`trigger` can also be a function, called on every render with a `CommandPaletteTrigger`:
+`open(query?)`, `ref`, `shortcuts` and `hotkey`. It draws a trigger of its own, such as an app
+shell's search button or a "Search for this" button on a 404 page, or returns `null` to draw none.
+`open()` opens the palette with `defaultQuery` selected; `open("x")` opens it with "x" typed and the
+caret after it. Put `ref` on the element so focus comes back to it on close; without it, focus goes
+back to the element that had it before. Give the element `aria-haspopup="dialog"` and
+`aria-keyshortcuts={shortcuts}`, and show `hotkey` with `Kbd` if you want a hint.
+
+```tsx
+<CommandPalette
+  options={options}
+  onSelect={(option) => run(option.id)}
+  trigger={({ open, ref, shortcuts }) => (
+    <Button
+      ref={ref}
+      aria-haspopup="dialog"
+      aria-keyshortcuts={shortcuts}
+      onClick={() => open()}
+    >
+      Search
+    </Button>
+  )}
+/>
+```
 
 The trigger's `class` is appended after its own classes and not merged into them, so a bundle that
 renders the palette carries no `tailwind-merge`. To replace one of the trigger's own utilities,
@@ -2226,14 +2266,32 @@ nothing, keeps the palette open and says the reason. A row's accessible name is 
 detail or reason, match words, state and hint describe it. A destructive command opens its usual
 confirmation, never acts at once.
 
-`onSelect` gets a second argument, `{ alternative }`: `true` when the reader pressed Ctrl+Enter
-(⌘Enter on Apple platforms), clicked with Ctrl or ⌘ held, or middle-clicked, so a caller that
-opens a page can open it in a new tab. When `onSelect` moves focus, such as to a heading on the
-page, focus stays there rather than going back to the trigger. `onOpenChange(open)` is called with
-`true` as the palette opens and `false` once it has closed. `trigger="icon"` is the icon button at
-every width, for a tight spot; a tooltip below it shows its placeholder and its first hotkey on
-hover and on focus, since a magnifier alone names nothing to a sighted reader. `triggerHref` makes the trigger a link to that address, drawn the
-same, until the page hydrates, so a reader without JavaScript reaches a search page.
+A command whose label or one of whose `aliases` starts with the query is pinned on top under "Best
+match" (`labels.bestMatch`), moved out of its own group so it is listed once: "dark" pins a Theme
+command whose alias is "dark mode". With `recent={{ storageKey, storage: () => localStorage }}`, the palette keeps the
+last 10 top-level picks under `storageKey` and lists up to 5 of them under "Recent"
+(`labels.recent`) on the empty query, newest first, skipping any id no option has now. Storage is a
+port, as the library's components never reach for `localStorage` themselves; it is called when the
+palette opens and on a pick, never during a render, so the palette renders on a server. Storage
+that throws (blocked, full) or holds something else (over 8,192 characters, not a JSON array) only
+means nothing is remembered. `clearCommandPaletteRecent(storageKey, storage)` forgets the picks:
+call it on sign-out, so the next person on the device does not see them.
+
+Once typing pauses for 250 ms, a polite live region says how many results are listed,
+`results(count)` ("5 results", "1 result"); no result is said by `empty`, as before. From `sm`, for
+a fine pointer, a line under the list shows the keys: ↑ ↓ move, Enter open, and Ctrl+Enter (⌘Enter on
+a Mac) the alternative pick, in the words of `keysMove`, `keysOpen` and `keysAlternative`. It is
+hidden from screen readers, which know a listbox's keys.
+
+`onSelect` gets a second argument, `{ alternative, text? }`: `alternative` is `true` when the
+reader pressed Ctrl+Enter (⌘Enter on Apple platforms), clicked with Ctrl or ⌘ held, or
+middle-clicked, so a caller that opens a page can open it in a new tab. When `onSelect` moves focus,
+such as to a heading on the page, focus stays there rather than going back to the trigger.
+`onOpenChange(open)` is called with `true` as the palette opens and `false` once it has closed.
+`trigger="icon"` is the icon button at every width, for a tight spot; a tooltip below it shows its
+placeholder and its first hotkey on hover and on focus, since a magnifier alone names nothing to a
+sighted reader. `triggerHref` makes the trigger a link to that address, drawn the same, until the
+page hydrates, so a reader without JavaScript reaches a search page.
 
 ```tsx
 <CommandPalette
@@ -3031,6 +3089,8 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
 - `useFormat()` returns the nearest `FormatContext` value, for a component that writes a date
   itself (`useFormat().dateTime(at)`).
 - `WHEN_LABELS` holds the English words `When` and `OnDay` use: `missing`, `title` and `relative`.
+- `ELAPSED_LABELS` holds the words of `Elapsed`: `missing` (`-`) and `duration(milliseconds, language)`,
+  the clock face `Intl.DurationFormat` writes in that language (`02:05`, `1:02:03`).
 
 ### DateTimeField (`./date-time-field`)
 
@@ -3326,6 +3386,27 @@ useFocusAfterRemoval(list, members.map((member) => member.id), removingId, {
   (`!==`, so a message with the same text) moves nothing: clear it while the next attempt runs if a
   repeat must take focus again. `T` defaults to `HTMLInputElement`, so the ref goes straight onto
   an `<input>`.
+
+### useRowCursor (`./row-cursor`)
+
+- `useRowCursor({ count, onOpen, enabled? })` is a keyboard cursor over a list of rows: `j`
+  highlights the next row and `k` the one before, scrolling it into view, and Enter calls
+  `onOpen(index)`. It returns `{ index, rowProps }`; spread `rowProps(index)` on each row for its
+  `aria-current`, its highlight and a ref. Nothing is highlighted before the first `j` or `k`, both
+  start on the first row, the cursor stops at either end, and an empty list ignores the keys. The
+  keys match the physical key too, so they work on a Cyrillic layout, and do nothing with a
+  modifier, in a text field or inside a dialog; Enter on a link or a button stays with it. Only
+  one list on a page should listen: give the others `enabled: false`. `DataTable`'s `cursor` uses
+  it.
+- `stepRowCursor(from, step, count)` is where the cursor lands: `step` rows from `from`, held to
+  the ends; from no row (`-1`) on the first row, and in an empty list on none (`-1`).
+- `rowCursorClass` is the highlighted row's look, a selected background inside a selected
+  outline, which `rowProps` already sets.
+
+```tsx
+const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[index]) })
+<ul>{jobs.map((job, index) => <li key={job.id} {...cursor.rowProps(index)}>{job.name}</li>)}</ul>
+```
 
 ### useFocusOnChange (`./use-focus-on-change`)
 

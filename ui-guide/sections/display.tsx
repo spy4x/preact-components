@@ -23,6 +23,7 @@ import {
   CopyButton,
   DataTable,
   describedImages,
+  Elapsed,
   Field,
   FormatContext,
   Grid,
@@ -50,19 +51,24 @@ import {
   type Shortcut,
   ShortcutsDialog,
   Stack,
+  StatusMark,
+  type StatusMarkStatus,
   type TabItem,
   Table,
   Tabs,
   Timeline,
   type TimelineItem,
+  ToggleField,
   Tooltip,
   type TooltipPlacement,
   UsageMeter,
   useFormat,
   useHotkeys,
+  useRowCursor,
   useT,
   When,
 } from "@spy4x/preact-ui"
+import { cn } from "@spy4x/preact-cn"
 import { formatMoney } from "@spy4x/platform/universal/money"
 import uiAr from "@spy4x/preact-ui/i18n/ar"
 import uiDe from "@spy4x/preact-ui/i18n/de"
@@ -76,10 +82,12 @@ import { useId, useRef } from "preact/hooks"
 import {
   IconLogout,
   IconMoon,
+  IconPencilSquare,
   IconPlus,
   IconRefresh,
   IconSun,
   IconTrashBin,
+  IconUser,
 } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
@@ -96,7 +104,13 @@ import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
 import type { DemoFragment } from "../registry.ts"
-import { CommandPalette, type CommandPaletteOption } from "@spy4x/preact-ui/command-palette"
+import {
+  clearCommandPaletteRecent,
+  CommandPalette,
+  type CommandPaletteOption,
+  type CommandPaletteSelectDetails,
+  type CommandPaletteTrigger,
+} from "@spy4x/preact-ui/command-palette"
 
 /**
  * A one-square image, inline so the catalogue needs no network and no asset directory.
@@ -475,7 +489,7 @@ const usageMeterBudgets: readonly { label: string; used: number; limit: number }
   { label: "Restaurants", used: 48_200, limit: 50_000 },
   { label: "Fuel", used: 50_000, limit: 50_000 },
   { label: "Clothes", used: 51_200, limit: 50_000 },
-  { label: "Home improvement and garden supplies", used: 120_000, limit: 50_000 },
+  { label: "Home improvement, garden supplies and workshop tools", used: 120_000, limit: 50_000 },
   { label: "Gifts, with no budget", used: 4_000, limit: 0 },
 ]
 
@@ -660,6 +674,109 @@ function WhenDemo() {
         ))}
       </div>
     </FormatContext.Provider>
+  )
+}
+
+/** A job in the `Elapsed` card's list. */
+interface DemoJob {
+  id: string
+  name: string
+  status: StatusMarkStatus
+  start: number | null
+  end: number | null
+}
+
+/** The list's finished jobs, with fixed times, so they read the same on the server and later. */
+const finishedJobs: DemoJob[] = [
+  {
+    id: "backup",
+    name: "Nightly backup",
+    status: "done",
+    start: demoNow - 3_723_000,
+    end: demoNow,
+  },
+  {
+    id: "resize",
+    name: "Resize photos",
+    status: "out-of-time",
+    start: demoNow - 1_800_000,
+    end: demoNow - 600_000,
+  },
+]
+
+/**
+ * A list of jobs as card rows, each with its `StatusMark` and its `Elapsed`. The first job waits in
+ * the queue until Start: it then runs and its time ticks, and Stop ends it, so the server draws
+ * only fixed times. With the checkbox on, `useRowCursor` moves a highlight over the rows with `j`
+ * and `k`, and Enter writes the highlighted job to the readout. The keys start off, because the
+ * `DataTable` card's cursor listens to the same keys. `pages/e2e/ui/row-cursor.spec.ts` and
+ * `pages/e2e/ui/elapsed.spec.ts` drive it.
+ */
+function ElapsedDemo() {
+  const started = useSignal<number | null>(null)
+  const ended = useSignal<number | null>(null)
+  const keys = useSignal(false)
+  const opened = useSignal("none")
+  const first: DemoJob = {
+    id: "import",
+    name: "Import invoices",
+    status: started.value === null ? "queued" : ended.value === null ? "running" : "stopped",
+    start: started.value,
+    end: ended.value,
+  }
+  const jobs = [first, ...finishedJobs]
+  const cursor = useRowCursor({
+    count: jobs.length,
+    onOpen: (index) => opened.value = jobs[index].name,
+    enabled: keys.value,
+  })
+  const step = () => {
+    if (started.value === null) started.value = Date.now()
+    else if (ended.value === null) ended.value = Date.now()
+    else started.value = ended.value = null
+  }
+  return (
+    <Stack gap="sm">
+      <Cluster>
+        <Button variant="outline" size="sm" data-e2e="elapsed-step" onClick={step}>
+          {started.value === null ? "Start" : ended.value === null ? "Stop" : "Reset"}
+        </Button>
+        <Checkbox
+          data-e2e="elapsed-keys"
+          checked={keys.value}
+          onChange={(event) => keys.value = event.currentTarget.checked}
+        >
+          Keys j, k and Enter
+        </Checkbox>
+      </Cluster>
+      <ul class="flex flex-col gap-2" data-e2e="elapsed-jobs">
+        {jobs.map((job, index) => {
+          const row = cursor.rowProps(index)
+          return (
+            <li
+              key={job.id}
+              {...row}
+              class={cn(
+                "flex items-center justify-between gap-3 rounded-lg bg-surface px-4 py-3 ring-1 ring-subtle",
+                row.class,
+              )}
+            >
+              <span class="flex flex-col gap-1">
+                <span class="text-sm font-medium">{job.name}</span>
+                <StatusMark status={job.status} />
+              </span>
+              <Elapsed
+                start={job.start}
+                end={job.end}
+                labels={{ missing: "Not started" }}
+                class="text-sm text-muted"
+              />
+            </li>
+          )
+        })}
+      </ul>
+      <DemoNote e2e="elapsed-opened">Opened: {opened.value}</DemoNote>
+    </Stack>
   )
 }
 
@@ -903,6 +1020,47 @@ function DataTableDemo() {
         />
       </Stack>
       <DataTableServerDemo />
+      <DataTableCursorDemo />
+    </Stack>
+  )
+}
+
+/**
+ * `DataTable` with `cursor`: with the checkbox on, `j` and `k` highlight a row and Enter writes its
+ * merchant to the readout. The keys start off, because the `Elapsed` card's job list listens to the
+ * same keys. `pages/e2e/ui/row-cursor.spec.ts` drives it.
+ */
+function DataTableCursorDemo() {
+  const keys = useSignal(false)
+  const opened = useSignal("none")
+  return (
+    <Stack gap="sm" data-e2e="data-table-cursor">
+      <Checkbox
+        data-e2e="data-table-cursor-keys"
+        checked={keys.value}
+        onChange={(event) => keys.value = event.currentTarget.checked}
+      >
+        Keys j, k and Enter
+      </Checkbox>
+      <DataTable
+        caption="Invoices to open"
+        columns={[
+          { key: "date", header: "Date" },
+          { key: "merchant", header: "Merchant" },
+          {
+            key: "amount",
+            header: "Amount",
+            align: "right",
+            render: (row) => row.amount === null ? "—" : String(row.amount),
+          },
+        ]}
+        rows={dataTableRows}
+        rowKey={(row) => row.id}
+        sort={[]}
+        onSortChange={() => {}}
+        cursor={{ onOpen: (row) => opened.value = row.merchant, enabled: keys.value }}
+      />
+      <DemoNote e2e="data-table-opened">Opened: {opened.value}</DemoNote>
     </Stack>
   )
 }
@@ -1745,6 +1903,42 @@ const translator = createTranslator({
 </FormatContext.Provider>`,
     render: () => <WhenDemo />,
   },
+  Elapsed: {
+    summary:
+      "How long something has run, as a ticking clock face while it runs and a fixed one once it ends.",
+    wide: false,
+    props: [
+      {
+        name: "start",
+        type: "Date | number | string | null",
+        description: "When it started; a missing or unreadable one shows the missing label.",
+      },
+      {
+        name: "end",
+        type: "Date | number | string | null",
+        description: "When it ended. Left out or null, it is still running and ticks each second.",
+      },
+      {
+        name: "now",
+        type: "number",
+        default: "the clock",
+        description:
+          "The present in epoch milliseconds, for text that must not move; nothing ticks.",
+      },
+      {
+        name: "labels",
+        type: "Partial<ElapsedLabels>",
+        default: "ELAPSED_LABELS",
+        description: "The duration text and the missing label.",
+      },
+    ],
+    snippet: `<StatusMark status="running" /> <Elapsed start={job.startedAt} />
+<StatusMark status="done" /> <Elapsed start={job.startedAt} end={job.endedAt} />
+
+const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[index]) })
+<li {...cursor.rowProps(index)}>…</li>`,
+    render: () => <ElapsedDemo />,
+  },
   OnDay: {
     summary: "A calendar day in the person's own format and zone, with the exact instant on hover.",
     wide: false,
@@ -1959,6 +2153,12 @@ const translator = createTranslator({
         description:
           "Each row's own identity, so its checkbox, focus or state moves with it when the rows sort or page.",
       },
+      {
+        name: "cursor",
+        type: "{ onOpen, enabled? }",
+        description:
+          "Turns on `j` and `k` to highlight the next and the previous row, and Enter to open the highlighted one.",
+      },
     ],
     snippet: `<DataTable
   caption="Invoices"
@@ -1990,7 +2190,12 @@ const translator = createTranslator({
     total: response.total,
     onChange: (next) => page.value = next,
   }}
-/>`,
+/>
+
+// j and k highlight a row, Enter opens it.
+<DataTable caption="Invoices" columns={columns} rows={invoices} rowKey={(row) => row.id}
+  sort={sort.value} onSortChange={(next) => sort.value = next}
+  cursor={{ onOpen: (row) => navigate(\`/invoices/\${row.id}\`) }} />`,
     render: () => <DataTableDemo />,
   },
   Card: {
@@ -2653,9 +2858,9 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       {
         name: "options",
         type:
-          "{ id, label, detail?, hint?, group?, aliases?, icon?, kbd?, state?, disabledReason?, run?, keepOpen? }[]",
+          "{ id, label, detail?, hint?, group?, aliases?, icon?, kbd?, state?, disabledReason?, run?, keepOpen?, takesText?, children? }[]",
         description:
-          "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. Or `search`, not both.",
+          "Options it filters itself. The default filter, `matchOptions`, forgives a typo, any word order, the other keyboard layout and the other alphabet, and finds an option by its `aliases`. A query starting with “>” lists only commands. PageUp and PageDown jump between groups. Or `search`, not both.",
       },
       {
         name: "search",
@@ -2665,9 +2870,9 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "onSelect",
-        type: "(option, { alternative }) => void",
+        type: "(option, { alternative, text? }) => void",
         description:
-          "The picked option; `alternative` is Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click, for a new tab. Focus `onSelect` moves stays where it went.",
+          "The picked option. `alternative` is true for Ctrl/⌘+Enter, a middle click or a Ctrl/⌘+click (a new tab, for a link); `text` is what was typed for a `takesText` row. Focus `onSelect` moves stays where it went.",
       },
       {
         name: "onOpenChange",
@@ -2676,9 +2881,21 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "options.run",
-        type: "() => void",
+        type: "({ alternative, text? }) => void",
         description:
-          "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`.",
+          "Makes the option a command: Enter or a click runs it in place of `onSelect`, after the palette closes, or with it open under `keepOpen`. A pick that moves focus, such as opening a dialog, keeps it there.",
+      },
+      {
+        name: "options.takesText",
+        type: "boolean",
+        description:
+          "A quick-create row such as “New note”: Tab or Enter shows its label as a chip before the field, and Enter then picks it with the typed `text`. Backspace in the empty field leaves.",
+      },
+      {
+        name: "options.children",
+        type: "options[]",
+        description:
+          "Sub-rows, such as Theme › Light and Dark: Tab or Enter lists them with the path before the field, Backspace in the empty field goes back. A top-level query does not search them.",
       },
       {
         name: "options.keepOpen",
@@ -2711,10 +2928,10 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "trigger",
-        type: `"button" | "field" | "icon"`,
+        type: `"button" | "field" | "icon" | ((api: CommandPaletteTrigger) => ComponentChildren)`,
         default: `"button"`,
         description:
-          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. `icon` is the icon button at every width, with a tooltip of its placeholder and first hotkey.",
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. `icon` is the icon button at every width, with a tooltip of its placeholder and first hotkey. A function draws a trigger of its own from `{ open, ref, shortcuts, hotkey }`, or none with `null`: `open(query)` opens with that text typed, `ref` takes focus back on close. The hotkeys open the palette whatever trigger is drawn.",
       },
       {
         name: "triggerHref",
@@ -2740,6 +2957,12 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         description: "The words `showMatch` shows; see `defaultCommandPaletteMatchLabels`.",
       },
       {
+        name: "recent",
+        type: "{ storageKey, storage: () => KeyValueStore }",
+        description:
+          "Keeps the last 10 top-level picks under `storageKey` in `storage()`, such as `() => localStorage`, and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. Call `clearCommandPaletteRecent(storageKey, storage)` on sign-out.",
+      },
+      {
         name: "hotkeys",
         type: "string[]",
         default: `["/", "mod+k"]`,
@@ -2761,7 +2984,7 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "labels",
         type: "Partial<CommandPaletteLabels>",
         description:
-          "The field's name, placeholder, close button, the empty, loading and error words, and `stateChanged(label, state)`.",
+          "The field's name, placeholder, close button, the empty, loading and error words, `stateChanged(label, state)`, the “> for commands” hint, `withText(label, text)`, the back button's name, the “Recent” and “Best match” headings, `results(count)` and the key hints' words (`keysMove`, `keysOpen`, `keysAlternative`).",
       },
     ],
     snippet: `const options = [
@@ -2781,12 +3004,28 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
 />
 
 <CommandPalette
+  hotkeys={["mod+shift+p"]}
+  trigger={({ open, ref, shortcuts }) => (
+    <>
+      <Button ref={ref} aria-haspopup="dialog" aria-keyshortcuts={shortcuts} onClick={() => open()}>
+        Run a command…
+      </Button>
+      <Button variant="ghost" aria-haspopup="dialog" onClick={() => open(">")}>Commands only</Button>
+    </>
+  )}
   options={[
     { id: "theme", label: "Theme", icon: IconMoon, state: theme, kbd: "mod+shift+l", keepOpen: true, run: toggleTheme },
     { id: "sync", label: "Sync now", icon: IconRefresh, disabledReason: "Needs a connection" },
+    { id: "note", label: "New note", takesText: true },
+    { id: "account", label: "Account", children: [{ id: "profile", label: "Profile" }] },
   ]}
-  onSelect={() => {}}
+  onSelect={(option, { alternative, text }) => open(option.id, { newTab: alternative, text })}
 />
+
+const recent = { storageKey: "app-palette", storage: () => localStorage }
+<CommandPalette options={options} recent={recent} onSelect={(option) => run(option.id)} />
+// On sign-out:
+clearCommandPaletteRecent(recent.storageKey, recent.storage)
 
 <CommandPalette
   search={(query, signal) => fetch(\`/api/search?q=\${encodeURIComponent(query)}\`, { signal }).then((r) => r.json())}
@@ -2951,17 +3190,29 @@ const paletteComponents: readonly CommandPaletteOption[] = [
 ]
 
 /**
+ * What the commands demo says ran: the label, the text typed for a quick-create row, and whether
+ * the pick was the alternative one.
+ */
+function ranText(label: string, { alternative, text }: CommandPaletteSelectDetails): string {
+  return `${label}${text === undefined ? "" : `: “${text}”`}${alternative ? " (alternative)" : ""}`
+}
+
+/**
  * The commands `CommandPalette` demo's options: a theme toggle that stays open and shows its state,
- * a command with a shortcut, one that cannot run offline, and one with a hint.
+ * a command with a shortcut, one that cannot run offline, one with a hint, a command that moves
+ * focus out of the palette, a quick-create row that takes text, and a submenu two levels deep.
+ * The last three are not commands, so a ">" query hides them.
  *
  * @param theme The theme the toggle shows.
  * @param toggle Switches the theme.
  * @param ran Records which command ran.
+ * @param jump Moves focus to the card's note.
  */
 function paletteCommands(
   theme: string,
   toggle: () => void,
-  ran: (label: string) => void,
+  ran: (label: string, details: CommandPaletteSelectDetails) => void,
+  jump: () => void,
 ): CommandPaletteOption[] {
   return [
     {
@@ -2983,7 +3234,7 @@ function paletteCommands(
       hint: "Command",
       kbd: "mod+alt+n",
       group: "Commands",
-      run: () => ran("New note"),
+      run: (details) => ran("New note", details),
     },
     {
       id: "sync",
@@ -2991,7 +3242,7 @@ function paletteCommands(
       icon: IconRefresh,
       group: "Commands",
       disabledReason: "Needs a connection",
-      run: () => ran("Sync now"),
+      run: (details) => ran("Sync now", details),
     },
     {
       id: "sign-out",
@@ -2999,9 +3250,80 @@ function paletteCommands(
       icon: IconLogout,
       hint: "Account",
       group: "Commands",
-      run: () => ran("Sign out"),
+      run: (details) => ran("Sign out", details),
+    },
+    { id: "jump", label: "Jump to the log", hint: "Command", group: "Commands", run: jump },
+    {
+      id: "add-task",
+      label: "Add a task",
+      icon: IconPencilSquare,
+      hint: "Type its name",
+      group: "Create and go",
+      takesText: true,
+    },
+    {
+      id: "account",
+      label: "Account",
+      icon: IconUser,
+      group: "Create and go",
+      children: [
+        { id: "profile", label: "Profile" },
+        { id: "billing", label: "Billing", detail: "Plan and invoices" },
+        {
+          id: "security",
+          label: "Security",
+          children: [
+            { id: "password", label: "Password" },
+            { id: "two-step", label: "Two-step sign-in" },
+          ],
+        },
+      ],
     },
   ]
+}
+
+/**
+ * The commands `CommandPalette` demo's own trigger: a button showing its hotkey, which focus comes
+ * back to, and one that opens the palette with ">" typed, listing only commands.
+ *
+ * @param api What the palette hands its trigger.
+ */
+function PaletteCommandsTrigger({ open, ref, shortcuts, hotkey }: CommandPaletteTrigger) {
+  return (
+    <Cluster>
+      <Button
+        ref={ref}
+        variant="outline"
+        size="sm"
+        aria-haspopup="dialog"
+        aria-keyshortcuts={shortcuts}
+        data-e2e="palette-commands-open"
+        onClick={() => open()}
+      >
+        Run a command…
+        {hotkey !== undefined && (
+          <span aria-hidden="true" class="max-sm:hidden">
+            <Kbd keys={hotkey} />
+          </span>
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-haspopup="dialog"
+        data-e2e="palette-commands-only"
+        onClick={() => open(">")}
+      >
+        Commands only
+      </Button>
+    </Cluster>
+  )
+}
+
+/** Where the remembering `CommandPalette` demo keeps its recent picks. */
+const PALETTE_RECENT = {
+  storageKey: "ui-guide:command-palette-recent",
+  storage: () => localStorage,
 }
 
 /** The names the remote `CommandPalette` demo's pretend server knows. */
@@ -3053,13 +3375,16 @@ function paletteFruitSearch(
 }
 
 /**
- * `CommandPalette` five ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
- * since this page's header search already owns `/` and Ctrl+K. The second puts the same options
- * behind the icon trigger, whose tooltip shows Ctrl+Shift+K (⌘⇧K on a Mac). The third asks a
- * pretend server and has no hotkey. The fourth is the field trigger, opening on a query with a
- * typo, and says how each result matched. The fifth lists commands: a theme toggle that stays
- * open, a shortcut and a command that cannot run. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts`
- * read what each picked and how many searches started and answered.
+ * `CommandPalette` six ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
+ * has no hotkey. The third puts the first one's options behind the icon trigger, whose tooltip
+ * shows Ctrl+Shift+K (⌘⇧K on a Mac). The fourth is the field trigger, opening on a query with a
+ * typo, and says how each result matched. The fifth lists commands: a theme toggle that stays open,
+ * a shortcut, a command that cannot run, one that moves focus to the card's note, a quick-create
+ * row and a submenu. It draws a trigger of its own, which a switch can remove, and opens on
+ * Ctrl+Shift+P either way. The sixth lists the same commands and remembers recent picks.
+ * `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many searches
+ * started and answered.
  */
 function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
@@ -3070,6 +3395,8 @@ function CommandPaletteDemo() {
   const aborted = useSignal<string[]>([])
   const theme = useSignal("Light")
   const ran = useSignal("nothing yet")
+  const log = useRef<HTMLSpanElement>(null)
+  const commandsTrigger = useSignal(true)
   return (
     <Stack>
       <Cluster>
@@ -3122,13 +3449,46 @@ function CommandPaletteDemo() {
         options={paletteCommands(
           theme.value,
           () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
-          (label) => ran.value = label,
+          (label, details) => ran.value = ranText(label, details),
+          () => log.current?.focus(),
         )}
-        hotkeys={[]}
+        hotkeys={["mod+shift+p"]}
+        trigger={commandsTrigger.value ? PaletteCommandsTrigger : () => null}
         dataE2E="palette-commands"
         labels={{ placeholder: "Run a command…" }}
-        onSelect={(option) => ran.value = option.label}
+        onSelect={(option, details) => ran.value = ranText(option.label, details)}
       />
+      <ToggleField
+        id="palette-commands-trigger"
+        label="Show the commands trigger"
+        description="Without it, Ctrl+Shift+P still opens the palette."
+        value={commandsTrigger.value}
+        onToggle={(value) => commandsTrigger.value = value}
+      />
+      <Cluster>
+        <CommandPalette
+          options={paletteCommands(
+            theme.value,
+            () => theme.value = theme.value === "Dark" ? "Light" : "Dark",
+            (label, details) => ran.value = ranText(label, details),
+            () => log.current?.focus(),
+          )}
+          recent={PALETTE_RECENT}
+          hotkeys={[]}
+          dataE2E="palette-recent"
+          labels={{ placeholder: "Run, remembering…" }}
+          onSelect={(option, details) => ran.value = ranText(option.label, details)}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="palette-recent-forget"
+          onClick={() =>
+            clearCommandPaletteRecent(PALETTE_RECENT.storageKey, PALETTE_RECENT.storage)}
+        >
+          Forget recent picks
+        </Button>
+      </Cluster>
       <DemoNote e2e="palette-picked">
         Jumped to <span data-e2e="palette-local-picked">{picked.value}</span>; fruit{" "}
         <span data-e2e="palette-remote-picked">{pickedRemote.value}</span>; searches started{" "}
@@ -3139,9 +3499,13 @@ function CommandPaletteDemo() {
         </span>; component{" "}
         <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
         <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
-        <span data-e2e="palette-commands-ran">{ran.value}</span>. One letter answers slowly, longer
-        queries quickly, “slow” takes twenty seconds, “dragon” finds a long name, and “boom” fails.
-        The field above opens on “combobx”; try “ещфые” or “календарь”.
+        <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
+        answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
+        name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
+        the commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
+        lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
+        group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
+        last palette remembers its picks across reloads and lists them on the empty query.
       </DemoNote>
     </Stack>
   )

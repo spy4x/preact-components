@@ -141,6 +141,7 @@ export {
   type DataTableClientProps,
   type DataTableColumn,
   type DataTableColumnAlign,
+  type DataTableCursor,
   type DataTableDataColumn,
   type DataTableDisplayColumn,
   type DataTableMode,
@@ -228,6 +229,10 @@ export {
 } from "./file-input.tsx"
 export {
   type DateTextLabels,
+  Elapsed,
+  ELAPSED_LABELS,
+  type ElapsedLabels,
+  type ElapsedProps,
   FormatContext,
   OnDay,
   type OnDayProps,
@@ -483,6 +488,7 @@ export {
   clickByHotkey,
   createHotkeyListener,
   firesInFields,
+  hotkeyActionBinding,
   type HotkeyBinding,
   hotkeyClickBinding,
   type HotkeyPress,
@@ -499,6 +505,14 @@ export { useFreshError } from "./use-fresh-error.ts"
 export { useFocusOnError } from "./use-focus-on-error.ts"
 export { useFocusOnChange } from "./use-focus-on-change.ts"
 export {
+  type RowCursor,
+  rowCursorClass,
+  type RowCursorOptions,
+  type RowCursorRowProps,
+  stepRowCursor,
+  useRowCursor,
+} from "./row-cursor.ts"
+export {
   type FocusAfterRemovalOptions,
   type RowId,
   useFocusAfterRemoval,
@@ -513,6 +527,7 @@ export {
   type ShortcutsDialogProps,
 } from "./shortcuts-dialog.tsx"
 export {
+  clearCommandPaletteRecent,
   CommandPalette,
   type CommandPaletteBaseProps,
   type CommandPaletteGroup,
@@ -521,8 +536,8 @@ export {
   type CommandPaletteMatchKind,
   type CommandPaletteOption,
   type CommandPaletteProps,
+  type CommandPaletteRecent,
   type CommandPaletteRemoteProps,
-  type CommandPaletteSelectDetail,
   defaultCommandPaletteLabels,
   defaultCommandPaletteMatchLabels,
   groupOptions,
