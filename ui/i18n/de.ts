@@ -184,6 +184,7 @@ export default {
   "FilterBar.sort": "Sortieren nach",
   "FilterBar.togglesLabel": "Schnellfilter",
   "FrameChrome.terminal": "Terminal",
+  "HelpPopover.closeLabel": "Schließen",
   "Honeypot.label": "Dieses Feld leer lassen",
   "IconPicker.aliases.baby": "Kinder, Kinderbetreuung, Kita, Windeln",
   "IconPicker.aliases.banknote": "Bargeld, Gehalt, Einkommen, Lohn, Geld",

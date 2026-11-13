@@ -194,6 +194,7 @@ export default {
   "FilterBar.sort": "Сортировка",
   "FilterBar.togglesLabel": "Быстрые фильтры",
   "FrameChrome.terminal": "Терминал",
+  "HelpPopover.closeLabel": "Закрыть",
   "Honeypot.label": "Не заполняйте это поле",
   "IconPicker.aliases.baby": "дети, ребёнок, детский сад, подгузники, няня",
   "IconPicker.aliases.banknote": "наличные, зарплата, доход, деньги",

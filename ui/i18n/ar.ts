@@ -205,6 +205,7 @@ export default {
   "FilterBar.sort": "ترتيب حسب",
   "FilterBar.togglesLabel": "تصفية سريعة",
   "FrameChrome.terminal": "الطرفية",
+  "HelpPopover.closeLabel": "إغلاق",
   "Honeypot.label": "اترك هذا الحقل فارغًا",
   "IconPicker.aliases.baby": "أطفال, رعاية الأطفال, حضانة, حفاضات",
   "IconPicker.aliases.banknote": "نقد, راتب, دخل, أجور, مال",

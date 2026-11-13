@@ -52,6 +52,9 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   `ui-guide/sections/feedback.tsx`.
 - A short form in a dialog → `Modal` (`ui/modal.tsx`) with `DialogActions`
   (`ui/dialog-actions.tsx`). Example: `ui-guide/sections/feedback.tsx`.
+- How a page or a setting works, with worked examples, read and closed → `HelpPopover`
+  (`ui/help-popover.tsx`); no JavaScript needed. A form or a decision is a `Modal`; one short hint
+  on a control is a `Tooltip` (`ui/tooltip.tsx`). Example: `ui-guide/sections/feedback.tsx`.
 - A menu of actions → `Dropdown` and `DropdownItem` (`ui/dropdown.tsx`). Example:
   `ui-guide/sections/crud.tsx`.
 - A toast → `Toastr` (`ui/toastr.tsx`) fed by `createToastStore` (`signals/toast.ts`). Example:

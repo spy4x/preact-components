@@ -43,6 +43,7 @@
     "./file-input": "./file-input.tsx",
     "./filter-bar": "./filter-bar.tsx",
     "./format": "./format.tsx",
+    "./help-popover": "./help-popover.tsx",
     "./honeypot": "./honeypot.tsx",
     "./icon-picker": "./icon-picker.tsx",
     "./i18n": "./i18n.tsx",

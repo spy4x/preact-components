@@ -190,6 +190,7 @@ export default {
   "FilterBar.sort": "Trier par",
   "FilterBar.togglesLabel": "Filtres rapides",
   "FrameChrome.terminal": "Terminal",
+  "HelpPopover.closeLabel": "Fermer",
   "Honeypot.label": "Laissez ce champ vide",
   "IconPicker.aliases.baby": "enfants, garde d’enfants, crèche, nounou, couches",
   "IconPicker.aliases.banknote": "espèces, salaire, revenus, paie, argent",
