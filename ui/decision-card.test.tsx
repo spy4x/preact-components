@@ -83,12 +83,12 @@ describe("DecisionCard", () => {
     const html = decision({ context: "1\n2\n3\n4\n5\n6\n7" })
     expect(html).toMatch(/<p[^>]*data-folded[^>]*class="[^"]*line-clamp-6/)
     expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*aria-controls="[^"]+-context"/)
-    expect(html).toContain(">More</button>")
+    expect(html).toContain(">More<svg")
   })
 
   it("shows no More toggle for a context of 6 lines", () => {
     const html = decision({ context: "1\n2\n3\n4\n5\n6" })
-    expect(html).not.toContain(">More</button>")
+    expect(html).not.toContain(">More<svg")
     expect(html).not.toContain("aria-controls")
   })
 
@@ -100,7 +100,7 @@ describe("DecisionCard", () => {
   })
 
   it("calls the disclosure Add a note on a decision without onSend", () => {
-    expect(decision()).toMatch(/aria-expanded="false"[^>]*>Add a note<span/)
+    expect(decision()).toMatch(/aria-expanded="false"[^>]*>Add a note<svg/)
   })
 
   it("shows the answer field open on a question without options", () => {
@@ -155,7 +155,7 @@ describe("DecisionCard", () => {
       labels: { recommended: "Suggested", more: "Show all", addNote: "Note it" },
     })
     expect(html).toContain(">Suggested<")
-    expect(html).toContain(">Show all</button>")
+    expect(html).toContain(">Show all<svg")
     expect(html).toContain(">Note it<")
   })
 

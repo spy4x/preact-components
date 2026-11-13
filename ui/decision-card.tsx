@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals"
 import { join } from "@spy4x/preact-cn/join"
+import { IconChevronDown } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { Badge } from "./badge.tsx"
@@ -120,8 +121,20 @@ const FOLDED_LINES = 6
 /** Every option button's classes, so the recommended one can never look bigger or brighter. */
 const OPTION_CLASS = "w-full min-h-11 justify-start! text-start"
 
-/** The quiet toggles' classes: a 44 px target on a phone. */
-const TOGGLE_CLASS = "self-start max-sm:min-h-11"
+/**
+ * The quiet toggles' classes: a 44 px target on a phone, and pulled back by their padding so their
+ * text lines up with the card's other text.
+ */
+const TOGGLE_CLASS = "-ms-3 self-start max-sm:min-h-11"
+
+/** The toggles' chevron, turned over while what it opens is open. */
+function Chevron({ open }: { open: boolean }): JSX.Element {
+  return (
+    <IconChevronDown
+      class={join("size-4 motion-safe:transition-transform", open && "rotate-180")}
+    />
+  )
+}
 
 /**
  * The options in the order a {@link DecisionCard} draws them: the recommended ones first, the rest
@@ -205,6 +218,8 @@ export function DecisionCard(
     const element = contextBox.current
     if (element === null || !folded.value) return
     const measure = () => {
+      // An observer callback can still arrive after an unfold, with the whole text drawn.
+      if (!folded.peek()) return
       overflowing.value = element.scrollHeight > element.clientHeight + 1
     }
     measure()
@@ -258,6 +273,8 @@ export function DecisionCard(
           ref={heading}
           id={headingId}
           tabIndex={-1}
+          // A `Modal` that opens with the card moves focus by this attribute; a page, by the effect.
+          autoFocus={autoFocus}
           class="rounded-sm text-lg font-medium text-balance text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >
           {title}
@@ -287,6 +304,7 @@ export function DecisionCard(
               onClick={() => folded.value = !folded.value}
             >
               {folded.value ? words.more : words.less}
+              <Chevron open={!folded.value} />
             </Button>
           )}
         </div>
@@ -339,6 +357,7 @@ export function DecisionCard(
             }}
           >
             {onSend !== undefined && choosing ? words.addNoteOrAnswer : words.addNote}
+            <Chevron open={noteOpen.value} />
             {hotkeys && <HotkeyHint keys="n" apple={apple} />}
           </Button>
         )}

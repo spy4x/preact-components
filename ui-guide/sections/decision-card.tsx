@@ -3,12 +3,22 @@
  * three items, a decision with a recommended option, a question and a to-do, the way an app moves
  * to the next item after each answer.
  *
- * Keys are off until "Answer with the keyboard" is ticked, because the guide page holds other
- * demos that listen for `1` and `n`. `pages/e2e/ui/decision-card.spec.ts` ticks it and drives the
- * keys, the focus and axe-core.
+ * The card on the page binds no key, because the guide page holds other demos that listen for `1`
+ * and `n`. "Answer with the keyboard" opens the same queue in a `Modal`, as an app shows it on a
+ * desktop: there the keys work, and the question takes focus as each item opens.
+ * `pages/e2e/ui/decision-card.spec.ts` drives the keys, the focus and axe-core.
  */
 
-import { Card, CardBody, Checkbox, Cluster, DecisionCard, Stack } from "@spy4x/preact-ui"
+import {
+  Button,
+  Card,
+  CardBody,
+  Checkbox,
+  Cluster,
+  DecisionCard,
+  Modal,
+  Stack,
+} from "@spy4x/preact-ui"
 import type { DecisionCardOption } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
@@ -64,29 +74,63 @@ const QUEUE: readonly QueueItem[] = [
   },
 ]
 
-function DecisionCardDemo() {
-  const index = useSignal(0)
-  const moved = useSignal(false)
-  const keys = useSignal(false)
-  const pending = useSignal(false)
-  const last = useSignal("")
-  const item = QUEUE[index.value]
+/** The demo's queue position and last answer, shared by the card on the page and the dialog. */
+interface QueueState {
+  index: { value: number }
+  last: { value: string }
+  pending: boolean
+}
+
+/**
+ * The card for the item at `state.index`. Answering it records the answer and moves to the next
+ * item, which mounts afresh under its own `key`.
+ */
+function QueueCard(
+  { state, live }: { state: QueueState; live: boolean },
+) {
+  const item = QUEUE[state.index.value]
   const next = (answer: string) => {
-    last.value = answer
-    moved.value = true
-    index.value = (index.value + 1) % QUEUE.length
+    state.last.value = answer
+    state.index.value = (state.index.value + 1) % QUEUE.length
   }
   const withNote = (answer: string, note: string) => note === "" ? answer : `${answer} (${note})`
   return (
+    <DecisionCard
+      key={item.id}
+      kind={item.kind}
+      position={`Item ${state.index.value + 1} of ${QUEUE.length}`}
+      title={item.title}
+      meta={item.meta}
+      context={item.context}
+      options={item.options}
+      onChoose={item.options && ((option, note) => next(withNote(option.label, note)))}
+      onSend={item.options || item.answer ? (text) => next(`"${text}"`) : undefined}
+      onDone={item.done ? (note) => next(withNote("Marked done", note)) : undefined}
+      notice="Answers stay in this demo; nothing is sent."
+      pending={state.pending}
+      autoFocus={live}
+      hotkeys={live}
+    />
+  )
+}
+
+function DecisionCardDemo() {
+  const index = useSignal(0)
+  const last = useSignal("")
+  const pending = useSignal(false)
+  const open = useSignal(false)
+  const state = { index, last, pending: pending.value }
+  return (
     <Stack gap="md">
+      <Card data-e2e="decision-card">
+        <CardBody>
+          <QueueCard state={state} live={false} />
+        </CardBody>
+      </Card>
       <Cluster>
-        <Checkbox
-          checked={keys.value}
-          onChange={(event) => keys.value = event.currentTarget.checked}
-          data-e2e="decision-card-keys"
-        >
+        <Button variant="secondary" data-e2e="decision-card-open" onClick={() => open.value = true}>
           Answer with the keyboard
-        </Checkbox>
+        </Button>
         <Checkbox
           checked={pending.value}
           onChange={(event) => pending.value = event.currentTarget.checked}
@@ -95,29 +139,21 @@ function DecisionCardDemo() {
           Saving
         </Checkbox>
       </Cluster>
-      <Card data-e2e="decision-card">
-        <CardBody>
-          <DecisionCard
-            key={item.id}
-            kind={item.kind}
-            position={`Item ${index.value + 1} of ${QUEUE.length}`}
-            title={item.title}
-            meta={item.meta}
-            context={item.context}
-            options={item.options}
-            onChoose={item.options && ((option, note) => next(withNote(option.label, note)))}
-            onSend={item.options || item.answer ? (text) => next(`"${text}"`) : undefined}
-            onDone={item.done ? (note) => next(withNote("Marked done", note)) : undefined}
-            notice="Answers stay in this demo; nothing is sent."
-            pending={pending.value}
-            autoFocus={moved.value}
-            hotkeys={keys.value}
-          />
-        </CardBody>
-      </Card>
       <p role="status" class="text-sm text-muted" data-e2e="decision-card-last">
         {last.value === "" ? "No answer yet." : `Last answer: ${last.value}`}
       </p>
+      {open.value && (
+        <Modal
+          open
+          ariaLabel="Answer the queue"
+          onClose={() => {
+            open.value = false
+          }}
+          dataE2E="decision-card-dialog"
+        >
+          <QueueCard state={state} live />
+        </Modal>
+      )}
     </Stack>
   )
 }
