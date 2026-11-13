@@ -575,12 +575,13 @@ function remotePaletteSpecs(): Spec[] {
         await other.evaluate((button) => (button as HTMLElement).blur())
         await page.keyboard.press("Control+F8")
         await closeWithEscape()
-        const focused = await page.evaluate(() => {
-          const active = document.activeElement
-          return active === document.body ? "body" : active?.outerHTML.slice(0, 80) ?? "none"
-        })
-        if (focused !== "body") {
-          throw new Error(`focus after Escape with nothing before: ${focused}`)
+        // The dialog hides before its `close` event runs the handler that blurs the field, so wait
+        // for focus to leave rather than read it once.
+        const left = await page.waitForFunction(() => document.activeElement === document.body)
+          .then(() => true, () => false)
+        if (!left) {
+          const focused = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 80))
+          throw new Error(`focus after Escape with nothing before: ${focused ?? "none"}`)
         }
       },
     },
