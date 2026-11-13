@@ -583,12 +583,19 @@ export const specs: readonly Spec[] = [
       "a second time",
     pageId: "system",
     run: async (page) => {
+      // The page's clock, paused, holds the demo's 300 ms check open while the paste arrives: on
+      // a loaded host that check could end first, and then the paste is rightly submitted.
+      await page.clock.install()
+      await page.reload()
+      await page.locator(`html[data-hydrated="true"]`).waitFor()
       const { demo, field, received } = await openMailedCodeStep(page)
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
       await field.pressSequentially("AAA-BBB")
       await page.keyboard.press("Enter")
       await demo.locator(`[data-e2e="mailed-code-step-submit"][aria-busy="true"]`).waitFor()
       await field.selectText()
       await paste(field, "K7Q-2XM")
+      await page.clock.runFor(300)
       await demo.getByText("That code is wrong or has expired.").waitFor()
       if (await received.textContent() !== "onSubmit received: AAA-BBB") {
         throw new Error(`a second code went out while busy: ${await received.textContent()}`)
