@@ -180,6 +180,24 @@ describe("Table", () => {
       .toBe(render(<Table headerSlot={header} bodySlots={bodySlots} />))
   })
 
+  it("spreads rowProps on each body row and adds its class to the row's own", () => {
+    const html = render(
+      <Table
+        headerSlot={header}
+        bodySlots={cells("Grace", "Ada")}
+        rowProps={(index) => ({
+          "aria-current": index === 1 ? "true" : undefined,
+          class: index === 1 ? "bg-selected-soft" : undefined,
+          ref: () => {},
+        })}
+      />,
+    )
+    expect(html).toContain('<tr class="text-sm *:px-6 *:py-4 hover:bg-hover"><td>Grace</td>')
+    expect(html).toContain(
+      '<tr aria-current="true" class="text-sm *:px-6 *:py-4 hover:bg-hover bg-selected-soft"><td>Ada',
+    )
+  })
+
   it("throws when bodyKeys does not give every body row exactly one key", () => {
     for (const bodyKeys of [["only-one"], ["a", "b", "c"]]) {
       expect(() => Table({ headerSlot: header, bodySlots: cells("Grace", "Ada"), bodyKeys }))
