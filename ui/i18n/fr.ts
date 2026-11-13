@@ -157,7 +157,7 @@ export default {
   "DecisionCard.addNoteOrAnswer": "Ajouter une note ou votre propre réponse",
   "DecisionCard.answer": "Votre réponse",
   "DecisionCard.less": "Voir moins",
-  "DecisionCard.markDone": "Marquer comme fait",
+  "DecisionCard.markDone": "Marquer comme terminé",
   "DecisionCard.more": "Voir plus",
   "DecisionCard.note": "Note",
   "DecisionCard.noteOrAnswer": "Note ou votre propre réponse",

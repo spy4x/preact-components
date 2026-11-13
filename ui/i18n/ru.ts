@@ -160,7 +160,7 @@ export default {
   "DecisionCard.addNoteOrAnswer": "Добавить заметку или свой ответ",
   "DecisionCard.answer": "Ваш ответ",
   "DecisionCard.less": "Свернуть",
-  "DecisionCard.markDone": "Отметить выполненным",
+  "DecisionCard.markDone": "Готово",
   "DecisionCard.more": "Развернуть",
   "DecisionCard.note": "Заметка",
   "DecisionCard.noteOrAnswer": "Заметка или свой ответ",
