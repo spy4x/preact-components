@@ -585,10 +585,9 @@ export const specs: readonly Spec[] = [
     run: async (page) => {
       // The page's clock, paused, holds the demo's 300 ms check open while the paste arrives: on
       // a loaded host that check could end first, and then the paste is rightly submitted.
-      await page.clock.install()
-      await page.reload()
-      await page.locator(`html[data-hydrated="true"]`).waitFor()
+      // Installed in the open page, no reload: the demo looks its timers up when it sets them.
       const { demo, field, received } = await openMailedCodeStep(page)
+      await page.clock.install()
       await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
       await field.pressSequentially("AAA-BBB")
       await page.keyboard.press("Enter")

@@ -29,13 +29,12 @@ function fileSpecs(): Spec[] {
       .waitFor()
   const focused = (page: Page, target: Locator) => target.and(page.locator(":focus")).waitFor()
   /**
-   * Reloads the page on a paused clock, so the demo's 600 ms Retry check ends only when the spec
-   * moves the clock: on a loaded host the spec could otherwise miss the checking state.
+   * Pauses the page's clock, so the demo's 600 ms Retry check ends only when the spec moves the
+   * clock: on a loaded host the spec could otherwise miss the checking state. Installed in the
+   * open page, no reload: the demo and Preact look their timers up when they set them.
    */
   const pauseClock = async (page: Page) => {
     await page.clock.install()
-    await page.reload()
-    await page.locator(`html[data-hydrated="true"]`).waitFor()
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
   }
   return [
