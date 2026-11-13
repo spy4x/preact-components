@@ -488,7 +488,7 @@ const usageMeterBudgets: readonly { label: string; used: number; limit: number }
   { label: "Restaurants", used: 48_200, limit: 50_000 },
   { label: "Fuel", used: 50_000, limit: 50_000 },
   { label: "Clothes", used: 51_200, limit: 50_000 },
-  { label: "Home improvement and garden supplies", used: 120_000, limit: 50_000 },
+  { label: "Home improvement, garden supplies and workshop tools", used: 120_000, limit: 50_000 },
   { label: "Gifts, with no budget", used: 4_000, limit: 0 },
 ]
 

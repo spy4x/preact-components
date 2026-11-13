@@ -81,9 +81,20 @@ describe("UsageMeter", () => {
 
   it("draws the label as the caller wrote it, not as an uppercase caption", () => {
     const html = render(<UsageMeter used={412} limit={500} format={euros} label="Groceries" />)
-    expect(html).toMatch(/<span id="[^"]+" class="min-w-0 truncate text-sm font-medium">Groceries</)
+    expect(html).toMatch(/<span id="[^"]+" class="[^"]*text-sm font-medium">Groceries</)
     expect(html).not.toContain("pc-kpi-label")
     expect(html).not.toContain("uppercase")
+  })
+
+  it("clamps a long label to two wrapping lines instead of cutting it to one", () => {
+    const html = render(
+      <UsageMeter used={412} limit={500} format={euros} label="Home improvement and garden" />,
+    )
+    const classes = /<span id="[^"]+" class="([^"]*)">Home/.exec(html)?.[1].split(" ") ?? []
+
+    expect(classes).toContain("line-clamp-2")
+    expect(classes).toContain("break-words")
+    expect(classes, "a one-line cut").not.toContain("truncate")
   })
 
   it("says what is left, in muted ink, well under the limit", () => {
