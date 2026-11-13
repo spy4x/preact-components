@@ -49,6 +49,9 @@ import { specs as blogBlocks } from "./ui/blog-blocks.spec.ts"
 import { specs as docsBlocks } from "./ui/docs-blocks.spec.ts"
 import { specs as storefront } from "./ui/storefront.spec.ts"
 import { specs as file } from "./ui/file.spec.ts"
+import { specs as statusMark } from "./ui/status-mark.spec.ts"
+import { specs as elapsed } from "./ui/elapsed.spec.ts"
+import { specs as rowCursor } from "./ui/row-cursor.spec.ts"
 import { specs as screenTour } from "./ui/screen-tour.spec.ts"
 import { specs as avatar } from "./ui/avatar.spec.ts"
 import { specs as commandPalette } from "./ui/command-palette.spec.ts"
@@ -132,6 +135,9 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "date-range-picker": dateRangePicker,
   "inline-edit": inlineEdit,
   "copy-button": copyButton,
+  "status-mark": statusMark,
+  elapsed,
+  "row-cursor": rowCursor,
 }
 
 export const specs: readonly Spec[] = Object.values(specsByFile).flat()

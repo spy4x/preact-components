@@ -3,13 +3,16 @@
  * own settings (`createFormatters` from `@spy4x/time/format`: region format, time zone, clock) and
  * provides it around everything, so a date looks the same on every screen and every device.
  *
- * `When` and `OnDay` read it; any other component reads it with `useFormat()`.
+ * `When` and `OnDay` read it; any other component reads it with `useFormat()`. `Elapsed` shows how
+ * long something has run, in the reading language.
  *
  * @module
  */
 
+import { cn } from "@spy4x/preact-cn"
 import { type Context, createContext, type JSX } from "preact"
-import { useContext } from "preact/hooks"
+import { useContext, useEffect } from "preact/hooks"
+import { useSignal } from "@preact/signals"
 import { createFormatters, type DateInput, type Formatters } from "@spy4x/time/format"
 import { TimeFormatter } from "@spy4x/platform/universal/time"
 import { useT } from "./i18n.tsx"
@@ -113,6 +116,87 @@ export function OnDay({ at, labels, class: className }: OnDayProps): JSX.Element
       {format.date(at)}
     </time>
   )
+}
+
+/** The words `Elapsed` shows. */
+export interface ElapsedLabels {
+  /** Shown instead of a duration whose start is missing or cannot be read. Default `"-"`. */
+  missing: string
+  /**
+   * The duration as text, given in milliseconds and the reading language. Default: a clock face
+   * from `Intl.DurationFormat`, `00:05`, `02:05`, `1:02:03`.
+   */
+  duration: (milliseconds: number, language: string) => string
+}
+
+/** The default words of `Elapsed`. */
+export const ELAPSED_LABELS: ElapsedLabels = {
+  missing: "-",
+  duration: (milliseconds, language) => {
+    const { hours, minutes, seconds } = durationParts(milliseconds)
+    return new Intl.DurationFormat(language, { style: "digital", hoursDisplay: "auto" })
+      .format({ hours, minutes, seconds })
+  },
+}
+
+/** Props of `Elapsed`. */
+export interface ElapsedProps {
+  /** When it started: a `Date`, epoch milliseconds or an ISO string. */
+  start: DateInput
+  /** When it ended. Left out, `null` or unreadable, it is still running and the text ticks. */
+  end?: DateInput
+  /** The present, in epoch milliseconds, for text that must not move: given, nothing ticks. */
+  now?: number
+  /** The words shown; see {@link ELAPSED_LABELS}. */
+  labels?: Partial<ElapsedLabels>
+  class?: string
+}
+
+/**
+ * How long something has run, `02:05`, in a `<time>` whose `datetime` is the same duration in ISO
+ * form (`PT2M5S`). While it has no `end`, the text moves on once a second; the timer starts in an
+ * effect and stops when `end` arrives or the component unmounts, so a server render draws the
+ * duration at the time of the render and never starts one. A start after the end, or after now,
+ * counts as no time at all.
+ */
+export function Elapsed({ start, end, now, labels, class: className }: ElapsedProps): JSX.Element {
+  const words = { ...ELAPSED_LABELS, ...labels }
+  const language = useT().language
+  const began = toDate(start)
+  const ended = toDate(end ?? null)
+  const ticking = began !== null && ended === null && now === undefined
+  const clock = useSignal(now ?? Date.now())
+  useEffect(() => {
+    if (!ticking) return
+    clock.value = Date.now()
+    const timer = setInterval(() => clock.value = Date.now(), 1000)
+    return () => clearInterval(timer)
+  }, [ticking])
+  if (began === null) return <span class={className}>{words.missing}</span>
+  const until = ended?.getTime() ?? now ?? clock.value
+  const milliseconds = Math.max(0, until - began.getTime())
+  return (
+    <time class={cn("tabular-nums", className)} dateTime={isoDuration(milliseconds)}>
+      {words.duration(milliseconds, language)}
+    </time>
+  )
+}
+
+/** Whole hours, minutes and seconds of a duration in milliseconds, rounded down. */
+function durationParts(milliseconds: number): { hours: number; minutes: number; seconds: number } {
+  const total = Math.floor(Math.max(0, milliseconds) / 1000)
+  return {
+    hours: Math.floor(total / 3600),
+    minutes: Math.floor(total / 60) % 60,
+    seconds: total % 60,
+  }
+}
+
+/** A duration in ISO form, as `<time datetime>` takes it: `PT1H2M3S`, `PT5S`, `PT0S`. */
+function isoDuration(milliseconds: number): string {
+  const { hours, minutes, seconds } = durationParts(milliseconds)
+  const parts = `${hours ? `${hours}H` : ""}${minutes ? `${minutes}M` : ""}`
+  return `PT${parts}${seconds || !parts ? `${seconds}S` : ""}`
 }
 
 /** True for English, `en` or `en-GB`: the language whose words `WHEN_LABELS.relative` writes. */
