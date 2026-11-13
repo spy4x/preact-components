@@ -215,6 +215,15 @@ describe("MoneyInput", () => {
     expect(html).not.toContain("€")
   })
 
+  it("renders autofocus on the visible input only when autoFocus is set", () => {
+    const visibleInput = (html: string) => html.match(/<input[^>]*>/)?.[0] ?? "no input"
+    const focused = render(<MoneyInput value={null} currency="EUR" onChange={() => {}} autoFocus />)
+    const plain = render(<MoneyInput value={null} currency="EUR" onChange={() => {}} />)
+
+    expect(visibleInput(focused)).toMatch(/\sautofocus[\s>]/)
+    expect(visibleInput(plain)).not.toContain("autofocus")
+  })
+
   it("shows an empty field for a null value", () => {
     const html = render(<MoneyInput value={null} currency="EUR" onChange={() => {}} />)
     const visibleInput = html.match(/<input[^>]*>/)?.[0] ?? ""

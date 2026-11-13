@@ -110,7 +110,10 @@ export interface UsageMeterProps {
   limit: number
   /** Turns an amount into the text people read: money, storage or seats. */
   format: (amount: number) => string
-  /** What is being measured ("Groceries"). It names the meter, so it is required. */
+  /**
+   * What is being measured ("Groceries"). It names the meter, so it is required. A long label wraps
+   * to two lines and is clamped after them, never cut to one.
+   */
   label: string
   /** The whole percent of the limit from which the meter warns. Defaults to 80. */
   warnAt?: number
@@ -202,7 +205,9 @@ export function UsageMeter({
       class={cn("flex min-w-0 flex-col gap-1", className)}
     >
       <div class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
-        <span id={labelId} class="min-w-0 truncate text-sm font-medium">{label}</span>
+        <span id={labelId} class="line-clamp-2 min-w-0 break-words text-sm font-medium">
+          {label}
+        </span>
         <span aria-hidden="true" class="pc-num ms-auto shrink-0 text-xs font-semibold">
           {value}
         </span>

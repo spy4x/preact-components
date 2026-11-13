@@ -54,6 +54,18 @@ describe("Button", () => {
     expect(render(<Button variant="ghost">More</Button>)).toContain("bg-transparent")
   })
 
+  it("draws the danger-ghost variant transparent in the danger text colour with a danger-tinted hover", () => {
+    const classes = classOf(render(<Button variant="danger-ghost">Remove limit</Button>)).split(
+      " ",
+    )
+
+    expect(classes).toContain("bg-transparent")
+    expect(classes).toContain("text-danger")
+    expect(classes).toContain("hover:bg-danger-soft")
+    expect(classes, "no body-text colour to fight the danger one").not.toContain("text-foreground")
+    expect(classes, "ghost's padding at the default size").toContain("px-3")
+  })
+
   it("draws the secondary variant's edge in the button border token, since its fill can match the page", () => {
     const classes = classOf(render(<Button variant="secondary">Export CSV</Button>)).split(" ")
 
