@@ -687,6 +687,9 @@ DateTextLabels	type	@spy4x/preact-ui	The words `OnDay` shows around a date.
 DateTimeField	component	@spy4x/preact-ui	One date and time, typed in a named time zone that the field shows beside the input: the browser's own `datetime-local` picker, read and written as an instant, so the caller stores `2026-10-25T08:30:00.000Z` while the person types 09:30 in Berlin.
 DateTimeOccurrences	type	@spy4x/preact-ui	The occurrence chosen for each end of a range; an end left out means `"earlier"`.
 DateTimeRange	type	@spy4x/preact-ui	Inclusive wall-clock range, minute precision, in the caller's zone.
+DecisionCard	component	@spy4x/preact-ui	One item of a queue a person answers: a decision with options, a question with an open answer, or a to-do to mark done.
+DecisionCardHeadingLevel	type	@spy4x/preact-ui	The heading level of a `DecisionCard`'s question.
+DecisionCardOption	type	@spy4x/preact-ui	One answer a `DecisionCard` offers.
 DemoVideo	component	@spy4x/preact-ui	A demo clip that costs nothing until it is asked for: a poster with a play mark, swapped for the clip on press.
 DemoVideoDarkPoster	type	@spy4x/preact-ui	The dark variant of a poster, drawn while its media query matches.
 DemoVideoPoster	type	@spy4x/preact-ui	The still frame a `DemoVideo` or `LoopVideo` shows before its clip.

@@ -69,5 +69,7 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   `ui-guide/sections/feedback.tsx`.
 - Loading → `LoadingSkeleton` (`ui/loading-skeleton.tsx`). Failed → `ErrorState`
   (`ui/error-state.tsx`). Example: `ui-guide/sections/feedback.tsx`.
+- One item of a queue to answer (a decision, a question, a to-do) → `DecisionCard`
+  (`ui/decision-card.tsx`). Example: `ui-guide/sections/decision-card.tsx`.
 - A record's details → `FactList` (`ui/fact-list.tsx`). Example:
   `ui-guide/sections/content-blocks.tsx`.

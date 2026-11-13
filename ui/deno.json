@@ -27,6 +27,7 @@
     "./date-range": "./date-range.ts",
     "./date-range-picker": "./date-range-picker.tsx",
     "./date-range-search": "./date-range-search.ts",
+    "./decision-card": "./decision-card.tsx",
     "./demo-video": "./demo-video.tsx",
     "./docs-nav": "./docs-nav.tsx",
     "./dialog-actions": "./dialog-actions.tsx",
