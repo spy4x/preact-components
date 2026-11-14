@@ -1,4 +1,5 @@
 import type { Page } from "playwright-core"
+import { AxeBuilder } from "@axe-core/playwright"
 import { axeCleanIn } from "../axe-clean.ts"
 import type { Spec } from "../runner.ts"
 
@@ -104,6 +105,52 @@ async function withoutScripts<T>(
   }
 }
 
+/**
+ * Once hydrated, Tab from the close button reaches the scrolling body, and Tab out of the panel
+ * hides it, so focus never sits on a control the open panel covers.
+ */
+async function tabOutHides(page: Page): Promise<string> {
+  const { trigger } = parts(page)
+  await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true")
+  await trigger.scrollIntoViewIfNeeded()
+  await trigger.click()
+  await waitOpen(page, true)
+  await waitFocus(page, "#guide-help-popover-title", "the heading")
+  await page.keyboard.press("Tab")
+  await page.keyboard.press("Tab")
+  await waitFocus(page, `#guide-help-popover [role="region"]`, "the scrolling body")
+  await page.keyboard.press("Tab")
+  await waitOpen(page, false)
+  return "Tab out of the body hides the panel"
+}
+
+/**
+ * The open panel with far more text than the screen holds: its body scrolls and axe finds no
+ * scrollable region a keyboard cannot reach.
+ */
+async function longBodyIsReachable(page: Page): Promise<string> {
+  await page.setViewportSize({ width: 390, height: 600 })
+  const { trigger } = parts(page)
+  await trigger.scrollIntoViewIfNeeded()
+  await trigger.click()
+  await waitOpen(page, true)
+  const overflows = await page.evaluate(() => {
+    const body = document.querySelector(`#guide-help-popover [role="region"]`)
+    if (!body?.firstElementChild) throw new Error("the panel has no body region with content")
+    for (let i = 0; i < 30; i++) body.append(body.firstElementChild.cloneNode(true))
+    return body.scrollHeight > body.clientHeight
+  })
+  if (!overflows) throw new Error("the long body does not scroll, so the spec proves nothing")
+  // Only this rule: the text scrolled out of view has no contrast axe can measure, and the
+  // palette specs below already measure it on the short body.
+  const { violations } = await new AxeBuilder({ page }).include("#guide-help-popover")
+    .withRules(["scrollable-region-focusable"]).analyze()
+  if (violations.length > 0) {
+    throw new Error(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`).join("; "))
+  }
+  return "the scrolling body is reachable by keyboard"
+}
+
 /** One axe spec per palette: the card with the panel closed, then the open panel. */
 function axeSpecs(): Spec[] {
   return (["light", "dark"] as const).map((colorScheme) => ({
@@ -147,6 +194,17 @@ export const specs: readonly Spec[] = [
     name: "HelpPopover: at 390 px without JavaScript the open panel fits inside the screen",
     pageId: "ui",
     run: (page) => withoutScripts(page, 390, fitsTheViewport),
+  },
+  {
+    name: "HelpPopover: once hydrated, Tab out of the panel hides it",
+    pageId: "ui",
+    run: tabOutHides,
+  },
+  {
+    name:
+      "HelpPopover: at 390 px a body longer than the screen scrolls and is reachable by keyboard",
+    pageId: "ui",
+    run: longBodyIsReachable,
   },
   ...axeSpecs(),
 ]

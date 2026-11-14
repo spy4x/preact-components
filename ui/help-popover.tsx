@@ -37,22 +37,35 @@ const HELP_POPOVER_LABELS: Required<Pick<HelpPopoverProps, "closeLabel">> = {
 /**
  * The panel: centred in the viewport as the platform places a popover, never wider than the
  * screen less a 16 px gutter on each side, never taller than it less the same (`100%` of the
- * viewport the popover is fixed to, which leaves out a scrollbar where `100vw` would not), with the body
- * scrolling inside. `open:flex`, never a bare `flex`: an author `display` would beat the
+ * viewport the popover is fixed to, which leaves out a scrollbar where `100vw` would not), with
+ * the body scrolling inside. `open:flex`, never a bare `flex`: an author `display` would beat the
  * platform's `display: none` on a closed popover and draw it on the page.
  */
 const surfaceClasses =
   "m-auto max-h-[calc(100%-2rem)] w-[min(32rem,calc(100%-2rem))] rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim open:flex open:flex-col"
 
 /**
+ * Once hydrated, hides the open panel when Tab moves focus to anything outside it but its own
+ * trigger, so focus never sits hidden under the panel. The trigger is left out: a click on it
+ * toggles the panel itself, and hiding it first would reopen it.
+ */
+function hideWhenFocusLeaves(event: FocusEvent) {
+  const panel = event.currentTarget as HTMLElement
+  const next = event.relatedTarget as Element | null
+  if (!next || panel.contains(next) || next.getAttribute("popovertarget") === panel.id) return
+  if (panel.matches(":popover-open")) panel.hidePopover()
+}
+
+/**
  * A help button that opens a short explanation in a panel, with no JavaScript at all.
  *
- * The trigger is a ghost `Button` with an info icon and visible text, 44 px tall on a phone, and `popovertarget` names a
- * native `popover="auto"` panel, so the browser opens it, closes it on Escape or on a click
- * outside, and returns focus to the trigger. The close button is a second `popovertarget` with
- * `popovertargetaction="hide"`. On open, focus moves to the heading (`autofocus` with
- * `tabindex="-1"`), so a screen reader starts at the title and Tab reaches the close button. It
- * renders the same on the server and after hydration, and keeps no state.
+ * The trigger is a ghost `Button` with an info icon and visible text, 44 px tall on a phone, and
+ * `popovertarget` names a native `popover="auto"` panel, so the browser opens it, closes it on
+ * Escape or on a click outside, and returns focus to the trigger. The close button is a second
+ * `popovertarget` with `popovertargetaction="hide"`. On open, focus moves to the heading
+ * (`autofocus` with `tabindex="-1"`), so a screen reader starts at the title and Tab reaches the
+ * close button, then the body, which is focusable so a keyboard can scroll it. Once hydrated, Tab
+ * out of the panel hides it. It renders the same on the server and after hydration.
  *
  * Use it for help a person reads and closes, beside the thing it explains. A form or a decision
  * goes in a `Modal`; one short hint on a control is a `Tooltip`.
@@ -93,6 +106,7 @@ export function HelpPopover({
         aria-labelledby={titleId}
         data-e2e={dataE2E ? `${dataE2E}-panel` : undefined}
         class={cn(surfaceClasses, className)}
+        onFocusOut={hideWhenFocusLeaves}
       >
         <div class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4">
           <h2
@@ -115,7 +129,12 @@ export function HelpPopover({
             <IconXMark class="size-4" aria-hidden="true" />
           </Button>
         </div>
-        <div class="flex flex-col gap-3 overflow-y-auto px-6 py-4 text-sm text-pretty">
+        <div
+          role="region"
+          aria-labelledby={titleId}
+          tabIndex={0}
+          class="flex flex-col gap-3 overflow-y-auto px-6 py-4 text-sm text-pretty focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+        >
           {children}
         </div>
       </div>

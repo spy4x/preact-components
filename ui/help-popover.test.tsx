@@ -90,6 +90,14 @@ describe("HelpPopover", () => {
     }
   })
 
+  it("lets the keyboard reach and scroll a long body, named by the heading", () => {
+    const body = tagWith(render(help({ id: "h" })), "overflow-y-auto")
+
+    expect(body).toContain(`tabindex="0"`)
+    expect(body).toContain(`role="region"`)
+    expect(body).toContain(`aria-labelledby="h-title"`)
+  })
+
   it("draws the closed panel only through the open state, so the platform can hide it", () => {
     const panel = tagWith(render(help({ id: "h" })), `popover="auto"`)
     const classes = panel.match(/class="([^"]*)"/)?.[1].split(" ") ?? []
