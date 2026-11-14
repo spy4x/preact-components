@@ -32,6 +32,7 @@ import {
   LanguageButton,
   LanguageDialog,
   LanguagePicker,
+  NumberStepper,
   OnOffButtons,
   PeriodStepper,
   rangeForPreset,
@@ -1497,6 +1498,86 @@ function PeriodStepperDemo() {
 }
 
 /**
+ * One `NumberStepper` beside its visible label, with the value and how many times `onChange` fired,
+ * so the browser checks see that an edge reports nothing.
+ */
+function NumberStepperExample(
+  { start, title, e2e, ...props }: {
+    start: number
+    title: string
+    e2e: string
+    max: number
+    largeStep?: number
+    min?: number
+    zeroLabel?: string
+    locale?: string
+    disabled?: boolean
+  },
+) {
+  const value = useSignal(start)
+  const changes = useSignal(0)
+  return (
+    <div class="space-y-2" data-e2e={e2e}>
+      <Cluster gap="sm">
+        <span id={`${e2e}-label`} class="text-sm font-medium text-foreground">{title}</span>
+        <NumberStepper
+          {...props}
+          value={value.value}
+          aria-labelledby={`${e2e}-label`}
+          onChange={(next) => {
+            value.value = next
+            changes.value += 1
+          }}
+        />
+      </Cluster>
+      <Note e2e={`${e2e}-value`}>value: {value.value}, changes: {changes.value}</Note>
+    </div>
+  )
+}
+
+/**
+ * 0 to 10 with 0 shown as "Off"; the same in a right-to-left page with Arabic digits, where
+ * ArrowLeft adds; and the control disabled, as while offline.
+ */
+function NumberStepperDemo() {
+  return (
+    <Stack>
+      <Variant title="0 to 10, 0 reads Off, PageUp adds 5">
+        <NumberStepperExample
+          start={3}
+          max={10}
+          largeStep={5}
+          zeroLabel="Off"
+          title="Reminders a day"
+          e2e="guide-number"
+        />
+      </Variant>
+      <Variant title="Right to left, Arabic digits">
+        <div dir="rtl" lang="ar">
+          <NumberStepperExample
+            start={2}
+            max={10}
+            zeroLabel="إيقاف"
+            locale="ar-EG"
+            title="التذكيرات في اليوم"
+            e2e="guide-number-rtl"
+          />
+        </div>
+      </Variant>
+      <Variant title="Disabled">
+        <NumberStepperExample
+          start={4}
+          max={10}
+          disabled
+          title="Reminders a day"
+          e2e="guide-number-off"
+        />
+      </Variant>
+    </Stack>
+  )
+}
+
+/**
  * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
  * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
  */
@@ -2373,6 +2454,66 @@ const period = useSignal(currentPeriod(PeriodUnit.Month, { now, timeZone }))
   timeZone={timeZone}
 />`,
     render: () => <PeriodStepperDemo />,
+  },
+  NumberStepper: {
+    summary:
+      "− 3 + for a small whole number applied as it changes, with a word such as Off for 0, keys on one spinbutton, and no Save button.",
+    wide: false,
+    props: [
+      { name: "value", type: "number", description: "The number on screen." },
+      {
+        name: "onChange",
+        type: "(next: number) => void",
+        description: "Called on every change, never with the number already shown.",
+      },
+      { name: "max", type: "number", description: "The largest value." },
+      { name: "min", type: "number", default: "0", description: "The smallest value." },
+      { name: "step", type: "number", default: "1", description: "One arrow or button press." },
+      {
+        name: "largeStep",
+        type: "number",
+        default: "a tenth of the range",
+        description: "What PageUp and PageDown move by; at least step.",
+      },
+      {
+        name: "zeroLabel",
+        type: "string",
+        description: "A word shown and announced for 0; unset, 0 reads as a number.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description: "Makes the whole control inert, such as while offline.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the number; defaults to the translator's language.",
+      },
+      {
+        name: "label / aria-labelledby",
+        type: "string",
+        description: "The accessible name, or the id of a visible label; one is needed.",
+      },
+      { name: "aria-describedby", type: "string", description: "The id of help text." },
+      {
+        name: "labels",
+        type: "Partial<NumberStepperLabels>",
+        description: "Names of the − and + buttons.",
+      },
+    ],
+    snippet: `const reminders = useSignal(3)
+
+<span id="reminders-label">Reminders a day</span>
+<NumberStepper
+  value={reminders.value}
+  onChange={(next) => reminders.value = next}
+  max={10}
+  zeroLabel="Off"
+  aria-labelledby="reminders-label"
+/>`,
+    render: () => <NumberStepperDemo />,
   },
   FileInput: {
     summary:
