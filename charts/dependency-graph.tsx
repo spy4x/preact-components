@@ -506,7 +506,7 @@ export function DependencyGraph({
                       </span>
                     </div>
                     {node.badge && (
-                      <span class="truncate pl-4 text-xs text-muted">{node.badge}</span>
+                      <span class="truncate ps-4 text-xs text-muted">{node.badge}</span>
                     )}
                   </div>
                 </div>
