@@ -421,6 +421,8 @@ export default {
   "MoneyInput.rangeMax": "Saisissez {max} ou moins",
   "MoneyInput.rangeMin": "Saisissez {min} ou plus",
   "Notice.dismissLabel": "Fermer",
+  "NumberStepper.decrease": "Diminuer",
+  "NumberStepper.increase": "Augmenter",
   "OnOffButtons.offLabel": "OFF",
   "OnOffButtons.onLabel": "ON",
   "OnThisPage.label": "Sur cette page",

@@ -73,6 +73,7 @@
     "./money-display": "./money-display.tsx",
     "./money-input": "./money-input.tsx",
     "./notice": "./notice.tsx",
+    "./number-stepper": "./number-stepper.tsx",
     "./onboarding-checklist": "./onboarding-checklist.tsx",
     "./on-off-buttons": "./on-off-buttons.tsx",
     "./on-this-page": "./on-this-page.tsx",

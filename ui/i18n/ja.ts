@@ -394,6 +394,8 @@ export default {
   "MoneyInput.rangeMax": "{max}以下で入力してください",
   "MoneyInput.rangeMin": "{min}以上で入力してください",
   "Notice.dismissLabel": "閉じる",
+  "NumberStepper.decrease": "減らす",
+  "NumberStepper.increase": "増やす",
   "OnOffButtons.offLabel": "OFF",
   "OnOffButtons.onLabel": "ON",
   "OnThisPage.label": "このページの内容",

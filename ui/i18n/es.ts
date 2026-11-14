@@ -420,6 +420,8 @@ export default {
   "MoneyInput.rangeMax": "Escribe {max} o menos",
   "MoneyInput.rangeMin": "Escribe {min} o más",
   "Notice.dismissLabel": "Cerrar",
+  "NumberStepper.decrease": "Reducir",
+  "NumberStepper.increase": "Aumentar",
   "OnOffButtons.offLabel": "DESACTIVADO",
   "OnOffButtons.onLabel": "ACTIVADO",
   "OnThisPage.label": "En esta página",

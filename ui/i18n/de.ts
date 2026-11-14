@@ -408,6 +408,8 @@ export default {
   "MoneyInput.rangeMax": "Gib höchstens {max} ein",
   "MoneyInput.rangeMin": "Gib mindestens {min} ein",
   "Notice.dismissLabel": "Schließen",
+  "NumberStepper.decrease": "Verringern",
+  "NumberStepper.increase": "Erhöhen",
   "OnOffButtons.offLabel": "AUS",
   "OnOffButtons.onLabel": "AN",
   "OnThisPage.label": "Auf dieser Seite",

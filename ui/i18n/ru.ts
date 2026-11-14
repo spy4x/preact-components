@@ -432,6 +432,8 @@ export default {
   "MoneyInput.rangeMax": "Введите не больше {max}",
   "MoneyInput.rangeMin": "Введите не меньше {min}",
   "Notice.dismissLabel": "Скрыть",
+  "NumberStepper.decrease": "Уменьшить",
+  "NumberStepper.increase": "Увеличить",
   "OnOffButtons.offLabel": "ВЫКЛ",
   "OnOffButtons.onLabel": "ВКЛ",
   "OnThisPage.label": "На этой странице",

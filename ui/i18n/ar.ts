@@ -451,6 +451,8 @@ export default {
   "MoneyInput.rangeMax": "أدخل {max} أو أقل",
   "MoneyInput.rangeMin": "أدخل {min} أو أكثر",
   "Notice.dismissLabel": "إخفاء",
+  "NumberStepper.decrease": "إنقاص",
+  "NumberStepper.increase": "زيادة",
   "OnOffButtons.offLabel": "إيقاف",
   "OnOffButtons.onLabel": "تشغيل",
   "OnThisPage.label": "في هذه الصفحة",
