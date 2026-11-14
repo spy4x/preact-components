@@ -403,6 +403,8 @@ export default {
   "MoneyInput.rangeMax": "Enter {max} or less",
   "MoneyInput.rangeMin": "Enter {min} or more",
   "Notice.dismissLabel": "Dismiss",
+  "NumberStepper.decrease": "Decrease",
+  "NumberStepper.increase": "Increase",
   "OnOffButtons.offLabel": "OFF",
   "OnOffButtons.onLabel": "ON",
   "OnThisPage.label": "On this page",

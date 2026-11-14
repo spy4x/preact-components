@@ -389,6 +389,8 @@ export default {
   "MoneyInput.rangeMax": "请输入不超过 {max} 的金额",
   "MoneyInput.rangeMin": "请输入不低于 {min} 的金额",
   "Notice.dismissLabel": "关闭",
+  "NumberStepper.decrease": "减少",
+  "NumberStepper.increase": "增加",
   "OnOffButtons.offLabel": "关",
   "OnOffButtons.onLabel": "开",
   "OnThisPage.label": "本页内容",

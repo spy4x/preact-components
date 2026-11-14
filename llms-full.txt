@@ -5365,6 +5365,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `MoneyInput` (`money-input`): `value` (smallest unit or `null`), `onChange`, `currency`, `locale?` (default: the region of `FormatContext`), `decimals?`, `min?`, `max?`, `name?`, `id?`, `invalidMessage?`, `rangeMessage?`, `decimalsMessage?`, `required?`, `autoFocus?`, `class?` (the bordered box)
 - `MoreMenu` (`page-header`): `label` (required: the trigger shows three dots), `children` (`DropdownItem`s), `dataE2E?`
 - `Notice` (`notice`): `tone?` (`info` default, `warning`, `success`, `danger`), `title?`, `children` (the body), `action?`, `urgent?` (`role="alert"`), `live?` (default `true`: `role="status"`; `false`: no role unless `urgent`), `data-*`; renders nothing when empty
+- `NumberStepper` (`number-stepper`): `value`, `onChange`, `max`, `min?` (default `0`), `step?` (default `1`), `largeStep?`, `zeroLabel?` (a word such as "Off" for `0`), `disabled?`, `locale?`, `label?` or `aria-labelledby?` (one is needed), `aria-describedby?`, `labels?`, `id?`, `class?` — "− 3 +" for a small whole number applied as it changes; a `role="spinbutton"` that owns the keys (arrows, PageUp and PageDown, Home, End, a digit)
 - `OnboardingChecklist` (`onboarding-checklist`): `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`, `actionVariant?` (`primary` default, `secondary`)
 - `OnDay` (`format`): `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`
 - `OnOffButtons` (`on-off-buttons`): `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`
@@ -8449,6 +8450,15 @@ landmark there would be a nested banner or contentinfo (axe's `landmark-banner-i
   cancels the browser's navigation, calls `navigate(href)` and returns `true`; otherwise it does
   nothing and returns `false`. Call it from the click handler of an anchor of your own — a button
   drawn as a link, say — to give it the same behaviour.
+
+### NumberStepper (`./number-stepper`)
+
+- `numberStepperLabels` is the stepper's English words, the same as the `NumberStepper.*` keys of
+  `i18n/en.ts`.
+- `numberStepperKey(key, value, range, rtl)` is the number a key press on a `NumberStepper` moves
+  `value` to inside `range` (`{ min, max, step, largeStep }`), or `undefined` for a key it leaves
+  alone: the arrows step (Left and Right swapped when `rtl`), PageUp and PageDown take
+  `largeStep`, Home and End go to the ends, and a digit sets that number when it is in range.
 
 ### PageHeader (`./page-header`)
 

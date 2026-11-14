@@ -361,6 +361,8 @@ MoneyInput.rangeBetween	c6a6d8602e09a1c1
 MoneyInput.rangeMax	d3173383df1953bc
 MoneyInput.rangeMin	be9bd964d5dc9700
 Notice.dismissLabel	48845bff334a50a5
+NumberStepper.decrease	991e5ab396c965a1
+NumberStepper.increase	0c2d3b8713b00333
 OnOffButtons.offLabel	38cca6bea010af8a
 OnOffButtons.onLabel	e8a01133b1351e5f
 OnThisPage.label	b5658fc8edda24f9

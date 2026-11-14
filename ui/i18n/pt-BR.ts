@@ -419,6 +419,8 @@ export default {
   "MoneyInput.rangeMax": "Digite até {max}",
   "MoneyInput.rangeMin": "Digite {min} ou mais",
   "Notice.dismissLabel": "Fechar",
+  "NumberStepper.decrease": "Diminuir",
+  "NumberStepper.increase": "Aumentar",
   "OnOffButtons.offLabel": "DESLIGADO",
   "OnOffButtons.onLabel": "LIGADO",
   "OnThisPage.label": "Nesta página",

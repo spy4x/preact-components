@@ -365,6 +365,14 @@ export {
 } from "./money-input.tsx"
 export { Notice, type NoticeProps, type NoticeTone } from "./notice.tsx"
 export {
+  NumberStepper,
+  numberStepperKey,
+  type NumberStepperLabels,
+  numberStepperLabels,
+  type NumberStepperProps,
+  type NumberStepperRange,
+} from "./number-stepper.tsx"
+export {
   OnboardingChecklist,
   type OnboardingChecklistProps,
   type OnboardingStep,
