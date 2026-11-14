@@ -58,7 +58,8 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   // The forgiving matcher the palette already carries, groups and Create: 53.0 KB (#1164).
   "island-modal-combobox.tsx": 54_000,
   // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 36.0 KB (#958, #524).
-  "island-explorable-bars.tsx": 36_000,
+  // Eight series colours instead of five, in the chart's palette class: 36.2 KB (#957).
+  "island-explorable-bars.tsx": 37_000,
   // #524 put `useLabels` and the translated defaults into every island, about 1.4 KB each; the
   // catalogs themselves stay out of every bundle. These four then passed their old ceilings.
   // 35.5 KB.

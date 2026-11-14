@@ -188,7 +188,47 @@ describe("LineChart", () => {
 
     expect(html).toMatch(/<path d="[^"]+"[^>]*stroke-dasharray="6 4"/)
     expect(count(html, 'stroke-dasharray="6 4"')).toBe(1)
-    expect(html).toContain("inline-block w-3 border-t-2 border-dashed")
+    expect(html).toContain("inline-block w-6 border-t-2 border-dashed")
+  })
+
+  it("draws a dashed series' legend swatch 24 px wide so its dash shows, a solid one 12 px", () => {
+    const series: LineSeries[] = [twoPoints[0], {
+      ...twoPoints[0],
+      name: "Last year",
+      dashed: true,
+    }]
+    const swatches = [
+      ...render(<LineChart series={series} />).matchAll(
+        /<span class="(inline-block [^"]*border-t-2[^"]*)"/g,
+      ),
+    ].map(([, classes]) => classes)
+
+    expect(swatches).toEqual([
+      "inline-block w-3 border-t-2",
+      "inline-block w-6 border-t-2 border-dashed",
+    ])
+  })
+
+  it("draws a point marked hollow as an unfilled ring in the series colour, with the same tooltip", () => {
+    const series: LineSeries[] = [{
+      name: "Runs",
+      color: "teal",
+      points: [{ x: "Jan", y: 0 }, { x: "Feb", y: 10, hollow: true }],
+    }]
+    const html = render(<LineChart series={series} />)
+    const dots = [
+      ...html.matchAll(/<span class="([^"]*)" style="([^"]*)" title="([^"]*)"([^>]*)>/g),
+    ]
+      .map(([, classes, style, title, rest]) => ({ classes, style, title, rest }))
+
+    expect(dots.map((dot) => dot.title)).toEqual(["Runs Jan: 0", "Runs Feb: 10"])
+    expect(dots[0].style).toContain("background:teal")
+    expect(dots[0].classes).not.toContain("border-2")
+    expect(dots[0].rest).not.toContain("data-chart-hollow")
+    expect(dots[1].style).toContain("border-color:teal")
+    expect(dots[1].style).toContain("background:none")
+    expect(dots[1].classes).toContain("border-2")
+    expect(dots[1].rest).toContain("data-chart-hollow")
   })
 
   it("draws the reference line inside the Y domain even above every value", () => {
