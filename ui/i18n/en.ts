@@ -195,6 +195,7 @@ export default {
   "FilterBar.sort": "Sort by",
   "FilterBar.togglesLabel": "Quick filters",
   "FrameChrome.terminal": "Terminal",
+  "HelpPopover.closeLabel": "Close",
   "Honeypot.label": "Leave this field blank",
   "IconPicker.aliases.baby": "kids, children, childcare, nappies, diapers",
   "IconPicker.aliases.banknote": "cash, salary, income, wages, money",

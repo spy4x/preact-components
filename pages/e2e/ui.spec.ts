@@ -71,6 +71,7 @@ import { specs as usageMeter } from "./ui/usage-meter.spec.ts"
 import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 import { specs as copyButton } from "./ui/copy-button.spec.ts"
+import { specs as helpPopover } from "./ui/help-popover.spec.ts"
 import { specs as enhancedForm } from "./ui/enhanced-form.spec.ts"
 
 /** Each file's specs, by its name under `e2e/ui/` without `.spec.ts`. */
@@ -140,6 +141,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "date-range-picker": dateRangePicker,
   "inline-edit": inlineEdit,
   "copy-button": copyButton,
+  "help-popover": helpPopover,
   "status-mark": statusMark,
   elapsed,
   "row-cursor": rowCursor,

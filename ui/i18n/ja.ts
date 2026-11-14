@@ -191,6 +191,7 @@ export default {
   "FilterBar.sort": "並べ替え",
   "FilterBar.togglesLabel": "クイックフィルター",
   "FrameChrome.terminal": "ターミナル",
+  "HelpPopover.closeLabel": "閉じる",
   "Honeypot.label": "この欄は空のままにしてください",
   "IconPicker.aliases.baby": "子ども, 育児, 保育園, おむつ",
   "IconPicker.aliases.banknote": "現金, 給料, 収入, 賃金, お金",

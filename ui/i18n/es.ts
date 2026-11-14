@@ -204,6 +204,7 @@ export default {
   "FilterBar.sort": "Ordenar por",
   "FilterBar.togglesLabel": "Filtros rápidos",
   "FrameChrome.terminal": "Terminal",
+  "HelpPopover.closeLabel": "Cerrar",
   "Honeypot.label": "Deja este campo vacío",
   "IconPicker.aliases.baby": "niños, hijos, guardería, pañales",
   "IconPicker.aliases.banknote": "efectivo, salario, sueldo, ingresos, dinero",

@@ -249,6 +249,7 @@ export {
   type WhenLabels,
   type WhenProps,
 } from "./format.tsx"
+export { HelpPopover, type HelpPopoverProps } from "./help-popover.tsx"
 export { honeypotField } from "./honeypot.tsx"
 export { IconPicker, type IconPickerLabels, type IconPickerProps } from "./icon-picker.tsx"
 export {
