@@ -483,6 +483,8 @@ export default {
   "ShortcutsDialog.closeLabel": "关闭",
   "ShortcutsDialog.defaultGroup": "常规",
   "ShortcutsDialog.title": "键盘快捷键",
+  "SiteSearch.empty": "没有与“{query}”相关的结果",
+  "SiteSearch.error": "搜索无法加载。请检查网络连接，然后重新输入。",
   "SortableList.cancelled": "已取消。{item}回到第 {position} 个，共 {total} 个。",
   "SortableList.dropped": "已将{item}放到第 {position} 个，共 {total} 个。",
   "SortableList.handle": "调整{item}的顺序",

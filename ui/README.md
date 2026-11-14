@@ -19,7 +19,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
   `optionsClass`), `CommandPalette`, `LanguagePicker`,
   `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
   `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips`, `OrderBar` and `LoopVideo` use `join`
-  instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, and `CopyButton` and
+  instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, `SiteSearch` hands its to `CommandPalette`, and `CopyButton` and
   `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
   `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
   before. Their `class` is appended after their own classes, and replaces one of them only when
@@ -73,7 +73,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`, `autoFocus?`
-- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect(option, { alternative, text? })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, `"icon"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
@@ -166,6 +166,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `SettingList` (`setting-row`): `children` (`SettingRow`s) — a card with a rule between rows
 - `SettingRow` (`setting-row`): `label`, `value`, `action?` (stays beside the text on a phone), `dataE2E?`
 - `ShortcutsDialog` (`shortcuts-dialog`): `open`, `onClose`, `shortcuts`, `title?`, `closeLabel?`, `defaultGroup?`, `apple?`, `kbdLabels?`
+- `SiteSearch` (`site-search`): `fetch` (the page's `fetch`, a port), `src?` (default `/search.json`, a serialised `@spy4x/search` index), `commands?`, `groupOrder?`, `labels?`, `onSearched?({ query, results, chosenPosition?, chosenKind?, correction? })`, `trigger?` (`"field"` or `"icon"`), `hotkeys?`, `kbdLabels?`, `dataE2E?`, `class?` — a website's search, built on `CommandPalette`; a link to `/search?q=` until hydration
 - `Slider` (`slider`): `label`, `value`, `min?`, `max?`, `step?`, `onInput?(value)`, `format?`, `valueText?` (`aria-valuetext`), `marks?` (at most two `{ value, label }`), `hint?`, `disabled?`, `id?`, `name?` — a native `<input type="range">`
 - `SortableList` (`sortable-list`): `items` (`{ id }[]`), `renderItem`, `itemLabel`, `onMove(from, to)`, `labels?`, `class?` — controlled; drag a handle (touch or mouse) or use the keyboard
 - `Stack` (`layout`): `gap?` (default `md`), `as?`, `class?` — a column
@@ -2291,10 +2292,63 @@ a fine pointer, a line under the list shows the keys: ↑ ↓ move, Enter open, 
 a Mac) the alternative pick, in the words of `keysMove`, `keysOpen` and `keysAlternative`. It is
 hidden from screen readers, which know a listbox's keys.
 
+`onSelect` gets a second argument, `{ alternative, text? }`: `alternative` is `true` when the
+reader pressed Ctrl+Enter (⌘Enter on Apple platforms), clicked with Ctrl or ⌘ held, or
+middle-clicked, so a caller that opens a page can open it in a new tab. When `onSelect` moves focus,
+such as to a heading on the page, focus stays there rather than going back to the trigger.
+`onOpenChange(open)` is called with `true` as the palette opens and `false` once it has closed.
+`trigger="icon"` is the icon button at every width, for a tight spot; a tooltip below it shows its
+placeholder and its first hotkey on hover and on focus, since a magnifier alone names nothing to a
+sighted reader. `triggerHref` makes the trigger a link to that address, drawn the same, until the
+page hydrates, so a reader without JavaScript reaches a search page.
+
 ```tsx
 <CommandPalette
   search={(query, signal) => fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json())}
-  onSelect={(option) => navigate(option.href)}
+  onSelect={(option, { alternative }) => alternative ? open(option.href) : navigate(option.href)}
+/>
+```
+
+## SiteSearch
+
+`SiteSearch` is a website's search: a field-shaped button that reads the site's words, such as
+"Search posts, projects, services…", with the Ctrl/⌘+K hint on the right, and the `CommandPalette`
+it opens. A site supplies only its index and its commands.
+
+- **The index.** `src` (default `/search.json`) is `JSON.stringify` of an `@spy4x/search` index
+  the site builds on the server with `createIndex`; the browser only loads it with `loadIndex`.
+  `fetch` is the page's own `fetch`, passed in as a port, since no component of this library talks
+  to the network by itself. The payload is checked with arktype, and an entry whose `href` is neither a `mailto:` address nor
+  on the page's own origin (`javascript:`, `data:`, another site) is never listed.
+- **Loading.** The index is fetched when the pointer reaches the trigger, when it takes focus, and
+  when the palette opens, then kept. A failed fetch shows "Search couldn't load. Check your
+  connection and type again.", and the next keystroke fetches again. Each query lists at most ten
+  entries, then the `commands` it matches; an empty query lists every command.
+- **Opening a result.** An entry opens with `location.assign`, or in a new tab on the palette's
+  alternative (Ctrl/⌘+Enter, a Ctrl/⌘-click, a middle click). An entry that is a heading on the
+  current page sets the hash and focuses the heading (`tabindex="-1"`), so the `:target` tint
+  shows it. A command runs its `run`.
+- **Without JavaScript.** Until the page hydrates, the trigger is a plain link to `/search?q=`,
+  which the site serves.
+- **Words.** `labels` overrides the words one by one: `empty(query)` ("Nothing for “query”") and
+  `error`, whose defaults are in `defaultSiteSearchLabels`, and `placeholder` (also the trigger's
+  text), `loading`, `search`, `close` and `stateChanged`, whose defaults are `CommandPalette`'s. `groupOrder` lists groups first, in its order. `trigger="icon"` is a magnifier
+  for tight spots, with a tooltip that shows its name and hotkey. `hotkeys` defaults to
+  `["mod+k", "/"]`: Ctrl/⌘+K comes first, so it is the hint the trigger shows. No pulsing or pop-up hints.
+- **`onSearched`.** Called exactly once per palette session, when a result or command is chosen or
+  the palette closes, with `{ query, results, chosenPosition, chosenKind, correction }`: the last
+  query trimmed and cut to 64 characters, how many rows it listed, the chosen row's place from 1
+  and whether it was a `"result"` or a `"command"`, and `"layout"` or `"typo"` when the index read
+  the query corrected. The component sends nothing itself. A site that forwards it to its analytics
+  says so on its privacy page, and sends no user id with it.
+
+```tsx
+<SiteSearch
+  fetch={fetch}
+  labels={{ placeholder: "Search posts, projects, services…" }}
+  groupOrder={["Pages", "Posts"]}
+  commands={[{ id: "theme", label: "Toggle theme", group: "Commands", run: toggleTheme }]}
+  onSearched={(event) => umami?.track("search", event)}
 />
 ```
 

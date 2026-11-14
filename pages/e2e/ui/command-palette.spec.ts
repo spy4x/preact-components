@@ -625,6 +625,55 @@ async function openCommandsPalette(page: Page, width: number) {
   }
 }
 
+/** Specs for the icon trigger: its tooltip, its hotkey and where focus goes. */
+function iconTriggerSpecs(): Spec[] {
+  return (["light", "dark"] as const).map((colorScheme): Spec => ({
+    name: `CommandPalette icon trigger in the ${colorScheme} palette: hovering or focusing it ` +
+      "shows a tooltip with its name and Ctrl+Shift+K that axe passes, the hotkey opens it, and " +
+      "Escape gives focus back to it",
+    pageId: "ui",
+    colorScheme,
+    run: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      const card = page.locator("#demo-CommandPalette")
+      const trigger = card.locator(`button[data-e2e="palette-icon-open"]`)
+      const tip = card.getByRole("group", { name: "Jump to…" }).locator(`[role="tooltip"]`)
+      const dialog = page.locator(`dialog[data-e2e="palette-icon"]`)
+      await trigger.scrollIntoViewIfNeeded()
+      if (await trigger.getAttribute("aria-label") !== "Jump to…") {
+        throw new Error(`the trigger is named "${await trigger.getAttribute("aria-label")}"`)
+      }
+      await tip.waitFor({ state: "hidden" })
+      await trigger.hover()
+      await tip.waitFor()
+      const words = (await tip.textContent())?.replace(/\s+/g, "")
+      if (words !== "Jumpto…Ctrl+Shift+K") throw new Error(`the tooltip says "${words}"`)
+      const { violations } = await new AxeBuilder({ page })
+        .include(`#demo-CommandPalette [role="group"][aria-label="Jump to…"]`).analyze()
+      if (violations.length > 0) {
+        throw new Error(
+          violations.map(({ id, nodes }) =>
+            `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`
+          ).join(" | "),
+        )
+      }
+      await page.mouse.move(0, 0)
+      await tip.waitFor({ state: "hidden" })
+      await trigger.focus()
+      await tip.waitFor()
+      const described = await trigger.getAttribute("aria-describedby")
+      if (described !== await tip.getAttribute("id")) {
+        throw new Error(`the trigger is described by "${described}", not the tooltip`)
+      }
+      await page.keyboard.press("Control+Shift+K")
+      await dialog.getByRole("combobox").and(page.locator(":focus")).waitFor()
+      await page.keyboard.press("Escape")
+      await dialog.waitFor({ state: "hidden" })
+      await trigger.and(page.locator(":focus")).waitFor()
+    },
+  }))
+}
+
 /** Specs for command rows: icon, state badge, shortcut, `keepOpen` and `disabledReason`. */
 function commandPaletteSpecs(): Spec[] {
   return [
@@ -1429,4 +1478,5 @@ export const specs: readonly Spec[] = [
   ...paletteKeySpecs(),
   ...pinnedRowSpecs(),
   ...customTriggerSpecs(),
+  ...iconTriggerSpecs(),
 ]

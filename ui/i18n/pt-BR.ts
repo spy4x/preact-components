@@ -517,6 +517,8 @@ export default {
   "ShortcutsDialog.closeLabel": "Fechar",
   "ShortcutsDialog.defaultGroup": "Geral",
   "ShortcutsDialog.title": "Atalhos de teclado",
+  "SiteSearch.empty": "Nada para “{query}”",
+  "SiteSearch.error": "Não foi possível carregar a busca. Verifique sua conexão e digite de novo.",
   "SortableList.cancelled": "Cancelado. {item} voltou para a posição {position} de {total}.",
   "SortableList.dropped": "{item} foi solto na posição {position} de {total}.",
   "SortableList.handle": "Reordenar {item}",

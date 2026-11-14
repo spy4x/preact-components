@@ -555,6 +555,8 @@ export default {
   "ShortcutsDialog.closeLabel": "إغلاق",
   "ShortcutsDialog.defaultGroup": "عام",
   "ShortcutsDialog.title": "اختصارات لوحة المفاتيح",
+  "SiteSearch.empty": "لا شيء عن «{query}»",
+  "SiteSearch.error": "تعذّر تحميل البحث. تحقّق من اتصالك واكتب مرة أخرى.",
   "SortableList.cancelled": "أُلغي النقل. عاد العنصر «{item}» إلى الموضع {position} من {total}.",
   "SortableList.dropped": "وُضع العنصر «{item}» في الموضع {position} من {total}.",
   "SortableList.handle": "تغيير موضع «{item}»",

@@ -499,6 +499,8 @@ export default {
   "ShortcutsDialog.closeLabel": "Close",
   "ShortcutsDialog.defaultGroup": "General",
   "ShortcutsDialog.title": "Keyboard shortcuts",
+  "SiteSearch.empty": "Nothing for “{query}”",
+  "SiteSearch.error": "Search couldn't load. Check your connection and type again.",
   "SortableList.cancelled": "Cancelled. {item} is back at position {position} of {total}.",
   "SortableList.dropped": "Dropped {item} at position {position} of {total}.",
   "SortableList.handle": "Reorder {item}",

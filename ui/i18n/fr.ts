@@ -519,6 +519,8 @@ export default {
   "ShortcutsDialog.closeLabel": "Fermer",
   "ShortcutsDialog.defaultGroup": "Général",
   "ShortcutsDialog.title": "Raccourcis clavier",
+  "SiteSearch.empty": "Rien pour « {query} »",
+  "SiteSearch.error": "La recherche n’a pas pu se charger. Vérifiez votre connexion et retapez.",
   "SortableList.cancelled":
     "Annulé. L’élément {item} est revenu en position {position} sur {total}.",
   "SortableList.dropped": "Élément {item} déposé en position {position} sur {total}.",

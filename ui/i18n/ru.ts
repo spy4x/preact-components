@@ -530,6 +530,8 @@ export default {
   "ShortcutsDialog.closeLabel": "Закрыть",
   "ShortcutsDialog.defaultGroup": "Общие",
   "ShortcutsDialog.title": "Горячие клавиши",
+  "SiteSearch.empty": "Ничего по запросу «{query}»",
+  "SiteSearch.error": "Поиск не загрузился. Проверьте подключение и введите запрос ещё раз.",
   "SortableList.cancelled": "Отменено. «{item}» снова на месте {position} из {total}.",
   "SortableList.dropped": "«{item}» теперь на месте {position} из {total}.",
   "SortableList.handle": "Переместить «{item}»",

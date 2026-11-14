@@ -886,6 +886,9 @@ SettingRow	component	@spy4x/preact-ui	One setting: its name, its current value u
 Shortcut	type	@spy4x/preact-ui	One row of `ShortcutsDialog`.
 ShortcutGroup	type	@spy4x/preact-ui	A heading of `ShortcutsDialog` and the shortcuts under it, in the order given.
 ShortcutsDialog	component	@spy4x/preact-ui	A dialog that lists keyboard shortcuts, each with what it does and its keys, under group headings.
+SiteSearch	component	@spy4x/preact-ui	A website's search: a field-shaped button people notice, and the `CommandPalette` it opens on a click, `/` or Ctrl/⌘+K, over the site's own prebuilt `@spy4x/search` index at `src` and the site's `commands`.
+SiteSearchCommand	type	@spy4x/preact-ui	A client-side command, such as "Copy email" or "Toggle theme": a palette option that runs.
+SiteSearchEvent	type	@spy4x/preact-ui	What `SiteSearch` tells `onSearched` once per palette session.
 Slider	component	@spy4x/preact-ui	A labelled range slider on the native `<input type="range">`.
 SliderMark	type	@spy4x/preact-ui	One labelled point under a `Slider`'s track, such as "Typical" or "Today".
 SortDirection	type	@spy4x/preact-ui	Which way a sorted list runs: ascending or descending.
@@ -991,6 +994,7 @@ defaultLayoutCustomiserLabels	helper	@spy4x/preact-ui	The English defaults of `L
 defaultPlanCardLabels	helper	@spy4x/preact-ui	The English words `PlanCard` uses when a caller passes none.
 defaultPricingTableLabels	helper	@spy4x/preact-ui	The English words `PricingTable` uses when a caller passes none.
 defaultQuickAddLabels	helper	@spy4x/preact-ui	The English defaults of `QuickAddLabels`.
+defaultSiteSearchLabels	helper	@spy4x/preact-ui	English defaults for the `SiteSearchLabels` a website's search words its own way.
 defaultSortableListLabels	helper	@spy4x/preact-ui	The English defaults of `SortableListLabels`.
 defaultThemeToggleLabels	helper	@spy4x/preact-ui	The English words `ThemeToggle` uses when a caller passes none.
 defaultToastActionDuration	helper	@spy4x/preact-ui	How long a toast with an action stays when it names no duration of its own, in milliseconds.

@@ -491,6 +491,8 @@ export default {
   "ShortcutsDialog.closeLabel": "閉じる",
   "ShortcutsDialog.defaultGroup": "全般",
   "ShortcutsDialog.title": "キーボードショートカット",
+  "SiteSearch.empty": "「{query}」に一致するものはありません",
+  "SiteSearch.error": "検索を読み込めませんでした。接続を確認して、もう一度入力してください。",
   "SortableList.cancelled": "キャンセルしました。{item}は{total}件中{position}番目に戻りました。",
   "SortableList.dropped": "{item}を{total}件中{position}番目に置きました。",
   "SortableList.handle": "{item}を並べ替え",
