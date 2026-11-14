@@ -5,6 +5,7 @@ import { axePasses } from "./shared.ts"
 import { TIMELINE_ANNOUNCE_MS } from "../../../ui/timeline.tsx"
 import {
   LIVE_TIMELINE_KEEP,
+  LIVE_TIMELINE_START,
   LIVE_TIMELINE_TICK_MS,
 } from "../../../ui-guide/sections/timeline-live.tsx"
 
@@ -23,8 +24,12 @@ type Probe = typeof globalThis & {
  * The live timeline of the `Timeline` card. The demo's step timer is held back from the first
  * script on, so a step arrives only when the spec calls `step()`, and the page's clock is paused,
  * so the batching timer fires only when the spec moves it.
+ *
+ * The demo starts short enough that its end shows without scrolling. Unless `short` is set, steps
+ * are added first until it holds {@link FILLED} entries, which overflow the box, and the probes
+ * are set up after, so they see only the spec's own steps.
  */
-async function livePage(page: Page) {
+async function livePage(page: Page, { short = false }: { short?: boolean } = {}) {
   // After the clock's own script, so this one wraps the paused clock's `setInterval`.
   await page.clock.install()
   await page.addInitScript((stepMs) => {
@@ -45,6 +50,44 @@ async function livePage(page: Page) {
   const live = card.locator(`[data-e2e="timeline-live"]`)
   const announcer = live.locator("[data-timeline-announcer]")
   await box.scrollIntoViewIfNeeded()
+  // The timeline sets its observer up in an effect, which may wait for the paused clock's next
+  // frame; then the end, on screen at load, must be reported in view before the first step.
+  await page.clock.runFor(100)
+  await box.evaluate((element) =>
+    new Promise<void>((resolve) => {
+      const end = element.querySelector("[data-timeline-end]")
+      if (!end) throw new Error("the live timeline has no end marker")
+      new IntersectionObserver(([entry], observer) => {
+        if (!entry.isIntersecting) return
+        observer.disconnect()
+        resolve()
+      }).observe(end)
+    })
+  )
+  /** The demo adds one step; the clock moves a frame or two, so the timeline's effects run. */
+  const step = async () => {
+    const held = await page.evaluate(() => {
+      const steps = (globalThis as Probe).e2eSteps ?? []
+      for (const step of steps) step()
+      return steps.length
+    })
+    if (held !== 1) throw new Error(`held ${held} step timers, not 1`)
+    await page.clock.runFor(100)
+  }
+  if (!short) {
+    for (let count = LIVE_TIMELINE_START; count < FILLED; count++) await step()
+    // The batching timer of these steps fires before the probes start listening.
+    await page.clock.runFor(TIMELINE_ANNOUNCE_MS)
+    // Following scrolled the box smoothly: let that scroll land, so it cannot undo the spec's.
+    const deadline = Date.now() + 5_000
+    while (!await box.evaluate(ENDS_IN_BOX)) {
+      if (Date.now() > deadline) throw new Error("the filled demo never showed its end")
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    if (await box.evaluate((element) => element.scrollHeight <= element.clientHeight)) {
+      throw new Error(`${FILLED} entries fit the box without scrolling`)
+    }
+  }
   await page.evaluate((announceMs) => {
     const probe = globalThis as Probe
     probe.e2eScrolls = []
@@ -103,16 +146,7 @@ async function livePage(page: Page) {
     scrolls,
     spoken: () => page.evaluate(() => [...((globalThis as Probe).e2eSpoken ?? [])]),
     announceTimers: () => page.evaluate(() => (globalThis as Probe).e2eAnnounceTimers?.size ?? -1),
-    /** The demo adds one step; the clock moves a frame or two, so the timeline's effects run. */
-    step: async () => {
-      const held = await page.evaluate(() => {
-        const steps = (globalThis as Probe).e2eSteps ?? []
-        for (const step of steps) step()
-        return steps.length
-      })
-      if (held !== 1) throw new Error(`held ${held} step timers, not 1`)
-      await page.clock.runFor(100)
-    },
+    step,
     /** Moves the page's clock by `ms`. */
     wait: (ms: number) => page.clock.runFor(ms),
     /** Scrolls the box to its end, or its top, at once, and waits for the end to show or go. */
@@ -127,6 +161,9 @@ async function livePage(page: Page) {
       live.locator(`[data-timeline-state="${word.toLowerCase()}"]`, { hasText: word }).waitFor(),
   }
 }
+
+/** The entries `livePage` fills the demo to: more than its box shows at once. */
+const FILLED = 4
 
 /**
  * True when the timeline's end marker lies inside the box's visible area: the newest entry shows.
@@ -208,6 +245,34 @@ export const specs: readonly Spec[] = [
       await tl.stateIs("Following")
       same("the scrolls after the button", await tl.scrolls(), ["smooth", "smooth"])
       return "followed one step, counted 4 with one dropped, jumped to the newest"
+    },
+  },
+  {
+    name: "Timeline live: when the whole list fits on screen, a new event while paused shows no " +
+      "new events button, and none appears after Follow",
+    pageId: "ui",
+    run: async (page) => {
+      const tl = await livePage(page, { short: true })
+      await tl.endIs("in")
+      await tl.toolbar.filter({ hasText: "Pause" }).click()
+      await tl.stateIs("Paused")
+      // A real pause after each step, so the observer has reported where the end is.
+      const settle = () => new Promise((resolve) => setTimeout(resolve, 500))
+
+      await tl.step()
+      await tl.list.locator("li").nth(LIVE_TIMELINE_START).waitFor()
+      await settle()
+      same("the buttons after a step while paused", await tl.jump.count(), 0)
+
+      await tl.toolbar.filter({ hasText: "Follow" }).click()
+      await tl.stateIs("Following")
+      await tl.wait(100)
+      await settle()
+      same("the buttons after Follow", await tl.jump.count(), 0)
+      if (await tl.box.evaluate((element) => element.scrollHeight > element.clientHeight)) {
+        throw new Error(`${LIVE_TIMELINE_START + 1} entries overflow the box: the list must fit`)
+      }
+      return "paused, a step, then Follow: no new events button"
     },
   },
   {

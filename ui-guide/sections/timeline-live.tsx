@@ -40,9 +40,14 @@ function step(index: number): TimelineItem {
   }
 }
 
+/** The steps the demo starts with: few enough that the end shows on a phone, so it follows. */
+export const LIVE_TIMELINE_START = 2
+
 /** A live timeline fed by a timer, stopped when the card unmounts. */
 export function LiveTimelineDemo(): JSX.Element {
-  const items = useSignal<TimelineItem[]>([0, 1, 2, 3].map(step))
+  const items = useSignal<TimelineItem[]>(
+    Array.from({ length: LIVE_TIMELINE_START }, (_, index) => step(index)),
+  )
   useEffect(() => {
     const timer = setInterval(() => {
       const last = items.value[items.value.length - 1]

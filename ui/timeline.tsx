@@ -212,7 +212,14 @@ function LiveTimeline(
   const end = useRef<HTMLDivElement>(null)
   const list = useRef<HTMLOListElement>(null)
   const seen = useRef<Set<TimelineItem["id"]> | null>(null)
+  /** Whether the end was on screen when the observer last reported, readable at once. */
   const atEnd = useRef(false)
+  /**
+   * Entries that arrived, not followed, while the end was on screen: unseen only if the observer's
+   * next report, after they are drawn, finds the end off screen.
+   */
+  const held = useRef(0)
+  const observer = useRef<IntersectionObserver | null>(null)
   /**
    * True from a scroll to the end until the end is on screen, or the person scrolls or presses
    * anywhere, the scrollbar included: a new entry pushes the end off screen while the smooth
@@ -223,28 +230,45 @@ function LiveTimeline(
   const announceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const wasFollowing = useRef(following)
 
+  /**
+   * Asks the observer where the end is now. It reports only changes, so an end that never left
+   * the screen would otherwise never clear the count; a fresh `observe` always reports once.
+   */
+  function recheck(): void {
+    const sentinel = end.current
+    if (!sentinel || !observer.current) return
+    observer.current.unobserve(sentinel)
+    observer.current.observe(sentinel)
+  }
+
   function jumpToEnd(): void {
     pinned.current = true
     scrollToEnd(end)
+    recheck()
   }
 
   useEffect(() => {
     const sentinel = end.current
     if (!sentinel) return
-    const observer = new IntersectionObserver((entries) => {
+    observer.current = new IntersectionObserver((entries) => {
       // Several changes can arrive at once; the last one is where the end is now.
       const entry = entries[entries.length - 1]
       atEnd.current = entry.isIntersecting
-      if (!entry.isIntersecting) return
+      if (!entry.isIntersecting) {
+        unseen.value += held.current
+        held.current = 0
+        return
+      }
       pinned.current = false
+      held.current = 0
       unseen.value = 0
     })
-    observer.observe(sentinel)
+    observer.current.observe(sentinel)
     const release = () => pinned.current = false
     const intents = ["wheel", "touchstart", "pointerdown", "keydown"] as const
     for (const type of intents) addEventListener(type, release, { passive: true })
     return () => {
-      observer.disconnect()
+      observer.current?.disconnect()
       for (const type of intents) removeEventListener(type, release)
       clearTimeout(announceTimer.current)
     }
@@ -266,7 +290,11 @@ function LiveTimeline(
       pending.current = 0
     }, TIMELINE_ANNOUNCE_MS)
     if (following && (atEnd.current || pinned.current)) jumpToEnd()
-    else unseen.value += fresh
+    else if (atEnd.current) {
+      // The new entries may still fit on screen: the observer decides once they are drawn.
+      held.current += fresh
+      recheck()
+    } else unseen.value += fresh
   }, [items])
 
   // Following again, from the button or the caller's own control, jumps to the newest.
@@ -306,13 +334,16 @@ function LiveTimeline(
         </Button>
       </div>
       <div>
-        {items.length === 0
-          ? <p class="text-sm text-muted">{empty}</p>
-          : (
-            <ol ref={list} tabIndex={-1} aria-label={label} class="flex flex-col outline-none">
-              {entries(items)}
-            </ol>
-          )}
+        {items.length === 0 ? <p class="text-sm text-muted">{empty}</p> : (
+          <ol
+            ref={list}
+            tabIndex={-1}
+            aria-label={label}
+            class="flex flex-col outline-none"
+          >
+            {entries(items)}
+          </ol>
+        )}
         <div ref={end} aria-hidden="true" data-timeline-end="" class="h-px" />
         {unseen.value > 0 && (
           <div class="pointer-events-none sticky bottom-4 flex h-0 justify-center">
