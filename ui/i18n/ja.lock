@@ -128,6 +128,17 @@ DateRangePicker.repeatedTime	8fb0d9f4ed04d5ad
 DateRangePicker.skippedTime	6816d2959262c19b
 DateRangePicker.to	f4b06ef6d3c81436
 DateTimeField.zone	dfd615b25b5c1d58
+DecisionCard.addNote	322c0e13ef4fa485
+DecisionCard.addNoteOrAnswer	506845c67a192234
+DecisionCard.answer	d0e869b777a69679
+DecisionCard.less	ae5239ec63f28cd4
+DecisionCard.markDone	95acc4a22bdeebf1
+DecisionCard.more	d47d7cb0e4f8fd2b
+DecisionCard.note	d8da2c49df39d91d
+DecisionCard.noteOrAnswer	0dc83e884d65b465
+DecisionCard.recommended	d70604e843046137
+DecisionCard.sendAnswer	18737070e41c09dd
+DecisionCard.sendOwnAnswer	ed78f5cf5ca245d5
 DemoVideo.errorLabel	c548d36192f4ce04
 DemoVideo.openFileLabel	53c02a985e55f071
 DemoVideo.playLabel	43e3c3b1379bb838

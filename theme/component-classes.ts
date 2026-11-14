@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1428 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1429 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -21,6 +21,7 @@ export const COMPONENT_CLASSES: string = [
   "-ml-px",
   "-ms-1",
   "-ms-2",
+  "-ms-3",
   "-ms-px",
   "-mt-6",
   "-my-3",
