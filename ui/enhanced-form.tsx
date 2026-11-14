@@ -24,12 +24,41 @@ export interface EnhancedFormLabels {
   done: string
   /** Announced once a background submit rejects, or its promise throws. */
   failed: string
+  /**
+   * The browser's bubble for an empty required field that is not a checkbox, radio or `<select>`.
+   * `""` leaves the browser's own message, in the browser's language.
+   */
+  requiredField?: string
+  /** The bubble for an unticked required checkbox. */
+  requiredCheckbox?: string
+  /** The bubble for a required radio group or `<select>` with nothing chosen. */
+  requiredChoice?: string
 }
 
-const defaultLabels: EnhancedFormLabels = {
+const defaultLabels: Required<EnhancedFormLabels> = {
   sending: "Sending…",
   done: "Sent.",
   failed: "Something went wrong. Try again.",
+  requiredField: "Fill in this field.",
+  requiredCheckbox: "Check this box to continue.",
+  requiredChoice: "Choose an option.",
+}
+
+/** A control the browser validates: what an `invalid` event's target can be. */
+type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+
+/** The required message for one control: a checkbox, a choice, or any other field. */
+function requiredMessage(control: FormControl, labels: Required<EnhancedFormLabels>): string {
+  switch (control.type) {
+    case "checkbox":
+      return labels.requiredCheckbox
+    case "radio":
+    case "select-one":
+    case "select-multiple":
+      return labels.requiredChoice
+    default:
+      return labels.requiredField
+  }
 }
 
 /**
@@ -212,6 +241,19 @@ export interface EnhancedFormProps {
  * caller whose `onSubmit` returns at once and keeps its request in its own store is still guarded.
  * A back/forward-cache restore cannot reset the caller's value; a caller whose `"sending"` can be
  * frozen that way listens for `pageshow` itself.
+ *
+ * **An empty required field says so in the app's language.** The browser's own check stays on (no
+ * `noValidate`, which would let through the values `Combobox`, `MoneyInput`, `TagInput` and
+ * `ColorField` refuse with `setCustomValidity`), but its "Please fill out this field." comes in the
+ * browser's language. So in the capture phase of `invalid`, a control whose value is missing and
+ * whose component set no message of its own gets `requiredField`, `requiredCheckbox` or
+ * `requiredChoice` from the UI catalog through `setCustomValidity`, and the browser shows that
+ * instead. The next `input` anywhere in the form clears every message the form set, so
+ * the browser checks again on the next submit; clearing them all, not only the edited one, is what
+ * lets a picked radio release its unpicked siblings. `change` needs no listener of its own: every
+ * control that fires it fires `input` first. A `click` anywhere in the form clears them too, before
+ * the browser checks again: a submit button's click, or the one Enter sends to the default button,
+ * so a value set in code with no event (`FileInput`'s drop) never stays blocked by a stale message.
  */
 export function EnhancedForm(
   {
@@ -227,7 +269,7 @@ export function EnhancedForm(
     class: className,
   }: EnhancedFormProps,
 ): JSX.Element {
-  const copy = useLabels("EnhancedForm", defaultLabels, labels)
+  const copy = useLabels<Required<EnhancedFormLabels>>("EnhancedForm", defaultLabels, labels)
   const [ownStatus, setStatus] = useState<EnhancedFormStatus>("idle")
   const status = controlledStatus ?? ownStatus
   // Checked synchronously, before either branch of `handleSubmit` runs, so two submits that arrive
@@ -247,6 +289,8 @@ export function EnhancedForm(
   // Read by the focus-restoring effect below, which must never move focus for a visitor who was
   // never engaging with this form's own controls in the first place.
   const focusInFormAtSubmitRef = useRef(false)
+  // The controls this form gave its own required message, cleared on the next edit or click.
+  const markedRef = useRef(new Set<FormControl>())
 
   useEffect(() => {
     mountedRef.current = true
@@ -330,6 +374,19 @@ export function EnhancedForm(
       })
   }
 
+  const handleInvalid = (event: Event) => {
+    const control = event.target as FormControl
+    if (!control.validity?.valueMissing || control.validity.customError) return
+    const text = requiredMessage(control, copy)
+    control.setCustomValidity(text)
+    markedRef.current.add(control)
+  }
+
+  const clearRequired = () => {
+    for (const control of markedRef.current) control.setCustomValidity("")
+    markedRef.current.clear()
+  }
+
   const message = enhancedFormMessage(status, copy)
 
   const showsSending = status === "sending" && sending !== undefined
@@ -362,6 +419,9 @@ export function EnhancedForm(
       action={action}
       method={method}
       onSubmit={handleSubmit}
+      onInvalidCapture={handleInvalid}
+      onInputCapture={clearRequired}
+      onClickCapture={clearRequired}
       class={join("space-y-4", className)}
     >
       <div>
