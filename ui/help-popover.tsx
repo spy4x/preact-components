@@ -45,15 +45,22 @@ const surfaceClasses =
   "m-auto max-h-[calc(100%-2rem)] w-[min(32rem,calc(100%-2rem))] rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim open:flex open:flex-col"
 
 /**
- * Once hydrated, hides the open panel when Tab moves focus to anything outside it but its own
- * trigger, so focus never sits hidden under the panel. The trigger is left out: a click on it
- * toggles the panel itself, and hiding it first would reopen it.
+ * Once hydrated, hides the open panel `panelId` after focus leaves it, so focus never sits on a
+ * control the panel covers, after Tab or Shift+Tab. It looks once focus has moved. It leaves the
+ * panel open when focus went nowhere (a click on plain text, which light dismiss handles), or to
+ * the trigger by a mouse: that click toggles the panel itself, and hiding it first would reopen
+ * it. The trigger reached by the keyboard shows `:focus-visible`, and then the panel hides.
  */
-function hideWhenFocusLeaves(event: FocusEvent) {
-  const panel = event.currentTarget as HTMLElement
-  const next = event.relatedTarget as Element | null
-  if (!next || panel.contains(next) || next.getAttribute("popovertarget") === panel.id) return
-  if (panel.matches(":popover-open")) panel.hidePopover()
+function hideWhenFocusLeaves(panelId: string) {
+  setTimeout(() => {
+    const panel = document.getElementById(panelId)
+    const active = document.activeElement
+    if (!panel?.matches(":popover-open") || !active || active === document.body) return
+    if (panel.contains(active)) return
+    const toTrigger = active.getAttribute("popovertarget") === panelId
+    if (toTrigger && !active.matches(":focus-visible")) return
+    panel.hidePopover()
+  })
 }
 
 /**
@@ -65,7 +72,7 @@ function hideWhenFocusLeaves(event: FocusEvent) {
  * `popovertarget` with `popovertargetaction="hide"`. On open, focus moves to the heading
  * (`autofocus` with `tabindex="-1"`), so a screen reader starts at the title and Tab reaches the
  * close button, then the body, which is focusable so a keyboard can scroll it. Once hydrated, Tab
- * out of the panel hides it. It renders the same on the server and after hydration.
+ * or Shift+Tab out of the panel hides it. It renders the same on the server and after hydration.
  *
  * Use it for help a person reads and closes, beside the thing it explains. A form or a decision
  * goes in a `Modal`; one short hint on a control is a `Tooltip`.
@@ -106,7 +113,7 @@ export function HelpPopover({
         aria-labelledby={titleId}
         data-e2e={dataE2E ? `${dataE2E}-panel` : undefined}
         class={cn(surfaceClasses, className)}
-        onFocusOut={hideWhenFocusLeaves}
+        onFocusOut={() => hideWhenFocusLeaves(panelId)}
       >
         <div class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4">
           <h2

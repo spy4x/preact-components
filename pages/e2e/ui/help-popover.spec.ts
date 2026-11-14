@@ -105,23 +105,66 @@ async function withoutScripts<T>(
   }
 }
 
-/**
- * Once hydrated, Tab from the close button reaches the scrolling body, and Tab out of the panel
- * hides it, so focus never sits on a control the open panel covers.
- */
-async function tabOutHides(page: Page): Promise<string> {
+/** Waits for hydration, then opens the panel from its trigger and waits for focus on the heading. */
+async function openHydrated(page: Page) {
   const { trigger } = parts(page)
   await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true")
   await trigger.scrollIntoViewIfNeeded()
   await trigger.click()
   await waitOpen(page, true)
   await waitFocus(page, "#guide-help-popover-title", "the heading")
+}
+
+/**
+ * Once hydrated, Tab from the close button reaches the scrolling body, and Tab out of the panel
+ * hides it; Shift+Tab from the heading to the trigger hides it too. Focus never sits on a control
+ * the open panel covers.
+ */
+async function tabOutHides(page: Page): Promise<string> {
+  await openHydrated(page)
   await page.keyboard.press("Tab")
   await page.keyboard.press("Tab")
   await waitFocus(page, `#guide-help-popover [role="region"]`, "the scrolling body")
   await page.keyboard.press("Tab")
   await waitOpen(page, false)
-  return "Tab out of the body hides the panel"
+
+  await openHydrated(page)
+  await page.keyboard.press("Shift+Tab")
+  await waitFocus(page, `button[data-e2e="help-popover-demo"]`, "the trigger")
+  await waitOpen(page, false)
+  return "Tab out of the body and Shift+Tab to the trigger hide the panel"
+}
+
+/**
+ * Once hydrated, a click on plain text inside the panel keeps it open, and a mouse click on the
+ * visible trigger closes it and leaves it closed.
+ */
+async function mouseKeepsToggling(page: Page): Promise<string> {
+  const { trigger, panel } = parts(page)
+  await openHydrated(page)
+  const box = await panel.boundingBox()
+  if (!box) throw new Error("the open panel has no box")
+  // The header's padding: plain, unfocusable surface, so focus leaves for the document body.
+  await page.mouse.click(box.x + 6, box.y + 6)
+  await page.waitForTimeout(100)
+  if (!await panel.evaluate((el) => el.matches(":popover-open"))) {
+    throw new Error("a click inside the panel closed it")
+  }
+  await page.keyboard.press("Escape")
+  await waitOpen(page, false)
+
+  await trigger.click()
+  await waitOpen(page, true)
+  await panel.evaluate((el) => (el as HTMLElement).style.translate = "0 -60vh")
+  // Held as a person holds it: the focus that mousedown moves to the trigger settles before the
+  // click, which a click in one step would let land first and so hide a reopened panel.
+  await trigger.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(150)
+  await page.mouse.up()
+  await page.waitForTimeout(100)
+  await waitOpen(page, false)
+  return "click inside stays open, trigger click closes"
 }
 
 /**
@@ -196,9 +239,14 @@ export const specs: readonly Spec[] = [
     run: (page) => withoutScripts(page, 390, fitsTheViewport),
   },
   {
-    name: "HelpPopover: once hydrated, Tab out of the panel hides it",
+    name: "HelpPopover: once hydrated, Tab or Shift+Tab out of the panel hides it",
     pageId: "ui",
     run: tabOutHides,
+  },
+  {
+    name: "HelpPopover: once hydrated, a click inside keeps it open and a trigger click closes it",
+    pageId: "ui",
+    run: mouseKeepsToggling,
   },
   {
     name:
