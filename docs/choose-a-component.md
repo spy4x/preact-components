@@ -41,6 +41,9 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   `ui-guide/sections/inputs.tsx`.
 - Several lines or tags → `ListField` (`ui/list-field.tsx`), `TagInput` (`ui/tag-input.tsx`).
   Example: `ui-guide/sections/fields.tsx`.
+- A small whole number applied as it changes, with no Save button, such as how many at once (0
+  can read "Off") → `NumberStepper` (`ui/number-stepper.tsx`). Example:
+  `ui-guide/sections/inputs.tsx`.
 - Pick one item from a long list, with search, groups or "Create" → `Combobox`
   (`ui/combobox.tsx`). Example: `ui-guide/sections/inputs.tsx`.
 - Pick an icon, such as a category's → `IconPicker` (`ui/icon-picker.tsx`). Example:
