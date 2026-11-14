@@ -51,12 +51,15 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   // Command rows (icon, state badge, keys, disabled and kept-open commands): 52.6 KB (#878).
   // The alternative pick, PageUp/PageDown, submenus, the text mode and ">": 55.8 KB (#1234).
   // Recent picks, the best match, the result count and the key hints: 58.1 KB (#1235).
-  "island-command-palette.tsx": 59_000,
+  // The icon trigger's tooltip, `Tooltip`'s behaviour without tailwind-merge, and the link the
+  // trigger is until hydration: 61.6 KB (#940).
+  "island-command-palette.tsx": 62_000,
   // A modal over a combobox, with the modal's `Button` and its hotkey code: 46.6 KB (#943, #524).
   // The forgiving matcher the palette already carries, groups and Create: 53.0 KB (#1164).
   "island-modal-combobox.tsx": 54_000,
   // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 36.0 KB (#958, #524).
-  "island-explorable-bars.tsx": 36_000,
+  // Eight series colours instead of five, in the chart's palette class: 36.2 KB (#957).
+  "island-explorable-bars.tsx": 37_000,
   // #524 put `useLabels` and the translated defaults into every island, about 1.4 KB each; the
   // catalogs themselves stay out of every bundle. These four then passed their old ceilings.
   // 35.5 KB.

@@ -554,6 +554,14 @@ export {
   matchOptions,
   rankOptions,
 } from "./command-palette.tsx"
+export {
+  defaultSiteSearchLabels,
+  SiteSearch,
+  type SiteSearchCommand,
+  type SiteSearchEvent,
+  type SiteSearchLabels,
+  type SiteSearchProps,
+} from "./site-search.tsx"
 export { InlineEdit, inlineEditCommit, type InlineEditProps } from "./inline-edit.tsx"
 export {
   defaultQuickAddLabels,

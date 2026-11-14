@@ -46,6 +46,11 @@ import { routeTable, routeTableDrift } from "@spy4x/preact-ui-guide/routes"
 import { DEFAULT_BASE, DEFAULT_ORIGIN, normalizeBase } from "./src/site.ts"
 import { normalizeSources } from "./src/tailwind-sources.ts"
 import { guideVersion } from "./src/version.ts"
+import { createIndex } from "@spy4x/search"
+import {
+  SITE_SEARCH_DEMO_SRC,
+  siteSearchDemoEntries,
+} from "../ui-guide/sections/site-search-entries.ts"
 
 /** This file's directory: the demo's root, `pages/`. */
 const PAGES_DIRECTORY = dirname(fileURLToPath(import.meta.url))
@@ -462,6 +467,14 @@ async function main(): Promise<void> {
   for (const chunk of mapIsland.chunks) {
     await Deno.writeFile(join(DIST_DIRECTORY, MAP_DEMO_DIRECTORY, chunk.name), chunk.bytes)
   }
+
+  // The `SiteSearch` card's index, built the way a site's server builds its `/search.json`.
+  const siteSearchIndex = join(DIST_DIRECTORY, SITE_SEARCH_DEMO_SRC)
+  await Deno.mkdir(dirname(siteSearchIndex), { recursive: true })
+  await Deno.writeTextFile(
+    siteSearchIndex,
+    JSON.stringify(createIndex([...siteSearchDemoEntries])),
+  )
 
   // The generated plain-text maps of the library (`deno task llms`), served at the site root. They
   // are read from the repository root, so a missing file throws here rather than shipping a site

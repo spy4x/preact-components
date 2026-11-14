@@ -32,7 +32,7 @@ KpiDirection	type	@spy4x/preact-charts	Which way a `KpiChange` went, drawn as it
 KpiGrid	component	@spy4x/preact-charts	Responsive grid for `Kpi` cards: two columns on a phone, as many as fit on a desktop.
 KpiTone	type	@spy4x/preact-charts	Colour role of a `Kpi` value.
 LineChart	component	@spy4x/preact-charts	The line chart: drawn complete on the server, interactive once it runs in a browser.
-LinePoint	type	@spy4x/preact-charts	
+LinePoint	type	@spy4x/preact-charts	One reading of a `LineSeries`: where it sits on the X axis and its value.
 LineSeries	type	@spy4x/preact-charts	
 LineX	type	@spy4x/preact-charts	A point's place on the X axis: a label, or — on a time axis — an instant.
 LoadPayloadResult	type	@spy4x/preact-charts	
@@ -528,7 +528,7 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1429 classes).
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1435 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -887,6 +887,9 @@ SettingRow	component	@spy4x/preact-ui	One setting: its name, its current value u
 Shortcut	type	@spy4x/preact-ui	One row of `ShortcutsDialog`.
 ShortcutGroup	type	@spy4x/preact-ui	A heading of `ShortcutsDialog` and the shortcuts under it, in the order given.
 ShortcutsDialog	component	@spy4x/preact-ui	A dialog that lists keyboard shortcuts, each with what it does and its keys, under group headings.
+SiteSearch	component	@spy4x/preact-ui	A website's search: a field-shaped button people notice, and the `CommandPalette` it opens on a click, `/` or Ctrl/⌘+K, over the site's own prebuilt `@spy4x/search` index at `src` and the site's `commands`.
+SiteSearchCommand	type	@spy4x/preact-ui	A client-side command, such as "Copy email" or "Toggle theme": a palette option that runs.
+SiteSearchEvent	type	@spy4x/preact-ui	What `SiteSearch` tells `onSearched` once per palette session.
 Slider	component	@spy4x/preact-ui	A labelled range slider on the native `<input type="range">`.
 SliderMark	type	@spy4x/preact-ui	One labelled point under a `Slider`'s track, such as "Typical" or "Today".
 SortDirection	type	@spy4x/preact-ui	Which way a sorted list runs: ascending or descending.
@@ -992,6 +995,7 @@ defaultLayoutCustomiserLabels	helper	@spy4x/preact-ui	The English defaults of `L
 defaultPlanCardLabels	helper	@spy4x/preact-ui	The English words `PlanCard` uses when a caller passes none.
 defaultPricingTableLabels	helper	@spy4x/preact-ui	The English words `PricingTable` uses when a caller passes none.
 defaultQuickAddLabels	helper	@spy4x/preact-ui	The English defaults of `QuickAddLabels`.
+defaultSiteSearchLabels	helper	@spy4x/preact-ui	English defaults for the `SiteSearchLabels` a website's search words its own way.
 defaultSortableListLabels	helper	@spy4x/preact-ui	The English defaults of `SortableListLabels`.
 defaultThemeToggleLabels	helper	@spy4x/preact-ui	The English words `ThemeToggle` uses when a caller passes none.
 defaultToastActionDuration	helper	@spy4x/preact-ui	How long a toast with an action stays when it names no duration of its own, in milliseconds.

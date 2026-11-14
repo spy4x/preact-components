@@ -19,7 +19,10 @@ import {
   Grid,
   honeypotField,
   Input,
+  RadioGroup,
+  Select,
   Stack,
+  TagInput,
   Textarea,
   useFocusOnChange,
   useFocusOnError,
@@ -466,6 +469,61 @@ function FocusDemo() {
 }
 
 /**
+ * One required control of each kind `EnhancedForm` words its own message for: a field, a checkbox,
+ * a radio group and a `<select>`, plus a `TagInput`, which sets its own message and keeps it. The
+ * count only moves once every control holds a value.
+ */
+function RequiredDemo() {
+  const plan = useSignal<string | null>(null)
+  const size = useSignal("")
+  const tags = useSignal<string[]>([])
+  const submits = useSignal(0)
+  return (
+    <Stack gap="md" class="max-w-md" data-e2e="required-enhanced-form">
+      <EnhancedForm action={FORM_DEMO_ACTION} onSubmit={() => void submits.value++}>
+        <Stack gap="md">
+          <Field id="guide-required-enhanced-email" label="Email" required>
+            <Input type="email" name="email" required />
+          </Field>
+          <Field id="guide-required-enhanced-plan" labelFor={false} required>
+            <RadioGroup
+              legend="Plan"
+              name="plan"
+              value={plan.value}
+              onChange={(value) => plan.value = value}
+              options={[
+                { value: "free", label: "Free" },
+                { value: "team", label: "Team" },
+              ]}
+            />
+          </Field>
+          <Field id="guide-required-enhanced-size" label="Team size" required>
+            <Select
+              name="size"
+              required
+              placeholder="Pick one"
+              value={size.value}
+              onChange={(event) => size.value = event.currentTarget.value}
+              options={[{ value: "small", label: "1–10" }, { value: "large", label: "11 or more" }]}
+            />
+          </Field>
+          <Field id="guide-required-enhanced-tags" label="Tags" required>
+            <TagInput value={tags.value} onChange={(next) => tags.value = next} />
+          </Field>
+          <Checkbox name="terms" required data-e2e="required-enhanced-terms">
+            I accept the terms
+          </Checkbox>
+          <Cluster>
+            <Button type="submit">Create account</Button>
+          </Cluster>
+        </Stack>
+      </EnhancedForm>
+      <Count e2e="required-enhanced-submits">submits: {submits.value}</Count>
+    </Stack>
+  )
+}
+
+/**
  * The card: the raw building block first, then the two forms an app most often builds from it — a
  * sign-up and a contact form — written here from `Field`, `Input` and `Button` rather than shipped
  * as components.
@@ -486,6 +544,13 @@ function EnhancedFormCard() {
           accepted one on the next step's line.
         </DemoNote>
         <FocusDemo />
+      </Stack>
+      <Stack gap="md">
+        <DemoNote>
+          Submit with fields left empty: each says what it needs in the app's language, not the
+          browser's.
+        </DemoNote>
+        <RequiredDemo />
       </Stack>
       <Grid minColumnWidth="md" gap="xl">
         <Stack gap="md">
@@ -531,8 +596,9 @@ export const enhancedFormDemos = {
       },
       {
         name: "labels",
-        type: "{ sending?, done?, failed? }",
-        description: 'What the form announces; `""` for a key says nothing in that state.',
+        type: "{ sending?, done?, failed?, requiredField?, requiredCheckbox?, requiredChoice? }",
+        description:
+          'What the form announces, and what an empty required field, checkbox or choice says; `""` for a status says nothing, for a required key keeps the browser\'s message.',
       },
       {
         name: "class",

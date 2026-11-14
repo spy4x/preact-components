@@ -92,6 +92,7 @@ import {
 import { entries } from "../record.ts"
 import { DemoNote } from "./demo-note.tsx"
 import { dashboardDemos } from "./dashboard.tsx"
+import { siteSearchDemos } from "./site-search.tsx"
 import { pageHeaderDemos } from "./page-header.tsx"
 import { comparisonTableDemos } from "./comparison-table.tsx"
 import { marketingBlockDemos } from "./marketing-blocks.tsx"
@@ -2871,7 +2872,12 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
         name: "onSelect",
         type: "(option, { alternative, text? }) => void",
         description:
-          "The picked option. `alternative` is true for Ctrl/⌘+Enter, a middle click or a Ctrl/⌘+click (a new tab, for a link); `text` is what was typed for a `takesText` row.",
+          "The picked option. `alternative` is true for Ctrl/⌘+Enter, a middle click or a Ctrl/⌘+click (a new tab, for a link); `text` is what was typed for a `takesText` row. Focus `onSelect` moves stays where it went.",
+      },
+      {
+        name: "onOpenChange",
+        type: "(open: boolean) => void",
+        description: "Told when the palette opens and once it has closed.",
       },
       {
         name: "options.run",
@@ -2922,10 +2928,16 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "trigger",
-        type: `"button" | "field" | ((api: CommandPaletteTrigger) => ComponentChildren)`,
+        type: `"button" | "field" | "icon" | ((api: CommandPaletteTrigger) => ComponentChildren)`,
         default: `"button"`,
         description:
-          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. A function draws a trigger of its own from `{ open, ref, shortcuts, hotkey }`, or none with `null`: `open(query)` opens with that text typed, `ref` takes focus back on close. The hotkeys open the palette whatever trigger is drawn.",
+          "`field` draws the field-shaped trigger at every width, phones included, as wide as its container; a letter typed on it opens the palette with that letter. `icon` is the icon button at every width, with a tooltip of its placeholder and first hotkey. A function draws a trigger of its own from `{ open, ref, shortcuts, hotkey }`, or none with `null`: `open(query)` opens with that text typed, `ref` takes focus back on close. The hotkeys open the palette whatever trigger is drawn.",
+      },
+      {
+        name: "triggerHref",
+        type: "string",
+        description:
+          "The trigger is a link to this address until the page hydrates, so a reader without JavaScript reaches a search page. `SiteSearch` shows it.",
       },
       {
         name: "defaultQuery",
@@ -2981,6 +2993,8 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
 ]
 <CommandPalette options={options} hotkeys={["mod+p"]} onSelect={(option) => run(option.id)} />
 
+<CommandPalette options={options} trigger="icon" hotkeys={["mod+shift+k"]} onSelect={(option) => run(option.id)} />
+
 <CommandPalette
   options={[{ id: "toast", label: "Toast", aliases: ["notification"] }]}
   trigger="field"
@@ -3020,6 +3034,7 @@ clearCommandPaletteRecent(recent.storageKey, recent.storage)
 />`,
     render: () => <CommandPaletteDemo />,
   },
+  ...siteSearchDemos,
   ...dashboardDemos,
 } satisfies DemoFragment
 
@@ -3360,14 +3375,16 @@ function paletteFruitSearch(
 }
 
 /**
- * `CommandPalette` four ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * `CommandPalette` six ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
- * has no hotkey. The third is the field trigger, opening on a query with a typo, and says how each
- * result matched. The fourth lists commands: a theme toggle that stays open, a shortcut, a
- * command that cannot run, one that moves focus to the card's note, a quick-create row and a
- * submenu. It draws a trigger of its own, which a switch can remove, and opens on Ctrl+Shift+P
- * either way. `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many
- * searches started and answered.
+ * has no hotkey. The third puts the first one's options behind the icon trigger, whose tooltip
+ * shows Ctrl+Shift+K (⌘⇧K on a Mac). The fourth is the field trigger, opening on a query with a
+ * typo, and says how each result matched. The fifth lists commands: a theme toggle that stays open,
+ * a shortcut, a command that cannot run, one that moves focus to the card's note, a quick-create
+ * row and a submenu. It draws a trigger of its own, which a switch can remove, and opens on
+ * Ctrl+Shift+P either way. The sixth lists the same commands and remembers recent picks.
+ * `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many searches
+ * started and answered.
  */
 function CommandPaletteDemo() {
   const picked = useSignal("nothing yet")
@@ -3405,6 +3422,17 @@ function CommandPaletteDemo() {
           dataE2E="palette-remote"
           labels={{ placeholder: "Find a fruit…" }}
           onSelect={(option) => pickedRemote.value = option.label}
+        />
+      </Cluster>
+      {/* Centred on its own row, so the tooltip under the magnifier fits the column. */}
+      <Cluster justify="center">
+        <CommandPalette
+          options={paletteOptions}
+          trigger="icon"
+          hotkeys={["mod+shift+k"]}
+          dataE2E="palette-icon"
+          labels={{ placeholder: "Jump to…" }}
+          onSelect={(option) => picked.value = option.label}
         />
       </Cluster>
       <CommandPalette

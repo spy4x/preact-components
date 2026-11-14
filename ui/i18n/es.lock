@@ -147,6 +147,9 @@ DocsNav.summary	beae47fb0bb284a8
 DocsNav.summaryNone	572cd72feb9a84e0
 EnhancedForm.done	74bb54faa1e3bd1c
 EnhancedForm.failed	4def98c892406e31
+EnhancedForm.requiredCheckbox	bb8d35d1cbc328b2
+EnhancedForm.requiredChoice	0a2d6b586843b61f
+EnhancedForm.requiredField	35a238faf5f16aba
 EnhancedForm.sending	b8ed5279e897be5d
 ErrorBoundary.description	bc6f761a9a77bf31
 ErrorBoundary.reloadLabel	fdb615579fd060a0
@@ -451,6 +454,8 @@ SectionHeading.anchor	9dc5baf353535d6d
 ShortcutsDialog.closeLabel	7d9eb7acb13e2462
 ShortcutsDialog.defaultGroup	c910d474dcd724bf
 ShortcutsDialog.title	e9bef0b0f3c25e6e
+SiteSearch.empty	1f9b210575aa6f6b
+SiteSearch.error	705d6a928e971b64
 SortableList.cancelled	de2ba01193acbba1
 SortableList.dropped	db8131e44e0e3127
 SortableList.handle	1729d21c4a3a536f

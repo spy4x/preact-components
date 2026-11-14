@@ -56,6 +56,7 @@ import { specs as rowCursor } from "./ui/row-cursor.spec.ts"
 import { specs as screenTour } from "./ui/screen-tour.spec.ts"
 import { specs as avatar } from "./ui/avatar.spec.ts"
 import { specs as commandPalette } from "./ui/command-palette.spec.ts"
+import { specs as siteSearch } from "./ui/site-search.spec.ts"
 import { specs as tabsAndTable } from "./ui/tabs-and-table.spec.ts"
 import { specs as tabs } from "./ui/tabs.spec.ts"
 import { specs as feedback } from "./ui/feedback.spec.ts"
@@ -71,6 +72,7 @@ import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 import { specs as copyButton } from "./ui/copy-button.spec.ts"
 import { specs as helpPopover } from "./ui/help-popover.spec.ts"
+import { specs as enhancedForm } from "./ui/enhanced-form.spec.ts"
 
 /** Each file's specs, by its name under `e2e/ui/` without `.spec.ts`. */
 export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
@@ -124,6 +126,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "screen-tour": screenTour,
   avatar,
   "command-palette": commandPalette,
+  "site-search": siteSearch,
   "tabs-and-table": tabsAndTable,
   tabs,
   feedback,
@@ -142,6 +145,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "status-mark": statusMark,
   elapsed,
   "row-cursor": rowCursor,
+  "enhanced-form": enhancedForm,
 }
 
 export const specs: readonly Spec[] = Object.values(specsByFile).flat()

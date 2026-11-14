@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1429 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1435 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -100,6 +100,9 @@ export const COMPONENT_CLASSES: string = [
   "[--chart-3:#15935f]",
   "[--chart-4:#4a3aa7]",
   "[--chart-5:#c93f75]",
+  "[--chart-6:#9a5b00]",
+  "[--chart-7:#0b8aa0]",
+  "[--chart-8:#6b7a00]",
   "[--pc-slider-fill:calc(0.625rem+(100%-1.25rem)*attr(data-fill_type(<number>)))]",
   "[--rail-height:600px]",
   "[--toastr-far:1rem]",
@@ -315,6 +318,9 @@ export const COMPONENT_CLASSES: string = [
   "dark:[--chart-3:#199e70]",
   "dark:[--chart-4:#9085e9]",
   "dark:[--chart-5:#d55181]",
+  "dark:[--chart-6:#cc8300]",
+  "dark:[--chart-7:#1a9fb5]",
+  "dark:[--chart-8:#8a9a1e]",
   "dark:[--color-focus-offset:var(--color-canvas)]",
   "dark:[color-scheme:dark]",
   "dark:[tr:hover>&]:text-red-300",

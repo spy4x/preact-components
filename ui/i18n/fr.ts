@@ -172,6 +172,9 @@ export default {
   "DocsNav.summaryNone": "Guides",
   "EnhancedForm.done": "Envoyé.",
   "EnhancedForm.failed": "Un problème est survenu. Réessayez.",
+  "EnhancedForm.requiredCheckbox": "Cochez cette case pour continuer.",
+  "EnhancedForm.requiredChoice": "Sélectionnez une option.",
+  "EnhancedForm.requiredField": "Remplissez ce champ.",
   "EnhancedForm.sending": "Envoi…",
   "ErrorBoundary.description": "Recharger la page règle généralement le problème.",
   "ErrorBoundary.reloadLabel": "Recharger la page",
@@ -517,6 +520,8 @@ export default {
   "ShortcutsDialog.closeLabel": "Fermer",
   "ShortcutsDialog.defaultGroup": "Général",
   "ShortcutsDialog.title": "Raccourcis clavier",
+  "SiteSearch.empty": "Rien pour « {query} »",
+  "SiteSearch.error": "La recherche n’a pas pu se charger. Vérifiez votre connexion et retapez.",
   "SortableList.cancelled":
     "Annulé. L’élément {item} est revenu en position {position} sur {total}.",
   "SortableList.dropped": "Élément {item} déposé en position {position} sur {total}.",
