@@ -100,6 +100,7 @@ import { contentBlockDemos } from "./content-blocks.tsx"
 import { pageNavigationDemos } from "./page-navigation.tsx"
 import { storefrontDemos } from "./storefront.tsx"
 import { attachmentDemos } from "./attachments.tsx"
+import { LiveTimelineDemo } from "./timeline-live.tsx"
 import { ZoomableImages } from "@spy4x/preact-ui/zoomable-images"
 import { KanbanBoard, type KanbanItem, moveKanbanItem } from "@spy4x/preact-ui/kanban-board"
 import { type SortableItem, SortableList } from "@spy4x/preact-ui/sortable-list"
@@ -2665,6 +2666,30 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
         default: '"Nothing yet."',
         description: "What shows when there are no entries.",
       },
+      {
+        name: "live",
+        type: "boolean",
+        default: "false",
+        description:
+          'Follows new entries added at the end, oldest first: a Pause or Follow toolbar, the newest scrolled into view while the end is on screen, a "3 new events" jump button otherwise, and one polite announcement per few seconds.',
+      },
+      {
+        name: "following",
+        type: "boolean",
+        description:
+          "Whether a live timeline follows, for a caller that drives it, such as with a hotkey. Left out, the timeline keeps its own state, starting on.",
+      },
+      {
+        name: "onFollowingChange",
+        type: "(following: boolean) => void",
+        description: "Called with the new state when Pause or Follow is pressed.",
+      },
+      {
+        name: "labels",
+        type: "Partial<TimelineLiveLabels>",
+        description:
+          '`following`, `paused`, `pause`, `follow` and `newEvents(count)`; default "Following", "Paused", "Pause", "Follow" and "3 new events".',
+      },
     ],
     snippet: `<Timeline
   label="Activity"
@@ -2673,8 +2698,16 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
     { id: 2, title: "Sessions ended", at: "2026-03-03T18:40:00Z", when: "yesterday", tone: "warning" },
     { id: 1, title: "Signed in", at: "2026-03-03T08:00:00Z", when: "yesterday" },
   ]}
-/>`,
-    render: () => <Timeline label="Activity" items={TIMELINE_ITEMS} />,
+/>
+
+// A run that is still going: oldest first, new steps appended.
+<Timeline live label="Build run" items={steps.value} />`,
+    render: () => (
+      <Stack>
+        <Timeline label="Activity" items={TIMELINE_ITEMS} />
+        <LiveTimelineDemo />
+      </Stack>
+    ),
   },
   Isolated: {
     summary:
