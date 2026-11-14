@@ -4,7 +4,7 @@ Charts for Preact that render complete on the server and become interactive in t
 the axis and loading helpers behind them.
 
 - **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `RankedBars`, `DotPlot`,
-  `DonutChart`, `Kpi`, `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
+  `DonutChart`, `Kpi`, `KpiGrid`, `DependencyGraph`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
   native tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
@@ -51,15 +51,16 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                                              |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                          |
-| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                                           |
-| `RankedBars` | `ranked-bars` | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `format`, `navigate` |
-| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                                            |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                       |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                  |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                                         |
+| Component         | Subpath            | Interactive in a browser               | Key props / ports                                                                                                                                 |
+| ----------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`       | `line-chart`       | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                             |
+| `Bars`            | `bars`             | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                                              |
+| `RankedBars`      | `ranked-bars`      | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `format`, `navigate`    |
+| `DotPlot`         | `dot-plot`         | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                                               |
+| `DonutChart`      | `donut-chart`      | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                          |
+| `Kpi`             | `kpi`              | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                     |
+| `KpiGrid`         | `kpi`              | no                                     | `children`, `minWidth`                                                                                                                            |
+| `DependencyGraph` | `dependency-graph` | chain highlight, CSS only              | `nodes` (`href`, `tone`, `emphasis`, `badge`, `description`), `edges` (`style`, `tone`), `label`, `emptyLabel`, `dependsOnLabel`, `neededByLabel` |
 
 Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
 period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a
@@ -229,6 +230,25 @@ that must work without it, give the row an `href` instead.
   printed percent, colour and start and end, the total, and a ready `conic-gradient(…)` value.
   Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.
   Use it to draw a donut or a share legend of your own.
+
+### Dependency graph (`./dependency-graph`)
+
+`DependencyGraph` draws boxes joined by curved arrows as one SVG, finished on the server: `from`
+is the node that comes first, on the left, and `to` the one that waits on it. Hovering a node, or
+focusing one that has `href`, keeps the nodes and edges before and after it and dims the rest with
+a scoped stylesheet (`:has()`), so the highlight needs no script; past 50,000 chain memberships it
+is left out instead of bloating the markup. Nodes with `href` are links, in Tab order column by
+column; a visually hidden list after the graph says what each node depends on and what needs it.
+The frame scrolls sideways inside its parent and is a Tab stop. An empty `nodes` prints
+`emptyLabel`.
+
+- `layoutGraph(nodes, edges)` is its layout, pure and exported: each node's column is the longest
+  chain of edges before it, and barycentre passes order each column to cut crossings, ties kept in
+  input order. It returns `{ nodes, edges, columns, rows, cycles, unknown }`: an edge that closes a
+  cycle is drawn but left out of the columns and listed in `cycles` (a self-loop is listed and not
+  drawn), an edge naming an unknown node is dropped and listed in `unknown`, and a repeated edge
+  counts once. Linear in nodes and edges apart from a sort per column; 2,000 nodes and 10,000
+  edges lay out in tens of milliseconds.
 
 ### Loading (`./payload`, `./use-in-view`)
 

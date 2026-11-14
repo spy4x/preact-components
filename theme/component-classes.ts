@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1436 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1439 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -236,6 +236,7 @@ export const COMPONENT_CLASSES: string = [
   "border",
   "border-0",
   "border-2",
+  "border-3",
   "border-[color:var(--color-border-strong,oklch(0.707_0.022_261.325))]",
   "border-accent-600",
   "border-accent-700",
@@ -517,6 +518,8 @@ export const COMPONENT_CLASSES: string = [
   "group-focus-visible:ring-2",
   "group-focus-visible:ring-focus",
   "group-focus-visible:ring-inset",
+  "group-focus-visible:ring-offset-2",
+  "group-focus-visible:ring-offset-focus",
   "group-focus-within/loop:opacity-100",
   "group-focus-within/loop:visible",
   "group-focus-within:block",

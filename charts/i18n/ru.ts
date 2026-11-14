@@ -1,6 +1,9 @@
 /** The `charts` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "Нет данных",
+  "DependencyGraph.dependsOn": "зависит от {names}",
+  "DependencyGraph.emptyLabel": "Нет данных",
+  "DependencyGraph.neededBy": "требуется для {names}",
   "DonutChart.chartLabel": {
     "one": "Кольцевая диаграмма: {count} сегмент",
     "few": "Кольцевая диаграмма: {count} сегмента",

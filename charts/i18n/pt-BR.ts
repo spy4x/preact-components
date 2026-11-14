@@ -1,6 +1,9 @@
 /** The `charts` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "Sem dados",
+  "DependencyGraph.dependsOn": "depende de {names}",
+  "DependencyGraph.emptyLabel": "Sem dados",
+  "DependencyGraph.neededBy": "pré-requisito para {names}",
   "DonutChart.chartLabel": {
     "one": "Gráfico de rosca com {count} fatia",
     "many": "Gráfico de rosca com {count} fatias",

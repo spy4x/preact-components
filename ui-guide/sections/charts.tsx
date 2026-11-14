@@ -11,6 +11,11 @@
  */
 
 import { type BarDatum, Bars, type StackedBarDatum } from "@spy4x/preact-charts/bars"
+import {
+  DependencyGraph,
+  type GraphEdge,
+  type GraphNode,
+} from "@spy4x/preact-charts/dependency-graph"
 import { DotPlot, type DotPlotRow } from "@spy4x/preact-charts/dot-plot"
 import { DonutChart } from "@spy4x/preact-charts/donut-chart"
 import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
@@ -299,6 +304,40 @@ const sleep: DotPlotRow[] = [
   { id: "under-18", label: "Under 18", value: null, detail: "Not surveyed" },
 ]
 
+/**
+ * The steps of a website launch: what each waits on, one finished, one late, one the launch hangs
+ * on, and an optional review drawn dashed.
+ */
+const launchSteps: GraphNode[] = [
+  // Listed first, drawn fourth: the graph orders boxes by what comes first, not by this list.
+  { id: "launch", label: "Launch", href: "?step=launch", badge: "#4" },
+  { id: "brief", label: "Write the brief", href: "?step=brief", tone: "positive", badge: "Done" },
+  { id: "design", label: "Design the pages", href: "?step=design", badge: "2 of 5 pages" },
+  { id: "copy", label: "Write the copy", href: "?step=copy", tone: "warning", badge: "Late" },
+  {
+    id: "build",
+    label: "Build the site",
+    href: "?step=build",
+    tone: "accent",
+    emphasis: true,
+    badge: "Holds back 2",
+    description: "Everything after it waits on this step",
+  },
+  { id: "review", label: "Legal review of the privacy page", badge: "Optional" },
+  { id: "social", label: "Announce it", badge: "#5" },
+]
+
+const launchLinks: GraphEdge[] = [
+  { from: "brief", to: "design" },
+  { from: "brief", to: "copy" },
+  { from: "design", to: "build" },
+  { from: "copy", to: "build", tone: "warning" },
+  { from: "copy", to: "review", style: "dashed" },
+  { from: "build", to: "launch", tone: "accent" },
+  { from: "review", to: "launch", style: "dashed" },
+  { from: "launch", to: "social" },
+]
+
 export const chartsDemos = {
   Bars: {
     summary:
@@ -350,6 +389,61 @@ export const chartsDemos = {
           reference={{ value: 1480, label: "Budget" }}
           labelWidth="6rem"
         />
+      </div>
+    ),
+  },
+  DependencyGraph: {
+    summary:
+      "Boxes joined by curved arrows, laid out left to right by what comes first, drawn complete on the server; hovering or focusing a step keeps its chain and dims the rest, with CSS alone.",
+    wide: true,
+    props: [
+      {
+        name: "nodes",
+        type: "{ id, label, href?, tone?, emphasis?, badge?, description? }[]",
+        description:
+          "The boxes. `href` makes one a link and a Tab stop, `tone` colours its outline as `Kpi`'s tones, `emphasis` thickens it, `badge` is a short second line and `description` is read and shown on hover only.",
+      },
+      {
+        name: "edges",
+        type: `{ from, to, style?: "solid" | "dashed", tone? }[]`,
+        description:
+          "The arrows, `from` the step that comes first. An edge that closes a cycle loops under the boxes; one naming an unknown node is left out.",
+      },
+      { name: "label", type: "string", description: "The graph's accessible name." },
+      {
+        name: "emptyLabel",
+        type: "string",
+        default: `"No data"`,
+        description: "What a graph with no nodes says.",
+      },
+      {
+        name: "dependsOnLabel",
+        type: "(names: string) => string",
+        default: "depends on …",
+        description: "The screen-reader line for what a node waits on.",
+      },
+      {
+        name: "neededByLabel",
+        type: "(names: string) => string",
+        default: "needed by …",
+        description: "The screen-reader line for what waits on a node.",
+      },
+    ],
+    snippet: `<DependencyGraph
+  label="Website launch"
+  nodes={[
+    { id: "copy", label: "Write the copy", href: "?step=copy", tone: "warning", badge: "Late" },
+    { id: "build", label: "Build the site", tone: "accent", emphasis: true },
+    { id: "review", label: "Legal review", badge: "Optional" },
+  ]}
+  edges={[
+    { from: "copy", to: "build", tone: "warning" },
+    { from: "copy", to: "review", style: "dashed" },
+  ]}
+/>`,
+    render: () => (
+      <div data-e2e="dependency-graph">
+        <DependencyGraph label="Website launch" nodes={launchSteps} edges={launchLinks} />
       </div>
     ),
   },

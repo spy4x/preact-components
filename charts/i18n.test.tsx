@@ -6,6 +6,7 @@ import { createTranslator } from "@spy4x/platform/universal/i18n"
 import { I18nContext } from "@spy4x/preact-ui/i18n"
 import { Bars } from "./bars.tsx"
 import { changeText } from "./change.ts"
+import { DependencyGraph } from "./dependency-graph.tsx"
 import { DonutChart } from "./donut-chart.tsx"
 import chartsDe from "./i18n/de.ts"
 import chartsEn from "./i18n/en.ts"
@@ -45,6 +46,20 @@ describe("the charts under a translator", () => {
     expect(line).toContain("Liniendiagramm mit 1 Datenreihe")
     expect(line).toContain("Wird geladen …")
     expect(line).toContain(">Punkt<")
+  })
+
+  it("word a dependency graph's relations and its empty state", () => {
+    const html = inGerman(
+      <DependencyGraph
+        nodes={[{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }]}
+        edges={[{ from: "a", to: "c" }, { from: "b", to: "c" }]}
+        label="Plan"
+      />,
+    )
+    expect(html).toContain("<li>C: hängt ab von A und B</li>")
+    expect(html).toContain("<li>A: Voraussetzung für C</li>")
+    expect(inGerman(<DependencyGraph nodes={[]} edges={[]} label="Plan" />))
+      .toContain(">Keine Daten<")
   })
 
   it("word a change in the translator's language, and in English without one", () => {

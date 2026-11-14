@@ -1,6 +1,9 @@
 /** The `charts` catalog in English, the source every translation is checked against. */
 export default {
   "Bars.emptyLabel": "No data",
+  "DependencyGraph.dependsOn": "depends on {names}",
+  "DependencyGraph.emptyLabel": "No data",
+  "DependencyGraph.neededBy": "needed by {names}",
   "DonutChart.chartLabel": {
     "one": "Donut chart of {count} slices",
     "other": "Donut chart of {count} slices",
