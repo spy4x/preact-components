@@ -2,7 +2,7 @@ import { useSignal } from "@preact/signals"
 import { cn } from "@spy4x/preact-cn"
 import { IconArrowDown } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, RefObject } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { useLabels } from "./i18n.tsx"
 
@@ -230,7 +230,9 @@ function LiveTimeline(
   useEffect(() => {
     const sentinel = end.current
     if (!sentinel) return
-    const observer = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver((entries) => {
+      // Several changes can arrive at once; the last one is where the end is now.
+      const entry = entries[entries.length - 1]
       atEnd.current = entry.isIntersecting
       if (!entry.isIntersecting) return
       pinned.current = false
@@ -247,7 +249,9 @@ function LiveTimeline(
     }
   }, [])
 
-  useEffect(() => {
+  // A layout effect: it runs before the browser draws the new entry, so `atEnd` still says where
+  // the end was before the entry pushed it down.
+  useLayoutEffect(() => {
     const before = seen.current
     seen.current = new Set(items.map((item) => item.id))
     // The first render shows what was already there: nothing is new.
