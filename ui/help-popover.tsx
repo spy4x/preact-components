@@ -1,6 +1,6 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconInformationCircle, IconXMark } from "@spy4x/preact-icons"
-import type { ComponentChildren } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { useLabels } from "./i18n.tsx"
@@ -85,7 +85,7 @@ export function HelpPopover({
   id,
   class: className,
   dataE2E,
-}: HelpPopoverProps) {
+}: HelpPopoverProps): JSX.Element {
   const { closeLabel } = useLabels("HelpPopover", HELP_POPOVER_LABELS, {
     closeLabel: closeLabelProp,
   })
