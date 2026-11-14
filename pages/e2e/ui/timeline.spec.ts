@@ -249,7 +249,8 @@ export const specs: readonly Spec[] = [
   },
   {
     name: "Timeline live: when the whole list fits on screen, a new event while paused shows no " +
-      "new events button, and none appears after Follow",
+      "new events button, and none appears after Follow; a paused event that pushes the end off " +
+      "screen is counted",
     pageId: "ui",
     run: async (page) => {
       const tl = await livePage(page, { short: true })
@@ -272,7 +273,16 @@ export const specs: readonly Spec[] = [
       if (await tl.box.evaluate((element) => element.scrollHeight > element.clientHeight)) {
         throw new Error(`${LIVE_TIMELINE_START + 1} entries overflow the box: the list must fit`)
       }
-      return "paused, a step, then Follow: no new events button"
+
+      // Paused again with the end on screen, a step that overflows the box is unseen.
+      await tl.toolbar.filter({ hasText: "Pause" }).click()
+      await tl.stateIs("Paused")
+      await tl.step()
+      same("the entries after the second step", await tl.list.locator("li").count(), FILLED)
+      await tl.endIs("out")
+      await tl.jump.filter({ hasText: "1 new event" }).waitFor()
+      same("the scrolls", await tl.scrolls(), ["smooth"])
+      return "paused, a step, then Follow: no button; paused, an overflowing step: 1 new event"
     },
   },
   {
