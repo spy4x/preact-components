@@ -339,7 +339,7 @@ function LiveTimeline(
             ref={list}
             tabIndex={-1}
             aria-label={label}
-            class="flex flex-col outline-none"
+            class="flex flex-col rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
           >
             {entries(items)}
           </ol>
