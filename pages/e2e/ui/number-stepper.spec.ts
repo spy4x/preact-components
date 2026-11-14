@@ -54,8 +54,8 @@ function numberStepperSpecs(): Spec[] {
   return [
     {
       name:
-        "NumberStepper: the arrows, PageUp, PageDown, Home, End and digits set the number without " +
-        "scrolling the page, chords and an edge report no change, and 0 reads Off",
+        "NumberStepper: the arrows, PageUp, PageDown, Home, End and digits set the number and " +
+        "cancel their default, chords and an edge report no change, and 0 reads Off",
       pageId: "ui",
       run: async (page) => {
         const view = example(page, "guide-number")
@@ -66,7 +66,15 @@ function numberStepperSpecs(): Spec[] {
           await page.keyboard.press(chord)
         }
         await view.reads("value: 3, changes: 0")
-        const top = await page.evaluate(() => globalThis.scrollY)
+        // Records every key from here on whose default the stepper let through: each one below is
+        // the stepper's own, so each must be cancelled, or End and PageDown would scroll the page.
+        await view.box.evaluate((box) => {
+          const passed: string[] = []
+          Object.assign(globalThis, { stepperPassed: passed })
+          box.addEventListener("keydown", (event) => {
+            if (!event.defaultPrevented) passed.push((event as KeyboardEvent).key)
+          })
+        })
         const steps: [string, number, string][] = [
           ["ArrowUp", 4, "4"],
           ["ArrowRight", 5, "5"],
@@ -86,10 +94,6 @@ function numberStepperSpecs(): Spec[] {
         await page.keyboard.press("PageUp")
         await page.keyboard.press("End")
         await view.reads(`value: 10, changes: ${changes}`)
-        const scrolled = await page.evaluate(() => globalThis.scrollY)
-        if (scrolled !== top) {
-          throw new Error(`End and PageUp scrolled the page ${top} → ${scrolled}`)
-        }
         await page.keyboard.press("Home")
         await view.shows(0, "Off", ++changes)
         await view.minus.and(disabled(page)).waitFor()
@@ -100,10 +104,16 @@ function numberStepperSpecs(): Spec[] {
         await view.shows(7, "7", ++changes)
         await page.keyboard.press("0")
         await view.shows(0, "Off", ++changes)
+        const passed = await page.evaluate(() =>
+          (globalThis as unknown as { stepperPassed: string[] }).stepperPassed
+        )
+        if (passed.length > 0) {
+          throw new Error(`the stepper let the default of ${passed.join(", ")} through`)
+        }
         return `Ctrl, Alt and Meta chords ignored; ` +
           `${steps.map(([key, now]) => `${key} → ${now}`).join(", ")}; ArrowUp, PageUp ` +
-          `and End at 10 and ArrowDown and 0 at 0 report nothing; the page stayed at ` +
-          `scrollY ${top}; Home → Off, 7 → 7, 0 → Off; ${changes} changes`
+          `and End at 10 and ArrowDown and 0 at 0 report nothing; Home → Off, 7 → 7, 0 → Off; ` +
+          `every key cancelled; ${changes} changes`
       },
     },
     {
