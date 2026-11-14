@@ -189,6 +189,7 @@ export default {
   "FilterBar.sort": "排序方式",
   "FilterBar.togglesLabel": "快速筛选",
   "FrameChrome.terminal": "终端",
+  "HelpPopover.closeLabel": "关闭",
   "Honeypot.label": "请勿填写此字段",
   "IconPicker.aliases.baby": "孩子, 育儿, 托儿所, 尿布",
   "IconPicker.aliases.banknote": "现金, 工资, 收入, 薪水, 钱",

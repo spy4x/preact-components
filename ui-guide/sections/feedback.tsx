@@ -27,6 +27,7 @@ import {
   ErrorSummary,
   type ErrorSummaryItem,
   Field,
+  HelpPopover,
   Input,
   LoadingSkeleton,
   LoadingSpinner,
@@ -552,6 +553,34 @@ const formPresets = [
   { preset: "this-month", label: "This month" },
 ] as const
 const formNow = new Date("2026-02-15T12:00:00Z")
+
+/**
+ * A settings page's help, with worked examples: the panel holds a paragraph and a short list.
+ * `pages/e2e/ui/help-popover.spec.ts` opens it by its `data-e2e`.
+ */
+function HelpPopoverDemo() {
+  return (
+    <Stack gap="sm" class="items-start">
+      <HelpPopover
+        label="How sorting works"
+        title="How sorting works"
+        id="guide-help-popover"
+        dataE2E="help-popover-demo"
+      >
+        <p>
+          The list is sorted by due date, earliest first. Items with the same date are sorted by
+          name.
+        </p>
+        <ul class="flex list-disc flex-col gap-1 ps-4">
+          <li>Due 3 March comes before due 9 March.</li>
+          <li>Two items due 3 March: "Invoice" comes before "Report".</li>
+          <li>An item with no due date goes last.</li>
+        </ul>
+      </HelpPopover>
+      <DemoNote>Opens, closes and returns focus without JavaScript.</DemoNote>
+    </Stack>
+  )
+}
 
 /**
  * A dialog around a form whose fields each open a popup: a `Combobox` list, a `TagInput` suggestion
@@ -1626,6 +1655,39 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
   <p>Modal body.</p>
 </Modal>`,
     render: () => <ModalDemo />,
+  },
+  HelpPopover: {
+    summary:
+      "A help button that opens a short explanation in a panel, on the browser's own `popover`: it opens, closes on Escape or a click outside, and returns focus with no JavaScript.",
+    wide: false,
+    props: [
+      {
+        name: "label",
+        type: "string",
+        description: "The trigger's visible text, and its name.",
+      },
+      {
+        name: "title",
+        type: "ComponentChildren",
+        description: "The panel's heading, and its name.",
+      },
+      { name: "children", type: "ComponentChildren", description: "The explanation." },
+      {
+        name: "closeLabel",
+        type: "string",
+        default: `"Close"`,
+        description: "The close button's name.",
+      },
+      {
+        name: "id",
+        type: "string",
+        description: "The panel's id; pass one when the page is rendered in separate pieces.",
+      },
+    ],
+    snippet: `<HelpPopover label="How sorting works" title="How sorting works">
+  <p>The list is sorted by due date, earliest first.</p>
+</HelpPopover>`,
+    render: () => <HelpPopoverDemo />,
   },
   DialogActions: {
     summary:
