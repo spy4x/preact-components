@@ -1,6 +1,9 @@
 /** The `charts` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "لا توجد بيانات",
+  "DependencyGraph.dependsOn": "يعتمد على {names}",
+  "DependencyGraph.emptyLabel": "لا توجد بيانات",
+  "DependencyGraph.neededBy": "تعتمد عليه {names}",
   "DonutChart.chartLabel": {
     "zero": "مخطط حلقي بلا شرائح",
     "one": "مخطط حلقي من شريحة واحدة",
