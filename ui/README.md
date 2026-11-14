@@ -180,7 +180,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Textarea` (`input`): native textarea attrs, `class`; forwards `ref`
 - `ThemePreview` (`theme-preview`): `children` (the frame's slot), `defaultTheme?` (`dark`), `labels?`, `name?`, `hideLegend?`, `class?`, `frameClass?`, `inputAttributes?` (per radio, by value) — a Dark / Light `RadioChips` pair over a frame drawn in that palette; needs `theme-preview.css`
 - `ThemeToggle` (`theme-toggle`): `store` (a `createThemeStore()` from `@spy4x/preact-signals/theme`), `labels?`, `hintForMs?` — one icon button cycling auto, light and dark; `hotkey?`
-- `Timeline` (`timeline`): `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line
+- `Timeline` (`timeline`): `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?`, `live?`, `following?`, `onFollowingChange?`, `labels?` — an ordered list of events joined by a line; `live` follows new events like a log view
 - `TldrBox` (`tldr-box`): `items`, `title?` ("In short"), `headingLevel?` (`2` default), `id?`, `class?` — a named `<section>` in a hairline box; nothing for no items
 - `Toastr` (`toastr`): `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`
 - `ToggleChips` (`toggle-chips`): `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`
@@ -1237,6 +1237,28 @@ from `formatTime` in `@spy4x/platform/universal/time`. An empty list renders `em
     },
     { id: 1, title: "Signed in", at: "2026-03-03T08:00:00Z", when: "yesterday" },
   ]}
+/>
+```
+
+`live` follows a stream, such as a running job's steps: pass `items` oldest first and append new
+ones. A toolbar above the list says "Following", with a dot that pulses only when motion is
+allowed, or "Paused", beside a Pause or Follow button. While following with the end of the list on
+screen, a new entry scrolls into view (at once under reduced motion). With the end off screen, or
+paused, nothing moves: a sticky "3 new events" button counts what arrived and jumps to the newest
+without resuming. An entry is new when its `id` was not in the previous `items`, so keeping only the
+latest entries counts right. One polite live region says "3 new events" for everything that
+arrives within `TIMELINE_ANNOUNCE_MS` (3 seconds). `following` with `onFollowingChange` hands the
+state to the caller, such as a `.` hotkey; following again jumps to the newest. The words are
+`labels` (`TimelineLiveLabels`).
+
+```tsx
+const following = useSignal(true)
+<Timeline
+  live
+  label="Build run"
+  items={steps.value}
+  following={following.value}
+  onFollowingChange={(next) => following.value = next}
 />
 ```
 

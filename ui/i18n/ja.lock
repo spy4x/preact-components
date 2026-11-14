@@ -500,7 +500,12 @@ ThemeToggle.dark	43908c5954193abd
 ThemeToggle.hint	9ba1e1b64aa5543e
 ThemeToggle.light	72a842db521ccec5
 Timeline.empty	e056734effa8d190
+Timeline.follow	641d1ef657bdfd9f
+Timeline.following	344b4271ca012d18
 Timeline.label	9dcff98e275f0cb9
+Timeline.newEvents	2bf39c5867dbcef5
+Timeline.pause	858e4ba7a29fd38b
+Timeline.paused	e159b06187d369a0
 TldrBox.title	9e90b1ac82acf529
 Toastr.dismissLabel	48845bff334a50a5
 Toastr.label	788011833a5a0f22

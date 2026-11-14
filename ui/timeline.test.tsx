@@ -68,3 +68,58 @@ describe("Timeline", () => {
     expect(render(<Timeline items={[]} />)).toContain(">Nothing yet.</p>")
   })
 })
+
+describe("Timeline live", () => {
+  it("starts following on its own: the Following state with a dot that pulses only when motion is allowed, and Pause", () => {
+    const html = render(<Timeline live items={ITEMS} />)
+    expect(html).toContain(`data-timeline-state="following"`)
+    expect(html).toMatch(
+      /<span aria-hidden="true" class="[^"]*motion-safe:animate-pulse[^"]*"><\/span>Following<\/span>/,
+    )
+    expect(html).not.toMatch(/ animate-pulse/)
+    expect(html).toMatch(/<button[^>]*>Pause<\/button>/)
+  })
+
+  it("shows the caller's following state over its own: Paused, no dot, and Follow", () => {
+    const html = render(<Timeline live following={false} items={ITEMS} />)
+    expect(html).toContain(`data-timeline-state="paused"`)
+    expect(html).not.toContain("animate-pulse")
+    expect(html).toMatch(/>Paused<\/span>/)
+    expect(html).toMatch(/<button[^>]*>Follow<\/button>/)
+  })
+
+  it("makes the toolbar button 44 px tall on a phone and 36 px from sm", () => {
+    const html = render(<Timeline live items={ITEMS} />)
+    expect(html).toMatch(/<button[^>]*class="[^"]*min-h-9 max-sm:min-h-11[^"]*"[^>]*>Pause/)
+  })
+
+  it("renders an empty polite live region from the start, so the first announcement is heard", () => {
+    const html = render(<Timeline live items={ITEMS} />)
+    expect(html).toContain(`<div aria-live="polite" class="sr-only" data-timeline-announcer></div>`)
+    expect(render(<Timeline items={ITEMS} />)).not.toContain("aria-live")
+  })
+
+  it("lists the entries in a named list with an end marker, and no new-events button yet", () => {
+    const html = render(<Timeline live label="Run" items={ITEMS} dataE2E="run" />)
+    expect(html).toMatch(/<div class="flex flex-col gap-3" data-e2e="run">/)
+    expect(html).toContain(`aria-label="Run"`)
+    expect(html).toContain(`data-timeline-end`)
+    expect(html).not.toContain("data-timeline-jump")
+  })
+
+  it("shows the empty text with the toolbar when there is nothing yet, and no list", () => {
+    const html = render(<Timeline live items={[]} empty="Waiting for the run." />)
+    expect(html).not.toContain("<ol")
+    expect(html).toContain(">Waiting for the run.</p>")
+    expect(html).toMatch(/>Pause<\/button>/)
+    expect(html).toContain("data-timeline-end")
+  })
+
+  it("takes each word from its labels prop", () => {
+    const html = render(
+      <Timeline live items={ITEMS} labels={{ following: "Läuft", pause: "Anhalten" }} />,
+    )
+    expect(html).toContain(">Läuft</span>")
+    expect(html).toMatch(/>Anhalten<\/button>/)
+  })
+})
