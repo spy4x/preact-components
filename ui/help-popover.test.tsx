@@ -32,7 +32,9 @@ describe("HelpPopover", () => {
     const panel = tagWith(html, `popover="auto"`)
 
     expect(trigger).toContain(`aria-haspopup="dialog"`)
-    expect(trigger).toContain(`aria-controls="sorting-help"`)
+    // `popovertarget` already ties the trigger to its panel; `aria-controls` beside
+    // `aria-haspopup` leaves axe undecided (aria-valid-attr-value), as Dropdown avoids too.
+    expect(trigger).not.toContain("aria-controls")
     expect(trigger).not.toContain("popovertargetaction")
     expect(panel).toContain(`id="sorting-help"`)
     expect(panel).toContain(`role="dialog"`)
@@ -85,7 +87,7 @@ describe("HelpPopover", () => {
     expect(ids.length).toBe(2)
     expect(ids[0]).not.toBe(ids[1])
     for (const id of ids) {
-      expect(html).toContain(`aria-controls="${id}"`)
+      expect(html).toContain(`popovertarget="${id}"`)
       expect(html).toContain(`aria-labelledby="${id}-title"`)
     }
   })

@@ -100,7 +100,6 @@ export function HelpPopover({
         class={TOUCH_TARGET}
         popovertarget={panelId}
         aria-haspopup="dialog"
-        aria-controls={panelId}
         data-e2e={dataE2E}
       >
         <IconInformationCircle class="size-4" aria-hidden="true" />
