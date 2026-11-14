@@ -43,7 +43,10 @@ function step(index: number): TimelineItem {
 /** The steps the demo starts with: few enough that the end shows on a phone, so it follows. */
 export const LIVE_TIMELINE_START = 2
 
-/** A live timeline fed by a timer, stopped when the card unmounts. */
+/**
+ * A live timeline fed by a timer, stopped when the card unmounts. The box has a fixed height, so a
+ * new step never moves the rest of the page while the run fills it.
+ */
 export function LiveTimelineDemo(): JSX.Element {
   const items = useSignal<TimelineItem[]>(
     Array.from({ length: LIVE_TIMELINE_START }, (_, index) => step(index)),
@@ -57,7 +60,7 @@ export function LiveTimelineDemo(): JSX.Element {
   }, [])
   return (
     <div
-      class="max-h-72 overflow-y-auto rounded-lg border border-subtle p-4"
+      class="h-72 overflow-y-auto rounded-lg border border-subtle p-4"
       data-e2e="timeline-live-box"
     >
       <Timeline live label="Build run" items={items.value} dataE2E="timeline-live" />
