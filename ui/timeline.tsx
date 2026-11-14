@@ -214,8 +214,9 @@ function LiveTimeline(
   const seen = useRef<Set<TimelineItem["id"]> | null>(null)
   const atEnd = useRef(false)
   /**
-   * True from a scroll to the end until the end is on screen or the person scrolls: a new entry
-   * pushes the end off screen while the smooth scroll runs, and must not count as unseen then.
+   * True from a scroll to the end until the end is on screen, or the person scrolls or presses
+   * anywhere, the scrollbar included: a new entry pushes the end off screen while the smooth
+   * scroll runs, and must not count as unseen then.
    */
   const pinned = useRef(false)
   const pending = useRef(0)
@@ -240,7 +241,7 @@ function LiveTimeline(
     })
     observer.observe(sentinel)
     const release = () => pinned.current = false
-    const intents = ["wheel", "touchstart", "keydown"] as const
+    const intents = ["wheel", "touchstart", "pointerdown", "keydown"] as const
     for (const type of intents) addEventListener(type, release, { passive: true })
     return () => {
       observer.disconnect()

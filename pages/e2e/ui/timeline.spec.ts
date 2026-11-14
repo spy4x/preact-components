@@ -211,6 +211,36 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "Timeline live: a pointer press while a scroll to the newest is still running lets " +
+      "go, as when the person grabs the scrollbar: the next event counts instead of scrolling",
+    pageId: "ui",
+    run: async (page) => {
+      const tl = await livePage(page)
+      await tl.scrollBox("end")
+      // Every scroll to the end stays in flight: it is recorded but never moves the box.
+      await page.evaluate(() => {
+        const recorded = Element.prototype.scrollIntoView
+        Element.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
+          if (!this.closest(`[data-e2e="timeline-live"]`)) recorded.call(this, options)
+          else (globalThis as Probe).e2eScrolls?.push("held")
+        }
+      })
+      await tl.step()
+      await tl.endIs("out")
+      same("the scrolls after a step at the end", await tl.scrolls(), ["held"])
+
+      const area = await tl.box.boundingBox()
+      if (!area) throw new Error("the live box has no box")
+      await page.mouse.move(area.x + area.width - 4, area.y + area.height / 2)
+      await page.mouse.down()
+      await page.mouse.up()
+      await tl.step()
+      await tl.jump.filter({ hasText: "1 new event" }).waitFor()
+      same("the scrolls after the press", await tl.scrolls(), ["held"])
+      return "a press during the scroll to the newest let go; the next event counted"
+    },
+  },
+  {
     name: "Timeline live: Pause stops the scrolling and counts new events, the new events button " +
       "shows the newest without resuming, and Follow resumes and jumps to the newest",
     pageId: "ui",
