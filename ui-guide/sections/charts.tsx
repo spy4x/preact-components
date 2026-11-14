@@ -309,6 +309,8 @@ const sleep: DotPlotRow[] = [
  * on, and an optional review drawn dashed.
  */
 const launchSteps: GraphNode[] = [
+  // Listed first, drawn fourth: the graph orders boxes by what comes first, not by this list.
+  { id: "launch", label: "Launch", href: "?step=launch", badge: "#4" },
   { id: "brief", label: "Write the brief", href: "?step=brief", tone: "positive", badge: "Done" },
   { id: "design", label: "Design the pages", href: "?step=design", badge: "2 of 5 pages" },
   { id: "copy", label: "Write the copy", href: "?step=copy", tone: "warning", badge: "Late" },
@@ -322,7 +324,6 @@ const launchSteps: GraphNode[] = [
     description: "Everything after it waits on this step",
   },
   { id: "review", label: "Legal review of the privacy page", badge: "Optional" },
-  { id: "launch", label: "Launch", href: "?step=launch", badge: "#4" },
   { id: "social", label: "Announce it", badge: "#5" },
 ]
 

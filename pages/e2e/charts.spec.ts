@@ -362,14 +362,22 @@ function dependencyGraphSpecs(): Spec[] {
         await page.setViewportSize({ width: 390, height: 844 })
         const frame = page.locator(`${GRAPH} [data-graph]`)
         await frame.scrollIntoViewIfNeeded()
-        const read = await frame.evaluate((node) => ({
-          room: node.scrollWidth - node.clientWidth,
-          sideways: document.documentElement.scrollWidth - globalThis.innerWidth,
-        }))
-        if (read.room <= 0 || read.sideways > 0) {
-          throw new Error(`frame room ${read.room} px, page sideways ${read.sideways} px`)
+        // The guide's card clips what overflows it, so the page alone would stay put even with no
+        // scrolling frame: the frame must also move when it is scrolled.
+        const read = await frame.evaluate((node) => {
+          node.scrollLeft = node.scrollWidth
+          return {
+            room: node.scrollWidth - node.clientWidth,
+            moved: node.scrollLeft,
+            sideways: document.documentElement.scrollWidth - globalThis.innerWidth,
+          }
+        })
+        if (read.room <= 0 || read.moved <= 0 || read.sideways > 0) {
+          throw new Error(
+            `frame room ${read.room} px, scrolled ${read.moved} px, page sideways ${read.sideways} px`,
+          )
         }
-        return `frame scrolls ${read.room} px, page 0 px`
+        return `frame scrolled ${read.moved} of ${read.room} px, page 0 px`
       },
     },
     scrollRegionSpec({
