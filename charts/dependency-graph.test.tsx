@@ -148,7 +148,7 @@ describe("DependencyGraph", () => {
   })
 
   it("draws the nodes column by column, so Tab follows the columns", () => {
-    const order = [...graph().matchAll(/data-node="\d"[^>]*>\s*<title>([^<]+)</g)].map((match) =>
+    const order = [...graph().matchAll(/<[ag] data-node="\d"[^]*?title="([^"]+)"/g)].map((match) =>
       match[1].split(",")[0]
     )
     expect(order).toEqual([
@@ -167,11 +167,13 @@ describe("DependencyGraph", () => {
     expect(html).toContain('aria-label="Ship, #2, Waiting on review"')
   })
 
-  it("cuts a long label in the box and keeps it whole in the title and the list", () => {
+  it("cuts a long label where its box ends and keeps it whole in the title and the list", () => {
     const html = graph()
-    expect(html).toContain(">Write the documenta…</text>")
+    expect(html).toMatch(
+      /class="truncate [^"]*">Write the documentation for every endpoint<\/span>/,
+    )
     expect(html).toContain(
-      "<title>Write the documentation for every endpoint, Owned by the docs team",
+      'title="Write the documentation for every endpoint, Owned by the docs team"',
     )
     expect(html).toContain("<li>Write the documentation for every endpoint, Owned by the docs team")
   })
@@ -183,7 +185,8 @@ describe("DependencyGraph", () => {
 
   it("draws an emphasised node with a thicker outline", () => {
     const html = graph()
-    expect(html.match(/stroke-width="3"/g)?.length).toBe(1)
+    expect(html.match(/ border-3 /g)?.length).toBe(1)
+    expect(html.match(/ border text-/g)?.length).toBe(4)
   })
 
   it("colours a node and an edge by tone, and an unknown tone as neutral", () => {
@@ -191,8 +194,11 @@ describe("DependencyGraph", () => {
       { id: "a", label: "A", tone: "positive" },
       { id: "b", label: "B", tone: "purple" as never },
     ], [{ from: "a", to: "b", tone: "negative" }])
-    expect(html).toMatch(/data-node="0"[^>]*class="text-success"/)
-    expect(html).toMatch(/data-node="1"[^>]*class="text-muted"/)
+    const boxes = [...html.matchAll(/title="(\w)"[^>]*class="[^"]* border (text-[\w-]+)"/g)]
+    expect(boxes.map((match) => [match[1], match[2]])).toEqual([["A", "text-success"], [
+      "B",
+      "text-muted",
+    ]])
     expect(html).toMatch(/class="text-danger"[^>]*marker-end="url\(#[\w-]+-arrow-negative\)"/)
   })
 

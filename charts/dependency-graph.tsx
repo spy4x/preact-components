@@ -2,14 +2,14 @@ import type { JSX } from "preact"
 import { useId } from "preact/hooks"
 import { join } from "@spy4x/preact-cn/join"
 import { useLabels, useT } from "@spy4x/preact-ui/i18n"
-import { DEFAULT_SURFACE_COLOR, DEFAULT_TEXT_COLOR } from "./colors.ts"
+import { DEFAULT_TEXT_COLOR } from "./colors.ts"
 import type { KpiTone } from "./kpi.tsx"
 
 /** One box of a {@link DependencyGraph}. */
 export interface GraphNode {
   /** Unique key; edges name nodes by it. A second node with the same `id` is left out. */
   id: string
-  /** The text in the box, cut to about twenty characters there and given in full on hover. */
+  /** The text in the box, cut with an ellipsis where the box ends and given in full on hover. */
   label: string
   /** Makes the box a link, and a Tab stop. */
   href?: string
@@ -252,8 +252,6 @@ const ROW_GAP = 16
 const MARGIN = 8
 /** Room under the boxes for the loops of edges that close a cycle. */
 const LOOP_ROOM = 48
-const LABEL_CHARACTERS = 20
-const BADGE_CHARACTERS = 24
 /**
  * The most chain memberships the hover and focus highlight writes into the markup. Each node's
  * chain is written on every node and edge in it, so a long chain costs its length squared; past
@@ -273,21 +271,6 @@ const TONES = Object.keys(TONE_CLASSES) as KpiTone[]
 /** A tone the type does not know, from a caller without TypeScript, draws as neutral. */
 const toneOf = (tone: string | undefined): KpiTone =>
   tone !== undefined && tone in TONE_CLASSES ? tone as KpiTone : "neutral"
-
-const FOREGROUND = "var(--color-foreground, oklch(0.13 0.028 261.692))"
-const RING = "var(--color-ring, oklch(0.496 0.265 301.924))"
-
-/**
- * Cuts `text` to `max` characters, the last one an ellipsis, without splitting a character.
- *
- * @param text The text.
- * @param max The most characters to keep.
- * @returns The text, or its start and `…`.
- */
-function truncate(text: string, max: number): string {
-  const characters = [...text]
-  return characters.length <= max ? text : `${characters.slice(0, max - 1).join("").trimEnd()}…`
-}
 
 /**
  * For each node, in draw order, the nodes and edges before and after it in its chains.
@@ -492,47 +475,42 @@ export function DependencyGraph({
             const full = [node.label, node.badge, node.description].filter(Boolean).join(", ")
             const x = left(placed)
             const y = top(placed)
+            // The box is HTML in a `foreignObject`: the label cuts itself to the box's real width,
+            // and axe can read the text's contrast against the box's own background.
             const body = (
-              <>
-                <title>{full}</title>
-                {node.href && (
-                  <rect
-                    x={x - 4}
-                    y={y - 4}
-                    width={NODE_WIDTH + 8}
-                    height={NODE_HEIGHT + 8}
-                    rx="11"
-                    fill="none"
-                    stroke={RING}
-                    stroke-width="2"
-                    class="opacity-0 group-focus-visible:opacity-100"
-                  />
-                )}
-                <rect
-                  x={x}
-                  y={y}
-                  width={NODE_WIDTH}
-                  height={NODE_HEIGHT}
-                  rx="8"
-                  stroke="currentColor"
-                  stroke-width={node.emphasis ? 3 : 1.5}
-                  style={{ fill: DEFAULT_SURFACE_COLOR }}
-                />
-                <circle cx={x + 16} cy={y + 20} r="4" fill="currentColor" />
-                <text
-                  x={x + 28}
-                  y={y + 25}
-                  class={join("text-sm", node.emphasis ? "font-semibold" : "font-medium")}
-                  style={{ fill: FOREGROUND }}
-                >
-                  {truncate(node.label, LABEL_CHARACTERS)}
-                </text>
-                {node.badge && (
-                  <text x={x + 28} y={y + 44} class="text-xs" style={{ fill: DEFAULT_TEXT_COLOR }}>
-                    {truncate(node.badge, BADGE_CHARACTERS)}
-                  </text>
-                )}
-              </>
+              <foreignObject
+                x={x - 4}
+                y={y - 4}
+                width={NODE_WIDTH + 8}
+                height={NODE_HEIGHT + 8}
+              >
+                <div class="h-full p-1">
+                  <div
+                    title={full}
+                    class={join(
+                      "flex h-full min-w-0 flex-col justify-center gap-1 rounded-lg border-current bg-surface px-3",
+                      "group-focus-visible:ring-2 group-focus-visible:ring-focus group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-focus",
+                      node.emphasis ? "border-3" : "border",
+                      TONE_CLASSES[tone],
+                    )}
+                  >
+                    <div class="flex min-w-0 items-center gap-2">
+                      <span class="size-2 shrink-0 rounded-full bg-current" />
+                      <span
+                        class={join(
+                          "truncate text-sm text-foreground",
+                          node.emphasis ? "font-semibold" : "font-medium",
+                        )}
+                      >
+                        {node.label}
+                      </span>
+                    </div>
+                    {node.badge && (
+                      <span class="truncate pl-4 text-xs text-muted">{node.badge}</span>
+                    )}
+                  </div>
+                </div>
+              </foreignObject>
             )
             const common = {
               key: placed.id,
@@ -545,13 +523,13 @@ export function DependencyGraph({
                   {...common}
                   href={node.href}
                   aria-label={full}
-                  class={join("group outline-hidden", TONE_CLASSES[tone])}
+                  class="group outline-hidden"
                 >
                   {body}
                 </a>
               )
               : (
-                <g {...common} aria-hidden="true" class={TONE_CLASSES[tone]}>
+                <g {...common} aria-hidden="true">
                   {body}
                 </g>
               )
