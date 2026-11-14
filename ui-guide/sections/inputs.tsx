@@ -1536,8 +1536,9 @@ function NumberStepperExample(
 }
 
 /**
- * 0 to 10 with 0 shown as "Off"; the same in a right-to-left page with Arabic digits, where
- * ArrowLeft adds; and the control disabled, as while offline.
+ * 0 to 10 with 0 shown as "Off"; 0 to 20 in a right-to-left page with Arabic digits, where
+ * ArrowLeft adds and PageUp takes the default large step of 2; and the control disabled, as while
+ * offline.
  */
 function NumberStepperDemo() {
   return (
@@ -1552,11 +1553,11 @@ function NumberStepperDemo() {
           e2e="guide-number"
         />
       </Variant>
-      <Variant title="Right to left, Arabic digits">
+      <Variant title="Right to left, Arabic digits, 0 to 20">
         <div dir="rtl" lang="ar">
           <NumberStepperExample
             start={2}
-            max={10}
+            max={20}
             zeroLabel="إيقاف"
             locale="ar-EG"
             title="التذكيرات في اليوم"

@@ -53,14 +53,20 @@ function numberStepperSpecs(): Spec[] {
 
   return [
     {
-      name: "NumberStepper: the arrows, PageUp, PageDown, Home, End and digits set the number, " +
-        "an edge reports no change, and 0 reads Off",
+      name:
+        "NumberStepper: the arrows, PageUp, PageDown, Home, End and digits set the number without " +
+        "scrolling the page, chords and an edge report no change, and 0 reads Off",
       pageId: "ui",
       run: async (page) => {
         const view = example(page, "guide-number")
         await view.root.scrollIntoViewIfNeeded()
         await view.shows(3, "3", 0)
         await view.box.focus()
+        for (const chord of ["Control+ArrowUp", "Alt+ArrowDown", "Meta+End", "Control+7"]) {
+          await page.keyboard.press(chord)
+        }
+        await view.reads("value: 3, changes: 0")
+        const top = await page.evaluate(() => globalThis.scrollY)
         const steps: [string, number, string][] = [
           ["ArrowUp", 4, "4"],
           ["ArrowRight", 5, "5"],
@@ -80,6 +86,10 @@ function numberStepperSpecs(): Spec[] {
         await page.keyboard.press("PageUp")
         await page.keyboard.press("End")
         await view.reads(`value: 10, changes: ${changes}`)
+        const scrolled = await page.evaluate(() => globalThis.scrollY)
+        if (scrolled !== top) {
+          throw new Error(`End and PageUp scrolled the page ${top} → ${scrolled}`)
+        }
         await page.keyboard.press("Home")
         await view.shows(0, "Off", ++changes)
         await view.minus.and(disabled(page)).waitFor()
@@ -90,9 +100,10 @@ function numberStepperSpecs(): Spec[] {
         await view.shows(7, "7", ++changes)
         await page.keyboard.press("0")
         await view.shows(0, "Off", ++changes)
-        return `${steps.map(([key, now]) => `${key} → ${now}`).join(", ")}; ArrowUp, PageUp ` +
-          `and End at 10 and ArrowDown and 0 at 0 report nothing; Home → Off, 7 → 7, 0 → Off; ` +
-          `${changes} changes`
+        return `Ctrl, Alt and Meta chords ignored; ` +
+          `${steps.map(([key, now]) => `${key} → ${now}`).join(", ")}; ArrowUp, PageUp ` +
+          `and End at 10 and ArrowDown and 0 at 0 report nothing; the page stayed at ` +
+          `scrollY ${top}; Home → Off, 7 → 7, 0 → Off; ${changes} changes`
       },
     },
     {
@@ -120,8 +131,9 @@ function numberStepperSpecs(): Spec[] {
       },
     },
     {
-      name: "NumberStepper: in a right-to-left page ArrowLeft adds and ArrowRight takes away, in " +
-        "Arabic digits",
+      name:
+        "NumberStepper: in a right-to-left page ArrowLeft adds and ArrowRight takes away, PageUp " +
+        "takes a tenth of the range by default, in Arabic digits",
       pageId: "ui",
       run: async (page) => {
         const view = example(page, "guide-number-rtl")
@@ -134,7 +146,9 @@ function numberStepperSpecs(): Spec[] {
         await view.shows(2, "٢", 2)
         await page.keyboard.press("ArrowUp")
         await view.shows(3, "٣", 3)
-        return "ArrowLeft → ٣, ArrowRight → ٢, ArrowUp → ٣"
+        await page.keyboard.press("PageUp")
+        await view.shows(5, "٥", 4)
+        return "ArrowLeft → ٣, ArrowRight → ٢, ArrowUp → ٣, PageUp by the default 2 → ٥"
       },
     },
     {
