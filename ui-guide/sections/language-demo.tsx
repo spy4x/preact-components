@@ -143,7 +143,7 @@ export function SimulateLanguageStates({ language }: { language: DemoLanguage })
   )
   return (
     <ToggleChips
-      label="Simulate"
+      ariaLabel="Simulate"
       options={[
         { value: "offline", label: "Offline" },
         { value: "failing", label: "Loading fails" },

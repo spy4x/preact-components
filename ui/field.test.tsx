@@ -748,7 +748,7 @@ describe("Field with required and an error, around a control of this library", (
   it("marks a ToggleSwitch invalid and described by the error", () => {
     const html = render(
       <Field id="terms" label="Terms" labelFor={false} error="Accept the terms">
-        <ToggleSwitch value={false} onToggle={() => {}} label="Terms" />
+        <ToggleSwitch value={false} onChange={() => {}} ariaLabel="Terms" />
       </Field>,
     )
 

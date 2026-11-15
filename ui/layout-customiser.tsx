@@ -174,11 +174,11 @@ export function LayoutCustomiser(
                 >
                   {item.title}
                 </span>
-                {item.hidden ? <Badge color="gray" type="outline">{text.hidden}</Badge> : null}
+                {item.hidden ? <Badge tone="neutral" variant="outline">{text.hidden}</Badge> : null}
                 <ToggleSwitch
                   value={!item.hidden}
-                  label={text.show(item.title)}
-                  onToggle={(shown) => onChange(setLayoutHidden(layout, item.id, !shown))}
+                  ariaLabel={text.show(item.title)}
+                  onChange={(shown) => onChange(setLayoutHidden(layout, item.id, !shown))}
                 />
               </div>
             )}

@@ -121,8 +121,8 @@ function RunStepRow({ step, labels }: { step: RunStep; labels: RunStepsLabels })
         {step.state === "done" && step.verdict && (
           <Badge
             text={step.verdict.label}
-            color={step.verdict.tone === "success" ? "green" : "red"}
-            type="outline"
+            tone={step.verdict.tone}
+            variant="outline"
           />
         )}
       </div>

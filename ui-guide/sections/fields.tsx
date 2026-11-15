@@ -1005,7 +1005,7 @@ function ToggleChipsDemo() {
         onChange={(next) => tags.value = next}
       />
       <ToggleChips
-        label="Coloured tags"
+        ariaLabel="Coloured tags"
         options={[
           { value: "urgent", label: "Urgent", color: "#dc2626" },
           { value: "ideas", label: "Ideas", color: "#fde047" },
