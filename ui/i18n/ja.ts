@@ -416,6 +416,8 @@ export default {
   "Pagination.nextLabel": "次へ",
   "Pagination.pageLabel": "{page}ページ",
   "Pagination.previousLabel": "前へ",
+  "PasswordInput.hide": "パスワードを隠す",
+  "PasswordInput.show": "パスワードを表示",
   "PeriodStepper.currentMonth": "今月",
   "PeriodStepper.currentWeek": "今週",
   "PeriodStepper.groupMonth": "月",

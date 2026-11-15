@@ -443,6 +443,8 @@ export default {
   "Pagination.nextLabel": "Suivant",
   "Pagination.pageLabel": "Page {page}",
   "Pagination.previousLabel": "Précédent",
+  "PasswordInput.hide": "Masquer le mot de passe",
+  "PasswordInput.show": "Afficher le mot de passe",
   "PeriodStepper.currentMonth": "Ce mois-ci",
   "PeriodStepper.currentWeek": "Cette semaine",
   "PeriodStepper.groupMonth": "Mois",

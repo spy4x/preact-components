@@ -35,6 +35,8 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
 - A form → `EnhancedForm` (`ui/enhanced-form.tsx`). Example: `ui-guide/sections/enhanced-forms.tsx`.
 - A labelled control with hint and error → `Field` (`ui/field.tsx`) around `Input`, `Textarea`
   or `Select` (`ui/input.tsx`). Example: `ui-guide/sections/fields.tsx`.
+- A password, with a button that shows it → `PasswordInput` (`ui/password-input.tsx`) inside a
+  `Field`. Example: `ui-guide/sections/fields.tsx`.
 - A date and time → `DateTimeField` (`ui/date-time-field.tsx`). Example:
   `ui-guide/sections/fields.tsx`.
 - A date or a range of dates → `DateRangePicker` (`ui/date-range-picker.tsx`). Example:

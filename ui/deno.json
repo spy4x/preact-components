@@ -81,6 +81,7 @@
     "./page-hero": "./page-hero.tsx",
     "./page-title": "./page-title.tsx",
     "./pagination": "./pagination.tsx",
+    "./password-input": "./password-input.tsx",
     "./period-stepper": "./period-stepper.tsx",
     "./progress": "./progress.tsx",
     "./radio": "./radio.tsx",

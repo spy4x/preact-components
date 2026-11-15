@@ -430,6 +430,8 @@ export default {
   "Pagination.nextLabel": "Weiter",
   "Pagination.pageLabel": "Seite {page}",
   "Pagination.previousLabel": "Zurück",
+  "PasswordInput.hide": "Passwort verbergen",
+  "PasswordInput.show": "Passwort anzeigen",
   "PeriodStepper.currentMonth": "Dieser Monat",
   "PeriodStepper.currentWeek": "Diese Woche",
   "PeriodStepper.groupMonth": "Monat",

@@ -835,6 +835,7 @@ PageHeroAuthor	type	@spy4x/preact-ui	The person who wrote a page, named in `Page
 PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control renders: a real page, or a collapsed run of pages.
 PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
+PasswordInput	component	@spy4x/preact-ui	A password field with an eye button that shows and hides what was typed.
 PeriodStepper	component	@spy4x/preact-ui	Steps a screen through weeks or months: "‹ › November 2026 This month".
 PlanCard	component	@spy4x/preact-ui	A plan: the current one, with its status, price and the date it renews or ends, and a "Manage billing" form that posts to the app's billing-portal route; or, with no `status`, a plan on offer, with its price, a second price line, what it includes, a link action and footnotes.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.
@@ -994,6 +995,7 @@ defaultGetLabel	helper	@spy4x/preact-ui	The identity rule for item text: `String
 defaultImportMapperLabels	helper	@spy4x/preact-ui	The English defaults of `ImportMapperLabels`.
 defaultKanbanLabels	helper	@spy4x/preact-ui	The English defaults of `KanbanBoardLabels`.
 defaultLayoutCustomiserLabels	helper	@spy4x/preact-ui	The English defaults of `LayoutCustomiserLabels`.
+defaultPasswordInputLabels	helper	@spy4x/preact-ui	The English defaults of `PasswordInputLabels`.
 defaultPlanCardLabels	helper	@spy4x/preact-ui	The English words `PlanCard` uses when a caller passes none.
 defaultPricingTableLabels	helper	@spy4x/preact-ui	The English words `PricingTable` uses when a caller passes none.
 defaultQuickAddLabels	helper	@spy4x/preact-ui	The English defaults of `QuickAddLabels`.

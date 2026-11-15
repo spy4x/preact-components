@@ -411,6 +411,8 @@ export default {
   "Pagination.nextLabel": "下一页",
   "Pagination.pageLabel": "第 {page} 页",
   "Pagination.previousLabel": "上一页",
+  "PasswordInput.hide": "隐藏密码",
+  "PasswordInput.show": "显示密码",
   "PeriodStepper.currentMonth": "本月",
   "PeriodStepper.currentWeek": "本周",
   "PeriodStepper.groupMonth": "月",

@@ -473,6 +473,8 @@ export default {
   "Pagination.nextLabel": "التالي",
   "Pagination.pageLabel": "الصفحة {page}",
   "Pagination.previousLabel": "السابق",
+  "PasswordInput.hide": "إخفاء كلمة المرور",
+  "PasswordInput.show": "إظهار كلمة المرور",
   "PeriodStepper.currentMonth": "هذا الشهر",
   "PeriodStepper.currentWeek": "هذا الأسبوع",
   "PeriodStepper.groupMonth": "الشهر",

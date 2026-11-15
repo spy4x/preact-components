@@ -25,6 +25,7 @@ import {
   ListField,
   Modal,
   MoneyInput,
+  PasswordInput,
   QuickAdd,
   Radio,
   RadioChips,
@@ -262,6 +263,34 @@ function InputButtonDemo() {
         </Button>
       </Cluster>
     </Stack>
+  )
+}
+
+/** A password field inside a form, with a count of submits that proves the eye never sends it. */
+function PasswordInputDemo() {
+  const submits = useSignal(0)
+  return (
+    <form
+      class="max-w-xs"
+      data-e2e="password-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submits.value++
+      }}
+    >
+      <Stack gap="sm">
+        <Field id="guide-password" label="Password" hint="At least 8 characters.">
+          <PasswordInput
+            name="guide-password"
+            autocomplete="new-password"
+            minLength={8}
+            data-e2e="password-input"
+            toggleDataE2E="password-toggle"
+          />
+        </Field>
+        <p class="text-xs text-muted" data-e2e="password-submits">submits: {submits.value}</p>
+      </Stack>
+    </form>
   )
 }
 
@@ -1244,6 +1273,32 @@ export const fieldDemos = {
   onClick={() => query.value = ""}
 />`,
     render: () => <InputButtonDemo />,
+  },
+  PasswordInput: {
+    summary:
+      "A password field with an eye button that shows and hides what was typed, without ever submitting the form.",
+    wide: false,
+    props: [
+      {
+        name: "name / autocomplete / required / …",
+        type: "input attributes",
+        description: "Reach the input, as on `Input`; `type` is the toggle's.",
+      },
+      {
+        name: "labels",
+        type: "{ show?: string; hide?: string }",
+        description: "The toggle's name in each state. Defaults: Show password, Hide password.",
+      },
+      {
+        name: "toggleDataE2E",
+        type: "string",
+        description: "`data-e2e` on the toggle; `data-e2e` itself goes on the input.",
+      },
+    ],
+    snippet: `<Field id="password" label="Password" hint="At least 8 characters.">
+  <PasswordInput name="password" autocomplete="new-password" minLength={8} />
+</Field>`,
+    render: () => <PasswordInputDemo />,
   },
   MoneyInput: {
     summary:

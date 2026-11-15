@@ -401,6 +401,12 @@ export {
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
 export {
+  defaultPasswordInputLabels,
+  PasswordInput,
+  type PasswordInputLabels,
+  type PasswordInputProps,
+} from "./password-input.tsx"
+export {
   PeriodStepper,
   type PeriodStepperLabels,
   periodStepperLabels,

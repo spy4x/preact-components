@@ -454,6 +454,8 @@ export default {
   "Pagination.nextLabel": "Вперёд",
   "Pagination.pageLabel": "Страница {page}",
   "Pagination.previousLabel": "Назад",
+  "PasswordInput.hide": "Скрыть пароль",
+  "PasswordInput.show": "Показать пароль",
   "PeriodStepper.currentMonth": "Этот месяц",
   "PeriodStepper.currentWeek": "Эта неделя",
   "PeriodStepper.groupMonth": "Месяц",
